@@ -10,11 +10,18 @@ final class NativeProviderLaneServices {
     private IGridTickable ticker;
     private ICraftingProvider provider;
     private long tickerInvocations;
+    private long providerRefreshInvocations;
 
     <T extends IGridNodeService> void capture(Class<T> serviceClass, T service) {
         if (serviceClass == IGridTickable.class) {
+            if (ticker != null) {
+                throw new IllegalStateException("PatternProviderLogic installed duplicate native tickers");
+            }
             ticker = (IGridTickable) service;
         } else if (serviceClass == ICraftingProvider.class) {
+            if (provider != null) {
+                throw new IllegalStateException("PatternProviderLogic installed duplicate crafting providers");
+            }
             provider = (ICraftingProvider) service;
         } else {
             throw new IllegalArgumentException("Unexpected PatternProviderLogic service: " + serviceClass.getName());
@@ -42,5 +49,13 @@ final class NativeProviderLaneServices {
 
     long tickerInvocations() {
         return tickerInvocations;
+    }
+
+    void recordProviderRefresh() {
+        providerRefreshInvocations++;
+    }
+
+    long providerRefreshInvocations() {
+        return providerRefreshInvocations;
     }
 }

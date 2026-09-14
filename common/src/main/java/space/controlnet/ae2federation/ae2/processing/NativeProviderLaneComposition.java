@@ -8,7 +8,9 @@ import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.function.IntPredicate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -21,6 +23,7 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     private final AppEngInternalInventory patternInventory;
     private final List<NativeProviderLane> lanes;
     private final List<NativeProviderLaneServices> services;
+    private final NativeProviderLaneTicker physicalTicker;
     private ICraftingService craftingService;
 
     public NativeProviderLaneComposition(IManagedGridNode physicalNode, PatternProviderLogicHost ownerHost,
@@ -46,7 +49,8 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
         }
         lanes = List.copyOf(mutableLanes);
         services = List.copyOf(mutableServices);
-        physicalNode.addService(IGridTickable.class, new NativeProviderLaneTicker(services));
+        physicalTicker = new NativeProviderLaneTicker(services);
+        physicalNode.addService(IGridTickable.class, physicalTicker);
     }
 
     public InternalInventory patternInventory() {
@@ -59,6 +63,24 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
 
     public List<Long> nativeTickerInvocations() {
         return services.stream().map(NativeProviderLaneServices::tickerInvocations).toList();
+    }
+
+    public List<Long> nativeProviderRefreshInvocations() {
+        return services.stream().map(NativeProviderLaneServices::providerRefreshInvocations).toList();
+    }
+
+    public int nativeTickerDelegateCount() {
+        return services.size();
+    }
+
+    public boolean hasPhysicalTickerService() {
+        var node = physicalNode.getNode();
+        return node != null && node.getService(IGridTickable.class) == physicalTicker;
+    }
+
+    public boolean hasPhysicalCraftingProviderService() {
+        var node = physicalNode.getNode();
+        return node != null && node.getService(appeng.api.networking.crafting.ICraftingProvider.class) != null;
     }
 
     public boolean isActive() {
@@ -78,10 +100,33 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     }
 
     public void refreshPatterns() {
-        for (var lane : lanes) {
+        refreshLanes(java.util.stream.IntStream.range(0, lanes.size()).boxed().toList());
+    }
+
+    public void refreshPatternSlot(int slot) {
+        if (slot < 0 || slot >= patternInventory.size()) {
+            throw new IndexOutOfBoundsException("Pattern slot is outside the physical inventory: " + slot);
+        }
+        var affected = new TreeSet<Integer>();
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            if (lanes.get(laneIndex).isAssignedSlot(slot)) {
+                affected.add(laneIndex);
+            }
+        }
+        refreshLanes(affected);
+    }
+
+    public void refreshLanes(Collection<Integer> laneIndexes) {
+        var ordered = new TreeSet<>(laneIndexes);
+        if (ordered.stream().anyMatch(index -> index < 0 || index >= lanes.size())) {
+            throw new IndexOutOfBoundsException("Native Lane refresh index is outside the composition");
+        }
+        for (var laneIndex : ordered) {
+            var lane = lanes.get(laneIndex);
             lane.updatePatterns();
             if (craftingService != null) {
                 craftingService.refreshGlobalCraftingProvider(lane);
+                services.get(laneIndex).recordProviderRefresh();
             }
         }
     }
@@ -123,7 +168,7 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
 
     @Override
     public void onChangeInventory(AppEngInternalInventory inventory, int slot) {
-        refreshPatterns();
+        refreshPatternSlot(slot);
     }
 
     @Override
