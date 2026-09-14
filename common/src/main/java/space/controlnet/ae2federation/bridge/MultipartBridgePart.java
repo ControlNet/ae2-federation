@@ -26,6 +26,7 @@ import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.fabric.FabricNodeId;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
@@ -131,7 +132,13 @@ public final class MultipartBridgePart extends AEBasePart {
 
     @Override
     public boolean onUseWithoutItem(Player player, Vec3 pos) {
-        return !isClientSide() && status.reason() != BridgeOperationalReason.REMOVED;
+        if (status.reason() == BridgeOperationalReason.REMOVED) {
+            return false;
+        }
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            return FabricPolicyMenu.openBridge(serverPlayer, rightClickContext());
+        }
+        return true;
     }
 
     public BridgeOperationalReason operationalReason() {
