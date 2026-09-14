@@ -316,7 +316,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationUiTest -Pcases=ui.hub,ui.bridge,ui.shared-policy,ui.stale-context,ui.close-unsubscribe -PevidenceDir=.omo/evidence/task-15`.
   - Commit: proposed `feat(ui): add unified Fabric policy management`.
 
-- [ ] 16. Implement single-owner Pattern inventory and mapped native Lane lifecycle
+- [x] 16. Implement single-owner Pattern inventory and mapped native Lane lifecycle
   - Work: `processing/provider/` and task 6's qualified `ae2/processing/` boundary. Physical Pattern slots use native storage/decoding; each Lane sees only assigned patterns. Handle native provider registration/refresh and ticker wake/sleep without duplicate node services; priority/redstone/Pattern access terminal affect correct instances. Keep public gameplay limits out of prototype fixtures; document tested counts.
   - References: D9.2,10.2-10.5,17.3; A-process/A-craft; task 6 gate. Depends on 6.
   - Acceptance: inserted/removed/replaced Pattern updates relevant native publications and Blocking inputs; equal Patterns retain independent mediums; item inventory/save/drop ownership once.
