@@ -52,7 +52,12 @@
     {"id":"bridge.invalid","backend":"gametest","testId":"bridgeinvalid","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"bridge.same-grid","backend":"gametest","testId":"bridgesamegrid","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"bridge.reject-federation-cable","backend":"gametest","testId":"bridgerejectfederationcable","structure":"ae2federation_test:harness_native_smoke","assertions":2},
-    {"id":"bridge.reload-replace","backend":"gametest","testId":"bridgereloadreplace","structure":"ae2federation_test:harness_native_smoke","assertions":4}
+    {"id":"bridge.reload-replace","backend":"gametest","testId":"bridgereloadreplace","structure":"ae2federation_test:harness_native_smoke","assertions":4},
+    {"id":"hub.mixed-six-faces","backend":"gametest","testId":"hubmixedsixfaces","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"hub.six-independent-me","backend":"gametest","testId":"hubsixindependentme","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"hub.repeat-network","backend":"gametest","testId":"hubrepeatnetwork","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"hub.port-replacement","backend":"gametest","testId":"hubportreplacement","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"hub.reject-unsupported","backend":"gametest","testId":"hubrejectunsupported","structure":"ae2federation_test:harness_native_smoke","assertions":8}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8}

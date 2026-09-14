@@ -1,3 +1,5 @@
 {
-  "mod.ae2federation.name": "AE2 Federation"
+  "mod.ae2federation.name": "AE2 Federation",
+  "block.ae2federation.hub": "Federation Hub",
+  "block.ae2federation.federation_cable": "Federation Cable"
 }

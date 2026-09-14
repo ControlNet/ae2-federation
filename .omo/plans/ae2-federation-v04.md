@@ -288,7 +288,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=bridge.valid,bridge.invalid,bridge.same-grid,bridge.reject-federation-cable,bridge.reload-replace -PevidenceDir=.omo/evidence/task-11`.
   - Commit: proposed `feat(bridge): add isolated native multipart attachment`.
 
-- [ ] 12. Implement six-face Hub and Federation Cable topology ports
+- [x] 12. Implement six-face Hub and Federation Cable topology ports
   - Work: `hub/`, `fabric/port/`, Hub/Cable registration and recognizable provisional models. Every Hub face accepts ME or Federation cable based on actual neighbor capabilities. ME boundary nodes stay isolated; Federation faces join only custom topology. Recognize native devices as well as cables; remove/recreate affected bindings on neighbor and capability changes.
   - References: latest Hub decision; task 5 contract; D3-4,19 T-G01,T-B02. Depends on 5.
   - Acceptance: mixed port layouts, all-six-ME and all-six-Federation layouts work; unsupported neighbor stays disconnected; no native Grid joins; no forced chunk loads or Fabric power requirement.

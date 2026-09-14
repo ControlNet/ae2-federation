@@ -163,3 +163,10 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - No unresolved Task 11 blocker remains. Exact runtime cases, schema-v3 production/consumption, adversarial persisted
   probes, focused contracts, Java diagnostics, and cleanup have passed. The plan checkbox and Boulder state remain
   untouched for the orchestrator.
+
+## 2026-09-15T01:55:00Z Task 12
+
+- No unresolved Task 12 blocker remains. Production registration, five real Hub/Cable runtime cases, schema-v3
+  production and consumption, adversarial rebinding probes, strict build, diagnostics, and runtime cleanup pass.
+- Task 13 component indexing and routing remain intentionally unimplemented. The Task 12 checkbox remains untouched for
+  orchestrator verification.

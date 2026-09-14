@@ -301,3 +301,14 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `GridHelper.createConnection` call.
 - Bridge cases are zero-transfer topology checks: schema-v3 expects one operation and allows zero inserted/extracted
   work while still requiring exact native assertion counts and runtime trace correlation.
+
+## 2026-09-15T01:55:00Z Task 12
+
+- A managed in-world node is not discoverable by later-initializing native neighbors unless its owning block exposes
+  AE2's `IN_WORLD_GRID_NODE_HOST` capability. Registering the Hub itself as that host changed the mixed runtime case
+  from zero native bindings to three native plus three custom Federation bindings.
+- One `BlockCapabilityCache` per face provides unloaded-safe Federation Cable lookup and face-specific invalidation.
+  Invalidation clears the stale binding synchronously; the server ticker resolves only dirty faces on the next tick.
+- Six `CANNOT_CARRY`, zero-idle managed nodes preserve ME boundary isolation while a separate sided `FederationPort`
+  capability represents custom physical topology without native Grid edges or Fabric power.
+- Final source-bound schema-v3 evidence: `.omo/evidence/task-12/attempt-20260914T155900227Z/result.json`.

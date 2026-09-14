@@ -142,3 +142,15 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `FEDERATION_CABLE_UNSUPPORTED`; both remain fail closed and publish no membership candidate.
 - Make repeated removal idempotent by destroying only the Bridge-owned outer node once, retaining `REMOVED` status, and
   allowing AE2's native part lifecycle to own the main node teardown.
+
+## 2026-09-15T01:55:00Z Task 12
+
+- Represent each Hub face with one independently owned `HubFacePort`: one native managed node, one custom capability
+  cache, and one typed binding. Never connect Hub boundary nodes internally.
+- Model Federation Cable as a sided `FederationPort` block capability only. Physical adjacency and opposite-facing port
+  identity establish a custom topology edge; the cable exposes no AE2 node, energy overlay, or transfer engine.
+- Resolve native and Federation candidates independently and accept exactly one. Neither candidate or both candidates
+  fail closed. Guard native resolution with `ServerLevel.isLoaded` and rely on `BlockCapabilityCache`'s unloaded-null
+  contract so discovery never forces a neighbor chunk.
+- Keep Task 12 evidence namespaced under `hub.*` with a dedicated semantic validator and adversarial self-test; prior
+  task case sets and validators remain unchanged.

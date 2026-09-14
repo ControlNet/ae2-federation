@@ -215,3 +215,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   topology accounting branch repaired the real schema-v3 `federationVerify` run without weakening semantic checks.
 - No unresolved Task 11 implementation blocker remains after the exact five-case runtime run, persisted consumer, and
   fully rebound identity/rebound-case/incomplete-trace self-test.
+
+## 2026-09-15T01:55:00Z Task 12
+
+- The first exact run failed because Hub-owned native nodes existed but the Hub did not expose
+  `AECapabilities.IN_WORLD_GRID_NODE_HOST`; all nine nodes initialized as separate Grids and native face count remained
+  zero. A focused red contract and runtime repro locked this failure before capability registration repaired it.
+- Resolved: the exact five canonical cases, persisted consumer, and fully rebound fabricated-success, case-identity,
+  incomplete-trace, and incomplete-attempt probes pass. No Task 12 implementation blocker remains.
