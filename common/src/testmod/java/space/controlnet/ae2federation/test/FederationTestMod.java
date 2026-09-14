@@ -24,9 +24,10 @@ public final class FederationTestMod {
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
         Arrays.stream(new Class<?>[] { FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
 				 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, StorageProofGameTests.class,
-				 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
-				   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
-				   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class })
+					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
+					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
+					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
+					   ProviderLifecycleGameTests.class })
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))
                 .forEach(event::register);

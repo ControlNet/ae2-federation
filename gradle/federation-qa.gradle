@@ -109,6 +109,9 @@ def verifyTaskThirteenEvidence
 def taskFourteenCases = ['policy.lifecycle-matrix', 'policy.new-bridge-restore', 'policy.reject-stale-edit',
         'policy.delete-reconnect', 'policy.sparse-scale']
 def verifyTaskFourteenEvidence
+def taskSixteenCases = ['provider.pattern-mapping', 'provider.refresh-priority', 'provider.single-inventory',
+        'provider.reject-stale-pattern', 'provider.native-ticker-count']
+def verifyTaskSixteenEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -1260,6 +1263,89 @@ verifyTaskFourteenEvidence = { File attempt, List requested, List<String> declar
         throw new GradleException('Task 14 sparse scale or no-eviction semantics are incomplete')
     }
 }
+verifyTaskSixteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskSixteenCases }) return
+    if (requested != taskSixteenCases) throw new GradleException('Task 16 evidence must select the exact canonical case set')
+    def expected = [providerpatternmapping: 10, providerrefreshpriority: 13, providersingleinventory: 9,
+            providerrejectstalepattern: 10, providernativetickercount: 10]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-provider') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 16 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 16 native child exits are incomplete')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 16 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 16 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 16 operations') != 1) {
+            throw new GradleException("Task 16 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_PROVIDER_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 16 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 16 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def mapping = parsed.providerpatternmapping as Properties
+    if (mapping.getProperty('patternSlots') != '3' || mapping.getProperty('laneCount') != '3'
+            || mapping.getProperty('providerEntries') != '5' || mapping.getProperty('equalProviderMedia') != '2'
+            || mapping.getProperty('removedProviderMedia') != '0' || mapping.getProperty('mappingRefreshDelta') != '1,0,1'
+            || mapping.getProperty('replacementPublished') != 'true') {
+        throw new GradleException('Task 16 mapped native publication semantics are incomplete')
+    }
+    def refresh = parsed.providerrefreshpriority as Properties
+    if (refresh.getProperty('insertRefreshDelta') != '1,1,0'
+            || refresh.getProperty('priorityRefreshDelta') != '1,1,1'
+            || refresh.getProperty('nativePriority') != '37' || refresh.getProperty('blockingRefreshed') != 'true'
+            || refresh.getProperty('terminalContainers') != '1' || refresh.getProperty('redstoneLanes') != '3') {
+        throw new GradleException('Task 16 refresh, priority, Blocking, redstone, or terminal semantics are incomplete')
+    }
+    def inventory = parsed.providersingleinventory as Properties
+    if (inventory.getProperty('patternSlots') != '3' || inventory.getProperty('lanePatternSlots') != '0'
+            || inventory.getProperty('terminalContainers') != '1' || inventory.getProperty('patternDrops') != '1'
+            || inventory.getProperty('ownerSaved') != 'true' || inventory.getProperty('laneInventorySaves') != '0') {
+        throw new GradleException('Task 16 single Pattern inventory ownership semantics are incomplete')
+    }
+    def stale = parsed.providerrejectstalepattern as Properties
+    if (stale.getProperty('equalStaleRejected') != 'true' || stale.getProperty('removedStaleRejected') != 'true'
+            || stale.getProperty('reloadStaleRejected') != 'true' || stale.getProperty('staleMappingRejected') != 'true'
+            || stale.getProperty('restoredMapping') != '0,1' || stale.getProperty('restoredLaneEntries') != '1,1,0') {
+        throw new GradleException('Task 16 stale Pattern or mapping acceptance semantics are incomplete')
+    }
+    def ticker = parsed.providernativetickercount as Properties
+    if (ticker.getProperty('physicalTickerServices') != '1' || ticker.getProperty('physicalProviderServices') != '0'
+            || ticker.getProperty('tickerDelegates') != '3' || ticker.getProperty('delegatesInvoked') != '3'
+            || ticker.getProperty('providerMedia') != '3' || ticker.getProperty('providersAfterClose') != '0'
+            || ticker.getProperty('nativeSleepWake') != 'true') {
+        throw new GradleException('Task 16 native ticker semantics are incomplete')
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -1345,6 +1431,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskThirteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskFourteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskSixteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -1627,12 +1715,14 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                     || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                    || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')) ? 1 : 2,
+                    || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
+                    || testCase.id.startsWith('provider.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                            || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')])
+                            || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
+                            || testCase.id.startsWith('provider.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -1847,6 +1937,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'provider.pattern-mapping':
+                case 'provider.refresh-priority':
+                case 'provider.single-inventory':
+                case 'provider.reject-stale-pattern':
+                case 'provider.native-ticker-count':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
             }
         }
     }
@@ -1879,6 +1981,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwelveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskFourteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskSixteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -2627,5 +2730,63 @@ tasks.register('federationTaskEightEvidenceSelfTest') {
         ]
         if (probes.any { !it }) throw new GradleException('Task 8 adversarial persisted evidence was accepted')
         logger.lifecycle('Task 8 adversarial Storage provenance evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskSixteenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 16 mapped native Provider evidence fails closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 16 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probes = [
+                taskSevenEvidenceProbeRejects(sourceResult, 'task16-fabricated-provider-count',
+                        'Task 16 mapped native publication semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-providerpatternmapping.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('equalProviderMedia', '1')
+                    file.withOutputStream { properties.store(it, 'Task 16 fabricated provider count') }
+                    def log = new File(attempt, 'positive-providerpatternmapping.log')
+                    log.text = log.text.replace('fact=equalProviderMedia value=2', 'fact=equalProviderMedia value=1')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task16-stale-pattern-accepted',
+                        'Task 16 stale Pattern or mapping acceptance semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-providerrejectstalepattern.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('equalStaleRejected', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 16 stale Pattern acceptance') }
+                    def log = new File(attempt, 'positive-providerrejectstalepattern.log')
+                    log.text = log.text.replace('fact=equalStaleRejected value=true',
+                            'fact=equalStaleRejected value=false')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task16-duplicate-inventory-owner',
+                        'Task 16 single Pattern inventory ownership semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-providersingleinventory.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('lanePatternSlots', '1')
+                    file.withOutputStream { properties.store(it, 'Task 16 duplicate inventory owner') }
+                    def log = new File(attempt, 'positive-providersingleinventory.log')
+                    log.text = log.text.replace('fact=lanePatternSlots value=0', 'fact=lanePatternSlots value=1')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task16-missing-native-ticker-fact',
+                        'Task 16 native ticker semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-providernativetickercount.properties')
+                    def properties = loadProperties(file)
+                    properties.remove('physicalTickerServices')
+                    file.withOutputStream { properties.store(it, 'Task 16 missing native ticker fact') }
+                    def log = new File(attempt, 'positive-providernativetickercount.log')
+                    log.text = log.readLines().findAll { !it.contains('fact=physicalTickerServices ') }.join('\n') + '\n'
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task16-incomplete-trace',
+                        'Task 16 runtime trace mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-providerrefreshpriority.log')
+                    log.text = log.readLines().findAll { !it.contains('fact=nativePriority ') }.join('\n') + '\n'
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 16 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 16 adversarial mapped Provider evidence probes were rejected for intended reasons')
     }
 }

@@ -72,7 +72,12 @@
     {"id":"policy.new-bridge-restore","backend":"gametest","testId":"policynewbridgerestore","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"policy.reject-stale-edit","backend":"gametest","testId":"policyrejectstaleedit","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"policy.delete-reconnect","backend":"gametest","testId":"policydeletereconnect","structure":"ae2federation_test:harness_native_smoke","assertions":8},
-    {"id":"policy.sparse-scale","backend":"gametest","testId":"policysparsescale","structure":"ae2federation_test:harness_native_smoke","assertions":6}
+    {"id":"policy.sparse-scale","backend":"gametest","testId":"policysparsescale","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"provider.pattern-mapping","backend":"gametest","testId":"providerpatternmapping","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"provider.refresh-priority","backend":"gametest","testId":"providerrefreshpriority","structure":"ae2federation_test:harness_native_smoke","assertions":13},
+    {"id":"provider.single-inventory","backend":"gametest","testId":"providersingleinventory","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"provider.reject-stale-pattern","backend":"gametest","testId":"providerrejectstalepattern","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"provider.native-ticker-count","backend":"gametest","testId":"providernativetickercount","structure":"ae2federation_test:harness_native_smoke","assertions":10}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8}
