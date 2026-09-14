@@ -343,3 +343,14 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   zero inserted/extracted work while still requiring exact semantic traces and assertion counts.
 - Canonical source-bound Task 14 evidence is
   `.omo/evidence/task-14/attempt-20260914T184506344Z/result.json`.
+
+## 2026-09-15T06:45:00Z Task 15
+
+- Production UI evidence must open `FabricPolicyMenu` against current Hub/Bridge topology and read authoritative
+  `PolicyService`/Fabric state; a test-only state fixture can reproduce packets while bypassing the acceptance contract.
+- Independently initialized native cable groups that are later joined settle as `AMBIGUOUS_MERGE`. The reliable UI fixture
+  builds the proven Bridge core first, waits for settlement, and only then extends both native networks toward the Hub.
+- Adjacent transparent extensions cross-connect and collapse the Bridge domains into one native Grid. Red/blue cable
+  isolation preserves two settled identities while allowing both entrances to derive the same directional Policy key.
+- Canonical source-bound Task 15 evidence is
+  `.omo/evidence/task-15/attempt-20260914T205305294Z/result.json`; all five scenarios and 11 LDLib2 checks passed.

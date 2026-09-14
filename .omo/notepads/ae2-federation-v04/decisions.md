@@ -181,3 +181,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `ACTIVE` requires both settled identities and an intersection of confirmed Task 13 Fabrics.
 - Store Policy `SavedData` in the overworld and persist configuration only. Runtime endpoints, activation, caches, routes,
   `IGrid`, and `FabricId` remain derived and non-persistent; storage reexport defaults to false.
+
+## 2026-09-15T06:45:00Z Task 15
+
+- Use one production `FabricPolicyMenu`/`FabricPolicySession` path for Hub and Bridge entrypoints. Testmod code may arrange
+  world topology and actions but must not own Policy state, fabricate acknowledgments, or substitute a parallel session.
+- Treat stale Fabric generation or Policy revision as terminal for the open editor: synchronize the rejection and disable
+  every selector and mutation control until the player reopens against current context.
+- Keep disabled Bridges diagnostic-only, use deterministic server acknowledgment `policy-<revision>`, and bind evidence to
+  the same ordered real `NetworkId` pair and capability observed from both entrances.

@@ -248,3 +248,10 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   accounting. Policy restart verification now expects one operation and explicitly allows zero transfer work.
 - No unresolved Task 14 implementation blocker remains after canonical runtime, persisted consumption, adversarial
   evidence probes, strict build, Java diagnostics, and runtime cleanup.
+
+## 2026-09-15T06:45:00Z Task 15
+
+- The first real-topology UI attempts permanently merged independently initialized cable identities. Phased Bridge-first
+  construction fixed identity settlement, but transparent adjacent Hub extensions then joined both Bridge domains.
+- Distinct red/blue extension colors corrected the remaining topology fault. The exact five-case actual-client run,
+  persisted consumer, forged-ack/stale-success probes, focused tests, Java diagnostics, and strict build now pass.

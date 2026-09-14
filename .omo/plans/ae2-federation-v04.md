@@ -309,7 +309,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=policy.lifecycle-matrix,policy.new-bridge-restore,policy.reject-stale-edit,policy.delete-reconnect,policy.sparse-scale -PevidenceDir=.omo/evidence/task-14`.
   - Commit: proposed `feat(policy): persist sparse global network rules`.
 
-- [ ] 15. Deliver minimal unified Hub/Bridge management with real server acknowledgments
+- [x] 15. Deliver minimal unified Hub/Bridge management with real server acknowledgments
   - Work: `client/menu/`, `client/policy/`, `ui/fabric.xml`, shared LSS and localized labels. Right-click any valid Hub/Bridge opens full current-Fabric members and directional rules; pending topology invalidates stale editor context. All players may operate, but object/menu distance/current context/input bounds/revisions are server checked. Disabled Bridge exposes diagnostic state without fabric-wide stale edits.
   - References: D17.1,17.5,17.7,19 T-F12,T-U03,T-G10; L; task 3. Depends on 3,14.
   - Acceptance: two different entrances edit the same record; no player ACL; menu closure never stops sharing; stale topology submission visibly rejected.
