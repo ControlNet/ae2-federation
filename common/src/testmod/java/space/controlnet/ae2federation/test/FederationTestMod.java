@@ -25,7 +25,8 @@ public final class FederationTestMod {
         Arrays.stream(new Class<?>[] { FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
 				 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, StorageProofGameTests.class,
                  NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
-                 MultipartBridgeGameTests.class, HubGameTests.class })
+                   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
+                   FabricBridgeGameTests.class })
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))
                 .forEach(event::register);

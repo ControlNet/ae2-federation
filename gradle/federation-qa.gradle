@@ -103,6 +103,9 @@ def verifyTaskElevenEvidence
 def taskTwelveCases = ['hub.mixed-six-faces', 'hub.six-independent-me', 'hub.repeat-network',
         'hub.port-replacement', 'hub.reject-unsupported']
 def verifyTaskTwelveEvidence
+def taskThirteenCases = ['fabric.bridge-diamond', 'fabric.hub-merge-split', 'fabric.redundant-membership',
+        'fabric.partial-unload', 'fabric.reject-stale-route']
+def verifyTaskThirteenEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -1054,6 +1057,97 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
         throw new GradleException('Task 12 unsupported-neighbor or all-Federation semantics are incomplete')
     }
 }
+verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskThirteenCases }) return
+    if (requested != taskThirteenCases) throw new GradleException('Task 13 evidence must select the exact canonical case set')
+    def expected = [fabricbridgediamond: 8, fabrichubmergesplit: 8, fabricredundantmembership: 8,
+            fabricpartialunload: 8, fabricrejectstaleroute: 8]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-fabric') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 13 native artifact set is duplicated, missing, or substituted')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 13 native child exit is missing or nonzero: ${testId}")
+        }
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 13 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        if (properties.getProperty('testId') != testId) {
+            throw new GradleException("Task 13 native case identity mismatch in ${artifact}")
+        }
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 13 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 13 operations') != 1) {
+            throw new GradleException("Task 13 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_FABRIC_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 13 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 13 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def diamond = parsed.fabricbridgediamond as Properties
+    if (diamond.getProperty('directFabricCount') != '4' || diamond.getProperty('sharedNativeNetwork') != 'true'
+            || diamond.getProperty('sharedNetworkFabricCount') != '4'
+            || diamond.getProperty('componentMergeFromSharedGrid') != 'false'
+            || diamond.getProperty('nativeCrossGridJoin') != 'false'
+            || diamond.getProperty('membershipConfirmed') != 'true'
+            || diamond.getProperty('cycleConverged') != 'true' || diamond.getProperty('worldScan') != 'false') {
+        throw new GradleException('Task 13 Bridge diamond membership semantics are incomplete')
+    }
+    def split = parsed.fabrichubmergesplit as Properties
+    if (split.getProperty('mergedComponentCount') != '1' || split.getProperty('splitComponentCount') != '2'
+            || split.getProperty('incremental') != 'true' || split.getProperty('mergedReferenceInvalidated') != 'true'
+            || split.getProperty('loadedReciprocalEdgesOnly') != 'true' || split.getProperty('nativeGridMerge') != 'false'
+            || split.getProperty('generationAdvanced') != 'true' || split.getProperty('worldScan') != 'false') {
+        throw new GradleException('Task 13 Hub merge/split semantics are incomplete')
+    }
+    def redundant = parsed.fabricredundantmembership as Properties
+    if (redundant.getProperty('nativeNetworkCount') != '1' || redundant.getProperty('attachmentSourceCount') != '2'
+            || redundant.getProperty('indexedFabricCount') != '1' || redundant.getProperty('deduplicated') != 'true'
+            || redundant.getProperty('faceOwnershipRetained') != 'true' || redundant.getProperty('identitySettled') != 'true'
+            || redundant.getProperty('nativeJoinByFabric') != 'false' || redundant.getProperty('worldScan') != 'false') {
+        throw new GradleException('Task 13 redundant membership semantics are incomplete')
+    }
+    def unload = parsed.fabricpartialunload as Properties
+    if (unload.getProperty('initiallyMerged') != 'true' || unload.getProperty('unloadLifecycleInvoked') != 'true'
+            || unload.getProperty('staleMembershipAccepted') != 'false' || unload.getProperty('forcedChunkLoads') != '0'
+            || unload.getProperty('loadedEvidenceOnly') != 'true' || unload.getProperty('affectedComponentsOnly') != 'true'
+            || unload.getProperty('membershipInvalidated') != 'true' || unload.getProperty('worldScan') != 'false') {
+        throw new GradleException('Task 13 partial unload semantics are incomplete')
+    }
+    def stale = parsed.fabricrejectstaleroute as Properties
+    if (stale.getProperty('referenceInitiallyCurrent') != 'true'
+            || stale.getProperty('referenceCurrentAfterChange') != 'false'
+            || stale.getProperty('staleRouteAccepted') != 'false'
+            || stale.getProperty('indexInvalidatedImmediately') != 'true'
+            || stale.getProperty('generationBound') != 'true' || stale.getProperty('policyImplemented') != 'false'
+            || stale.getProperty('possiblePathsEnumerated') != 'false' || stale.getProperty('worldScan') != 'false') {
+        throw new GradleException('Task 13 stale-route invalidation semantics are incomplete')
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -1135,6 +1229,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskElevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwelveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskThirteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -1416,11 +1512,13 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     operations: (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
-                    || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')) ? 1 : 2,
+                    || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
+                    || testCase.id.startsWith('fabric.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
-                            || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')])
+                            || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
+                            || testCase.id.startsWith('fabric.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -1606,6 +1704,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             allowZeroWork: true])
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'fabric.bridge-diamond':
+                case 'fabric.hub-merge-split':
+                case 'fabric.redundant-membership':
+                case 'fabric.partial-unload':
+                case 'fabric.reject-stale-route':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
             }
         }
@@ -1637,6 +1747,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskElevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwelveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskThirteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -1950,6 +2061,58 @@ tasks.register('federationTaskTwelveEvidenceSelfTest') {
             throw new GradleException('Task 12 adversarial persisted evidence was accepted')
         }
         logger.lifecycle('Task 12 fabricated success, rebound identity, incomplete trace, and incomplete attempt probes were rejected')
+    }
+}
+
+tasks.register('federationTaskThirteenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 13 Fabric evidence rejects fabricated, rebound, incomplete, and stale-route attempts.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 13 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def fabricatedMembership = taskFiveEvidenceProbeRejects(sourceResult, 'task13-fabricated-membership') { attempt, report ->
+            def file = new File(attempt, 'native-fabricredundantmembership.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('indexedFabricCount', '2')
+            file.withOutputStream { properties.store(it, 'Task 13 fabricated membership') }
+            def log = new File(attempt, 'positive-fabricredundantmembership.log')
+            log.text = log.text.replace('fact=indexedFabricCount value=1', 'fact=indexedFabricCount value=2')
+        }
+        def reboundIdentity = taskFiveEvidenceProbeRejects(sourceResult, 'task13-rebound-identity') { attempt, report ->
+            def file = new File(attempt, 'native-fabricbridgediamond.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('testId', 'fabrichubmergesplit')
+            file.withOutputStream { properties.store(it, 'Task 13 rebound case identity') }
+        }
+        def incompleteTrace = taskFiveEvidenceProbeRejects(sourceResult, 'task13-incomplete-trace') { attempt, report ->
+            def log = new File(attempt, 'positive-fabrichubmergesplit.log')
+            log.text = log.readLines().findAll { !it.contains('fact=incremental ') }.join('\n') + '\n'
+        }
+        def incompleteAttempt = taskFiveEvidenceProbeRejects(sourceResult, 'task13-incomplete-attempt') { attempt, report ->
+            new File(attempt, 'native-fabricpartialunload.properties').delete()
+        }
+        def staleAccepted = taskFiveEvidenceProbeRejects(sourceResult, 'task13-stale-route') { attempt, report ->
+            def file = new File(attempt, 'native-fabricrejectstaleroute.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('staleRouteAccepted', 'true')
+            file.withOutputStream { properties.store(it, 'Task 13 stale route acceptance') }
+            def log = new File(attempt, 'positive-fabricrejectstaleroute.log')
+            log.text = log.text.replace('fact=staleRouteAccepted value=false', 'fact=staleRouteAccepted value=true')
+        }
+        if (!(fabricatedMembership instanceof String)
+                || !fabricatedMembership.contains('Task 13 redundant membership semantics are incomplete')
+                || !(reboundIdentity instanceof String) || !reboundIdentity.contains('Task 13 native case identity mismatch')
+                || !(incompleteTrace instanceof String) || !incompleteTrace.contains('Task 13 runtime trace mismatch')
+                || !(incompleteAttempt instanceof String)
+                || !incompleteAttempt.contains('Artifact is missing, outside the attempt, or hash-mismatched')
+                || !(staleAccepted instanceof String)
+                || !staleAccepted.contains('Task 13 stale-route invalidation semantics are incomplete')) {
+            throw new GradleException('Task 13 adversarial persisted evidence was accepted')
+        }
+        logger.lifecycle('Task 13 fabricated membership, rebound identity, incomplete trace, incomplete attempt, and stale-route probes were rejected')
     }
 }
 

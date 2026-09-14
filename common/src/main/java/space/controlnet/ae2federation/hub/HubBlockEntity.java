@@ -22,18 +22,26 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.fabric.port.FederationPort;
 import space.controlnet.ae2federation.fabric.port.HubFacePort;
 import space.controlnet.ae2federation.fabric.port.HubPortBinding;
+import space.controlnet.ae2federation.fabric.FabricInvalidationReason;
+import space.controlnet.ae2federation.fabric.FabricNodeEvidence;
+import space.controlnet.ae2federation.fabric.FabricNodeId;
+import space.controlnet.ae2federation.fabric.FabricPortEvidence;
+import space.controlnet.ae2federation.fabric.FabricPortId;
+import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 
 public final class HubBlockEntity extends BlockEntity implements IInWorldGridNodeHost {
     private final Map<Direction, FederationPort> fabricPorts = new EnumMap<>(Direction.class);
     private final Map<Direction, HubFacePort> facePorts = new EnumMap<>(Direction.class);
     private boolean initialized;
+    private boolean fabricDirty = true;
+    private @Nullable FabricNodeId fabricNodeId;
 
     public HubBlockEntity(BlockPos position, BlockState state) {
         super(HubRegistration.HUB_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
             var fabricPort = new FederationPort(position, face);
             fabricPorts.put(face, fabricPort);
-            facePorts.put(face, new HubFacePort(position, face, fabricPort));
+            facePorts.put(face, new HubFacePort(position, face, fabricPort, this::invalidateFabricTopology));
         }
     }
 
@@ -48,11 +56,15 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
             return;
         }
         initialized = true;
+        fabricNodeId = FabricRegistryAccess.nodeId(serverLevel, worldPosition);
         facePorts.values().forEach(port -> port.initialize(serverLevel));
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, HubBlockEntity hub) {
-        hub.facePorts.values().forEach(HubFacePort::tick);
+        var changed = hub.facePorts.values().stream().map(HubFacePort::tick).reduce(false, Boolean::logicalOr);
+        if (changed || hub.fabricDirty) {
+            hub.publishFabricTopology();
+        }
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -105,7 +117,7 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        facePorts.values().forEach(port -> port.managedNode().loadFromNBT(tag));
+        facePorts.values().forEach(port -> port.loadFromNBT(tag));
     }
 
     @Override
@@ -127,7 +139,39 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
     }
 
     private void destroyPorts() {
+        if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
+            FabricRegistryAccess.get(serverLevel).removeNode(fabricNodeId);
+        }
         initialized = false;
+        fabricDirty = true;
         facePorts.values().forEach(HubFacePort::destroy);
+    }
+
+    private void invalidateFabricTopology() {
+        fabricDirty = true;
+        if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
+            FabricRegistryAccess.get(serverLevel).invalidateNode(fabricNodeId,
+                    FabricInvalidationReason.TOPOLOGY_CHANGED);
+        }
+    }
+
+    private void publishFabricTopology() {
+        if (!(level instanceof ServerLevel serverLevel) || fabricNodeId == null) {
+            return;
+        }
+        var evidence = new java.util.TreeMap<String, FabricPortEvidence>();
+        for (var face : Direction.values()) {
+            var portId = new FabricPortId(fabricNodeId, face.getSerializedName());
+            var binding = facePorts.get(face).binding();
+            if (binding instanceof HubPortBinding.Native nativeBinding) {
+                evidence.put(portId.port(), FabricRegistryAccess.nativeEvidence(nativeBinding.attachment().grid(), portId));
+            } else if (binding instanceof HubPortBinding.Federation federationBinding) {
+                var remoteNode = FabricRegistryAccess.nodeId(serverLevel, federationBinding.port().ownerPosition());
+                evidence.put(portId.port(), new FabricPortEvidence.Federation(
+                        new FabricPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
+            }
+        }
+        FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
+        fabricDirty = false;
     }
 }

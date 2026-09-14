@@ -170,3 +170,10 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   production and consumption, adversarial rebinding probes, strict build, diagnostics, and runtime cleanup pass.
 - Task 13 component indexing and routing remain intentionally unimplemented. The Task 12 checkbox remains untouched for
   orchestrator verification.
+
+## 2026-09-15 Task 13 loaded-neighbor repair resolution
+
+- The unguarded adjacent identity-seeding blocker is resolved for Hub and Bridge creation. Both paths prove the neighbor
+  position loaded before exposed-node lookup; fresh Task 12 and Task 13 runtime/evidence gates pass.
+- The 256-pure-LOC Fabric GameTest module was coherently split into Bridge and Hub/Cable classes. No Task 13 blocker remains;
+  the plan checkbox remains under orchestrator ownership and was not edited.

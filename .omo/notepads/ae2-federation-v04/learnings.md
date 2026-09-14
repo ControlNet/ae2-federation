@@ -312,3 +312,22 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Six `CANNOT_CARRY`, zero-idle managed nodes preserve ME boundary isolation while a separate sided `FederationPort`
   capability represents custom physical topology without native Grid edges or Fabric power.
 - Final source-bound schema-v3 evidence: `.omo/evidence/task-12/attempt-20260914T155900227Z/result.json`.
+
+## 2026-09-15 Task 13
+
+- Federation-owned AE2 boundary nodes must inherit the adjacent settled `NetworkId` before managed-node creation; letting
+  an adapter settle as a standalone Grid first correctly turns its later attachment into an ambiguous native merge.
+- Color-isolated AE2 cables provide deterministic adjacent Bridge fixtures without transiently joining the main and outer
+  native Grids. Multi-segment native fixtures should extend one connected segment per tick to avoid concurrent lineages.
+- Canonical Task 13 evidence is `.omo/evidence/task-13/attempt-20260914T172038907Z/result.json`.
+
+## 2026-09-15 Task 13 loaded-neighbor repair
+
+- Pre-creation identity seeding is external-I/O discovery: checking only the later binding-resolution path is insufficient.
+  Every adjacent exposed-node lookup must independently prove `ServerLevel.isLoaded` first.
+- A method-scoped source contract locks lookup ordering without requiring an unsafe mocked `ServerLevel`; it failed once
+  for each unguarded Hub/Bridge path before the repair and passed afterward.
+- The GameTest class exceeded the 250 pure-LOC ceiling at 256. Moving only `fabricBridgeDiamond` into the separately
+  registered `FabricBridgeGameTests` reduced the modules to 202 and 69 pure LOC without changing test IDs.
+- Superseding Task 13 evidence is
+  `.omo/evidence/task-13/loaded-guard-repair-20260915/attempt-20260914T174455385Z/result.json`.

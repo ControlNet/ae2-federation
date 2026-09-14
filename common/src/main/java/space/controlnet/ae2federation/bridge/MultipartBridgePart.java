@@ -23,6 +23,11 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachment;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
+import net.minecraft.server.level.ServerLevel;
+import space.controlnet.ae2federation.fabric.FabricNodeId;
+import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
 public final class MultipartBridgePart extends AEBasePart {
     @PartModels
@@ -38,6 +43,9 @@ public final class MultipartBridgePart extends AEBasePart {
             .setFlags(GridFlags.CANNOT_CARRY);
     private BridgeStatus status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
     private boolean removed;
+    private @Nullable FabricSourceId fabricSource;
+    private boolean mainNodeLoaded;
+    private boolean outerNodeLoaded;
 
     public MultipartBridgePart(IPartItem<?> partItem) {
         super(partItem);
@@ -53,8 +61,13 @@ public final class MultipartBridgePart extends AEBasePart {
     @Override
     public void addToWorld() {
         removed = false;
+        seedBoundaryNodes();
         super.addToWorld();
         outerNode.create(getLevel(), getBlockEntity().getBlockPos());
+        if (getLevel() instanceof ServerLevel serverLevel) {
+            var nodeId = FabricRegistryAccess.nodeId(serverLevel, getBlockEntity().getBlockPos());
+            fabricSource = new FabricSourceId("bridge:" + nodeId + ":" + getSide().getSerializedName());
+        }
         refresh();
     }
 
@@ -64,7 +77,7 @@ public final class MultipartBridgePart extends AEBasePart {
             return;
         }
         removed = true;
-        status = BridgeStatus.invalid(BridgeOperationalReason.REMOVED);
+        setStatus(BridgeStatus.invalid(BridgeOperationalReason.REMOVED));
         outerNode.destroy();
         super.removeFromWorld();
     }
@@ -82,8 +95,18 @@ public final class MultipartBridgePart extends AEBasePart {
     @Override
     public void readFromNBT(net.minecraft.nbt.CompoundTag data,
             net.minecraft.core.HolderLookup.Provider registries) {
+        mainNodeLoaded = data.contains("gn");
+        outerNodeLoaded = data.contains("outer");
         super.readFromNBT(data, registries);
+        outerNode.loadFromNBT(data);
         refresh();
+    }
+
+    @Override
+    public void writeToNBT(net.minecraft.nbt.CompoundTag data,
+            net.minecraft.core.HolderLookup.Provider registries) {
+        super.writeToNBT(data, registries);
+        outerNode.saveToNBT(data);
     }
 
     @Override
@@ -128,32 +151,70 @@ public final class MultipartBridgePart extends AEBasePart {
 
     private void refresh() {
         if (removed || getBlockEntity() == null || getLevel() == null || getSide() == null) {
-            status = BridgeStatus.invalid(removed ? BridgeOperationalReason.REMOVED
-                    : BridgeOperationalReason.MISSING_OUTER_ATTACHMENT);
+            setStatus(BridgeStatus.invalid(removed ? BridgeOperationalReason.REMOVED
+                    : BridgeOperationalReason.MISSING_OUTER_ATTACHMENT));
             return;
         }
         var main = getMainNode().getNode();
         var outer = outerNode.getNode();
         if (main == null) {
-            status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
+            setStatus(BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT));
             return;
         }
         if (outer == null) {
-            status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_OUTER_ATTACHMENT);
+            setStatus(BridgeStatus.invalid(BridgeOperationalReason.MISSING_OUTER_ATTACHMENT));
             return;
         }
         if (main.getGrid() == null || main.getConnections().isEmpty()) {
-            status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
+            setStatus(BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT));
             return;
         }
         var position = getBlockEntity().getBlockPos();
         var outerAttachment = NativeAttachmentResolver.resolve(getLevel(), position, getSide(), outer).orElse(null);
         if (outerAttachment == null) {
-            status = BridgeStatus.invalid(getLevel().getBlockState(position.relative(getSide())).isAir()
+            setStatus(BridgeStatus.invalid(getLevel().getBlockState(position.relative(getSide())).isAir()
                     ? BridgeOperationalReason.MISSING_OUTER_ATTACHMENT
-                    : BridgeOperationalReason.FEDERATION_CABLE_UNSUPPORTED);
+                    : BridgeOperationalReason.FEDERATION_CABLE_UNSUPPORTED));
             return;
         }
-        status = BridgeTopology.classify(main, outerAttachment);
+        setStatus(BridgeTopology.classify(main, outerAttachment));
+    }
+
+    private void seedBoundaryNodes() {
+        if (!(getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        var center = getHost().getPart(null);
+        if (!mainNodeLoaded && center != null && center.getGridNode() != null) {
+            FabricRegistryAccess.confirmedNetworkId(center.getGridNode().getGrid()).ifPresent(networkId ->
+                    getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("gn", networkId)));
+        }
+        var outerPosition = getBlockEntity().getBlockPos().relative(getSide());
+        var neighbor = serverLevel.isLoaded(outerPosition)
+                ? GridHelper.getExposedNode(serverLevel, outerPosition, getSide().getOpposite())
+                : null;
+        if (!outerNodeLoaded && neighbor != null) {
+            FabricRegistryAccess.confirmedNetworkId(neighbor.getGrid()).ifPresent(networkId ->
+                    outerNode.loadFromNBT(NetworkIdentityNodeSeed.managedNode("outer", networkId)));
+        }
+    }
+
+    private void setStatus(BridgeStatus nextStatus) {
+        status = nextStatus;
+        if (!(getLevel() instanceof ServerLevel serverLevel) || fabricSource == null) {
+            return;
+        }
+        var candidate = nextStatus.membershipCandidate().orElse(null);
+        if (candidate == null) {
+            FabricRegistryAccess.get(serverLevel).invalidateDirectBridge(fabricSource);
+            return;
+        }
+        var mainId = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid());
+        var outerId = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid());
+        if (mainId.isEmpty() || outerId.isEmpty()) {
+            FabricRegistryAccess.get(serverLevel).invalidateDirectBridge(fabricSource);
+            return;
+        }
+        FabricRegistryAccess.get(serverLevel).upsertDirectBridge(fabricSource, mainId.get(), outerId.get());
     }
 }

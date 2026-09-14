@@ -223,3 +223,18 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   zero. A focused red contract and runtime repro locked this failure before capability registration repaired it.
 - Resolved: the exact five canonical cases, persisted consumer, and fully rebound fabricated-success, case-identity,
   incomplete-trace, and incomplete-attempt probes pass. No Task 12 implementation blocker remains.
+
+## 2026-09-15 Task 13
+
+- Initial Bridge fixtures either merged different temporary node lineages or split a temporarily joined native Grid.
+  Pre-creation boundary identity seeding plus color-isolated native cables resolved both failure modes.
+- The initial redundant-membership bypass initialized as two temporary native cable groups under some schedules. Phased
+  connected placement removed the nondeterminism. Exact runtime, persisted consumption, adversarial probes, and build pass.
+
+## 2026-09-15 Task 13 loaded-neighbor repair
+
+- Independent acceptance rejected the first green evidence because Hub and Bridge pre-creation identity seeding queried an
+  adjacent exposed node without first proving the position loaded. Both lookup paths are now guarded and structurally
+  regression-tested.
+- Fresh exact Task 12 and Task 13 runtime suites, persisted consumers, and adversarial self-tests pass. No unresolved
+  loaded-neighbor or pure-LOC blocker remains.

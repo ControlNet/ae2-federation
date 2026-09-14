@@ -295,7 +295,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=hub.mixed-six-faces,hub.six-independent-me,hub.repeat-network,hub.port-replacement,hub.reject-unsupported -PevidenceDir=.omo/evidence/task-12`.
   - Commit: proposed `feat(fabric): add six-face isolated Hub and cable ports`.
 
-- [ ] 13. Implement Fabric components, memberships and incremental common-Fabric indexes
+- [x] 13. Implement Fabric components, memberships and incremental common-Fabric indexes
   - Work: `fabric/` registry using task 4 identities and tasks 11/12 port events. Each valid direct Bridge forms its own minimum Fabric; Hub/Cable physical connectivity forms components. A shared ME Grid does not merge Fabric topology. Maintain network-to-Fabric and affected-component indexes; loaded evidence only, budgeted recomputation and immediate invalidation of uncertain routes.
   - References: D4.1,4.6,4.8,16; A-identity; tasks 4,5. Depends on 4,11,12.
   - Acceptance: cycles converge, four independent Bridge Fabrics stay separate, Hub branches merge/split, redundant network attachments deduplicate. No world scan per tick or enumeration of all possible paths/network pairs.

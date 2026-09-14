@@ -154,3 +154,19 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   contract so discovery never forces a neighbor chunk.
 - Keep Task 12 evidence namespaced under `hub.*` with a dedicated semantic validator and adversarial self-test; prior
   task case sets and validators remain unchanged.
+
+## 2026-09-15 Task 13
+
+- Keep direct Bridge Fabrics independent even when they share a native Grid. Physical Fabric merging requires loaded,
+  reciprocal Hub/Cable port evidence and never follows native Grid equality alone.
+- Publish only settled native identities, invalidate indexes before bounded component recomputation, and bind consumers to
+  generation-bearing `FabricReference` values so uncertain or stale topology cannot be routed.
+- Seed only new Federation-owned boundary nodes from settled adjacent native identities; preserve loaded NBT and leave
+  genuine native merge ambiguity unchanged.
+
+## 2026-09-15 Task 13 loaded-neighbor repair
+
+- Treat an unloaded adjacent position exactly like an absent seeding candidate: do not call `GridHelper.getExposedNode`,
+  do not force-load, and create the new boundary node without inherited identity.
+- Keep `FabricRegistry` intact at 244 pure LOC because it remains one cohesive component-recompute owner within the
+  warning band. Split the 256-pure-LOC test module by topology type instead: Bridge diamond versus Hub/Cable cases.

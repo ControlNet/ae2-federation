@@ -33,6 +33,9 @@ public final class HubRegistration {
             FEDERATION_CABLE, new Item.Properties());
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<HubBlockEntity>> HUB_BLOCK_ENTITY =
             BLOCK_ENTITY_TYPES.register("hub", () -> BlockEntityType.Builder.of(HubBlockEntity::new, HUB.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FederationCableBlockEntity>>
+            FEDERATION_CABLE_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register("federation_cable",
+                    () -> BlockEntityType.Builder.of(FederationCableBlockEntity::new, FEDERATION_CABLE.get()).build(null));
 
     private HubRegistration() {
     }

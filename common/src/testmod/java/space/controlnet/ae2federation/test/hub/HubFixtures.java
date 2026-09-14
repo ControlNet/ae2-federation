@@ -28,6 +28,14 @@ public final class HubFixtures implements AutoCloseable {
         return helper.getBlockEntity(position);
     }
 
+    public HubBlockEntity hub(BlockPos position) {
+        return helper.getBlockEntity(position);
+    }
+
+    public NativePortFixtures nativePorts() {
+        return nativePorts;
+    }
+
     public void placeNativeDevice(BlockPos hubPosition, Direction face) {
         nativePorts.placeChest(hubPosition.relative(face));
     }
@@ -40,12 +48,24 @@ public final class HubFixtures implements AutoCloseable {
         helper.setBlock(hubPosition.relative(face), HubRegistration.FEDERATION_CABLE.get());
     }
 
+    public void placeFederationCable(BlockPos position) {
+        helper.setBlock(position, HubRegistration.FEDERATION_CABLE.get());
+    }
+
     public void placeUnsupported(BlockPos hubPosition, Direction face) {
         helper.setBlock(hubPosition.relative(face), Blocks.STONE);
     }
 
     public IGridNode nativeDeviceNode(BlockPos hubPosition, Direction face) {
         return nativePorts.chestNode(hubPosition.relative(face));
+    }
+
+    public void joinNorthSouthNativeDevicesAroundHub(BlockPos hubPosition) {
+        nativePorts.placeCable(hubPosition.north().west());
+        nativePorts.placeCable(hubPosition.north().west(2));
+        nativePorts.placeCable(hubPosition.west(2));
+        nativePorts.placeCable(hubPosition.south().west(2));
+        nativePorts.placeCable(hubPosition.south().west());
     }
 
     public boolean hasInternalNativeConnection(HubBlockEntity hub) {

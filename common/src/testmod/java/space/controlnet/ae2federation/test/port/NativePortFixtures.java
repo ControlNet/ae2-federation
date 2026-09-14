@@ -33,8 +33,12 @@ public final class NativePortFixtures implements AutoCloseable {
     }
 
     public void placeCable(BlockPos position) {
+        placeCable(position, AEColor.TRANSPARENT);
+    }
+
+    public void placeCable(BlockPos position, AEColor color) {
         var part = PartHelper.setPart(helper.getLevel(), helper.absolutePos(position), null, null,
-                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+                AEParts.GLASS_CABLE.item(color));
         helper.assertTrue(part != null, "Native glass cable fixture must be placed");
     }
 

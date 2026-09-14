@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
+import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
 public final class HubFacePort {
     private static final IGridNodeListener<HubFacePort> NODE_LISTENER = (owner, node) -> owner.invalidate();
@@ -19,16 +21,20 @@ public final class HubFacePort {
     private final BlockPos hubPosition;
     private final Direction face;
     private final FederationPort hubFabricPort;
+    private final Runnable topologyInvalidator;
     private final IManagedGridNode boundaryNode;
     private HubPortBinding binding = HubPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
     private boolean dirty = true;
+    private boolean nodeLoaded;
 
-    public HubFacePort(BlockPos hubPosition, Direction face, FederationPort hubFabricPort) {
+    public HubFacePort(BlockPos hubPosition, Direction face, FederationPort hubFabricPort,
+            Runnable topologyInvalidator) {
         this.hubPosition = hubPosition.immutable();
         this.face = face;
         this.hubFabricPort = hubFabricPort;
+        this.topologyInvalidator = topologyInvalidator;
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
@@ -39,24 +45,35 @@ public final class HubFacePort {
 
     public void initialize(ServerLevel serverLevel) {
         level = serverLevel;
-        boundaryNode.create(serverLevel, hubPosition);
         var neighborPosition = hubPosition.relative(face);
+        var neighbor = serverLevel.isLoaded(neighborPosition)
+                ? GridHelper.getExposedNode(serverLevel, neighborPosition, face.getOpposite())
+                : null;
+        if (!nodeLoaded && neighbor != null) {
+            FabricRegistryAccess.confirmedNetworkId(neighbor.getGrid()).ifPresent(networkId -> boundaryNode.loadFromNBT(
+                    NetworkIdentityNodeSeed.managedNode("face_" + face.getSerializedName(), networkId)));
+        }
+        boundaryNode.create(serverLevel, hubPosition);
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
                 face.getOpposite(), () -> boundaryNode.isReady(), this::invalidate);
         invalidate();
     }
 
-    public void tick() {
+    public boolean tick() {
         if (!dirty) {
-            return;
+            return false;
         }
         dirty = false;
-        binding = resolve();
+        var resolved = resolve();
+        var changed = !resolved.equals(binding);
+        binding = resolved;
+        return changed;
     }
 
     public void invalidate() {
         binding = HubPortBinding.Disconnected.INSTANCE;
         dirty = true;
+        topologyInvalidator.run();
     }
 
     public void destroy() {
@@ -76,6 +93,11 @@ public final class HubFacePort {
 
     public IManagedGridNode managedNode() {
         return boundaryNode;
+    }
+
+    public void loadFromNBT(net.minecraft.nbt.CompoundTag tag) {
+        nodeLoaded = tag.contains("face_" + face.getSerializedName());
+        boundaryNode.loadFromNBT(tag);
     }
 
     private HubPortBinding resolve() {
