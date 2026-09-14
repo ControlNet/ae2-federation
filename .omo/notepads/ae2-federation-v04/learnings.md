@@ -1,0 +1,303 @@
+# Learnings — ae2-federation-v04
+
+Conventions, patterns, and successful approaches discovered during work on this plan.
+
+_Auto-scaffolded by /start-work. Append new entries below - never overwrite._
+
+---
+
+## 2026-09-13 - Task 1
+
+- The official NeoForge 1.21.1 ModDevGradle MDK commit `30cafee9cd8d7f46427ec88fa8579d49c146df9a` jointly pins ModDevGradle `2.0.146`, NeoForge `21.1.250`, Gradle `9.2.1`, and Java 21.
+- AE2 `19.2.17` requires Minecraft exactly `1.21.1` and NeoForge `21.1.169` or newer; LDLib2 `2.2.34` requires NeoForge `21.1.216` or newer. NeoForge `21.1.250` satisfies both published ranges.
+- Gradle dependency verification ignores ordinary file dependencies. A valid corruption self-test must publish the task-owned copy through a local repository and resolve it in a fresh nested process with an isolated Gradle user home.
+- Gradle 9.2.1 configuration cache rejects execution-time access to project/task model objects from Groovy closures. Task inputs/providers must snapshot required values during configuration.
+
+## 2026-09-13 - Task 1 loopback correction
+
+- Minecraft 1.21.1 reads the dedicated-server bind address from `server.properties`; its documented command-line options include port override but no bind-IP override.
+- ModDevGradle `taskBefore` can prepare settings inside one run's `gameDirectory`, keeping the loopback default scoped to the task-owned development server.
+- A live `ss` snapshot is necessary alongside the startup message: the corrected run listened only on `127.0.0.1:25565`.
+
+## 2026-09-13 - Task 2
+
+- NeoForge 1.21.1 derives the native test function ID from the lower-case method name even when an explicit unprefixed
+  structure template is used; `harnessNativeSmoke` registers as `harnessnativesmoke` and loads
+  `ae2federation_test:harness_native_smoke`.
+- AE2 Grid nodes are initialized after block placement on the server tick path. A real GameTest must wait through
+  `GameTestHelper.succeedWhen` before asserting `hasGridBooted`, active state and storage operations.
+- The 1.21.1 GameTest launch can emit `No test functions were given!` yet return a successful Gradle child exit for
+  namespace mismatch or zero registration. Fail-closed evidence validation must inspect execution/report content.
+- A powered ME chest with a 1k item cell supports a compact real AE2 storage smoke and a nonempty benchmark without
+  introducing production gameplay or a custom simulation.
+# Task 2 path binding and runtime cleanup repair
+
+- Reproduced intact copied benchmark acceptance (exit 0) and retained 6.5 MB runtime tree with world/session.lock.
+- Added a failing-first behavioral relocation probe; schema 3 now checks canonical producer root/attempt paths and
+  their run-ID-bound integrity hash. Direct and wrapper finalizers preserve diagnostics before runtime deletion.
+- Task 2 remains unchecked pending independent review; Task 3 is not started.
+
+## 2026-09-13 - Task 3
+
+- Minecraft accessibility onboarding must be disabled in the task-owned `run-uitest/options.txt`; otherwise LDLib2's
+  title-screen wait never starts the selected scenarios.
+- LDLib2's report-level environment is captured before scenario `guiScale(3)` takes effect. Render-step attachments are
+  the authoritative source for tested GUI scale and window/framebuffer dimensions.
+- Dynamic `.omo` session and continuation files cannot participate in source identity. Excluding `.omo/**` from both
+  Git diff and status capture keeps independent evidence consumption stable while product/build inputs remain hashed.
+- Actual LDLib2 resource reload and authoritative server acknowledgment passed under llvmpipe/Xvfb with synthetic input;
+  the accepted schema-v3 attempt is `.omo/evidence/task-03/attempt-20260913T151420452Z`.
+
+## 2026-09-13 - Task 3 independent verification
+
+- File hashes prove integrity only after a report is semantically consumed. A persisted consumer that hashes
+  `ldlib2/report.json` but never parses it accepts internally rebound zero-check, malformed, or forged-local-ack evidence.
+- Fresh screenshots and live logs can prove the current run worked while the reusable persisted-evidence contract still
+  fails closed inadequately; these are separate acceptance surfaces and both must pass.
+
+## 2026-09-14 - Task 3 semantic-consumer repair
+
+- Reusing the producer's `verifyLdlibReport` function in persisted consumption prevents the producer and consumer from
+  silently enforcing different LDLib2 semantics.
+- Canonical artifact resolution must require exactly one hash-bound `ldlib2/report.json` inside the selected attempt;
+  accepting a caller-supplied or duplicate report path weakens evidence identity.
+- Final rebound probes against `attempt-20260913T171948925Z` rejected zero upstream checks, malformed upstream JSON,
+  and forged local acknowledgment evidence with exit code 1 after all affected identities and hashes were recomputed.
+- Timing-aware visual review passed both real Minecraft/LDLib2 screenshots and confirmed the rendered-step attachment as
+  the authoritative GUI scale 3, 1280x720 state.
+
+## 2026-09-14 - Task 3 independent re-verification
+
+- Reviewer-owned fresh attempt `attempt-20260913T173814864Z` passed actual-client execution and canonical persisted
+  consumption; fully rebound zero-check, malformed-upstream, and forged-local-ack probes each failed at the intended
+  semantic boundary.
+- Cross-checking outer projections against a freshly parsed, uniquely hash-bound upstream report closes the prior gap
+  without treating a file hash as proof of report meaning.
+
+## 2026-09-14 - Task 4
+
+- AE2 `GridNode.saveToNBT` dispatches provider data through `Grid.saveNodeData`; newly assigned provider metadata can use
+  the native host save path through pinned `GridNode.callListener(IGridNodeListener::onSaveChanges)`.
+- A restart fixture must be placed in the naturally loaded spawn chunk. A remote GameTest allocation is not sufficient
+  evidence because its chunk is not loaded when the second server process starts.
+- A delayed callback scheduled inside `GameTestHelper.succeedWhen` can produce false success because the outer assertion
+  has already returned. Stateful bounded assertions must remain inside `succeedWhen` until evidence is written.
+- Copied-live ambiguity must be recomputed when Policy inheritance is queried. The original Grid receives no native node
+  event when a disconnected copy appears, so a cached settlement can otherwise remain incorrectly permissive.
+- Final schema-v3 attempt accepted by persisted consumption:
+  `.omo/evidence/task-04/attempt-20260913T184118156Z`.
+
+## 2026-09-14 - Task 4 adversarial repair
+
+- An access-replacement proof must model attachment ownership explicitly: distinct attachment IDs, zero active access
+  objects for a tick, stable native Grid/node objects, and the original/recovered `NetworkId` in native evidence.
+- Hash and canonical-path binding do not establish artifact meaning. Task-specific persisted consumption must parse the
+  native properties and logs that substantiate outer schema assertions.
+- Exact artifact cardinality must reject nested duplicate basenames as well as duplicate root-relative paths.
+- Final repaired attempt accepted by canonical consumption: `.omo/evidence/task-04/attempt-20260913T194020162Z`.
+
+## 2026-09-14 - Task 4 independent verification
+
+- A green identity case can still miss its contract when its fixture name implies an attachment lifecycle that the
+  implementation never constructs. Reviewer inspection must trace the actual placed/removed block types and node objects.
+- Persisted evidence must parse case-specific native semantics. Recomputing a hash after changing `settlement` from a
+  fail-closed value to `settled` demonstrates that integrity alone does not prove meaning.
+
+## 2026-09-14 - Task 4 independent re-verification
+
+- Equality of evidence fields does not establish presence: two missing properties compare equal. Behavioral semantic
+  probes must delete or empty paired before/after fields as well as change one field to a contradictory value.
+
+## 2026-09-14 - Task 4 native identity fact repair
+
+- Continuity equality is valid only after each native object identity fact is parsed independently. The current producer
+  emits canonical unsigned-decimal `Integer.toUnsignedString` values, so accepted syntax is `0|[1-9][0-9]*`.
+- A useful persisted-evidence regression must fully rebind run ID, canonical paths, timestamps, path identity and every
+  artifact hash, then prove both removed keys and explicitly empty keys fail at the semantic boundary.
+
+## 2026-09-14 - Task 4 independent final re-verification
+
+- Reviewer-owned attempt `attempt-20260913T202413147Z` passed the exact four native cases and canonical persisted
+  consumption. Its 33 declared artifacts independently matched their hashes and current source/dependency/product binding.
+- Both the executable identity-facts self-test and separate reviewer-created, fully rebound missing/empty probes rejected
+  paired absent values at `requireNativeObjectIdentity`, closing the prior null-equality acceptance gap.
+- Re-running equivalent settlement, artifact-cardinality, malformed-properties, lifecycle, and restart mutations against
+  the fresh attempt produced nonzero exits for each intended semantic reason.
+
+## 2026-09-14 - Task 5
+
+- A ready AE2 in-world node owns a native Grid even when it has no connection, so `getGrid()` cannot distinguish a real
+  external attachment from a floating boundary node.
+- `getInWorldConnections()` plus `GridHelper.getExposedNode` provides the native face-edge correlation needed to reject
+  floating, replaced, unsupported, and multi-edge ambiguous neighbors without a device-class whitelist.
+- Six independently exposed managed nodes remain six Grids when no native edge joins them. Two faces can observe one
+  externally joined Grid and remain independently owned face records while grouping by native Grid object identity.
+- Final canonical schema-v3 attempt: `.omo/evidence/task-05/attempt-20260913T210820250Z`.
+
+## 2026-09-14 - Task 5 independent verification
+
+- Reviewer-owned fresh native attempt `attempt-20260913T212542015Z` passed the exact five cases, canonical persisted
+  consumption, the seven built-in mutations, strict check/build, Java diagnostics, production-JAR isolation, and process,
+  listener, lock, and runtime-tree cleanup checks.
+- Structural identity validation is not provenance validation: replacing one six-grid face identity with a new distinct
+  canonical integer and fully rebinding paths, timestamps, and every hash was accepted by persisted consumption.
+- Test fixtures that may create multiple nodes on one face must retain handles per created node, not per `Direction`;
+  otherwise cleanup silently loses earlier nodes even when the enclosing GameTest process eventually exits.
+
+## 2026-09-14 - Task 5 blocker repairs and re-verification
+
+- `NativePortFixtures` now retains every managed node by creation in an ordered list; successful test teardown destroys
+  all same-direction handles and clearing the list makes repeated close safe.
+- The existing negative case now proves a live native attachment before removing the exposed ME chest, then records and
+  semantically validates `replacedInitiallyAttached=true` and `replacedAccepted=false` after native settlement.
+- Deterministic `AE2F_PORT_TRACE` facts in separately hash-bound positive logs provide independent identity provenance.
+  Both the built-in and reviewer-owned fully rebound distinct-value substitutions now fail at trace correlation.
+- Confirmed fresh attempt: `.omo/evidence/task-05/attempt-20260913T214616406Z/result.json`.
+
+## 2026-09-14 - Task 6
+
+- Three real `PatternProviderLogic` instances can share one physical managed node when constructor-installed services are
+  captured by forwarding facades: one composite physical-node ticker delegates native lane tickers, while each lane is
+  published through AE2's distinct global crafting-provider API.
+- Equal decoded Pattern details remain one terminal craftable Pattern but retain separate native provider mediums in
+  AE2 `NetworkCraftingProviders`; this permits one encoded Pattern to execute through three independent lane contexts.
+- Native `pushPattern` requires an active powered node. An allocated Grid was insufficient; the fixture needed a real
+  `GridHelper.createConnection` to a creative energy-cell node before native pushes could succeed.
+- Pattern mapping needs access to AE2's private decoded `patterns` and `patternInputs`. A two-field Mixin accessor is the
+  minimum pinned compatibility hook; push, Blocking, lock, target, send, return, and NBT behavior remain in AE2.
+- One physical `AppEngInternalInventory` owns encoded Pattern extraction/save/drop. Native lane inventories are size zero,
+  while per-lane send/return state remains independently owned and included in native drops/NBT.
+- Canonical pre-documentation proof passed at `.omo/evidence/task-06/attempt-20260913T223820331Z/result.json`; a final
+  source-bound attempt is produced after architecture documentation is recorded.
+
+## 2026-09-14 - Task 6 acceptance-proof repair
+
+- `ICraftingService.getCraftingFor` deduplicates equal Pattern details and cannot prove execution-context multiplicity.
+  Pinned `CraftingService.getProviders(IPatternDetails)` exposes the three actual provider mediums for acceptance checks.
+- Captured constructor services should validate that each `ICraftingProvider` is the exact native lane object. Composite
+  ticker evidence is authoritative only when `ITickManager.alertDevice` drives the physical node and all three captured
+  delegate counters advance.
+- Adjacent-machine bypass rejection needs a real AE2 `MolecularAssemblerBlockEntity` on an unconfigured side, not merely
+  removal of the configured chest. The candidate must report `acceptsPlans`, remain empty, and not change push failure.
+- GameTest server launches share `run-gametest/world`; running them concurrently causes `session.lock` contention. Native
+  GameTest executions must be serialized unless the harness gives each process a distinct game directory.
+
+## 2026-09-14 - Task 6 independent re-verification
+
+- Reviewer-owned fresh attempt `attempt-20260913T233036509Z` passed the exact five native lane cases, current-source
+  persisted consumption, and the Task 6 adversarial self-test with all five child exits zero.
+- A fully rebound reviewer probe removed `nativeTickerDelegatesInvoked` from both the properties artifact and matching
+  runtime trace; consumption failed at the intended Task 6 three-way semantic check, not path, timestamp, or hash binding.
+- The acceptance scope is three distinct native AE2 provider media over one physical Pattern inventory. Distinct physical
+  target blocks are not required by Task 6; Endpoint target binding and routing are deferred to dependent Tasks 7/16.
+
+## 2026-09-14 - Task 7
+
+- A directional native Pattern Provider excludes its push face from Grid connectivity but still discovers the adjacent
+  unconfigured Interface through `ME_STORAGE`; this is the native Local input and Grid-separation seam.
+- Provider returns are the native `PatternProviderReturnInventory`, and AE2's generic item/fluid adapters can expose it on
+  every allowed Endpoint face without material inspection or a second buffer.
+- Typed capability purpose plus a mode generation closes both input/return loops and stale Local/Federated contexts.
+
+## 2026-09-14 - Task 7 final verification
+
+- Native method-entry provenance is stronger when the Mixin probes record the actual transformed owner identities and the
+  evidence consumer correlates them with independently emitted properties, rather than accepting method-name labels.
+- NeoForge sided item/fluid capability lookups on the pinned Provider and the composed Endpoint adapters both reach the
+  same identified native return inventory across the five allowed faces.
+- Final current-source attempt `.omo/evidence/task-07/attempt-20260914T003210719Z/result.json` passed exact-case runtime
+  execution, persisted consumption, fully rebound adversarial probes, strict build, diagnostics, and JAR isolation.
+
+## 2026-09-14 - Task 7 independent-review repair
+
+- A Pattern Provider intentionally suppresses exposed-node discovery on its push face, so physical Local ownership cannot
+  require Provider-side `GridHelper.getExposedNode`. The correct proof is adjacent world position plus exact physical
+  `PatternProviderBlockEntity.getLogic()` identity, combined with Endpoint-side node and `ME_STORAGE` resolution.
+- Face composition is proven only when every face invokes a sided integration path. Repeatedly reading one zero-argument
+  node getter is tautological even if the result is correct.
+- Fully rebound semantic probes should assert the expected rejection message. Boolean rejection alone can hide an earlier
+  trace/hash failure and does not establish that the intended semantic boundary executed.
+- Final repaired attempt `.omo/evidence/task-07/attempt-20260914T011114579Z/result.json` records five equal native node
+  identities, five equal storage identities, Federation-face exclusion, remote-Provider rejection, and independently
+  correlated Mixin push/target owner identities.
+
+## 2026-09-14 - Task 8
+
+- The complete AE2 `NetworkStorage` mount table contains Grid-service/global mounts and cannot be treated as native local
+  source provenance. Replaying active node `IStorageProvider.mountInventories` callbacks yields actual source delegates
+  and priorities while leaving AE2 aggregation and operations authoritative.
+- Projection exclusion and alias resolution must be registration-owned. Stable native object identity deduplicates the
+  four-Fabric diamond; complete aggregates and opaque aliases fail closed before any partial source list is returned.
+- CELLS history confirms distinct handling for election, source rebuild snapshots, first-filter visibility and listener
+  resets. Adopt/adapt those lifecycle invariants later; reject the old API and one-hop restriction.
+- Canonical schema-v3 evidence `.omo/evidence/task-08/attempt-20260914T022418032Z/result.json` passed exact-case runtime,
+  immediate persisted consumption, intended-reason adversarial probes, strict build, diagnostics and cleanup.
+
+## 2026-09-14 - Task 8 independent-review repair
+
+- A production type is not sufficient provenance when tests can call `mountNative`, `mountAlias`, or `mountOpaque` with
+  caller-selected classifications. Qualification must originate from the actual native node provider callback.
+- Re-consuming provider callbacks avoids a shadow mount table. Federation providers now create only owner-bound projection
+  and route views over a qualified native handle; an unclassified third-party wrapper rejects automatically.
+- Diamond evidence needs independently correlated provider identities and priorities, not only four string labels. Four
+  distinct provider callbacks and native aggregate mounts now prove priorities `40,30,20,10` and selected priority `40`.
+- Repaired exact-case attempt: `.omo/evidence/task-08/attempt-20260914T032607415Z/result.json`.
+- Native callback qualification is atomic: every captured mount is validated before any provider-owned source identity is
+   published, so a later invalid aggregate cannot leave an earlier callback entry trusted after rejection.
+
+## 2026-09-14 Task 9 API Research
+
+- Pinned source and locked 19.2.17 bytecode agree: calculation is `beginCraftingCalculation`, submission returns `ICraftingSubmitResult`, and reload is public `StorageHelper.loadCraftingLink`.
+- Native terminal submission is standalone (null requester); automation uses `MultiCraftingTracker`. The supplied older helper names are absent at the pinned commit.
+- Native CPU completion can precede full requester insertion acceptance; eventual runtime proof must observe accepted delivery separately.
+
+## 2026-09-14T04:12:00Z Task 9 Diagnostic Gate Verification
+
+- TDD red: `./gradlew :neoforge-1.21.1:test --tests '*NativeCraftingBindingContractTest' --no-configuration-cache` failed with three expected missing-contract failures (`BUILD FAILED in 3s`).
+- Green: focused tests, `federationTaskNineEvidenceSelfTest`, and `compileTestmodJava` passed (`BUILD SUCCESSFUL in 6s`); all eleven explicitly synthetic completed-looking probes rejected at `mandatory-native-binding-unavailable`.
+- Exact five-case QA failed as required by the diagnostic gate (`BUILD FAILED in 3s`), writing `.omo/evidence/task-09/attempt-20260914T041141401Z/result.json`: schema 3, status BLOCKED, exact requested cases, zero executed/assertions, bytecode inspection exit 0.
+- `./gradlew check build --no-configuration-cache` passed (`BUILD SUCCESSFUL in 1s`). Changed Java diagnostics returned `No diagnostics found`.
+- Canonical `federationVerifyEvidence` consumption rejected the diagnostic report (`BUILD FAILED in 967ms`) with `Result report is incomplete or has an unsupported schema`.
+- `pgrep -af '[G]ameTestServer|[g]ameTestServer|[f]ederationGameTest'` returned no matches; no `neoforge-1.21.1/run-gametest/**/session.lock` exists. No GameTests were launched or run concurrently.
+
+## 2026-09-14 Task 9 Native Lifecycle Resolution
+
+- `ICraftingSimulationRequester.getGridNode()` is required for AE2 provider-pattern exploration and must return a native
+  node captured on the server thread before asynchronous calculation.
+- `MultiCraftingTracker` successfully owns automated calculation, submission, link retention, output callback, completion
+  callback, and NBT persistence on AE2 19.2.17.
+- Requester output must target the physical ME chest inventory rather than the complete Grid aggregate, whose native
+  crafting-service mount intercepts crafted output before ordinary storage.
+- Restored requester links must be loaded before the replacement node joins the Grid so native nexus reconstruction sees
+  them through `getRequestedJobs()`.
+- Final source-bound verification passes the exact five cases, schema-v3 persisted consumption, intended adversarial
+  rejections, focused contracts, Java diagnostics, and `check build` after documentation and debug-artifact cleanup.
+
+## 2026-09-14T08:02:00Z Task 9 Independent Review Repair
+
+- Repeating the same `MultiCraftingTracker` slot invocation after link installation exercises AE2's real active-link guard:
+  the duplicate call returns false and the requester's observed native UUID set remains the original single link ID.
+- Native terminal job identity is observable from the busy `CraftingCPUCluster` CPU link even though standalone submission
+  intentionally returns no requester link.
+- `cpuBusy()` alone is insufficient cancellation evidence. The deterministic checkpoint is Grid planks at zero plus
+  `CraftingCpuLogic.getStored` reporting all 64 planks before suspension.
+
+## 2026-09-14T10:55:00Z Task 10
+
+- A one-sided `IEnergyOverlayGridConnection` remains operationally directional only until the declaring side builds its
+  overlay. The shared cache then enables reverse extraction from provider to consumer storage.
+- Finite native Energy Cells provide exact source-debit and ring-conservation observations. Native extraction has no
+  separate target-receipt transaction.
+- Cold-start public powered state appears only after AE2's greater-than-30-tick stabilization window.
+
+## 2026-09-15 Task 11
+
+- A direct multipart Bridge exposes an AE2 managed outer node while retaining the ordinary part main node; it classifies
+  two native attachment domains but never joins them.
+- The main part node's ordinary `getConnections()` is the correct cable-side boot proof. Requiring
+  `getInWorldConnections()` on that node rejects valid cable-bus attachment because the in-world face edge belongs to the
+  separately owned outer node.
+- Same-Grid runtime coverage is modeled with a native cable bypass around the Bridge, not a synthetic
+  `GridHelper.createConnection` call.
+- Bridge cases are zero-transfer topology checks: schema-v3 expects one operation and allows zero inserted/extracted
+  work while still requiring exact native assertion counts and runtime trace correlation.

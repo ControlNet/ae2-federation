@@ -1,0 +1,144 @@
+# Decisions — ae2-federation-v04
+
+Architectural choices and rationales discovered during work on this plan.
+
+_Auto-scaffolded by /start-work. Append new entries below - never overwrite._
+
+---
+
+## 2026-09-13 - Task 1
+
+- Keep `common` as a source/resource directory consumed directly by the sole `neoforge-1.21.1` Gradle project; it is not a second subproject or distributable JAR.
+- Declare AE2 and LDLib2 as exact `implementation` mod dependencies so the ModDevGradle dedicated-server surface loads the qualified runtime tuple.
+- Use separate `@Mod` entrypoints for BOTH and CLIENT physical sides. The common startup path has no reference to `net.minecraft.client`; client classes live under isolated client packages and are reached only by the client-only entrypoint.
+- Preserve the candidate dependency versions exactly. The built tuple resolved and ran, so no candidate change was authorized or needed.
+
+## 2026-09-13 - Task 1 loopback correction
+
+- Prepare `neoforge-1.21.1/run-server/server.properties` before `runServer` with `server-ip=127.0.0.1`. The task preserves other generated properties and never reads or writes a user server directory.
+- Keep the Task 1 plan checkbox unchecked until independent verification confirms this correction.
+
+## 2026-09-13 - Task 2
+
+- Keep the normal `main` artifact unchanged and load `common/src/testmod` as the separate dev mod
+  `ae2federation_test` only in the ModDevGradle `gameTestServer` run.
+- Register only the selected annotated test method per isolated GameTest process. Ordinary direct execution selects the
+  positive required test; deliberate failure, timeout and benchmark variants are `manualOnly` and selected explicitly.
+- Treat the wrapper as a selector, launcher and evidence validator. Native `GameTestServer` remains the world-test
+  engine and owns required-test exits and diagnostics.
+- Keep restart support at the process-orchestration boundary. No structure reset is described as a server restart or
+  natural chunk unload.
+
+## 2026-09-13 - Task 3
+
+- Keep all UI fixtures and scenarios in the dev-only testmod; the production JAR remains unchanged and contains no
+  LDLib2 scenario classes or `ae2federation_test` resources.
+- Treat LDLib2's synthetic selector input, waits, checks, screenshots, and report as the actual-client test engine. The
+  Gradle wrapper owns exact-case selection, immutable evidence binding, adversarial report probes, Xvfb launch, and cleanup.
+- Use server-owned fixture state and the parent run ID for acknowledgment. A local callback alone is not accepted as
+  client/server synchronization evidence.
+
+## 2026-09-14 - Task 3 semantic-consumer repair
+
+- Make `verifyLdlibReport` the shared semantic boundary for fresh production and persisted evidence consumption, then
+  cross-check the verified upstream projections against the outer schema-v3 result.
+- Model `ui-harness.reject-stale` as a wrapper `self-test`; only `ui-harness.shared-resource` and
+  `ui-harness.server-ack` are actual LDLib2 scenarios.
+- Keep screenshot inspection read-only by writing ImageMagick output to task-owned temporary state rather than beside
+  immutable evidence.
+
+## 2026-09-14 - Task 4
+
+- Use a versioned UUID `NetworkId` plus per-node persistent UUID/revision metadata owned by one registered native AE2
+  Grid service. Do not add an anchor block or derive identity from positions, Bridge, Fabric, or Grid serial.
+- Keep world persistence sparse: serialize settlement status only; keep live Grid claims process-local and never persist
+  native Grid/node handles.
+- Only `SETTLED` permits Policy inheritance. Copied live identities, splits, merges, conflicting metadata, and incomplete
+  evidence remain fail closed without timeout, newest-wins, load-order, or location-based resolution.
+- Treat pinned AE2 commit `79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a` and public internal
+  `appeng.me.GridNode.callListener` as the narrow compatibility boundary.
+
+## 2026-09-14 - Task 4 adversarial repair
+
+- Use a dev-only `FederationIdentityAccessAttachment` fixture for Task 4 lifecycle proof. It binds to the real native
+  node and production identity service but does not introduce production gameplay or pre-implement Task 5+ topology.
+- Share one `verifyTaskFourEvidence` semantic boundary between fresh production and persisted consumption so both paths
+  enforce identical case, settlement, identity, object-trace, restart, and artifact-cardinality rules.
+
+## 2026-09-14 - Task 5
+
+- Define native attachment as one verified in-world face edge to the currently exposed adjacent node, not allocated node
+  existence, power, boot state, owner class, location identity, or Federation identity.
+- Represent Hub ME boundaries as six distinct native nodes and prohibit every internal native connection between them.
+- Preserve face ownership separately from membership deduplication; group repeated observations only by native `IGrid`
+  object identity.
+- Share one `verifyTaskFiveEvidence` semantic parser between fresh production and persisted consumption, with fully
+  rebound adversarial probes for topology meaning and artifact cardinality.
+
+## 2026-09-14 - Task 7
+
+- Model the Endpoint gate as a narrow capability composition over one subnet node and one identified native Provider
+  return inventory; do not create a block implementation, stocking inventory, or processing engine in this feasibility task.
+- Bind Local ownership only for exactly one Provider whose source Grid differs from the subnet and whose target side has
+  no native data edge. Bind behavior by capability call context, not item/fluid identity.
+- Pin native Local input provenance with narrow `HEAD` probes on `PatternProviderLogic.pushPattern` and
+  `PatternProviderTargetCache.find`; keep the probes observational and leave all execution semantics in AE2.
+- Derive Local ownership from immutable world coordinates and native block/capability identity. Caller candidate lists may
+  nominate Providers, but cannot establish adjacency or Endpoint targeting.
+- Resolve Endpoint node/storage separately for each non-Federation face and fail closed when either native sided lookup
+  disagrees with the composition's subnet identity.
+
+## 2026-09-14 - Task 8
+
+- Define native Storage sources as real delegates mounted by active node `IStorageProvider` registrations, not the Grid
+  aggregate, cached counters, snapshots, labels or all global service mounts.
+- Exclude Federation projections and resolve known aliases only from registration-owned provenance. Deduplicate physical
+  sources by native object identity and fail closed for complete aggregate loops or opaque aliases.
+- Keep mount and delegation Mixins observational. AE2 retains priority, filtering, preferred-storage, listener and
+  operation semantics; the production compatibility boundary only identifies delegates and priorities.
+
+## 2026-09-14 - Task 8 independent-review repair
+
+- Qualify source identity only after resolving `IStorageProvider` internally from an actual `IGridNode`. A Federation
+  provider may create projections and routes but cannot declare an arbitrary `MEStorage` native or opaque.
+- Consume callbacks directly on each query rather than replaying a parallel provenance mount map. Preserve native handle
+  identity and merge duplicate route priorities with `Math.max`.
+- Require independent provider callback traces in persisted evidence so four route labels cannot substitute for four
+   distinct mounted providers and their actual priorities.
+
+## 2026-09-14 Task 9 Fail-Closed Binding Gate
+
+- Preserve locked versions and explicit mandatory API requirements. Emit diagnostic `BLOCKED` schema-v3 attempts with zero execution/assertions instead of claiming native lifecycle success.
+- Reject completed-looking Task 9 records until actual native runtime proof exists. Provider-only acceptance cannot substitute for planner, CPU, link or delivery ownership.
+
+## 2026-09-14 Task 9 Verified Binding Decision
+
+- Bind to AE2's actual public 19.2.17 lifecycle: `beginCraftingCalculation`, `submitJob`, `result.link()`, link NBT, and
+  `StorageHelper.loadCraftingLink`; remove the obsolete unavailable-binding gate.
+- Use null-requester player submission for terminal equivalence and pinned `MultiCraftingTracker` for automation.
+- Keep requester delivery on a physical native storage sink, expose restored links before Grid registration, and verify
+  accepted output independently from link completion.
+
+## 2026-09-14T08:02:00Z Task 9 Evidence Repair Decision
+
+- Use AE2 link UUIDs as the authoritative native job identity and derive cardinality from the observed UUID set.
+- Exercise duplicate discovery through the pinned tracker's existing active-slot guard; do not add a Federation scheduler,
+  deduplication ledger, or shadow job model.
+- Require both sides of material movement before cancellation: zero remaining in Grid and 64 stored in the native CPU.
+
+## 2026-09-14T10:55:00Z Task 10
+
+- Keep Task 10 test-only: qualify the pinned Quartz Fiber composition, but add no production energy adapter because the
+  composition cannot enforce directional authorization.
+- Emit schema-v3 `BLOCKED` only after all five canonical GameTests pass their factual observations. Ordinary persisted
+  consumption and fully rebound completed-looking evidence both fail closed.
+- Record Fabric boundary power as zero idle cost, not generated energy; no FE storage or synthetic energy key is used.
+
+## 2026-09-15 Task 11
+
+- Keep the Bridge direct-only: it may publish a typed two-domain membership candidate for later federation work, but it
+  must not call `GridHelper.createConnection` or otherwise join native Grids in production.
+- Treat a missing adjacent node as `MISSING_OUTER_ATTACHMENT` and a non-air unsupported candidate as
+  `FEDERATION_CABLE_UNSUPPORTED`; both remain fail closed and publish no membership candidate.
+- Make repeated removal idempotent by destroying only the Bridge-owned outer node once, retaining `REMOVED` status, and
+  allowing AE2's native part lifecycle to own the main node teardown.
