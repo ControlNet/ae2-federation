@@ -7,6 +7,9 @@ import appeng.api.networking.IManagedGridNode;
 import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -16,6 +19,7 @@ public final class NativeProviderLane extends PatternProviderLogic {
     private final InternalInventory ownerInventory;
     private final IntPredicate assignedSlot;
     private final PatternProviderLogicHost laneHost;
+    private final Set<IPatternDetails> currentPatterns = Collections.newSetFromMap(new IdentityHashMap<>());
 
     NativeProviderLane(IManagedGridNode node, PatternProviderLogicHost host, InternalInventory ownerInventory,
             IntPredicate assignedSlot) {
@@ -32,6 +36,7 @@ public final class NativeProviderLane extends PatternProviderLogic {
         var patternInputs = access.ae2federation$getPatternInputs();
         patterns.clear();
         patternInputs.clear();
+        currentPatterns.clear();
         for (int slot = 0; slot < ownerInventory.size(); slot++) {
             if (!assignedSlot.test(slot)) {
                 continue;
@@ -40,6 +45,7 @@ public final class NativeProviderLane extends PatternProviderLogic {
                     laneHost.getBlockEntity().getLevel());
             if (details != null) {
                 patterns.add(details);
+                currentPatterns.add(details);
                 for (var input : details.getInputs()) {
                     for (var candidate : input.getPossibleInputs()) {
                         patternInputs.add(candidate.what().dropSecondary());
@@ -51,7 +57,14 @@ public final class NativeProviderLane extends PatternProviderLogic {
 
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
+        if (!currentPatterns.contains(patternDetails)) {
+            return false;
+        }
         return super.pushPattern(patternDetails, inputHolder);
+    }
+
+    boolean isAssignedSlot(int slot) {
+        return assignedSlot.test(slot);
     }
 
     @Override
