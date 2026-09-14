@@ -101,6 +101,8 @@ neoForge {
             systemProperty('ae2federation.benchmarkEmpty', providers.gradleProperty('federationBenchmarkEmpty').getOrElse('false'))
             systemProperty('ae2federation.identityPhase', providers.gradleProperty('federationIdentityPhase').getOrElse(''))
             systemProperty('ae2federation.identityStateFile', providers.gradleProperty('federationIdentityStateFile').getOrElse(''))
+            systemProperty('ae2federation.policyPhase', providers.gradleProperty('federationPolicyPhase').getOrElse(''))
+            systemProperty('ae2federation.policyStateFile', providers.gradleProperty('federationPolicyStateFile').getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
         }
         uiTestClient {

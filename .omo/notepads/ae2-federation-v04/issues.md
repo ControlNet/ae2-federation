@@ -238,3 +238,13 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   regression-tested.
 - Fresh exact Task 12 and Task 13 runtime suites, persisted consumers, and adversarial self-tests pass. No unresolved
   loaded-neighbor or pure-LOC blocker remains.
+
+## 2026-09-15T04:50:00Z Task 14
+
+- The first replacement-Bridge run stalled at `MISSING_MAIN_ATTACHMENT` because the fixture called
+  `removeFromWorld()` directly and left the old part installed in its AE2 host. Removing through
+  `IPartHost.removePart` restored a valid replacement lifecycle.
+- The first canonical run completed all GameTests but rejected Policy restart evidence under identity-restart transfer
+  accounting. Policy restart verification now expects one operation and explicitly allows zero transfer work.
+- No unresolved Task 14 implementation blocker remains after canonical runtime, persisted consumption, adversarial
+  evidence probes, strict build, Java diagnostics, and runtime cleanup.

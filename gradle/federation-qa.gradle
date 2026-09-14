@@ -106,6 +106,9 @@ def verifyTaskTwelveEvidence
 def taskThirteenCases = ['fabric.bridge-diamond', 'fabric.hub-merge-split', 'fabric.redundant-membership',
         'fabric.partial-unload', 'fabric.reject-stale-route']
 def verifyTaskThirteenEvidence
+def taskFourteenCases = ['policy.lifecycle-matrix', 'policy.new-bridge-restore', 'policy.reject-stale-edit',
+        'policy.delete-reconnect', 'policy.sparse-scale']
+def verifyTaskFourteenEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -1148,6 +1151,115 @@ verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declar
         throw new GradleException('Task 13 stale-route invalidation semantics are incomplete')
     }
 }
+verifyTaskFourteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskFourteenCases }) return
+    if (requested != taskFourteenCases) throw new GradleException('Task 14 evidence must select the exact canonical case set')
+    def expected = [policylifecyclematrix: 12, policynewbridgerestore: 8, policyrejectstaleedit: 7,
+            policydeletereconnect: 8, policysparsescale: 6]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-policy') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 14 native artifact set is duplicated, missing, or substituted')
+    }
+    if (childExits['restart-prepare'] != 0 || childExits['restart-verify'] != 0
+            || expected.keySet().findAll { it != 'policylifecyclematrix' }.any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 14 native or two-process restart child exits are incomplete')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = testId == 'policylifecyclematrix' ? 'restart-verify.log' : "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 14 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        if (properties.getProperty('testId') != testId) {
+            throw new GradleException("Task 14 native case identity mismatch in ${artifact}")
+        }
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 14 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 14 operations') != 1) {
+            throw new GradleException("Task 14 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_POLICY_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 14 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 14 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def lifecycle = parsed.policylifecyclematrix as Properties
+    if (lifecycle.getProperty('unconfiguredState') != 'UNCONFIGURED' || lifecycle.getProperty('offState') != 'OFF'
+            || lifecycle.getProperty('disconnectedState') != 'DISCONNECTED'
+            || lifecycle.getProperty('backendUnreadyState') != 'BACKEND_UNREADY'
+            || lifecycle.getProperty('activeState') != 'ACTIVE' || lifecycle.getProperty('restartRestored') != 'true'
+            || lifecycle.getProperty('runtimeStatePersisted') != 'false'
+            || lifecycle.getProperty('processesDistinct') != 'true') {
+        throw new GradleException('Task 14 lifecycle activation semantics are incomplete')
+    }
+    def preparePid = parsePositiveInteger(lifecycle.getProperty('prepareProcessId'), 'Task 14 prepare process ID')
+    def verifyPid = parsePositiveInteger(lifecycle.getProperty('verifyProcessId'), 'Task 14 verify process ID')
+    parsePositiveInteger(lifecycle.getProperty('persistedRevision'), 'Task 14 persisted revision')
+    if (preparePid == verifyPid || declaredPaths.count { it == 'policy-restart-state.properties' } != 1
+            || declaredPaths.count { it == 'restart-prepare.log' } != 1) {
+        throw new GradleException('Task 14 restart evidence does not prove distinct complete processes')
+    }
+    def restartState = loadProperties(new File(attempt, 'policy-restart-state.properties'))
+    if (restartState.getProperty('prepareProcessId') != lifecycle.getProperty('prepareProcessId')
+            || restartState.getProperty('revision') != lifecycle.getProperty('persistedRevision')
+            || !(new File(attempt, 'restart-prepare.log').text.contains(
+                    "AE2F_POLICY_NATIVE_TRACE testId=policylifecyclematrix fact=prepareProcessId value=${preparePid}"))) {
+        throw new GradleException('Task 14 restart process identity or persisted revision is rebound')
+    }
+    def replacement = parsed.policynewbridgerestore as Properties
+    if (replacement.getProperty('disconnectedAfterRemoval') != 'true'
+            || replacement.getProperty('newBridgeObject') != 'true' || replacement.getProperty('restoredState') != 'ACTIVE'
+            || replacement.getProperty('revisionPreserved') != 'true'
+            || replacement.getProperty('keyedByNetworkIds') != 'true'
+            || replacement.getProperty('fabricIdPersisted') != 'false'
+            || replacement.getProperty('reexportDefault') != 'false'
+            || replacement.getProperty('nativeGridJoin') != 'false') {
+        throw new GradleException('Task 14 new-Bridge restoration semantics are incomplete')
+    }
+    def stale = parsed.policyrejectstaleedit as Properties
+    if (stale.getProperty('staleAccepted') != 'false' || stale.getProperty('enabledAfterStale') != 'false'
+            || stale.getProperty('activationAfterStale') != 'OFF' || stale.getProperty('casRequired') != 'true'
+            || stale.getProperty('authoritativeRevision') != 'true'
+            || stale.getProperty('newerRevision') != stale.getProperty('currentRevision')) {
+        throw new GradleException('Task 14 stale-write rejection semantics are incomplete')
+    }
+    def deletion = parsed.policydeletereconnect as Properties
+    if (deletion.getProperty('deleted') != 'true' || deletion.getProperty('staleAccepted') != 'false'
+            || deletion.getProperty('resurrectedAfterReconnect') != 'false'
+            || deletion.getProperty('activationAfterReconnect') != 'UNCONFIGURED'
+            || deletion.getProperty('tombstoneCount') != '1' || deletion.getProperty('ttlEviction') != 'false'
+            || deletion.getProperty('lruEviction') != 'false') {
+        throw new GradleException('Task 14 deletion and reconnect semantics are incomplete')
+    }
+    parsePositiveInteger(deletion.getProperty('tombstoneRevision'), 'Task 14 tombstone revision')
+    def sparse = parsed.policysparsescale as Properties
+    if (parsePositiveInteger(sparse.getProperty('networkPairQueries'), 'Task 14 sparse query count') < 10000
+            || sparse.getProperty('storedConfigured') != '2' || sparse.getProperty('storedTombstones') != '0'
+            || sparse.getProperty('allPairsAllocated') != 'false' || sparse.getProperty('worldScan') != 'false'
+            || sparse.getProperty('evictionPolicy') != 'none') {
+        throw new GradleException('Task 14 sparse scale or no-eviction semantics are incomplete')
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -1231,6 +1343,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwelveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskThirteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskFourteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -1513,20 +1627,23 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                     || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                    || testCase.id.startsWith('fabric.')) ? 1 : 2,
+                    || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                            || testCase.id.startsWith('fabric.')])
+                            || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
         if (restartCase != null) {
-            def restartState = new File(attempt, 'identity-restart-state.properties')
+            def policyRestart = restartCase.id.startsWith('policy.')
+            def restartState = new File(attempt, policyRestart ? 'policy-restart-state.properties' : 'identity-restart-state.properties')
+            def phaseProperty = policyRestart ? 'federationPolicyPhase' : 'federationIdentityPhase'
+            def stateProperty = policyRestart ? 'federationPolicyStateFile' : 'federationIdentityStateFile'
             def prepare = gradleCommand('restart-prepare', [':neoforge-1.21.1:runGameTestServer',
                     '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
-                    '-PfederationIdentityPhase=prepare', "-PfederationIdentityStateFile=${restartState.absolutePath}",
+                    "-P${phaseProperty}=prepare", "-P${stateProperty}=${restartState.absolutePath}",
                     '-PfederationRetainGameTestRuntime=true'], [timeout: 180, retainRuntime: true])
             if (prepare.result.exit != 0 || !restartState.isFile()) {
                 throw new GradleException('Identity restart preparation process failed')
@@ -1534,11 +1651,12 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             def nativeEvidence = new File(attempt, "native-${restartCase.testId}.properties")
             def verify = gradleCommand('restart-verify', [':neoforge-1.21.1:runGameTestServer',
                     '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
-                    '-PfederationIdentityPhase=verify', "-PfederationIdentityStateFile=${restartState.absolutePath}",
+                    "-P${phaseProperty}=verify", "-P${stateProperty}=${restartState.absolutePath}",
                     "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"], [timeout: 180, retainRuntime: false])
             if (verify.result.exit != 0) throw new GradleException('Identity restart verification process failed')
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: restartCase.testId,
-                    structure: restartCase.structure, assertions: restartCase.assertions, operations: 2])
+                    structure: restartCase.structure, assertions: restartCase.assertions,
+                    operations: policyRestart ? 1 : 2, allowZeroWork: policyRestart])
             childArtifacts.add(restartState); childArtifacts.add(nativeEvidence)
         }
         requestedCases.each { caseId ->
@@ -1716,6 +1834,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             allowZeroWork: true])
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'policy.lifecycle-matrix':
+                case 'policy.new-bridge-restore':
+                case 'policy.reject-stale-edit':
+                case 'policy.delete-reconnect':
+                case 'policy.sparse-scale':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
             }
         }
@@ -1748,6 +1878,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskElevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwelveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskFourteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -2113,6 +2244,65 @@ tasks.register('federationTaskThirteenEvidenceSelfTest') {
             throw new GradleException('Task 13 adversarial persisted evidence was accepted')
         }
         logger.lifecycle('Task 13 fabricated membership, rebound identity, incomplete trace, incomplete attempt, and stale-route probes were rejected')
+    }
+}
+
+tasks.register('federationTaskFourteenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 14 Policy evidence rejects fabricated lifecycle, revision, deletion, and restart claims.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 14 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def reboundFact = { String probe, String testId, String fact, String value ->
+            taskFiveEvidenceProbeRejects(sourceResult, "task14-${probe}") { attempt, report ->
+                def file = new File(attempt, "native-${testId}.properties")
+                def properties = loadProperties(file)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, "Task 14 ${probe} probe") }
+                def logName = testId == 'policylifecyclematrix' ? 'restart-verify.log' : "positive-${testId}.log"
+                def log = new File(attempt, logName)
+                log.text = log.text.replaceAll(
+                        /(AE2F_POLICY_NATIVE_TRACE testId=${testId} fact=${fact} value=)[^\s]+/, "\$1${value}")
+            }
+        }
+        def fabricatedActivation = reboundFact('fabricated-activation', 'policylifecyclematrix',
+                'disconnectedState', 'ACTIVE')
+        def reboundIdentity = taskFiveEvidenceProbeRejects(sourceResult, 'task14-rebound-case') { attempt, report ->
+            def file = new File(attempt, 'native-policynewbridgerestore.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('testId', 'policyrejectstaleedit')
+            file.withOutputStream { properties.store(it, 'Task 14 rebound case identity') }
+        }
+        def staleAccepted = reboundFact('stale-write-accepted', 'policyrejectstaleedit', 'staleAccepted', 'true')
+        def deletionResurrected = reboundFact('deletion-resurrected', 'policydeletereconnect',
+                'resurrectedAfterReconnect', 'true')
+        def incompleteTrace = taskFiveEvidenceProbeRejects(sourceResult, 'task14-incomplete-trace') { attempt, report ->
+            def log = new File(attempt, 'positive-policysparsescale.log')
+            log.text = log.readLines().findAll { !it.contains('fact=allPairsAllocated ') }.join('\n') + '\n'
+        }
+        def incompleteAttempt = taskFiveEvidenceProbeRejects(sourceResult, 'task14-incomplete-attempt') { attempt, report ->
+            new File(attempt, 'native-policyrejectstaleedit.properties').delete()
+        }
+        def lifecycle = loadProperties(new File(sourceResult.parentFile, 'native-policylifecyclematrix.properties'))
+        def fakeRestart = reboundFact('fake-restart', 'policylifecyclematrix', 'verifyProcessId',
+                lifecycle.getProperty('prepareProcessId'))
+        if (!(fabricatedActivation instanceof String)
+                || !fabricatedActivation.contains('Task 14 lifecycle activation semantics are incomplete')
+                || !(reboundIdentity instanceof String) || !reboundIdentity.contains('Task 14 native case identity mismatch')
+                || !(staleAccepted instanceof String) || !staleAccepted.contains('Task 14 stale-write rejection semantics are incomplete')
+                || !(deletionResurrected instanceof String)
+                || !deletionResurrected.contains('Task 14 deletion and reconnect semantics are incomplete')
+                || !(incompleteTrace instanceof String) || !incompleteTrace.contains('Task 14 runtime trace mismatch')
+                || !(incompleteAttempt instanceof String)
+                || !incompleteAttempt.contains('Artifact is missing, outside the attempt, or hash-mismatched')
+                || !(fakeRestart instanceof String)
+                || !fakeRestart.contains('Task 14 restart evidence does not prove distinct complete processes')) {
+            throw new GradleException('Task 14 adversarial persisted evidence was accepted')
+        }
+        logger.lifecycle('Task 14 fabricated activation, rebound case, stale write, deletion resurrection, incomplete trace/attempt, and fake restart probes were rejected')
     }
 }
 

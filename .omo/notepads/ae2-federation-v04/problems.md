@@ -177,3 +177,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   position loaded before exposed-node lookup; fresh Task 12 and Task 13 runtime/evidence gates pass.
 - The 256-pure-LOC Fabric GameTest module was coherently split into Bridge and Hub/Cable classes. No Task 13 blocker remains;
   the plan checkbox remains under orchestrator ownership and was not edited.
+
+## 2026-09-15T04:50:00Z Task 14 resolution
+
+- Replacement multipart lifecycle and Policy restart evidence accounting are resolved. The exact five Policy cases,
+  genuine two-process restart, persisted consumer, fully rebound adversarial probes, strict build, diagnostics, and
+  cleanup all pass.
+- Task 15 UI and downstream routing engines remain intentionally outside scope. The Task 14 plan checkbox and repository
+  history remain untouched for orchestrator review.

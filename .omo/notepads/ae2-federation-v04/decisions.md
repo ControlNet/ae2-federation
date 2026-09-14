@@ -170,3 +170,14 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   do not force-load, and create the new boundary node without inherited identity.
 - Keep `FabricRegistry` intact at 244 pure LOC because it remains one cohesive component-recompute owner within the
   warning band. Split the 256-pure-LOC test module by topology type instead: Bridge diamond versus Hub/Cable cases.
+
+## 2026-09-15T04:50:00Z Task 14
+
+- Model Policy keys as ordered consumer/provider `NetworkId` pairs plus `PolicyCapability`; never key configuration by
+  runtime Grid objects, Bridge instances, Fabric IDs, or routes.
+- Use authoritative compare-and-set revisions for edits and deletes. Preserve deletions as revisioned tombstones so stale
+  writers cannot resurrect removed rules; keep unconfigured pairs absent for sparse scaling.
+- Resolve activation in fail-closed precedence: `UNCONFIGURED`, `OFF`, `DISCONNECTED`, `BACKEND_UNREADY`, then `ACTIVE`.
+  `ACTIVE` requires both settled identities and an intersection of confirmed Task 13 Fabrics.
+- Store Policy `SavedData` in the overworld and persist configuration only. Runtime endpoints, activation, caches, routes,
+  `IGrid`, and `FabricId` remain derived and non-persistent; storage reexport defaults to false.

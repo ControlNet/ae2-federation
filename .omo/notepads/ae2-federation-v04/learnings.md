@@ -331,3 +331,15 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   registered `FabricBridgeGameTests` reduced the modules to 202 and 69 pure LOC without changing test IDs.
 - Superseding Task 13 evidence is
   `.omo/evidence/task-13/loaded-guard-repair-20260915/attempt-20260914T174455385Z/result.json`.
+
+## 2026-09-15T04:50:00Z Task 14
+
+- Sparse Policy state is keyed directionally by consumer `NetworkId`, provider `NetworkId`, and capability. Persist only
+  configured rules, filters, flags, authoritative revisions, and tombstones; derive activation from current identity,
+  Fabric, endpoint, and backend state.
+- A GameTest must remove an AE2 multipart through its owning `IPartHost`. Calling `IPart.removeFromWorld()` directly
+  destroys lifecycle state without removing the installed part and can prevent a later replacement node from attaching.
+- Policy persistence/revision evidence performs no resource transfer. Its native evidence uses one operation and permits
+  zero inserted/extracted work while still requiring exact semantic traces and assertion counts.
+- Canonical source-bound Task 14 evidence is
+  `.omo/evidence/task-14/attempt-20260914T184506344Z/result.json`.

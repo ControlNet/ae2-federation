@@ -302,7 +302,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=fabric.bridge-diamond,fabric.hub-merge-split,fabric.redundant-membership,fabric.partial-unload,fabric.reject-stale-route -PevidenceDir=.omo/evidence/task-13`.
   - Commit: proposed `feat(fabric): index components and shared membership`.
 
-- [ ] 14. Implement sparse global Policy, revisions and lifecycle activation
+- [x] 14. Implement sparse global Policy, revisions and lifecycle activation
   - Work: `policy/`, world `persistence/`, namespaced schema, sparse consumer/provider/capability entries, enabled/filter/reexport settings and authoritative revisions. Derive active only from confirmed common Fabric; distinguish unconfigured/off/disconnected/backend-unready. Serialize configured rules, not active/Grid handles. Reject stale edits and keep deleted/disabled records from stale cache resurrection. No TTL/LRU eviction of Policy.
   - References: D4.3-4.8,14.6,T-G01..14; task 4 identity gate. Depends on 4,13.
   - Acceptance: all merge/split/new-Bridge/restart scenarios preserve rules; invalid identities never inherit rules; old edit cannot resurrect deletion. Initial Storage reexport toggle is off as D's engineering default.
