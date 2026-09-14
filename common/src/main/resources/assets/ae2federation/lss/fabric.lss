@@ -1,0 +1,96 @@
+.fabric-panel {
+  width: 306;
+  height: 228;
+  padding-all: 8;
+  gap-all: 3;
+  flex-direction: column;
+  background: border(2, #ff334155);
+}
+
+.fabric-title {
+  width: 290;
+  height: 13;
+  font-size: 10;
+  text-color: #fff4f7f8;
+}
+
+.fabric-caption {
+  width: 290;
+  height: 10;
+  font-size: 7;
+  text-color: #ff91a4aa;
+}
+
+.fabric-section {
+  width: 290;
+  padding-all: 4;
+  gap-all: 2;
+  flex-direction: column;
+  background: border(1, #ff475569);
+}
+
+.fabric-heading {
+  width: 282;
+  height: 10;
+  font-size: 8;
+  text-color: #ff66b8c9;
+}
+
+.fabric-members {
+  width: 282;
+  height: 31;
+  font-size: 6;
+  text-wrap: wrap;
+  text-color: #ffd7e1e4;
+}
+
+.fabric-row {
+  width: 282;
+  height: 10;
+  font-size: 6;
+  text-wrap: wrap;
+  text-color: #ffc2ced2;
+}
+
+#consumer_next,
+#provider_next {
+  width: 140;
+  height: 14;
+}
+
+.fabric-actions {
+  width: 282;
+  height: 16;
+  gap-all: 2;
+  flex-direction: row;
+}
+
+.fabric-actions button {
+  width: 140;
+  height: 14;
+}
+
+.fabric-status {
+  width: 290;
+  height: 25;
+  padding-all: 3;
+  font-size: 6;
+  text-wrap: wrap;
+  background: border(1, #ff1e293b);
+  text-color: #fff0c66a;
+}
+
+.fabric-status.accepted {
+  text-color: #ff5fcb82;
+}
+
+.fabric-status.stale_context,
+.fabric-status.stale_revision,
+.fabric-status.disabled {
+  text-color: #ffe56a63;
+}
+
+.state-sync {
+  width: 0;
+  height: 0;
+}

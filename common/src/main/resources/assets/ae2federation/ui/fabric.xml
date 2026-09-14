@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ldlib2-ui>
+    <stylesheet location="ldlib2:lss/mc.lss"/>
+    <stylesheet location="ae2federation:lss/fabric.lss"/>
+    <root id="fabric_root" class="panel_bg fabric-panel">
+        <label id="fabric_title" class="fabric-title"><lang key="ae2federation.ui.fabric.title"/></label>
+        <label id="entrance_value" class="fabric-caption"><lang key="ae2federation.ui.fabric.status.pending"/></label>
+        <element class="fabric-section">
+            <label class="fabric-heading"><lang key="ae2federation.ui.fabric.members.heading"/></label>
+            <label id="members_value" class="fabric-members"><lang key="ae2federation.ui.fabric.members.pending"/></label>
+        </element>
+        <element class="fabric-section">
+            <label class="fabric-heading"><lang key="ae2federation.ui.fabric.policy.heading"/></label>
+            <label id="consumer_value" class="fabric-row"><lang key="ae2federation.ui.fabric.consumer"><style color="#ffffffff">-</style></lang></label>
+            <button id="consumer_next" text="ae2federation.ui.fabric.action.next_consumer"/>
+            <label id="provider_value" class="fabric-row"><lang key="ae2federation.ui.fabric.provider"><style color="#ffffffff">-</style></lang></label>
+            <button id="provider_next" text="ae2federation.ui.fabric.action.next_provider"/>
+            <label id="rule_value" class="fabric-row"><lang key="ae2federation.ui.fabric.rule.unavailable"/></label>
+            <element class="fabric-actions">
+                <button id="capability_next" text="ae2federation.ui.fabric.action.next_capability"/>
+                <button id="policy_toggle" text="ae2federation.ui.fabric.action.toggle"/>
+            </element>
+        </element>
+        <label id="ack_status" class="fabric-status pending"><lang key="ae2federation.ui.fabric.status.pending"/></label>
+    </root>
+</ldlib2-ui>
