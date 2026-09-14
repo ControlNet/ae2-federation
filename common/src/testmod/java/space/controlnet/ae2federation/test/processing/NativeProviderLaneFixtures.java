@@ -29,19 +29,21 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
-import space.controlnet.ae2federation.ae2.processing.NativeProviderLaneComposition;
+import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
+import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
 
-public final class NativeProviderLaneFixtures implements AutoCloseable {
+public final class NativeProviderLaneFixtures implements MappedPatternProviderHost, AutoCloseable {
     private static final IGridNodeListener<NativeProviderLaneFixtures> LISTENER = (owner, node) -> {
     };
-    private static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
+    static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
     private static final BlockPos ENERGY_POS = HOST_POS.west();
-    private static final BlockPos TARGET_POS = HOST_POS.east();
+    static final BlockPos TARGET_POS = HOST_POS.east();
     private static final BlockPos BYPASS_POS = HOST_POS.north();
     private final GameTestHelper helper;
     private final IManagedGridNode node;
-    private final NativeProviderLaneComposition composition;
-    private final List<LaneHost> hosts;
+    private final MappedPatternProvider composition;
+    private final List<NativeProviderLaneHost> hosts;
+    private int ownerSaveCalls;
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments) {
         this.helper = helper;
@@ -52,10 +54,20 @@ public final class NativeProviderLaneFixtures implements AutoCloseable {
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0)
                 .setExposedOnSides(EnumSet.of(Direction.WEST));
-        hosts = List.of(new LaneHost(helper), new LaneHost(helper), new LaneHost(helper));
-        composition = new NativeProviderLaneComposition(node, hosts.getFirst(), hosts, 3, assignments);
+        hosts = List.of(new NativeProviderLaneHost(helper, HOST_POS), new NativeProviderLaneHost(helper, HOST_POS),
+                new NativeProviderLaneHost(helper, HOST_POS));
+        composition = new MappedPatternProvider(node, this, hosts, 3);
         for (int index = 0; index < hosts.size(); index++) {
-            hosts.get(index).logic = composition.lanes().get(index);
+            hosts.get(index).setLogic(composition.lanes().get(index));
+        }
+        for (int slot = 0; slot < 3; slot++) {
+            var assignedLanes = new java.util.TreeSet<Integer>();
+            for (int lane = 0; lane < assignments.size(); lane++) {
+                if (assignments.get(lane).test(slot)) {
+                    assignedLanes.add(lane);
+                }
+            }
+            composition.replaceMapping(composition.mappingHandle(slot), assignedLanes);
         }
         node.create(helper.getLevel(), helper.absolutePos(HOST_POS));
     }
@@ -81,9 +93,13 @@ public final class NativeProviderLaneFixtures implements AutoCloseable {
     }
 
     public List<ICraftingProvider> publishedProviders(int laneIndex, int patternIndex) {
+        return publishedProviders(lane(laneIndex).getAvailablePatterns().get(patternIndex));
+    }
+
+    public List<ICraftingProvider> publishedProviders(appeng.api.crafting.IPatternDetails pattern) {
         var service = (CraftingService) node.getGrid().getCraftingService();
         var providers = new ArrayList<ICraftingProvider>();
-        service.getProviders(lane(laneIndex).getAvailablePatterns().get(patternIndex)).forEach(providers::add);
+        service.getProviders(pattern).forEach(providers::add);
         return List.copyOf(providers);
     }
 
@@ -121,7 +137,12 @@ public final class NativeProviderLaneFixtures implements AutoCloseable {
         return false;
     }
 
-    public NativeProviderLaneComposition composition() {
+    public MappedPatternProvider composition() {
+        return composition;
+    }
+
+    @Override
+    public MappedPatternProvider mappedPatternProvider() {
         return composition;
     }
 
@@ -171,47 +192,51 @@ public final class NativeProviderLaneFixtures implements AutoCloseable {
     }
 
     @Override
+    public BlockEntity getBlockEntity() {
+        return hostBlockEntity();
+    }
+
+    @Override
+    public EnumSet<Direction> getTargets() {
+        return EnumSet.of(Direction.EAST);
+    }
+
+    @Override
+    public void saveChanges() {
+        ownerSaveCalls++;
+        getBlockEntity().setChanged();
+    }
+
+    public int ownerSaveCalls() {
+        return ownerSaveCalls;
+    }
+
+    public int laneSaveCalls() {
+        return hosts.stream().mapToInt(NativeProviderLaneHost::saveCalls).sum();
+    }
+
+    IManagedGridNode managedNode() {
+        return node;
+    }
+
+    GameTestHelper helper() {
+        return helper;
+    }
+
+    @Override
+    public AEItemKey getTerminalIcon() {
+        return AEItemKey.of(AEItems.PROCESSING_PATTERN.asItem());
+    }
+
+    @Override
+    public ItemStack getMainMenuIcon() {
+        return AEItems.PROCESSING_PATTERN.stack();
+    }
+
+    @Override
     public void close() {
         composition.close();
         node.destroy();
     }
 
-    private static final class LaneHost implements PatternProviderLogicHost {
-        private final GameTestHelper helper;
-        private PatternProviderLogic logic;
-
-        private LaneHost(GameTestHelper helper) {
-            this.helper = helper;
-        }
-
-        @Override
-        public PatternProviderLogic getLogic() {
-            return logic;
-        }
-
-        @Override
-        public BlockEntity getBlockEntity() {
-            return helper.getBlockEntity(HOST_POS);
-        }
-
-        @Override
-        public EnumSet<Direction> getTargets() {
-            return EnumSet.of(Direction.EAST);
-        }
-
-        @Override
-        public void saveChanges() {
-            getBlockEntity().setChanged();
-        }
-
-        @Override
-        public AEItemKey getTerminalIcon() {
-            return AEItemKey.of(AEItems.PROCESSING_PATTERN.asItem());
-        }
-
-        @Override
-        public ItemStack getMainMenuIcon() {
-            return AEItems.PROCESSING_PATTERN.stack();
-        }
-    }
 }
