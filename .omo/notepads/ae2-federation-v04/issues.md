@@ -255,3 +255,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   construction fixed identity settlement, but transparent adjacent Hub extensions then joined both Bridge domains.
 - Distinct red/blue extension colors corrected the remaining topology fault. The exact five-case actual-client run,
   persisted consumer, forged-ack/stale-success probes, focused tests, Java diagnostics, and strict build now pass.
+
+## 2026-09-14T21:53:05Z Task 16
+
+- The first refresh-priority GameTest combined stale rejection and post-replacement execution, obscuring the failure.
+  Separating the assertions showed stale rejection was correct; direct inspection of AE2's qualified `patternInputs` plus
+  a clear target then proved Blocking input refresh and native execution independently.
+- `IGrid.getActiveMachines(PatternContainer.class)` does not search assignable machine keys. Mirroring the native Pattern
+  Access Terminal's machine-class enumeration proves exactly one active physical container.

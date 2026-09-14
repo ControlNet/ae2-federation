@@ -192,3 +192,8 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   consumption, both semantic adversarial probes, strict build, diagnostics, and serialized runtime execution pass.
 - The Task 15 plan checkbox, Boulder state, continuation state, and repository history remain untouched for orchestrator
   review. Task 16 and later routing work remain outside this repair.
+
+## 2026-09-14T21:53:05Z Task 16
+
+- No unresolved Task 16 implementation blocker is known. Task 17 Provider orientation, Claims, Endpoint authorization,
+  and remote target binding remain intentionally unimplemented.

@@ -354,3 +354,14 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   isolation preserves two settled identities while allowing both entrances to derive the same directional Policy key.
 - Canonical source-bound Task 15 evidence is
   `.omo/evidence/task-15/attempt-20260914T205305294Z/result.json`; all five scenarios and 11 LDLib2 checks passed.
+
+## 2026-09-14T21:53:05Z Task 16
+
+- AE2 19.2.17 `PatternProviderLogic.pushPattern` uses equality-based membership; an identity-bound current decoded set is
+  required to reject an old equal handle after physical Pattern replacement while still delegating execution to AE2.
+- Global Provider priority changes need explicit `refreshGlobalCraftingProvider` calls because native
+  `ICraftingProvider.requestUpdate` targets the physical node, which intentionally owns no node-local provider service.
+- Runtime qualification uses 3 physical Pattern slots, 3 native Lanes, 5 mapped entries, and 2 independent media for one
+  equal Pattern. The counts are test dimensions, not public gameplay limits.
+- Canonical source-bound Task 16 evidence is
+  `.omo/evidence/task-16/attempt-20260914T220758989Z/result.json`; all five exact cases and adversarial probes passed.

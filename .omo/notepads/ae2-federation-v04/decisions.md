@@ -190,3 +190,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   every selector and mutation control until the player reopens against current context.
 - Keep disabled Bridges diagnostic-only, use deterministic server acknowledgment `policy-<revision>`, and bind evidence to
   the same ordered real `NetworkId` pair and capability observed from both entrances.
+
+## 2026-09-14T21:53:05Z Task 16
+
+- Keep Task 16 as a reusable `processing/provider/` composition and typed host boundary rather than introducing the
+  Task 17 physical block, orientation, Claim, or Endpoint routing lifecycle early.
+- Persist deterministic slot-to-Lane assignments and per-slot generations before restoring native Lane state. Refresh
+  only affected global providers for mapping/inventory changes, but refresh every Lane when shared priority changes.
+- Keep one physical managed node with one composite ticker and zero node-local crafting-provider services; Lane providers
+  remain distinct global AE2 media and own independent native execution contexts.
