@@ -84,8 +84,55 @@ def uiCurrentSourceIdentity = { File outputDir ->
             files: [headFile, diffFile, statusFile, dirtyIdentityFile]]
 }
 
-def uiScenarioNames = ['ui-harness.shared-resource', 'ui-harness.server-ack'] as Set
-def uiExpectedCases = ['ui-harness.shared-resource', 'ui-harness.server-ack', 'ui-harness.reject-stale'] as Set
+def uiTaskThreeScenarioNames = ['ui-harness.shared-resource', 'ui-harness.server-ack'] as Set
+def uiTaskThreeExpectedCases = ['ui-harness.shared-resource', 'ui-harness.server-ack', 'ui-harness.reject-stale'] as Set
+def uiTaskFifteenScenarioNames = ['ui.hub', 'ui.bridge', 'ui.shared-policy', 'ui.stale-context',
+        'ui.close-unsubscribe'] as Set
+def uiTaskFifteenExpectedCases = uiTaskFifteenScenarioNames
+def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames
+
+def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
+    def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
+    if (outcomes.keySet() as Set != uiTaskFifteenScenarioNames || captures.size() < 5
+            || controls.count { it.selector == '#policy_toggle' } < 5) {
+        throw new GradleException('Task 15 control, screenshot, or scenario outcome accounting is incomplete')
+    }
+    if (outcomes.values().any { it.recordIdentity == null || it.recordIdentity.isBlank()
+            || it.recordIdentity != it.bridgeRecordIdentity }) {
+        throw new GradleException('Task 15 Hub and Bridge entrances do not derive one real directional Policy identity')
+    }
+    ['ui.hub', 'ui.bridge'].each { caseId ->
+        def outcome = outcomes[caseId]
+        def revision = outcome.policyRevision as long
+        def expectedStatus = "Server accepted revision ${revision} - acknowledgment policy-${revision}"
+        if (outcome.mutationStatus != 'ACCEPTED' || revision <= 0L || outcome.policyEnabled != 'true'
+                || outcome.visibleStatus != expectedStatus) {
+            throw new GradleException("Task 15 server acknowledgment is invalid for ${caseId}")
+        }
+    }
+    def shared = outcomes['ui.shared-policy']
+    if (shared.mutationStatus != 'SHARED' || shared.policyEnabled != 'true'
+            || (shared.policyRevision as long) <= 0L
+            || shared.visibleRule != "STORAGE: enabled (revision ${shared.policyRevision})") {
+        throw new GradleException('Task 15 Hub edit was not observed as the same Bridge policy record')
+    }
+    if (!attachments.any { it.bridgeDiagnosticOnly == 'true' }) {
+        throw new GradleException('Task 15 disabled Bridge did not remain diagnostic-only')
+    }
+    def stale = outcomes['ui.stale-context']
+    if (stale.mutationStatus != 'STALE_CONTEXT' || stale.staleContext != 'true'
+            || (stale.policyRevision as long) != 0L || stale.policyEnabled != 'false'
+            || stale.visibleStatus != 'Rejected by server: Fabric topology changed; reopen this editor') {
+        throw new GradleException('Task 15 stale Fabric context was not visibly rejected without mutation')
+    }
+    def closed = outcomes['ui.close-unsubscribe']
+    if (closed.menuClosedBeforeMutation != 'true' || closed.sharingContinues != 'true'
+            || closed.mutationStatus != 'POST_CLOSE_ACCEPTED' || closed.policyEnabled != 'false'
+            || (closed.policyRevision as long) != (closed.previousRevision as long) + 1L
+            || closed.visibleRule != "STORAGE: disabled (revision ${closed.policyRevision})") {
+        throw new GradleException('Task 15 menu closure lifecycle or continued sharing is invalid')
+    }
+}
 
 def verifyLdlibReport = { File reportFile, File outputDir, Set<String> selectedScenarios, String runId ->
     if (!reportFile.isFile()) throw new GradleException("LDLib2 UI report is missing: ${reportFile}")
@@ -152,18 +199,26 @@ def verifyLdlibReport = { File reportFile, File outputDir, Set<String> selectedS
         scenario.steps.collectMany { step -> step.attachments == null ? [] : [step.attachments] }
     }
     def shared = attachments.find { it.controlId == 'shared_resource_text' }
-    def ack = attachments.find { it.controlId == 'ack_control' }
-    if (shared?.visibleText != 'Shared resource rendered after reload'
-            || ack?.visibleText != "Server acknowledged ${runId}"
-            || ack?.acknowledgmentId != runId || controls.find { it.selector == '#ack_control' } == null) {
-        throw new GradleException('Rendered shared-resource text, stable control, or matching server acknowledgment is missing')
+    if (selectedScenarios == uiTaskThreeScenarioNames) {
+        def ack = attachments.find { it.controlId == 'ack_control' }
+        if (shared?.visibleText != 'Shared resource rendered after reload'
+                || ack?.visibleText != "Server acknowledged ${runId}"
+                || ack?.acknowledgmentId != runId || controls.find { it.selector == '#ack_control' } == null) {
+            throw new GradleException('Rendered shared-resource text, stable control, or matching server acknowledgment is missing')
+        }
+    } else if (selectedScenarios == uiTaskFifteenScenarioNames) {
+        verifyTaskFifteenReport(attachments, controls, captures, runId)
+    } else {
+        throw new GradleException("Unsupported LDLib2 scenario set: ${selectedScenarios}")
     }
     def environment = report.environment
+    def runtime = selectedScenarios == uiTaskThreeScenarioNames ? shared
+            : attachments.find { it.glRenderer != null }
     if (environment.guiScale <= 0 || environment.windowWidth <= 0 || environment.windowHeight <= 0
             || environment.framebufferWidth <= 0 || environment.framebufferHeight <= 0
-            || environment.inputMode != 'SYNTHETIC' || shared?.guiScale == null
-            || shared?.windowWidth == null || shared?.windowHeight == null
-            || shared?.framebufferWidth == null || shared?.framebufferHeight == null) {
+            || environment.inputMode != 'SYNTHETIC' || runtime?.guiScale == null
+            || runtime?.windowWidth == null || runtime?.windowHeight == null
+            || runtime?.framebufferWidth == null || runtime?.framebufferHeight == null) {
         throw new GradleException('LDLib2 client environment metadata is incomplete')
     }
     [report: report, controls: controls, captures: captures, attachments: attachments]
@@ -195,7 +250,9 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             || started.isBefore(Instant.now().minusSeconds(900))) {
         throw new GradleException('UI result timestamps are stale or invalid')
     }
-    if (!(report.requested instanceof List) || report.requested as Set != uiExpectedCases
+    def expectedCases = report.requested as Set
+    if (!(report.requested instanceof List)
+            || !(expectedCases == uiTaskThreeExpectedCases || expectedCases == uiTaskFifteenExpectedCases)
             || report.executed != report.requested
             || !(report.assertions instanceof List) || report.assertions.size() != report.requested.size()
             || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }
@@ -225,7 +282,7 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     if (!upstreamReport.toPath().startsWith(attempt.toPath()) || !upstreamReport.isFile()) {
         throw new GradleException('Bound LDLib2 report is missing or external to the canonical attempt')
     }
-    def selectedScenarios = (report.requested as Set).findAll { it in uiScenarioNames } as Set
+    def selectedScenarios = expectedCases.findAll { it in uiAllScenarioNames } as Set
     def verifiedUpstream = verifyLdlibReport(upstreamReport, upstreamReport.parentFile, selectedScenarios,
             report.runId as String)
     def upstreamAttachments = verifiedUpstream.attachments.findAll { !it.isEmpty() }
@@ -380,6 +437,31 @@ def uiUpstreamMutations = [
         }
 ]
 
+def uiTaskFifteenUpstreamMutations = [
+        'forged-task15-ack': { report, upstream ->
+            def forgedId = 'locally-forged-task15-ack'
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.hub' }.steps
+                    .find { it.attachments?.caseId == 'ui.hub' }.attachments
+            upstreamOutcome.visibleStatus = upstreamOutcome.visibleStatus.replaceFirst(/policy-[0-9]+$/, forgedId)
+            report.controlAttachments.find { it.caseId == 'ui.hub' }.visibleStatus = upstreamOutcome.visibleStatus
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'stale-context-success': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.stale-context' }.steps
+                    .find { it.attachments?.caseId == 'ui.stale-context' }.attachments
+            upstreamOutcome.mutationStatus = 'ACCEPTED'
+            report.controlAttachments.find { it.caseId == 'ui.stale-context' }.mutationStatus = 'ACCEPTED'
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        }
+]
+
+def uiMutationsFor = { File resultFile ->
+    def requested = new JsonSlurper().parse(resultFile).requested as Set
+    requested == uiTaskFifteenExpectedCases ? uiTaskFifteenUpstreamMutations : uiUpstreamMutations
+}
+
 def cleanupUiRuntime = { File attempt ->
     def runtime = layout.projectDirectory.dir('run-uitest').asFile
     def diagnostics = new File(attempt, 'runtime-diagnostics')
@@ -414,8 +496,11 @@ tasks.register('federationUiTest') {
     notCompatibleWithConfigurationCache('Launches an isolated actual client and captures current machine evidence.')
     doLast {
         def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
-        if (requested.isEmpty() || requested as Set != uiExpectedCases) {
-            throw new GradleException("Task 3 requires exact cases ${uiExpectedCases}; requested=${requested}")
+        def requestedSet = requested as Set
+        def selectedScenarioNames = requestedSet == uiTaskThreeExpectedCases ? uiTaskThreeScenarioNames
+                : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames : null
+        if (requested.isEmpty() || selectedScenarioNames == null) {
+            throw new GradleException("UI verification requires exact Task 3 or Task 15 cases; requested=${requested}")
         }
         def evidenceText = uiEvidenceProperty.orNull
         if (evidenceText == null || evidenceText.isBlank()) throw new GradleException('Missing -PevidenceDir')
@@ -435,7 +520,7 @@ tasks.register('federationUiTest') {
         def command = ['xvfb-run', '--auto-servernum', '--server-args=-screen 0 1280x720x24 -nolisten tcp',
                 gradleExecutable.absolutePath, '--no-daemon', '--dependency-verification=strict',
                 ':neoforge-1.21.1:runUiTestClient',
-                "-PfederationUiSelection=${uiScenarioNames.join(',')}",
+                 "-PfederationUiSelection=${selectedScenarioNames.join(',')}",
                 "-PfederationUiOutputDir=${ldlibOutput.absolutePath}", "-PfederationUiRunId=${runId}",
                 '-PfederationUiGuiScale=3', '-PfederationUiWindow=1280x720', '-PfederationUiWatchdogSec=90']
         def child
@@ -447,7 +532,7 @@ tasks.register('federationUiTest') {
         if (child.exit != 0 || child.timedOut) {
             throw new GradleException("Actual Minecraft client failed or timed out; exit=${child.exit}, log=${clientLog}")
         }
-        def verified = verifyLdlibReport(new File(ldlibOutput, 'report.json'), ldlibOutput, uiScenarioNames, runId)
+        def verified = verifyLdlibReport(new File(ldlibOutput, 'report.json'), ldlibOutput, selectedScenarioNames, runId)
         def assertionMap = requested.collect { caseId -> [caseId: caseId, status: 'passed'] }
         def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
         cleanupReceipt.text = 'xvfb-run owned the private display with -nolisten tcp; actual client exited; run-uitest was removed; no task-owned listener/world/config remains.\n'
@@ -542,7 +627,7 @@ tasks.register('federationUiVerifierSelfTest') {
         uiDeleteRecursively(probeRoot)
         try {
             def baselineResult = uiPreparePersistedBaseline(canonicalResult, probeRoot)
-            def rejected = uiUpstreamMutations.collectEntries { name, mutate ->
+            def rejected = uiMutationsFor(baselineResult).collectEntries { name, mutate ->
                 [(name): uiPersistedVerifierRejects(baselineResult, probeRoot, name, mutate)]
             }
             if (rejected.any { it.value == null }) {
@@ -566,10 +651,11 @@ tasks.register('federationUiVerifierProbe') {
         def resultText = uiResultProperty.orNull
         if (resultText == null || resultText.isBlank()) throw new GradleException('Missing -PresultFile')
         def probeName = uiProbeProperty.orNull
-        def mutation = uiUpstreamMutations[probeName]
-        if (mutation == null) throw new GradleException("Unknown -Pprobe; expected ${uiUpstreamMutations.keySet()}")
         def resultFile = new File(resultText)
         def canonicalResult = resultFile.isAbsolute() ? resultFile : new File(uiRepositoryDir, resultText)
+        def mutations = uiMutationsFor(canonicalResult)
+        def mutation = mutations[probeName]
+        if (mutation == null) throw new GradleException("Unknown -Pprobe; expected ${mutations.keySet()}")
         def probeRoot = new File(temporaryDir, "selected-${probeName}")
         uiDeleteRecursively(probeRoot)
         try {
