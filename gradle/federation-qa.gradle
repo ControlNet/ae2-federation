@@ -1,0 +1,2118 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.security.MessageDigest
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPOutputStream
+import java.util.Properties
+
+def repositoryDir = rootProject.layout.projectDirectory
+def manifestFile = rootProject.layout.projectDirectory.file('tests/scenarios/manifest.json')
+def verificationMetadata = rootProject.layout.projectDirectory.file('gradle/verification-metadata.xml')
+def productJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+def structureFile = rootProject.layout.projectDirectory.file(
+        'common/src/testmod/resources/data/ae2federation_test/structure/harness_native_smoke.nbt')
+
+def sha256 = { byte[] bytes ->
+    MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString()
+}
+
+def runProcess = { List<String> command, File directory, File stdout, long timeoutSeconds ->
+    stdout.parentFile.mkdirs()
+    def process = new ProcessBuilder(command.collect { it.toString() })
+            .directory(directory).redirectErrorStream(true).redirectOutput(stdout).start()
+    def completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+    if (!completed) {
+        def descendants = process.toHandle().descendants().toList()
+        descendants.reverseEach { it.destroyForcibly() }
+        process.destroyForcibly()
+        process.waitFor(10, TimeUnit.SECONDS)
+        descendants.each { handle ->
+            try { handle.onExit().get(10, TimeUnit.SECONDS) } catch (java.util.concurrent.TimeoutException failure) {
+                throw new GradleException('Timed-out child descendant did not terminate', failure)
+            }
+        }
+        return [exit: 124, timedOut: true]
+    }
+    [exit: process.exitValue(), timedOut: false]
+}
+
+def parsePositiveInteger = { Object value, String field ->
+    def text = value?.toString()
+    if (text == null || !(text ==~ /[1-9]\d*/)) throw new GradleException("Invalid positive integer ${field}: ${value}")
+    text as long
+}
+
+def parseNonnegativeInteger = { Object value, String field ->
+    def text = value?.toString()
+    if (text == null || !(text ==~ /0|[1-9]\d*/)) throw new GradleException("Invalid nonnegative integer ${field}: ${value}")
+    text as long
+}
+
+def currentSourceIdentity = { File outputDir ->
+    outputDir.mkdirs()
+    def headFile = new File(outputDir, 'source-head.txt')
+    def diffFile = new File(outputDir, 'source-diff.patch')
+    def statusFile = new File(outputDir, 'source-status.txt')
+    if (runProcess(['git', 'rev-parse', 'HEAD'], repositoryDir.asFile, headFile, 20).exit != 0) {
+        throw new GradleException('Cannot resolve source revision')
+    }
+    if (runProcess(['git', 'diff', '--binary', 'HEAD'], repositoryDir.asFile, diffFile, 20).exit != 0) {
+        throw new GradleException('Cannot capture dirty diff')
+    }
+    if (runProcess(['git', 'status', '--porcelain=v1', '--untracked-files=all', '--', '.',
+            ':(exclude).omo/**', ':(exclude)**/build/**',
+            ':(exclude)neoforge-1.21.1/run-gametest/**', ':(exclude)neoforge-1.21.1/run-server/**'],
+            repositoryDir.asFile, statusFile, 20).exit != 0) {
+        throw new GradleException('Cannot capture worktree status')
+    }
+    def worktreeIdentity = new StringBuilder(statusFile.text)
+    statusFile.readLines().each { statusLine ->
+        if (statusLine.length() > 3) {
+            def relativePath = statusLine.substring(3).replace(' -> ', '\n').readLines().last()
+            def sourceFile = new File(repositoryDir.asFile, relativePath)
+            if (sourceFile.isFile()) {
+                worktreeIdentity.append(relativePath).append('=').append(sha256(sourceFile.bytes)).append('\n')
+            }
+        }
+    }
+    def dirtyIdentityFile = new File(outputDir, 'dirty-identity.txt')
+    dirtyIdentityFile.text = worktreeIdentity.toString()
+    [revision: headFile.text.trim(), dirtySha256: sha256(dirtyIdentityFile.bytes), files: [headFile, diffFile, statusFile, dirtyIdentityFile]]
+}
+
+def verifyPersistedReport
+def verifyTaskFourEvidence
+def verifyTaskFiveEvidence
+def verifyTaskSixEvidence
+def verifyTaskSevenEvidence
+def verifyTaskEightEvidence
+def taskNineCases = ['craft-proof.native-terminal', 'craft-proof.native-stocking', 'craft-proof.missing-material',
+        'craft-proof.no-cpu', 'craft-proof.disconnect-cancel-restart']
+def verifyTaskNineEvidence
+def taskTenCases = ['energy-proof.directional', 'energy-proof.cold-start', 'energy-proof.reject-reverse',
+        'energy-proof.no-source', 'energy-proof.ring']
+def verifyTaskTenEvidence
+def taskElevenCases = ['bridge.valid', 'bridge.invalid', 'bridge.same-grid', 'bridge.reject-federation-cable',
+        'bridge.reload-replace']
+def verifyTaskElevenEvidence
+def strictCanonicalPath = { File file ->
+    def absolute = file.absoluteFile.toPath()
+    if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
+        throw new GradleException("Symlink or traversal path rejected: ${file}")
+    }
+    file.canonicalFile
+}
+def loadProperties = { File file ->
+    if (!file.isFile()) throw new GradleException("Task 4 artifact is missing: ${file}")
+    def properties = new Properties()
+    try {
+        file.withInputStream { properties.load(it) }
+    } catch (Exception exception) {
+        throw new GradleException("Malformed Task 4 properties artifact: ${file}", exception)
+    }
+    properties
+}
+def requireProperty = { Properties properties, String name, String expected, File file ->
+    if (properties.getProperty(name) != expected) {
+        throw new GradleException("Task 4 ${name} mismatch in ${file.name}")
+    }
+}
+def requireNativeObjectIdentity = { Properties properties, String name, File file ->
+    def value = properties.getProperty(name)
+    if (value == null || !(value ==~ /0|[1-9][0-9]*/)) {
+        throw new GradleException("Task 4 ${name} is missing, empty, or malformed in ${file.name}")
+    }
+    value
+}
+def requireDistinct = { Properties properties, String first, String second, File file ->
+    def left = properties.getProperty(first)
+    def right = properties.getProperty(second)
+    if (left == null || right == null || left == right) {
+        throw new GradleException("Task 4 ${first}/${second} identity facts are missing or equal in ${file.name}")
+    }
+}
+verifyTaskFourEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    def taskFourCases = ['identity.replace-all-access', 'identity.restart',
+            'identity.ambiguous-split', 'identity.copied-node']
+    if (!requested.any { it in taskFourCases }) return
+    if (requested != taskFourCases) throw new GradleException('Task 4 evidence must select the exact canonical case set')
+    if (childExits['positive-identityreplaceallaccess'] != 0
+            || childExits['positive-identityambiguoussplit'] != 0
+            || childExits['positive-identitycopiednode'] != 0
+            || childExits['restart-prepare'] != 0 || childExits['restart-verify'] != 0) {
+        throw new GradleException('Task 4 native or two-process restart child exits are incomplete')
+    }
+
+    def expected = [
+            identityreplaceallaccess: [settlement: 'settled', assertions: 8],
+            identityrestart: [settlement: 'settled-after-restart', assertions: 5],
+            identityambiguoussplit: [settlement: 'ambiguous-split', assertions: 6],
+            identitycopiednode: [settlement: 'copied-live-identity', assertions: 5]
+    ]
+    def parsed = [:]
+    def expectedArtifactNames = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-identity') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifactNames.size()
+            || declaredNativeNames.toSet() != expectedArtifactNames) {
+        throw new GradleException('Task 4 native artifact set is duplicated, missing, or substituted')
+    }
+    expected.each { testId, semantics ->
+        def artifactName = "native-${testId}.properties"
+        if (declaredPaths.count { new File(it).name == artifactName } != 1
+                || declaredPaths.count { it == artifactName } != 1) {
+            throw new GradleException("Task 4 requires exactly one hash-bound ${artifactName}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        if (!file.toPath().startsWith(attempt.canonicalFile.toPath())) {
+            throw new GradleException("Task 4 artifact escapes attempt: ${artifactName}")
+        }
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        requireProperty(properties, 'settlement', semantics.settlement as String, file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 4 assertions') != semantics.assertions
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 4 operations') <= 0) {
+            throw new GradleException("Task 4 assertion/trace accounting mismatch in ${artifactName}")
+        }
+        def networkId = properties.getProperty('networkId')
+        if (networkId == null || !(networkId ==~ /ae2federation:network:v1:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/)) {
+            throw new GradleException("Task 4 versioned NetworkId is malformed in ${artifactName}")
+        }
+        parsed[testId] = properties
+    }
+
+    def replace = parsed.identityreplaceallaccess as Properties
+    def replaceFile = new File(attempt, 'native-identityreplaceallaccess.properties')
+    requireDistinct(replace, 'firstAttachmentId', 'secondAttachmentId', new File(attempt, 'native-identityreplaceallaccess.properties'))
+    requireProperty(replace, 'recoveredNetworkId', replace.getProperty('networkId'),
+            new File(attempt, 'native-identityreplaceallaccess.properties'))
+    requireProperty(replace, 'activeDuringRemoval', '0', new File(attempt, 'native-identityreplaceallaccess.properties'))
+    def nativeGridBefore = requireNativeObjectIdentity(replace, 'nativeGridBefore', replaceFile)
+    def nativeGridAfter = requireNativeObjectIdentity(replace, 'nativeGridAfter', replaceFile)
+    def nativeNodeBefore = requireNativeObjectIdentity(replace, 'nativeNodeBefore', replaceFile)
+    def nativeNodeAfter = requireNativeObjectIdentity(replace, 'nativeNodeAfter', replaceFile)
+    if (nativeGridAfter != nativeGridBefore || nativeNodeAfter != nativeNodeBefore) {
+        throw new GradleException('Task 4 native Grid/node continuity mismatch in native-identityreplaceallaccess.properties')
+    }
+
+    def split = parsed.identityambiguoussplit as Properties
+    requireDistinct(split, 'leftGrid', 'rightGrid', new File(attempt, 'native-identityambiguoussplit.properties'))
+    requireProperty(split, 'leftCanInherit', 'false', new File(attempt, 'native-identityambiguoussplit.properties'))
+    requireProperty(split, 'rightCanInherit', 'false', new File(attempt, 'native-identityambiguoussplit.properties'))
+
+    def copied = parsed.identitycopiednode as Properties
+    requireDistinct(copied, 'sourceGrid', 'copyGrid', new File(attempt, 'native-identitycopiednode.properties'))
+    requireDistinct(copied, 'sourceNode', 'copyNode', new File(attempt, 'native-identitycopiednode.properties'))
+    requireProperty(copied, 'sourceCanInherit', 'false', new File(attempt, 'native-identitycopiednode.properties'))
+    requireProperty(copied, 'copyCanInherit', 'false', new File(attempt, 'native-identitycopiednode.properties'))
+
+    def restart = parsed.identityrestart as Properties
+    requireProperty(restart, 'restored', 'true', new File(attempt, 'native-identityrestart.properties'))
+    def stateName = 'identity-restart-state.properties'
+    def prepareName = 'restart-prepare.log'
+    def verifyName = 'restart-verify.log'
+    [stateName, prepareName, verifyName].each { name ->
+        if (declaredPaths.count { it == name } != 1) throw new GradleException("Task 4 requires exactly one hash-bound ${name}")
+    }
+    def state = loadProperties(new File(attempt, stateName))
+    requireProperty(state, 'networkId', restart.getProperty('networkId'), new File(attempt, stateName))
+    def tracePattern = ~/AE2F_NATIVE_IDENTITY_BASELINE operation=add-node grid=([0-9a-f]+) service=([0-9a-f]+) node=([0-9a-f]+) restored=(true|false)/
+    def prepareTraces = (new File(attempt, prepareName).text =~ tracePattern).collect { it[1..4] }
+    def verifyTraces = (new File(attempt, verifyName).text =~ tracePattern).collect { it[1..4] }
+    if (prepareTraces.isEmpty() || verifyTraces.isEmpty()
+            || prepareTraces.any { it[3] != 'false' } || verifyTraces.any { it[3] != 'true' }
+            || prepareTraces[0][0] == verifyTraces[0][0]
+            || prepareTraces[0][1] == verifyTraces[0][1]
+            || prepareTraces[0][2] == verifyTraces[0][2]) {
+        throw new GradleException('Task 4 restart traces do not prove two-process native reconstruction')
+    }
+}
+verifyTaskFiveEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    def taskFiveCases = ['ports.bridge-cable-device', 'ports.hub-six-grids', 'ports.hub-repeated-grid',
+            'ports.reject-floating-node', 'ports.reject-cross-grid-join']
+    if (!requested.any { it in taskFiveCases }) return
+    if (requested != taskFiveCases) throw new GradleException('Task 5 evidence must select the exact canonical case set')
+
+    def expected = [
+            portsbridgecabledevice: 6,
+            portshubsixgrids: 8,
+            portshubrepeatedgrid: 7,
+            portsrejectfloatingnode: 7,
+            portsrejectcrossgridjoin: 6
+    ]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 5 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifactNames = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-ports') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifactNames.size()
+            || declaredNativeNames.toSet() != expectedArtifactNames) {
+        throw new GradleException('Task 5 native artifact set is duplicated, missing, or substituted')
+    }
+
+    def parsed = [:]
+    def traces = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1
+                || declaredPaths.count { new File(it).name == artifactName } != 1) {
+            throw new GradleException("Task 5 requires exactly one hash-bound ${artifactName}")
+        }
+        if (declaredPaths.count { it == logName } != 1
+                || declaredPaths.count { new File(it).name == logName } != 1) {
+            throw new GradleException("Task 5 requires exactly one hash-bound ${logName}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        if (!file.toPath().startsWith(attempt.canonicalFile.toPath())) {
+            throw new GradleException("Task 5 artifact escapes attempt: ${artifactName}")
+        }
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 5 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 5 operations') <= 0) {
+            throw new GradleException("Task 5 assertion/trace accounting mismatch in ${artifactName}")
+        }
+        parsed[testId] = properties
+        def tracePattern = ~/AE2F_PORT_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/
+        def traceFacts = [:]
+        (new File(attempt, logName).text =~ tracePattern).each { match ->
+            if (match[1] == testId) {
+                if (traceFacts.put(match[2], match[3]) != null) {
+                    throw new GradleException("Task 5 duplicate runtime trace fact in ${logName}: ${match[2]}")
+                }
+            }
+        }
+        traces[testId] = traceFacts
+    }
+
+    def requireTracedIdentity = { String testId, Properties properties, String name, File file ->
+        def value = requireNativeObjectIdentity(properties, name, file)
+        if (traces[testId][name] != value) {
+            throw new GradleException("Task 5 runtime trace identity mismatch in ${file.name}: ${name}")
+        }
+        value
+    }
+
+    def bridge = parsed.portsbridgecabledevice as Properties
+    def bridgeFile = new File(attempt, 'native-portsbridgecabledevice.properties')
+    requireProperty(bridge, 'cableAttached', 'true', bridgeFile)
+    requireProperty(bridge, 'deviceAttached', 'true', bridgeFile)
+    requireProperty(bridge, 'attachmentPolicy', 'native-exposed-edge', bridgeFile)
+    def cableGrid = requireTracedIdentity('portsbridgecabledevice', bridge, 'cableGrid', bridgeFile)
+    def deviceGrid = requireTracedIdentity('portsbridgecabledevice', bridge, 'deviceGrid', bridgeFile)
+    if (cableGrid == deviceGrid) throw new GradleException('Task 5 Bridge fixtures unexpectedly share one native Grid')
+
+    def faceNames = ['down', 'up', 'north', 'south', 'west', 'east']
+    def parseFaces = { String testId, Properties properties, File file ->
+        faceNames.collectEntries { face ->
+            [(face): requireTracedIdentity(testId, properties, "face.${face}", file)]
+        }
+    }
+    def six = parsed.portshubsixgrids as Properties
+    def sixFile = new File(attempt, 'native-portshubsixgrids.properties')
+    requireProperty(six, 'faceCount', '6', sixFile)
+    requireProperty(six, 'distinctGridCount', '6', sixFile)
+    requireProperty(six, 'deduplicated', 'false', sixFile)
+    if ((parseFaces('portshubsixgrids', six, sixFile).values() as Set).size() != 6) {
+        throw new GradleException('Task 5 six-face Hub Grid identities are not isolated')
+    }
+
+    def repeated = parsed.portshubrepeatedgrid as Properties
+    def repeatedFile = new File(attempt, 'native-portshubrepeatedgrid.properties')
+    requireProperty(repeated, 'faceCount', '6', repeatedFile)
+    requireProperty(repeated, 'distinctGridCount', '5', repeatedFile)
+    requireProperty(repeated, 'deduplicated', 'true', repeatedFile)
+    def repeatedFaces = parseFaces('portshubrepeatedgrid', repeated, repeatedFile)
+    if ((repeatedFaces.values() as Set).size() != 5 || repeatedFaces.north != repeatedFaces.south) {
+        throw new GradleException('Task 5 repeated Grid identity or face ownership is invalid')
+    }
+
+    def floating = parsed.portsrejectfloatingnode as Properties
+    def floatingFile = new File(attempt, 'native-portsrejectfloatingnode.properties')
+    requireProperty(floating, 'floatingGridAllocated', 'true', floatingFile)
+    if (floating.getProperty('floatingAccepted') != 'false'
+            || floating.getProperty('unsupportedAccepted') != 'false'
+            || floating.getProperty('ambiguousAccepted') != 'false'
+            || floating.getProperty('replacedInitiallyAttached') != 'true'
+            || floating.getProperty('replacedAccepted') != 'false') {
+        throw new GradleException('Task 5 floating boundary node was accepted')
+    }
+
+    def cross = parsed.portsrejectcrossgridjoin as Properties
+    def crossFile = new File(attempt, 'native-portsrejectcrossgridjoin.properties')
+    requireProperty(cross, 'joinRequested', 'true', crossFile)
+    if (cross.getProperty('joinAccepted') != 'false' || cross.getProperty('gridsRemainDistinct') != 'true') {
+        throw new GradleException('Task 5 cross-grid join was accepted')
+    }
+    def northGrid = requireTracedIdentity('portsrejectcrossgridjoin', cross, 'northGrid', crossFile)
+    def southGrid = requireTracedIdentity('portsrejectcrossgridjoin', cross, 'southGrid', crossFile)
+    if (northGrid == southGrid) throw new GradleException('Task 5 northGrid/southGrid identity facts are equal')
+}
+verifyTaskSixEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    def taskSixCases = ['lane.native-three-way', 'lane.pattern-subsets', 'lane.single-drop-owner',
+            'lane.reject-local-fallback', 'lane.native-reload']
+    if (!requested.any { it in taskSixCases }) return
+    if (requested != taskSixCases) throw new GradleException('Task 6 evidence must select the exact canonical case set')
+
+    def expected = [lanenativethreeway: 12, lanepatternsubsets: 5, lanesingledropowner: 3,
+            lanerejectlocalfallback: 4, lanenativereload: 4]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 6 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifactNames = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-lane') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifactNames.size()
+            || declaredNativeNames.toSet() != expectedArtifactNames) {
+        throw new GradleException('Task 6 native artifact set is duplicated, missing, or substituted')
+    }
+
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1 || declaredPaths.count { it == logName } != 1) {
+            throw new GradleException("Task 6 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        if (!file.toPath().startsWith(attempt.canonicalFile.toPath())) {
+            throw new GradleException("Task 6 artifact escapes attempt: ${artifactName}")
+        }
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 6 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 6 operations') != 1) {
+            throw new GradleException("Task 6 assertion/trace accounting mismatch in ${artifactName}")
+        }
+        def traceFacts = [:]
+        def tracePattern = ~/AE2F_LANE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/
+        (new File(attempt, logName).text =~ tracePattern).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 6 duplicate runtime trace fact in ${logName}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 6 runtime trace mismatch in ${artifactName}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+
+    def threeWay = parsed.lanenativethreeway as Properties
+    if (threeWay.getProperty('laneCount') != '3' || threeWay.getProperty('publishedProviderContexts') != '3'
+            || threeWay.getProperty('publishedProvidersMatchLanes') != 'true'
+            || threeWay.getProperty('nativeTickerDelegatesInvoked') != '3'
+            || threeWay.getProperty('publishedProvidersAfterClose') != '0'
+            || threeWay.getProperty('laneALocked') != 'true' || threeWay.getProperty('laneBProgressed') != 'true'
+            || threeWay.getProperty('laneCProgressed') != 'true' || threeWay.getProperty('nativePushCount') != '3') {
+        throw new GradleException('Task 6 three-way native execution semantics are incomplete')
+    }
+    def subsets = parsed.lanepatternsubsets as Properties
+    if (subsets.getProperty('laneAPatterns') != '1' || subsets.getProperty('laneBPatterns') != '2'
+            || subsets.getProperty('laneCPatterns') != '2' || subsets.getProperty('nativePushCount') != '3') {
+        throw new GradleException('Task 6 mapped Pattern subset semantics are incomplete')
+    }
+    def ownership = parsed.lanesingledropowner as Properties
+    if (ownership.getProperty('singleDropOwner') != 'true' || ownership.getProperty('patternDrops') != '1'
+            || ownership.getProperty('lanePatternInventorySlots') != '0') {
+        throw new GradleException('Task 6 Pattern inventory or drop ownership is duplicated')
+    }
+    def fallback = parsed.lanerejectlocalfallback as Properties
+    if (fallback.getProperty('localFallbackAccepted') != 'false'
+            || fallback.getProperty('adjacentMachineCandidate') != 'true'
+            || fallback.getProperty('adjacentMachineBypass') != 'false') {
+        throw new GradleException('Task 6 local target fallback or adjacent machine bypass was accepted')
+    }
+    def reload = parsed.lanenativereload as Properties
+    if (reload.getProperty('nativeStateRestored') != 'true' || reload.getProperty('laneALocked') != 'true'
+            || reload.getProperty('singlePatternRestored') != 'true') {
+        throw new GradleException('Task 6 native lane state did not round-trip')
+    }
+}
+verifyTaskSevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    def taskSevenCases = ['endpoint.local-native', 'endpoint.five-face-item-fluid',
+            'endpoint.reject-two-upstreams', 'endpoint.reject-capability-loop', 'endpoint.mode-isolation']
+    if (!requested.any { it in taskSevenCases }) return
+    if (requested != taskSevenCases) throw new GradleException('Task 7 evidence must select the exact canonical case set')
+    def expected = [endpointlocalnative: 9, endpointfivefaceitemfluid: 18, endpointrejecttwoupstreams: 4,
+            endpointrejectcapabilityloop: 6, endpointmodeisolation: 7]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 7 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifactNames = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-endpoint') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifactNames.size()
+            || declaredNativeNames.toSet() != expectedArtifactNames) {
+        throw new GradleException('Task 7 native artifact set is duplicated, missing, or substituted')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1 || declaredPaths.count { it == logName } != 1
+                || declaredPaths.count { new File(it).name == artifactName } != 1) {
+            throw new GradleException("Task 7 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        if (!file.toPath().startsWith(attempt.canonicalFile.toPath())) {
+            throw new GradleException("Task 7 artifact escapes attempt: ${artifactName}")
+        }
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 7 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 7 operations') != 1) {
+            throw new GradleException("Task 7 assertion/trace accounting mismatch in ${artifactName}")
+        }
+        def traceFacts = [:]
+        def tracePattern = ~/AE2F_ENDPOINT_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/
+        (new File(attempt, logName).text =~ tracePattern).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 7 duplicate runtime trace fact in ${logName}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 7 runtime trace mismatch in ${artifactName}: ${name}")
+            }
+        }
+        def nativeEntries = [:]
+        def nativeEntryPattern = ~/AE2F_ENDPOINT_NATIVE_ENTRY testId=([a-z0-9]+) method=([^\s]+) owner=([0-9]+)/
+        (new File(attempt, logName).text =~ nativeEntryPattern).each { match ->
+            if (match[1] == testId) {
+                def previous = nativeEntries.put(match[2], match[3])
+                if (previous != null && previous != match[3]) {
+                    throw new GradleException("Task 7 conflicting native method entry identity in ${logName}: ${match[2]}")
+                }
+            }
+        }
+        if (testId == 'endpointlocalnative') {
+            ['nativePushOwner', 'nativeTargetOwner'].each { name ->
+                parsePositiveInteger(properties.getProperty(name), "Task 7 ${name}")
+            }
+            if (nativeEntries['PatternProviderLogic.pushPattern'] != properties.getProperty('nativePushOwner')
+                    || nativeEntries['PatternProviderTargetCache.find'] != properties.getProperty('nativeTargetOwner')) {
+                throw new GradleException('Task 7 native method entry identity mismatch')
+            }
+        }
+        parsed[testId] = properties
+    }
+    def local = parsed.endpointlocalnative as Properties
+    if (local.getProperty('verifiedUpstreamCount') != '1' || local.getProperty('localInputAccepted') != 'true'
+            || local.getProperty('subnetInputCount') != '1' || local.getProperty('subnetFaceCount') != '5'
+            || local.getProperty('remoteProviderRejected') != 'true'
+            || local.getProperty('physicalAdjacencyVerified') != 'true'
+            || local.getProperty('upstreamOutsideSubnet') != 'true'
+            || local.getProperty('providerGrid') == local.getProperty('subnetGrid')
+            || local.getProperty('nativeReturnOwner') != 'true' || local.getProperty('endpointBufferSlots') != '0'
+            || local.getProperty('nativePushEntry') != 'PatternProviderLogic.pushPattern'
+            || local.getProperty('nativeTargetEntry') != 'PatternProviderTargetCache.find') {
+        throw new GradleException('Task 7 Local native target or Grid separation semantics are incomplete')
+    }
+    def faces = parsed.endpointfivefaceitemfluid as Properties
+    def faceNames = ['down', 'up', 'north', 'south', 'east']
+    if (faces.getProperty('subnetFaceCount') != '5' || faces.getProperty('sharedSubnetNode') != 'true'
+            || faces.getProperty('resourceGuessing') != 'false'
+            || faces.getProperty('nativeItemAdapter') != 'GenericStackItemStorage'
+            || faces.getProperty('nativeFluidAdapter') != 'GenericStackFluidStorage'
+            || faces.getProperty('nativeSidedItemCapability') != 'true'
+            || faces.getProperty('nativeSidedFluidCapability') != 'true'
+            || faces.getProperty('federationFaceExcluded') != 'true'
+            || faceNames.any { faces.getProperty("face.${it}.item") != 'true'
+                    || faces.getProperty("face.${it}.fluid") != 'true'
+                    || faces.getProperty("face.${it}.node") != faces.getProperty('subnetNode')
+                    || faces.getProperty("face.${it}.storage") != faces.getProperty('subnetStorage') }) {
+        throw new GradleException('Task 7 five-face item/fluid capability composition is incomplete')
+    }
+    def owners = parsed.endpointrejecttwoupstreams as Properties
+    if (owners.getProperty('candidateUpstreamCount') != '2' || owners.getProperty('verifiedUpstreamCount') != '0'
+            || owners.getProperty('twoUpstreamsAccepted') != 'false'
+            || owners.getProperty('returnTargetBound') != 'false' || owners.getProperty('partialBinding') != 'false') {
+        throw new GradleException('Task 7 accepted two Local upstream Providers')
+    }
+    def loop = parsed.endpointrejectcapabilityloop as Properties
+    if (loop.getProperty('loopAttempted') != 'true' || loop.getProperty('loopAccepted') != 'false'
+            || loop.getProperty('inputContextReturnResolved') != 'false'
+            || loop.getProperty('returnContextTargetResolved') != 'false'
+            || loop.getProperty('returnInventoryChanged') != 'false' || loop.getProperty('contextSeparated') != 'true') {
+        throw new GradleException('Task 7 accepted a capability input/return loop')
+    }
+    def modes = parsed.endpointmodeisolation as Properties
+    if (modes.getProperty('localModeAccepted') != 'true' || modes.getProperty('federatedTargetAccepted') != 'true'
+            || modes.getProperty('federatedLocalInputAccepted') != 'false'
+            || modes.getProperty('staleLocalContextAccepted') != 'false'
+            || modes.getProperty('staleReturnContextAccepted') != 'false'
+            || modes.getProperty('outstandingBindingReused') != 'false'
+            || modes.getProperty('freshClaimRequired') != 'true') {
+        throw new GradleException('Task 7 Local/Federated mode isolation failed')
+    }
+}
+verifyTaskEightEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    def taskEightCases = ['storage-proof.native-projection', 'storage-proof.four-fabric-diamond',
+            'storage-proof.reject-loop', 'storage-proof.opaque-alias']
+    if (!requested.any { it in taskEightCases }) return
+    if (requested != taskEightCases) throw new GradleException('Task 8 evidence must select the exact canonical case set')
+    def expected = [storageproofnativeprojection: 6, storageprooffourfabricdiamond: 6,
+            storageproofrejectloop: 4, storageproofopaquealias: 4]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 8 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-storageproof') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 8 native artifact set is duplicated, missing, or substituted')
+    }
+    def parsed = [:]
+    def nativeMounts = [:]
+    def nativeDelegates = [:]
+    def providerMounts = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1 || declaredPaths.count { it == logName } != 1
+                || declaredPaths.count { new File(it).name == artifactName } != 1) {
+            throw new GradleException("Task 8 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 8 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 8 operations') != 1) {
+            throw new GradleException("Task 8 assertion/trace accounting mismatch in ${artifactName}")
+        }
+        def logText = new File(attempt, logName).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_STORAGE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.:-]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 8 duplicate runtime trace fact in ${logName}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 8 runtime trace mismatch in ${artifactName}: ${name}")
+            }
+        }
+        nativeMounts[testId] = (logText =~ /AE2F_STORAGE_NATIVE_MOUNT testId=([a-z0-9]+) aggregate=([0-9]+) storage=([0-9]+) priority=(-?[0-9]+)/)
+                .findAll { it[1] == testId }.collect { [aggregate: it[2], storage: it[3], priority: it[4]] }
+        nativeDelegates[testId] = (logText =~ /AE2F_STORAGE_NATIVE_DELEGATE testId=([a-z0-9]+) storage=([0-9]+)/)
+                .findAll { it[1] == testId }.collect { it[2] }
+        providerMounts[testId] = (logText =~ /AE2F_STORAGE_PROVIDER_MOUNT testId=([a-z0-9]+) provider=([0-9]+) storage=([0-9]+) priority=(-?[0-9]+)/)
+                .findAll { it[1] == testId }.collect { [provider: it[2], storage: it[3], priority: it[4]] }
+        parsed[testId] = properties
+    }
+
+    def projection = parsed.storageproofnativeprojection as Properties
+    if (projection.getProperty('sourceCount') != '1' || projection.getProperty('projectionExcluded') != 'true'
+            || projection.getProperty('sourceIsNativeStore') != 'true'
+            || projection.getProperty('nativeSource') in [projection.getProperty('aggregate'), projection.getProperty('projection')]
+            || nativeMounts.storageproofnativeprojection.count { it.storage == projection.getProperty('projection') } != 1
+            || !nativeMounts.storageproofnativeprojection.any { it.storage == projection.getProperty('nativeSource') }
+            || !nativeDelegates.storageproofnativeprojection.contains(projection.getProperty('nativeSource'))) {
+        throw new GradleException('Task 8 forged source identity or native projection separation')
+    }
+    def diamond = parsed.storageprooffourfabricdiamond as Properties
+    def routeAliases = diamond.stringPropertyNames().findAll { it.startsWith('route.fabric-') }
+            .collect { diamond.getProperty(it) }
+    def routeProviders = diamond.stringPropertyNames().findAll { it.startsWith('provider.fabric-') }
+            .collect { diamond.getProperty(it) }
+    if (diamond.getProperty('routeCount') != '4' || routeAliases.size() != 4 || routeAliases.toSet().size() != 4
+            || routeProviders.size() != 4 || routeProviders.toSet().size() != 4
+            || diamond.getProperty('sourceCount') != '1' || diamond.getProperty('stableIdentityDedup') != 'true'
+            || diamond.getProperty('sourceIsNativeStore') != 'true'
+            || diamond.getProperty('selectedPriority') != '40'
+            || diamond.getProperty('routePriorities') != '40,30,20,10'
+            || nativeMounts.storageprooffourfabricdiamond.count {
+                it.aggregate == diamond.getProperty('destinationAggregate') && it.storage in routeAliases
+            } != 4
+            || nativeMounts.storageprooffourfabricdiamond.findAll {
+                it.aggregate == diamond.getProperty('destinationAggregate') && it.storage in routeAliases
+            }.collect { it.priority }.toSet() != ['40', '30', '20', '10'] as Set
+            || providerMounts.storageprooffourfabricdiamond.findAll {
+                it.provider in routeProviders && it.storage in routeAliases
+            }.collect { [it.provider, it.storage, it.priority] }.toSet().size() != 4
+            || providerMounts.storageprooffourfabricdiamond.findAll {
+                it.provider in routeProviders && it.storage in routeAliases
+            }.collect { it.priority }.toSet() != ['40', '30', '20', '10'] as Set
+            || !nativeDelegates.storageprooffourfabricdiamond.contains(diamond.getProperty('nativeSource'))) {
+        throw new GradleException('Task 8 diamond source identity or priority semantics are invalid')
+    }
+    def loop = parsed.storageproofrejectloop as Properties
+    if (loop.getProperty('loopAttempted') != 'true' || loop.getProperty('loopAccepted') != 'false'
+            || loop.getProperty('diagnostic') != 'COMPLETE_AGGREGATE_MOUNT'
+            || loop.getProperty('nativeListingTerminated') != 'true'
+            || nativeMounts.storageproofrejectloop.count { it.aggregate in [loop.getProperty('leftAggregate'),
+                    loop.getProperty('rightAggregate')] } != 2) {
+        throw new GradleException('Task 8 accepted aggregate storage loop')
+    }
+    def opaque = parsed.storageproofopaquealias as Properties
+    if (opaque.getProperty('opaqueAliasAccepted') != 'false' || opaque.getProperty('diagnostic') != 'OPAQUE_ALIAS'
+            || opaque.getProperty('partialSources') != '0'
+            || nativeMounts.storageproofopaquealias.count {
+                it.aggregate == opaque.getProperty('aggregate') && it.storage == opaque.getProperty('alias')
+            } != 1) {
+        throw new GradleException('Task 8 opaque alias acceptance was not rejected')
+    }
+}
+verifyTaskNineEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskNineCases }) return
+    if (requested != taskNineCases) throw new GradleException('Task 9 evidence must select the exact canonical case set')
+    def expected = [craftproofnativeterminal: 10, craftproofnativestocking: 12,
+            craftproofmissingmaterial: 7, craftproofnocpu: 7, craftproofdisconnectcancelrestart: 14]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 9 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-craftproof') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 9 native artifact set is duplicated, missing, or substituted')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1 || declaredPaths.count { it == logName } != 1
+                || declaredPaths.count { new File(it).name == artifactName } != 1) {
+            throw new GradleException("Task 9 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 9 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 9 operations') != 1) {
+            throw new GradleException("Task 9 assertion/operation accounting mismatch in ${artifactName}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, logName).text =~ /AE2F_CRAFT_NATIVE_ENTRY testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 9 duplicate runtime trace fact in ${logName}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 9 runtime trace mismatch in ${artifactName}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def terminal = parsed.craftproofnativeterminal as Properties
+    def terminalJobIds = terminal.getProperty('nativeJobIds', '').split(',').findAll { !it.isBlank() } as Set
+    if (terminal.getProperty('requestMode') != 'terminal-equivalent' || terminal.getProperty('planSimulation') != 'false'
+            || terminal.getProperty('submitted') != 'true' || terminal.getProperty('standaloneLink') != 'true'
+            || terminal.getProperty('initialMaterial') != '2' || terminal.getProperty('materialAfterSubmit') != '0'
+            || terminal.getProperty('providerDispatch') != 'true' || terminal.getProperty('resultInserted') != '4'
+            || parsePositiveInteger(terminal.getProperty('uniqueNativeTasks'), 'Task 9 terminal unique native tasks')
+                    != terminalJobIds.size()
+            || terminalJobIds.size() != 1 || !terminalJobIds.every { it ==~ /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ }
+            || terminal.getProperty('cpuCount') != '1') {
+        throw new GradleException('Task 9 terminal native lifecycle semantics are incomplete')
+    }
+    ['craftingService', 'provider', 'assembler', 'storage'].each {
+        requireNativeObjectIdentity(terminal, it, new File(attempt, 'native-craftproofnativeterminal.properties'))
+    }
+    def stocking = parsed.craftproofnativestocking as Properties
+    def stockingJobIds = stocking.getProperty('nativeJobIds', '').split(',').findAll { !it.isBlank() } as Set
+    if (stocking.getProperty('requestMode') != 'multi-crafting-tracker' || stocking.getProperty('submitted') != 'true'
+            || stocking.getProperty('initialMaterial') != '2' || stocking.getProperty('materialAfterSubmit') != '0'
+            || stocking.getProperty('acceptedResult') != '4' || stocking.getProperty('storedResult') != '4'
+            || stocking.getProperty('linkDone') != 'true' || stocking.getProperty('stateChanges') != '1'
+            || stocking.getProperty('duplicateInvocationSubmitted') != 'false'
+            || parsePositiveInteger(stocking.getProperty('uniqueNativeTasks'), 'Task 9 stocking unique native tasks')
+                    != stockingJobIds.size()
+            || stockingJobIds.size() != 1 || stockingJobIds.first() != stocking.getProperty('linkId')
+            || !(stocking.getProperty('linkId') ==~ /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/)) {
+        throw new GradleException('Task 9 stocking native lifecycle semantics are incomplete')
+    }
+    ['requester', 'requesterNode', 'craftingService', 'provider'].each {
+        requireNativeObjectIdentity(stocking, it, new File(attempt, 'native-craftproofnativestocking.properties'))
+    }
+    def missing = parsed.craftproofmissingmaterial as Properties
+    if (missing.getProperty('planSimulation') != 'true' || missing.getProperty('missingMaterial') != '2'
+            || missing.getProperty('submitted') != 'false' || missing.getProperty('submitError') != 'INCOMPLETE_PLAN'
+            || missing.getProperty('materialAfterPlan') != '0' || missing.getProperty('uniqueNativeTasks') != '0') {
+        throw new GradleException('Task 9 missing-material semantics are incomplete')
+    }
+    def noCpu = parsed.craftproofnocpu as Properties
+    if (noCpu.getProperty('planSimulation') != 'false' || noCpu.getProperty('cpuCount') != '0'
+            || noCpu.getProperty('submitted') != 'false' || noCpu.getProperty('submitError') != 'NO_CPU_FOUND'
+            || noCpu.getProperty('materialAfterSubmit') != '2' || noCpu.getProperty('uniqueNativeTasks') != '0') {
+        throw new GradleException('Task 9 no-CPU semantics are incomplete')
+    }
+    def restart = parsed.craftproofdisconnectcancelrestart as Properties
+    def restartJobIds = restart.getProperty('nativeJobIds', '').split(',').findAll { !it.isBlank() } as Set
+    if (restart.getProperty('submitted') != 'true' || restart.getProperty('initialMaterial') != '64'
+            || restart.getProperty('materialBeforeSuspend') != '0'
+            || restart.getProperty('cpuMaterialBeforeSuspend') != '64'
+            || restart.getProperty('materialAfterCancel') != '64' || restart.getProperty('acceptedResult') != '0'
+            || restart.getProperty('linkPersisted') != 'true' || restart.getProperty('linkReloaded') != 'true'
+            || restart.getProperty('linkCanceled') != 'true' || restart.getProperty('cpuBusyAfterCancel') != 'false'
+            || restart.getProperty('uuidPreserved') != 'true'
+            || parsePositiveInteger(restart.getProperty('uniqueNativeTasks'), 'Task 9 restart unique native tasks')
+                    != restartJobIds.size()
+            || restartJobIds.size() != 1 || restartJobIds.first() != restart.getProperty('linkId')
+            || restart.getProperty('originalRequester') == restart.getProperty('reloadedRequester')
+            || !(restart.getProperty('linkId') ==~ /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/)) {
+        throw new GradleException('Task 9 disconnect/cancel/restart semantics are incomplete')
+    }
+}
+verifyTaskTenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTenCases }) return
+    if (requested != taskTenCases) throw new GradleException('Task 10 evidence must select the exact canonical case set')
+    def expected = [energyproofdirectional: 5, energyproofcoldstart: 2, energyproofrejectreverse: 3,
+            energyproofnosource: 2, energyproofring: 3]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 10 native child exit is missing or nonzero: ${testId}")
+        }
+    }
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.findAll {
+        new File(it).name.startsWith('native-energyproof') && new File(it).name.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 10 native artifact set is duplicated, missing, or substituted')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifactName = "native-${testId}.properties"
+        def logName = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifactName } != 1 || declaredPaths.count { it == logName } != 1
+                || declaredPaths.count { new File(it).name == artifactName } != 1) {
+            throw new GradleException("Task 10 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifactName).canonicalFile
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 10 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 10 operations') != 1) {
+            throw new GradleException("Task 10 assertion/operation accounting mismatch in ${artifactName}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, logName).text =~ /AE2F_ENERGY_NATIVE_ENTRY testId=([a-z0-9]+) fact=([A-Za-z0-9.:-]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 10 duplicate runtime trace fact in ${logName}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 10 runtime trace mismatch in ${artifactName}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+
+    def directional = parsed.energyproofdirectional as Properties
+    if (directional.getProperty('providerGrid') == directional.getProperty('consumerGrid')
+            || directional.getProperty('extracted') != '250' || directional.getProperty('sourceDebit') != '250'
+            || directional.getProperty('providerChannels') != '0' || directional.getProperty('consumerChannels') != '0'
+            || directional.getProperty('distinctDataGrids') != 'true'
+            || directional.getProperty('targetReceiptTransaction') != 'none') {
+        throw new GradleException('Task 10 directional native source-debit proof is incomplete')
+    }
+    def coldStart = parsed.energyproofcoldstart as Properties
+    if (coldStart.getProperty('initiallyPowered') != 'false' || coldStart.getProperty('poweredAfterOverlay') != 'true'
+            || coldStart.getProperty('providerGrid') == coldStart.getProperty('consumerGrid')
+            || coldStart.getProperty('distinctDataGrids') != 'true') {
+        throw new GradleException('Task 10 cold-start native power discovery is incomplete')
+    }
+    def reverse = parsed.energyproofrejectreverse as Properties
+    if (reverse.getProperty('declaredEdge') != 'consumer-to-provider'
+            || reverse.getProperty('reverseAttempted') != 'true' || reverse.getProperty('reverseExtracted') != '200'
+            || reverse.getProperty('reverseRejected') != 'false'
+            || reverse.getProperty('missingHook') != 'caller-edge-direction-route-identity-authorization'
+            || reverse.getProperty('distinctDataGrids') != 'true') {
+        throw new GradleException('Task 10 completed-looking evidence is invalid: reverse extraction result was hidden')
+    }
+    def noSource = parsed.energyproofnosource as Properties
+    if (noSource.getProperty('extracted') != '0' || noSource.getProperty('consumerPowered') != 'false'
+            || noSource.getProperty('generatedEnergy') != '0' || noSource.getProperty('fabricIdlePower') != '0'
+            || noSource.getProperty('fabricInfiniteEnergy') != 'false') {
+        throw new GradleException('Task 10 no-source semantics are incomplete')
+    }
+    def ring = parsed.energyproofring as Properties
+    if (ring.getProperty('serviceCount') != '3' || ring.getProperty('uniqueServiceCount') != '3'
+            || ring.getProperty('terminated') != 'true' || ring.getProperty('extracted') != '300'
+            || ring.getProperty('createdEnergy') != '0' || ring.getProperty('distinctDataGrids') != 'true'
+            || parseNonnegativeInteger(ring.getProperty('totalBefore'), 'Task 10 ring total before')
+                    - parseNonnegativeInteger(ring.getProperty('totalAfter'), 'Task 10 ring total after') != 300) {
+        throw new GradleException('Task 10 ring termination or conservation semantics are incomplete')
+    }
+}
+verifyTaskElevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskElevenCases }) return
+    if (requested != taskElevenCases) throw new GradleException('Task 11 evidence must select the exact canonical case set')
+    def expected = [bridgevalid: 4, bridgeinvalid: 3, bridgesamegrid: 3,
+            bridgerejectfederationcable: 2, bridgereloadreplace: 4]
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) throw new GradleException("Task 11 native child exit is missing or nonzero: ${testId}")
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 11 requires exactly one hash-bound artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 11 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 11 operations') != 1) {
+            throw new GradleException("Task 11 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def facts = [:]
+        (new File(attempt, log).text =~ /AE2F_BRIDGE_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && facts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 11 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (facts[name] != properties.getProperty(name)) throw new GradleException("Task 11 runtime trace mismatch in ${artifact}: ${name}")
+        }
+    }
+    def valid = loadProperties(new File(attempt, 'native-bridgevalid.properties'))
+    if (valid.getProperty('valid') != 'true' || valid.getProperty('distinctGrids') != 'true'
+            || valid.getProperty('mainToOuterNativeConnection') != 'false' || valid.getProperty('membershipCandidate') != 'true') {
+        throw new GradleException('Task 11 valid Bridge semantics are incomplete')
+    }
+    def invalid = loadProperties(new File(attempt, 'native-bridgeinvalid.properties'))
+    if (invalid.getProperty('reason') != 'MISSING_OUTER_ATTACHMENT' || invalid.getProperty('membershipCandidate') != 'false'
+            || invalid.getProperty('nativeNodeDestroyedOnRemoval') != 'true') throw new GradleException('Task 11 invalid Bridge semantics are incomplete')
+    def same = loadProperties(new File(attempt, 'native-bridgesamegrid.properties'))
+    if (same.getProperty('sameGrid') != 'true' || same.getProperty('valid') != 'false'
+            || same.getProperty('membershipCandidate') != 'false') throw new GradleException('Task 11 same-Grid Bridge semantics are incomplete')
+    def cable = loadProperties(new File(attempt, 'native-bridgerejectfederationcable.properties'))
+    if (cable.getProperty('federationCableAccepted') != 'false' || cable.getProperty('reason') != 'FEDERATION_CABLE_UNSUPPORTED') {
+        throw new GradleException('Task 11 Federation Cable rejection semantics are incomplete')
+    }
+    def lifecycle = loadProperties(new File(attempt, 'native-bridgereloadreplace.properties'))
+    if (lifecycle.getProperty('replacementAccepted') != 'false' || lifecycle.getProperty('removed') != 'true'
+            || lifecycle.getProperty('repeatedClose') != 'true' || lifecycle.getProperty('outerNodeDestroyed') != 'true') {
+        throw new GradleException('Task 11 replacement/removal lifecycle semantics are incomplete')
+    }
+}
+verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
+    strictCanonicalPath(resultFile)
+    if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
+    def attempt = resultFile.parentFile.canonicalFile
+    def report
+    try {
+        report = new JsonSlurper().parse(resultFile)
+    } catch (Exception exception) {
+        throw new GradleException("Malformed result report: ${resultFile}", exception)
+    }
+    if (report.schemaVersion != 3 || report.status != 'complete' || report.parentExit != 0) {
+        throw new GradleException('Result report is incomplete or has an unsupported schema')
+    }
+    if (!(report.evidenceRoot instanceof String) || !(report.attemptPath instanceof String)
+            || report.evidenceRoot != attempt.parentFile.canonicalPath || report.attemptPath != attempt.canonicalPath) {
+        throw new GradleException('Producer evidence root or attempt path mismatch')
+    }
+    def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: report.runId]
+    if (report.pathIdentitySha256 != sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))) {
+        throw new GradleException('Producer path identity hash mismatch')
+    }
+    if (!(report.kind in ['verify', 'benchmark']) || !(report.runId instanceof String)
+            || attempt.name != "attempt-${report.runId}") {
+        throw new GradleException('Result run identity does not match its attempt directory')
+    }
+    def started = Instant.parse(report.startedAt as String)
+    def ended = Instant.parse(report.endedAt as String)
+    if (ended.isBefore(started) || ended.isAfter(Instant.now().plusSeconds(5))
+            || started.isBefore(Instant.now().minusSeconds(900))) {
+        throw new GradleException('Result timestamps are stale or invalid')
+    }
+    if (!(report.requested instanceof List) || report.requested.isEmpty()
+            || report.executed != report.requested || !(report.assertions instanceof List)
+            || report.assertions.size() != report.requested.size()
+            || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }) {
+        throw new GradleException('Requested, executed, or assertion accounting is incomplete')
+    }
+    if (!(report.childExits instanceof Map) || report.childExits.any { label, exit -> !(exit instanceof Number) }) {
+        throw new GradleException('Child exit accounting is malformed')
+    }
+    def nativeAssertions = report.assertions.findAll { it.nativeTestId != null }
+    if (report.kind == 'benchmark') {
+        if (report.childExits['benchmark-gametest'] != 0 || nativeAssertions.size() != 1) {
+            throw new GradleException('Benchmark child exit or native assertion accounting is invalid')
+        }
+    } else if (nativeAssertions.any { assertion ->
+        def positiveExit = report.childExits["positive-${assertion.nativeTestId}"]
+        def restartExit = report.childExits['restart-verify']
+        positiveExit == null ? restartExit != 0 : positiveExit != 0
+    }) {
+        throw new GradleException('Positive GameTest child exit is missing or nonzero')
+    }
+    if (!(report.artifacts instanceof List) || report.artifacts.isEmpty()) {
+        throw new GradleException('Result report has no artifacts')
+    }
+    report.artifacts.each { artifact ->
+        if (!(artifact instanceof Map) || !(artifact.path instanceof String) || !(artifact.sha256 instanceof String)) {
+            throw new GradleException('Artifact metadata is malformed')
+        }
+        def file = new File(attempt, artifact.path as String).canonicalFile
+        if (!file.toPath().startsWith(attempt.toPath()) || !file.isFile() || sha256(file.bytes) != artifact.sha256) {
+            throw new GradleException("Artifact is missing, outside the attempt, or hash-mismatched: ${artifact.path}")
+        }
+    }
+    verifyTaskFourEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskFiveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskSixEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskSevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskEightEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskNineEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskTenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskElevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    if (requireCurrentIdentity) {
+        def identityDir = new File(attempt, '.identity-check')
+        def identity = currentSourceIdentity(identityDir)
+        project.delete(identityDir)
+        def jar = productJar.get().asFile
+        if (report.sourceRevision != identity.revision || report.dirtyDiffSha256 != identity.dirtySha256
+                || report.dependencyLockSha256 != sha256(verificationMetadata.asFile.bytes)
+                || !jar.isFile() || report.productJarSha256 != sha256(jar.bytes)) {
+            throw new GradleException('Result source, dependency, or product identity is stale')
+        }
+        def manifest = new JsonSlurper().parse(manifestFile.asFile)
+        def expectedEntries = report.kind == 'benchmark'
+                ? manifest.profiles.collectEntries { [(it.id): it] }
+                : manifest.cases.collectEntries { [(it.id): it] }
+        report.assertions.each { assertion ->
+            def expected = expectedEntries[assertion.caseId]
+            if (expected == null) throw new GradleException("Result references an unknown manifest entry: ${assertion.caseId}")
+            if ((report.kind == 'benchmark' || expected.backend in ['gametest', 'gametest-restart'])
+                    && (assertion.nativeTestId != expected.testId
+                    || assertion.assertionCount != expected.assertions)) {
+                throw new GradleException("Result native identity does not match manifest entry: ${assertion.caseId}")
+            }
+            if (expected.structure != null && assertion.structure != null && assertion.structure != expected.structure) {
+                throw new GradleException("Result structure does not match manifest entry: ${assertion.caseId}")
+            }
+            if (report.kind == 'benchmark' && assertion.operationCount != expected.operations) {
+                throw new GradleException("Result benchmark operations do not match manifest profile: ${assertion.caseId}")
+            }
+        }
+    }
+    report
+}
+
+def verifyNativeEvidence = { File evidenceFile, Map expected ->
+    if (!evidenceFile.isFile()) throw new GradleException("Native evidence artifact is missing: ${evidenceFile}")
+    def properties = new Properties()
+    evidenceFile.withInputStream { properties.load(it) }
+    if (properties.getProperty('schemaVersion') != '1' || properties.getProperty('status') != 'passed'
+            || properties.getProperty('kind') != expected.kind
+            || properties.getProperty('testId') != expected.testId
+            || properties.getProperty('structure') != expected.structure) {
+        throw new GradleException("Native evidence identity mismatch: ${evidenceFile}")
+    }
+    def assertions = parsePositiveInteger(properties.getProperty('assertions'), 'native assertions')
+    def operations = parsePositiveInteger(properties.getProperty('operations'), 'native operations')
+    def inserted = parseNonnegativeInteger(properties.getProperty('inserted'), 'native inserted')
+    def extracted = parseNonnegativeInteger(properties.getProperty('extracted'), 'native extracted')
+    def elapsedNanos = parseNonnegativeInteger(properties.getProperty('elapsedNanos'), 'native elapsedNanos')
+    if (assertions != expected.assertions as long || operations != expected.operations as long
+            || (!expected.allowZeroWork && inserted <= 0) || extracted != inserted
+            || (expected.kind == 'benchmark' && elapsedNanos <= 0)) {
+        throw new GradleException("Native evidence accounting mismatch: ${evidenceFile}")
+    }
+    [assertions: assertions, operations: operations, inserted: inserted, extracted: extracted, elapsedNanos: elapsedNanos]
+}
+
+def reportVerifierRejects = { File parent, String name, Closure mutate ->
+    def runId = "probe-${name}"
+    def attempt = new File(parent, "attempt-${runId}")
+    attempt.mkdirs()
+    def artifact = new File(attempt, 'probe.txt')
+    artifact.text = 'persisted verifier probe\n'
+    def binding = [evidenceRoot: attempt.parentFile.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
+    def report = [schemaVersion: 3, status: 'complete', runId: runId, kind: 'verify',
+            evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
+            pathIdentitySha256: sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
+            sourceRevision: 'probe', dirtyDiffSha256: 'probe', dependencyLockSha256: 'probe', productJarSha256: 'probe',
+            seed: 0, startedAt: Instant.now().minusSeconds(1).toString(), endedAt: Instant.now().toString(),
+            requested: ['probe'], executed: ['probe'], assertions: [[caseId: 'probe', status: 'passed']],
+            parentExit: 0, childExits: [:], artifacts: [[path: 'probe.txt', sha256: sha256(artifact.bytes)]]]
+    mutate(report, artifact)
+    def result = new File(attempt, 'result.json')
+    result.text = JsonOutput.toJson(report)
+    try {
+        verifyPersistedReport(result, false)
+        false
+    } catch (GradleException exception) {
+        exception.message
+    } finally {
+        project.delete(attempt)
+    }
+}
+
+def taskFourIdentityFactsProbeRejects = { File sourceResult, String name, Closure mutate ->
+    def sourceAttempt = sourceResult.parentFile.canonicalFile
+    def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+    def runId = "task04-identity-facts-${name}-${UUID.randomUUID()}"
+    def attempt = new File(evidenceRoot, "attempt-${runId}")
+    project.copy { from(sourceAttempt); into(attempt) }
+    def nativeFile = new File(attempt, 'native-identityreplaceallaccess.properties')
+    def properties = loadProperties(nativeFile)
+    mutate(properties)
+    nativeFile.withOutputStream { properties.store(it, 'Task 4 native identity fact regression probe') }
+    def resultFile = new File(attempt, 'result.json')
+    def report = new JsonSlurper().parse(resultFile)
+    report.runId = runId
+    report.evidenceRoot = evidenceRoot.canonicalPath
+    report.attemptPath = attempt.canonicalPath
+    def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+    report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+    report.startedAt = Instant.now().minusSeconds(1).toString()
+    report.endedAt = Instant.now().toString()
+    report.artifacts.each { artifact -> artifact.sha256 = sha256(new File(attempt, artifact.path as String).bytes) }
+    resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    try {
+        verifyPersistedReport(resultFile, false)
+        false
+    } catch (GradleException exception) {
+        if (!exception.message.contains('is missing, empty, or malformed')) throw exception
+        true
+    } finally {
+        project.delete(attempt)
+    }
+}
+
+def taskFiveEvidenceProbeRejects = { File sourceResult, String name, Closure mutate ->
+    def sourceAttempt = sourceResult.parentFile.canonicalFile
+    def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+    def runId = "task05-${name}-${UUID.randomUUID()}"
+    def attempt = new File(evidenceRoot, "attempt-${runId}")
+    project.copy { from(sourceAttempt); into(attempt) }
+    def resultFile = new File(attempt, 'result.json')
+    def report = new JsonSlurper().parse(resultFile)
+    mutate(attempt, report)
+    report.runId = runId
+    report.evidenceRoot = evidenceRoot.canonicalPath
+    report.attemptPath = attempt.canonicalPath
+    def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+    report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+    report.startedAt = Instant.now().minusSeconds(1).toString()
+    report.endedAt = Instant.now().toString()
+    report.artifacts.each { artifact ->
+        def file = new File(attempt, artifact.path as String)
+        if (file.isFile()) artifact.sha256 = sha256(file.bytes)
+    }
+    resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    try {
+        verifyPersistedReport(resultFile, false)
+        false
+    } catch (GradleException exception) {
+        exception.message
+    } finally {
+        project.delete(attempt)
+    }
+}
+
+def taskSevenEvidenceProbeRejects = { File sourceResult, String name, String expectedMessage, Closure mutate ->
+    def rejection = taskFiveEvidenceProbeRejects(sourceResult, name, mutate)
+    rejection instanceof String && rejection.contains(expectedMessage)
+}
+
+def writeEmptyStructure = { File output ->
+    output.parentFile.mkdirs()
+    new GZIPOutputStream(new FileOutputStream(output)).withCloseable { gzip ->
+        new DataOutputStream(gzip).withCloseable { data ->
+            data.writeByte(10)
+            data.writeUTF('')
+            data.writeByte(9); data.writeUTF('size'); data.writeByte(3); data.writeInt(3)
+            data.writeInt(3); data.writeInt(3); data.writeInt(3)
+            data.writeByte(9); data.writeUTF('palette'); data.writeByte(10); data.writeInt(1)
+            data.writeByte(8); data.writeUTF('Name'); data.writeUTF('minecraft:air'); data.writeByte(0)
+            data.writeByte(9); data.writeUTF('blocks'); data.writeByte(10); data.writeInt(0)
+            data.writeByte(9); data.writeUTF('entities'); data.writeByte(10); data.writeInt(0)
+            data.writeByte(3); data.writeUTF('DataVersion'); data.writeInt(3955)
+            data.writeByte(0)
+        }
+    }
+}
+
+def prepareGameTestStructure = tasks.register('prepareGameTestStructure') {
+    outputs.file(structureFile)
+    doLast { writeEmptyStructure(structureFile.asFile) }
+}
+
+tasks.named('processTestmodResources').configure { dependsOn(prepareGameTestStructure) }
+
+def cleanupRuntime = { File diagnostics ->
+    def runtime = layout.projectDirectory.dir('run-gametest').asFile
+    diagnostics.mkdirs()
+    try {
+        if (runtime.exists()) {
+            project.copy {
+                from(runtime)
+                include('logs/**', 'crash-reports/**')
+                into(new File(diagnostics, 'runtime-diagnostics'))
+            }
+        }
+    } finally {
+        project.delete(runtime)
+        new File(diagnostics, 'runtime-cleanup.txt').text = 'Copied available logs/crash reports; removed task-owned run-gametest world/config/log/session.lock.\n'
+    }
+}
+
+def cleanupGameTest = tasks.register('federationCleanupGameTest') {
+    notCompatibleWithConfigurationCache('Preserves GameTest diagnostics and removes only task-owned runtime data.')
+    doLast {
+        if (providers.gradleProperty('federationRetainGameTestRuntime').getOrElse('false').toBoolean()) {
+            return
+        }
+        def configured = providers.gradleProperty('federationRuntimeDiagnosticsDir').orNull
+        def diagnostics = configured == null
+                ? rootProject.file(".omo/evidence/task-02/direct-cleanup/${UUID.randomUUID()}")
+                : rootProject.file(configured)
+        cleanupRuntime(diagnostics)
+    }
+}
+tasks.named('runGameTestServer').configure { finalizedBy(cleanupGameTest) }
+
+def executeHarness = { String kind, List<String> requestedCases, String profile, File evidenceRoot ->
+    evidenceRoot = strictCanonicalPath(evidenceRoot)
+    def manifest = new JsonSlurper().parse(manifestFile.asFile)
+    def knownCases = manifest.cases.collectEntries { [(it.id): it] }
+    def knownProfiles = manifest.profiles.collectEntries { [(it.id): it] }
+    if (kind == 'verify') {
+        if (requestedCases.isEmpty()) throw new GradleException('No cases requested')
+        def unknown = requestedCases.findAll { !knownCases.containsKey(it) }
+        if (!unknown.isEmpty()) throw new GradleException("Unknown cases: ${unknown}")
+    } else if (!knownProfiles.containsKey(profile)) {
+        throw new GradleException("Unknown benchmark profile: ${profile}")
+    }
+
+    def runId = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC).format(Instant.now())
+    def attempt = new File(evidenceRoot, "attempt-${runId}")
+    if (!attempt.mkdirs()) throw new GradleException("Cannot create evidence attempt ${attempt}")
+    def sourceIdentity = currentSourceIdentity(attempt)
+    def jar = productJar.get().asFile
+    def startedAt = Instant.now().toString()
+    def executed = []
+    def assertions = []
+    def childExits = [:]
+    def childArtifacts = sourceIdentity.files as List<File>
+
+    def gradleCommand = { String label, List<String> args, Map options ->
+        def log = new File(attempt, "${label}.log")
+        def command = [new File(gradle.gradleHomeDir, 'bin/gradle').absolutePath, '--no-daemon',
+                '--dependency-verification=strict', "-PfederationRuntimeDiagnosticsDir=${new File(attempt, label + '-cleanup').absolutePath}"] + args
+        def result
+        try {
+            result = runProcess(command, repositoryDir.asFile, log, options.timeout as long)
+        } finally {
+            if (!options.retainRuntime) cleanupRuntime(new File(attempt, label + '-parent-cleanup'))
+        }
+        childExits[label] = result.exit
+        childArtifacts.add(log)
+        [result: result, output: log.getText(StandardCharsets.UTF_8.name())]
+    }
+
+    if (kind == 'benchmark') {
+        def benchmarkProfile = knownProfiles[profile] as Map
+        def nativeEvidence = new File(attempt, 'benchmark-native.properties')
+        def child = gradleCommand('benchmark-gametest', [':neoforge-1.21.1:runGameTestServer',
+                '-PfederationGameTestSelection=benchmark', "-PfederationGameTestId=${benchmarkProfile.testId}",
+                "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"], [timeout: 180, retainRuntime: false])
+        if (child.result.exit != 0) {
+            throw new GradleException("Benchmark GameTest failed; report=${childArtifacts.last().absolutePath}")
+        }
+        def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'benchmark', testId: benchmarkProfile.testId,
+                structure: benchmarkProfile.structure, assertions: benchmarkProfile.assertions,
+                operations: benchmarkProfile.operations])
+        childArtifacts.add(nativeEvidence)
+        executed.add(profile)
+        assertions.add([caseId: profile, status: 'passed', nativeTestId: benchmarkProfile.testId,
+                structure: benchmarkProfile.structure,
+                assertionCount: nativeResult.assertions, operationCount: nativeResult.operations,
+                inserted: nativeResult.inserted, extracted: nativeResult.extracted, elapsedNanos: nativeResult.elapsedNanos])
+    } else {
+        def gameTestCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'gametest' }
+        gameTestCases.collectEntries { [(it.testId): it] }.each { testId, testCase ->
+            def nativeEvidence = new File(attempt, "native-${testId}.properties")
+            def child = gradleCommand("positive-${testId}", [':neoforge-1.21.1:runGameTestServer',
+                    '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${testId}",
+                    "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"], [timeout: 180, retainRuntime: false])
+            if (child.result.exit != 0) {
+                throw new GradleException("Positive GameTest failed; report=${childArtifacts.last().absolutePath}")
+            }
+            verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                    structure: testCase.structure, assertions: testCase.assertions,
+                    operations: (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
+                    || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
+                    || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
+                    || testCase.id.startsWith('bridge.')) ? 1 : 2,
+                    allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
+                            || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
+                            || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
+                            || testCase.id.startsWith('bridge.')])
+            childArtifacts.add(nativeEvidence)
+        }
+        def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
+        if (restartCase != null) {
+            def restartState = new File(attempt, 'identity-restart-state.properties')
+            def prepare = gradleCommand('restart-prepare', [':neoforge-1.21.1:runGameTestServer',
+                    '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
+                    '-PfederationIdentityPhase=prepare', "-PfederationIdentityStateFile=${restartState.absolutePath}",
+                    '-PfederationRetainGameTestRuntime=true'], [timeout: 180, retainRuntime: true])
+            if (prepare.result.exit != 0 || !restartState.isFile()) {
+                throw new GradleException('Identity restart preparation process failed')
+            }
+            def nativeEvidence = new File(attempt, "native-${restartCase.testId}.properties")
+            def verify = gradleCommand('restart-verify', [':neoforge-1.21.1:runGameTestServer',
+                    '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
+                    '-PfederationIdentityPhase=verify', "-PfederationIdentityStateFile=${restartState.absolutePath}",
+                    "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"], [timeout: 180, retainRuntime: false])
+            if (verify.result.exit != 0) throw new GradleException('Identity restart verification process failed')
+            verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: restartCase.testId,
+                    structure: restartCase.structure, assertions: restartCase.assertions, operations: 2])
+            childArtifacts.add(restartState); childArtifacts.add(nativeEvidence)
+        }
+        requestedCases.each { caseId ->
+            def testCase = knownCases[caseId] as Map
+            switch (caseId) {
+                case 'harness.native-smoke':
+                case 'harness.gametest-registered':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 2])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'harness.reject-stale':
+                    def probes = [
+                            reportVerifierRejects(attempt, 'stale') { report, artifact -> report.startedAt = Instant.now().minusSeconds(3600).toString() },
+                            reportVerifierRejects(attempt, 'incomplete') { report, artifact -> report.status = 'running' },
+                            reportVerifierRejects(attempt, 'missing') { report, artifact -> artifact.delete() },
+                            reportVerifierRejects(attempt, 'hash') { report, artifact -> artifact.text = 'tampered\n' }
+                    ]
+                    if (probes.any { !it }) throw new GradleException('Persisted stale/incomplete/artifact evidence was accepted')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: 'persisted stale, incomplete, missing, and hash-mismatched reports rejected']); break
+                case 'harness.reject-empty':
+                    def rejected = reportVerifierRejects(attempt, 'empty') { report, artifact -> report.assertions = [] }
+                    if (!rejected) throw new GradleException('Empty assertions were accepted')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: 'persisted zero assertions rejected']); break
+                case 'harness.detect-child-crash':
+                    def crashLog = new File(attempt, 'child-crash.log')
+                    def crash = runProcess(['/bin/sh', '-c', 'exit 17'], repositoryDir.asFile, crashLog, 10)
+                    childExits['child-crash'] = crash.exit
+                    childArtifacts.add(crashLog)
+                    if (crash.exit != 17) throw new GradleException("Child crash not retained: ${crash.exit}")
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: 'inner exit 17 rejected']); break
+                case 'harness.benchmark-reject-unknown':
+                    def child = gradleCommand('unknown-profile', [':neoforge-1.21.1:federationBenchmark', '-Pprofile=unknown',
+                            "-PevidenceDir=${new File(attempt, 'inner-unknown').absolutePath}"], [timeout: 60, retainRuntime: false])
+                    if (child.result.exit == 0 || !child.output.contains('Unknown benchmark profile')) throw new GradleException('Unknown profile did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "inner exit ${child.result.exit} rejected"]); break
+                case 'harness.benchmark-reject-empty':
+                    def child = gradleCommand('empty-benchmark', [':neoforge-1.21.1:runGameTestServer',
+                            '-PfederationGameTestSelection=benchmark',
+                            "-PfederationGameTestId=${knownProfiles['harness-native-smoke'].testId}",
+                            '-PfederationBenchmarkEmpty=true'], [timeout: 180, retainRuntime: false])
+                    if (child.result.exit == 0 || !child.output.contains('Benchmark profile must request nonzero AE2 work')) throw new GradleException('Empty benchmark did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "inner exit ${child.result.exit} rejected"]); break
+                case 'harness.gametest-required-failure':
+                    def child = gradleCommand('required-failure', [':neoforge-1.21.1:runGameTestServer', '-PfederationGameTestSelection=required-failure'], [timeout: 180, retainRuntime: false])
+                    if (child.result.exit == 0 || !child.output.contains('AE2F_FAULT required failure injection')) throw new GradleException('Required failure did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "inner exit ${child.result.exit} retained"]); break
+                case 'harness.gametest-timeout':
+                    def child = gradleCommand('timeout-gametest', [':neoforge-1.21.1:runGameTestServer', '-PfederationGameTestSelection=timeout'], [timeout: 180, retainRuntime: false])
+                    if (child.result.exit == 0 || !child.output.contains("Didn't succeed or fail within 20 ticks")) throw new GradleException('GameTest timeout did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "inner exit ${child.result.exit} retained"]); break
+                case 'harness.gametest-namespace-mismatch':
+                    def child = gradleCommand('namespace-mismatch', [':neoforge-1.21.1:runGameTestServer', '-PfederationGameTestNamespace=wrong_namespace'], [timeout: 120, retainRuntime: false])
+                    if (!child.output.contains('No test functions were given')) throw new GradleException('Namespace mismatch did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "zero-selection diagnostic rejected despite inner exit ${child.result.exit}"]); break
+                case 'harness.gametest-zero-selection':
+                    def child = gradleCommand('zero-selection', [':neoforge-1.21.1:runGameTestServer', '-PfederationGameTestSelection=none'], [timeout: 120, retainRuntime: false])
+                    if (!child.output.contains('No test functions were given')) throw new GradleException('Zero selection did not fail closed')
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "zero-selection diagnostic rejected despite inner exit ${child.result.exit}"]); break
+                case 'identity.replace-all-access':
+                case 'identity.ambiguous-split':
+                case 'identity.copied-node':
+                case 'identity.restart':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 2])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'ports.bridge-cable-device':
+                case 'ports.hub-six-grids':
+                case 'ports.hub-repeated-grid':
+                case 'ports.reject-floating-node':
+                case 'ports.reject-cross-grid-join':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'lane.native-three-way':
+                case 'lane.pattern-subsets':
+                case 'lane.single-drop-owner':
+                case 'lane.reject-local-fallback':
+                case 'lane.native-reload':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'endpoint.local-native':
+                case 'endpoint.five-face-item-fluid':
+                case 'endpoint.reject-two-upstreams':
+                case 'endpoint.reject-capability-loop':
+                case 'endpoint.mode-isolation':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'storage-proof.native-projection':
+                case 'storage-proof.four-fabric-diamond':
+                case 'storage-proof.reject-loop':
+                case 'storage-proof.opaque-alias':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'craft-proof.native-terminal':
+                case 'craft-proof.native-stocking':
+                case 'craft-proof.missing-material':
+                case 'craft-proof.no-cpu':
+                case 'craft-proof.disconnect-cancel-restart':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'energy-proof.directional':
+                case 'energy-proof.cold-start':
+                case 'energy-proof.reject-reverse':
+                case 'energy-proof.no-source':
+                case 'energy-proof.ring':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'bridge.valid':
+                case 'bridge.invalid':
+                case 'bridge.same-grid':
+                case 'bridge.reject-federation-cable':
+                case 'bridge.reload-replace':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+            }
+        }
+    }
+
+    if (executed != (kind == 'verify' ? requestedCases : [profile]) || assertions.isEmpty()) {
+        throw new GradleException("Executed set mismatch or zero assertions: requested=${requestedCases ?: profile}, executed=${executed}")
+    }
+    def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
+    cleanupReceipt.text = 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
+    childArtifacts.add(cleanupReceipt)
+    def artifacts = childArtifacts.unique().collect { file ->
+        def canonical = file.canonicalFile
+        if (!canonical.toPath().startsWith(attempt.canonicalFile.toPath()) || !canonical.isFile()) {
+            throw new GradleException("Cannot persist missing or external artifact: ${file}")
+        }
+        [path: attempt.canonicalFile.toPath().relativize(canonical.toPath()).toString(), sha256: sha256(canonical.bytes)]
+    }
+    project.fileTree(attempt).matching { exclude('result.json'); exclude('.identity-check/**') }.files.each { file ->
+        def path = attempt.toPath().relativize(file.toPath()).toString()
+        if (!artifacts.any { it.path == path }) artifacts.add([path: path, sha256: sha256(file.bytes)])
+    }
+    verifyTaskFourEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskSixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskSevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskEightEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskNineEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskElevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
+    def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
+    def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
+            evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
+            pathIdentitySha256: sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
+            sourceRevision: sourceIdentity.revision,
+            dirtyDiffSha256: sourceIdentity.dirtySha256, dependencyLockSha256: sha256(verificationMetadata.asFile.bytes),
+            productJarSha256: sha256(jar.bytes), seed: 0, startedAt: startedAt, endedAt: Instant.now().toString(),
+            requested: kind == 'verify' ? requestedCases : [profile], executed: executed, assertions: assertions,
+            parentExit: taskTenBlocked ? 1 : 0, childExits: childExits, artifacts: artifacts]
+    if (taskTenBlocked) {
+        report.reason = 'native-energy-directionality-unavailable'
+        report.missingHooks = ['shared EnergyOverlayGrid has no caller/edge direction, route identity, or authorization boundary']
+        report.availableNativeRoute = ['IGrid.getEnergyService', 'IEnergyService.extractAEPower',
+                'IAEPowerStorage.getAECurrentPower', 'IEnergyOverlayGridConnection.connectedEnergyServices']
+    }
+    def resultFile = new File(attempt, 'result.json')
+    resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    if (taskTenBlocked) {
+        logger.lifecycle("Federation verify evidence BLOCKED: ${attempt}")
+        throw new GradleException("Task 10 BLOCKED: ${report.missingHooks.first()}; result=${resultFile}")
+    }
+    verifyPersistedReport(resultFile, true)
+    logger.lifecycle("Federation ${kind} evidence: ${attempt}")
+}
+
+def requestedCasesProperty = providers.gradleProperty('cases')
+def evidenceDirProperty = providers.gradleProperty('evidenceDir')
+def profileProperty = providers.gradleProperty('profile')
+def resultFileProperty = providers.gradleProperty('resultFile')
+
+tasks.register('federationPathBindingSelfTest') {
+    notCompatibleWithConfigurationCache('Exercises isolated persisted attempt relocation.')
+    doLast {
+        def parent = rootProject.file('.omo/evidence/task-02/path-cleanup-fix/path-probes')
+        def accepted = reportVerifierRejects(parent, 'relocated') { report, artifact ->
+            report.evidenceRoot = new File(parent, 'producer-root').canonicalPath
+            report.attemptPath = new File(parent, 'producer-root/attempt-probe-relocated').canonicalPath
+        }
+        if (!accepted) throw new GradleException('Relocated intact persisted evidence was accepted')
+        if (!reportVerifierRejects(parent, 'edited-root') { report, artifact -> report.evidenceRoot = 17 }) {
+            throw new GradleException('Malformed evidence root accepted')
+        }
+        if (!reportVerifierRejects(parent, 'edited-hash') { report, artifact -> report.pathIdentitySha256 = 'edited' }) {
+            throw new GradleException('Edited producer path identity accepted')
+        }
+    }
+}
+
+tasks.register('federationCleanupSelfTest') {
+    notCompatibleWithConfigurationCache('Exercises timed-out and crashed children with task-owned runtime cleanup.')
+    doLast {
+        def evidence = rootProject.file('.omo/evidence/task-02/path-cleanup-fix/cleanup-probes')
+        evidence.mkdirs()
+        ['timeout', 'crash', 'validator'].each { fault ->
+            def runtime = layout.projectDirectory.dir('run-gametest').asFile
+            new File(runtime, 'world').mkdirs()
+            new File(runtime, 'world/session.lock').text = 'Explicit synthetic cleanup test fixture\n'
+            try {
+                if (fault == 'validator') throw new GradleException('Injected validator failure')
+                def command = fault == 'timeout' ? ['/bin/sh', '-c', 'sleep 30'] : ['/bin/sh', '-c', 'exit 17']
+                def result = runProcess(command, rootProject.projectDir, new File(evidence, "${fault}.log"), 1)
+                if (result.exit != (fault == 'timeout' ? 124 : 17)) throw new GradleException('Fault exit mismatch')
+            } catch (GradleException failure) {
+                if (fault != 'validator') throw failure
+            } finally {
+                cleanupRuntime(new File(evidence, fault))
+            }
+            if (runtime.exists()) throw new GradleException("Runtime retained after ${fault}")
+        }
+    }
+}
+
+tasks.register('federationVerify') {
+    finalizedBy(cleanupGameTest)
+    group = 'verification'
+    description = 'Selects JUnit/GameTest cases and emits fail-closed current-run evidence.'
+    dependsOn(tasks.named('test'), tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Launches isolated nested Gradle and fault-injection child processes.')
+    doLast {
+        def cases = requestedCasesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
+        def evidence = evidenceDirProperty.orNull
+        if (evidence == null || evidence.isBlank()) throw new GradleException('Missing -PevidenceDir')
+        executeHarness('verify', cases, null, rootProject.file(evidence))
+    }
+}
+
+tasks.register('federationBenchmark') {
+    finalizedBy(cleanupGameTest)
+    group = 'verification'
+    description = 'Runs a nonempty AE2 GameTest benchmark profile and emits current-run evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Launches an isolated nested GameTest server.')
+    doLast {
+        def profile = profileProperty.orNull
+        def evidence = evidenceDirProperty.orNull
+        if (profile == null || profile.isBlank()) throw new GradleException('Missing -Pprofile')
+        if (evidence == null || evidence.isBlank()) throw new GradleException('Missing -PevidenceDir')
+        executeHarness('benchmark', [], profile, rootProject.file(evidence))
+    }
+}
+
+tasks.register('federationVerifyEvidence') {
+    group = 'verification'
+    description = 'Consumes and validates a persisted federation result against current source and artifacts.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Captures current Git worktree identity while consuming persisted evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def result = rootProject.file(resultPath)
+        def expectedRoot = evidenceDirProperty.orNull
+        if (expectedRoot != null && strictCanonicalPath(rootProject.file(expectedRoot)) != strictCanonicalPath(result.parentFile.parentFile)) {
+            throw new GradleException('Requested evidence root mismatch')
+        }
+        verifyPersistedReport(result, true)
+        logger.lifecycle("Federation evidence verified: ${result}")
+    }
+}
+
+tasks.register('federationTaskNineEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 9 native Crafting lifecycle evidence fails closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 9 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def rebound = { String name, String expectedMessage, String testId, String fact, String value ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, "task09-${name}") { attempt, report ->
+                def file = new File(attempt, "native-${testId}.properties")
+                def properties = loadProperties(file)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, "Task 9 ${name} probe") }
+                def log = new File(attempt, "positive-${testId}.log")
+                log.text = log.text.replaceAll(
+                        /(AE2F_CRAFT_NATIVE_ENTRY testId=${testId} fact=${fact} value=)[^\s]+/, "\$1${value}")
+            }
+            rejection instanceof String && rejection.contains(expectedMessage)
+        }
+        def probes = [
+                rebound('duplicate-native-task', 'Task 9 terminal native lifecycle semantics are incomplete',
+                        'craftproofnativeterminal', 'uniqueNativeTasks', '2'),
+                rebound('duplicate-invocation-submitted', 'Task 9 stocking native lifecycle semantics are incomplete',
+                        'craftproofnativestocking', 'duplicateInvocationSubmitted', 'true'),
+                rebound('duplicate-native-job-id', 'Task 9 stocking native lifecycle semantics are incomplete',
+                        'craftproofnativestocking', 'nativeJobIds',
+                        '00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002'),
+                rebound('missing-provider-dispatch', 'Task 9 terminal native lifecycle semantics are incomplete',
+                        'craftproofnativeterminal', 'providerDispatch', 'false'),
+                rebound('unaccepted-stocking-result', 'Task 9 stocking native lifecycle semantics are incomplete',
+                        'craftproofnativestocking', 'acceptedResult', '0'),
+                rebound('missing-material-submitted', 'Task 9 missing-material semantics are incomplete',
+                        'craftproofmissingmaterial', 'submitted', 'true'),
+                rebound('no-cpu-submitted', 'Task 9 no-CPU semantics are incomplete',
+                        'craftproofnocpu', 'submitted', 'true'),
+                rebound('restart-link-active', 'Task 9 disconnect/cancel/restart semantics are incomplete',
+                        'craftproofdisconnectcancelrestart', 'linkCanceled', 'false'),
+                rebound('restart-pre-cancel-extraction-forged',
+                        'Task 9 disconnect/cancel/restart semantics are incomplete',
+                        'craftproofdisconnectcancelrestart', 'materialBeforeSuspend', '64'),
+                rebound('restart-cpu-extraction-forged',
+                        'Task 9 disconnect/cancel/restart semantics are incomplete',
+                        'craftproofdisconnectcancelrestart', 'cpuMaterialBeforeSuspend', '0'),
+                rebound('restart-material-lost', 'Task 9 disconnect/cancel/restart semantics are incomplete',
+                        'craftproofdisconnectcancelrestart', 'materialAfterCancel', '0')
+        ]
+        def missingArtifact = taskFiveEvidenceProbeRejects(sourceResult, 'task09-missing-artifact') { attempt, report ->
+            report.artifacts.removeAll { it.path == 'native-craftproofnativestocking.properties' }
+        }
+        probes.add(missingArtifact instanceof String
+                && missingArtifact.contains('Task 9 native artifact set is duplicated, missing, or substituted'))
+        if (probes.any { !it }) throw new GradleException('Task 9 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 9 adversarial native Crafting lifecycle evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTenBlockedConsumerSelfTest') {
+    group = 'verification'
+    description = 'Proves persisted Task 10 BLOCKED reports are rejected as incomplete evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Consumes a Task 10 BLOCKED attempt through the ordinary persisted verifier.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        try {
+            verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), false)
+            throw new GradleException('Task 10 BLOCKED report was consumed as complete evidence')
+        } catch (GradleException exception) {
+            if (!exception.message.contains('Result report is incomplete or has an unsupported schema')) throw exception
+            logger.lifecycle('Task 10 BLOCKED report must not be consumed as complete evidence')
+        }
+    }
+}
+
+tasks.register('federationTaskTenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves completed-looking Task 10 energy evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 10 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def completedLooking = taskFiveEvidenceProbeRejects(sourceResult, 'task10-completed-looking') { attempt, report ->
+            report.status = 'complete'
+            report.parentExit = 0
+            report.remove('reason')
+            report.remove('missingHooks')
+            report.remove('availableNativeRoute')
+            def file = new File(attempt, 'native-energyproofrejectreverse.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('reverseRejected', 'true')
+            properties.setProperty('reverseExtracted', '0')
+            file.withOutputStream { properties.store(it, 'Task 10 false directional completion probe') }
+            def log = new File(attempt, 'positive-energyproofrejectreverse.log')
+            log.text = log.text.replace('fact=reverseRejected value=false', 'fact=reverseRejected value=true')
+                    .replace('fact=reverseExtracted value=200', 'fact=reverseExtracted value=0')
+        }
+        def missingArtifact = taskFiveEvidenceProbeRejects(sourceResult, 'task10-missing-artifact') { attempt, report ->
+            report.status = 'complete'
+            report.parentExit = 0
+            report.remove('reason')
+            report.remove('missingHooks')
+            report.remove('availableNativeRoute')
+            new File(attempt, 'native-energyproofring.properties').delete()
+        }
+        if (!(completedLooking instanceof String)
+                || !completedLooking.contains('Task 10 completed-looking evidence is invalid')
+                || !(missingArtifact instanceof String)
+                || !missingArtifact.contains('Artifact is missing, outside the attempt, or hash-mismatched')) {
+            throw new GradleException("Task 10 adversarial completed-looking evidence was accepted: completed=${completedLooking}; missing=${missingArtifact}")
+        }
+        logger.lifecycle('Task 10 completed-looking and missing-artifact evidence probes failed closed')
+    }
+}
+
+tasks.register('federationTaskElevenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 11 Bridge evidence rejects fabricated native attachment facts.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 11 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probes = [
+                taskFiveEvidenceProbeRejects(sourceResult, 'task11-fabricated-identity') { attempt, report ->
+                    def file = new File(attempt, 'native-bridgevalid.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('distinctGrids', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 11 fabricated native attachment identity') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task11-rebound-case') { attempt, report ->
+                    def file = new File(attempt, 'native-bridgeinvalid.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('reason', 'VALID')
+                    file.withOutputStream { properties.store(it, 'Task 11 rebound case data') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task11-incomplete-trace') { attempt, report ->
+                    def file = new File(attempt, 'native-bridgevalid.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('membershipCandidate', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 11 incomplete native trace') }
+                }
+        ]
+        if (probes.any { !(it instanceof String) || !it.contains('Task 11') }) {
+            throw new GradleException('Task 11 adversarial persisted evidence was accepted')
+        }
+        logger.lifecycle('Task 11 fabricated identity, rebound case, and incomplete trace probes were rejected')
+    }
+}
+
+tasks.register('federationTaskFourIdentityFactsSelfTest') {
+    group = 'verification'
+    description = 'Proves missing and empty native Grid/node continuity facts fail persisted Task 4 consumption.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 4 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def names = ['nativeGridBefore', 'nativeGridAfter', 'nativeNodeBefore', 'nativeNodeAfter']
+        def missingRejected = taskFourIdentityFactsProbeRejects(sourceResult, 'missing') { properties ->
+            names.each { properties.remove(it) }
+        }
+        def emptyRejected = taskFourIdentityFactsProbeRejects(sourceResult, 'empty') { properties ->
+            names.each { properties.setProperty(it, '') }
+        }
+        if (!missingRejected || !emptyRejected) {
+            throw new GradleException('Missing or empty Task 4 native identity facts were accepted')
+        }
+        logger.lifecycle('Task 4 native identity fact probes rejected missing and empty paired properties')
+    }
+}
+
+tasks.register('federationTaskFiveEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 5 topology artifacts and semantics fail closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 5 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probes = [
+                taskFiveEvidenceProbeRejects(sourceResult, 'missing-artifact') { attempt, report ->
+                    new File(attempt, 'native-portshubsixgrids.properties').delete()
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'duplicate-artifact') { attempt, report ->
+                    def duplicate = new File(attempt, 'duplicate/native-portshubsixgrids.properties')
+                    duplicate.parentFile.mkdirs()
+                    duplicate.bytes = new File(attempt, 'native-portshubsixgrids.properties').bytes
+                    report.artifacts.add([path: 'duplicate/native-portshubsixgrids.properties', sha256: 'rebound'])
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'substituted-artifact') { attempt, report ->
+                    def artifact = report.artifacts.find { it.path == 'native-portshubsixgrids.properties' }
+                    artifact.path = 'native-portshubrepeatedgrid.properties'
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'malformed-artifact') { attempt, report ->
+                    new File(attempt, 'native-portshubsixgrids.properties').text = '\\u-not-hex'
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'forged-grid-identity') { attempt, report ->
+                    def file = new File(attempt, 'native-portshubrepeatedgrid.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('face.south', properties.getProperty('face.east'))
+                    file.withOutputStream { properties.store(it, 'Task 5 forged Grid identity probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'distinct-grid-substitution') { attempt, report ->
+                    def file = new File(attempt, 'native-portshubsixgrids.properties')
+                    def properties = loadProperties(file)
+                    def existing = ['down', 'up', 'north', 'south', 'west', 'east']
+                            .collect { properties.getProperty("face.${it}") } as Set
+                    def replacement = (4_000_000_000L..4_000_000_010L).find { !existing.contains(it.toString()) }
+                    properties.setProperty('face.east', replacement.toString())
+                    file.withOutputStream { properties.store(it, 'Task 5 distinct Grid substitution probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'floating-accepted') { attempt, report ->
+                    def file = new File(attempt, 'native-portsrejectfloatingnode.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('floatingAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 5 floating acceptance probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'replaced-accepted') { attempt, report ->
+                    def file = new File(attempt, 'native-portsrejectfloatingnode.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('replacedAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 5 replacement acceptance probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'cross-grid-accepted') { attempt, report ->
+                    def file = new File(attempt, 'native-portsrejectcrossgridjoin.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('joinAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 5 cross-grid acceptance probe') }
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 5 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 5 adversarial topology evidence probes were rejected')
+    }
+}
+
+tasks.register('federationTaskSixEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 6 native lane artifacts and semantics fail closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 6 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probes = [
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-missing-artifact') { attempt, report ->
+                    new File(attempt, 'native-lanenativethreeway.properties').delete()
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-duplicate-artifact') { attempt, report ->
+                    def duplicate = new File(attempt, 'duplicate/native-lanenativethreeway.properties')
+                    duplicate.parentFile.mkdirs()
+                    duplicate.bytes = new File(attempt, 'native-lanenativethreeway.properties').bytes
+                    report.artifacts.add([path: 'duplicate/native-lanenativethreeway.properties', sha256: 'rebound'])
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-runtime-trace') { attempt, report ->
+                    def file = new File(attempt, 'native-lanenativethreeway.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativePushCount', '2')
+                    file.withOutputStream { properties.store(it, 'Task 6 forged native execution probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-provider-publication') { attempt, report ->
+                    def file = new File(attempt, 'native-lanenativethreeway.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('publishedProviderContexts', '2')
+                    file.withOutputStream { properties.store(it, 'Task 6 forged provider publication probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-provider-identity') { attempt, report ->
+                    def file = new File(attempt, 'native-lanenativethreeway.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('publishedProvidersMatchLanes', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 6 forged provider identity probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-ticker-delegation') { attempt, report ->
+                    def file = new File(attempt, 'native-lanenativethreeway.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativeTickerDelegatesInvoked', '2')
+                    file.withOutputStream { properties.store(it, 'Task 6 forged ticker delegation probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-provider-removal') { attempt, report ->
+                    def file = new File(attempt, 'native-lanenativethreeway.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('publishedProvidersAfterClose', '1')
+                    file.withOutputStream { properties.store(it, 'Task 6 forged provider removal probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-drop-owner') { attempt, report ->
+                    def file = new File(attempt, 'native-lanesingledropowner.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('singleDropOwner', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 6 duplicate drop owner probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-local-fallback') { attempt, report ->
+                    def file = new File(attempt, 'native-lanerejectlocalfallback.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('localFallbackAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 6 local fallback probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-adjacent-machine-candidate') { attempt, report ->
+                    def file = new File(attempt, 'native-lanerejectlocalfallback.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('adjacentMachineCandidate', 'false')
+                    file.withOutputStream { properties.store(it, 'Task 6 absent machine candidate probe') }
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task06-adjacent-machine-bypass') { attempt, report ->
+                    def file = new File(attempt, 'native-lanerejectlocalfallback.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('adjacentMachineBypass', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 6 adjacent machine bypass probe') }
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 6 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 6 adversarial native lane evidence probes were rejected')
+    }
+}
+
+tasks.register('federationTaskSevenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 7 Endpoint artifacts and semantics fail closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 7 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probes = [
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-missing-artifact',
+                        'Artifact is missing, outside the attempt, or hash-mismatched') { attempt, report ->
+                    new File(attempt, 'native-endpointlocalnative.properties').delete()
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-duplicate-artifact',
+                        'Task 7 native artifact set is duplicated, missing, or substituted') { attempt, report ->
+                    def duplicate = new File(attempt, 'duplicate/native-endpointlocalnative.properties')
+                    duplicate.parentFile.mkdirs()
+                    duplicate.bytes = new File(attempt, 'native-endpointlocalnative.properties').bytes
+                    report.artifacts.add([path: 'duplicate/native-endpointlocalnative.properties', sha256: 'rebound'])
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-forged-grid-separation',
+                        'Task 7 Local native target or Grid separation semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointlocalnative.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('subnetGrid', properties.getProperty('providerGrid'))
+                    file.withOutputStream { properties.store(it, 'Task 7 forged Grid separation probe') }
+                    def log = new File(attempt, 'positive-endpointlocalnative.log')
+                    log.text = log.text.replaceAll(
+                            /(AE2F_ENDPOINT_TRACE testId=endpointlocalnative fact=subnetGrid value=)[0-9]+/,
+                            '\$1' + properties.getProperty('providerGrid'))
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-push-owner-identity',
+                        'Task 7 native method entry identity mismatch') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointlocalnative.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativePushOwner', '4294967295')
+                    file.withOutputStream { properties.store(it, 'Task 7 forged push owner identity probe') }
+                    def log = new File(attempt, 'positive-endpointlocalnative.log')
+                    log.text = log.text.replaceAll(
+                            /(AE2F_ENDPOINT_TRACE testId=endpointlocalnative fact=nativePushOwner value=)[0-9]+/,
+                            '\$14294967295')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-target-owner-identity',
+                        'Task 7 native method entry identity mismatch') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointlocalnative.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativeTargetOwner', '4294967294')
+                    file.withOutputStream { properties.store(it, 'Task 7 forged target owner identity probe') }
+                    def log = new File(attempt, 'positive-endpointlocalnative.log')
+                    log.text = log.text.replaceAll(
+                            /(AE2F_ENDPOINT_TRACE testId=endpointlocalnative fact=nativeTargetOwner value=)[0-9]+/,
+                            '\$14294967294')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-two-owner-acceptance',
+                        'Task 7 accepted two Local upstream Providers') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointrejecttwoupstreams.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('twoUpstreamsAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 7 two-owner acceptance probe') }
+                    def log = new File(attempt, 'positive-endpointrejecttwoupstreams.log')
+                    log.text = log.text.replace(
+                            'fact=twoUpstreamsAccepted value=false', 'fact=twoUpstreamsAccepted value=true')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-loop-acceptance',
+                        'Task 7 accepted a capability input/return loop') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointrejectcapabilityloop.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('loopAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 7 capability loop probe') }
+                    def log = new File(attempt, 'positive-endpointrejectcapabilityloop.log')
+                    log.text = log.text.replace('fact=loopAccepted value=false', 'fact=loopAccepted value=true')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-mode-crossover',
+                        'Task 7 Local/Federated mode isolation failed') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointmodeisolation.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('federatedLocalInputAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 7 mode crossover probe') }
+                    def log = new File(attempt, 'positive-endpointmodeisolation.log')
+                    log.text = log.text.replace('fact=federatedLocalInputAccepted value=false',
+                            'fact=federatedLocalInputAccepted value=true')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task07-missing-face',
+                        'Task 7 five-face item/fluid capability composition is incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-endpointfivefaceitemfluid.properties')
+                    def properties = loadProperties(file)
+                    properties.remove('face.east.fluid')
+                    file.withOutputStream { properties.store(it, 'Task 7 missing face capability probe') }
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 7 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 7 adversarial Endpoint evidence probes were rejected')
+    }
+}
+
+tasks.register('federationTaskEightEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 8 storage provenance evidence fails closed after full evidence rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds a persisted Task 8 attempt for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def rebound = { String name, String expectedMessage, Closure mutate ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, name, mutate)
+            rejection instanceof String && rejection.contains(expectedMessage)
+        }
+        def probes = [
+                rebound('task08-forged-source-identity', 'Task 8 forged source identity or native projection separation') { attempt, report ->
+                    def file = new File(attempt, 'native-storageproofnativeprojection.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativeSource', '4294967295')
+                    file.withOutputStream { properties.store(it, 'Task 8 forged native source identity') }
+                    def log = new File(attempt, 'positive-storageproofnativeprojection.log')
+                    log.text = log.text.replaceAll(/(AE2F_STORAGE_TRACE testId=storageproofnativeprojection fact=nativeSource value=)[0-9]+/,
+                            '\$14294967295')
+                },
+                rebound('task08-duplicate-diamond-source', 'Task 8 diamond source identity or priority semantics are invalid') { attempt, report ->
+                    def file = new File(attempt, 'native-storageprooffourfabricdiamond.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('sourceCount', '2')
+                    file.withOutputStream { properties.store(it, 'Task 8 duplicate diamond source') }
+                    def log = new File(attempt, 'positive-storageprooffourfabricdiamond.log')
+                    log.text = log.text.replace('fact=sourceCount value=1', 'fact=sourceCount value=2')
+                },
+                rebound('task08-forged-diamond-priority', 'Task 8 diamond source identity or priority semantics are invalid') { attempt, report ->
+                    def file = new File(attempt, 'native-storageprooffourfabricdiamond.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('selectedPriority', '30')
+                    file.withOutputStream { properties.store(it, 'Task 8 forged selected priority') }
+                    def log = new File(attempt, 'positive-storageprooffourfabricdiamond.log')
+                    log.text = log.text.replace('fact=selectedPriority value=40', 'fact=selectedPriority value=30')
+                },
+                rebound('task08-loop-accepted', 'Task 8 accepted aggregate storage loop') { attempt, report ->
+                    def file = new File(attempt, 'native-storageproofrejectloop.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('loopAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 8 accepted loop') }
+                    def log = new File(attempt, 'positive-storageproofrejectloop.log')
+                    log.text = log.text.replace('fact=loopAccepted value=false', 'fact=loopAccepted value=true')
+                },
+                rebound('task08-opaque-alias-accepted', 'Task 8 opaque alias acceptance was not rejected') { attempt, report ->
+                    def file = new File(attempt, 'native-storageproofopaquealias.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('opaqueAliasAccepted', 'true')
+                    file.withOutputStream { properties.store(it, 'Task 8 accepted opaque alias') }
+                    def log = new File(attempt, 'positive-storageproofopaquealias.log')
+                    log.text = log.text.replace('fact=opaqueAliasAccepted value=false', 'fact=opaqueAliasAccepted value=true')
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 8 adversarial persisted evidence was accepted')
+        logger.lifecycle('Task 8 adversarial Storage provenance evidence probes were rejected for intended reasons')
+    }
+}

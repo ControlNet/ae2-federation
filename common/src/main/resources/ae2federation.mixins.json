@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "space.controlnet.ae2federation.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PatternProviderLogicAccess",
+    "PatternProviderLogicEndpointTrace",
+    "PatternProviderTargetCacheEndpointTrace",
+    "NetworkStorageTrace",
+    "DelegatingMEInventoryTrace"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
