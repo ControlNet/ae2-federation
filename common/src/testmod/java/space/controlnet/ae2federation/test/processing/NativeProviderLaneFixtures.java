@@ -4,8 +4,10 @@ import appeng.api.config.LockCraftingMode;
 import appeng.api.config.Settings;
 import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGridNodeListener;
+import appeng.api.networking.IGridNode;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.energy.IAEPowerStorage;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
@@ -14,8 +16,11 @@ import appeng.core.definitions.AEBlocks;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.api.implementations.blockentities.ICraftingMachine;
+import appeng.blockentity.misc.InterfaceBlockEntity;
+import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
 import appeng.me.service.CraftingService;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.storage.StorageCells;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -28,6 +33,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import appeng.blockentity.storage.MEChestBlockEntity;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
@@ -37,23 +43,41 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
     };
     static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
     private static final BlockPos ENERGY_POS = HOST_POS.west();
+    private static final BlockPos ISOLATED_ENERGY_POS = HOST_POS.west(2);
     static final BlockPos TARGET_POS = HOST_POS.east();
+    private static final BlockPos ENDPOINT_TARGET_POS = HOST_POS.east(2);
     private static final BlockPos BYPASS_POS = HOST_POS.north();
     private final GameTestHelper helper;
     private final IManagedGridNode node;
     private final MappedPatternProvider composition;
     private final List<NativeProviderLaneHost> hosts;
+    private final boolean explicitEnergyConnection;
     private int ownerSaveCalls;
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments) {
+        this(helper, assignments, false);
+    }
+
+    public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower) {
         this.helper = helper;
+        explicitEnergyConnection = !isolatedPower;
         helper.setBlock(HOST_POS, Blocks.CHEST);
         helper.setBlock(TARGET_POS, Blocks.CHEST);
-        helper.setBlock(ENERGY_POS, appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block());
-        node = GridHelper.createManagedNode(this, LISTENER)
+        var energyPosition = isolatedPower ? ISOLATED_ENERGY_POS : ENERGY_POS;
+        if (isolatedPower) {
+            helper.setBlock(ENERGY_POS, Blocks.AIR);
+        }
+        helper.setBlock(energyPosition, AEBlocks.CREATIVE_ENERGY_CELL.block());
+        var managedNode = GridHelper.createManagedNode(this, LISTENER)
+                .setTagName("provider")
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0)
                 .setExposedOnSides(EnumSet.of(Direction.WEST));
+        if (isolatedPower) {
+            managedNode.addService(IAEPowerStorage.class,
+                    helper.<CreativeEnergyCellBlockEntity>getBlockEntity(energyPosition));
+        }
+        node = managedNode;
         hosts = List.of(new NativeProviderLaneHost(helper, HOST_POS), new NativeProviderLaneHost(helper, HOST_POS),
                 new NativeProviderLaneHost(helper, HOST_POS));
         composition = new MappedPatternProvider(node, this, hosts, 3);
@@ -124,7 +148,29 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         helper.setBlock(TARGET_POS, Blocks.AIR);
     }
 
+    public void installEndpointTarget() {
+        helper.setBlock(ENDPOINT_TARGET_POS, AEBlocks.INTERFACE.block());
+        helper.setBlock(ENDPOINT_TARGET_POS.east(), AEBlocks.ME_CHEST.block());
+        helper.setBlock(ENDPOINT_TARGET_POS.east().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        var chest = helper.<MEChestBlockEntity>getBlockEntity(ENDPOINT_TARGET_POS.east());
+        var cell = AEItems.ITEM_CELL_1K.stack();
+        helper.assertTrue(StorageCells.getCellInventory(cell, null) != null, "Native Endpoint item cell must exist");
+        chest.setCell(cell);
+    }
+
+    public IGridNode endpointTargetNode() {
+        var blockEntity = helper.getBlockEntity(ENDPOINT_TARGET_POS);
+        return blockEntity instanceof InterfaceBlockEntity endpoint ? endpoint.getMainNode().getNode() : null;
+    }
+
+    public BlockPos endpointTargetPosition() {
+        return helper.absolutePos(ENDPOINT_TARGET_POS);
+    }
+
     public boolean connectEnergy() {
+        if (!explicitEnergyConnection) {
+            return node.isActive();
+        }
         var providerNode = node.getNode();
         var energyNode = GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(ENERGY_POS), Direction.EAST);
         if (providerNode == null || energyNode == null) {
@@ -187,6 +233,13 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         return total;
     }
 
+    public long endpointTargetItemCount() {
+        var targetNode = endpointTargetNode();
+        return targetNode == null || targetNode.getGrid() == null ? 0
+                : targetNode.getGrid().getStorageService().getInventory().getAvailableStacks()
+                        .get(AEItemKey.of(Items.COBBLESTONE));
+    }
+
     public BlockEntity hostBlockEntity() {
         return helper.getBlockEntity(HOST_POS);
     }
@@ -215,7 +268,7 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         return hosts.stream().mapToInt(NativeProviderLaneHost::saveCalls).sum();
     }
 
-    IManagedGridNode managedNode() {
+    public IManagedGridNode managedNode() {
         return node;
     }
 
