@@ -166,11 +166,13 @@ tasks.named('jar', Jar).configure {
 }
 
 def targetJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+def targetSourcesJar = tasks.named('sourcesJar', Jar).flatMap { it.archiveFile }
 def verifySharedJarContent = tasks.register('verifySharedJarContent') {
     group = 'verification'
     description = 'Checks that the target JAR contains shared code and resources.'
-    dependsOn(tasks.named('jar'))
+    dependsOn(tasks.named('jar'), tasks.named('sourcesJar'))
     inputs.file(targetJar)
+    inputs.file(targetSourcesJar)
 
     doLast {
         def archive = targetJar.get().asFile
@@ -185,6 +187,52 @@ def verifySharedJarContent = tasks.register('verifySharedJarContent') {
         }
         if (!actualEntries.containsAll(expectedEntries)) {
             throw new GradleException("Shared content missing from ${archive}: expected ${expectedEntries}")
+        }
+        new java.util.zip.ZipFile(archive).withCloseable { zip ->
+            def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
+                    'ProviderRuntimeReplayControl', 'ae2federation_test']
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'NativeStorageTrace',
+                    'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
+                    'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
+                    'ae2federation_test.mixins.json']
+            def leaked = zip.entries().findAll { !it.directory }.findAll { entry ->
+                def content = new String(zip.getInputStream(entry).bytes, StandardCharsets.ISO_8859_1)
+                forbiddenEntries.any(entry.name::contains) || forbiddenControls.any(content::contains)
+            }.collect { it.name }
+            if (!leaked.isEmpty()) {
+                throw new GradleException("Test control leaked into ${archive}: ${leaked}")
+            }
+            def runtimeEntry = zip.getEntry('space/controlnet/ae2federation/processing/provider/ProviderRuntime.class')
+            def symbols = new String(zip.getInputStream(runtimeEntry).bytes, StandardCharsets.ISO_8859_1)
+            if (['replayResolutions', 'laneResolutions', 'replayAuthorizedResolutionOnce', 'laneProvenance'].any {
+                symbols.contains(it)
+            }) {
+                throw new GradleException("Replay-only ProviderRuntime state or API leaked into ${archive}")
+            }
+        }
+        def sourcesArchive = targetSourcesJar.get().asFile
+        new java.util.zip.ZipFile(sourcesArchive).withCloseable { zip ->
+            def sourceNames = zip.entries().collect { it.name }
+            def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
+                    'ProviderRuntimeReplayControl', 'ae2federation_test']
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'NativeStorageTrace',
+                    'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
+                    'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
+                    'ae2federation_test.mixins.json']
+            def leaked = zip.entries().findAll { !it.directory }.findAll { entry ->
+                def content = zip.getInputStream(entry).getText(StandardCharsets.UTF_8.name())
+                forbiddenEntries.any(entry.name::contains) || forbiddenControls.any(content::contains)
+            }.collect { it.name }
+            if (!leaked.isEmpty()) {
+                throw new GradleException("Test control source leaked into ${sourcesArchive}: ${leaked}")
+            }
+            def runtimeEntry = zip.getEntry('space/controlnet/ae2federation/processing/provider/ProviderRuntime.java')
+            def source = zip.getInputStream(runtimeEntry).getText(StandardCharsets.UTF_8.name())
+            if (['replayResolutions', 'laneResolutions', 'replayAuthorizedResolutionOnce', 'laneProvenance'].any {
+                source.contains(it)
+            }) {
+                throw new GradleException("Replay-only ProviderRuntime source leaked into ${sourcesArchive}")
+            }
         }
     }
 }
