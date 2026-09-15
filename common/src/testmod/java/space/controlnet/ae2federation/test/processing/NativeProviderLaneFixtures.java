@@ -17,6 +17,7 @@ import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.blockentity.misc.InterfaceBlockEntity;
+import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
 import appeng.me.service.CraftingService;
 import appeng.api.crafting.PatternDetailsHelper;
@@ -37,6 +38,7 @@ import appeng.blockentity.storage.MEChestBlockEntity;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
+import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
 public final class NativeProviderLaneFixtures implements MappedPatternProviderHost, AutoCloseable {
     private static final IGridNodeListener<NativeProviderLaneFixtures> LISTENER = (owner, node) -> {
@@ -149,10 +151,19 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
     }
 
     public void installEndpointTarget() {
-        helper.setBlock(ENDPOINT_TARGET_POS, AEBlocks.INTERFACE.block());
-        helper.setBlock(ENDPOINT_TARGET_POS.east(), AEBlocks.ME_CHEST.block());
-        helper.setBlock(ENDPOINT_TARGET_POS.east().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
-        var chest = helper.<MEChestBlockEntity>getBlockEntity(ENDPOINT_TARGET_POS.east());
+        installEndpointTarget(AEBlocks.INTERFACE.block(), Direction.EAST);
+    }
+
+    public void installFederationEndpointTarget() {
+        installEndpointTarget(ProcessingRegistration.ENDPOINT.get(), Direction.NORTH);
+    }
+
+    private void installEndpointTarget(net.minecraft.world.level.block.Block endpointBlock, Direction backendSide) {
+        helper.setBlock(ENDPOINT_TARGET_POS, endpointBlock);
+        var backendPosition = ENDPOINT_TARGET_POS.relative(backendSide);
+        helper.setBlock(backendPosition, AEBlocks.ME_CHEST.block());
+        helper.setBlock(backendPosition.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        var chest = helper.<MEChestBlockEntity>getBlockEntity(backendPosition);
         var cell = AEItems.ITEM_CELL_1K.stack();
         helper.assertTrue(StorageCells.getCellInventory(cell, null) != null, "Native Endpoint item cell must exist");
         chest.setCell(cell);
@@ -160,7 +171,7 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
 
     public IGridNode endpointTargetNode() {
         var blockEntity = helper.getBlockEntity(ENDPOINT_TARGET_POS);
-        return blockEntity instanceof InterfaceBlockEntity endpoint ? endpoint.getMainNode().getNode() : null;
+        return blockEntity instanceof AENetworkedBlockEntity endpoint ? endpoint.getMainNode().getNode() : null;
     }
 
     public BlockPos endpointTargetPosition() {

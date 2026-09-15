@@ -2,12 +2,13 @@ package space.controlnet.ae2federation.test.processing;
 
 import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGrid;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import space.controlnet.ae2federation.ae2.processing.ProviderTargetTrace;
+import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -17,12 +18,15 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
+import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.claim.EndpointClaimAuthority;
 import space.controlnet.ae2federation.processing.claim.EndpointIdentity;
 import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
+import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapability;
 import space.controlnet.ae2federation.processing.provider.ProviderFace;
@@ -31,14 +35,17 @@ import space.controlnet.ae2federation.processing.provider.ProviderOrientation;
 import space.controlnet.ae2federation.processing.provider.ProviderRuntime;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetRequest;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
+import space.controlnet.ae2federation.test.processing.endpoint.EndpointModeEvidence;
+import space.controlnet.ae2federation.test.processing.endpoint.EndpointPersistenceObservation;
 
 public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     private static final Direction ENDPOINT_SIDE = Direction.WEST;
     private final GameTestHelper helper;
     private final NativeProviderLaneFixtures provider;
-    private final ProviderIdentity providerIdentity = ProviderIdentity.create();
-    private final EndpointIdentity endpointIdentity = EndpointIdentity.create();
-    private final EndpointClaimAuthority claims = new EndpointClaimAuthority(endpointIdentity);
+    private final ProviderIdentity providerIdentity;
+    private final EndpointIdentity endpointIdentity;
+    private final EndpointClaimAuthority fixtureClaims;
+    private final boolean productionEndpoint;
     private final NativeTargetDomainRegistry domains = new NativeTargetDomainRegistry();
     private final AtomicReference<ProviderTargetRequest> request;
     private final FabricSourceId fabricSource;
@@ -46,18 +53,41 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     private ProviderRuntime runtime;
     private boolean registered;
     private boolean fabricConnected;
-    private Boolean acceptedPush;
+    private final Boolean[] acceptedPushes = new Boolean[3];
     private String status = "created";
 
     public ProviderTargetRuntimeFixtures(GameTestHelper helper) {
+        this(helper, false);
+    }
+
+    public ProviderTargetRuntimeFixtures(GameTestHelper helper, boolean federationEndpoint) {
+        this(helper, federationEndpoint, ProviderIdentity.create());
+    }
+
+    public ProviderTargetRuntimeFixtures(GameTestHelper helper, boolean federationEndpoint,
+            ProviderIdentity providerIdentity) {
         this.helper = helper;
-        ProviderTargetTrace.reset();
+        this.providerIdentity = Objects.requireNonNull(providerIdentity);
+        productionEndpoint = federationEndpoint;
+        ProviderTargetObservation.reset();
         provider = new NativeProviderLaneFixtures(helper, NativeProviderLaneFixtures.sharedPatternAssignments(), true);
-        provider.installEndpointTarget();
-        claims.compareAndSet(new ClaimRequest(endpointIdentity, ClaimEpoch.NONE,
-                new EndpointOwnerIdentity(providerIdentity)));
+        if (federationEndpoint) {
+            provider.installFederationEndpointTarget();
+        } else {
+            provider.installEndpointTarget();
+        }
+        endpointIdentity = federationEndpoint ? productionEndpoint().endpointIdentity() : EndpointIdentity.create();
+        fixtureClaims = federationEndpoint ? null : new EndpointClaimAuthority(endpointIdentity);
+        var claimRequest = new ClaimRequest(endpointIdentity, ClaimEpoch.NONE,
+                new EndpointOwnerIdentity(providerIdentity));
+        if (federationEndpoint) {
+            productionEndpoint().claim(claimRequest);
+            productionEndpoint().activateFederated();
+        } else {
+            fixtureClaims.compareAndSet(claimRequest);
+        }
         request = new AtomicReference<>(new ProviderTargetRequest(providerIdentity, endpointIdentity,
-                claims.state().epoch(), provider.endpointTargetPosition(), ENDPOINT_SIDE, true));
+                claimState().epoch(), provider.endpointTargetPosition(), ENDPOINT_SIDE, true));
         fabricSource = new FabricSourceId("task17:" + endpointIdentity.id().value());
     }
 
@@ -79,9 +109,18 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
             status = "target-identity-unsettled";
             return false;
         }
+        if (productionEndpoint) {
+            endpointBinding = productionEndpoint().binding();
+            if (endpointBinding == null) {
+                status = "endpoint-binding-pending";
+                return false;
+            }
+        }
         if (runtime == null) {
-            endpointBinding = new EndpointTargetBinding(helper.getLevel(), provider.endpointTargetPosition(),
-                    ENDPOINT_SIDE, claims, targetNode);
+            if (!productionEndpoint) {
+                endpointBinding = new EndpointTargetBinding(helper.getLevel(), provider.endpointTargetPosition(),
+                        ENDPOINT_SIDE, fixtureClaims, targetNode);
+            }
             runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
                     providerIdentity, new ProviderOrientation(ProviderFace.EAST), request::get, domains);
             runtime.settle();
@@ -123,10 +162,27 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     }
 
     public boolean pushOnce() {
-        if (acceptedPush == null) {
-            acceptedPush = push();
+        return pushOnce(0);
+    }
+
+    public boolean pushOnce(int laneIndex) {
+        if (acceptedPushes[laneIndex] == null) {
+            acceptedPushes[laneIndex] = provider.push(laneIndex, 0);
         }
-        return acceptedPush;
+        return acceptedPushes[laneIndex];
+    }
+
+    public boolean pushLane(int laneIndex) {
+        return provider.push(laneIndex, 0);
+    }
+
+    public void armAuthorizedReplay(int sourceLaneIndex, int targetLaneIndex) {
+        ProviderRuntimeReplayControl.arm(runtime, providerLogic(sourceLaneIndex), providerLogic(targetLaneIndex),
+                endpointBinding.runtime());
+    }
+
+    public ProviderRuntimeReplayControl.ReplayTrace finishAuthorizedReplay(String phase) {
+        return ProviderRuntimeReplayControl.finish(runtime, endpointBinding.runtime(), phase);
     }
 
     public ProviderTargetState state() {
@@ -142,7 +198,7 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     }
 
     public void restoreTargetRequest() {
-        updateRequest(claims.state().epoch(), provider.endpointTargetPosition(), true);
+        updateRequest(claimState().epoch(), provider.endpointTargetPosition(), true);
     }
 
     public void unbindEndpoint() {
@@ -174,16 +230,79 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
         return providerIdentity;
     }
 
+    public FederatedSavedState reloadProductionEndpoint() {
+        if (!productionEndpoint || !(productionEndpoint().claimState() instanceof ClaimState.Owned owned)) {
+            throw new IllegalStateException("A production Endpoint with an owned Claim is required");
+        }
+        var endpoint = productionEndpoint();
+        var generation = endpointBinding.runtime().generation();
+        var oldBindingIdentity = EndpointModeEvidence.identity(endpointBinding);
+        EndpointPersistenceObservation.begin("endpointfederated", endpoint);
+        var savedTag = endpoint.saveWithFullMetadata(helper.getLevel().registryAccess());
+        var serialized = savedTag.toString();
+        var runtimeReferencesSerialized = serialized.contains("EndpointTargetBinding")
+                || serialized.contains("IGridNode") || serialized.contains("PatternProviderLogic")
+                || serialized.contains("GenericStackItemStorage") || serialized.contains("GenericStackFluidStorage");
+        endpoint.onChunkUnloaded();
+        helper.getLevel().setBlockAndUpdate(provider.endpointTargetPosition(), Blocks.AIR.defaultBlockState());
+        helper.getLevel().setBlockAndUpdate(provider.endpointTargetPosition(), ProcessingRegistration.ENDPOINT.get()
+                .defaultBlockState());
+        productionEndpoint().loadWithComponents(savedTag, helper.getLevel().registryAccess());
+        productionEndpoint().setChanged();
+        endpointBinding = null;
+        return new FederatedSavedState(endpoint.endpointIdentity(), owned, generation, oldBindingIdentity,
+                runtimeReferencesSerialized);
+    }
+
+    public EndpointPersistenceObservation.Snapshot finishPersistenceObservation() {
+        return EndpointPersistenceObservation.finish(productionEndpoint());
+    }
+
+    public EndpointBlockEntity productionEndpointEntity() {
+        if (!productionEndpoint) {
+            throw new IllegalStateException("This fixture does not use a production Endpoint");
+        }
+        return productionEndpoint();
+    }
+
+    public boolean targetCapabilityIsCurrentBinding() {
+        return helper.getLevel().getCapability(EndpointTargetCapability.BLOCK, provider.endpointTargetPosition(),
+                ENDPOINT_SIDE) == endpointBinding;
+    }
+
     public EndpointIdentity endpointIdentity() {
         return endpointIdentity;
     }
 
     public EndpointClaimAuthority claims() {
-        return claims;
+        if (fixtureClaims == null) {
+            throw new IllegalStateException("Production Endpoint owns its Claim authority");
+        }
+        return fixtureClaims;
     }
 
     public Object nativeRemainderDestination() {
-        return provider.lane(0).getReturnInv();
+        return nativeRemainderDestination(0);
+    }
+
+    public Object nativeRemainderDestination(int laneIndex) {
+        return provider.lane(laneIndex).getReturnInv();
+    }
+
+    public long nativeRemainderAmount(int laneIndex, int slot) {
+        return provider.lane(laneIndex).getReturnInv().getAmount(slot);
+    }
+
+    public EndpointTargetBinding endpointBinding() {
+        return endpointBinding;
+    }
+
+    public appeng.helpers.patternprovider.PatternProviderLogic providerLogic() {
+        return providerLogic(0);
+    }
+
+    public appeng.helpers.patternprovider.PatternProviderLogic providerLogic(int laneIndex) {
+        return provider.lane(laneIndex);
     }
 
     public long targetItemCount() {
@@ -191,23 +310,27 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     }
 
     public int bindingCount() {
-        return ProviderTargetTrace.bindings();
+        return ProviderTargetObservation.bindings();
     }
 
     public int capabilityLookupCount() {
-        return ProviderTargetTrace.capabilityLookups();
+        return ProviderTargetObservation.capabilityLookups();
     }
 
     public int mixinLookupCount() {
-        return ProviderTargetTrace.mixinLookups();
+        return ProviderTargetObservation.mixinLookups();
     }
 
     public int nativeTargetLookupCount() {
-        return ProviderTargetTrace.nativeTargetLookups();
+        return ProviderTargetObservation.nativeTargetLookups();
+    }
+
+    public int nativeTargetFoundCount() {
+        return ProviderTargetObservation.nativeTargetsFound();
     }
 
     public int authorizationCount(ProviderTargetState state) {
-        return ProviderTargetTrace.authorizations(state);
+        return ProviderTargetObservation.authorizations(state);
     }
 
     public IGrid sourceGrid() {
@@ -235,14 +358,30 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
                 rotationSettled));
     }
 
+    private space.controlnet.ae2federation.processing.claim.ClaimState claimState() {
+        return productionEndpoint ? productionEndpoint().claimState() : fixtureClaims.state();
+    }
+
+    private EndpointBlockEntity productionEndpoint() {
+        return (EndpointBlockEntity) helper.getLevel().getBlockEntity(provider.endpointTargetPosition());
+    }
+
     @Override
     public void close() {
-        if (endpointBinding != null) {
+        if (runtime != null) {
+            ProviderRuntimeReplayControl.clear(runtime);
+        }
+        if (endpointBinding != null && !productionEndpoint) {
             endpointBinding.close();
         }
         if (fabricConnected) {
             disconnectFabric();
         }
         provider.close();
+        EndpointPersistenceObservation.clear();
+    }
+
+    public record FederatedSavedState(EndpointIdentity endpoint, ClaimState.Owned claim, long generation,
+            String bindingIdentity, boolean runtimeReferencesSerialized) {
     }
 }
