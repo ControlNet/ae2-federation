@@ -213,3 +213,17 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `PatternProviderTarget.get`; native push, send-list, remainder inventory, ticking, Blocking, and persistence remain AE2-owned.
 - Make `ProviderRuntime` the production lifecycle owner that constructs five-plus-one wiring and binds every mapped Lane;
   register the Endpoint target capability from the NeoForge entrypoint instead of relying on test-only direct calls.
+
+## 2026-09-15 Task 18
+
+- Keep Task 7's `EndpointCapabilityComposition` as the native node/storage and Local-owner qualification boundary, and
+  compose it from `processing/endpoint/EndpointRuntime` rather than creating new routing semantics.
+- Represent Local/Federated ownership and item/fluid returns as immutable generation-bearing records. Fresh capability
+  lookup follows only current mode state; an already issued return adapter retains only its original native owner.
+- Implement the production Endpoint as a custom networked block with no inventory. Register node, ME storage, item, fluid,
+  and Task 17 target capabilities only on its five logistics faces; keep the Federation face outside native logistics.
+- Keep all replay control and mutable replay state in the separately loaded testmod. Production `ProviderRuntime` retains
+  only its normal resolver state, while testmod Mixins observe genuine issued authorizations and the unchanged native
+  resolver, Pattern Provider Mixin, cache, and Endpoint rejection path.
+- Enforce the release boundary on both binary and sources JARs, including private ProviderRuntime symbols, instead of
+  excluding a known test bridge by filename.

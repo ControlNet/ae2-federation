@@ -387,3 +387,20 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - A Federation-routed Endpoint fixture must be physically separate from the Provider's native Grid. Installing the Interface
   beside the Provider creates a native same-Grid merge before authorization and invalidates the scenario.
 - Canonical repaired evidence is `.omo/evidence/task-17/attempt-20260915T011829131Z/result.json`.
+
+## 2026-09-15 Task 18
+
+- A dedicated bufferless `AENetworkedBlockEntity` is necessary for the Endpoint capability boundary. Reusing AE2's
+  Interface block would leave its previously registered generic inventory adapters available on the Federation face.
+- Immutable native return handlers naturally preserve outstanding responsibility: removing an old context from fresh
+  lookups does not alter the adapter's captured `PatternProviderReturnInventory`, so mode takeover cannot redirect it.
+- AE2 generic adapter remainder values provide the complete Task 18 backpressure contract without an Endpoint buffer:
+  simulation and modulation report the exact native accepted amount and leave every remainder with the caller.
+- Canonical source-bound evidence is `.omo/evidence/task-18/attempt-20260915T023556832Z/result.json`; Task 7's native
+  compatibility cases also passed after Local ownership was strengthened to world-derived adjacency.
+- Release-clean negative testing does not require a production replay API. Testmod Mixins can capture only authentic
+  package-issued resolver returns, retain them in test-only identity maps, and substitute them on a later genuine resolver
+  invocation while production authorization and cache rejection remain unchanged.
+- Distinct object identities are useful only when bound to independent runtime traces. The accepted evidence matches native
+  facts against separately logged inventory observations and resolver/Mixin/cache/context observations, then rejects
+  removed, malformed, duplicated, swapped, and substituted values after full report rebinding.
