@@ -115,6 +115,9 @@ def verifyTaskSixteenEvidence
 def taskSeventeenCases = ['provider.orientation', 'claim.compete', 'claim.offline-owner', 'claim.overlap',
         'provider.rotate-pending', 'provider.reject-same-grid']
 def verifyTaskSeventeenEvidence
+def taskEighteenCases = ['endpoint.local', 'endpoint.federated', 'endpoint.five-face-returns',
+        'endpoint.return-backpressure', 'endpoint.reject-mode-takeover']
+def verifyTaskEighteenEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -1467,6 +1470,327 @@ verifyTaskSeventeenEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 17 source-target separation semantics are incomplete')
     }
 }
+verifyTaskEighteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskEighteenCases }) return
+    if (requested != taskEighteenCases) throw new GradleException('Task 18 evidence must select the exact canonical case set')
+    def expected = [endpointlocal: 10, endpointfederated: 23, endpointfivefacereturns: 16,
+            endpointreturnbackpressure: 8, endpointrejectmodetakeover: 10]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-endpoint') && it.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 18 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 18 native child exits are incomplete')
+    }
+    def parsed = [:]
+    def inventoryTraces = [:]
+    def negativeTraces = [:]
+    def persistenceTraces = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 18 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 18 assertions') != assertionCount) {
+            throw new GradleException("Task 18 assertion accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_ENDPOINT_MODE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 18 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 18 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        def inventoryTrace = [:]
+        (new File(attempt, log).text =~ /AE2F_ENDPOINT_INVENTORY_TRACE testId=([a-z0-9]+) candidate=([01]) phase=(before|after) identity=([0-9]+) slots=([0-9]+) snapshot=([0-9,]+)/).each { match ->
+            if (match[1] == testId) {
+                def key = "${match[2]}.${match[3]}".toString()
+                if (inventoryTrace.put(key, [identity: match[4].toString(), slots: match[5].toString(),
+                        snapshot: match[6].toString()]) != null) {
+                    throw new GradleException("Task 18 duplicate runtime inventory trace in ${log}: ${key}")
+                }
+            }
+        }
+        inventoryTraces[testId] = inventoryTrace
+        def negativeTrace = [:].withDefault { [:] }
+        (new File(attempt, log).text =~ /AE2F_ENDPOINT_NEGATIVE_TRACE testId=([a-z0-9]+) phase=(stale|mismatch) fact=([A-Za-z0-9]+) value=([^\s]+)/).each { match ->
+            def phase = match[2].toString()
+            def fact = match[3].toString()
+            if (match[1] == testId && negativeTrace[phase].put(fact, match[4].toString()) != null) {
+                throw new GradleException("Task 18 duplicate negative runtime trace in ${log}: ${phase}.${fact}")
+            }
+        }
+        negativeTraces[testId] = negativeTrace
+        def persistenceTrace = [:].withDefault { [:] }
+        (new File(attempt, log).text =~ /AE2F_ENDPOINT_PERSISTENCE_TRACE testId=([a-z0-9]+) step=(save|unload|load|ready) fact=([A-Za-z0-9]+) value=([^\s]+)/).each { match ->
+            def step = match[2].toString()
+            def fact = match[3].toString()
+            if (match[1] == testId && persistenceTrace[step].put(fact, match[4].toString()) != null) {
+                throw new GradleException("Task 18 duplicate persistence runtime trace in ${log}: ${step}.${fact}")
+            }
+        }
+        persistenceTraces[testId] = persistenceTrace
+        parsed[testId] = properties
+    }
+    def local = parsed.endpointlocal as Properties
+    if (local.getProperty('mode') != 'LOCAL' || local.getProperty('verifiedUpstreams') != '1'
+            || local.getProperty('hubRequired') != 'false' || local.getProperty('fabricRequired') != 'false'
+            || local.getProperty('sourceGridSeparated') != 'true' || local.getProperty('nativeInputAccepted') != 'true'
+            || local.getProperty('nativeReturnOwner') != 'true' || local.getProperty('endpointBuffer') != 'false'
+            || local.getProperty('typedGeneration') != 'true') {
+        throw new GradleException('Task 18 Local ownership or native binding semantics are incomplete')
+    }
+    def federated = parsed.endpointfederated as Properties
+    if (federated.getProperty('mode') != 'FEDERATED' || federated.getProperty('claimAuthorized') != 'true'
+            || federated.getProperty('claimEpoch') != '1' || federated.getProperty('runtimeBinding') != 'true'
+            || federated.getProperty('nativeInputAccepted') != 'true'
+            || federated.getProperty('nativeTargetLookups') != '4'
+            || federated.getProperty('nativeReturnOwner') != 'true'
+            || federated.getProperty('sourceGridSeparated') != 'true'
+            || federated.getProperty('endpointBuffer') != 'false') {
+        throw new GradleException('Task 18 Federated Claim or native return binding semantics are incomplete')
+    }
+    def persistence = persistenceTraces.endpointfederated as Map
+    def stateFacts = ['endpointId', 'endpointEpoch', 'providerId', 'providerEpoch', 'claimEpoch', 'mode',
+            'generation', 'bindingIdentity']
+    if (persistence.keySet() != ['save', 'unload', 'load', 'ready'] as Set
+            || persistence.save?.keySet() != stateFacts as Set
+            || persistence.unload?.keySet() != ['bindingIdentity'] as Set
+            || persistence.load?.keySet() != stateFacts as Set
+            || persistence.ready?.keySet() != stateFacts as Set) {
+        throw new GradleException('Task 18 owned Federated persistence lifecycle trace is incomplete')
+    }
+    ['persisted': 'save', 'loaded': 'load', 'restored': 'ready'].each { prefix, step ->
+        stateFacts.each { fact ->
+            def property = prefix + fact.substring(0, 1).toUpperCase() + fact.substring(1)
+            if (federated.getProperty(property) != persistence[step][fact]) {
+                throw new GradleException("Task 18 owned Federated persistence runtime trace mismatch: ${property}")
+            }
+        }
+    }
+    def uuidPattern = ~/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+    def persistedGeneration = federated.getProperty('persistedGeneration')
+    def restoredGeneration = federated.getProperty('restoredGeneration')
+    def persistedBinding = requireNativeObjectIdentity(federated, 'persistedBindingIdentity',
+            new File(attempt, 'native-endpointfederated.properties'))
+    def restoredBinding = requireNativeObjectIdentity(federated, 'restoredBindingIdentity',
+            new File(attempt, 'native-endpointfederated.properties'))
+    if (!(federated.getProperty('persistedEndpointId') ==~ uuidPattern)
+            || !(federated.getProperty('persistedProviderId') ==~ uuidPattern)
+            || federated.getProperty('persistedEndpointId') != federated.getProperty('loadedEndpointId')
+            || federated.getProperty('persistedEndpointId') != federated.getProperty('restoredEndpointId')
+            || federated.getProperty('persistedProviderId') != federated.getProperty('loadedProviderId')
+            || federated.getProperty('persistedProviderId') != federated.getProperty('restoredProviderId')
+            || federated.getProperty('persistedEndpointEpoch') != federated.getProperty('loadedEndpointEpoch')
+            || federated.getProperty('persistedEndpointEpoch') != federated.getProperty('restoredEndpointEpoch')
+            || federated.getProperty('persistedProviderEpoch') != '7'
+            || federated.getProperty('loadedProviderEpoch') != '7'
+            || federated.getProperty('restoredProviderEpoch') != '7'
+            || federated.getProperty('persistedClaimEpoch') != '1'
+            || federated.getProperty('loadedClaimEpoch') != '1'
+            || federated.getProperty('restoredClaimEpoch') != '1'
+            || federated.getProperty('persistedMode') != 'FEDERATED'
+            || federated.getProperty('loadedMode') != 'FEDERATED'
+            || federated.getProperty('restoredMode') != 'FEDERATED'
+            || !(persistedGeneration ==~ /[1-9][0-9]*/) || federated.getProperty('loadedGeneration') != persistedGeneration
+            || !(restoredGeneration ==~ /[1-9][0-9]*/)
+            || Long.parseLong(restoredGeneration) <= Long.parseLong(persistedGeneration)
+            || persistedBinding == restoredBinding || federated.getProperty('loadedBindingIdentity') != '0'
+            || persistence.unload.bindingIdentity != persistedBinding
+            || federated.getProperty('saveLifecycleCount') != '1'
+            || federated.getProperty('unloadLifecycleCount') != '1'
+            || federated.getProperty('loadLifecycleCount') != '1'
+            || federated.getProperty('readyLifecycleCount') != '1'
+            || federated.getProperty('ownedClaimRestored') != 'true'
+            || federated.getProperty('configuredModeRestored') != 'true'
+            || federated.getProperty('generationAdvancedAfterLoad') != 'true'
+            || federated.getProperty('bindingRecreated') != 'true'
+            || federated.getProperty('targetCapabilityRestored') != 'true'
+            || federated.getProperty('postReloadNativeInputAccepted') != 'true'
+            || federated.getProperty('runtimeReferencesSerialized') != 'false') {
+        throw new GradleException('Task 18 owned Federated persistence lifecycle is incomplete')
+    }
+    def faces = parsed.endpointfivefacereturns as Properties
+    def expectedFaces = ['down', 'up', 'north', 'south', 'west']
+    if (faces.getProperty('logisticsFaces') != '5' || faces.getProperty('federationFaceExcluded') != 'true'
+            || faces.getProperty('itemAdapter') != 'GenericStackItemStorage'
+            || faces.getProperty('fluidAdapter') != 'GenericStackFluidStorage'
+            || faces.getProperty('typedReturnContexts') != 'true'
+            || expectedFaces.any { faces.getProperty("face.${it}") != 'node-storage-item-fluid' }) {
+        throw new GradleException('Task 18 five-face native capability semantics are incomplete')
+    }
+    def pressure = parsed.endpointreturnbackpressure as Properties
+    def pressureFile = new File(attempt, 'native-endpointreturnbackpressure.properties')
+    def candidate0Identity = requireNativeObjectIdentity(pressure, 'candidate0InventoryIdentity', pressureFile)
+    def candidate1Identity = requireNativeObjectIdentity(pressure, 'candidate1InventoryIdentity', pressureFile)
+    def candidate0Before = pressure.getProperty('candidate0SnapshotBefore')
+    def candidate0After = pressure.getProperty('candidate0SnapshotAfter')
+    def candidate1Before = pressure.getProperty('candidate1SnapshotBefore')
+    def candidate1After = pressure.getProperty('candidate1SnapshotAfter')
+    def pressureInventoryTrace = inventoryTraces.endpointreturnbackpressure as Map
+    if (candidate0Identity == '0' || candidate1Identity == '0' || candidate0Identity == candidate1Identity
+            || candidate0Before == null || candidate0After == null
+            || candidate1Before == null || candidate1After == null
+            || !(candidate0Before ==~ /[0-9]+(,[0-9]+)*/)
+            || !(candidate1Before ==~ /[0-9]+(,[0-9]+)*/)
+            || pressure.getProperty('candidate0SlotCount') != '9'
+            || pressure.getProperty('candidate1SlotCount') != '9'
+            || candidate0Before.split(',').size() != 9 || candidate1Before.split(',').size() != 9
+            || candidate0Before != candidate0After || candidate1Before != candidate1After
+            || candidate0Before == candidate1Before
+            || pressureInventoryTrace.size() != 4
+            || pressureInventoryTrace['0.before']?.identity?.toString() != candidate0Identity
+            || pressureInventoryTrace['0.before']?.slots?.toString() != '9'
+            || pressureInventoryTrace['0.before']?.snapshot?.toString() != candidate0Before
+            || pressureInventoryTrace['0.after']?.identity?.toString() != candidate0Identity
+            || pressureInventoryTrace['0.after']?.slots?.toString() != '9'
+            || pressureInventoryTrace['0.after']?.snapshot?.toString() != candidate0After
+            || pressureInventoryTrace['1.before']?.identity?.toString() != candidate1Identity
+            || pressureInventoryTrace['1.before']?.slots?.toString() != '9'
+            || pressureInventoryTrace['1.before']?.snapshot?.toString() != candidate1Before
+            || pressureInventoryTrace['1.after']?.identity?.toString() != candidate1Identity
+            || pressureInventoryTrace['1.after']?.slots?.toString() != '9'
+            || pressureInventoryTrace['1.after']?.snapshot?.toString() != candidate1After
+            || pressure.getProperty('duplicateOwnersRejected') != 'true'
+            || pressure.getProperty('candidateOwnerCount') != '2'
+            || pressure.getProperty('candidate0Unchanged') != 'true'
+            || pressure.getProperty('candidate1Unchanged') != 'true'
+            || pressure.getProperty('noSinkHandlerPresent') != 'false'
+            || pressure.getProperty('noSinkRequested') != '10'
+            || pressure.getProperty('noSinkAccepted') != '0'
+            || pressure.getProperty('noSinkRemainder') != '10'
+            || pressure.getProperty('callerRetained') != pressure.getProperty('noSinkRemainder')
+            || pressure.getProperty('simulateRequested') != '10'
+            || pressure.getProperty('simulateAccepted') != '4'
+            || pressure.getProperty('simulateRemainder') != '6'
+            || pressure.getProperty('simulateMutated') != 'false'
+            || pressure.getProperty('actualRequested') != '10'
+            || pressure.getProperty('actualAccepted') != '4'
+            || pressure.getProperty('actualRemainder') != '6'
+            || pressure.getProperty('nativeCapacity') != '64') {
+        throw new GradleException('Task 18 return backpressure or native acceptance semantics are incomplete')
+    }
+    def takeover = parsed.endpointrejectmodetakeover as Properties
+    def takeoverFile = new File(attempt, 'native-endpointrejectmodetakeover.properties')
+    def staleExpectedProvenance = requireNativeObjectIdentity(takeover, 'staleExpectedProvenanceIdentity', takeoverFile)
+    def staleActualProvenance = requireNativeObjectIdentity(takeover, 'staleActualProvenanceIdentity', takeoverFile)
+    def mismatchExpectedProvenance = requireNativeObjectIdentity(takeover,
+            'mismatchExpectedProvenanceIdentity', takeoverFile)
+    def mismatchActualProvenance = requireNativeObjectIdentity(takeover,
+            'mismatchActualProvenanceIdentity', takeoverFile)
+    def staleExpectedLogic = requireNativeObjectIdentity(takeover, 'staleExpectedLogicIdentity', takeoverFile)
+    def staleResolverOwner = requireNativeObjectIdentity(takeover, 'staleResolverOwnerIdentity', takeoverFile)
+    def staleMixinOwner = requireNativeObjectIdentity(takeover, 'staleMixinOwnerIdentity', takeoverFile)
+    def staleCacheOwner = requireNativeObjectIdentity(takeover, 'staleCacheOwnerIdentity', takeoverFile)
+    def mismatchExpectedLogic = requireNativeObjectIdentity(takeover, 'mismatchExpectedLogicIdentity', takeoverFile)
+    def mismatchResolverOwner = requireNativeObjectIdentity(takeover, 'mismatchResolverOwnerIdentity', takeoverFile)
+    def mismatchMixinOwner = requireNativeObjectIdentity(takeover, 'mismatchMixinOwnerIdentity', takeoverFile)
+    def mismatchCacheOwner = requireNativeObjectIdentity(takeover, 'mismatchCacheOwnerIdentity', takeoverFile)
+    ['staleItemContextIdentityBefore', 'staleItemContextIdentityAfter',
+            'staleFluidContextIdentityBefore', 'staleFluidContextIdentityAfter',
+            'mismatchItemContextIdentityBefore', 'mismatchItemContextIdentityAfter',
+            'mismatchFluidContextIdentityBefore', 'mismatchFluidContextIdentityAfter'].each {
+        requireNativeObjectIdentity(takeover, it, takeoverFile)
+    }
+    def negativeTrace = negativeTraces.endpointrejectmodetakeover as Map
+    def negativeTraceFields = ['expectedLogicIdentity', 'expectedProvenanceIdentity', 'actualProvenanceIdentity',
+            'authorizedGeneration', 'resolverOwnerIdentity', 'resolverInvocationCount', 'mixinOwnerIdentity',
+            'mixinLookupCount', 'cacheOwnerIdentity', 'cacheLookupCount', 'cacheTargetFoundCount',
+            'itemContextIdentityBefore', 'itemContextIdentityAfter', 'fluidContextIdentityBefore',
+            'fluidContextIdentityAfter']
+    ['stale', 'mismatch'].each { phase ->
+        if (negativeTrace[phase]?.size() != negativeTraceFields.size()
+                || negativeTraceFields.any { fact ->
+                    def propertyFact = fact == 'mixinLookupCount' ? 'ObservedMixinLookupCount'
+                            : fact == 'cacheLookupCount' ? 'ObservedCacheLookupCount'
+                            : fact.substring(0, 1).toUpperCase() + fact.substring(1)
+                    def propertyName = phase + propertyFact
+                    negativeTrace[phase][fact] != takeover.getProperty(propertyName)
+                }) {
+            throw new GradleException("Task 18 ${phase} negative runtime trace identity mismatch")
+        }
+    }
+    def preCycleGeneration = takeover.getProperty('preCycleGeneration')
+    def currentGeneration = takeover.getProperty('currentGeneration')
+    if (preCycleGeneration == null || currentGeneration == null
+            || !(preCycleGeneration ==~ /[1-9][0-9]*/) || !(currentGeneration ==~ /[1-9][0-9]*/)
+            || preCycleGeneration == currentGeneration
+            || staleExpectedLogic == '0' || staleResolverOwner == '0' || staleMixinOwner == '0'
+            || staleCacheOwner == '0' || staleMixinOwner != staleExpectedLogic || staleCacheOwner != staleExpectedLogic
+            || mismatchExpectedLogic == '0' || mismatchResolverOwner == '0' || mismatchMixinOwner == '0'
+            || mismatchCacheOwner == '0' || mismatchMixinOwner != mismatchExpectedLogic
+            || mismatchCacheOwner != mismatchExpectedLogic || staleResolverOwner != mismatchResolverOwner
+            || staleExpectedProvenance != staleActualProvenance
+            || mismatchExpectedProvenance == mismatchActualProvenance
+            || takeover.getProperty('staleAuthorizedGeneration') != preCycleGeneration
+            || takeover.getProperty('staleResolverInvocationCount') != '1'
+            || takeover.getProperty('staleAuthorizationAccepted') != 'false'
+            || takeover.getProperty('staleMixinLookupDelta') != '1'
+            || takeover.getProperty('staleObservedMixinLookupCount') != '1'
+            || takeover.getProperty('staleObservedCacheLookupCount') != '1'
+            || takeover.getProperty('staleCacheTargetFoundCount') != '0'
+            || takeover.getProperty('staleNativeTargetLookupDelta') != '1'
+            || takeover.getProperty('staleNativeTargetsFoundDelta') != '1'
+            || takeover.getProperty('staleItemContextIdentityBefore') != '0'
+            || takeover.getProperty('staleItemContextIdentityAfter') != '0'
+            || takeover.getProperty('staleFluidContextIdentityBefore') != '0'
+            || takeover.getProperty('staleFluidContextIdentityAfter') != '0'
+            || takeover.getProperty('staleItemContextInstalled') != 'false'
+            || takeover.getProperty('staleFluidContextInstalled') != 'false'
+            || takeover.getProperty('staleTargetMutation') != '0'
+            || takeover.getProperty('staleLane0ReturnMutation') != '0'
+            || takeover.getProperty('staleLane1ReturnMutation') != '0'
+            || takeover.getProperty('mismatchAuthorizedGeneration') != currentGeneration
+            || takeover.getProperty('mismatchResolverInvocationCount') != '1'
+            || takeover.getProperty('mismatchAuthorizationAccepted') != 'false'
+            || takeover.getProperty('mismatchMixinLookupDelta') != '1'
+            || takeover.getProperty('mismatchObservedMixinLookupCount') != '1'
+            || takeover.getProperty('mismatchObservedCacheLookupCount') != '1'
+            || takeover.getProperty('mismatchCacheTargetFoundCount') != '0'
+            || takeover.getProperty('mismatchNativeTargetLookupDelta') != '0'
+            || takeover.getProperty('mismatchNativeTargetsFoundDelta') != '0'
+            || takeover.getProperty('mismatchItemContextIdentityBefore') == '0'
+            || takeover.getProperty('mismatchItemContextIdentityAfter')
+                    != takeover.getProperty('mismatchItemContextIdentityBefore')
+            || takeover.getProperty('mismatchFluidContextIdentityBefore') == '0'
+            || takeover.getProperty('mismatchFluidContextIdentityAfter')
+                    != takeover.getProperty('mismatchFluidContextIdentityBefore')
+            || takeover.getProperty('mismatchItemContextIdentityBefore')
+                    == takeover.getProperty('mismatchFluidContextIdentityBefore')
+            || takeover.getProperty('mismatchItemContextChanged') != 'false'
+            || takeover.getProperty('mismatchFluidContextChanged') != 'false'
+            || takeover.getProperty('mismatchTargetMutation') != '0'
+            || takeover.getProperty('mismatchLane0ReturnMutation') != '0'
+            || takeover.getProperty('mismatchLane1ReturnMutation') != '0'
+            || takeover.getProperty('staleGenerationAdopted') != 'false'
+            || takeover.getProperty('oldContextPreserved') != 'true'
+            || takeover.getProperty('oldReturnOwnerStable') != 'true'
+            || takeover.getProperty('newReturnOwnerExact') != 'true'
+            || takeover.getProperty('claimAuthorized') != 'true'
+            || takeover.getProperty('generationDistinct') != 'true'
+            || takeover.getProperty('falseAcceptance') != 'false'
+            || takeover.getProperty('resourceGuessing') != 'false') {
+        throw new GradleException('Task 18 stale mode takeover semantics are incomplete')
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -1557,6 +1881,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskSeventeenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskEighteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
         def identity = currentSourceIdentity(identityDir)
@@ -1601,6 +1927,13 @@ def verifyNativeEvidence = { File evidenceFile, Map expected ->
         throw new GradleException("Native evidence identity mismatch: ${evidenceFile}")
     }
     def assertions = parsePositiveInteger(properties.getProperty('assertions'), 'native assertions')
+    if (expected.accounting == false) {
+        if (assertions != expected.assertions as long
+                || ['operations', 'inserted', 'extracted', 'elapsedNanos'].any(properties::containsKey)) {
+            throw new GradleException("Task-specific native evidence contains unsupported generic accounting: ${evidenceFile}")
+        }
+        return [assertions: assertions]
+    }
     def operations = parsePositiveInteger(properties.getProperty('operations'), 'native operations')
     def inserted = parseNonnegativeInteger(properties.getProperty('inserted'), 'native inserted')
     def extracted = parseNonnegativeInteger(properties.getProperty('extracted'), 'native extracted')
@@ -1834,6 +2167,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             }
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                     structure: testCase.structure, assertions: testCase.assertions,
+                    accounting: !(testCase.id in taskEighteenCases),
                     operations: (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -1977,6 +2311,17 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                              assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'endpoint.local':
+                case 'endpoint.federated':
+                case 'endpoint.five-face-returns':
+                case 'endpoint.return-backpressure':
+                case 'endpoint.reject-mode-takeover':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, accounting: false])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions]); break
                 case 'storage-proof.native-projection':
                 case 'storage-proof.four-fabric-diamond':
                 case 'storage-proof.reject-loop':
@@ -2119,6 +2464,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskFourteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskSixteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskSeventeenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskEighteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -2984,5 +3330,363 @@ tasks.register('federationTaskSeventeenEvidenceSelfTest') {
         ]
         if (probes.any { !it }) throw new GradleException('Task 17 adversarial persisted evidence was accepted')
         logger.lifecycle('Task 17 adversarial Provider Claim evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskEighteenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 18 Endpoint mode and native return evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 18 evidence for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String oldValue, String newValue, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                properties.setProperty(fact, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${newValue}")
+            }
+        }
+        def mutatePersistenceFact = { String property, String step, String traceFact, String newValue,
+                String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, 'native-endpointfederated.properties')
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(property)
+                properties.setProperty(property, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, 'positive-endpointfederated.log')
+                log.text = log.text.replace("fact=${property} value=${oldValue}",
+                        "fact=${property} value=${newValue}")
+                        .replace("step=${step} fact=${traceFact} value=${oldValue}",
+                                "step=${step} fact=${traceFact} value=${newValue}")
+            }
+        }
+        def copyPersistenceFact = { String property, String sourceProperty, String step, String traceFact,
+                String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, 'native-endpointfederated.properties')
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(property)
+                def newValue = properties.getProperty(sourceProperty)
+                properties.setProperty(property, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, 'positive-endpointfederated.log')
+                log.text = log.text.replace("fact=${property} value=${oldValue}",
+                        "fact=${property} value=${newValue}")
+                        .replace("step=${step} fact=${traceFact} value=${oldValue}",
+                                "step=${step} fact=${traceFact} value=${newValue}")
+            }
+        }
+        def setFact = { String artifactId, String fact, String newValue, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${newValue}")
+            }
+        }
+        def removeFact = { String artifactId, String fact, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                properties.remove(fact)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().findAll { !it.contains("fact=${fact} ") }.join('\n') + '\n'
+            }
+        }
+        def copyFact = { String artifactId, String targetFact, String sourceFact, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(targetFact)
+                def newValue = properties.getProperty(sourceFact)
+                properties.setProperty(targetFact, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${targetFact} value=${oldValue}",
+                        "fact=${targetFact} value=${newValue}")
+            }
+        }
+        def swapFacts = { String artifactId, String firstFact, String secondFact, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def firstValue = properties.getProperty(firstFact)
+                def secondValue = properties.getProperty(secondFact)
+                properties.setProperty(firstFact, secondValue)
+                properties.setProperty(secondFact, firstValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                def marker = "fact=${firstFact} value=__task18_swap__"
+                log.text = log.text.replace("fact=${firstFact} value=${firstValue}", marker)
+                        .replace("fact=${secondFact} value=${secondValue}",
+                                "fact=${secondFact} value=${firstValue}")
+                        .replace(marker, "fact=${firstFact} value=${secondValue}")
+            }
+        }
+        def mutateCount = { Map spec, String variant ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${spec.artifact}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(spec.property as String)
+                def newValue = switch (variant) {
+                    case 'malformed' -> 'not-a-count'
+                    case 'contradictory' -> oldValue == '0' ? '1' : Long.toString(Long.parseLong(oldValue) + 1)
+                    case 'substituted' -> properties.getProperty(spec.substitute as String)
+                    default -> null
+                }
+                if (variant == 'missing') {
+                    properties.remove(spec.property as String)
+                } else {
+                    properties.setProperty(spec.property as String, newValue)
+                }
+                file.withOutputStream { properties.store(it, "Task 18 ${variant} ${spec.property}") }
+                def log = new File(attempt, "positive-${spec.artifact}.log")
+                def modeMarker = "fact=${spec.property} value=${oldValue}"
+                def negativeMarker = spec.phase == null ? null
+                        : "phase=${spec.phase} fact=${spec.traceFact} value=${oldValue}"
+                if (variant == 'missing') {
+                    log.text = log.readLines().findAll { line ->
+                        !line.contains(modeMarker) && (negativeMarker == null || !line.contains(negativeMarker))
+                    }.join('\n') + '\n'
+                } else {
+                    log.text = log.text.replace(modeMarker, "fact=${spec.property} value=${newValue}")
+                    if (negativeMarker != null) {
+                        log.text = log.text.replace(negativeMarker,
+                                "phase=${spec.phase} fact=${spec.traceFact} value=${newValue}")
+                    }
+                }
+            }
+        }
+        def countSpecs = [
+                [artifact: 'endpointfederated', property: 'nativeTargetLookups', substitute: 'claimEpoch',
+                        semantic: 'Task 18 Federated Claim or native return binding semantics are incomplete'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleResolverInvocationCount',
+                        traceFact: 'resolverInvocationCount', substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleMixinLookupDelta',
+                        substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleObservedMixinLookupCount',
+                        traceFact: 'mixinLookupCount', substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleObservedCacheLookupCount',
+                        traceFact: 'cacheLookupCount', substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleCacheTargetFoundCount',
+                        traceFact: 'cacheTargetFoundCount', substitute: 'staleResolverInvocationCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleNativeTargetLookupDelta',
+                        substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'stale', property: 'staleNativeTargetsFoundDelta',
+                        substitute: 'staleCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchResolverInvocationCount',
+                        traceFact: 'resolverInvocationCount', substitute: 'mismatchCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchMixinLookupDelta',
+                        substitute: 'mismatchCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchObservedMixinLookupCount',
+                        traceFact: 'mixinLookupCount', substitute: 'mismatchCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchObservedCacheLookupCount',
+                        traceFact: 'cacheLookupCount', substitute: 'mismatchCacheTargetFoundCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchCacheTargetFoundCount',
+                        traceFact: 'cacheTargetFoundCount', substitute: 'mismatchResolverInvocationCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchNativeTargetLookupDelta',
+                        substitute: 'mismatchResolverInvocationCount'],
+                [artifact: 'endpointrejectmodetakeover', phase: 'mismatch', property: 'mismatchNativeTargetsFoundDelta',
+                        substitute: 'mismatchResolverInvocationCount']
+        ]
+        def countProbes = countSpecs.collectMany { spec ->
+            ['missing', 'malformed', 'contradictory', 'substituted'].collect { variant ->
+                def missingBoundTrace = variant == 'missing' && spec.traceFact != null
+                def expectedMessage = spec.semantic ?: (missingBoundTrace
+                        ? "Task 18 ${spec.phase} negative runtime trace identity mismatch"
+                        : 'Task 18 stale mode takeover semantics are incomplete')
+                taskSevenEvidenceProbeRejects(sourceResult,
+                        "task18-${variant}-${spec.property}", expectedMessage, mutateCount(spec, variant))
+            }
+        }
+        def duplicateTrace = { String artifactId, String marker ->
+            return { File attempt, Map report ->
+                def log = new File(attempt, "positive-${artifactId}.log")
+                def duplicate = log.readLines().find { it.contains(marker) }
+                if (duplicate == null) throw new GradleException("Missing Task 18 trace marker ${marker}")
+                log.append(duplicate + '\n')
+            }
+        }
+        def probes = countProbes + [
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-mode-trace',
+                        'Task 18 duplicate runtime trace fact',
+                        duplicateTrace('endpointlocal', 'AE2F_ENDPOINT_MODE_TRACE')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-inventory-trace',
+                        'Task 18 duplicate runtime inventory trace',
+                        duplicateTrace('endpointreturnbackpressure', 'AE2F_ENDPOINT_INVENTORY_TRACE')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-negative-trace',
+                        'Task 18 duplicate negative runtime trace',
+                        duplicateTrace('endpointrejectmodetakeover', 'AE2F_ENDPOINT_NEGATIVE_TRACE')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-persistence-trace',
+                        'Task 18 duplicate persistence runtime trace',
+                        duplicateTrace('endpointfederated', 'AE2F_ENDPOINT_PERSISTENCE_TRACE')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-persistence-ready',
+                        'Task 18 owned Federated persistence lifecycle trace is incomplete') { attempt, report ->
+                    def log = new File(attempt, 'positive-endpointfederated.log')
+                    log.text = log.readLines().findAll {
+                        !it.contains('AE2F_ENDPOINT_PERSISTENCE_TRACE testId=endpointfederated step=ready')
+                    }.join('\n') + '\n'
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-forged-persisted-endpoint',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        mutatePersistenceFact('persistedEndpointId', 'save', 'endpointId',
+                                '00000000-0000-0000-0000-000000000001',
+                                'Task 18 forged persisted Endpoint identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-forged-loaded-provider',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        mutatePersistenceFact('loadedProviderId', 'load', 'providerId',
+                                '00000000-0000-0000-0000-000000000002',
+                                'Task 18 forged loaded Provider identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-default-restored-provider-epoch',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        mutatePersistenceFact('restoredProviderEpoch', 'ready', 'providerEpoch', '1',
+                                'Task 18 default restored Provider epoch')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-restored-local-mode',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        mutatePersistenceFact('restoredMode', 'ready', 'mode', 'LOCAL',
+                                'Task 18 restored Local mode substitution')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-static-restored-generation',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        copyPersistenceFact('restoredGeneration', 'persistedGeneration', 'ready', 'generation',
+                                'Task 18 static restored generation')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-reused-restored-binding',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        copyPersistenceFact('restoredBindingIdentity', 'persistedBindingIdentity', 'ready',
+                                'bindingIdentity', 'Task 18 reused restored binding')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-loaded-runtime-binding',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        copyPersistenceFact('loadedBindingIdentity', 'persistedBindingIdentity', 'load',
+                                'bindingIdentity', 'Task 18 loaded runtime binding substitution')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-serialized-runtime-reference',
+                        'Task 18 owned Federated persistence lifecycle is incomplete',
+                        mutateFact('endpointfederated', 'runtimeReferencesSerialized', 'false', 'true',
+                                'Task 18 serialized runtime reference acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-local-owners',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        mutateFact('endpointreturnbackpressure', 'duplicateOwnersRejected', 'true', 'false',
+                                'Task 18 duplicate Local owner acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-wrong-grid',
+                        'Task 18 Local ownership or native binding semantics are incomplete',
+                        mutateFact('endpointlocal', 'sourceGridSeparated', 'true', 'false',
+                                'Task 18 wrong Grid acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-feedback-loop',
+                        'Task 18 five-face native capability semantics are incomplete',
+                        mutateFact('endpointfivefacereturns', 'federationFaceExcluded', 'true', 'false',
+                                'Task 18 native feedback loop acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-stale-generation',
+                        'Task 18 stale mode takeover semantics are incomplete',
+                        mutateFact('endpointrejectmodetakeover', 'staleGenerationAdopted', 'false', 'true',
+                                 'Task 18 stale generation adoption')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-rebound-generation',
+                        'Task 18 stale mode takeover semantics are incomplete',
+                        copyFact('endpointrejectmodetakeover', 'currentGeneration', 'preCycleGeneration',
+                                'Task 18 rebound stale generation')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-stale-provenance',
+                        'Task 4 staleExpectedProvenanceIdentity is missing, empty, or malformed',
+                        removeFact('endpointrejectmodetakeover', 'staleExpectedProvenanceIdentity',
+                                'Task 18 missing stale provenance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-mismatched-provenance-substitution',
+                        'Task 18 mismatch negative runtime trace identity mismatch',
+                        copyFact('endpointrejectmodetakeover', 'mismatchActualProvenanceIdentity',
+                                'mismatchExpectedProvenanceIdentity', 'Task 18 mismatched provenance substitution')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-mismatched-authorization-accepted',
+                        'Task 18 stale mode takeover semantics are incomplete',
+                        mutateFact('endpointrejectmodetakeover', 'mismatchAuthorizationAccepted', 'false', 'true',
+                                'Task 18 mismatched authorization acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-false-acceptance',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        mutateFact('endpointreturnbackpressure', 'noSinkAccepted', '0', '1',
+                                 'Task 18 false no-sink acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-candidate-snapshot',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        removeFact('endpointreturnbackpressure', 'candidate0SnapshotBefore',
+                                'Task 18 missing candidate snapshot')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-candidate-snapshot-substitution',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        copyFact('endpointreturnbackpressure', 'candidate0SnapshotAfter', 'candidate1SnapshotAfter',
+                                'Task 18 candidate snapshot literal substitution')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-candidate0-identity',
+                        'Task 4 candidate0InventoryIdentity is missing, empty, or malformed',
+                        removeFact('endpointreturnbackpressure', 'candidate0InventoryIdentity',
+                                'Task 18 missing candidate zero identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-malformed-candidate1-identity',
+                        'Task 4 candidate1InventoryIdentity is missing, empty, or malformed',
+                        setFact('endpointreturnbackpressure', 'candidate1InventoryIdentity', 'not-an-identity',
+                                'Task 18 malformed candidate one identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-candidate-identities',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        copyFact('endpointreturnbackpressure', 'candidate1InventoryIdentity',
+                                'candidate0InventoryIdentity', 'Task 18 duplicate candidate identities')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-swapped-candidate-identities',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        swapFacts('endpointreturnbackpressure', 'candidate0InventoryIdentity',
+                                'candidate1InventoryIdentity', 'Task 18 swapped candidate identities')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-substituted-candidate0-identity',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        setFact('endpointreturnbackpressure', 'candidate0InventoryIdentity', '4294967295',
+                                'Task 18 substituted candidate zero identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-substituted-candidate1-identity',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        setFact('endpointreturnbackpressure', 'candidate1InventoryIdentity', '4294967294',
+                                'Task 18 substituted candidate one identity')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-malformed-candidate1-snapshot',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        setFact('endpointreturnbackpressure', 'candidate1SnapshotBefore', 'not-a-vector',
+                                'Task 18 malformed candidate one snapshot')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-swapped-candidate-snapshots',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        swapFacts('endpointreturnbackpressure', 'candidate0SnapshotBefore',
+                                'candidate1SnapshotBefore', 'Task 18 swapped candidate snapshots')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-substituted-candidate1-snapshot',
+                        'Task 18 return backpressure or native acceptance semantics are incomplete',
+                        copyFact('endpointreturnbackpressure', 'candidate1SnapshotAfter',
+                                'candidate0SnapshotAfter', 'Task 18 candidate one snapshot substitution')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-stale-mixin-owner',
+                        'Task 4 staleMixinOwnerIdentity is missing, empty, or malformed',
+                        removeFact('endpointrejectmodetakeover', 'staleMixinOwnerIdentity',
+                                'Task 18 missing stale Mixin owner')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-malformed-mismatch-cache-owner',
+                        'Task 4 mismatchCacheOwnerIdentity is missing, empty, or malformed',
+                        setFact('endpointrejectmodetakeover', 'mismatchCacheOwnerIdentity', 'not-an-identity',
+                                'Task 18 malformed mismatch cache owner')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-substituted-stale-mixin-owner',
+                        'Task 18 stale negative runtime trace identity mismatch',
+                        copyFact('endpointrejectmodetakeover', 'staleMixinOwnerIdentity',
+                                'staleActualProvenanceIdentity', 'Task 18 substituted stale Mixin owner')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-stale-target-found',
+                        'Task 18 stale negative runtime trace identity mismatch',
+                        mutateFact('endpointrejectmodetakeover', 'staleCacheTargetFoundCount', '0', '1',
+                                'Task 18 stale cache target false acceptance')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-mismatch-item-context',
+                        'Task 4 mismatchItemContextIdentityBefore is missing, empty, or malformed',
+                        removeFact('endpointrejectmodetakeover', 'mismatchItemContextIdentityBefore',
+                                'Task 18 missing mismatch item context')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-malformed-mismatch-fluid-context',
+                        'Task 4 mismatchFluidContextIdentityAfter is missing, empty, or malformed',
+                        setFact('endpointrejectmodetakeover', 'mismatchFluidContextIdentityAfter', 'invalid-context',
+                                'Task 18 malformed mismatch fluid context')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-swapped-mismatch-contexts',
+                        'Task 18 mismatch negative runtime trace identity mismatch',
+                        swapFacts('endpointrejectmodetakeover', 'mismatchItemContextIdentityBefore',
+                                'mismatchFluidContextIdentityBefore', 'Task 18 swapped mismatch contexts')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-missing-native-trace',
+                        'Task 18 runtime trace mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-endpointfederated.log')
+                    log.text = log.readLines().findAll { !it.contains('fact=nativeReturnOwner ') }.join('\n') + '\n'
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('Task 18 adversarial Endpoint evidence was accepted')
+        logger.lifecycle('Task 18 adversarial Endpoint evidence probes were rejected for intended reasons')
     }
 }
