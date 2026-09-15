@@ -330,7 +330,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=provider.orientation,claim.compete,claim.offline-owner,claim.overlap,provider.rotate-pending,provider.reject-same-grid -PevidenceDir=.omo/evidence/task-17`.
   - Commit: proposed `feat(processing): authorize native Endpoint bindings`.
 
-- [ ] 18. Implement Interface-like Endpoint Local/Federated modes and native return binding
+- [x] 18. Implement Interface-like Endpoint Local/Federated modes and native return binding
   - Work: `processing/endpoint/`, task 7 capability bindings on five faces, explicit single local upstream identity or federated Claim. Return generic inventory/item/fluid paths delegate into correct actual native Provider return inventory. No default independent Endpoint buffer; when no permitted sink exists, accept zero so the caller retains ownership. Mode changes cannot repurpose outstanding native contexts.
   - References: D12-13,T-E01..06,T-P04,T-L07..08; latest owner corrections; task 7 gate. Depends on 7,16.
   - Acceptance: input and return are separated by capability/context, not guessed resource; all five logistics sides work; Local mode needs no Hub/Cable; two local upstreams rejected; no Grid merge across local source boundary.
