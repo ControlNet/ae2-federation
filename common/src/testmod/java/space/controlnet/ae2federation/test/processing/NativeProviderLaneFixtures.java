@@ -31,6 +31,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -150,6 +151,10 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         helper.setBlock(TARGET_POS, Blocks.AIR);
     }
 
+    public void restoreConfiguredTarget() {
+        helper.setBlock(TARGET_POS, Blocks.CHEST);
+    }
+
     public void installEndpointTarget() {
         installEndpointTarget(AEBlocks.INTERFACE.block(), Direction.EAST);
     }
@@ -219,6 +224,21 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         composition.refreshPatterns();
     }
 
+    public void installPattern(int slot, List<GenericStack> inputs, List<GenericStack> outputs) {
+        composition.patternInventory().setItemDirect(slot,
+                PatternDetailsHelper.encodeProcessingPattern(inputs, outputs));
+        composition.refreshPatterns();
+    }
+
+    public boolean pushInputs(int laneIndex, int patternIndex, List<GenericStack> inputs) {
+        var holders = inputs.stream().map(input -> {
+            var counter = new KeyCounter();
+            counter.add(input.what(), input.amount());
+            return counter;
+        }).toArray(KeyCounter[]::new);
+        return lane(laneIndex).pushPattern(lane(laneIndex).getAvailablePatterns().get(patternIndex), holders);
+    }
+
     public boolean push(int laneIndex, int patternIndex) {
         var pattern = lane(laneIndex).getAvailablePatterns().get(patternIndex);
         var input = pattern.getInputs()[0].getPossibleInputs()[0];
@@ -242,6 +262,42 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
             total += chest.getItem(slot).getCount();
         }
         return total;
+    }
+
+    public int targetItemCount(Item item) {
+        var target = helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
+        if (!(target instanceof ChestBlockEntity chest)) {
+            return 0;
+        }
+        var total = 0;
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).is(item)) {
+                total += chest.getItem(slot).getCount();
+            }
+        }
+        return total;
+    }
+
+    public String targetSnapshot() {
+        var chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
+        var snapshot = new StringBuilder();
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (slot > 0) {
+                snapshot.append(',');
+            }
+            var stack = chest.getItem(slot);
+            snapshot.append(stack.isEmpty() ? "empty" : net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .getKey(stack.getItem()) + ":" + stack.getCount());
+        }
+        return snapshot.toString();
+    }
+
+    public void leaveOneSharedTargetSlot() {
+        var chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
+        for (int slot = 0; slot < chest.getContainerSize() - 1; slot++) {
+            chest.setItem(slot, new ItemStack(Items.SAND, 64));
+        }
+        chest.setItem(chest.getContainerSize() - 1, ItemStack.EMPTY);
     }
 
     public long endpointTargetItemCount() {
