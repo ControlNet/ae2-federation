@@ -8,6 +8,9 @@ version="1"
 displayName="AE2 Federation Test Fixtures"
 description='''Dev-only NeoForge GameTest and actual-client UI fixtures.'''
 
+[[mixins]]
+config="ae2federation_test.mixins.json"
+
 [[dependencies.ae2federation_test]]
 modId="ae2federation"
 type="required"

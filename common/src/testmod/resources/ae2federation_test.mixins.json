@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "space.controlnet.ae2federation.test.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ProviderRuntimeReplayMixin",
+    "FederationPatternProviderTargetCacheReplayTraceMixin",
+    "PatternProviderLogicNativeEvidenceMixin",
+    "PatternProviderTargetCacheNativeEvidenceMixin",
+    "NetworkStorageNativeEvidenceMixin",
+    "DelegatingMEInventoryNativeEvidenceMixin",
+    "NativeStorageProviderEvidenceMixin",
+    "FederationNativeTargetEvidenceMixin",
+    "EndpointTargetBindingEvidenceMixin",
+    "EndpointPersistenceEvidenceMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
