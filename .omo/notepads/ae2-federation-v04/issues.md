@@ -263,3 +263,13 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   a clear target then proved Blocking input refresh and native execution independently.
 - `IGrid.getActiveMachines(PatternContainer.class)` does not search assignable machine keys. Mirroring the native Pattern
   Access Terminal's machine-class enumeration proves exactly one active physical container.
+
+## 2026-09-15 Task 17
+
+- The first native launch failed before tests because a helper under `appeng.helpers.patternprovider` created a JPMS split
+  package. Moving it to the Federation namespace and using AE2's public native target adapter resolved the launch failure.
+- The generic native evidence pre-check initially omitted the `claim.*` one-operation topology cases, and the aggregate
+  artifact check compared generated names incorrectly. Focused verifier diagnostics exposed both mismatches; exact String
+  filename accounting now passes fresh and persisted verification.
+- Groovy LSP remains unavailable. Executable Gradle configuration, exact native production, persisted consumption,
+  adversarial self-test, focused Java tests, and the full build/check gates cover the verifier surface.

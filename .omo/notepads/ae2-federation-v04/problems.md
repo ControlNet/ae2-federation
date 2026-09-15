@@ -197,3 +197,98 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
 - No unresolved Task 16 implementation blocker is known. Task 17 Provider orientation, Claims, Endpoint authorization,
   and remote target binding remain intentionally unimplemented.
+
+## 2026-09-15 Task 17 resolution
+
+- No unresolved Task 17 implementation blocker is known. Exact native runtime, schema-v3 persisted consumption, six
+  intended-reason rebound adversarial probes, focused contracts, and Java diagnostics pass.
+- Task 18 Endpoint modes, five-face returns, buffering, and takeover rules and Task 19 recovery/replay semantics remain
+  intentionally unimplemented. The Task 17 plan checkbox and repository history remain untouched for orchestrator review.
+
+## 2026-09-15 Task 17 independent adversarial verification
+
+- Verdict: `needs-fix`. Fresh evidence `.omo/evidence/task-17/attempt-20260914T233605082Z/result.json`, persisted
+  consumption, six evidence mutations, focused tests, strict check/build, Java diagnostics, and runtime cleanup all pass.
+- Blocking acceptance gap: `ProviderNodeWiring`, `ProviderTargetAuthorization.resolve`, `ProviderTargetRequest`,
+  `EndpointTargetCapability`, and `MappedPatternProvider.bindTarget` have no production integration or GameTest caller;
+  the Endpoint target capability is not registered. The six native cases therefore never execute an authorized native
+  Lane-to-Endpoint lookup, common-Fabric/Processing Policy authorization, loaded-only failure, or no-fallback Mixin path.
+- The isolated Claim, overlap, same-Grid, five-plus-one, and rotation value-object assertions are valid but cannot support
+  the worker DoneClaim that authorized native target binding is implemented and runtime-proven. Resume implementation
+  session `ses_f5df69d20ffejHRr3H258JuQrA`; do not mark Task 17 complete until the real binding path is wired and exercised.
+
+## 2026-09-15 Task 17 runtime integration repair
+
+- The independent `needs-fix` gap is resolved: production runtime ownership, Endpoint capability registration, loaded-only
+  capability lookup, authorization, bound Mixin entry, native target lookup, and real target mutation are runtime-proven.
+- Exact six-case evidence, persisted verification, adversarial evidence self-test, focused contracts, full build/check, and
+  Java diagnostics pass against `.omo/evidence/task-17/attempt-20260915T011829131Z/result.json`.
+
+## 2026-09-15 Task 17 independent repaired-path adversarial re-verification
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 17,
+  "verdict": "confirmed",
+  "confidence": 0.98,
+  "freshArtifact": ".omo/evidence/task-17/attempt-20260915T013027263Z/result.json",
+  "productionPath": {
+    "startupRegistration": [
+      "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint.java:17",
+      "common/src/main/java/space/controlnet/ae2federation/processing/ProcessingRegistration.java:15",
+      "common/src/main/java/space/controlnet/ae2federation/processing/ProcessingRegistration.java:20"
+    ],
+    "laneOwnershipAndBinding": [
+      "common/src/main/java/space/controlnet/ae2federation/processing/provider/ProviderRuntime.java:19",
+      "common/src/main/java/space/controlnet/ae2federation/processing/provider/ProviderRuntime.java:28",
+      "common/src/main/java/space/controlnet/ae2federation/ae2/processing/NativeProviderLaneComposition.java:66"
+    ],
+    "authorizationAndNativeAdapter": [
+      "common/src/main/java/space/controlnet/ae2federation/processing/provider/ProviderTargetAuthorization.java:25",
+      "common/src/main/java/space/controlnet/ae2federation/processing/provider/ProviderTargetAuthorization.java:77",
+      "common/src/main/java/space/controlnet/ae2federation/ae2/processing/FederationPatternProviderTargetCache.java:30",
+      "common/src/main/java/space/controlnet/ae2federation/ae2/processing/FederationPatternProviderTargetCache.java:55",
+      "common/src/main/java/space/controlnet/ae2federation/mixin/PatternProviderLogicTargetBinding.java:14"
+    ]
+  },
+  "observedRuntimeTraces": {
+    "authorized": "positive-providerorientation.log:126-148 records three BOUND lanes, capability lookup, ACTIVE authorization, two native-target FOUND events, two AUTHORIZED Mixin entries, and targetMutation=1; line 151 records all required GameTests passed",
+    "claim": "positive-claimcompete.log:120-138 records three bindings, rejected competing owner, CLAIM_MISMATCH through the bound Mixin, nativeTargetLookups=0, and one authoritative winner",
+    "offline": "positive-claimofflineowner.log:151-170 records preserved owner/epoch, NATIVE_TARGET_UNAVAILABLE, DENIED Mixin entry, and nativeTargetLookups=0",
+    "overlap": "positive-claimoverlap.log:120-138 records OVERLAPPING_SUBNET, DENIED Mixin entry, nativeTargetLookups=0, and retargeted=false",
+    "policyFabricUnloadAndSameGrid": "positive-providerrejectsamegrid.log:120-154 records two POLICY_DENIED, one FABRIC_DISCONNECTED, one ENDPOINT_OFFLINE with no capability lookup delta, one SAME_SOURCE_GRID, five DENIED Mixin entries, nativeTargetLookups=0, and targetMutation=0",
+    "rotation": "native-providerrotatepending.properties records ROTATION_PENDING with stable Provider identity, Claim epoch, and native remainder owner; its hash-bound execution log and child exit are accepted by the fresh consumer"
+  },
+  "denialCoverage": {
+    "unloadedTarget": "confirmed loaded-only before capability lookup",
+    "staleClaimEpoch": "confirmed CLAIM_MISMATCH through bound Mixin",
+    "wrongOwner": "confirmed Endpoint-authoritative competing-owner CAS rejection in the same native GameTest, followed by zero native target lookups",
+    "sameGrid": "confirmed SAME_SOURCE_GRID with no mutation",
+    "overlap": "confirmed OVERLAPPING_SUBNET with no retarget or native lookup",
+    "missingFabric": "confirmed FABRIC_DISCONNECTED",
+    "missingExecuteOrSupplyPolicy": "confirmed absent Policy and EXECUTE-only Policy both deny",
+    "rotationPending": "confirmed ROTATION_PENDING with stable identity, Claim, and remainder destination"
+  },
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=provider.orientation,claim.compete,claim.offline-owner,claim.overlap,provider.rotate-pending,provider.reject-same-grid -PevidenceDir=.omo/evidence/task-17 --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-17/attempt-20260915T013027263Z/result.json --no-configuration-cache -> Federation evidence verified; BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskSeventeenEvidenceSelfTest -PresultFile=.omo/evidence/task-17/attempt-20260915T013027263Z/result.json --no-configuration-cache -> all nine fully rebound malicious mutations rejected for intended reasons; BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:test --tests '*ProviderClaimTest' --tests '*ProviderClaimContractTest' --tests '*ProviderLifecycleContractTest' --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL"
+  ],
+  "diagnostics": "Zero diagnostics across all changed production, unit-test, testmod, and NeoForge Java paths; Groovy has no configured LSP and passed executable Gradle validation.",
+  "risks": [
+    "The native adapter seam is pinned to AE2 19.2.17 PatternProviderLogic.findAdapter and PatternProviderTarget.get; an AE2 signature/behavior change requires requalification.",
+    "Task 18 Endpoint modes/return paths and Task 19 recovery/replay remain out of scope and were not inferred from this verdict."
+  ],
+  "cleanupReceipt": {
+    "gameTestProcess": "none",
+    "taskOwnedListener": "none; observed Java listeners belong to Gradle daemons",
+    "runtimeTree": "neoforge-1.21.1/run-gametest absent",
+    "sessionLock": "none under neoforge-1.21.1",
+    "artifactReceipt": ".omo/evidence/task-17/attempt-20260915T013027263Z/cleanup-receipt.txt"
+  },
+  "repositoryChangesByReviewer": "Only this append-only notepad finding; no production, test, Gradle, manifest, plan, Boulder, index, or Git-history changes."
+}
+```
