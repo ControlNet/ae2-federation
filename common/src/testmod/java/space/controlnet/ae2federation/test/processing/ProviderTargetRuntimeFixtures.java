@@ -2,12 +2,18 @@ package space.controlnet.ae2federation.test.processing;
 
 import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGrid;
+import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
@@ -176,6 +182,14 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
         return provider.push(laneIndex, 0);
     }
 
+    public boolean pushLaneWithInputs(int laneIndex, java.util.List<GenericStack> inputs) {
+        return provider.pushInputs(laneIndex, 0, inputs);
+    }
+
+    public void installPattern(java.util.List<GenericStack> inputs, java.util.List<GenericStack> outputs) {
+        provider.installPattern(0, inputs, outputs);
+    }
+
     public void armAuthorizedReplay(int sourceLaneIndex, int targetLaneIndex) {
         ProviderRuntimeReplayControl.arm(runtime, providerLogic(sourceLaneIndex), providerLogic(targetLaneIndex),
                 endpointBinding.runtime());
@@ -307,6 +321,24 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
 
     public long targetItemCount() {
         return provider.endpointTargetItemCount();
+    }
+
+    public long targetAmount(AEKey key) {
+        return targetGrid().getStorageService().getInventory().extract(key, Long.MAX_VALUE,
+                Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    public String targetSnapshot() {
+        return "minecraft:cobblestone:" + targetAmount(AEItemKey.of(Items.COBBLESTONE))
+                + ",minecraft:dirt:" + targetAmount(AEItemKey.of(Items.DIRT));
+    }
+
+    public void leaveOneSharedTargetSlot() {
+        var storage = targetGrid().getStorageService().getInventory();
+        storage.insert(AEItemKey.of(Items.DIRT), 1, Actionable.MODULATE, IActionSource.empty());
+        storage.insert(AEItemKey.of(Items.COBBLESTONE), Long.MAX_VALUE,
+                Actionable.MODULATE, IActionSource.empty());
+        storage.extract(AEItemKey.of(Items.COBBLESTONE), 1, Actionable.MODULATE, IActionSource.empty());
     }
 
     public int bindingCount() {
