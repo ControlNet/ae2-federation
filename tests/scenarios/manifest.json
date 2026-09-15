@@ -88,7 +88,13 @@
     {"id":"endpoint.federated","backend":"gametest","testId":"endpointfederated","structure":"ae2federation_test:harness_native_smoke","assertions":23},
     {"id":"endpoint.five-face-returns","backend":"gametest","testId":"endpointfivefacereturns","structure":"ae2federation_test:harness_native_smoke","assertions":16},
     {"id":"endpoint.return-backpressure","backend":"gametest","testId":"endpointreturnbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":8},
-    {"id":"endpoint.reject-mode-takeover","backend":"gametest","testId":"endpointrejectmodetakeover","structure":"ae2federation_test:harness_native_smoke","assertions":10}
+    {"id":"endpoint.reject-mode-takeover","backend":"gametest","testId":"endpointrejectmodetakeover","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"processing.native-differential","backend":"gametest","testId":"processingnativedifferential","structure":"ae2federation_test:harness_native_smoke","assertions":12},
+    {"id":"processing.shared-capacity","backend":"gametest","testId":"processingsharedcapacity","structure":"ae2federation_test:harness_native_smoke","assertions":16},
+    {"id":"processing.lock-isolation","backend":"gametest","testId":"processinglockisolation","structure":"ae2federation_test:harness_native_smoke","assertions":15},
+    {"id":"processing.disconnect-restart","backend":"gametest","testId":"processingdisconnectrestart","structure":"ae2federation_test:harness_native_smoke","assertions":16},
+{"id":"processing.dismantle","backend":"gametest","testId":"processingdismantle","structure":"ae2federation_test:harness_native_smoke","assertions":17},
+    {"id":"processing.reject-false-replay","backend":"gametest","testId":"processingrejectfalsereplay","structure":"ae2federation_test:harness_native_smoke","assertions":13}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8}
