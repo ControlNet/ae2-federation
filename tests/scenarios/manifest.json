@@ -83,7 +83,12 @@
     {"id":"claim.offline-owner","backend":"gametest","testId":"claimofflineowner","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"claim.overlap","backend":"gametest","testId":"claimoverlap","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"provider.rotate-pending","backend":"gametest","testId":"providerrotatepending","structure":"ae2federation_test:harness_native_smoke","assertions":8},
-    {"id":"provider.reject-same-grid","backend":"gametest","testId":"providerrejectsamegrid","structure":"ae2federation_test:harness_native_smoke","assertions":17}
+    {"id":"provider.reject-same-grid","backend":"gametest","testId":"providerrejectsamegrid","structure":"ae2federation_test:harness_native_smoke","assertions":17},
+    {"id":"endpoint.local","backend":"gametest","testId":"endpointlocal","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"endpoint.federated","backend":"gametest","testId":"endpointfederated","structure":"ae2federation_test:harness_native_smoke","assertions":23},
+    {"id":"endpoint.five-face-returns","backend":"gametest","testId":"endpointfivefacereturns","structure":"ae2federation_test:harness_native_smoke","assertions":16},
+    {"id":"endpoint.return-backpressure","backend":"gametest","testId":"endpointreturnbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"endpoint.reject-mode-takeover","backend":"gametest","testId":"endpointrejectmodetakeover","structure":"ae2federation_test:harness_native_smoke","assertions":10}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8}
