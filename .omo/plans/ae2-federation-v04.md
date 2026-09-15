@@ -337,7 +337,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=endpoint.local,endpoint.federated,endpoint.five-face-returns,endpoint.return-backpressure,endpoint.reject-mode-takeover -PevidenceDir=.omo/evidence/task-18`.
   - Commit: proposed `feat(endpoint): delegate Interface-style input and returns`.
 
-- [ ] 19. Complete native Processing differential, disconnect and dismantling regressions
+- [x] 19. Complete native Processing differential, disconnect and dismantling regressions
   - Work: characterize native reference failure/removal behavior first, then validate Federation at identical boundaries. Cover actual substituted inputs, shared-slot capacity, mixed fluids, native partial-send ownership, redstone locks, partial primary output, byproducts, deleted mappings and reloaded native state. Preserve retired native contexts while they own recoverable resources; do not add automatic refunds/replay or a new default recovery item.
   - References: D11-12,15,19 T-P01..10,T-L01..12,T-R01..05,T-C06..08; A-process. Depends on 17,18.
   - Acceptance: native methods/objects remain authoritative; every resource has one owner; normal reject has no mutation; partial write never causes false rejection plus full replay; unresolved non-native responsibility blocks explicitly. Native limitations are reported, not disguised as stronger atomicity.
