@@ -287,3 +287,39 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - The first identity-bound verifier runs rejected valid inventory and negative traces because interpolated Groovy keys
   remained `GString` values and lookup-count property names require an `Observed` infix. Normalized keys and explicit
   property mapping fixed the parser; the expanded adversarial self-test now passes.
+
+## 2026-09-15 Task 19
+
+- The first shared-capacity return probe addressed item slot zero after filling it; the native item adapter is slot-indexed.
+  Using the actual final slot proved item/fluid simulations can overestimate shared capacity and actual callers retain the
+  second remainder.
+- The dismantle probe disproved the earlier assumption that native `addDrops` includes `sendList`: only return inventory was
+  dropped. Evidence now records this pinned limitation explicitly.
+- The first parent report omitted Task 19 from task-specific assertion accounting and the executed-case switch. Both
+  producer integrations now fail closed and the canonical producer, consumer, and adversarial self-test pass.
+
+## 2026-09-16 Task 19 adversarial repair
+
+- Independent review found that the initial dismantle test asserted the inverse of pinned AE2 bytecode/source behavior,
+  restart reused one live owner, and fully rebound semantic mutations passed the consumer.
+- The repaired tests now use exact `sendList` plus return drops and a destroyed/reconstructed owner. Native state/target
+  receipts and an expanded mutation matrix close the evidence gap without changing production behavior.
+- The first lock-state receipt run exposed a null unlock stack after completion. Serializing that valid native state as
+  `empty` fixed observation only; the focused lock GameTest and complete six-case producer then passed.
+
+## 2026-09-16 Task 19 lifecycle adjudication repair
+
+- A direct repeated `addDrops` probe correctly duplicated observational output. Pinned AE2 caller inspection resolved the
+  apparent contradiction: one authentic `clearContent` must occur between first and second collection.
+- Expanding the self-test inline initially triggered a Groovy semantic-analysis compiler defect from excessive nested
+  closures. Moving reusable fully rebound mutation probes to top-level closures retained coverage and restored compilation.
+- No unresolved implementation blocker remains; Task 19 stays unchecked pending independent review.
+
+## 2026-09-16 Task 19 exact-schema scope repair
+
+- Independent review found the receipt-shape and property allowlists lexically nested in `verifyTaskFourEvidence`, making
+  them unreachable from both Task 19 producer and consumer verification.
+- Reviewer mutation directories had been cleaned before continuation, so their exact persisted paths could not be rerun.
+  Equivalent mutations now run inside the fully rebound self-test and reject with their exact schema errors.
+- No unresolved repair blocker remains. Gradle has no configured LSP server, so executable Gradle tasks provide syntax and
+  semantic validation; Task 19 remains unchecked pending another independent review.
