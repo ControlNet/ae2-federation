@@ -12,6 +12,7 @@ import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -70,6 +71,10 @@ public final class MappedPatternProvider implements PatternContainer, AutoClosea
 
     public List<NativeProviderLane> lanes() {
         return composition.lanes();
+    }
+
+    public void bindTarget(int laneIndex, Supplier<ProviderTargetResolution> resolver) {
+        composition.bindTarget(laneIndex, resolver);
     }
 
     public InternalInventory patternInventory() {

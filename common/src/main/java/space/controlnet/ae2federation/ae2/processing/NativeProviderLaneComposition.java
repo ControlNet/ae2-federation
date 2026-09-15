@@ -12,9 +12,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
 
 public final class NativeProviderLaneComposition implements InternalInventoryHost, AutoCloseable {
     private static final String PATTERNS_TAG = "patterns";
@@ -59,6 +61,13 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
 
     public List<NativeProviderLane> lanes() {
         return lanes;
+    }
+
+    public void bindTarget(int laneIndex, Supplier<ProviderTargetResolution> resolver) {
+        if (laneIndex < 0 || laneIndex >= lanes.size()) {
+            throw new IndexOutOfBoundsException("Native Lane target index is outside the composition");
+        }
+        FederationPatternProviderTargetCache.bind(lanes.get(laneIndex), resolver, physicalNode::getNode);
     }
 
     public List<Long> nativeTickerInvocations() {
@@ -155,6 +164,7 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
 
     @Override
     public void close() {
+        lanes.forEach(FederationPatternProviderTargetCache::unbind);
         if (craftingService != null) {
             lanes.forEach(craftingService::removeGlobalCraftingProvider);
             craftingService = null;
