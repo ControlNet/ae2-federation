@@ -365,3 +365,25 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   equal Pattern. The counts are test dimensions, not public gameplay limits.
 - Canonical source-bound Task 16 evidence is
   `.omo/evidence/task-16/attempt-20260914T220758989Z/result.json`; all five exact cases and adversarial probes passed.
+
+## 2026-09-15 Task 17
+
+- NeoForge's JPMS layer rejects helper classes placed in an AE2-owned package as a split package before Mixin application.
+  Authorized Lane binding must remain in the Federation namespace and call AE2's public `PatternProviderTarget.get` seam.
+- Task 17 Claim ownership is Endpoint-authoritative compare-and-set state over typed Endpoint and Provider identities plus
+  instance/Claim epochs. Offline state does not mutate ownership and there is no TTL, newest-wins, or load-order steal path.
+- Provider rotation changes the five-plus-one native exposure while preserving Provider identity, Claim state, and the
+  native Lane remainder destination; target authorization remains paused until the new observation settles.
+- The exact six native cases passed in one serialized run, followed by current-source persisted consumption and six fully
+  rebound adversarial rejections. The accepted source-bound report is
+  `.omo/evidence/task-17/attempt-20260914T232106299Z/result.json`.
+
+## 2026-09-15 Task 17 runtime integration repair
+
+- The production path now constructs `ProviderRuntime`, registers `EndpointTargetCapability.BLOCK`, resolves authorization
+  through the Endpoint capability, and enters the bound Mixin before AE2 resolves the native target adapter.
+- The authorized AE2 push resolves its target twice, once for insertion simulation and once for modulation. Evidence must
+  require two Mixin/native-target lookups and one target mutation rather than treating one lookup as the native contract.
+- A Federation-routed Endpoint fixture must be physically separate from the Provider's native Grid. Installing the Interface
+  beside the Provider creates a native same-Grid merge before authorization and invalidates the scenario.
+- Canonical repaired evidence is `.omo/evidence/task-17/attempt-20260915T011829131Z/result.json`.

@@ -199,3 +199,17 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   only affected global providers for mapping/inventory changes, but refresh every Lane when shared priority changes.
 - Keep one physical managed node with one composite ticker and zero node-local crafting-provider services; Lane providers
   remain distinct global AE2 media and own independent native execution contexts.
+
+## 2026-09-15 Task 17
+
+- Expose one Provider managed node on exactly five native faces and exclude the Federation face. Rotation updates those
+  connections only; stable Provider identity is UUID plus instance epoch and is never derived from position.
+- Store the authoritative Claim on the Endpoint as typed owner identity and monotonically advanced Claim epoch. Acquisition
+  is synchronized compare-and-set; an existing owner is retained offline and cannot be stolen by timeout or a newer load.
+- Authorize a native Lane target only after loaded Endpoint capability identity, Claim owner/epoch, native target node and
+  storage identity, source-target Grid separation, non-overlapping target domain, settled network identities, common Fabric,
+  and Processing EXECUTE/SUPPLY Policy checks all pass.
+- Keep execution inside AE2: the Mixin intercepts only bound target lookup and resolves through public
+  `PatternProviderTarget.get`; native push, send-list, remainder inventory, ticking, Blocking, and persistence remain AE2-owned.
+- Make `ProviderRuntime` the production lifecycle owner that constructs five-plus-one wiring and binds every mapped Lane;
+  register the Endpoint target capability from the NeoForge entrypoint instead of relying on test-only direct calls.
