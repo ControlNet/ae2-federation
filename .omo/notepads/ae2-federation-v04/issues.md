@@ -273,3 +273,17 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   filename accounting now passes fresh and persisted verification.
 - Groovy LSP remains unavailable. Executable Gradle configuration, exact native production, persisted consumption,
   adversarial self-test, focused Java tests, and the full build/check gates cover the verifier surface.
+
+## 2026-09-15 Task 18
+
+- The first native Local run timed out because the fixture used `GameTestHelper.getBlockEntity` to probe an intentionally
+  absent optional second Provider; that helper asserts presence. A loaded-world optional lookup fixed the fixture without
+  changing production behavior.
+- Directory-wide Java diagnostics briefly timed out in the LSP daemon; focused diagnostics over every changed production,
+  unit-test, and testmod Java area subsequently returned zero diagnostics.
+- A testmod injection into `PatternProviderLogic.findAdapter` did not observe the production Mixin because the production
+  cancellable injection supplied a return first. Observing its downstream `ProviderTargetTrace.recordMixin` call preserves
+  exact owner identity without competing injection ordering.
+- The first identity-bound verifier runs rejected valid inventory and negative traces because interpolated Groovy keys
+  remained `GString` values and lookup-count property names require an `Observed` infix. Normalized keys and explicit
+  property mapping fixed the parser; the expanded adversarial self-test now passes.
