@@ -118,6 +118,10 @@ def verifyTaskSeventeenEvidence
 def taskEighteenCases = ['endpoint.local', 'endpoint.federated', 'endpoint.five-face-returns',
         'endpoint.return-backpressure', 'endpoint.reject-mode-takeover']
 def verifyTaskEighteenEvidence
+def taskNineteenCases = ['processing.native-differential', 'processing.shared-capacity',
+        'processing.lock-isolation', 'processing.disconnect-restart', 'processing.dismantle',
+        'processing.reject-false-replay']
+def verifyTaskNineteenEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -1791,6 +1795,433 @@ verifyTaskEighteenEvidence = { File attempt, List requested, List<String> declar
         throw new GradleException('Task 18 stale mode takeover semantics are incomplete')
     }
 }
+verifyTaskNineteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskNineteenCases }) return
+    if (requested != taskNineteenCases) throw new GradleException('Task 19 evidence must select the exact canonical case set')
+    def expected = [processingnativedifferential: 12, processingsharedcapacity: 16,
+            processinglockisolation: 15, processingdisconnectrestart: 16,
+            processingdismantle: 17, processingrejectfalsereplay: 13]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-processing') && it.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 19 native artifact set is duplicated, missing, or substituted')
+    }
+    def cleanupReceiptPath = 'cleanup-receipt.txt'
+    def expectedCleanupReceipt = 'Task 19: six serialized GameTest child finalizers copied diagnostics and removed task-owned runtime data; no session.lock remains.\n'
+    if (declaredPaths.count { it == cleanupReceiptPath } != 1
+            || new File(attempt, cleanupReceiptPath).text != expectedCleanupReceipt) {
+        throw new GradleException('Task 19 cleanup receipt is missing, duplicated, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 19 native child exits are incomplete')
+    }
+    def parsed = [:]
+    def observations = [:]
+    def nativeStates = [:]
+    def nativeTargets = [:]
+    def receipts = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 19 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        requireProperty(properties, 'ae2Version', '19.2.17', file)
+        requireProperty(properties, 'ae2DependencyJarSha256',
+                '460d779a0609b81409907d9956de8f6f70a1b0912257e3e5c3c7e75ac9630e95', file)
+        requireProperty(properties, 'ae2PatternProviderLogicSourceSha256',
+                '46cbd4a6eab1862349c1739b9ef4b808453fe96d623748237a7aa2770777b225', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 19 assertions') != assertionCount) {
+            throw new GradleException("Task 19 assertion accounting mismatch in ${artifact}")
+        }
+        def logText = new File(attempt, log).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_PROCESSING_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 19 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId',
+                'structure', 'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 19 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        observations[testId] = (logText =~ /AE2F_PROCESSING_NATIVE_OBSERVATION testId=([a-z0-9]+) operation=([^\s]+) owner=([0-9]+) detail=([^\s]+)/)
+                .findAll { it[1] == testId }.collect { [operation: it[2], owner: it[3], detail: it[4]] }
+        nativeStates[testId] = (logText =~ /AE2F_PROCESSING_NATIVE_STATE testId=([a-z0-9]+) operation=([^\s]+) owner=([0-9]+) sendOwner=([0-9]+) returnOwner=([0-9]+) patterns=([^\s]+) send=([^\s]+) returns=([^\s]+) drops=([^\s]+) lock=([^\s]+) unlock=([^\s]+)/)
+                .findAll { it[1] == testId }.collect { [operation: it[2], owner: it[3], sendOwner: it[4],
+                        returnOwner: it[5], patterns: it[6], send: it[7], returns: it[8], drops: it[9],
+                        lock: it[10], unlock: it[11]] }
+        nativeTargets[testId] = (logText =~ /AE2F_PROCESSING_NATIVE_TARGET testId=([a-z0-9]+) operation=([^\s]+) owner=([0-9]+) snapshot=([^\s]+)/)
+                .findAll { it[1] == testId }.collect { [operation: it[2], owner: it[3], snapshot: it[4]] }
+        receipts[testId] = (logText =~ /AE2F_PROCESSING_RECEIPT testId=([a-z0-9]+) sequence=([0-9]+) kind=([a-z]+) operation=([^\s]+) owner=([0-9]+) fields=([^\s]+)/)
+                .findAll { it[1] == testId }.collect { match ->
+                    def fields = [:]
+                    match[6].split(';').each { entry ->
+                        def pair = entry.split('=', 2)
+                        if (pair.size() != 2 || pair[0].isBlank() || pair[1].isBlank()) {
+                            throw new GradleException("Task 19 malformed receipt fields in ${log}")
+                        }
+                        if (fields.put(pair[0], pair[1]) != null) {
+                            throw new GradleException("Task 19 duplicate receipt field in ${log}: ${pair[0]}")
+                        }
+                    }
+                    def allowedFields = match[3] == 'observation' ? ['detail'] as Set
+                            : match[3] == 'target' ? ['snapshot'] as Set
+                            : match[3] == 'state' ? ['sendOwner', 'returnOwner', 'patterns', 'send', 'returns',
+                                    'drops', 'lock', 'unlock'] as Set : [] as Set
+                    if (fields.keySet() != allowedFields) {
+                        throw new GradleException("Task 19 receipt schema mismatch in ${log}: ${match[2]}")
+                    }
+                    [sequence: match[2] as int, kind: match[3], operation: match[4], owner: match[5], fields: fields]
+                }
+        if (receipts[testId]*.sequence != (1..receipts[testId].size()).toList()) {
+            throw new GradleException("Task 19 receipt ordering or cardinality mismatch in ${log}")
+        }
+        parsed[testId] = properties
+    }
+
+    def expectedReceiptShapes = [
+            processingnativedifferential: ['observation:push-head', 'observation:push-return',
+                    'observation:push-head', 'observation:push-return'],
+            processingsharedcapacity: ['observation:push-head', 'observation:send-remainder',
+                    'observation:push-return', 'observation:push-head', 'observation:push-return',
+                    'observation:push-head', 'observation:push-return', 'observation:push-head',
+                    'observation:push-return'],
+            processinglockisolation: ['observation:push-head', 'observation:push-return',
+                    'observation:push-head', 'observation:push-return', 'observation:push-head',
+                    'observation:push-return', 'observation:push-head', 'observation:push-return',
+                    'observation:return-inject', 'state:lock-partial', 'observation:return-inject',
+                    'state:lock-complete'],
+            processingdisconnectrestart: ['observation:push-head', 'observation:send-remainder',
+                    'observation:push-return', 'observation:lifecycle-generation', 'observation:managed-node',
+                    'observation:nbt-write', 'state:nbt-write', 'observation:nbt-write', 'state:nbt-write',
+                    'observation:nbt-write', 'state:nbt-write', 'observation:serialized-state',
+                    'observation:owner-dispose', 'observation:send-remainder', 'observation:nbt-read',
+                    'state:nbt-read', 'observation:nbt-read', 'state:nbt-read', 'observation:nbt-read',
+                    'state:nbt-read', 'observation:return-inject', 'observation:return-inject',
+                    'observation:return-inject', 'observation:lifecycle-generation', 'observation:managed-node',
+                    'observation:return-inject', 'observation:return-inject', 'observation:return-inject',
+                    'target:reconnect-drain', 'target:second-drain'],
+            processingdismantle: ['target:push-head', 'observation:push-head', 'observation:send-remainder',
+                    'observation:push-return', 'target:push-return', 'observation:endpoint-disconnect',
+                    'state:dismantle-01-pre-first', 'target:dismantle-01-pre-first',
+                    'observation:add-drops', 'state:add-drops-1-entry', 'state:add-drops-1-return',
+                    'state:dismantle-04-post-first', 'target:dismantle-04-post-first',
+                    'observation:clear-content', 'state:clear-content-1-entry', 'state:clear-content-1-return',
+                    'state:dismantle-07-pre-second', 'target:dismantle-07-pre-second',
+                    'observation:add-drops', 'state:add-drops-2-entry', 'state:add-drops-2-return',
+                    'state:dismantle-10-final', 'target:dismantle-10-final', 'observation:owner-retire',
+                    'observation:federation-recovery'],
+            processingrejectfalsereplay: ['observation:push-head', 'observation:push-return',
+                    'observation:push-head', 'observation:push-return', 'observation:push-head',
+                    'observation:send-remainder', 'observation:push-return', 'observation:push-head',
+                    'observation:push-return']]
+    expectedReceiptShapes.each { testId, shape ->
+        if (receipts[testId].collect { "${it.kind}:${it.operation}" } != shape) {
+            throw new GradleException("Task 19 exact receipt schema mismatch for ${testId}")
+        }
+    }
+
+    def commonFacts = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'ae2Version',
+            'ae2DependencyJarSha256', 'ae2PatternProviderLogicSourceSha256'] as Set
+    def caseFacts = [
+            processingnativedifferential: ['actualInput', 'byproduct', 'federationActualAccepted',
+                    'federationLogicIdentity', 'federationNominalAccepted', 'nativeActualAccepted', 'nativeAuthority',
+                    'nativeLogicIdentity', 'nativeNominalAccepted', 'nativeObjectsIndependent', 'nominalInput',
+                    'primaryOutput', 'pushEntries', 'pushReturns'],
+            processingsharedcapacity: ['acceptedPrefix', 'actualFluidAccepted', 'actualItemAccepted',
+                    'falseReplayAccepted', 'fluidCallerRemainder', 'fluidSimulationAccepted',
+                    'itemSimulationAccepted', 'mixedFluid', 'mixedItem', 'mixedRejectMutated', 'nativeLimitation',
+                    'nativeLogicIdentity', 'nativePendingRemainder', 'nativePushAccepted',
+                    'nativeRemainderOwnerIdentity', 'sendRemainderObservations', 'sharedReturnInventoryIdentity'],
+            processinglockisolation: ['byproduct', 'byproductAcceptedPrefix', 'byproductNativeRemainder',
+                    'crossLaneUnlock', 'freeLaneIdentity', 'independentLanesProgressed', 'lockAfterComplete',
+                    'lockAfterPartial', 'lockedLaneIdentity', 'primaryAcceptedPrefix', 'primaryNativeRemainder',
+                    'primaryOutput', 'redstoneRejectAccepted', 'redstoneRejectMutated', 'redstoneRejectRemainder',
+                    'resultLaneIdentity', 'returnInjectObservations', 'returnSnapshotBefore',
+                    'returnSnapshotPartial'],
+            processingdisconnectrestart: ['duplicateAfterReconnect', 'lifecycleGenerationAfter',
+                    'lifecycleGenerationBefore', 'lockAfterLoad', 'nbtReadObservations', 'nbtWriteObservations',
+                    'originalLogicIdentity', 'originalNodeIdentity', 'originalOwnerDisposed', 'pendingInputAfterLoad',
+                    'pendingInputBefore', 'reconnectDrainCount', 'restoredLogicIdentity', 'restoredNodeIdentity',
+                    'returnInventoryAfterLoad', 'returnInventoryBefore', 'returnInventoryIdentityAfter',
+                    'returnInventoryIdentityBefore', 'secondDrainCount', 'sendListIdentityAfter',
+                    'sendListIdentityBefore', 'unlockRemainderAfterLoad'],
+            processingdismantle: ['acceptedTargetAfter', 'acceptedTargetBefore', 'acceptedTargetCount',
+                    'acceptedTargetDrop', 'acceptedTargetFinal', 'acceptedTargetInitial', 'addDropsObservations',
+                    'byproductReturnDrop', 'clearContentObservations', 'dropSnapshot', 'duplicateOwnership',
+                    'endpointDisconnectedBeforeDrops', 'federationRecoveryCount', 'nativeDismantleBehavior',
+                    'ownerRetired', 'pendingInputBeforeDrops', 'pendingInputDrop', 'pendingOwnerIdentity',
+                    'primaryReturnDrop', 'providerLogicIdentity', 'reconciledResourceCount',
+                    'remainingPatternResponsibility', 'remainingPendingResponsibility',
+                    'remainingReturnResponsibility', 'returnInventoryBeforeDrops', 'returnOwnerIdentity',
+                    'secondDropSnapshot'],
+            processingrejectfalsereplay: ['blockedEndpointCallerRemainder', 'blockedEndpointProviderRemainder',
+                    'blockedEndpointReturnAccepted', 'duplicateAfterReplay', 'fullReplayWhileBusyAccepted',
+                    'normalRejectAccepted', 'normalRejectMutated', 'normalRejectNativeRemainder',
+                    'partialAcceptedPrefix', 'partialNativeRemainder', 'partialSendAccepted',
+                    'retryAfterFalseAccepted', 'retryTransferred', 'rule']]
+    caseFacts.each { testId, facts ->
+        def expectedPropertyNames = new HashSet<String>(commonFacts)
+        expectedPropertyNames.addAll(facts)
+        def actualPropertyNames = (parsed[testId] as Properties).stringPropertyNames()
+        if (actualPropertyNames.size() != expectedPropertyNames.size()
+                || !actualPropertyNames.containsAll(expectedPropertyNames)) {
+            throw new GradleException("Task 19 property schema mismatch for ${testId}")
+        }
+    }
+
+    def differential = parsed.processingnativedifferential as Properties
+    def differentialReceipts = receipts.processingnativedifferential
+    def differentialPushes = observations.processingnativedifferential.findAll { it.operation == 'push-head' }
+    def differentialReturns = observations.processingnativedifferential.findAll { it.operation == 'push-return' }
+    if (differential.getProperty('nativeObjectsIndependent') != 'true'
+            || differential.getProperty('nativeAuthority') != 'PatternProviderLogic'
+            || differential.getProperty('nominalInput') != 'minecraft:cobblestone:1'
+            || differential.getProperty('actualInput') != 'minecraft:dirt:1'
+            || differential.getProperty('primaryOutput') != 'minecraft:diamond:4'
+            || differential.getProperty('byproduct') != 'minecraft:gold_ingot:2'
+            || differential.getProperty('nativeNominalAccepted') != '0'
+            || differential.getProperty('nativeActualAccepted') != '1'
+            || differential.getProperty('federationNominalAccepted') != '0'
+            || differential.getProperty('federationActualAccepted') != '1'
+            || differential.getProperty('pushEntries') != '2' || differential.getProperty('pushReturns') != '2'
+            || differentialReceipts*.owner != [differential.getProperty('nativeLogicIdentity'),
+                    differential.getProperty('nativeLogicIdentity'), differential.getProperty('federationLogicIdentity'),
+                    differential.getProperty('federationLogicIdentity')]
+            || differentialReceipts*.fields*.detail != ['keys=1,amount=1', 'accepted=true',
+                    'keys=1,amount=1', 'accepted=true']
+            || differentialPushes*.owner != [differential.getProperty('nativeLogicIdentity'),
+                    differential.getProperty('federationLogicIdentity')]
+            || differentialReturns*.owner != differentialPushes*.owner
+            || differentialReturns*.detail != ['accepted=true', 'accepted=true']) {
+        throw new GradleException('Task 19 Processing ownership semantics are incomplete')
+    }
+
+    def capacity = parsed.processingsharedcapacity as Properties
+    def capacityReceipts = receipts.processingsharedcapacity
+    def capacityPushes = observations.processingsharedcapacity.findAll { it.operation == 'push-head' }
+    def capacityReturns = observations.processingsharedcapacity.findAll { it.operation == 'push-return' }
+    def capacityRemainders = observations.processingsharedcapacity.findAll { it.operation == 'send-remainder' }
+    if (capacity.getProperty('nativeLimitation') != 'nonzero-per-key-simulation-not-atomic'
+            || capacity.getProperty('falseReplayAccepted') != 'false'
+            || capacity.getProperty('acceptedPrefix') != 'minecraft:cobblestone:1'
+            || capacity.getProperty('nativePendingRemainder') != 'minecraft:dirt:1'
+            || capacity.getProperty('nativePushAccepted') != 'true'
+            || capacity.getProperty('sendRemainderObservations') != '1'
+            || capacity.getProperty('itemSimulationAccepted') != '1'
+            || capacity.getProperty('actualItemAccepted') != '1'
+            || capacity.getProperty('fluidSimulationAccepted') != '1000'
+            || capacity.getProperty('actualFluidAccepted') != '0'
+            || capacity.getProperty('fluidCallerRemainder') != '1000'
+            || capacity.getProperty('mixedItem') != 'minecraft:iron_ingot:1'
+            || capacity.getProperty('mixedFluid') != 'minecraft:water:1000'
+            || capacity.getProperty('mixedRejectMutated') != 'false'
+            || capacityReceipts[0..4]*.owner.unique() != [capacity.getProperty('nativeLogicIdentity')]
+            || capacityReceipts[1].fields.detail != 'key=ae2:i,amount=1'
+            || capacityReceipts*.fields*.detail != ['keys=2,amount=2', 'key=ae2:i,amount=1',
+                    'accepted=true', 'keys=2,amount=2', 'accepted=false', 'keys=2,amount=1001',
+                    'accepted=false', 'keys=1,amount=1', 'accepted=true']
+            || capacityPushes.size() != 4 || capacityReturns*.detail !=
+                    ['accepted=true', 'accepted=false', 'accepted=false', 'accepted=true']
+            || capacityPushes[0].owner != capacity.getProperty('nativeLogicIdentity')
+            || capacityPushes[1].owner != capacity.getProperty('nativeLogicIdentity')
+            || capacityRemainders.size() != 1 || capacityRemainders[0].owner != capacity.getProperty('nativeLogicIdentity')
+            || capacityRemainders[0].detail != 'key=ae2:i,amount=1') {
+        throw new GradleException('Task 19 shared-capacity native receipts are incomplete')
+    }
+
+    def locks = parsed.processinglockisolation as Properties
+    def lockReceipts = receipts.processinglockisolation
+    def lockPushes = observations.processinglockisolation.findAll { it.operation == 'push-head' }
+    def lockReturns = observations.processinglockisolation.findAll { it.operation == 'push-return' }
+    def partialState = nativeStates.processinglockisolation.find { it.operation == 'lock-partial' }
+    def completeState = nativeStates.processinglockisolation.find { it.operation == 'lock-complete' }
+    if (locks.getProperty('crossLaneUnlock') != 'false' || locks.getProperty('lockAfterComplete') != 'NONE'
+            || locks.getProperty('redstoneRejectAccepted') != 'false'
+            || locks.getProperty('redstoneRejectMutated') != 'false'
+            || locks.getProperty('redstoneRejectRemainder') != '0'
+            || locks.getProperty('primaryOutput') != 'minecraft:diamond:4'
+            || locks.getProperty('byproduct') != 'minecraft:gold_ingot:2'
+            || locks.getProperty('primaryAcceptedPrefix') != '2'
+            || locks.getProperty('primaryNativeRemainder') != '2'
+            || locks.getProperty('byproductAcceptedPrefix') != '1'
+            || locks.getProperty('byproductNativeRemainder') != '1'
+            || locks.getProperty('independentLanesProgressed') != '2'
+            || locks.getProperty('returnInjectObservations') != '2'
+            || lockReceipts[9].fields.returns != 'minecraft:diamond:2,minecraft:gold_ingot:1'
+            || lockReceipts[9].fields.lock != 'LOCK_UNTIL_RESULT'
+            || lockReceipts[9].fields.unlock != 'minecraft:diamond:2'
+            || lockReceipts[11].fields.returns != 'empty' || lockReceipts[11].fields.lock != 'NONE'
+            || lockReceipts[11].fields.unlock != 'empty'
+            || lockPushes*.owner != [locks.getProperty('lockedLaneIdentity'), locks.getProperty('resultLaneIdentity'),
+                    locks.getProperty('freeLaneIdentity'), locks.getProperty('resultLaneIdentity')]
+            || lockReturns*.detail != ['accepted=false', 'accepted=true', 'accepted=true', 'accepted=true']
+            || partialState?.owner != locks.getProperty('resultLaneIdentity')
+            || partialState?.lock != locks.getProperty('lockAfterPartial')
+            || completeState?.owner != locks.getProperty('resultLaneIdentity')
+            || completeState?.lock != locks.getProperty('lockAfterComplete')) {
+        throw new GradleException('Task 19 lock-isolation native receipts are incomplete')
+    }
+
+    def restart = parsed.processingdisconnectrestart as Properties
+    def restartReceipts = receipts.processingdisconnectrestart
+    def restartWrites = nativeStates.processingdisconnectrestart.findAll { it.operation == 'nbt-write' }
+    def restartReads = nativeStates.processingdisconnectrestart.findAll { it.operation == 'nbt-read' }
+    def originalState = restartWrites.find { it.owner == restart.getProperty('originalLogicIdentity') }
+    def restoredState = restartReads.find { it.owner == restart.getProperty('restoredLogicIdentity') }
+    def restartTargets = nativeTargets.processingdisconnectrestart
+    if (restart.getProperty('duplicateAfterReconnect') != 'false'
+            || restart.getProperty('originalOwnerDisposed') != 'true'
+            || restart.getProperty('lifecycleGenerationBefore') != '1'
+            || restart.getProperty('lifecycleGenerationAfter') != '2'
+            || restart.getProperty('nbtWriteObservations') != '3' || restartWrites.size() != 3
+            || restart.getProperty('nbtReadObservations') != '3' || restartReads.size() != 3
+            || restartReceipts[3].owner != restart.getProperty('originalLogicIdentity')
+            || restartReceipts[3].fields.detail != 'generation=1'
+            || restartReceipts[4].owner != restart.getProperty('originalNodeIdentity')
+            || restartReceipts[11].owner != restart.getProperty('originalLogicIdentity')
+            || restartReceipts[11].fields.detail != 'gridReference=false'
+            || restartReceipts[12].owner != restart.getProperty('originalLogicIdentity')
+            || restartReceipts[23].owner != restart.getProperty('restoredLogicIdentity')
+            || restartReceipts[23].fields.detail != 'generation=2'
+            || restartReceipts[24].owner != restart.getProperty('restoredNodeIdentity')
+            || restart.getProperty('originalLogicIdentity') == restart.getProperty('restoredLogicIdentity')
+            || restart.getProperty('originalNodeIdentity') == restart.getProperty('restoredNodeIdentity')
+            || restart.getProperty('sendListIdentityBefore') == restart.getProperty('sendListIdentityAfter')
+            || restart.getProperty('returnInventoryIdentityBefore') == restart.getProperty('returnInventoryIdentityAfter')
+            || originalState?.sendOwner != restart.getProperty('sendListIdentityBefore')
+            || originalState?.returnOwner != restart.getProperty('returnInventoryIdentityBefore')
+            || originalState?.send != restart.getProperty('pendingInputBefore')
+            || originalState?.returns != restart.getProperty('returnInventoryBefore')
+            || restoredState?.sendOwner != restart.getProperty('sendListIdentityAfter')
+            || restoredState?.returnOwner != restart.getProperty('returnInventoryIdentityAfter')
+            || restoredState?.send != restart.getProperty('pendingInputAfterLoad')
+            || restoredState?.returns != restart.getProperty('returnInventoryAfterLoad')
+            || restoredState?.lock != restart.getProperty('lockAfterLoad')
+            || restoredState?.unlock != restart.getProperty('unlockRemainderAfterLoad')
+            || originalState?.patterns != 'empty' || originalState?.drops != 'empty'
+            || originalState?.lock != 'LOCK_UNTIL_RESULT' || originalState?.unlock != 'minecraft:diamond:2'
+            || restoredState?.patterns != 'empty' || restoredState?.drops != 'empty'
+            || restart.getProperty('pendingInputBefore') != 'minecraft:dirt:1'
+            || restart.getProperty('pendingInputAfterLoad') != 'minecraft:dirt:1'
+            || restart.getProperty('returnInventoryBefore') != 'minecraft:diamond:2,minecraft:gold_ingot:2'
+            || restart.getProperty('returnInventoryAfterLoad') != 'minecraft:diamond:2,minecraft:gold_ingot:2'
+            || restart.getProperty('unlockRemainderAfterLoad') != 'minecraft:diamond:2'
+            || !observations.processingdisconnectrestart.any { it.operation == 'owner-dispose'
+                    && it.owner == restart.getProperty('originalLogicIdentity') }
+            || restartTargets.find { it.operation == 'reconnect-drain' }?.owner
+                    != restart.getProperty('restoredLogicIdentity')
+            || restartTargets.find { it.operation == 'reconnect-drain' }?.snapshot
+                    != restart.getProperty('reconnectDrainCount')
+            || restartTargets.find { it.operation == 'second-drain' }?.snapshot != '1'
+            || restart.getProperty('secondDrainCount') != '0') {
+        throw new GradleException('Task 19 restart native lifecycle receipts are incomplete')
+    }
+
+    def dismantle = parsed.processingdismantle as Properties
+    def dismantleReceipts = receipts.processingdismantle
+    def dismantleOwner = dismantle.getProperty('providerLogicIdentity')
+    def pendingOwner = dismantle.getProperty('pendingOwnerIdentity')
+    def returnOwner = dismantle.getProperty('returnOwnerIdentity')
+    def firstStateIndexes = [6, 9, 10, 11, 14]
+    def emptyStateIndexes = [15, 16, 19, 20, 21]
+    if (dismantle.getProperty('duplicateOwnership') != 'false'
+            || dismantle.getProperty('nativeDismantleBehavior') != 'observe-then-clear-then-remove'
+            || dismantle.getProperty('addDropsObservations') != '2'
+            || dismantle.getProperty('clearContentObservations') != '1'
+            || dismantle.getProperty('endpointDisconnectedBeforeDrops') != 'true'
+            || dismantle.getProperty('ownerRetired') != 'true'
+            || dismantle.getProperty('federationRecoveryCount') != '0'
+            || dismantleReceipts*.owner.unique() != [dismantleOwner]
+            || firstStateIndexes.any { index -> dismantleReceipts[index].fields.sendOwner != pendingOwner
+                    || dismantleReceipts[index].fields.returnOwner != returnOwner }
+            || dismantleReceipts[6].fields.send != dismantle.getProperty('pendingInputBeforeDrops')
+            || dismantleReceipts[6].fields.returns != dismantle.getProperty('returnInventoryBeforeDrops')
+            || dismantleReceipts[9].fields.drops != 'empty'
+            || dismantleReceipts[10].fields.drops != dismantle.getProperty('dropSnapshot')
+            || dismantleReceipts[10].fields.send != dismantle.getProperty('pendingInputBeforeDrops')
+            || dismantleReceipts[10].fields.returns != dismantle.getProperty('returnInventoryBeforeDrops')
+            || dismantleReceipts[11].fields != dismantleReceipts[10].fields
+            || dismantleReceipts[14].fields.send != dismantle.getProperty('pendingInputBeforeDrops')
+            || dismantleReceipts[14].fields.returns != dismantle.getProperty('returnInventoryBeforeDrops')
+            || emptyStateIndexes.any { index -> dismantleReceipts[index].fields.patterns != 'empty'
+                    || dismantleReceipts[index].fields.send != 'empty'
+                    || dismantleReceipts[index].fields.returns != 'empty'
+                    || dismantleReceipts[index].fields.drops != 'empty' }
+            || dismantleReceipts[5].fields.detail != 'native=true'
+            || dismantleReceipts[8].fields.detail != 'native=true'
+            || dismantleReceipts[13].fields.detail != 'native=true'
+            || dismantleReceipts[18].fields.detail != 'native=true'
+            || dismantleReceipts[23].fields.detail != 'native=true'
+            || dismantleReceipts[24].fields.detail != 'count=0'
+            || dismantle.getProperty('pendingInputDrop') != 'minecraft:dirt:1'
+            || dismantle.getProperty('primaryReturnDrop') != 'minecraft:diamond:2'
+            || dismantle.getProperty('byproductReturnDrop') != 'minecraft:gold_ingot:2'
+            || dismantle.getProperty('dropSnapshot') != 'minecraft:diamond:2,minecraft:dirt:1,minecraft:gold_ingot:2'
+            || dismantle.getProperty('secondDropSnapshot') != 'empty'
+            || dismantle.getProperty('remainingPatternResponsibility') != 'empty'
+            || dismantle.getProperty('remainingPendingResponsibility') != 'empty'
+            || dismantle.getProperty('remainingReturnResponsibility') != 'empty'
+            || dismantleReceipts[0].fields.snapshot != dismantle.getProperty('acceptedTargetInitial')
+            || dismantleReceipts[4].fields.snapshot != dismantle.getProperty('acceptedTargetBefore')
+            || dismantleReceipts[7].fields.snapshot != dismantle.getProperty('acceptedTargetBefore')
+            || dismantleReceipts[12].fields.snapshot != dismantle.getProperty('acceptedTargetAfter')
+            || dismantleReceipts[17].fields.snapshot != dismantle.getProperty('acceptedTargetAfter')
+            || dismantleReceipts[22].fields.snapshot != dismantle.getProperty('acceptedTargetFinal')
+            || parseNonnegativeInteger(dismantle.getProperty('acceptedTargetBefore'), 'Task 19 accepted target before')
+                    - parseNonnegativeInteger(dismantle.getProperty('acceptedTargetInitial'), 'Task 19 accepted target initial') != 1
+            || dismantle.getProperty('acceptedTargetAfter') != dismantle.getProperty('acceptedTargetBefore')
+            || dismantle.getProperty('acceptedTargetFinal') != dismantle.getProperty('acceptedTargetBefore')
+            || dismantle.getProperty('acceptedTargetCount') != '1'
+            || dismantle.getProperty('acceptedTargetDrop') != '0'
+            || dismantle.getProperty('reconciledResourceCount') != '6') {
+        throw new GradleException('Task 19 dismantle native ownership receipts are incomplete')
+    }
+
+    def replay = parsed.processingrejectfalsereplay as Properties
+    def replayReceipts = receipts.processingrejectfalsereplay
+    def replayPushes = observations.processingrejectfalsereplay.findAll { it.operation == 'push-head' }
+    def replayReturns = observations.processingrejectfalsereplay.findAll { it.operation == 'push-return' }
+    def replayRemainders = observations.processingrejectfalsereplay.findAll { it.operation == 'send-remainder' }
+    if (replay.getProperty('normalRejectNativeRemainder') != '0'
+            || replay.getProperty('partialSendAccepted') != 'true'
+            || replay.getProperty('duplicateAfterReplay') != 'false'
+            || replay.getProperty('normalRejectAccepted') != 'false'
+            || replay.getProperty('normalRejectMutated') != 'false'
+            || replay.getProperty('retryAfterFalseAccepted') != 'true'
+            || replay.getProperty('retryTransferred') != '1'
+            || replay.getProperty('partialAcceptedPrefix') != 'minecraft:dirt:1'
+            || replay.getProperty('partialNativeRemainder') != 'minecraft:gravel:1'
+            || replay.getProperty('fullReplayWhileBusyAccepted') != 'false'
+            || replay.getProperty('blockedEndpointReturnAccepted') != '0'
+            || replay.getProperty('blockedEndpointCallerRemainder') != '3'
+            || replay.getProperty('blockedEndpointProviderRemainder') != '0'
+            || replay.getProperty('rule') != 'false-retains-caller;true-partial-transfers-remainder-to-native'
+            || replayReceipts*.fields*.detail != ['keys=1,amount=1', 'accepted=false', 'keys=1,amount=1',
+                    'accepted=true', 'keys=2,amount=2', 'key=ae2:i,amount=1', 'accepted=true',
+                    'keys=2,amount=2', 'accepted=false']
+            || replayPushes.size() != 4
+            || replayReturns*.detail != ['accepted=false', 'accepted=true', 'accepted=true', 'accepted=false']
+            || replayPushes[0].owner != replayPushes[1].owner || replayPushes[2].owner != replayPushes[3].owner
+            || replayRemainders.size() != 1 || replayRemainders[0].owner != replayPushes[2].owner
+            || replayRemainders[0].detail != 'key=ae2:i,amount=1') {
+        throw new GradleException('Task 19 false-replay native receipts are incomplete')
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -1882,6 +2313,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskSeventeenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskEighteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskNineteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -2041,6 +2474,107 @@ def taskSevenEvidenceProbeRejects = { File sourceResult, String name, String exp
     rejection instanceof String && rejection.contains(expectedMessage)
 }
 
+def taskNineteenFactProbeRejects = { File sourceResult, String name, String artifactId, String fact,
+        String newValue, String expectedMessage ->
+    taskSevenEvidenceProbeRejects(sourceResult, name, expectedMessage) { File attempt, Map report ->
+        def file = new File(attempt, "native-${artifactId}.properties")
+        def properties = loadProperties(file)
+        def oldValue = properties.getProperty(fact)
+        properties.setProperty(fact, newValue)
+        file.withOutputStream { properties.store(it, name) }
+        def log = new File(attempt, "positive-${artifactId}.log")
+        log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${newValue}")
+    }
+}
+
+def taskNineteenReceiptProbeRejects = { File sourceResult, String name, String artifactId,
+        String expectedMessage, Closure mutateText ->
+    taskSevenEvidenceProbeRejects(sourceResult, name, expectedMessage) { File attempt, Map report ->
+        def log = new File(attempt, "positive-${artifactId}.log")
+        log.text = mutateText(log.text)
+    }
+}
+
+def taskNineteenTextReplacementProbeRejects = { File sourceResult, String name, String artifactId,
+        String oldText, String newText, String expectedMessage ->
+    taskNineteenReceiptProbeRejects(sourceResult, name, artifactId, expectedMessage) { String text ->
+        text.replace(oldText, newText)
+    }
+}
+
+def taskNineteenRemoveFactProbeRejects = { File sourceResult, String name, String artifactId, String fact,
+        String expectedMessage ->
+    def rejection = taskFiveEvidenceProbeRejects(sourceResult, name) { File attempt, Map report ->
+        def file = new File(attempt, "native-${artifactId}.properties")
+        def properties = loadProperties(file)
+        properties.remove(fact)
+        file.withOutputStream { properties.store(it, name) }
+        def log = new File(attempt, "positive-${artifactId}.log")
+        log.text = log.readLines().findAll { !it.contains("fact=${fact} ") }.join('\n') + '\n'
+    }
+    if (!(rejection instanceof String && rejection.contains(expectedMessage))) {
+        logger.lifecycle("Task 19 probe ${name} rejection: ${rejection}")
+        return false
+    }
+    true
+}
+
+def taskNineteenDuplicateReceiptProbeRejects = { File sourceResult, String name, String artifactId,
+        String operation, String expectedMessage ->
+    taskSevenEvidenceProbeRejects(sourceResult, name, expectedMessage) { File attempt, Map report ->
+        def log = new File(attempt, "positive-${artifactId}.log")
+        def receipt = log.readLines().find { it.contains('AE2F_PROCESSING_RECEIPT')
+                && it.contains("operation=${operation} ") }
+        log.text += receipt + '\n'
+    }
+}
+
+def taskNineteenCleanupProbeRejects = { File sourceResult, String name, boolean remove ->
+    taskSevenEvidenceProbeRejects(sourceResult, name,
+            'Task 19 cleanup receipt is missing, duplicated, or substituted') { File attempt, Map report ->
+        def receipt = new File(attempt, 'cleanup-receipt.txt')
+        if (remove) {
+            project.delete(receipt)
+            report.artifacts.removeAll { it.path == 'cleanup-receipt.txt' }
+        } else {
+            receipt.text = 'fabricated cleanup\n'
+        }
+    }
+}
+
+def taskNineteenSwappedOwnersProbeRejects = { File sourceResult ->
+    taskSevenEvidenceProbeRejects(sourceResult, 'task19-swapped-state-owners',
+            'Task 19 dismantle native ownership receipts are incomplete') { File attempt, Map report ->
+        def log = new File(attempt, 'positive-processingdismantle.log')
+        log.text = log.text.replace('sendOwner=', 'temporaryOwner=')
+                .replace('returnOwner=', 'sendOwner=').replace('temporaryOwner=', 'returnOwner=')
+    }
+}
+
+def taskNineteenExtraReceiptProbeRejects = { File sourceResult ->
+    def rejection = taskFiveEvidenceProbeRejects(sourceResult, 'task19-extra-receipt') { File attempt, Map report ->
+        def log = new File(attempt, 'positive-processingdismantle.log')
+        log.text += 'AE2F_PROCESSING_RECEIPT testId=processingdismantle sequence=26 kind=observation operation=forged owner=1 fields=detail=native=true\n'
+    }
+    if (!(rejection instanceof String && rejection.contains('Task 19 exact receipt schema mismatch for processingdismantle'))) {
+        logger.lifecycle("Task 19 extra receipt rejection: ${rejection}")
+        return false
+    }
+    true
+}
+
+def taskNineteenAuthenticOwnerExtraReceiptProbeRejects = { File sourceResult ->
+    taskSevenEvidenceProbeRejects(sourceResult, 'task19-authentic-owner-extra-receipt',
+            'Task 19 exact receipt schema mismatch for processingdismantle') { File attempt, Map report ->
+        def properties = loadProperties(new File(attempt, 'native-processingdismantle.properties'))
+        def log = new File(attempt, 'positive-processingdismantle.log')
+        def receipt = "AE2F_PROCESSING_RECEIPT testId=processingdismantle sequence=26 kind=observation " +
+                "operation=reviewer-extra owner=${properties.getProperty('providerLogicIdentity')} " +
+                'fields=detail=native=true\n'
+        log.text += receipt
+    }
+}
+
 def writeEmptyStructure = { File output ->
     output.parentFile.mkdirs()
     new GZIPOutputStream(new FileOutputStream(output)).withCloseable { gzip ->
@@ -2167,19 +2701,21 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             }
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                     structure: testCase.structure, assertions: testCase.assertions,
-                    accounting: !(testCase.id in taskEighteenCases),
+                    accounting: !(testCase.id in taskEighteenCases || testCase.id.startsWith('processing.')),
                     operations: (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                     || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                     || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
-                    || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')) ? 1 : 2,
+                    || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
+                    || testCase.id.startsWith('processing.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                             || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
-                            || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')])
+                            || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
+                            || testCase.id.startsWith('processing.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -2430,6 +2966,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'processing.native-differential':
+                case 'processing.shared-capacity':
+                case 'processing.lock-isolation':
+                case 'processing.disconnect-restart':
+                case 'processing.dismantle':
+                case 'processing.reject-false-replay':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, accounting: false])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions]); break
             }
         }
     }
@@ -2438,7 +2986,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         throw new GradleException("Executed set mismatch or zero assertions: requested=${requestedCases ?: profile}, executed=${executed}")
     }
     def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
-    cleanupReceipt.text = 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
+    cleanupReceipt.text = requestedCases == taskNineteenCases
+            ? 'Task 19: six serialized GameTest child finalizers copied diagnostics and removed task-owned runtime data; no session.lock remains.\n'
+            : 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
     childArtifacts.add(cleanupReceipt)
     def artifacts = childArtifacts.unique().collect { file ->
         def canonical = file.canonicalFile
@@ -2465,6 +3015,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskSixteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskSeventeenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskEighteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskNineteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -3394,16 +3945,6 @@ tasks.register('federationTaskEighteenEvidenceSelfTest') {
                 log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${newValue}")
             }
         }
-        def removeFact = { String artifactId, String fact, String comment ->
-            return { File attempt, Map report ->
-                def file = new File(attempt, "native-${artifactId}.properties")
-                def properties = loadProperties(file)
-                properties.remove(fact)
-                file.withOutputStream { properties.store(it, comment) }
-                def log = new File(attempt, "positive-${artifactId}.log")
-                log.text = log.readLines().findAll { !it.contains("fact=${fact} ") }.join('\n') + '\n'
-            }
-        }
         def copyFact = { String artifactId, String targetFact, String sourceFact, String comment ->
             return { File attempt, Map report ->
                 def file = new File(attempt, "native-${artifactId}.properties")
@@ -3466,6 +4007,16 @@ tasks.register('federationTaskEighteenEvidenceSelfTest') {
                                 "phase=${spec.phase} fact=${spec.traceFact} value=${newValue}")
                     }
                 }
+            }
+        }
+        def removeFact = { String artifactId, String fact, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                properties.remove(fact)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().findAll { !it.contains("fact=${fact} ") }.join('\n') + '\n'
             }
         }
         def countSpecs = [
@@ -3688,5 +4239,165 @@ tasks.register('federationTaskEighteenEvidenceSelfTest') {
         ]
         if (probes.any { !it }) throw new GradleException('Task 18 adversarial Endpoint evidence was accepted')
         logger.lifecycle('Task 18 adversarial Endpoint evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskNineteenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 19 Processing ownership evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 19 evidence for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String newValue, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${newValue}")
+            }
+        }
+        def copyFact = { String artifactId, String targetFact, String sourceFact, String comment ->
+            return { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(targetFact)
+                def newValue = properties.getProperty(sourceFact)
+                properties.setProperty(targetFact, newValue)
+                file.withOutputStream { properties.store(it, comment) }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${targetFact} value=${oldValue}",
+                        "fact=${targetFact} value=${newValue}")
+            }
+        }
+        def probes = [
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-fabricated-atomicity',
+                        'Task 19 shared-capacity native receipts are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-processingsharedcapacity.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('nativeLimitation', 'atomic-all-or-nothing')
+                    file.withOutputStream { properties.store(it, 'Task 19 fabricated native atomicity') }
+                    def log = new File(attempt, 'positive-processingsharedcapacity.log')
+                    log.text = log.text.replace('fact=nativeLimitation value=nonzero-per-key-simulation-not-atomic',
+                            'fact=nativeLimitation value=atomic-all-or-nothing')
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-missing-native-trace',
+                        'Task 19 runtime trace mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-processingnativedifferential.log')
+                    log.text = log.readLines().findAll { !it.contains('fact=nativeAuthority ') }.join('\n') + '\n'
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-restart-owner',
+                        'Task 19 restart native lifecycle receipts are incomplete',
+                        copyFact('processingdisconnectrestart', 'restoredLogicIdentity', 'originalLogicIdentity',
+                                'Task 19 rebound reconstructed owner')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-restart-count',
+                        'Task 19 restart native lifecycle receipts are incomplete',
+                        mutateFact('processingdisconnectrestart', 'nbtReadObservations', '0',
+                                'Task 19 rebound NBT read count')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-restart-snapshot',
+                        'Task 19 restart native lifecycle receipts are incomplete',
+                        mutateFact('processingdisconnectrestart', 'pendingInputAfterLoad', 'empty',
+                                'Task 19 rebound restored pending snapshot')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-restart-drain',
+                        'Task 19 restart native lifecycle receipts are incomplete',
+                        mutateFact('processingdisconnectrestart', 'reconnectDrainCount', '2',
+                                'Task 19 rebound reconnect drain count')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-dismantle-drop',
+                        'Task 19 dismantle native ownership receipts are incomplete',
+                        mutateFact('processingdismantle', 'pendingInputDrop', '0',
+                                'Task 19 rebound pending dismantle drop')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-rebound-dismantle-target',
+                        'Task 19 dismantle native ownership receipts are incomplete',
+                        mutateFact('processingdismantle', 'acceptedTargetAfter', '0',
+                                'Task 19 rebound accepted target snapshot')),
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-missing-owner-dispose',
+                        'Task 19 receipt ordering or cardinality mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-processingdisconnectrestart.log')
+                    log.text = log.readLines().findAll { !it.contains('operation=owner-dispose ') }.join('\n') + '\n'
+                },
+                taskSevenEvidenceProbeRejects(sourceResult, 'task19-missing-dismantle-state',
+                        'Task 19 receipt ordering or cardinality mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-processingdismantle.log')
+                    log.text = log.readLines().findAll {
+                        !it.contains('AE2F_PROCESSING_RECEIPT') || !it.contains('operation=add-drops-1-return ')
+                    }.join('\n') + '\n'
+                }
+        ]
+        def factProbeSpecifications = [
+                ['arbitrary-original-logic', 'processingdisconnectrestart', 'originalLogicIdentity', '101'],
+                ['arbitrary-restored-logic', 'processingdisconnectrestart', 'restoredLogicIdentity', '102'],
+                ['malformed-original-node', 'processingdisconnectrestart', 'originalNodeIdentity', 'node-x'],
+                ['arbitrary-restored-node', 'processingdisconnectrestart', 'restoredNodeIdentity', '103'],
+                ['arbitrary-send-before', 'processingdisconnectrestart', 'sendListIdentityBefore', '104'],
+                ['arbitrary-send-after', 'processingdisconnectrestart', 'sendListIdentityAfter', '105'],
+                ['arbitrary-return-before', 'processingdisconnectrestart', 'returnInventoryIdentityBefore', '106'],
+                ['arbitrary-return-after', 'processingdisconnectrestart', 'returnInventoryIdentityAfter', '107'],
+                ['generation-before', 'processingdisconnectrestart', 'lifecycleGenerationBefore', '7'],
+                ['generation-after', 'processingdisconnectrestart', 'lifecycleGenerationAfter', '8'],
+                ['disposed-inversion', 'processingdisconnectrestart', 'originalOwnerDisposed', 'false'],
+                ['pending-quantity', 'processingdisconnectrestart', 'pendingInputBefore', 'minecraft:dirt:2'],
+                ['return-quantity', 'processingdisconnectrestart', 'returnInventoryBefore', 'minecraft:diamond:3'],
+                ['lock-state', 'processingdisconnectrestart', 'lockAfterLoad', 'NONE'],
+                ['unlock-quantity', 'processingdisconnectrestart', 'unlockRemainderAfterLoad', 'minecraft:diamond:3'],
+                ['arbitrary-provider', 'processingdismantle', 'providerLogicIdentity', '108'],
+                ['arbitrary-pending-owner', 'processingdismantle', 'pendingOwnerIdentity', '109'],
+                ['arbitrary-return-owner', 'processingdismantle', 'returnOwnerIdentity', '110'],
+                ['dismantle-pending-snapshot', 'processingdismantle', 'pendingInputBeforeDrops', 'minecraft:dirt:2'],
+                ['dismantle-return-snapshot', 'processingdismantle', 'returnInventoryBeforeDrops', 'minecraft:diamond:3'],
+                ['dismantle-drop-snapshot', 'processingdismantle', 'dropSnapshot', 'minecraft:dirt:5'],
+                ['target-initial', 'processingdismantle', 'acceptedTargetInitial', '0'],
+                ['target-count', 'processingdismantle', 'acceptedTargetCount', '2'],
+                ['endpoint-inversion', 'processingdismantle', 'endpointDisconnectedBeforeDrops', 'false']]
+        factProbeSpecifications.each { specification ->
+            def artifactId = specification[1]
+            def rejected = taskNineteenFactProbeRejects(sourceResult, "task19-${specification[0]}", artifactId,
+                    specification[2], specification[3], artifactId == 'processingdismantle'
+                            ? 'Task 19 dismantle native ownership receipts are incomplete'
+                            : 'Task 19 restart native lifecycle receipts are incomplete')
+            if (!rejected) throw new GradleException("Task 19 adversarial fact probe was accepted: ${specification[0]}")
+            probes.add(rejected)
+        }
+        probes.add(taskNineteenRemoveFactProbeRejects(sourceResult, 'task19-endpoint-omission',
+                'processingdismantle', 'endpointDisconnectedBeforeDrops',
+                'Task 19 property schema mismatch for processingdismantle'))
+        probes.add(taskNineteenTextReplacementProbeRejects(sourceResult, 'task19-serialized-grid-reference',
+                'processingdisconnectrestart', 'fields=detail=gridReference=false',
+                'fields=detail=gridReference=true', 'Task 19 restart native lifecycle receipts are incomplete'))
+        probes.add(taskNineteenDuplicateReceiptProbeRejects(sourceResult, 'task19-duplicate-state-receipt',
+                'processingdismantle', 'add-drops-1-return',
+                'Task 19 receipt ordering or cardinality mismatch'))
+        probes.add(taskNineteenDuplicateReceiptProbeRejects(sourceResult, 'task19-duplicate-target-receipt',
+                'processingdismantle', 'dismantle-10-final',
+                'Task 19 receipt ordering or cardinality mismatch'))
+        probes.add(taskNineteenDuplicateReceiptProbeRejects(sourceResult, 'task19-fourth-nbt-read',
+                'processingdisconnectrestart', 'nbt-read',
+                'Task 19 receipt ordering or cardinality mismatch'))
+        probes.add(taskNineteenSwappedOwnersProbeRejects(sourceResult))
+        probes.add(taskNineteenCleanupProbeRejects(sourceResult, 'task19-cleanup-replacement', false))
+        probes.add(taskNineteenCleanupProbeRejects(sourceResult, 'task19-cleanup-omission', true))
+        probes.add(taskNineteenExtraReceiptProbeRejects(sourceResult))
+        probes.add(taskSevenEvidenceProbeRejects(sourceResult, 'task19-injected-report-property',
+                'Task 19 property schema mismatch for processingdismantle') { File attempt, Map report ->
+            def file = new File(attempt, 'native-processingdismantle.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('reviewerInjected', 'accepted')
+            file.withOutputStream { properties.store(it, 'Task 19 injected report property') }
+            def log = new File(attempt, 'positive-processingdismantle.log')
+            log.text += 'AE2F_PROCESSING_NATIVE_TRACE testId=processingdismantle fact=reviewerInjected value=accepted\n'
+        })
+        probes.add(taskNineteenRemoveFactProbeRejects(sourceResult, 'task19-omitted-owner-property',
+                'processingsharedcapacity', 'nativeRemainderOwnerIdentity',
+                'Task 19 property schema mismatch for processingsharedcapacity'))
+        probes.add(taskNineteenAuthenticOwnerExtraReceiptProbeRejects(sourceResult))
+        def acceptedProbe = probes.findIndexOf { !it }
+        if (acceptedProbe >= 0) {
+            throw new GradleException("Task 19 adversarial Processing evidence was accepted at probe ${acceptedProbe}")
+        }
+        logger.lifecycle('Task 19 adversarial Processing evidence probes were rejected for intended reasons')
     }
 }
