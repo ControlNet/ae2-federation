@@ -398,9 +398,48 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   simulation and modulation report the exact native accepted amount and leave every remainder with the caller.
 - Canonical source-bound evidence is `.omo/evidence/task-18/attempt-20260915T023556832Z/result.json`; Task 7's native
   compatibility cases also passed after Local ownership was strengthened to world-derived adjacency.
+
+## 2026-09-15 Task 19
+
+- AE2 19.2.17 Processing input transfer is nonzero-per-key simulated but not cross-resource atomic. A successful native
+  push may leave an accepted target prefix and a Provider-owned `sendList` suffix; callers must not replay the full batch.
+- The native result lock counts only the primary output quantity. Byproducts and partial primary returns preserve the lock,
+  and completion affects only the owning Lane.
+- NBT restores pending send, return, and unlock state. Pinned `addDrops` includes return inventory but omits `sendList`, a
+  native dismantle limitation that Federation reports rather than masking with refunds or replay.
+- Canonical evidence is `.omo/evidence/task-19-final2/attempt-20260915T133357374Z/result.json`; exact Task 17 and Task 18
+  regression producers also passed after the Task 19 changes.
 - Release-clean negative testing does not require a production replay API. Testmod Mixins can capture only authentic
   package-issued resolver returns, retain them in test-only identity maps, and substitute them on a later genuine resolver
   invocation while production authorization and cache rejection remain unchanged.
 - Distinct object identities are useful only when bound to independent runtime traces. The accepted evidence matches native
   facts against separately logged inventory observations and resolver/Mixin/cache/context observations, then rejects
   removed, malformed, duplicated, swapped, and substituted values after full report rebinding.
+
+## 2026-09-16 Task 19 adversarial repair
+
+- The earlier dismantle characterization was false. AE2 19.2.17 `PatternProviderLogic.addDrops` emits every `sendList`
+  entry through `AEKey.addDrops` before adding the return inventory; accepted target contents remain target-owned.
+- A restart proof must destroy the original fixture and construct a distinct logic, managed node, `sendList`, and return
+  inventory before loading NBT. The repaired case observes three writes, three reads, stable responsibility, and one drain.
+- Dependency JAR and exact source identities are different artifacts and now use separately named SHA-256 properties.
+- Canonical repaired evidence is `.omo/evidence/task-19-repair-final2/attempt-20260915T145150639Z/result.json`; fresh Task 17
+  and Task 18 regression evidence is under `.omo/evidence/task-19-repair-task17` and `task-19-repair-task18`.
+
+## 2026-09-16 Task 19 lifecycle adjudication repair
+
+- AE2 19.2.17 assigns consumption to the caller lifecycle, not `PatternProviderLogic.addDrops`: wrench dismantling collects
+  additional drops, invokes `clearContent`, hands off resources, and removes the owner.
+- A single ordered receipt stream makes kind, operation, cardinality, and sequencing independently enforceable. Exact
+  per-case property allowlists prevent omitted or injected report facts from becoming implicit evidence.
+- The final Task 19 artifact is `.omo/evidence/task-19-final-lifecycle/attempt-20260915T171522605Z/result.json`; fresh Task 17
+  and Task 18 regressions are under `.omo/evidence/task-19-final-task17` and `.omo/evidence/task-19-final-task18`.
+
+## 2026-09-16 Task 19 exact-schema scope repair
+
+- A correct allowlist is ineffective when placed in the wrong task closure. Adversarial tests must invoke the same verifier
+  entry point as the evidence they protect, not merely confirm that equivalent code exists in the script.
+- Exact shape checks should precede positional semantic checks so extra authentic-owner receipts and missing or injected
+  traced facts fail with deterministic schema errors rather than incidental owner or value mismatches.
+- Repaired evidence is `.omo/evidence/task-19-schema-repair/attempt-20260915T180333827Z/result.json`; Task 4/17/18 fresh
+  regression evidence is retained beside it in the corresponding `task-19-schema-repair-task*` directories.

@@ -227,3 +227,34 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   resolver, Pattern Provider Mixin, cache, and Endpoint rejection path.
 - Enforce the release boundary on both binary and sources JARs, including private ProviderRuntime symbols, instead of
   excluding a known test bridge by filename.
+
+## 2026-09-15 Task 19
+
+- Preserve AE2's exact ownership transition: false keeps the full batch caller-owned; true may transfer an accepted prefix
+  and place only the suffix under native `sendList` responsibility. Add no refund, replay, retry, scheduler, or transaction.
+- Keep all Processing probes, accessors, selectors, and trace collection in the testmod. Production Provider, Endpoint,
+  Claim, Policy, and native target routing remain unchanged.
+- Bind evidence to AE2 19.2.17 and the inspected source digest, require the exact six-case set, correlate every property to
+  runtime traces, and reject fully rebound fabricated atomicity or missing native authority traces.
+
+## 2026-09-16 Task 19 adversarial repair
+
+- Authenticate the AE2 dependency JAR and exact `PatternProviderLogic.java` source with separately named hashes; never use
+  a binary digest as a source-semantics receipt.
+- Prove restart at the lifecycle boundary by disposing the original owner and loading NBT into a newly constructed owner.
+- Treat native observation/state/target records as independent semantic receipts and require rebound ownership, quantity,
+  snapshot, dismantle, and cleanup mutations to fail even when artifact and report hashes are recomputed.
+
+## 2026-09-16 Task 19 lifecycle adjudication repair
+
+- Bind dismantle verification to AE2's authentic `addAdditionalDrops -> clearContent -> removal` caller lifecycle.
+  `addDrops` remains observational; exactly-once ownership is proved by ordered lifecycle receipts and final conservation.
+- Require exact ordered receipt and property schemas for all six Processing cases, plus exact cleanup-artifact content.
+  Missing, extra, duplicate, reordered, malformed, rebound, and swapped semantic evidence fails closed.
+
+## 2026-09-16 Task 19 exact-schema scope repair
+
+- Execute the Task 19 receipt and property allowlists only inside `verifyTaskNineteenEvidence`, after all six artifacts and
+  receipt streams are parsed. Task-specific evidence rules must not depend on another task verifier being selected.
+- Retain the original wrong-owner extra-receipt mutation and add distinct fully rebound injected-property,
+  omitted-property, and authentic-owner extra-receipt probes, producing a 46-probe matrix without removing categories.
