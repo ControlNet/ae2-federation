@@ -323,7 +323,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=provider.pattern-mapping,provider.refresh-priority,provider.single-inventory,provider.reject-stale-pattern,provider.native-ticker-count -PevidenceDir=.omo/evidence/task-16`.
   - Commit: proposed `feat(processing): bind mapped native Provider lanes`.
 
-- [ ] 17. Implement Provider five-plus-one wiring, Claim and authorized target binding
+- [x] 17. Implement Provider five-plus-one wiring, Claim and authorized target binding
   - Work: Provider facing and `processing/claim/`, target binding from native lane to Endpoint, authoritative Endpoint owner/epoch, same-subnet overlap detection, source-target separation, Policy/common Fabric checks. Rotation updates connections, not identity or owned remainder destination. Preserve legacy Claim on offline target; never auto-steal on timeout.
   - References: D3.3,10.1,10.6-10.7,14.5,T-L05..06,T-B01; task 6 contract. Depends on 6,14,16.
   - Acceptance: only one owner wins; five ME faces one source Grid; Federation face no native data adjacency; same/subsequently merged target domain pauses affected lanes without retargeting.
