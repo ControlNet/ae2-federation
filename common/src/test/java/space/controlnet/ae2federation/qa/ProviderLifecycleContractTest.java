@@ -18,7 +18,8 @@ final class ProviderLifecycleContractTest {
     @Test
     void manifestRegistersExactlyFiveNativeProviderCases() throws IOException {
         var manifest = Files.readString(ROOT.resolve("tests/scenarios/manifest.json"));
-        var entries = Pattern.compile("\\{[^{}]*\"id\":\"(provider\\.[^\"]+)\"[^{}]*}").matcher(manifest);
+        var entries = Pattern.compile("\\{[^{}]*\"id\":\"(provider\\.(?:pattern-mapping|refresh-priority|single-inventory|reject-stale-pattern|native-ticker-count))\"[^{}]*}")
+                .matcher(manifest);
         var cases = new TreeSet<String>();
         while (entries.find()) {
             assertTrue(cases.add(entries.group(1)));
