@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
 @Mod(NeoForgeEntrypoint.MOD_ID)
 public final class NeoForgeEntrypoint {
@@ -17,5 +18,6 @@ public final class NeoForgeEntrypoint {
         CommonStartup.start(LOGGER);
         BridgeRegistration.register(modBus);
         HubRegistration.register(modBus);
+        ProcessingRegistration.register(modBus);
     }
 }
