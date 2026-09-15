@@ -5,11 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "PatternProviderLogicAccess",
-    "PatternProviderLogicTargetBinding",
-    "PatternProviderLogicEndpointTrace",
-    "PatternProviderTargetCacheEndpointTrace",
-    "NetworkStorageTrace",
-    "DelegatingMEInventoryTrace"
+    "PatternProviderLogicTargetBinding"
   ],
   "injectors": {
     "defaultRequire": 1

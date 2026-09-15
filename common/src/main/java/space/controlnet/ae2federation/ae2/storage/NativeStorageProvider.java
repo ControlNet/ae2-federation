@@ -15,10 +15,7 @@ public final class NativeStorageProvider implements IStorageProvider {
 
     @Override
     public void mountInventories(appeng.api.storage.IStorageMounts storageMounts) {
-        mounts.forEach((storage, priority) -> {
-            NativeStorageTrace.recordProviderMount(this, storage, priority);
-            storageMounts.mount(storage, priority);
-        });
+        mounts.forEach((storage, priority) -> storageMounts.mount(storage, priority));
     }
 
     public MEStorage mountProjection(MEStorage delegate, int priority) {
