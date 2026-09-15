@@ -4,6 +4,7 @@ public record EndpointCallContext(Purpose purpose, long generation) {
     public enum Purpose {
         LOCAL_INPUT,
         FEDERATED_INPUT,
-        RETURN_INSERT
+        ITEM_RETURN,
+        FLUID_RETURN
     }
 }

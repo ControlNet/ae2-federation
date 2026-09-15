@@ -26,7 +26,6 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointCapabilityComposition;
 import space.controlnet.ae2federation.ae2.processing.endpoint.NativeLocalProvider;
-import space.controlnet.ae2federation.ae2.processing.endpoint.NativeEndpointTrace;
 
 public final class EndpointFixtures {
     public static final Direction FEDERATION_FACE = Direction.WEST;
@@ -44,6 +43,10 @@ public final class EndpointFixtures {
     private final GameTestHelper helper;
 
     public EndpointFixtures(GameTestHelper helper) {
+        this(helper, false);
+    }
+
+    public EndpointFixtures(GameTestHelper helper, boolean includeSecondProvider) {
         this.helper = helper;
         helper.setBlock(SOURCE_ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(PROVIDER_POS, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
@@ -51,9 +54,11 @@ public final class EndpointFixtures {
         helper.setBlock(INTERFACE_POS, AEBlocks.INTERFACE.block());
         helper.setBlock(SUBNET_CHEST_POS, AEBlocks.ME_CHEST.block());
         helper.setBlock(SUBNET_ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
-        helper.setBlock(SECOND_ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
-        helper.setBlock(SECOND_PROVIDER_POS, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
-                .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.SOUTH));
+        if (includeSecondProvider) {
+            helper.setBlock(SECOND_ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
+            helper.setBlock(SECOND_PROVIDER_POS, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
+                    .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.SOUTH));
+        }
         helper.setBlock(REMOTE_ENERGY_POS, AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(REMOTE_PROVIDER_POS, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
                 .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.EAST));
@@ -66,7 +71,9 @@ public final class EndpointFixtures {
     public boolean ready() {
         var providerNode = providerNode();
         var subnetNode = subnetNode();
-        return providerNode.isActive() && secondProviderNode().isActive() && remoteProviderNode().isActive()
+        var second = helper.getLevel().getBlockEntity(helper.absolutePos(SECOND_PROVIDER_POS));
+        var secondReady = !(second instanceof PatternProviderBlockEntity) || secondProviderNode().isActive();
+        return providerNode.isActive() && secondReady && remoteProviderNode().isActive()
                 && subnetNode.isActive()
                 && interfaceBlockEntity().getInterfaceLogic().getInventory() != null;
     }
@@ -80,7 +87,7 @@ public final class EndpointFixtures {
     }
 
     public boolean nativePush() {
-        NativeEndpointTrace.reset();
+        NativeEndpointObservation.reset();
         var pattern = provider().getLogic().getAvailablePatterns().getFirst();
         var input = pattern.getInputs()[0].getPossibleInputs()[0];
         var counter = new KeyCounter();
@@ -89,11 +96,11 @@ public final class EndpointFixtures {
     }
 
     public String nativePushOwnerIdentity() {
-        return NativeEndpointTrace.pushOwnerIdentity();
+        return NativeEndpointObservation.pushOwnerIdentity();
     }
 
     public String nativeTargetOwnerIdentity() {
-        return NativeEndpointTrace.targetOwnerIdentity();
+        return NativeEndpointObservation.targetOwnerIdentity();
     }
 
     public long subnetItemCount() {

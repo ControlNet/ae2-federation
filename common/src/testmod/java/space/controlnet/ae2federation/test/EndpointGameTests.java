@@ -94,11 +94,11 @@ public final class EndpointGameTests {
                         IFluidHandler.FluidAction.EXECUTE), 125,
                         "Native sided fluid capability must reach the Provider return inventory");
                 nativeReturn.setStack(0, null);
-                var item = composition.itemReturnCapability(face, composition.openReturnInsert()).orElseThrow();
+                var item = composition.itemReturnCapability(face, composition.openItemReturn()).orElseThrow();
                 var itemRemainder = item.insertItem(0, new ItemStack(Items.GOLD_INGOT), false);
                 helper.assertTrue(itemRemainder.isEmpty(), "Every allowed face must delegate item insertion");
                 nativeReturn.setStack(0, null);
-                var fluid = composition.fluidReturnCapability(face, composition.openReturnInsert()).orElseThrow();
+                var fluid = composition.fluidReturnCapability(face, composition.openFluidReturn()).orElseThrow();
                 helper.assertValueEqual(fluid.fill(new FluidStack(Fluids.WATER, 250), IFluidHandler.FluidAction.EXECUTE),
                         250, "Every allowed face must delegate fluid insertion");
                 nativeReturn.setStack(0, null);
@@ -117,9 +117,9 @@ public final class EndpointGameTests {
             helper.assertTrue(composition.faceNode(EndpointFixtures.FEDERATION_FACE).isEmpty()
                     && composition.faceStorage(EndpointFixtures.FEDERATION_FACE).isEmpty()
                     && composition.itemReturnCapability(EndpointFixtures.FEDERATION_FACE,
-                            composition.openReturnInsert()).isEmpty()
+                            composition.openItemReturn()).isEmpty()
                     && composition.fluidReturnCapability(EndpointFixtures.FEDERATION_FACE,
-                            composition.openReturnInsert()).isEmpty(),
+                            composition.openFluidReturn()).isEmpty(),
                     "The Federation face must expose no Endpoint subnet or return capability");
             facts.put("subnetFaceCount", "5");
             facts.put("sharedSubnetNode", "true");
@@ -139,7 +139,7 @@ public final class EndpointGameTests {
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 240, required = true, manualOnly = true)
     public static void endpointRejectTwoUpstreams(GameTestHelper helper) {
-        runFixture(helper, fixture -> {
+        runFixture(helper, true, fixture -> {
             var composition = fixture.composition();
             var accepted = composition.claimLocal(List.of(fixture.nativeProvider(), fixture.secondNativeProvider()));
             helper.assertTrue(!accepted, "Two adjacent native Providers must fail closed");
@@ -160,10 +160,12 @@ public final class EndpointGameTests {
             var composition = fixture.composition();
             helper.assertTrue(composition.claimLocal(List.of(fixture.nativeProvider())), "Local owner must bind");
             var inputContext = composition.openLocalInput();
-            var returnContext = composition.openReturnInsert();
+            var itemReturnContext = composition.openItemReturn();
+            var fluidReturnContext = composition.openFluidReturn();
             helper.assertTrue(composition.returnInventory(Direction.EAST, inputContext).isEmpty(),
                     "Local target context cannot resolve the return inventory");
-            helper.assertTrue(composition.targetStorage(Direction.EAST, returnContext).isEmpty(),
+            helper.assertTrue(composition.targetStorage(Direction.EAST, itemReturnContext).isEmpty()
+                    && composition.targetStorage(Direction.EAST, fluidReturnContext).isEmpty(),
                     "Return context cannot resolve subnet target storage");
             var target = composition.targetStorage(Direction.EAST, inputContext).orElseThrow();
             helper.assertValueEqual(target.insert(AEItemKey.of(Items.IRON_INGOT), 1, Actionable.MODULATE, IActionSource.empty()),
@@ -184,7 +186,7 @@ public final class EndpointGameTests {
             var composition = fixture.composition();
             helper.assertTrue(composition.claimLocal(List.of(fixture.nativeProvider())), "Local owner must bind");
             var staleLocal = composition.openLocalInput();
-            var staleReturn = composition.openReturnInsert();
+            var staleReturn = composition.openItemReturn();
             composition.setMode(EndpointMode.FEDERATED);
             helper.assertTrue(composition.targetStorage(Direction.EAST, staleLocal).isEmpty(),
                     "Mode change must invalidate outstanding Local input contexts");
@@ -206,7 +208,12 @@ public final class EndpointGameTests {
     }
 
     private static void runFixture(GameTestHelper helper, java.util.function.Consumer<EndpointFixtures> assertions) {
-        var fixture = new EndpointFixtures(helper);
+        runFixture(helper, false, assertions);
+    }
+
+    private static void runFixture(GameTestHelper helper, boolean includeSecondProvider,
+            java.util.function.Consumer<EndpointFixtures> assertions) {
+        var fixture = new EndpointFixtures(helper, includeSecondProvider);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Provider and subnet nodes to become active");
             assertions.accept(fixture);
