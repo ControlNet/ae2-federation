@@ -9,7 +9,9 @@ import java.util.WeakHashMap;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.processing.provider.AuthorizedNativeTarget;
+import space.controlnet.ae2federation.processing.provider.ProviderLogicProvenance;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
+import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 
 public final class FederationPatternProviderTargetCache {
     private static final Map<PatternProviderLogic, Binding> BINDINGS = new WeakHashMap<>();
@@ -17,10 +19,12 @@ public final class FederationPatternProviderTargetCache {
     private FederationPatternProviderTargetCache() {
     }
 
-    public static synchronized void bind(PatternProviderLogic logic, Supplier<ProviderTargetResolution> resolver,
-            Supplier<IGridNode> sourceNode) {
-        BINDINGS.put(logic, new Binding(resolver, sourceNode));
-        ProviderTargetTrace.recordBinding(logic);
+    public static synchronized void bind(PatternProviderLogic logic, ProviderLogicProvenance provenance,
+            Supplier<ProviderTargetResolution> resolver, Supplier<IGridNode> sourceNode) {
+        if (provenance.logic() != logic) {
+            throw new IllegalArgumentException("Native Lane provenance must identify the exact bound logic");
+        }
+        BINDINGS.put(logic, new Binding(provenance, resolver, sourceNode));
     }
 
     public static synchronized void unbind(PatternProviderLogic logic) {
@@ -36,8 +40,13 @@ public final class FederationPatternProviderTargetCache {
         if (!(resolution instanceof ProviderTargetResolution.Authorized authorized)) {
             return new Lookup(true, null);
         }
+        if (authorized.target().provenance() != binding.provenance) {
+            return new Lookup(true, null);
+        }
         var target = binding.find(authorized.target());
-        ProviderTargetTrace.recordNativeTarget(target);
+        if (target != null && !EndpointTargetBinding.captureFederatedReturn(authorized.target())) {
+            target = null;
+        }
         return new Lookup(true, target);
     }
 
@@ -45,9 +54,12 @@ public final class FederationPatternProviderTargetCache {
     }
 
     private static final class Binding {
+        private final ProviderLogicProvenance provenance;
         private final Supplier<ProviderTargetResolution> resolver;
         private final Supplier<IGridNode> sourceNode;
-        private Binding(Supplier<ProviderTargetResolution> resolver, Supplier<IGridNode> sourceNode) {
+        private Binding(ProviderLogicProvenance provenance, Supplier<ProviderTargetResolution> resolver,
+                Supplier<IGridNode> sourceNode) {
+            this.provenance = provenance;
             this.resolver = resolver;
             this.sourceNode = sourceNode;
         }

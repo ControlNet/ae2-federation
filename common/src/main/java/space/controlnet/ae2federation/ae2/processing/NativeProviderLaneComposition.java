@@ -17,6 +17,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
+import space.controlnet.ae2federation.processing.provider.ProviderLogicProvenance;
 
 public final class NativeProviderLaneComposition implements InternalInventoryHost, AutoCloseable {
     private static final String PATTERNS_TAG = "patterns";
@@ -63,11 +64,12 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
         return lanes;
     }
 
-    public void bindTarget(int laneIndex, Supplier<ProviderTargetResolution> resolver) {
+    public void bindTarget(int laneIndex, ProviderLogicProvenance provenance,
+            Supplier<ProviderTargetResolution> resolver) {
         if (laneIndex < 0 || laneIndex >= lanes.size()) {
             throw new IndexOutOfBoundsException("Native Lane target index is outside the composition");
         }
-        FederationPatternProviderTargetCache.bind(lanes.get(laneIndex), resolver, physicalNode::getNode);
+        FederationPatternProviderTargetCache.bind(lanes.get(laneIndex), provenance, resolver, physicalNode::getNode);
     }
 
     public List<Long> nativeTickerInvocations() {

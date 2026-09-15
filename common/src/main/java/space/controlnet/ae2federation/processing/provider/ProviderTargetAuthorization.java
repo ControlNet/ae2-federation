@@ -38,8 +38,9 @@ public final class ProviderTargetAuthorization {
         }
         var claim = endpoint.claimState();
         var expectedOwner = new EndpointOwnerIdentity(request.provider());
+        var mode = endpoint.federatedMode(request.provider(), request.claimEpoch());
         if (!claim.key().endpoint().equals(request.endpoint()) || !claim.epoch().equals(request.claimEpoch())
-                || claim.owner().filter(expectedOwner::equals).isEmpty()) {
+                || claim.owner().filter(expectedOwner::equals).isEmpty() || mode.isEmpty()) {
             return paused(ProviderTargetState.CLAIM_MISMATCH);
         }
         var targetNode = endpoint.subnetNode();
@@ -75,7 +76,7 @@ public final class ProviderTargetAuthorization {
             return paused(ProviderTargetState.FABRIC_DISCONNECTED);
         }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,
-                request.endpointSide(), request.endpoint(), request.claimEpoch()));
+                request.endpointSide(), mode.orElseThrow(), context.provenance()));
     }
 
     private static ProviderTargetResolution paused(ProviderTargetState state) {

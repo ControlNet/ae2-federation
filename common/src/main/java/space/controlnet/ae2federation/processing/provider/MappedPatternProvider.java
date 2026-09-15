@@ -73,8 +73,9 @@ public final class MappedPatternProvider implements PatternContainer, AutoClosea
         return composition.lanes();
     }
 
-    public void bindTarget(int laneIndex, Supplier<ProviderTargetResolution> resolver) {
-        composition.bindTarget(laneIndex, resolver);
+    public void bindTarget(int laneIndex, ProviderLogicProvenance provenance,
+            Supplier<ProviderTargetResolution> resolver) {
+        composition.bindTarget(laneIndex, provenance, resolver);
     }
 
     public InternalInventory patternInventory() {

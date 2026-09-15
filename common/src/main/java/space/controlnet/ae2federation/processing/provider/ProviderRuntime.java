@@ -4,7 +4,6 @@ import appeng.api.networking.IManagedGridNode;
 import java.util.Objects;
 import java.util.function.Supplier;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.ae2.processing.ProviderTargetTrace;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
 
 public final class ProviderRuntime {
@@ -25,8 +24,11 @@ public final class ProviderRuntime {
         this.domains = Objects.requireNonNull(domains);
         wiring = new ProviderNodeWiring(sourceNode, Objects.requireNonNull(identity), Objects.requireNonNull(orientation));
         Objects.requireNonNull(provider);
-        for (int laneIndex = 0; laneIndex < provider.nativeLanes().size(); laneIndex++) {
-            provider.bindTarget(laneIndex, this::resolveTarget);
+        var laneCount = provider.nativeLanes().size();
+        for (int laneIndex = 0; laneIndex < laneCount; laneIndex++) {
+            var boundLaneIndex = laneIndex;
+            var provenance = new ProviderLogicProvenance(provider.nativeLane(boundLaneIndex));
+            provider.bindTarget(boundLaneIndex, provenance, () -> resolveTarget(provenance));
         }
     }
 
@@ -46,7 +48,7 @@ public final class ProviderRuntime {
         wiring.rotate(orientation);
     }
 
-    private ProviderTargetResolution resolveTarget() {
+    private ProviderTargetResolution resolveTarget(ProviderLogicProvenance provenance) {
         var nativeNode = sourceNode.getNode();
         if (nativeNode == null) {
             lastResolution = new ProviderTargetResolution.Paused(ProviderTargetState.NATIVE_TARGET_UNAVAILABLE);
@@ -59,10 +61,9 @@ public final class ProviderRuntime {
                         supplied.endpointPosition(), supplied.endpointSide(),
                         supplied.rotationSettled() && wiring.settled());
                 lastResolution = ProviderTargetAuthorization.resolve(
-                        new ProviderAuthorizationContext(level, nativeNode, current, domains));
+                        new ProviderAuthorizationContext(level, nativeNode, current, domains, provenance));
             }
         }
-        ProviderTargetTrace.recordAuthorization(lastResolution.state(), nativeNode);
         return lastResolution;
     }
 }
