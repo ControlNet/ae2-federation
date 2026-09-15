@@ -27,7 +27,7 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
-					   ProviderLifecycleGameTests.class })
+					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class })
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))
                 .forEach(event::register);
