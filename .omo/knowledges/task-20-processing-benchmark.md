@@ -1,9 +1,16 @@
 # Task 20 Processing Benchmark Knowledge
 
+## 2026-09-17 profile-derived lifecycle repair
+
+- `processing-small-v3` declares `executionTimeoutSeconds=300` and `shutdownGraceSeconds=10`; the manifest registry must match the profile bytes.
+- The runner derives both values from the selected profile and persists the declaration. The consumer compares report and child evidence to that declaration rather than enforcing a universal 300-second ceiling.
+- Execution deadlines are operational containment, not performance gates. Strict positive integral parsing and a seven-day safety bound reject malformed declarations while allowing future 45-minute and two-hour profiles without verifier changes.
+- A focused executable contract accepted `2700/10` and `7200/10` without waiting and rejected one-second-short mismatches. Timing remains `environment-sensitive-secondary`.
+
 ## Qualified runtime
 
 - Java 21.0.12, Gradle 9.2.1, NeoForge 21.1.250, and AE2 19.2.17.
-- Canonical profile `processing-small-v2` uses seed `20019006`, 256 physical/logical Patterns, 15 Lanes,
+- Canonical profile `processing-small-v3` uses seed `20019006`, 256 physical/logical Patterns, 15 Lanes,
   270 live Provider entries, 16 Grids, one real crafting CPU, and equal-volume large/small variants.
 - Accepted evidence is `.omo/evidence/task-20/attempt-20260916T051227490Z/result.json`.
 - Exact negative-QA evidence is `.omo/evidence/task-20-selftest/attempt-20260916T051620201Z/result.json`.
