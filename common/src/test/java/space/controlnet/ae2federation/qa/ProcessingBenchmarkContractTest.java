@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.qa;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -216,6 +217,23 @@ final class ProcessingBenchmarkContractTest {
         assertTrue(qa.contains("loadBenchmarkLifecycle"));
         assertFalse(qa.contains("gradleCommand('benchmark-gametest', benchmarkArgs, [timeout: 180"));
         assertFalse(qa.contains("executionDeadline > 300"));
+    }
+
+    @Test
+    void nestedTaskTwentyBenchmarksHaveProfileDerivedOuterEnvelopes() throws IOException {
+        var qa = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
+
+        assertTrue(qa.contains("benchmarkOrchestrationMarginSeconds = 60L"));
+        assertTrue(qa.contains("executionTimeoutSeconds + lifecycle.shutdownGraceSeconds"
+                + " + benchmarkOrchestrationMarginSeconds"));
+        assertEquals(2, occurrences(qa, "[timeout: benchmarkOuterTimeoutSeconds(processingLifecycle)"));
+        assertTrue(qa.contains("runtimeLog,\n                                "
+                + "benchmarkOuterTimeoutSeconds(processingLifecycle)"));
+        assertFalse(qa.contains("runtimeLog, 240)"));
+    }
+
+    private static int occurrences(String text, String value) {
+        return (text.length() - text.replace(value, "").length()) / value.length();
     }
 
     private static String source(String relative) throws IOException {

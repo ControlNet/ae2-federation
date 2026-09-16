@@ -104,6 +104,8 @@ def parseNonnegativeInteger = { Object value, String field ->
 
 def maxOperationalTimeoutSeconds = TimeUnit.DAYS.toSeconds(7)
 def maxShutdownGraceSeconds = 30L
+// Covers nested Gradle startup, persisted report writing, verification, and runtime cleanup.
+def benchmarkOrchestrationMarginSeconds = 60L
 def parseBenchmarkLifecycle = { Object value, String field ->
     if (!(value instanceof Map) || value.keySet() != ['executionTimeoutSeconds', 'shutdownGraceSeconds'] as Set) {
         throw new GradleException("Invalid benchmark lifecycle declaration ${field}")
@@ -119,6 +121,9 @@ def parseBenchmarkLifecycle = { Object value, String field ->
         throw new GradleException("Unreasonably large benchmark lifecycle declaration ${field}")
     }
     [executionTimeoutSeconds: executionTimeoutSeconds, shutdownGraceSeconds: shutdownGraceSeconds]
+}
+def benchmarkOuterTimeoutSeconds = { Map lifecycle ->
+    lifecycle.executionTimeoutSeconds + lifecycle.shutdownGraceSeconds + benchmarkOrchestrationMarginSeconds
 }
 def requireBenchmarkLifecycleMatch = { Object value, Map expected, String field ->
     def actual = parseBenchmarkLifecycle(value, field)
@@ -2921,6 +2926,8 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
     def projection = taskTwentyProjection(metrics, budgets, profileLifecycle)
     def assertion = report.assertions[0]
     if (report.assertions.size() != 1 || assertion.profile != projection.profile
+            || assertion.lifecycle != profileLifecycle || report.profileLifecycle != assertion.lifecycle
+            || report.profile != assertion.profile
             || assertion.metrics != projection.metrics || assertion.samples != projection.samples
             || assertion.reconciliation != projection.reconciliation || assertion.budgets != projection.budgets) {
         throw new GradleException('Task 20 benchmark report projection mismatch')
@@ -2986,8 +2993,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
         def expectedShutdownTimeout = report.requested.contains('benchmark.shutdown-timeout')
                 ? ['task20-shutdown-timeout'] : []
         def expectedExecutionDeadlines = ['task20-empty-work': processingLifecycle.executionTimeoutSeconds,
-                'task20-accounting': processingLifecycle.executionTimeoutSeconds,
-                'task20-adversarial': processingLifecycle.executionTimeoutSeconds,
+                'task20-accounting': benchmarkOuterTimeoutSeconds(processingLifecycle),
+                'task20-adversarial': benchmarkOuterTimeoutSeconds(processingLifecycle),
                 'task20-execution-timeout': 1L, 'task20-shutdown-timeout': 5L]
         def expectedShutdownGrace = ['task20-empty-work': processingLifecycle.shutdownGraceSeconds,
                 'task20-accounting': processingLifecycle.shutdownGraceSeconds,
@@ -3276,6 +3283,24 @@ tasks.register('federationTaskTwentyLongDeadlineContract') {
             if (!mismatchRejected) throw new GradleException('Mismatched long-profile lifecycle was accepted')
         }
         logger.lifecycle('Task 20 long-profile lifecycle contract passed without waiting for its deadline')
+    }
+}
+
+tasks.register('federationTaskTwentyOuterEnvelopeContract') {
+    group = 'verification'
+    description = 'Proves nested Task 20 benchmark envelopes include child execution, shutdown, and orchestration.'
+    doLast {
+        [[executionTimeoutSeconds: 300L, shutdownGraceSeconds: 10L],
+         [executionTimeoutSeconds: 2700L, shutdownGraceSeconds: 10L],
+         [executionTimeoutSeconds: 7200L, shutdownGraceSeconds: 10L]].each { lifecycle ->
+            def outerTimeout = benchmarkOuterTimeoutSeconds(lifecycle)
+            def required = lifecycle.executionTimeoutSeconds + lifecycle.shutdownGraceSeconds +
+                    benchmarkOrchestrationMarginSeconds
+            if (outerTimeout < required) {
+                throw new GradleException("Task 20 outer benchmark envelope ${outerTimeout} is below ${required}")
+            }
+        }
+        logger.lifecycle('Task 20 nested benchmark outer-envelope contract passed')
     }
 }
 
@@ -3719,7 +3744,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     def innerRoot = new File(attempt, 'task20-accounting-benchmark')
                     def benchmark = gradleCommand('task20-accounting', [':neoforge-1.21.1:federationBenchmark',
                             '-Pprofile=processing-small', "-PevidenceDir=${innerRoot.absolutePath}"],
-                            [timeout: processingLifecycle.executionTimeoutSeconds,
+                            [timeout: benchmarkOuterTimeoutSeconds(processingLifecycle),
                              shutdownGrace: processingLifecycle.shutdownGraceSeconds, retainRuntime: false])
                     def results = project.fileTree(innerRoot).matching { include('attempt-*/result.json') }.files
                     if (benchmark.result.exit != 0 || results.size() != 1) {
@@ -3728,7 +3753,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     def adversarial = gradleCommand('task20-adversarial',
                             [':neoforge-1.21.1:federationTaskTwentyEvidenceSelfTest',
                              "-PresultFile=${results.first().absolutePath}"],
-                            [timeout: processingLifecycle.executionTimeoutSeconds,
+                            [timeout: benchmarkOuterTimeoutSeconds(processingLifecycle),
                              shutdownGrace: processingLifecycle.shutdownGraceSeconds, retainRuntime: false])
                     if (adversarial.result.exit != 0) {
                         throw new GradleException('Task 20 resource-accounting adversarial consumer failed')
@@ -4530,6 +4555,30 @@ tasks.register('federationTaskFiveEvidenceSelfTest') {
     }
 }
 
+tasks.register('federationTaskTwentyProjectionMutationContract') {
+    group = 'verification'
+    description = 'Proves fully rebound Task 20 lifecycle and profile projection contradictions fail closed.'
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def rejections = [
+                assertionLifecycle: taskFiveEvidenceProbeRejects(sourceResult,
+                        'task20-contract-assertion-lifecycle') { attempt, report ->
+                    report.assertions[0].lifecycle.executionTimeoutSeconds = 299
+                },
+                topLevelProfile: taskFiveEvidenceProbeRejects(sourceResult,
+                        'task20-contract-top-level-profile') { attempt, report ->
+                    report.profile.profileVersion = 'contradictory-profile'
+                }]
+        def accepted = rejections.findAll { name, rejection -> !(rejection instanceof String) }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 20 fully rebound projection mutations were accepted: ${accepted}")
+        }
+        logger.lifecycle('Task 20 fully rebound projection mutation contract passed')
+    }
+}
+
 tasks.register('federationTaskTwentyEvidenceSelfTest') {
     group = 'verification'
     description = 'Proves Task 20 benchmark identity, accounting, and timing-only evidence fails closed.'
@@ -4539,6 +4588,8 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
         def resultPath = resultFileProperty.orNull
         if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
         def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def processingLifecycle = loadBenchmarkLifecycle(
+                rootProject.file('tests/benchmarks/processing/processing-small.json'))
         def mutateMetrics = { String name, Closure mutate ->
             taskFiveEvidenceProbeRejects(sourceResult, "task20-${name}") { attempt, report ->
                 def file = new File(attempt, 'benchmark-native.properties')
@@ -4639,6 +4690,12 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
                 taskFiveEvidenceProbeRejects(sourceResult, 'task20-report-projection') { attempt, report ->
                     report.assertions[0].metrics['native.acceptedInput'] = '4'
                 },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task20-assertion-lifecycle-projection') {
+                    attempt, report -> report.assertions[0].lifecycle.executionTimeoutSeconds = 299
+                },
+                taskFiveEvidenceProbeRejects(sourceResult, 'task20-top-level-profile-projection') {
+                    attempt, report -> report.profile.profileVersion = 'contradictory-profile'
+                },
                 taskFiveEvidenceProbeRejects(sourceResult, 'task20-lifecycle-collection-missing') {
                     attempt, report -> report.remove('childLifecycles')
                 },
@@ -4668,7 +4725,8 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
                 'T-S04 equal-volume mismatch', 'violates runtime participation', 'runtime identity mismatch',
                 'fairness or backpressure mismatch', 'fairness or backpressure mismatch',
                 'fairness or backpressure mismatch', 'capture identity is stale', 'capture identity is stale',
-                'report projection mismatch', 'lifecycle accounting is missing',
+                'report projection mismatch', 'report projection mismatch', 'report projection mismatch',
+                'lifecycle accounting is missing',
                 'lifecycle accounting is malformed or incomplete', 'Invalid positive integer',
                 'Benchmark lifecycle declaration mismatch', 'Invalid positive integer',
                 'Unreasonably large benchmark lifecycle declaration']
@@ -4717,7 +4775,8 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
                         def execution = runProcess([rootProject.file('gradlew').canonicalPath,
                                 ':neoforge-1.21.1:federationBenchmark', '-Pprofile=processing-small',
                                 '-PprocessingBenchmarkSeed=20019007', "-PevidenceDir=${runtimeEvidence.absolutePath}",
-                                '--no-daemon', '--no-configuration-cache'], rootProject.projectDir, runtimeLog, 240)
+                                '--no-daemon', '--no-configuration-cache'], rootProject.projectDir, runtimeLog,
+                                benchmarkOuterTimeoutSeconds(processingLifecycle))
                         if (execution.exit != 0 || execution.timedOut) {
                             throw new GradleException('Task 20 alternate-seed runtime producer mutation failed')
                         }
