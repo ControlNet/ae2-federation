@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "processing-small-v2",
+  "seed": 20019006,
+  "timingClassification": "environment-sensitive-secondary",
+  "maxSampleNanos": 30000000000,
+  "maxRetainedResponsibility": 96,
+  "maxRejectedTargetMutation": 0,
+  "maxNativeRemainder": 0,
+  "maxReturnRetriesPerScene": 210,
+  "resourceReconciliationRequired": true,
+  "equalResourcesRequired": true,
+  "baselineUpdate": "explicit-edit-and-rerun-required"
+}

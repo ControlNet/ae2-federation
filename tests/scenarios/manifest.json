@@ -12,6 +12,9 @@
     {"id":"harness.gametest-timeout","backend":"self-test","testId":"harnesstimeout","assertions":1},
     {"id":"harness.gametest-namespace-mismatch","backend":"self-test","assertions":1},
     {"id":"harness.gametest-zero-selection","backend":"self-test","assertions":1},
+    {"id":"benchmark.evidence-identity","backend":"self-test","assertions":1},
+    {"id":"benchmark.execution-timeout","backend":"self-test","assertions":1},
+    {"id":"benchmark.shutdown-timeout","backend":"self-test","assertions":1},
     {"id":"ui-harness.shared-resource","backend":"ldlib2","testId":"ui-harness.shared-resource","assertions":2},
     {"id":"ui-harness.server-ack","backend":"ldlib2","testId":"ui-harness.server-ack","assertions":4},
     {"id":"ui-harness.reject-stale","backend":"self-test","assertions":1},
@@ -94,9 +97,12 @@
     {"id":"processing.lock-isolation","backend":"gametest","testId":"processinglockisolation","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"processing.disconnect-restart","backend":"gametest","testId":"processingdisconnectrestart","structure":"ae2federation_test:harness_native_smoke","assertions":16},
 {"id":"processing.dismantle","backend":"gametest","testId":"processingdismantle","structure":"ae2federation_test:harness_native_smoke","assertions":17},
-    {"id":"processing.reject-false-replay","backend":"gametest","testId":"processingrejectfalsereplay","structure":"ae2federation_test:harness_native_smoke","assertions":13}
+    {"id":"processing.reject-false-replay","backend":"gametest","testId":"processingrejectfalsereplay","structure":"ae2federation_test:harness_native_smoke","assertions":13},
+    {"id":"benchmark.reject-empty-work","backend":"self-test","assertions":1},
+    {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1}
   ],
   "profiles": [
-    {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8}
+    {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8},
+{"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v2","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json"}
   ]
 }
