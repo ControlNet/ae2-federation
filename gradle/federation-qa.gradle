@@ -102,6 +102,44 @@ def parseNonnegativeInteger = { Object value, String field ->
     text as long
 }
 
+def maxOperationalTimeoutSeconds = TimeUnit.DAYS.toSeconds(7)
+def maxShutdownGraceSeconds = 30L
+def parseBenchmarkLifecycle = { Object value, String field ->
+    if (!(value instanceof Map) || value.keySet() != ['executionTimeoutSeconds', 'shutdownGraceSeconds'] as Set) {
+        throw new GradleException("Invalid benchmark lifecycle declaration ${field}")
+    }
+    if (!(value.executionTimeoutSeconds instanceof Number) || !(value.shutdownGraceSeconds instanceof Number)) {
+        throw new GradleException("Invalid benchmark lifecycle declaration ${field}")
+    }
+    def executionTimeoutSeconds = parsePositiveInteger(value.executionTimeoutSeconds,
+            "${field}.executionTimeoutSeconds")
+    def shutdownGraceSeconds = parsePositiveInteger(value.shutdownGraceSeconds,
+            "${field}.shutdownGraceSeconds")
+    if (executionTimeoutSeconds > maxOperationalTimeoutSeconds || shutdownGraceSeconds > maxShutdownGraceSeconds) {
+        throw new GradleException("Unreasonably large benchmark lifecycle declaration ${field}")
+    }
+    [executionTimeoutSeconds: executionTimeoutSeconds, shutdownGraceSeconds: shutdownGraceSeconds]
+}
+def requireBenchmarkLifecycleMatch = { Object value, Map expected, String field ->
+    def actual = parseBenchmarkLifecycle(value, field)
+    if (actual != expected) {
+        throw new GradleException("Benchmark lifecycle declaration mismatch for ${field}")
+    }
+    actual
+}
+def loadBenchmarkLifecycle = { File profileFile ->
+    def profile = new JsonSlurper().parse(profileFile) as Map
+    parseBenchmarkLifecycle(profile.lifecycle, "profile ${profile.id ?: profileFile.name}")
+}
+def benchmarkLifecycleForEntry = { Map profile ->
+    def declared = parseBenchmarkLifecycle(profile.lifecycle, "manifest profile ${profile.id}")
+    if (profile.config != null) {
+        def configured = loadBenchmarkLifecycle(rootProject.file(profile.config as String).canonicalFile)
+        requireBenchmarkLifecycleMatch(configured, declared, "profile ${profile.id}")
+    }
+    declared
+}
+
 def dirtyIdentityForStatus = { byte[] statusBytes, File sourceRoot ->
     def statusEntries = new String(statusBytes, StandardCharsets.UTF_8).split('\u0000', -1)
     def worktreeIdentity = new StringBuilder()
@@ -2504,10 +2542,10 @@ def loadTaskTwentyMetrics = { File file ->
     }
     metrics
 }
-def taskTwentyProjection = { Map metrics, Map budgets ->
+def taskTwentyProjection = { Map metrics, Map budgets, Map lifecycle ->
     def names = metrics.keySet().findAll { it.startsWith('native.') || it.startsWith('federation.') }.sort()
     [profile: [profileVersion: metrics.profileVersion, seed: parsePositiveInteger(metrics.seed, 'Task 20 seed'),
-            profileSha256: metrics.profileSha256, comparison: metrics.comparison],
+            profileSha256: metrics.profileSha256, comparison: metrics.comparison, lifecycle: lifecycle],
      metrics: names.collectEntries { [(it): metrics[it]] },
      samples: [classification: metrics['timing.classification'], nativeNanos: metrics['timing.nativeSamplesNanos'],
              federationNanos: metrics['timing.federationSamplesNanos']],
@@ -2540,7 +2578,7 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
              'cpuLimit', 'startingResourceUnits', 'plannedOutputUnits', 'batchUnits', 'primaryOutputUnits',
              'byproductOutputUnits', 'warmupRejectedAttempts', 'measurementSamples', 'rejectedAttemptsPerScene',
              'largeBatchCalls', 'largeBatchUnits', 'smallBatchCalls', 'smallBatchUnits',
-             'replayVariants', 'endpointStates'] as Set
+             'replayVariants', 'endpointStates', 'lifecycle'] as Set
     def baselineFields = ['schemaVersion', 'profileVersion', 'seed', 'captureIdentitySha256', 'profileSha256',
             'budgetSha256', 'dependencyLockSha256', 'minecraftVersion', 'neoForgeVersion', 'ae2Version',
              'ldlib2Version', 'measurement', 'metrics'] as Set
@@ -2549,7 +2587,7 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
             'maxReturnRetriesPerScene', 'resourceReconciliationRequired', 'equalResourcesRequired',
              'baselineUpdate'] as Set
     if (profile.keySet() != profileFields || baseline.keySet() != baselineFields || budgets.keySet() != budgetFields
-            || profile.schemaVersion != 1 || profile.profileVersion != 'processing-small-v2'
+            || profile.schemaVersion != 2 || profile.profileVersion != 'processing-small-v3'
             || profile.id != 'processing-small' || profile.testId != 'processingbenchmarksmall'
             || profile.structure != 'ae2federation_test:harness_native_smoke' || profile.seed != 20019006
             || profile.comparison != 'native-single-grid-vs-federation-multi-provider' || profile.equalResources != true
@@ -2558,6 +2596,8 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
             || baseline.seed != profile.seed || budgets.seed != profile.seed) {
         throw new GradleException('Task 20 benchmark profile, baseline, or budget identity mismatch')
     }
+    def profileLifecycle = parseBenchmarkLifecycle(profile.lifecycle, 'persisted processing-small profile')
+    requireBenchmarkLifecycleMatch(report.profileLifecycle, profileLifecycle, 'persisted Task 20 report')
     if (profile.gridCount != 16 || profile.physicalPatterns != 256 || profile.logicalPatterns != 256
             || profile.logicalLanes != 15 || profile.routes != 270 || profile.providerEntries != 270
             || profile.targetRelationships != 15 || profile.cpuLimit != 1) {
@@ -2878,7 +2918,7 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
             samplesPerScene: 15, acceptedOperationsPerScene: 15, rejectedAttemptsPerScene: 1]) {
         throw new GradleException('Task 20 benchmark baseline metrics mismatch')
     }
-    def projection = taskTwentyProjection(metrics, budgets)
+    def projection = taskTwentyProjection(metrics, budgets, profileLifecycle)
     def assertion = report.assertions[0]
     if (report.assertions.size() != 1 || assertion.profile != projection.profile
             || assertion.metrics != projection.metrics || assertion.samples != projection.samples
@@ -2908,11 +2948,24 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     if (!(report.kind in ['verify', 'benchmark'])) {
         throw new GradleException('Result run identity does not match its attempt directory')
     }
+    def lifecycleManifest = new JsonSlurper().parse(manifestFile.asFile)
+    def lifecycleProfiles = lifecycleManifest.profiles.collectEntries { [(it.id): it] }
+    def processingLifecycle = benchmarkLifecycleForEntry(lifecycleProfiles['processing-small'] as Map)
     if (!(report.requested instanceof List) || report.requested.isEmpty()
             || report.executed != report.requested || !(report.assertions instanceof List)
             || report.assertions.size() != report.requested.size()
             || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }) {
         throw new GradleException('Requested, executed, or assertion accounting is incomplete')
+    }
+    def selectedBenchmarkProfile = report.kind == 'benchmark' ? lifecycleProfiles[report.requested.first()] : null
+    if (report.kind == 'benchmark' && !(selectedBenchmarkProfile instanceof Map)) {
+        throw new GradleException('Persisted benchmark report selected an unknown profile')
+    }
+    def selectedBenchmarkLifecycle = report.kind == 'benchmark'
+            ? benchmarkLifecycleForEntry(selectedBenchmarkProfile as Map) : null
+    if (report.kind == 'benchmark') {
+        requireBenchmarkLifecycleMatch(report.profileLifecycle, selectedBenchmarkLifecycle,
+                'persisted benchmark report')
     }
     if (!(report.childExits instanceof Map) || report.childExits.any { label, exit -> !(exit instanceof Number) }) {
         throw new GradleException('Child exit accounting is malformed')
@@ -2932,23 +2985,36 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 ? ['task20-execution-timeout'] : []
         def expectedShutdownTimeout = report.requested.contains('benchmark.shutdown-timeout')
                 ? ['task20-shutdown-timeout'] : []
-        def expectedExecutionDeadlines = ['benchmark-gametest': 180L, 'task20-empty-work': 180L,
-                'task20-accounting': 240L, 'task20-adversarial': 180L,
+        def expectedExecutionDeadlines = ['task20-empty-work': processingLifecycle.executionTimeoutSeconds,
+                'task20-accounting': processingLifecycle.executionTimeoutSeconds,
+                'task20-adversarial': processingLifecycle.executionTimeoutSeconds,
                 'task20-execution-timeout': 1L, 'task20-shutdown-timeout': 5L]
-        def expectedShutdownGrace = ['benchmark-gametest': 10L, 'task20-empty-work': 10L,
-                'task20-accounting': 10L, 'task20-adversarial': 10L,
+        def expectedShutdownGrace = ['task20-empty-work': processingLifecycle.shutdownGraceSeconds,
+                'task20-accounting': processingLifecycle.shutdownGraceSeconds,
+                'task20-adversarial': processingLifecycle.shutdownGraceSeconds,
                 'task20-execution-timeout': 1L, 'task20-shutdown-timeout': 1L]
+        if (report.kind == 'benchmark') {
+            expectedExecutionDeadlines['benchmark-gametest'] = selectedBenchmarkLifecycle.executionTimeoutSeconds
+            expectedShutdownGrace['benchmark-gametest'] = selectedBenchmarkLifecycle.shutdownGraceSeconds
+        }
         if (report.childLifecycles.keySet() != report.childExits.keySet()
                 || !report.childLifecycles.keySet().containsAll(expectedChildLabels)
                 || report.childLifecycles.any { label, lifecycle ->
                     def executionExpected = label in expectedExecutionTimeout
                     def shutdownExpected = label in expectedShutdownTimeout
-                    def executionDeadline = lifecycle instanceof Map
-                            ? parsePositiveInteger(lifecycle.executionTimeoutSeconds,
-                                    "child ${label} executionTimeoutSeconds") : 0
-                    def shutdownGrace = lifecycle instanceof Map
-                            ? parsePositiveInteger(lifecycle.shutdownGraceSeconds,
-                                    "child ${label} shutdownGraceSeconds") : 0
+                    def lifecycleDeclaration = lifecycle instanceof Map ? parseBenchmarkLifecycle(
+                            [executionTimeoutSeconds: lifecycle.executionTimeoutSeconds,
+                             shutdownGraceSeconds: lifecycle.shutdownGraceSeconds], "child ${label}") : null
+                    def executionDeadline = lifecycleDeclaration?.executionTimeoutSeconds ?: 0
+                    def shutdownGrace = lifecycleDeclaration?.shutdownGraceSeconds ?: 0
+                    def expectedLifecycle = expectedExecutionDeadlines.containsKey(label)
+                            ? [executionTimeoutSeconds: expectedExecutionDeadlines[label],
+                               shutdownGraceSeconds: expectedShutdownGrace[label]] : null
+                    if (expectedLifecycle != null) {
+                        requireBenchmarkLifecycleMatch(
+                                [executionTimeoutSeconds: executionDeadline, shutdownGraceSeconds: shutdownGrace],
+                                expectedLifecycle, "child ${label}")
+                    }
                     !(lifecycle instanceof Map) || lifecycle.executionTimedOut != executionExpected
                             || lifecycle.shutdownTimedOut != shutdownExpected
                             || !(lifecycle.survivingDescendants instanceof List)
@@ -2959,11 +3025,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                             || (!executionExpected && !shutdownExpected
                             && lifecycle.mainExit != report.childExits[label])
                             || (shutdownExpected && (lifecycle.mainExit != 0 || report.childExits[label] != 125))
-                            || executionDeadline > 300 || shutdownGrace > 30
-                            || (expectedExecutionDeadlines.containsKey(label)
-                            && executionDeadline != expectedExecutionDeadlines[label])
-                            || (expectedShutdownGrace.containsKey(label)
-                            && shutdownGrace != expectedShutdownGrace[label])
+                            || executionDeadline > maxOperationalTimeoutSeconds
+                            || shutdownGrace > maxShutdownGraceSeconds
                 }) {
             throw new GradleException('Child process lifecycle accounting is malformed or incomplete')
         }
@@ -3145,7 +3208,15 @@ tasks.register('federationTaskTwentyPersistedLifecycleContract') {
                 },
                 reportVerifierRejects.call(temporaryDir, 'lifecycle-deadline-unbounded') { report, artifact ->
                     configureChild(report)
-                    report.childLifecycles['probe-child'].executionTimeoutSeconds = 301
+                    report.childLifecycles['probe-child'].executionTimeoutSeconds = maxOperationalTimeoutSeconds + 1
+                },
+                reportVerifierRejects.call(temporaryDir, 'lifecycle-deadline-negative') { report, artifact ->
+                    configureChild(report)
+                    report.childLifecycles['probe-child'].executionTimeoutSeconds = -1
+                },
+                reportVerifierRejects.call(temporaryDir, 'lifecycle-deadline-malformed') { report, artifact ->
+                    configureChild(report)
+                    report.childLifecycles['probe-child'].executionTimeoutSeconds = '3600'
                 },
                 reportVerifierRejects.call(temporaryDir, 'lifecycle-grace-zero') { report, artifact ->
                     configureChild(report)
@@ -3154,12 +3225,57 @@ tasks.register('federationTaskTwentyPersistedLifecycleContract') {
                 reportVerifierRejects.call(temporaryDir, 'lifecycle-grace-unbounded') { report, artifact ->
                     configureChild(report)
                     report.childLifecycles['probe-child'].shutdownGraceSeconds = 31
+                },
+                reportVerifierRejects.call(temporaryDir, 'lifecycle-grace-negative') { report, artifact ->
+                    configureChild(report)
+                    report.childLifecycles['probe-child'].shutdownGraceSeconds = -1
+                },
+                reportVerifierRejects.call(temporaryDir, 'lifecycle-grace-malformed') { report, artifact ->
+                    configureChild(report)
+                    report.childLifecycles['probe-child'].shutdownGraceSeconds = '10'
                 }
         ]
         if (probes.any { !(it instanceof String) }) {
             throw new GradleException('Incomplete or unbounded child lifecycle evidence was accepted')
         }
         logger.lifecycle('Task 20 persisted child-lifecycle mutation contract passed')
+    }
+}
+
+tasks.register('federationTaskTwentyLongDeadlineContract') {
+    group = 'verification'
+    description = 'Accepts a declared long-profile lifecycle without waiting for its deadline.'
+    doLast {
+        [2700L, 7200L].each { deadline ->
+            def longProfile = new File(temporaryDir, "long-profile-${deadline}.json")
+            longProfile.parentFile.mkdirs()
+            longProfile.text = JsonOutput.toJson([id: "long-profile-${deadline}", lifecycle: [
+                    executionTimeoutSeconds: deadline, shutdownGraceSeconds: 10]])
+            def declared = loadBenchmarkLifecycle(longProfile)
+            requireBenchmarkLifecycleMatch(
+                    [executionTimeoutSeconds: deadline, shutdownGraceSeconds: 10], declared,
+                    "long-profile-${deadline} probe")
+            def result = reportVerifierRejects.call(temporaryDir, "long-profile-deadline-${deadline}") {
+                report, artifact ->
+                report.childExits = ['probe-child': 0]
+                report.childLifecycles = ['probe-child': [executionTimedOut: false, shutdownTimedOut: false,
+                        mainExit: 0, survivingDescendants: [], executionTimeoutSeconds: deadline,
+                        shutdownGraceSeconds: 10]]
+            }
+            if (result) {
+                throw new GradleException("Declared ${deadline}-second lifecycle was rejected: ${result}")
+            }
+            def mismatchRejected = false
+            try {
+                requireBenchmarkLifecycleMatch(
+                        [executionTimeoutSeconds: deadline - 1, shutdownGraceSeconds: 10], declared,
+                        "long-profile-${deadline} mismatch probe")
+            } catch (GradleException expected) {
+                mismatchRejected = true
+            }
+            if (!mismatchRejected) throw new GradleException('Mismatched long-profile lifecycle was accepted')
+        }
+        logger.lifecycle('Task 20 long-profile lifecycle contract passed without waiting for its deadline')
     }
 }
 
@@ -3401,6 +3517,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     } else if (!knownProfiles.containsKey(profile)) {
         throw new GradleException("Unknown benchmark profile: ${profile}")
     }
+    def processingLifecycle = benchmarkLifecycleForEntry(knownProfiles['processing-small'] as Map)
 
     def runId = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC).format(Instant.now())
     def attempt = new File(evidenceRoot, "attempt-${runId}")
@@ -3437,6 +3554,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
 
     if (kind == 'benchmark') {
         def benchmarkProfile = knownProfiles[profile] as Map
+        def profileLifecycle = benchmarkLifecycleForEntry(benchmarkProfile)
         def nativeEvidence = new File(attempt, 'benchmark-native.properties')
         def benchmarkArgs = [':neoforge-1.21.1:runGameTestServer',
                 '-PfederationGameTestSelection=benchmark', "-PfederationGameTestId=${benchmarkProfile.testId}",
@@ -3458,7 +3576,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 benchmarkArgs.add("-PfederationProcessingBenchmarkSeed=${replaySeed}")
             }
         }
-        def child = gradleCommand('benchmark-gametest', benchmarkArgs, [timeout: 180, retainRuntime: false])
+        def child = gradleCommand('benchmark-gametest', benchmarkArgs,
+                [timeout: profileLifecycle.executionTimeoutSeconds,
+                 shutdownGrace: profileLifecycle.shutdownGraceSeconds, retainRuntime: false])
         if (child.result.exit != 0) {
             throw new GradleException("Benchmark GameTest failed; report=${childArtifacts.last().absolutePath}")
         }
@@ -3470,10 +3590,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         def assertion = [caseId: profile, status: 'passed', nativeTestId: benchmarkProfile.testId,
                 structure: benchmarkProfile.structure,
                 assertionCount: nativeResult.assertions, operationCount: nativeResult.operations,
-                inserted: nativeResult.inserted, extracted: nativeResult.extracted, elapsedNanos: nativeResult.elapsedNanos]
+                inserted: nativeResult.inserted, extracted: nativeResult.extracted,
+                elapsedNanos: nativeResult.elapsedNanos, lifecycle: profileLifecycle]
         if (profile == 'processing-small') {
             assertion.putAll(taskTwentyProjection(loadTaskTwentyMetrics(nativeEvidence),
-                    new JsonSlurper().parse(benchmarkBudget) as Map))
+                    new JsonSlurper().parse(benchmarkBudget) as Map, profileLifecycle))
         }
         assertions.add(assertion)
     } else {
@@ -3586,7 +3707,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             '-PfederationGameTestSelection=benchmark',
                             "-PfederationGameTestId=${knownProfiles['processing-small'].testId}",
                             "-PfederationProcessingBenchmarkProfile=${processingProfile.absolutePath}",
-                            '-PfederationBenchmarkEmpty=true'], [timeout: 180, retainRuntime: false])
+                            '-PfederationBenchmarkEmpty=true'],
+                            [timeout: processingLifecycle.executionTimeoutSeconds,
+                             shutdownGrace: processingLifecycle.shutdownGraceSeconds, retainRuntime: false])
                     if (child.result.exit == 0 || !child.output.contains('Benchmark profile must request nonzero Processing work')) {
                         throw new GradleException('Task 20 empty Processing work did not fail closed')
                     }
@@ -3596,14 +3719,17 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     def innerRoot = new File(attempt, 'task20-accounting-benchmark')
                     def benchmark = gradleCommand('task20-accounting', [':neoforge-1.21.1:federationBenchmark',
                             '-Pprofile=processing-small', "-PevidenceDir=${innerRoot.absolutePath}"],
-                            [timeout: 240, retainRuntime: false])
+                            [timeout: processingLifecycle.executionTimeoutSeconds,
+                             shutdownGrace: processingLifecycle.shutdownGraceSeconds, retainRuntime: false])
                     def results = project.fileTree(innerRoot).matching { include('attempt-*/result.json') }.files
                     if (benchmark.result.exit != 0 || results.size() != 1) {
                         throw new GradleException('Task 20 resource-accounting benchmark did not produce one complete result')
                     }
                     def adversarial = gradleCommand('task20-adversarial',
                             [':neoforge-1.21.1:federationTaskTwentyEvidenceSelfTest',
-                             "-PresultFile=${results.first().absolutePath}"], [timeout: 180, retainRuntime: false])
+                             "-PresultFile=${results.first().absolutePath}"],
+                            [timeout: processingLifecycle.executionTimeoutSeconds,
+                             shutdownGrace: processingLifecycle.shutdownGraceSeconds, retainRuntime: false])
                     if (adversarial.result.exit != 0) {
                         throw new GradleException('Task 20 resource-accounting adversarial consumer failed')
                     }
@@ -3896,6 +4022,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             requested: kind == 'verify' ? requestedCases : [profile], executed: executed, assertions: assertions,
             parentExit: taskTenBlocked ? 1 : 0, childExits: childExits,
             childLifecycles: childLifecycles, artifacts: artifacts]
+    if (kind == 'benchmark') report.profileLifecycle = assertions[0].lifecycle
     if (kind == 'benchmark' && profile == 'processing-small') report.profile = assertions[0].profile
     verifyTaskTwentyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
     if (taskTenBlocked) {
@@ -4457,7 +4584,7 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
                     file.append('native.acceptedInput=3\n')
                 },
                 mutateMetrics('wrong-seed') { metrics, file, report -> metrics.seed = '20019007' },
-                mutateMetrics('wrong-profile') { metrics, file, report -> metrics.profileVersion = 'processing-small-v3' },
+                mutateMetrics('wrong-profile') { metrics, file, report -> metrics.profileVersion = 'processing-small-v2' },
                 mutateMetrics('unequal-scenes') { metrics, file, report -> metrics['federation.routes'] = '2' },
                 mutateMetrics('starting-input') { metrics, file, report -> metrics['native.startingInput'] = '3840' },
                 mutateMetrics('offered-input') { metrics, file, report -> metrics['native.offeredInput'] = '4095' },
@@ -4543,8 +4670,8 @@ tasks.register('federationTaskTwentyEvidenceSelfTest') {
                 'fairness or backpressure mismatch', 'capture identity is stale', 'capture identity is stale',
                 'report projection mismatch', 'lifecycle accounting is missing',
                 'lifecycle accounting is malformed or incomplete', 'Invalid positive integer',
-                'lifecycle accounting is malformed or incomplete', 'Invalid positive integer',
-                'lifecycle accounting is malformed or incomplete']
+                'Benchmark lifecycle declaration mismatch', 'Invalid positive integer',
+                'Unreasonably large benchmark lifecycle declaration']
         def acceptedProbe = probes.findIndexOf { probe ->
             def index = probes.indexOf(probe)
             !(probe instanceof String) || !probe.contains(expectedExisting[index])

@@ -102,7 +102,7 @@
     {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1}
   ],
   "profiles": [
-    {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8},
-{"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v2","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json"}
+    {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8,"lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},
+{"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v3","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}}
   ]
 }

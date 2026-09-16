@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "profileVersion": "processing-small-v2",
+  "profileVersion": "processing-small-v3",
   "seed": 20019006,
   "timingClassification": "environment-sensitive-secondary",
   "maxSampleNanos": 30000000000,

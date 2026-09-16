@@ -206,6 +206,18 @@ final class ProcessingBenchmarkContractTest {
         assertTrue(budgets.contains("\"timingClassification\": \"environment-sensitive-secondary\""));
     }
 
+    @Test
+    void benchmarkLifecycleDeadlineComesFromCanonicalProfile() throws IOException {
+        var profile = Files.readString(ROOT.resolve("tests/benchmarks/processing/processing-small.json"));
+        var qa = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
+
+        assertTrue(profile.contains("\"executionTimeoutSeconds\""));
+        assertTrue(profile.contains("\"shutdownGraceSeconds\""));
+        assertTrue(qa.contains("loadBenchmarkLifecycle"));
+        assertFalse(qa.contains("gradleCommand('benchmark-gametest', benchmarkArgs, [timeout: 180"));
+        assertFalse(qa.contains("executionDeadline > 300"));
+    }
+
     private static String source(String relative) throws IOException {
         return Files.readString(ROOT.resolve(
                 "common/src/testmod/java/space/controlnet/ae2federation/test/" + relative));

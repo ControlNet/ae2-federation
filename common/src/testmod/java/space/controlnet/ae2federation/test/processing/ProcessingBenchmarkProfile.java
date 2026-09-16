@@ -12,14 +12,15 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
         int logicalPatterns, int logicalLanes, int routes, int providerEntries, int targetRelationships, int cpuLimit,
         int startingResourceUnits, int plannedOutputUnits, int batchUnits, int primaryOutputUnits,
         int byproductOutputUnits, int warmupRejectedAttempts, int measurementSamples, int rejectedAttemptsPerScene,
-        int largeBatchCalls, int largeBatchUnits, int smallBatchCalls, int smallBatchUnits, String profileSha256) {
+        int largeBatchCalls, int largeBatchUnits, int smallBatchCalls, int smallBatchUnits,
+        int executionTimeoutSeconds, int shutdownGraceSeconds, String profileSha256) {
     private static final Set<String> FIELDS = Set.of("schemaVersion", "profileVersion", "id", "testId",
             "structure", "seed", "comparison", "equalResources", "inputResource", "primaryOutputResource",
             "byproductOutputResource", "gridCount", "physicalPatterns", "logicalPatterns", "logicalLanes", "routes",
             "providerEntries", "targetRelationships", "cpuLimit", "startingResourceUnits", "plannedOutputUnits",
             "batchUnits", "primaryOutputUnits", "byproductOutputUnits", "warmupRejectedAttempts",
             "measurementSamples", "rejectedAttemptsPerScene", "largeBatchCalls", "largeBatchUnits",
-            "smallBatchCalls", "smallBatchUnits", "replayVariants", "endpointStates");
+            "smallBatchCalls", "smallBatchUnits", "replayVariants", "endpointStates", "lifecycle");
 
     public static ProcessingBenchmarkProfile load() {
         var configured = System.getProperty("ae2federation.processingBenchmarkProfile", "");
@@ -30,7 +31,7 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
         try (var reader = Files.newBufferedReader(path)) {
             var root = JsonParser.parseReader(reader).getAsJsonObject();
             require(root.keySet().equals(FIELDS), "Processing benchmark profile fields are not exact");
-            require(integer(root, "schemaVersion") == 1, "Unsupported Processing benchmark schema");
+            require(integer(root, "schemaVersion") == 2, "Unsupported Processing benchmark schema");
             require(text(root, "id").equals("processing-small"), "Processing benchmark profile ID mismatch");
             require(text(root, "testId").equals("processingbenchmarksmall"), "Processing benchmark test ID mismatch");
             require(text(root, "structure").equals("ae2federation_test:harness_native_smoke"),
@@ -48,6 +49,15 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
             require(strings(root, "endpointStates").equals(java.util.List.of(
                     "busy", "result-locked", "rejecting", "return-congested", "eligible")),
                     "Processing benchmark T-S06 states mismatch");
+            require(root.get("lifecycle") != null && root.get("lifecycle").isJsonObject(),
+                    "Processing benchmark lifecycle is malformed");
+            var lifecycle = root.getAsJsonObject("lifecycle");
+            require(lifecycle.keySet().equals(Set.of("executionTimeoutSeconds", "shutdownGraceSeconds")),
+                    "Processing benchmark lifecycle fields are not exact");
+            var executionTimeoutSeconds = positiveInteger(lifecycle, "executionTimeoutSeconds");
+            var shutdownGraceSeconds = positiveInteger(lifecycle, "shutdownGraceSeconds");
+            require(executionTimeoutSeconds <= 604_800 && shutdownGraceSeconds <= 30,
+                    "Processing benchmark lifecycle is unreasonably large");
             var canonicalSeed = root.get("seed").getAsLong();
             var configuredSeed = System.getProperty("ae2federation.processingBenchmarkSeed", "");
             var runtimeSeed = configuredSeed.isBlank() ? canonicalSeed : Long.parseLong(configuredSeed);
@@ -61,6 +71,7 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
                     integer(root, "measurementSamples"), integer(root, "rejectedAttemptsPerScene"),
                     integer(root, "largeBatchCalls"), integer(root, "largeBatchUnits"),
                     integer(root, "smallBatchCalls"), integer(root, "smallBatchUnits"),
+                    executionTimeoutSeconds, shutdownGraceSeconds,
                     sha256(Files.readAllBytes(path)));
             profile.requireSupportedShape();
             return profile;
@@ -90,11 +101,11 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
                 logicalLanes, routes, providerEntries, targetRelationships, cpuLimit, startingResourceUnits,
                 plannedOutputUnits, units, primary, byproduct, warmupRejectedAttempts, calls,
                 rejectedAttemptsPerScene, largeBatchCalls, largeBatchUnits, smallBatchCalls, smallBatchUnits,
-                profileSha256);
+                executionTimeoutSeconds, shutdownGraceSeconds, profileSha256);
     }
 
     private void requireSupportedShape() {
-        require(profileVersion.equals("processing-small-v2") && seed > 0,
+        require(profileVersion.equals("processing-small-v3") && seed > 0,
                 "Processing benchmark version or seed mismatch");
         require(gridCount == 16 && physicalPatterns == 256 && logicalPatterns == 256 && logicalLanes == 15
                 && routes == 270 && providerEntries == 270 && targetRelationships == 15 && cpuLimit == 1,
@@ -104,12 +115,26 @@ public record ProcessingBenchmarkProfile(String profileVersion, long seed, int g
                 && byproductOutputUnits == 32 && warmupRejectedAttempts == 1 && measurementSamples == 15
                 && rejectedAttemptsPerScene == 1 && largeBatchCalls == 15 && largeBatchUnits == 256
                 && smallBatchCalls == 240 && smallBatchUnits == 16
+                && executionTimeoutSeconds == 300 && shutdownGraceSeconds == 10
                 && largeBatchCalls * largeBatchUnits == smallBatchCalls * smallBatchUnits,
                 "Unsupported Processing benchmark workload");
     }
 
     private static int integer(JsonObject root, String name) {
         return root.get(name).getAsInt();
+    }
+
+    private static int positiveInteger(JsonObject root, String name) {
+        var value = root.get(name);
+        require(value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber(),
+                "Processing benchmark lifecycle value is malformed: " + name);
+        try {
+            var number = value.getAsBigDecimal().intValueExact();
+            require(number > 0, "Processing benchmark lifecycle value is not positive: " + name);
+            return number;
+        } catch (ArithmeticException exception) {
+            throw new IllegalStateException("Processing benchmark lifecycle value is malformed: " + name, exception);
+        }
     }
 
     private static String text(JsonObject root, String name) {

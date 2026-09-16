@@ -1,12 +1,16 @@
 {
-  "schemaVersion": 1,
-  "profileVersion": "processing-small-v2",
+  "schemaVersion": 2,
+  "profileVersion": "processing-small-v3",
   "id": "processing-small",
   "testId": "processingbenchmarksmall",
   "structure": "ae2federation_test:harness_native_smoke",
   "seed": 20019006,
   "comparison": "native-single-grid-vs-federation-multi-provider",
   "equalResources": true,
+  "lifecycle": {
+    "executionTimeoutSeconds": 300,
+    "shutdownGraceSeconds": 10
+  },
   "inputResource": "minecraft:cobblestone",
   "primaryOutputResource": "minecraft:diamond",
   "byproductOutputResource": "minecraft:gold_ingot",

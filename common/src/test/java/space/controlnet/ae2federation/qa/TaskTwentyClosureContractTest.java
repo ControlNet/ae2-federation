@@ -67,8 +67,8 @@ final class TaskTwentyClosureContractTest {
         assertTrue(qa.contains("Task 20 rename destination identity characterization failed"));
         assertTrue(qa.contains("Process isolation is unavailable"));
         assertTrue(qa.contains("report.childLifecycles instanceof Map"));
-        assertTrue(qa.contains("parsePositiveInteger(lifecycle.executionTimeoutSeconds"));
-        assertTrue(qa.contains("parsePositiveInteger(lifecycle.shutdownGraceSeconds"));
+        assertTrue(qa.contains("parseBenchmarkLifecycle("));
+        assertTrue(qa.contains("requireBenchmarkLifecycleMatch("));
         assertTrue(qa.contains("report.sourceRevision = 'stale-source-identity'"));
         assertFalse(qa.contains("report.startedAt = Instant.now().minusSeconds(3600)"));
     }
