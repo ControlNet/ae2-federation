@@ -10,12 +10,15 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
+import space.controlnet.ae2federation.test.processing.ProcessingBenchmarkObservation;
 
 @Mixin(PatternProviderReturnInventory.class)
 public abstract class PatternProviderReturnInventoryEvidenceMixin {
     @Inject(method = "injectIntoNetwork", at = @At("RETURN"), require = 1)
     private void ae2federation_test$observeReturn(MEStorage storage, IActionSource source,
             Consumer<GenericStack> callback, CallbackInfoReturnable<Boolean> result) {
-        ProcessingNativeObservation.recordReturn(this, result.getReturnValueZ());
+        if (!ProcessingBenchmarkObservation.recordReturn(this, result.getReturnValueZ())) {
+            ProcessingNativeObservation.recordReturn(this, result.getReturnValueZ());
+        }
     }
 }

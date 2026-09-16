@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
+import space.controlnet.ae2federation.test.processing.ProcessingBenchmarkObservation;
 
 @Mixin(value = PatternProviderLogic.class, priority = 400)
 public abstract class PatternProviderLogicProcessingEvidenceMixin {
@@ -20,19 +21,25 @@ public abstract class PatternProviderLogicProcessingEvidenceMixin {
             at = @At("HEAD"), require = 1)
     private void ae2federation_test$observeProcessingPush(IPatternDetails pattern, KeyCounter[] inputs,
             CallbackInfoReturnable<Boolean> callback) {
-        ProcessingNativeObservation.recordPush(this, inputs);
+        if (!ProcessingBenchmarkObservation.recordPush(inputs)) {
+            ProcessingNativeObservation.recordPush(this, inputs);
+        }
     }
 
     @Inject(method = "pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z",
             at = @At("RETURN"), require = 1)
     private void ae2federation_test$observeProcessingResult(IPatternDetails pattern, KeyCounter[] inputs,
             CallbackInfoReturnable<Boolean> callback) {
-        ProcessingNativeObservation.recordPushResult(this, callback.getReturnValueZ());
+        if (!ProcessingBenchmarkObservation.recordPushResult(this, callback.getReturnValueZ())) {
+            ProcessingNativeObservation.recordPushResult(this, callback.getReturnValueZ());
+        }
     }
 
     @Inject(method = "addToSendList", at = @At("HEAD"), require = 1)
     private void ae2federation_test$observeNativeRemainder(AEKey key, long amount, CallbackInfo callback) {
-        ProcessingNativeObservation.recordRemainder(this, key, amount);
+        if (!ProcessingBenchmarkObservation.recordRemainder(key, amount)) {
+            ProcessingNativeObservation.recordRemainder(this, key, amount);
+        }
     }
 
     @Inject(method = "writeToNBT", at = @At("HEAD"), require = 1)
