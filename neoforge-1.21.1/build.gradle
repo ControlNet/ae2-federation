@@ -99,6 +99,8 @@ neoForge {
             systemProperty('ae2federation.testId', providers.gradleProperty('federationGameTestId').getOrElse('harnessnativesmoke'))
             systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
             systemProperty('ae2federation.benchmarkEmpty', providers.gradleProperty('federationBenchmarkEmpty').getOrElse('false'))
+    systemProperty('ae2federation.processingBenchmarkProfile', providers.gradleProperty('federationProcessingBenchmarkProfile').getOrElse(''))
+    systemProperty('ae2federation.processingBenchmarkSeed', providers.gradleProperty('federationProcessingBenchmarkSeed').getOrElse(''))
             systemProperty('ae2federation.identityPhase', providers.gradleProperty('federationIdentityPhase').getOrElse(''))
             systemProperty('ae2federation.identityStateFile', providers.gradleProperty('federationIdentityStateFile').getOrElse(''))
             systemProperty('ae2federation.policyPhase', providers.gradleProperty('federationPolicyPhase').getOrElse(''))
