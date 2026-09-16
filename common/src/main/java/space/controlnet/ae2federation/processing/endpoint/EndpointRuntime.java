@@ -69,7 +69,8 @@ public final class EndpointRuntime {
         }
         var provider = composition.localProvider().orElseThrow();
         var local = new EndpointModeGeneration.Local(composition.generation(), provider);
-        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.logic().getReturnInv()));
+        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.logic().getReturnInv(),
+                Optional.empty()));
         mode = local;
         invalidateCapabilities();
         return true;
@@ -114,11 +115,13 @@ public final class EndpointRuntime {
                 || federatedMode(target.provider(), target.claimEpoch()).isEmpty()) {
             return false;
         }
-        if (itemReturn != null && itemReturn.owner().logic() == logic
-                && itemReturn.owner().mode().equals(federated)) {
-            return true;
+        var lane = target.laneIdentity();
+        if (itemReturn != null) {
+            return itemReturn.owner().lane().filter(lane::equals).isPresent()
+                    && itemReturn.owner().logic() == logic
+                    && itemReturn.owner().mode().equals(federated);
         }
-        installReturnOwner(new EndpointReturnOwner(federated, logic, logic.getReturnInv()));
+        installReturnOwner(new EndpointReturnOwner(federated, logic, logic.getReturnInv(), Optional.of(lane)));
         invalidateCapabilities();
         return true;
     }

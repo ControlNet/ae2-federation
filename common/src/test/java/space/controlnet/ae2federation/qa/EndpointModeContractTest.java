@@ -114,7 +114,7 @@ final class EndpointModeContractTest {
         var attempt = Files.readString(REPOSITORY_ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/processing/endpoint/EndpointItemReturnAttempt.java"));
         var tests = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/testmod/java/space/controlnet/ae2federation/test/EndpointModeGameTests.java"));
+                "common/src/testmod/java/space/controlnet/ae2federation/test/EndpointReturnGameTests.java"));
 
         assertTrue(attempt.contains("handler == null"));
         assertTrue(attempt.contains("handler.insertItem"));

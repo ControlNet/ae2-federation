@@ -27,4 +27,8 @@ public record AuthorizedNativeTarget(ServerLevel level, BlockPos position, Direc
     public ProviderIdentity provider() {
         return mode.owner().provider();
     }
+
+    public AuthorizedLaneIdentity laneIdentity() {
+        return new AuthorizedLaneIdentity(provenance.lane(), endpoint(), claimEpoch(), mode.generation());
+    }
 }
