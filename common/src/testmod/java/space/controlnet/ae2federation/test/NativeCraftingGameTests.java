@@ -128,6 +128,7 @@ public final class NativeCraftingGameTests {
         var originalRequester = new NativeCraftingRequester[1];
         var reloadedRequester = new NativeCraftingRequester[1];
         var persisted = new CompoundTag[1];
+        var reloadedLink = new ICraftingLink[1];
         var linkId = new String[1];
         var materialBeforeSuspend = new long[1];
         var cpuMaterialBeforeSuspend = new long[1];
@@ -156,18 +157,22 @@ public final class NativeCraftingGameTests {
                         "Extracted material must be observed in native CPU inventory before suspension");
                 fixture.suspendCpu();
                 linkId[0] = link.getCraftingID().toString();
-                persisted[0] = originalRequester[0].writeLink();
+                persisted[0] = originalRequester[0].writeState();
                 originalRequester[0].close();
                 reloadedRequester[0] = fixture.replaceRequester(persisted[0]);
                 var loaded = reloadedRequester[0].activeLink();
                 helper.assertTrue(loaded != null, "Reload must reconstruct native requester link");
                 helper.assertValueEqual(loaded.getCraftingID().toString(), linkId[0],
                         "Reloaded link must preserve native crafting UUID");
+                reloadedLink[0] = loaded;
                 loaded.cancel();
                 helper.assertTrue(false, "Waiting for native cancellation and material return");
             }
-            var loaded = reloadedRequester[0].activeLink();
-            helper.assertTrue(loaded != null && loaded.isCanceled(), "Reloaded native link must remain canceled");
+            var loaded = reloadedLink[0];
+            helper.assertTrue(loaded.isCanceled() && reloadedRequester[0].activeLink() == null,
+                    "Canceled native link must be observed and removed from the requester tracker");
+            helper.assertTrue(reloadedRequester[0].observedCanceled(),
+                    "Reloaded requester must receive the native cancellation callback");
             helper.assertTrue(!fixture.cpuBusy(), "Native CPU must stop the canceled job");
             helper.assertValueEqual(fixture.materialAmount(), 64L,
                     "Native CPU must return remaining initial materials after cancellation");

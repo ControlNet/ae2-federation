@@ -49,7 +49,8 @@ final class NativeCraftingBindingContractTest {
         assertTrue(fixture.contains("submitJob"));
         assertTrue(fixture.contains("result.link()"));
         assertTrue(requester.contains("implements ICraftingRequester"));
-        assertTrue(requester.contains("StorageHelper.loadCraftingLink"));
+        assertTrue(requester.contains("tracker.readFromNBT(persistedState)"));
+        assertTrue(requester.contains("managedNode.loadFromNBT(persistedState)"));
         assertTrue(requester.contains("insertCraftedItems"));
         assertTrue(requester.contains("jobStateChange"));
         assertTrue(requester.contains("observedCraftingIds"));

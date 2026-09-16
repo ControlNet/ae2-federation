@@ -11,7 +11,6 @@ import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.storage.MEStorage;
-import appeng.api.storage.StorageHelper;
 import appeng.helpers.MultiCraftingTracker;
 import appeng.me.helpers.MachineSource;
 import com.google.common.collect.ImmutableSet;
@@ -20,6 +19,8 @@ import java.util.TreeSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
+import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
 public final class NativeCraftingRequester implements ICraftingRequester, AutoCloseable {
     private static final IGridNodeListener<NativeCraftingRequester> LISTENER = (owner, node) -> {
@@ -29,7 +30,6 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
     private final MEStorage destination;
     private final IActionSource actionSource = new MachineSource(this);
     private final Set<String> observedCraftingIds = new TreeSet<>();
-    private ICraftingLink restoredLink;
     private ICraftingLink submittedLink;
     private long acceptedAmount;
     private int stateChanges;
@@ -37,12 +37,25 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
     private boolean observedCanceled;
 
     public NativeCraftingRequester(Level level, BlockPos position, MEStorage destination) {
+        this(level, position, destination, null, null);
+    }
+
+    public NativeCraftingRequester(Level level, BlockPos position, MEStorage destination, NetworkId networkId,
+            CompoundTag persistedState) {
         this.destination = destination;
+        var inWorld = networkId == null;
         managedNode = GridHelper.createManagedNode(this, LISTENER)
-                .setInWorldNode(true)
+                .setTagName("gn")
+                .setInWorldNode(inWorld)
                 .setIdlePowerUsage(0)
                 .addService(ICraftingRequester.class, this);
-        managedNode.create(level, position);
+        if (persistedState != null) {
+            tracker.readFromNBT(persistedState);
+            managedNode.loadFromNBT(persistedState);
+        } else if (networkId != null) {
+            managedNode.loadFromNBT(NetworkIdentityNodeSeed.managedNode("gn", networkId));
+        }
+        managedNode.create(level, inWorld ? position : null);
     }
 
     public void connect(IGridNode gridNode) {
@@ -77,10 +90,21 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
                 && requesterNode.getGrid() == gridNode.getGrid();
     }
 
-    public ICraftingLink activeLink() {
-        if (restoredLink != null) {
-            return restoredLink;
+    public String readiness(IGridNode gridNode) {
+        var requesterNode = managedNode.getNode();
+        if (requesterNode == null) {
+            return "node-missing";
         }
+        if (requesterNode.getGrid() != gridNode.getGrid()) {
+            return "grid-mismatch";
+        }
+        if (!requesterNode.hasGridBooted()) {
+            return "grid-booting";
+        }
+        return requesterNode.isActive() ? "ready" : "inactive";
+    }
+
+    public ICraftingLink activeLink() {
         return tracker.getRequestedJobs().stream().findFirst().orElse(null);
     }
 
@@ -88,23 +112,11 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
         return submittedLink;
     }
 
-    public CompoundTag writeLink() {
+    public CompoundTag writeState() {
         var tag = new CompoundTag();
-        if (restoredLink == null) {
-            tracker.writeToNBT(tag);
-        } else {
-            var link = new CompoundTag();
-            restoredLink.writeToNBT(link);
-            tag.put("links-0", link);
-        }
+        tracker.writeToNBT(tag);
+        managedNode.saveToNBT(tag);
         return tag;
-    }
-
-    public void loadLink(CompoundTag tag) {
-        var link = tag.getCompound("links-0");
-        if (!link.isEmpty()) {
-            restoredLink = StorageHelper.loadCraftingLink(link, this);
-        }
     }
 
     public long acceptedAmount() {
@@ -129,9 +141,6 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
 
     @Override
     public ImmutableSet<ICraftingLink> getRequestedJobs() {
-        if (restoredLink != null) {
-            return ImmutableSet.of(restoredLink);
-        }
         return tracker.getRequestedJobs();
     }
 
@@ -149,11 +158,7 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
         stateChanges++;
         observedDone |= link.isDone();
         observedCanceled |= link.isCanceled();
-        if (restoredLink == link) {
-            restoredLink = null;
-        } else {
-            tracker.jobStateChange(link);
-        }
+        tracker.jobStateChange(link);
     }
 
     @Override

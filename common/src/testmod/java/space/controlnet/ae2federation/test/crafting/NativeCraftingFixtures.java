@@ -147,21 +147,13 @@ public final class NativeCraftingFixtures implements AutoCloseable {
         return submitResult;
     }
 
-    public int uniqueNativeJobCount() {
-        return observedCpuJobIds.size();
-    }
+    public int uniqueNativeJobCount() { return observedCpuJobIds.size(); }
 
-    public String nativeJobIds() {
-        return String.join(",", observedCpuJobIds);
-    }
+    public String nativeJobIds() { return String.join(",", observedCpuJobIds); }
 
-    public ICraftingLink submittedLink() {
-        return submittedLink;
-    }
+    public ICraftingLink submittedLink() { return submittedLink; }
 
-    public ICraftingPlan plan() {
-        return plan;
-    }
+    public ICraftingPlan plan() { return plan; }
 
     public boolean assemblerReceivedInput() {
         var inventory = assembler().getInternalInventory();
@@ -173,9 +165,7 @@ public final class NativeCraftingFixtures implements AutoCloseable {
         return false;
     }
 
-    public boolean cpuBusy() {
-        return service().getCpus().stream().anyMatch(cpu -> cpu.isBusy());
-    }
+    public boolean cpuBusy() { return service().getCpus().stream().anyMatch(cpu -> cpu.isBusy()); }
 
     public void suspendCpu() {
         service().getCpus().stream()
@@ -192,9 +182,7 @@ public final class NativeCraftingFixtures implements AutoCloseable {
                 .sum();
     }
 
-    public int cpuCount() {
-        return service().getCpus().size();
-    }
+    public int cpuCount() { return service().getCpus().size(); }
 
     public NativeCraftingRequester createRequester() {
         requester = new NativeCraftingRequester(helper.getLevel(), helper.absolutePos(REQUESTER_POS),
@@ -205,8 +193,7 @@ public final class NativeCraftingFixtures implements AutoCloseable {
 
     public NativeCraftingRequester replaceRequester(CompoundTag linkData) {
         requester = new NativeCraftingRequester(helper.getLevel(), helper.absolutePos(REQUESTER_POS),
-                chest().getInventory());
-        requester.loadLink(linkData);
+                chest().getInventory(), null, linkData);
         requester.connect(chest().getMainNode().getNode());
         return requester;
     }
@@ -219,21 +206,13 @@ public final class NativeCraftingFixtures implements AutoCloseable {
         return chest().getMainNode().getGrid().getStorageService().getInventory();
     }
 
-    public MEChestBlockEntity chest() {
-        return helper.getBlockEntity(CHEST_POS);
-    }
+    public MEChestBlockEntity chest() { return helper.getBlockEntity(CHEST_POS); }
 
-    public PatternProviderBlockEntity provider() {
-        return helper.getBlockEntity(PROVIDER_POS);
-    }
+    public PatternProviderBlockEntity provider() { return helper.getBlockEntity(PROVIDER_POS); }
 
-    public MolecularAssemblerBlockEntity assembler() {
-        return helper.getBlockEntity(ASSEMBLER_POS);
-    }
+    public MolecularAssemblerBlockEntity assembler() { return helper.getBlockEntity(ASSEMBLER_POS); }
 
-    private CraftingBlockEntity cpu() {
-        return helper.getBlockEntity(CPU_POS);
-    }
+    private CraftingBlockEntity cpu() { return helper.getBlockEntity(CPU_POS); }
 
     private ItemStack stickPattern() {
         var items = NonNullList.withSize(9, ItemStack.EMPTY);
@@ -250,13 +229,9 @@ public final class NativeCraftingFixtures implements AutoCloseable {
                 recipe.value().assemble(input, helper.getLevel().registryAccess()), false, false);
     }
 
-    public static AEItemKey inputKey() {
-        return AEItemKey.of(Items.OAK_PLANKS);
-    }
+    public static AEItemKey inputKey() { return AEItemKey.of(Items.OAK_PLANKS); }
 
-    public static AEItemKey outputKey() {
-        return AEItemKey.of(Items.STICK);
-    }
+    public static AEItemKey outputKey() { return AEItemKey.of(Items.STICK); }
 
     @Override
     public void close() {
