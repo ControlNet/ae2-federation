@@ -6,6 +6,11 @@
 - The runner derives both values from the selected profile and persists the declaration. The consumer compares report and child evidence to that declaration rather than enforcing a universal 300-second ceiling.
 - Execution deadlines are operational containment, not performance gates. Strict positive integral parsing and a seven-day safety bound reject malformed declarations while allowing future 45-minute and two-hour profiles without verifier changes.
 - A focused executable contract accepted `2700/10` and `7200/10` without waiting and rejected one-second-short mismatches. Timing remains `environment-sensitive-secondary`.
+- Nested benchmark wrappers use `executionTimeoutSeconds + shutdownGraceSeconds + 60` so Gradle startup, report writing,
+  verification, and cleanup cannot consume the child execution allowance. The three wrappers are resource-accounting,
+  its adversarial consumer, and the alternate-seed runtime producer.
+- Persisted benchmark evidence must satisfy `assertion.lifecycle == report.profileLifecycle == assertion.profile.lifecycle`
+  and `report.profile == assertion.profile`; fully rebound contradictions fail through the real consumer.
 
 ## Qualified runtime
 
