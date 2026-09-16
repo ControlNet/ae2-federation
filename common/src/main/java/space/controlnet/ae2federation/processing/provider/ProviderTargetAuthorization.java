@@ -27,6 +27,9 @@ public final class ProviderTargetAuthorization {
         if (!request.rotationSettled()) {
             return paused(ProviderTargetState.ROTATION_PENDING);
         }
+        if (!context.provenance().lane().provider().equals(request.provider())) {
+            return paused(ProviderTargetState.CLAIM_MISMATCH);
+        }
         var level = context.level();
         var position = request.endpointPosition();
         if (!level.isLoaded(position) || !level.isLoaded(position.relative(request.endpointSide()))) {

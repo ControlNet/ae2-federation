@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.processing.provider;
 
 import appeng.api.networking.IManagedGridNode;
 import java.util.Objects;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
@@ -9,7 +10,7 @@ import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistr
 public final class ProviderRuntime {
     private final ServerLevel level;
     private final IManagedGridNode sourceNode;
-    private final Supplier<ProviderTargetRequest> requestSupplier;
+    private final IntFunction<ProviderTargetRequest> requestSupplier;
     private final NativeTargetDomainRegistry domains;
     private final ProviderNodeWiring wiring;
     private ProviderTargetResolution lastResolution = new ProviderTargetResolution.Paused(
@@ -17,6 +18,12 @@ public final class ProviderRuntime {
 
     public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, MappedPatternProvider provider,
             ProviderIdentity identity, ProviderOrientation orientation, Supplier<ProviderTargetRequest> requestSupplier,
+            NativeTargetDomainRegistry domains) {
+        this(level, sourceNode, provider, identity, orientation, ignored -> requestSupplier.get(), domains);
+    }
+
+    public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, MappedPatternProvider provider,
+            ProviderIdentity identity, ProviderOrientation orientation, IntFunction<ProviderTargetRequest> requestSupplier,
             NativeTargetDomainRegistry domains) {
         this.level = Objects.requireNonNull(level);
         this.sourceNode = Objects.requireNonNull(sourceNode);
@@ -27,7 +34,8 @@ public final class ProviderRuntime {
         var laneCount = provider.nativeLanes().size();
         for (int laneIndex = 0; laneIndex < laneCount; laneIndex++) {
             var boundLaneIndex = laneIndex;
-            var provenance = new ProviderLogicProvenance(provider.nativeLane(boundLaneIndex));
+            var provenance = new ProviderLogicProvenance(provider.nativeLane(boundLaneIndex),
+                    new ProviderLaneIdentity(identity, boundLaneIndex, 1));
             provider.bindTarget(boundLaneIndex, provenance, () -> resolveTarget(provenance));
         }
     }
@@ -53,8 +61,9 @@ public final class ProviderRuntime {
         if (nativeNode == null) {
             lastResolution = new ProviderTargetResolution.Paused(ProviderTargetState.NATIVE_TARGET_UNAVAILABLE);
         } else {
-            var supplied = requestSupplier.get();
-            if (!supplied.provider().equals(wiring.identity())) {
+            var supplied = requestSupplier.apply(provenance.lane().laneIndex());
+            if (!supplied.provider().equals(wiring.identity())
+                    || !provenance.lane().provider().equals(wiring.identity())) {
                 lastResolution = new ProviderTargetResolution.Paused(ProviderTargetState.CLAIM_MISMATCH);
             } else {
                 var current = new ProviderTargetRequest(supplied.provider(), supplied.endpoint(), supplied.claimEpoch(),
