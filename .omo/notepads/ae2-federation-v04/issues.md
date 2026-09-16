@@ -323,3 +323,9 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   Equivalent mutations now run inside the fully rebound self-test and reject with their exact schema errors.
 - No unresolved repair blocker remains. Gradle has no configured LSP server, so executable Gradle tasks provide syntax and
   semantic validation; Task 19 remains unchecked pending another independent review.
+
+## 2026-09-16 Task 20 six-blocker finalization
+
+- One initial Task 18 regression invocation used non-canonical case IDs and failed before GameTests launched. The authoritative five-case set was then run successfully with its consumer and adversarial self-test.
+- Six Java LSP requests initially timed out; focused retries returned zero diagnostics. No unresolved implementation or verification blocker remains.
+- Task 20 intentionally remains unchecked pending independent acceptance.
