@@ -4,6 +4,26 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-16 - Task 20 T-S04 large variant
+
+- T-S04 quantities describe processing input volume. A valid large call consumes 256 cobblestone while returning ordinary
+  stack-sized outputs; encoding or requesting 256 output items leaves the native CPU waiting after one 64-item result.
+- Fifteen sequential native planner/CPU jobs can share the one real CPU. Remapping shared Pattern slot 255 through
+  `MappedPatternProvider.replaceMapping` before each calculation makes successive jobs execute on all 15 native Lanes;
+  restoring the all-Lane mapping afterward preserves 270 live Provider entries.
+- Diagnostic evidence `.omo/evidence/task-20-large-15-lanes/attempt-20260916T004725444Z/benchmark-native.properties`
+  records native/Federation parity: 3,840 accepted input, 15 accepted pushes, 15 planner calls, 15 submitted jobs,
+  15 dispatched Lanes, and fairness spread zero.
+- The matching small primitive also completes 240 authentic planner/CPU jobs with 16 input, 4 primary output, and 2
+  byproduct per job while cycling evenly over all 15 Lanes. Diagnostic evidence is
+  `.omo/evidence/task-20-small-240-lanes/attempt-20260916T005102800Z/benchmark-native.properties`; it reaches only the
+  intentionally stale accounting consumer after both scenes complete.
+- Final Task 20 v2 combines both workload variants into four serial scenes and verifies separate variant facts rather than
+  aggregate parity. Three captures matched over 134 non-timing/non-hash fields before baseline regeneration.
+- T-S06 uses observed CPU/Lane/return-owner state and explicitly proves scheduler absence; `activeReturnOwners` replaced
+  the misleading `retrySchedulerSize` name. Canonical evidence is
+  `.omo/evidence/task-20-v2-final-rebound/attempt-20260916T011433814Z/result.json`.
+
 ---
 
 ## 2026-09-13 - Task 1
@@ -443,3 +463,24 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   traced facts fail with deterministic schema errors rather than incidental owner or value mismatches.
 - Repaired evidence is `.omo/evidence/task-19-schema-repair/attempt-20260915T180333827Z/result.json`; Task 4/17/18 fresh
   regression evidence is retained beside it in the corresponding `task-19-schema-repair-task*` directories.
+
+## 2026-09-16 Task 20 runtime learnings
+
+- `PatternProviderReturnInventory` draining is not equivalent to requester completion: observe return progress, final owner inventories, requester acceptance, and `jobStateChange` independently.
+- A valid requester reload proof needs a lifecycle boundary after the old node is removed and before the replacement node joins; preserving only the crafting UUID is insufficient evidence of nexus reattachment.
+- Multi-Lane Federation tests must correlate the accepted `PatternProviderLogic` identity with `EndpointRuntime.itemReturnContext().owner().logic()`; aggregate return totals cannot detect cross-Lane owner replacement.
+- Generated Grid counts are only trustworthy after every source/target/satellite Grid has settled and the count is derived from distinct live `IGrid` identities.
+
+## 2026-09-16 Task 20 six-blocker finalization
+
+- Registration is not participation: exact runtime receipts must cover every logical Pattern identity through planner/CPU/provider work.
+- Seed replay is strongest when canonical runs pin digests while an explicit alternate seed must change runtime topology and schedule without changing scale or conservation.
+- T-S06 requires five independently reset three-Endpoint cohorts. A whole-scene aggregate with literal cohort labels cannot prove cohort isolation or fairness.
+- The final canonical artifact is `.omo/evidence/task-20/attempt-20260916T051227490Z/result.json`; three canonical captures matched 648 normalized semantic fields.
+- A typed evidence label is insufficient unless the type causally selects runtime behavior. T-S06 became reviewable only
+  after `return-congested` controlled a real deferred return-owner wake and cohort finalization rejected absent
+  scenario-specific observations.
+- Source mutation probes must call the live semantic verifier directly. Passing `requireCurrentIdentity=false` to a
+  broad persisted-report verifier can silently bypass the very current-source binding the probe claims to test.
+- Runtime-authority closure needs at least one actual producer mutation, not only fully rebound artifact mutation. The
+  Task 20 matrix now serially executes an alternate-seed GameTest producer and confirms the canonical consumer rejects it.

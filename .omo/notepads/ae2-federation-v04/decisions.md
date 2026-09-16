@@ -258,3 +258,9 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   receipt streams are parsed. Task-specific evidence rules must not depend on another task verifier being selected.
 - Retain the original wrong-owner extra-receipt mutation and add distinct fully rebound injected-property,
   omitted-property, and authentic-owner extra-receipt probes, producing a 46-probe matrix without removing categories.
+
+## 2026-09-16 Task 20 six-blocker finalization
+
+- Keep canonical baseline consumption pinned to seed `20019006`, but allow an explicit producer replay seed for deterministic variation testing.
+- Treat seeded topology and schedule as execution authority, not descriptive metadata, and persist exact per-Pattern participation plus five independent cohort observations.
+- Bind the baseline to a fail-closed grouped 46-file source-authority manifest and enforce the 250-physical-line Java ceiling in the contract suite.
