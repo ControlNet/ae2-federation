@@ -1,27 +1,16 @@
 package space.controlnet.ae2federation.test.processing;
 
-import appeng.api.config.LockCraftingMode;
-import appeng.api.config.Settings;
 import appeng.api.networking.GridHelper;
-import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.crafting.ICraftingProvider;
-import appeng.api.networking.energy.IAEPowerStorage;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.KeyCounter;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEBlocks;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
-import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.blockentity.misc.InterfaceBlockEntity;
-import appeng.blockentity.grid.AENetworkedBlockEntity;
-import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
-import appeng.me.service.CraftingService;
-import appeng.api.crafting.PatternDetailsHelper;
-import appeng.api.storage.StorageCells;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -34,154 +23,104 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import appeng.blockentity.storage.MEChestBlockEntity;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
-import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
 public final class NativeProviderLaneFixtures implements MappedPatternProviderHost, AutoCloseable {
-    private static final IGridNodeListener<NativeProviderLaneFixtures> LISTENER = (owner, node) -> {
-    };
     static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
     private static final BlockPos ENERGY_POS = HOST_POS.west();
-    private static final BlockPos ISOLATED_ENERGY_POS = HOST_POS.west(2);
     static final BlockPos TARGET_POS = HOST_POS.east();
-    private static final BlockPos ENDPOINT_TARGET_POS = HOST_POS.east(2);
-    private static final BlockPos BYPASS_POS = HOST_POS.north();
     private final GameTestHelper helper;
     private final IManagedGridNode node;
     private final MappedPatternProvider composition;
     private final List<NativeProviderLaneHost> hosts;
     private final boolean explicitEnergyConnection;
+    private final BlockPos energyPosition;
+    private final NativeProviderTargets targets;
+    private final NativeProviderPatterns patterns;
+    private final NativeProviderInspection inspection;
     private int ownerSaveCalls;
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments) {
-        this(helper, assignments, false);
+        this(helper, assignments, false, 3);
     }
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower) {
+        this(helper, assignments, isolatedPower, 3);
+    }
+
+    public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
+            int patternSlots) {
         this.helper = helper;
-        explicitEnergyConnection = !isolatedPower;
-        helper.setBlock(HOST_POS, Blocks.CHEST);
-        helper.setBlock(TARGET_POS, Blocks.CHEST);
-        var energyPosition = isolatedPower ? ISOLATED_ENERGY_POS : ENERGY_POS;
-        if (isolatedPower) {
-            helper.setBlock(ENERGY_POS, Blocks.AIR);
-        }
-        helper.setBlock(energyPosition, AEBlocks.CREATIVE_ENERGY_CELL.block());
-        var managedNode = GridHelper.createManagedNode(this, LISTENER)
-                .setTagName("provider")
-                .setInWorldNode(true)
-                .setIdlePowerUsage(0)
-                .setExposedOnSides(EnumSet.of(Direction.WEST));
-        if (isolatedPower) {
-            managedNode.addService(IAEPowerStorage.class,
-                    helper.<CreativeEnergyCellBlockEntity>getBlockEntity(energyPosition));
-        }
-        node = managedNode;
-        hosts = List.of(new NativeProviderLaneHost(helper, HOST_POS), new NativeProviderLaneHost(helper, HOST_POS),
-                new NativeProviderLaneHost(helper, HOST_POS));
-        composition = new MappedPatternProvider(node, this, hosts, 3);
-        for (int index = 0; index < hosts.size(); index++) {
-            hosts.get(index).setLogic(composition.lanes().get(index));
-        }
-        for (int slot = 0; slot < 3; slot++) {
-            var assignedLanes = new java.util.TreeSet<Integer>();
-            for (int lane = 0; lane < assignments.size(); lane++) {
-                if (assignments.get(lane).test(slot)) {
-                    assignedLanes.add(lane);
-                }
-            }
-            composition.replaceMapping(composition.mappingHandle(slot), assignedLanes);
-        }
-        node.create(helper.getLevel(), helper.absolutePos(HOST_POS));
+        targets = new NativeProviderTargets(helper);
+        var setup = NativeProviderSetup.create(helper, this, assignments, isolatedPower, patternSlots);
+        node = setup.node();
+        composition = setup.composition();
+        hosts = setup.hosts();
+        energyPosition = setup.energyPosition();
+        explicitEnergyConnection = setup.explicitEnergyConnection();
+        patterns = new NativeProviderPatterns(composition);
+        inspection = new NativeProviderInspection(helper, node, composition);
     }
 
     public static List<IntPredicate> sharedPatternAssignments() {
-        return List.of(slot -> slot == 0, slot -> slot == 0, slot -> slot == 0);
+        return sharedPatternAssignments(3);
+    }
+
+    public static List<IntPredicate> sharedPatternAssignments(int laneCount) {
+        var assignments = new ArrayList<IntPredicate>(laneCount);
+        for (int index = 0; index < laneCount; index++) {
+            assignments.add(slot -> slot == 0);
+        }
+        return List.copyOf(assignments);
     }
 
     public static List<IntPredicate> subsetAssignments() {
         return List.of(slot -> slot == 0, slot -> slot <= 1, slot -> slot >= 1);
     }
 
-    public void register() {
-        composition.register();
-    }
+    public void register() { composition.register(); }
 
     public boolean wakeNativeTicker() {
         return node.getGrid().getTickManager().alertDevice(node.getNode());
     }
 
-    public List<Long> nativeTickerInvocations() {
-        return composition.nativeTickerInvocations();
-    }
+    public List<Long> nativeTickerInvocations() { return inspection.nativeTickerInvocations(); }
 
     public List<ICraftingProvider> publishedProviders(int laneIndex, int patternIndex) {
         return publishedProviders(lane(laneIndex).getAvailablePatterns().get(patternIndex));
     }
 
     public List<ICraftingProvider> publishedProviders(appeng.api.crafting.IPatternDetails pattern) {
-        var service = (CraftingService) node.getGrid().getCraftingService();
-        var providers = new ArrayList<ICraftingProvider>();
-        service.getProviders(pattern).forEach(providers::add);
-        return List.copyOf(providers);
+        return inspection.publishedProviders(pattern);
     }
 
-    public void installBypassCraftingMachine() {
-        helper.setBlock(BYPASS_POS, AEBlocks.MOLECULAR_ASSEMBLER.block());
+    public void installBypassCraftingMachine() { inspection.installBypassCraftingMachine(); }
+
+    public boolean hasBypassCraftingMachine() { return inspection.hasBypassCraftingMachine(); }
+
+    public boolean bypassCraftingMachineIsEmpty() { return inspection.bypassCraftingMachineIsEmpty(); }
+
+    public void removeConfiguredTarget() { targets.removeConfiguredTarget(); }
+
+    public void restoreConfiguredTarget() { targets.restoreConfiguredTarget(); }
+
+    public void installEndpointTarget() { targets.installEndpointTarget(); }
+
+    public void installFederationEndpointTarget() { targets.installFederationEndpointTarget(); }
+
+    public void installFederationEndpointTarget(BlockPos endpointPosition) {
+        targets.installFederationEndpointTarget(endpointPosition);
     }
 
-    public boolean hasBypassCraftingMachine() {
-        var machine = ICraftingMachine.of(helper.getLevel(), helper.absolutePos(BYPASS_POS), Direction.SOUTH);
-        return machine != null && machine.acceptsPlans();
+    public IGridNode endpointTargetNode() { return targets.endpointTargetNode(); }
+
+    public IGridNode endpointTargetNode(BlockPos endpointPosition) {
+        return targets.endpointTargetNode(endpointPosition);
     }
 
-    public boolean bypassCraftingMachineIsEmpty() {
-        var blockEntity = helper.getLevel().getBlockEntity(helper.absolutePos(BYPASS_POS));
-        if (!(blockEntity instanceof appeng.blockentity.crafting.MolecularAssemblerBlockEntity assembler)) {
-            return false;
-        }
-        return assembler.getInternalInventory().isEmpty();
-    }
-
-    public void removeConfiguredTarget() {
-        helper.setBlock(TARGET_POS, Blocks.AIR);
-    }
-
-    public void restoreConfiguredTarget() {
-        helper.setBlock(TARGET_POS, Blocks.CHEST);
-    }
-
-    public void installEndpointTarget() {
-        installEndpointTarget(AEBlocks.INTERFACE.block(), Direction.EAST);
-    }
-
-    public void installFederationEndpointTarget() {
-        installEndpointTarget(ProcessingRegistration.ENDPOINT.get(), Direction.NORTH);
-    }
-
-    private void installEndpointTarget(net.minecraft.world.level.block.Block endpointBlock, Direction backendSide) {
-        helper.setBlock(ENDPOINT_TARGET_POS, endpointBlock);
-        var backendPosition = ENDPOINT_TARGET_POS.relative(backendSide);
-        helper.setBlock(backendPosition, AEBlocks.ME_CHEST.block());
-        helper.setBlock(backendPosition.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
-        var chest = helper.<MEChestBlockEntity>getBlockEntity(backendPosition);
-        var cell = AEItems.ITEM_CELL_1K.stack();
-        helper.assertTrue(StorageCells.getCellInventory(cell, null) != null, "Native Endpoint item cell must exist");
-        chest.setCell(cell);
-    }
-
-    public IGridNode endpointTargetNode() {
-        var blockEntity = helper.getBlockEntity(ENDPOINT_TARGET_POS);
-        return blockEntity instanceof AENetworkedBlockEntity endpoint ? endpoint.getMainNode().getNode() : null;
-    }
-
-    public BlockPos endpointTargetPosition() {
-        return helper.absolutePos(ENDPOINT_TARGET_POS);
-    }
+    public BlockPos endpointTargetPosition() { return targets.endpointTargetPosition(); }
 
     public boolean connectEnergy() {
         if (!explicitEnergyConnection) {
@@ -199,127 +138,58 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         return false;
     }
 
-    public MappedPatternProvider composition() {
-        return composition;
-    }
+    public MappedPatternProvider composition() { return composition; }
 
     @Override
-    public MappedPatternProvider mappedPatternProvider() {
-        return composition;
-    }
+    public MappedPatternProvider mappedPatternProvider() { return composition; }
 
-    public NativeProviderLane lane(int index) {
-        return composition.lanes().get(index);
-    }
+    public NativeProviderLane lane(int index) { return patterns.lane(index); }
 
-    public void installPatterns(int count) {
-        var inputs = List.of(Items.COBBLESTONE, Items.DIRT, Items.SAND);
-        var outputs = List.of(Items.DIAMOND, Items.GOLD_INGOT, Items.IRON_INGOT);
-        for (int slot = 0; slot < count; slot++) {
-            var pattern = PatternDetailsHelper.encodeProcessingPattern(
-                    List.of(new GenericStack(AEItemKey.of(inputs.get(slot)), 1)),
-                    List.of(new GenericStack(AEItemKey.of(outputs.get(slot)), 1)));
-            composition.patternInventory().setItemDirect(slot, pattern);
-        }
-        composition.refreshPatterns();
-    }
+    public void installPatterns(int count) { patterns.installPatterns(count); }
 
     public void installPattern(int slot, List<GenericStack> inputs, List<GenericStack> outputs) {
-        composition.patternInventory().setItemDirect(slot,
-                PatternDetailsHelper.encodeProcessingPattern(inputs, outputs));
-        composition.refreshPatterns();
+        patterns.installPattern(slot, inputs, outputs);
     }
 
+    public void setPattern(int slot, List<GenericStack> inputs, List<GenericStack> outputs) {
+        patterns.setPattern(slot, inputs, outputs);
+    }
+
+    public void refreshPatterns() { patterns.refreshPatterns(); }
+
     public boolean pushInputs(int laneIndex, int patternIndex, List<GenericStack> inputs) {
-        var holders = inputs.stream().map(input -> {
-            var counter = new KeyCounter();
-            counter.add(input.what(), input.amount());
-            return counter;
-        }).toArray(KeyCounter[]::new);
-        return lane(laneIndex).pushPattern(lane(laneIndex).getAvailablePatterns().get(patternIndex), holders);
+        return patterns.pushInputs(laneIndex, patternIndex, inputs);
     }
 
     public boolean push(int laneIndex, int patternIndex) {
-        var pattern = lane(laneIndex).getAvailablePatterns().get(patternIndex);
-        var input = pattern.getInputs()[0].getPossibleInputs()[0];
-        var counter = new KeyCounter();
-        counter.add(input.what(), input.amount());
-        return lane(laneIndex).pushPattern(pattern, new KeyCounter[] { counter });
+        return patterns.push(laneIndex, patternIndex);
     }
 
-    public void lockUntilResult(int laneIndex) {
-        lane(laneIndex).getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
-                LockCraftingMode.LOCK_UNTIL_RESULT);
-    }
+    public void lockUntilResult(int laneIndex) { patterns.lockUntilResult(laneIndex); }
 
-    public int targetItemCount() {
-        var target = helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
-        if (!(target instanceof ChestBlockEntity chest)) {
-            return 0;
-        }
-        var total = 0;
-        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-            total += chest.getItem(slot).getCount();
-        }
-        return total;
-    }
+    public int targetItemCount() { return targets.targetItemCount(); }
 
     public int targetItemCount(Item item) {
-        var target = helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
-        if (!(target instanceof ChestBlockEntity chest)) {
-            return 0;
-        }
-        var total = 0;
-        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-            if (chest.getItem(slot).is(item)) {
-                total += chest.getItem(slot).getCount();
-            }
-        }
-        return total;
+        return targets.targetItemCount(item);
     }
 
-    public String targetSnapshot() {
-        var chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
-        var snapshot = new StringBuilder();
-        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-            if (slot > 0) {
-                snapshot.append(',');
-            }
-            var stack = chest.getItem(slot);
-            snapshot.append(stack.isEmpty() ? "empty" : net.minecraft.core.registries.BuiltInRegistries.ITEM
-                    .getKey(stack.getItem()) + ":" + stack.getCount());
-        }
-        return snapshot.toString();
+    public long extractTargetItem(Item item, long amount) {
+        return targets.extractTargetItem(item, amount);
     }
 
-    public void leaveOneSharedTargetSlot() {
-        var chest = (ChestBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(TARGET_POS));
-        for (int slot = 0; slot < chest.getContainerSize() - 1; slot++) {
-            chest.setItem(slot, new ItemStack(Items.SAND, 64));
-        }
-        chest.setItem(chest.getContainerSize() - 1, ItemStack.EMPTY);
-    }
+    public String targetSnapshot() { return targets.targetSnapshot(); }
 
-    public long endpointTargetItemCount() {
-        var targetNode = endpointTargetNode();
-        return targetNode == null || targetNode.getGrid() == null ? 0
-                : targetNode.getGrid().getStorageService().getInventory().getAvailableStacks()
-                        .get(AEItemKey.of(Items.COBBLESTONE));
-    }
+    public void leaveOneSharedTargetSlot() { targets.leaveOneSharedTargetSlot(); }
 
-    public BlockEntity hostBlockEntity() {
-        return helper.getBlockEntity(HOST_POS);
-    }
+    public long endpointTargetItemCount() { return targets.endpointTargetItemCount(); }
+
+    public BlockEntity hostBlockEntity() { return helper.getBlockEntity(HOST_POS); }
 
     @Override
-    public BlockEntity getBlockEntity() {
-        return hostBlockEntity();
-    }
+    public BlockEntity getBlockEntity() { return hostBlockEntity(); }
 
     @Override
-    public EnumSet<Direction> getTargets() {
-        return EnumSet.of(Direction.EAST);
-    }
+    public EnumSet<Direction> getTargets() { return EnumSet.of(Direction.EAST); }
 
     @Override
     public void saveChanges() {
@@ -327,21 +197,17 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         getBlockEntity().setChanged();
     }
 
-    public int ownerSaveCalls() {
-        return ownerSaveCalls;
-    }
+    public int ownerSaveCalls() { return ownerSaveCalls; }
 
     public int laneSaveCalls() {
         return hosts.stream().mapToInt(NativeProviderLaneHost::saveCalls).sum();
     }
 
-    public IManagedGridNode managedNode() {
-        return node;
-    }
+    public IManagedGridNode managedNode() { return node; }
 
-    GameTestHelper helper() {
-        return helper;
-    }
+    public int laneCount() { return composition.lanes().size(); }
+
+    GameTestHelper helper() { return helper; }
 
     @Override
     public AEItemKey getTerminalIcon() {
@@ -357,6 +223,7 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
     public void close() {
         composition.close();
         node.destroy();
+        helper.setBlock(energyPosition, Blocks.AIR);
     }
 
 }
