@@ -3,23 +3,21 @@ package space.controlnet.ae2federation.storage.mount;
 import appeng.api.stacks.AEKey;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
-import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.policy.BackendStatus;
-import space.controlnet.ae2federation.policy.PolicyActivationState;
-import space.controlnet.ae2federation.policy.PolicyFilterMode;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyResource;
-import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
-import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
 
 final class StorageRelationshipAuthority implements StorageProjectionAuthorization {
-    private final ServerLevel level;
-    private final StorageRelationship relationship;
+    private final Supplier<EffectiveSourceRelationship> relationship;
+    private final Predicate<EffectiveSourceRelationship> relationshipCurrent;
     private final BooleanSupplier sourceReady;
 
-    StorageRelationshipAuthority(ServerLevel level, StorageRelationship relationship, BooleanSupplier sourceReady) {
-        this.level = Objects.requireNonNull(level);
+    StorageRelationshipAuthority(Supplier<EffectiveSourceRelationship> relationship,
+            Predicate<EffectiveSourceRelationship> relationshipCurrent, BooleanSupplier sourceReady) {
         this.relationship = Objects.requireNonNull(relationship);
+        this.relationshipCurrent = Objects.requireNonNull(relationshipCurrent);
         this.sourceReady = Objects.requireNonNull(sourceReady);
     }
 
@@ -28,9 +26,9 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
         if (!ready()) {
             return false;
         }
-        var configured = PolicyService.get(level).configured(relationship.key()).orElse(null);
-        return configured != null && configured.rule().operations().contains(operation)
-                && permits(configured.rule().filter().mode(), configured.rule().filter().entries(), key);
+        var candidate = relationship.get();
+        return candidate != null && candidate.authority().permits(operation,
+                new PolicyResource(key.getType().getId(), key.getId()));
     }
 
     @Override
@@ -40,22 +38,7 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
 
     @Override
     public boolean ready() {
-        if (!sourceReady.getAsBoolean()) {
-            return false;
-        }
-        var endpoints = new PolicyRuntimeEndpoints(relationship.consumerGrid(), relationship.providerGrid(),
-                BackendStatus.READY);
-        return PolicyService.get(level).activation(relationship.key(), endpoints) == PolicyActivationState.ACTIVE;
-    }
-
-    private static boolean permits(PolicyFilterMode mode, java.util.Set<PolicyResource> entries, AEKey key) {
-        var resource = new PolicyResource(key.getType().getId(), key.getId());
-        if (mode == PolicyFilterMode.ALL) {
-            return true;
-        }
-        if (mode == PolicyFilterMode.ALLOW_LIST) {
-            return entries.contains(resource);
-        }
-        return !entries.contains(resource);
+        var candidate = relationship.get();
+        return sourceReady.getAsBoolean() && candidate != null && relationshipCurrent.test(candidate);
     }
 }

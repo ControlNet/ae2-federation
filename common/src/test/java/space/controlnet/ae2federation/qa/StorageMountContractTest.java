@@ -14,12 +14,14 @@ final class StorageMountContractTest {
     void relationshipMountUsesNativeStorageAndDynamicPolicyAuthority() throws IOException {
         var projection = source("storage/mount/AuthorizedStorageProjection.java");
         var authority = source("storage/mount/StorageRelationshipAuthority.java");
+        var effectiveAuthority = source("storage/dependency/EffectiveStorageAuthority.java");
         assertTrue(projection.contains("MEStorage.checkPreconditions"));
         assertTrue(projection.contains("delegate.insert(what, amount, mode, source)"));
         assertTrue(projection.contains("delegate.extract(what, amount, mode, source)"));
-        assertTrue(authority.contains("PolicyService.get(level).activation"));
+        assertTrue(authority.contains("EffectiveSourceRelationship"));
+        assertTrue(authority.contains("relationshipCurrent.test(candidate)"));
         assertTrue(authority.contains("PolicyOperation.VIEW"));
-        assertTrue(authority.contains("PolicyFilterMode.ALLOW_LIST"));
+        assertTrue(effectiveAuthority.contains("PolicyFilterMode.ALLOW_LIST"));
     }
 
     @Test
@@ -32,7 +34,10 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("addGlobalStorageProvider"));
         assertTrue(mounts.contains("removeGlobalStorageProvider"));
         assertTrue(mounts.contains("Map<PolicyKey, MountedStorageRelationship>"));
-        assertTrue(mounts.contains("catch (StorageProvenanceException exception)"));
+        var dependencies = source("storage/mount/StorageDependencyIndex.java");
+        assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
+        assertTrue(dependencies.contains("PolicyService.get(level).revision"));
+        assertTrue(dependencies.contains("FabricRegistryAccess.get(level).isCurrent"));
         assertTrue(mounts.contains("sourceCurrent(holder[0])"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
