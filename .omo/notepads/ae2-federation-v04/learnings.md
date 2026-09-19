@@ -484,3 +484,74 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   broad persisted-report verifier can silently bypass the very current-source binding the probe claims to test.
 - Runtime-authority closure needs at least one actual producer mutation, not only fully rebound artifact mutation. The
   Task 20 matrix now serially executes an alternate-seed GameTest producer and confirms the canonical consumer rejects it.
+
+## 2026-09-19 Task 21 native Storage mounts
+
+- An ME Chest with a cell exposes an `IStorageProvider`, but the provider node remains inactive until its native Grid is
+  powered. Task 21 fixtures need both the cell and native AE power before relationship reconciliation.
+- `IStorageService.addGlobalStorageProvider` and `removeGlobalStorageProvider` are sufficient for a logical directional
+  mount. Native provider callbacks remain the source of delegates and priorities; the complete Grid aggregate is never an
+  export source.
+- Keeping authorization dynamic inside the mounted `MEStorage` makes a previously obtained projection fail closed after
+  Policy revocation, while immediate reconciliation also removes it from the consumer Grid's global providers.
+- Canonical evidence is `.omo/evidence/task-21/attempt-20260919T090525880Z/result.json`.
+
+## 2026-09-19 Task 21 independent-review repair
+
+- Hub publication can precede reciprocal Federation Cable convergence. Storage must retain loaded Grid identities and
+  re-derive relationships when cable topology changes, not only when a Hub publishes its local faces.
+- A held projection is safe only while a fresh Task 8 discovery returns the same callback identities and priorities.
+
+## 2026-09-19 Task 21 repair round 2
+
+- A logical mount count cannot prove native capacity deduplication. With both Bridge routes live, the provider held 13
+  iron, the consumer aggregate exposed 13, and simulated consumer capacity `16243` equaled provider `8115` plus local
+  consumer `8128` exactly once.
+- A post-removal `containsKey` boolean is not a teardown receipt. Capturing the registered object before removal, verifying
+  the removed identity, counting global providers removed, and reading the already-held consumer aggregate after teardown
+  distinguishes real native cleanup from a label.
+- Adversarial probes must fail for the intended semantic error. A zero cleanup count initially reached a generic positive-
+  integer parser error; exact cleanup-field reconciliation now produces the Task 21 cleanup semantic rejection.
+
+## 2026-09-19 Task 22
+
+- Persisted Task 4 node lineage supplies the stable callback-registration identity needed to distinguish a native Grid
+  rebound from a new source. The runtime `IGrid` and `MEStorage` may both change while `NetworkId`, node UUID, and callback
+  slot prove continuity; source generation still advances.
+- AE2 rejects mounting one identical inventory twice in a live provider callback. The native multi-entry fixture therefore
+  registers an initially empty real provider node, then exposes duplicate callback entries only to the qualified provenance
+  replay, proving maximum priority and deduplication without corrupting AE2's own live mount table.
+- Separate source and relationship mount generations close the stale-handle reentrancy gap: an old projection first proves
+  it is still the exact current mount before it can remove anything.
+
+## 2026-09-20 Task 22 independent-review repair
+
+- Filtering a callback before assigning coordinates changes identity. The capture boundary must pair every callback entry
+  with its raw sequence index first, then exclude managed views while retaining that original index.
+- A persisted synthetic provider node can prove a same-origin rebound without fixture-authored IDs: save its managed-node
+  state, wait for the removed Grid to have no nodes, release the removed runtime claim, and restore the same provider with
+  its own `IAEPowerStorage` service so no unrelated fresh Grid lineage contaminates settlement.
+- Stale-generation safety requires invoking the old object after the new mount exists. Comparing projection identity,
+  source generation, mount generation, provider-removal count, and operations before and after all three stale calls makes
+  the early-return guard observable rather than source-inspected.
+
+## 2026-09-20T01:01:27+10:00 Task 22 identity-settlement gating repair
+
+- AE2 `isActive()` and `hasGridBooted()` do not imply Task 4 identity settlement. A GameTest fixture that immediately calls
+  provenance discovery must also observe `FabricRegistryAccess.confirmedNetworkId(grid()).isPresent()` after provider-node
+  merge/reconfiguration.
+- The failure signature is timing-sensitive: the rejected run moved a restored node from one runtime Grid into another
+  immediately before `UNSETTLED_ORIGIN`, while quiet full-scope and isolated runs attached all nodes to one Grid and passed.
+- A source contract that binds fixture readiness to discovery's exact production precondition provides deterministic red/
+  green coverage without adding sleeps, retries, timeout inflation, or exception suppression.
+
+## 2026-09-20 Task 23 chain sharing
+
+- A bounded origin frontier is sufficient for chain sharing: serial authority intersects, alternative routes union, and a
+  `(consumer, origin, capability)` key deduplicates diamonds without retaining complete paths.
+- Native multi-Bridge fixtures must stage each part and refresh its public shape lifecycle before testing membership; bulk
+  same-tick insertion can leave the initial `MISSING_MAIN_ATTACHMENT` status stale.
+- Alternative-route authority cannot union operations and filters independently. Retaining a filter per operation prevents
+  `VIEW iron` on one route plus `EXTRACT gold` on another from synthesizing `EXTRACT iron`.
+- AE2 fixture nodes created in one tick may receive independent identities before their native connections converge. Place
+  each cable from the storage-adjacent anchor outward, and wait for all current identities to settle between additions.

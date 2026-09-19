@@ -329,3 +329,66 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - One initial Task 18 regression invocation used non-canonical case IDs and failed before GameTests launched. The authoritative five-case set was then run successfully with its consumer and adversarial self-test.
 - Six Java LSP requests initially timed out; focused retries returned zero diagnostics. No unresolved implementation or verification blocker remains.
 - Task 20 intentionally remains unchecked pending independent acceptance.
+
+## 2026-09-19 Task 21
+
+- The first native-access run reached a confirmed Fabric but mounted nothing. Runtime instrumentation distinguished
+  `provider=1` from `activeProvider=0`: both ME Chests had cells but their native Grids lacked AE power.
+- Adding adjacent creative AE power only in the Task 21 fixture changed the same GameTest from a missing projection to a
+  passing consumer-aggregate extraction. Temporary diagnostics and the debug journal were removed afterward.
+- Groovy Gradle LSP is not configured; executable contract, producer, consumer, adversarial, and strict build tasks cover
+  the changed verifier surface.
+
+## 2026-09-19 Task 21 independent-review repair
+
+- The first two-Hub run exposed that Hubs publish before cable reciprocity settles. Adding a cable-driven topology hook
+  fixed the missed relationship; the exact five-case repair run then passed.
+
+## 2026-09-19 Task 21 repair round 2
+
+- The first expanded self-test run reported `falseCleanupReceipt` as accepted because the verifier rejected zero through a
+  generic numeric parser message instead of the required Task 21 cleanup semantic message. Direct exact-value
+  reconciliation fixed the reason binding; the fully rebound false receipt then failed as intended.
+- No unresolved implementation blocker remains. Task 21 stays unchecked pending final independent re-verification.
+
+## 2026-09-19 Task 22
+
+- The first native multi-entry run crashed in AE2 before assertions because a live provider callback mounted the exact same
+  inventory twice. The fixture was corrected to join with an empty callback and expose duplicate entries only during the
+  Task 8-qualified provenance replay; production behavior did not bypass AE2's mount invariant.
+- The first Task 22 self-test run showed all mutations accepted because persisted consumption was not yet wired to
+  `verifyTaskTwentyTwoEvidence`. After adding that call path, three probes initially rejected for generic property/log
+  mismatch rather than their intended semantic reason; coordinated property, Policy trace, and provenance trace rebinding
+  corrected the probes.
+
+## 2026-09-20 Task 22 independent-review repair
+
+- The first repair fixture settled a bridge concurrently with Grid replacement and timed out before the repaired paths.
+  Serializing provenance teardown/rebound before bridge publication removed that race.
+- Restoring the synthetic callback node beside separately restored native nodes produced competing Task 4 claims, while a
+  standalone provider lacked power. Making the persisted callback provider itself an infinite native AE power service
+  yielded one active restored Grid with the exact saved lineage and no caller-authored identity.
+- A delayed Bridge placement did not receive another neighbor event after its attachments settled. The test fixture now
+  invokes the real `onNeighborChanged` lifecycle before readiness inspection; the production Bridge path is unchanged.
+
+## 2026-09-20T01:01:27+10:00 Task 22 identity-settlement gating repair
+
+- Fresh verification intermittently crashed in `provenance.multi-entry` after `ProvenanceStorageFixture.ready()` returned
+  true but before the merged Grid exposed a confirmed Task 4 `NetworkId`. `NativeSourceDomainRegistry` correctly rejected
+  that state as `UNSETTLED_ORIGIN`; the fixture precondition was incomplete.
+- The unchanged four-case suite and isolated native case passed on a quiet workspace, refuting active runtime residue or
+  concurrent server contention as the current cause. The isolated outer verifier exited nonzero only because Task 22
+  intentionally requires its exact four-case canonical set; its native log recorded `All 1 required tests passed :)`.
+- Resolved by extending fixture readiness with the exact production settlement predicate. No production provenance,
+  callback-slot, managed exclusion, opaque rejection, rebound, or stale-mount semantics changed.
+
+## 2026-09-20 Task 23 chain sharing
+
+- The first chain fixture used `List.of` while Grid handles were temporarily null and crashed instead of polling; explicit
+  nullable iteration fixed startup. Incorrect north-facing Bridge geometry and same-tick bulk placement then caused stale
+  attachment status. Correct WEST/EAST faces plus serialized placement resolved all five native cases.
+- Aggregate execution exposed two further fixture defects: readiness diagnostics dereferenced unsettled identities, and
+  bulk cable creation intermittently produced `AMBIGUOUS_MERGE`. Null-safe status reporting plus one-settled-tick cable
+  staging removed both races without weakening production settlement checks.
+- The first successful isolated cycle emitted native evidence but the outer verifier reported `executed=[]`; the chain
+  cases were missing from the generic evidence-accounting switch. Registering all five canonical IDs restored accounting.

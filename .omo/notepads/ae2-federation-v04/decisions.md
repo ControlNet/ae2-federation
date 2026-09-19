@@ -264,3 +264,67 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Keep canonical baseline consumption pinned to seed `20019006`, but allow an explicit producer replay seed for deterministic variation testing.
 - Treat seeded topology and schedule as execution authority, not descriptive metadata, and persist exact per-Pattern participation plus five independent cohort observations.
 - Bind the baseline to a fail-closed grouped 46-file source-authority manifest and enforce the 250-physical-line Java ceiling in the contract suite.
+
+## 2026-09-19 Task 21
+
+- Key exactly one logical native Storage projection by directional `PolicyKey`; repeated physical Bridge/Hub observations
+  reconcile rather than duplicate the mount.
+- Discover provider delegates only from active `providerGrid.getNodes()` registrations qualified by Task 8 provenance.
+  Aggregate Grid storage, caller labels, managed projections, and opaque aliases cannot become export sources.
+- Re-evaluate Task 14 activation, operation permissions, filters, and provider-node readiness on every projection call.
+  Revocation both removes the global provider and invalidates held projection handles without cached spendable state.
+- Preserve AE2 as allocation and transaction authority by delegating directly to native `MEStorage` and using
+  `NetworkStorage` only when multiple qualified native delegates must be composed.
+
+## 2026-09-19 Task 21 independent-review repair
+
+- Derive Storage relationships from current Task 13 Fabric snapshots plus loaded live Grid references on every topology
+  transition; do not enumerate routes or scan the world.
+- Bind projection authority to fresh qualified callback identity/priority and close all per-level mounts on level unload.
+
+## 2026-09-19 Task 21 repair round 2
+
+- Prove redundant-route deduplication numerically from native operations: reconcile provider quantity with consumer-visible
+  quantity and reconcile consumer simulated capacity with exactly one provider capacity plus local consumer capacity.
+- Route NeoForge unload and the native cleanup proof through one `StorageLevelLifecycle.close` path whose receipt captures
+  exact pre-state, removed provider count, removed object identity, and post-state without lookup-driven recreation.
+- Bind cleanup facts into `storage.native-access` rather than trusting the generic unload log, and reject fully rebound
+  quantity, capacity, missing-fact, and false-cleanup mutations for Task 21 semantic reasons.
+
+## 2026-09-19 Task 22
+
+- Define origin, export source, alias, source generation, and mount generation as explicit records under
+  `storage/provenance/`. Alias identity is native registration node lineage plus callback index, never position or label.
+- Retain source identity across a new runtime Grid only when settled Task 4 `NetworkId` and current callback-owned node
+  lineage overlap. A same-ID rebound with no source-registration continuity fails as `UNPROVEN_GRID_REBOUND`.
+- Mark Federation-created providers and storage views explicitly and exclude them before export discovery. For an external
+  callback with multiple distinct untyped handles, reject the whole domain as `OPAQUE_EXTERNAL_ALIAS`; do not guess alias
+  equivalence or partially publish earlier native callbacks.
+
+## 2026-09-20 Task 22 independent-review repair
+
+- Represent a qualified callback entry as `(raw callback index, NativeStorageSource)` and use only that retained index for
+  `SourceAliasId`. Managed entries remain excluded from publication but continue to occupy their literal callback slots.
+- Keep stale projection enforcement unchanged and add read-only lifecycle observations for the current mount generation
+  and cumulative native provider removals. Evidence compares those runtime values around stale A operations against B.
+- Keep the four canonical Task 22 IDs. Extend `provenance.native-rebind` with the negative callback-slot rebound and the
+  genuine relationship remount instead of introducing Task 23 behavior or weakening existing import/opaque boundaries.
+
+## 2026-09-20T01:01:27+10:00 Task 22 identity-settlement gating repair
+
+- Keep `NativeSourceDomainRegistry.discover()` fail closed for an unsettled origin. The deterministic repair belongs in the
+  native GameTest fixture because readiness is the caller's declaration that all discovery preconditions are satisfied.
+- Define `ProvenanceStorageFixture.ready()` as active node, booted Grid, and present confirmed `NetworkId`; perform no catch-
+  and-continue, retry wrapper, arbitrary wait, timeout increase, or production fallback.
+- Lock this boundary with `nativeFixtureReadinessIncludesSettledDiscoveryOrigin` and preserve all real callback, duplicate-
+  alias, priority, quantity/capacity, operation-authority, rebound, and stale-projection assertions.
+
+## 2026-09-20 Task 23 chain sharing
+
+- Compile effective source relationships separately from configured direct policies. Derived permission may mount a native
+  origin but must not mutate, synthesize, or activate the corresponding direct rule.
+- Bind effective relationships to every contributing policy/Fabric/source revision and fail closed until recompilation.
+- Represent effective authority as operation-to-filter mappings. Public aggregate accessors may summarize authority for
+  diagnostics, but runtime permission checks must select the filter belonging to the requested operation.
+- Keep identity reconciliation fail closed. Stabilize the GameTest by sequencing native topology creation through settled
+  states rather than adding retries, timeout inflation, or production fallbacks for `AMBIGUOUS_MERGE`.

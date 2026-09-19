@@ -327,6 +327,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 }
 ```
 
+## 2026-09-20 Task 23 chain sharing
+
+- Focused compiler/mount tests and all five serial native GameTests passed. The Task 23 persisted verifier is wired into
+  producer and consumer paths; a dedicated adversarial self-test task remains to be added before final Task 23 sign-off.
+
 ## 2026-09-15 Task 18 four-blocker repair
 
 ```json
@@ -1474,3 +1479,353 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Fresh canonical, alternate seed `20019007`, exact two-case QA, persisted consumers, focused contracts, strict
   dependency-verified build/archive isolation, LOC, diagnostics, and cleanup passed. Task 20 remains unchecked; Task 21
   remains untouched.
+
+## 2026-09-19 Task 21
+
+- No unresolved Task 21 implementation blocker remains. The exact five native GameTests, canonical persisted consumer,
+  adversarial evidence self-test, focused contract, strict check/build, and Java diagnostics pass.
+- Independent verification remains the orchestrator's gate; the plan checkbox was not edited.
+
+## 2026-09-19 Task 21 independent adversarial verification
+
+- Verdict: `needs-fix` (confidence 0.99). Fresh repeated exact-case evidence is
+  `.omo/evidence/task-21-independent-review/attempt-20260919T092842409Z/result.json`; both exact runs, persisted
+  consumption, the six fully rebound self-test probes, focused Task 8/14/21 regressions, strict check/build, and all
+  changed Java diagnostics passed. Those green gates do not execute the missing acceptance paths below.
+- Blocking functional gap: `HubBlockEntity.java:178` passes only that one Hub's local `nativeFacesByGrid()` members to
+  `StorageMountService.observeFabricMembers`, and `StorageMountService.java:62-72` only pairs that supplied iterable.
+  Task 13's component registry stores `NetworkId` memberships but never supplies component-wide live `IGrid` members.
+  Therefore two cable-connected Hubs with the consumer on one and provider on the other each observe one local member,
+  produce no relationship, and cannot mount Storage despite sharing a confirmed Fabric. Add component-wide relationship
+  observation and a real two-Hub/Federation-Cable native access case.
+- Blocking coverage gap: all five canonical cases use one `PolicyBridgeFixtures` Bridge. `StorageMountGameTests.java:59-70`
+  asserts one mount and emits `logicalDeduplication=true`, but creates no second Bridge/path/Hub face. Fresh priority
+  evidence records only native/mounted priority `0`. Add a real redundant physical path and prove one mount, one visible
+  quantity/capacity, and continued access after either redundant path is removed; also exercise a non-default competing
+  native priority rather than equality of two zeroes.
+- Blocking fail-closed gap: on a valid source identity change, `StorageMountService.java:92-102` removes the registered
+  provider but the previously returned projection retains its old delegate. `MountedStorageRelationship.java:20-23`
+  checks only node active/booted/Grid identity, not current callback source identity or mount generation, so that held
+  projection can remain spendable. An opaque/invalid callback can throw from `discover` before `remove`, leaving an
+  existing relationship mounted. Invalidate held handles by current relationship/source generation and fail closed
+  atomically on every callback-discovery error; add real source-replacement and invalid-second-callback transitions.
+- Blocking acceptance coverage: the canonical runtime uses only `PolicyFilter.allowAll()`, directly calls the consumer
+  storage aggregate rather than an actual terminal/automation caller, and tests only Policy disable. It does not execute
+  allow/block filters, topology invalidation, provider-node inactivity, source identity change, or repeated
+  revocation/interruption. Add native operation-derived cases for these required Task 21 authority/readiness paths.
+- Blocking cleanup gap: `StorageMountService.close()` at lines 145-150 has no production caller. Its static weak-key map
+  value strongly retains the `ServerLevel`, and mounted global providers are not explicitly removed on level/server
+  unload. Hook lifecycle cleanup and prove no service/provider survives an in-process level unload or server restart.
+- Prompt injection: N/A. Cancel/resume: N/A; Task 21 has no resumable user flow. Malformed/overflow amount: native
+  `MEStorage.checkPreconditions` owns validation and Task 21 adds no amount arithmetic or parser. No custom allocator,
+  shadow spendable inventory, aggregate export, Processing Endpoint auto-export, Task 22 aliasing, Task 23 chains,
+  Task 24 subscriptions, or Task 25 addon-resource implementation was found.
+
+## 2026-09-19 Task 21 repair round 1
+
+- All five independent blockers were repaired. Current exact evidence is
+  `.omo/evidence/task-21-repair-final/attempt-20260919T101729997Z/result.json`.
+- Runtime coverage now proves cross-Hub cable access, two redundant Bridge routes with first/final removal behavior,
+  nonzero callback priority, native `PlayerSource`, allow/deny filters, invalid second callback fail-closure, repeated
+  revocation/reactivation, cell source replacement, provider inactivity, and level-unload cleanup receipts.
+- Persisted evidence consumption, ten fully rebound adversarial probes, strict `check build`, Java diagnostics, and
+  `git diff --check` pass. Task 21 remains unchecked pending independent re-verification.
+
+## 2026-09-19 Task 21 independent repair re-verification
+
+- Verdict: `needs-fix` (confidence 0.99). Fresh exact evidence is
+  `.omo/evidence/task-21-independent-repair-review/attempt-20260919T104132274Z/result.json`. The exact five cases,
+  persisted consumer, built-in evidence self-test, exact Task 8/13/14 regressions, strict `check build`, release-JAR
+  isolation, `git diff --check`, cleanup checks, and all changed Java diagnostics pass.
+- Confirmed repairs: real cable-connected Hubs now form one component-wide relationship; native priority 37 is
+  preserved; allow-list and deny-list operations are enforced; invalid second callbacks, repeated revocation,
+  callback source replacement, and provider inactivity invalidate held projections. The typed
+  `StorageProvenanceException` catch removes the relationship immediately and is acceptably fail-closed.
+- `PlayerSource` operating through the consumer Grid's native `IStorageService` aggregate is sufficient native caller
+  proof for Task 21's mount boundary; terminal UI and automation-device integration are later-task surfaces.
+- Blocking redundant-route evidence gap: the two-Bridge case proves `mountedRelationships=1`, nonzero priority, and
+  continued/finally denied insertion after route removals, but records no aggregate visible quantity or capacity while
+  both routes are simultaneously present. It therefore does not prove that two physical routes expose provider
+  contents/capacity exactly once, as required by the prior repair finding. Add an operation-derived consumer aggregate
+  quantity/capacity assertion before either route is removed and bind it in the verifier/self-test.
+- Blocking cleanup evidence gap: a fully hash-rebound mutation changing the overworld unload receipt to
+  `mountsRemoved=false registriesRemoved=false` is accepted by `federationVerifyEvidence`. Task 21's semantic verifier
+  does not inspect unload receipts, and its self-test has no cleanup mutation. Moreover, `StorageMountService.closeLevel`
+  and `FabricRegistryAccess.closeLevel` return only post-removal map absence, so logged `true` does not prove the global
+  provider was removed or that a mounted service cannot survive. Add an in-process mount/unload or direct lifecycle
+  test that observes provider removal from the consumer aggregate plus service/Fabric-registry absence, bind those facts
+  to Task 21 persisted evidence, and add a fully rebound cleanup probe.
+
+## 2026-09-19 Task 21 repair round 2 executor result
+
+- Both remaining proof blockers are repaired. With two routes present, native operations record provider quantity `13`,
+  consumer-visible quantity `13`, provider remaining capacity `8115`, local consumer capacity `8128`, and deduplicated
+  consumer capacity `16243`; first-route removal still accepts `1` and final-route removal accepts `0`.
+- The exact production teardown path removes one mounted global provider, the exact per-level mount service, and the exact
+  Fabric registry. The held consumer aggregate changes from `5` to `0` while provider native storage remains `5`.
+- The persisted verifier requires these numeric and cleanup facts. Fully rebound doubled/missing quantity and capacity plus
+  a false cleanup receipt are rejected for their intended Task 21 semantic messages.
+- Task 21 remains unchecked pending independent re-verification; no Task 22+ work was started.
+
+## 2026-09-19 Task 21 final independent repair re-verification
+
+- Verdict: `confirmed` (confidence 0.99). Fresh exact evidence is
+  `.omo/evidence/task-21-independent-round2-final/attempt-20260919T115420908Z/result.json`.
+- Redundant-route proof is operation-derived with both Bridges ready before observation: native provider insertion and
+  inventory report `13`, the consumer aggregate reports `13` exactly once, and native insertion simulations report
+  provider remaining capacity `8115`, local consumer capacity `8128`, and consumer aggregate capacity `16243` exactly.
+  Removing the first route accepts `1`; removing the final route accepts `0`.
+- Per-Level teardown is observable through the held native aggregate: provider-visible quantity changes from `5` to `0`
+  while provider storage remains `5`. `StorageLevelLifecycle.close` captures one registered service, one mounted global
+  provider before and removed, and the exact registered Fabric registry instance; both per-Level maps are absent after.
+  The later production unload receipt remains absent-before, proving fixture teardown did not recreate either registry.
+- Persisted consumption selects one hash-bound property artifact and one execution log per case and cross-checks every
+  semantic fact against its runtime trace. The built-in self-test and independent fully rebound doubled/missing quantity,
+  doubled/missing capacity, and false-cleanup mutations all fail for their intended Task 21 semantic messages; the
+  restored canonical attempt re-consumes successfully.
+- The exact five cases, focused contract, strict dependency-verified `check build`, Java diagnostics, diff check, and
+  release isolation pass. The production JAR contains the production lifecycle classes and no test/QA classes. No Task
+  22+ behavior, custom inventory/allocator, forced loads, route enumeration, or test-only release leakage was found.
+- Cleanup is complete: no GameTest process, runtime tree, session lock, port `25565` listener, or reviewer probe copy
+  remains. The pre-existing dirty worktree was preserved.
+
+## 2026-09-19 Task 22 result
+
+- No known Task 22 implementation blocker remains. Exact native cases, persisted semantic consumption, 12 fully rebound
+  adversarial probes, and fresh Task 8/21 producer-consumer-self-test regressions pass.
+- Arbitrary third-party alias wrappers remain intentionally unsupported. A provider callback with multiple distinct
+  untyped storage handles is rejected atomically with `OPAQUE_EXTERNAL_ALIAS`; this boundary is explicit and no complete
+  aggregate, Federation import, cached spendable inventory, or source mirror is substituted.
+- Prompt injection is N/A. Cancel/resume is N/A because Task 22 introduces no resumable user flow. Task 23+ chain policy,
+  subscriptions, addon resources, route enumeration, chunk loading, and world scanning remain unimplemented.
+
+## 2026-09-19T13:23:31Z Task 22 independent adversarial verification
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 22,
+  "verdict": "needs-fix",
+  "confidence": 0.98,
+  "summary": "Fresh Task 22, Task 8, and Task 21 native evidence and every requested build/consumer gate pass, but Task 22 does not preserve the literal callback slot when managed callback entries are filtered and does not runtime-prove stale old-projection isolation after a newer mount generation is installed.",
+  "freshArtifacts": {
+    "task22": ".omo/evidence/task-22-independent-review/attempt-20260919T131211189Z/result.json",
+    "task08Regression": ".omo/evidence/task-22-independent-task08/attempt-20260919T131524839Z/result.json",
+    "task21Regression": ".omo/evidence/task-22-independent-task21/attempt-20260919T131802621Z/result.json"
+  },
+  "blockingFindings": [
+    {
+      "id": "filtered-callback-index-collides",
+      "severity": "blocking-identity",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/storage/provenance/NativeSourceDomainRegistry.java:82",
+        "common/src/main/java/space/controlnet/ae2federation/storage/provenance/NativeSourceDomainRegistry.java:101",
+        "common/src/main/java/space/controlnet/ae2federation/storage/provenance/NativeSourceDomainRegistry.java:119"
+      ],
+      "attack": "The registry filters FederationManagedStorage entries before assigning SourceAliasId indices. A callback [managedView, nativeA] therefore assigns nativeA slot 0; after rebound, [nativeB] also assigns nativeB slot 0. With the same settled NetworkId and persisted node lineage, sharesSourceIdentity accepts this as continuity even though the true callback slot/source did not continue.",
+      "requiredFix": "Retain each entry's index from the unfiltered callback sequence while excluding managed entries from publication. Add a real rebound negative in which managed-entry insertion/removal would otherwise collide, and require UNPROVEN_GRID_REBOUND with whole-domain invalidation."
+    },
+    {
+      "id": "newer-mount-generation-isolation-unexecuted",
+      "severity": "blocking-coverage",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageProvenanceGameTests.java:84",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/storage/StorageRevocationChecks.java:48",
+        "common/src/main/java/space/controlnet/ae2federation/storage/mount/StorageMountService.java:200"
+      ],
+      "attack": "provenance.native-rebind creates a standalone NativeSourceDomainRegistry and never mounts a relationship. storage.reject-revoked obtains fresh projections after remounts but never invokes an older projection after the newer projection is installed. The mounts.get(...) identity and MountGeneration early-return guard is therefore source-inspected only, not exercised through native runtime.",
+      "requiredFix": "After installing a newer relationship mount, invoke an older held projection for insert, extract, and listing; prove all fail closed, prove the newer projection remains mounted and operational, and bind exact old/new projection, source-generation, mount-generation, and provider-removal facts into Task 22 evidence and adversarial probes."
+    }
+  ],
+  "confirmed": [
+    "Real native callbacks deduplicate identity-equal MEStorage handles, preserve maximum priority, and delegate quantity/capacity operations to the native store.",
+    "The chest save/remove/recreate/load case creates distinct runtime IGrid and MEStorage objects while preserving settled origin and callback-owned source ID and advancing source generation.",
+    "Federation-managed provider/view markers are excluded on the registry path; NetworkStorage aggregates reject; multiple distinct opaque handles reject the whole domain and invalidate the prior generation.",
+    "The current stale-operation implementation checks exact MountedStorageRelationship identity plus MountGeneration before any current mount can be removed."
+  ],
+  "verification": [
+    "Exact Task 22 producer, persisted consumer, and 12-probe self-test: BUILD SUCCESSFUL.",
+    "Fresh exact Task 8 and Task 21 producers, persisted consumers, and task-specific self-tests: BUILD SUCCESSFUL.",
+    "StorageProvenanceContractTest and StorageMountContractTest rerun under strict dependency verification: BUILD SUCCESSFUL.",
+    "Strict dependency-verified check/build and release archive verification: BUILD SUCCESSFUL.",
+    "All Task 22 storage production, test, and testmod Java files: zero LSP diagnostics."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "absent",
+    "sessionLock": "absent",
+    "taskOwnedListener": "none; observed Java listeners are Gradle 8.9 and 9.2.1 daemons"
+  },
+  "repositoryChangesByReviewer": "Only this append-only problems.md finding plus ignored reviewer-owned evidence/build artifacts; no production code, tests, Gradle logic, manifest, plan checkbox, Boulder state, Git index, or Git history was changed."
+}
+```
+
+## 2026-09-20T00:30:00+10:00 Task 22 independent-review repair result
+
+- `filtered-callback-index-collides` is repaired: raw callback slots survive filtering, and the native managed-prefix
+  rebound observes slots `1 -> 0`, rejects `UNPROVEN_GRID_REBOUND`, and invalidates the prior domain.
+- `newer-mount-generation-isolation-unexecuted` is repaired: projection B has newer source and mount generations after one
+  exact provider removal; old projection A returns zero for listing, insertion, and extraction without changing removal
+  count or current mount identity; B then inserts six, lists six, extracts two, and retains four.
+- Persisted Task 22 verification consumes independent callback and mount traces. Fully rebound callback-slot collision and
+  stale-old-projection acceptance probes reject for their dedicated semantic messages.
+- Fresh exact Task 22, Task 8, and Task 21 native producers passed with consumers and task-specific adversarial self-tests.
+  Focused contracts, all changed-Java diagnostics, and strict dependency-verified check/build passed. Task 22 remains
+  unchecked pending independent re-verification; Task 23 and Task 25 remain untouched.
+
+## 2026-09-20T01:01:27+10:00 Task 22 identity-settlement gating repair result
+
+- Diagnosis: failing log `attempt-20260919T143950003Z/positive-provenancemultientry.log` passed the fixture ready assertion,
+  recorded native nodes moving from Grid `712c4298` to `659edc8b`, then failed discovery with `UNSETTLED_ORIGIN` before any
+  Task 22 semantic evidence. Quiet unchanged full-scope and isolated executions passed, and no GameTest process/listener or
+  runtime tree existed before triage.
+- Red: `StorageProvenanceContractTest.nativeFixtureReadinessIncludesSettledDiscoveryOrigin` failed with `4 tests completed,
+  1 failed` because fixture readiness did not include discovery's confirmed-origin precondition.
+- Green: `ProvenanceStorageFixture.ready()` now requires `confirmedNetworkId(grid()).isPresent()` after active/booted checks;
+  the focused contract passed and both changed Java files have zero diagnostics. Production discovery remains unchanged.
+- Runtime QA: three serial exact Task 22 runs and all three persisted consumers passed under distinct roots. Final result is
+  `.omo/evidence/task-22-settlement-run-3/attempt-20260919T145629768Z/result.json`; its adversarial self-test rejected every
+  intended mutation, and multi-entry retained three aliases, priority 40, quantity 11, equal capacity 8117, and native
+  operation authority.
+- Final gates: focused provenance/mount contracts and strict dependency-verified `check`, `build`, shared-JAR verification,
+  and dependency-verification self-test passed. Temporary debug evidence roots were removed; no production semantic change,
+  plan edit, checkbox update, Task 23/25 work, Git index/history operation, or concurrent GameTest launch was performed.
+
+## 2026-09-19T15:15:35Z Task 22 independent repair re-verification
+
+```json
+{
+  "type": "AdversarialReverify",
+  "task": 22,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "Both prior blockers are repaired and independently exercised through fresh native runtime evidence. Raw callback positions survive managed-entry filtering, and stale projection A is isolated after projection B is installed without disturbing B or repeating provider removal.",
+  "freshArtifact": ".omo/evidence/task-22-independent-reverify/attempt-20260919T150955583Z/result.json",
+  "repairedFindings": [
+    {
+      "id": "filtered-callback-index-collides",
+      "status": "confirmed-repaired",
+      "evidence": "The managed-prefix callback records raw slot 1 before rebound and raw slot 0 afterward. Continuity is rejected with UNPROVEN_GRID_REBOUND, the old generation is non-current, and the source domain advances from generation 1 to 2."
+    },
+    {
+      "id": "newer-mount-generation-isolation-unexecuted",
+      "status": "confirmed-repaired",
+      "evidence": "A genuine relationship remount advances source generation 1 to 2 and mount generation 1 to 3. Provider removals advance 0 to 1 and remain 1 after stale calls; old projection listing, insertion, and extraction return 0/0/0, while current projection B inserts 6, lists 6, extracts 2, and retains 4."
+    }
+  ],
+  "identitySettlement": "The native fixture now waits for an active, booted Grid with a confirmed NetworkId before discovery. Fresh provenance.multi-entry completed with three callback aliases and no UNSETTLED_ORIGIN while production discovery remained fail-closed.",
+  "verification": [
+    "Fresh exact provenance.multi-entry, provenance.native-rebind, provenance.exclude-import, and provenance.opaque-boundary producer: BUILD SUCCESSFUL; all four child exits were 0 and all child cleanup lifecycles reported no surviving descendants.",
+    "Persisted federationVerifyEvidence consumer: BUILD SUCCESSFUL.",
+    "federationTaskTwentyTwoEvidenceSelfTest: BUILD SUCCESSFUL; adversarial provenance mutations were rejected for intended reasons.",
+    "StorageProvenanceContractTest and StorageMountContractTest rerun under strict dependency verification: BUILD SUCCESSFUL.",
+    "Strict dependency-verified neoforge check/build: BUILD SUCCESSFUL.",
+    "Task 22 production, contract, and native-test Java files: zero LSP diagnostics."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "absent",
+    "projectLockOrJournal": "absent",
+    "taskOwnedListener": "none; the only observed Java listener belongs to the pre-existing Gradle 9.2.1 daemon",
+    "cleanupReceipt": "GameTest finalizers copied diagnostics before removing task-owned runtime data"
+  },
+  "nonBlockingObservation": "The Task 22 evidence self-test emits a Gradle 9.2.1 deprecation warning for Task.project access at execution time; it does not affect current verification but will become an error in Gradle 10.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence/build artifacts; no production code, tests, Gradle logic, manifest, plan, Git index, or Git history was changed."
+}
+```
+
+## 2026-09-20 Task 23 final verification
+
+- The canonical aggregate for `chain.four-fabric-diamond`, `chain.filter-union-intersection`,
+  `chain.toggle-reexport`, `chain.reject-direct-activation`, and `chain.reject-cycle` passed serially at
+  `/tmp/opencode/task23-evidence-8/attempt-20260919T164317377Z/result.json`.
+- Persisted evidence consumption passed, and `federationTaskTwentyThreeEvidenceSelfTest` rejected its fully rebound
+  semantic mutations for the intended reasons.
+- Focused compiler/mount tests, testmod compilation, `./gradlew build --no-configuration-cache`, `git diff --check`, and
+  Java diagnostics passed. No Git index/history operation, issue, PR, or concurrent GameTest launch was performed.
+
+## 2026-09-20T03:23:51+10:00 Task 23 independent adversarial acceptance
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 23,
+  "verdict": "confirmed",
+  "confidence": 0.98,
+  "summary": "The current checkout satisfies Task 23 Work, Acceptance, and QA. Effective authority retains one filter per operation, intersects serial chains, unions complete alternatives, and cannot form an operation/filter cross-product. The compiler stores one monotone frontier state per origin/network, is bounded by relationship and relaxation budgets, terminates origin and non-origin cycles, and keys one mount per consumer/native origin. Derived relationships remain separate from configured direct Policy state. Every operation rechecks the current effective relationship, exact Policy revisions, topology revision and Fabric references, native source generation/domain, mount generation, source-node readiness, and current provenance.",
+  "sourceEvidence": {
+    "composition": [
+      "common/src/main/java/space/controlnet/ae2federation/storage/dependency/EffectiveStorageAuthority.java:22 retains Map<PolicyOperation, PolicyFilter>; permits selects the requested operation's own filter at line 58.",
+      "common/src/main/java/space/controlnet/ae2federation/storage/dependency/EffectiveStorageAuthority.java:63 intersects matching operation/filter pairs and line 74 unions alternatives per operation.",
+      "common/src/main/java/space/controlnet/ae2federation/storage/dependency/StorageDependencyCompiler.java:79 intersects the provider transit authority with the next direct rule; line 85 merges a candidate into one consumer frontier; line 120 adds only explicitly re-exportable candidates to transit authority."
+    ],
+    "boundedConvergence": [
+      "StorageDependencyCompiler.java:59 stores one FrontierState per NetworkId for each native origin, not complete paths.",
+      "StorageDependencyCompiler.java:72 enforces maxFrontierRelaxations and line 49 enforces maxRelationships; DependencyCompileBudget.standard() is 16,384 relationships and 262,144 relaxations.",
+      "The frontier authority, transit authority, revision map, Fabric-reference set, and minimum depth are monotone and finite. Return-to-origin edges are rejected at line 75; non-origin loops converge when no frontier component changes."
+    ],
+    "directPolicySeparation": [
+      "StorageDependencyIndex.java:69 reads only currently configured, enabled, direct-active rules into immutable DirectStorageDependency values; compiler output is a separate DependencyCompilation.",
+      "PolicyStore remains the sole direct configuration owner. No dependency/compiler path calls Policy edit/delete or changes Policy activation."
+    ],
+    "runtimeAuthority": [
+      "StorageRelationshipAuthority.java:40 requires both current source/mount state and the exact current EffectiveSourceRelationship before every view/insert/extract permission check.",
+      "StorageDependencyIndex.java:122 checks current relationship object identity, current NativeSourceDomain identity, topology revision, source generation, every Policy revision, every FabricReference, and current direct activation.",
+      "StorageDependencyIndex.java:137 re-discovers the exact current native domain and checks provenance currency/readiness; StorageMountService.java:188 checks current mount object, mount generation, source nodes, and domain.",
+      "PolicyService.java:23 and line 31 synchronously reconcile accepted edits/deletes; topology lifecycle callers invoke StorageMountService.topologyChangedIfPresent. A surviving alternative updates the mounted projection through its dynamic effective-key supplier without retaining stale widened authority."
+    ],
+    "nativeFixture": [
+      "ChainStorageFixture.java:69 physically places four MultipartBridgePart instances AB, AC, BD, and CD, waits for four independent Fabric memberships, and uses four powered ME Chests with native cells.",
+      "StorageChainGameTests.java:49 inserts 13 iron into A's qualified native source, reads D's native aggregate, and numerically reconciles D capacity against A+B+C+D native capacity exactly once.",
+      "StorageChainGameTests.java:86-100 performs native source insert/list/extract operations; the route-cross-product attack proves VIEW iron and EXTRACT gold while EXTRACT iron remains zero and copper remains invisible."
+    ]
+  },
+  "runtimeEvidence": {
+    "freshTask23": ".omo/evidence/task-23-independent-review-native/attempt-20260919T171016742Z/result.json",
+    "diamond": "Four Fabrics and two alternatives produced one depth-2 A-to-D relationship; A quantity 13 equaled D visible quantity 13; D simulated capacity 32499 equaled the four native stores exactly once.",
+    "composition": "D observed iron=6, gold=5, copper=0; native extraction returned iron=0 and gold=2, proving serial intersection, alternative union, and no route cross-product.",
+    "reexport": "Visibility was 0 under default-off A-to-B re-export and 7 after the explicit revisioned toggle.",
+    "directRule": "The configured A-to-D direct rule remained DISCONNECTED while the separately derived chain exposed native quantity 5.",
+    "originCycle": "A remained at 9, D saw 9, origin cycle rejections=2, frontier relaxations=6, and no duplicate capacity appeared.",
+    "regressions": [
+      ".omo/evidence/task-23-independent-regression-task21/attempt-20260919T171647302Z/result.json",
+      ".omo/evidence/task-23-independent-regression-task22/attempt-20260919T172003200Z/result.json"
+    ]
+  },
+  "independentAttacks": {
+    "externalCompilerProbe": "/tmp/opencode/task23-independent/src/space/controlnet/ae2federation/storage/dependency/Task23IndependentProbe.java",
+    "result": "PASS: route correlation, serial/alternative scope, non-origin cycle convergence, converged re-export correlation, frontier budget, relationship budget, stale revision rejection, surviving alternative preservation, and direct Policy separation.",
+    "alternativeInvalidation": "Changing one contributing Policy revision made CandidateRelationshipRevision.isCurrent false; recompiling with that path removed retained the independent EXTRACT-gold route while removing the stale VIEW-iron authority.",
+    "fullyReboundMutation": ".omo/evidence/task-23-independent-review/attempt-review-cross-product-forgery-20260920T000000Z/result.json",
+    "mutationResult": "After rebinding run/path/timestamps and all artifact hashes while mutating matching property and runtime trace visibleIron=6 to 0, federationVerifyEvidence failed specifically with 'Task 23 filter union/intersection semantics are incomplete'."
+  },
+  "blockingFindings": [],
+  "commandResults": [
+    "Exact five-case Task 23 federationVerify: BUILD SUCCESSFUL in 2m57s; five child exits 0 and no surviving descendants.",
+    "Fresh federationVerifyEvidence consumer: BUILD SUCCESSFUL.",
+    "federationTaskTwentyThreeEvidenceSelfTest: BUILD SUCCESSFUL; all seven fully rebound built-in probes rejected for intended reasons.",
+    "Independent temporary Gradle/Java probe under strict dependency verification: BUILD SUCCESSFUL and TASK23_INDEPENDENT_PROBE PASS.",
+    "Independent fully rebound visibleIron mutation: expected BUILD FAILED at Task 23 semantic verifier line 2969, after envelope/hash/path checks passed.",
+    "StorageDependencyCompilerTest, StorageMountContractTest, and compileTestmodJava: BUILD SUCCESSFUL.",
+    "Strict :neoforge-1.21.1:check, build, and verifySharedJarContent: BUILD SUCCESSFUL.",
+    "Exact Task 21 and Task 22 native regression producers: BUILD SUCCESSFUL in separate serialized processes.",
+    "All 20 Task 23 production/test/testmod Java files: zero LSP diagnostics; git diff --check clean."
+  ],
+  "releaseIsolation": "verifySharedJarContent passed for binary and sources JARs with no testmod namespace, trace class, test control, or replay-only API leakage.",
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "neoforge-1.21.1/run-gametest absent",
+    "sessionLock": "none",
+    "debugJournal": "none",
+    "taskOwnedListener": "none; observed Java listeners are pre-existing Gradle 8.9 and 9.2.1 daemons",
+    "generatedProbeLogs": "removed from repository root",
+    "cleanupReceipt": ".omo/evidence/task-23-independent-review-native/attempt-20260919T171016742Z/cleanup-receipt.txt"
+  },
+  "risks": [
+    "The canonical GameTest exercises an origin-return cycle; non-origin cyclic and mixed re-export convergence is independently exercised at the real compiler boundary rather than with another native world fixture.",
+    "Task 23's generic outer operation counters allow zero transferred work and several evidence booleans are descriptive. This verdict relies instead on inspected native AE2 calls, numeric native quantity/capacity/extraction assertions, runtime trace correlation, and the independent compiler/mutation attacks.",
+    "The built-in self-test samples seven semantic fields and the verifier ignores unrelated extra trace facts; the independent fully rebound semantic mutation adds coverage but does not make the mutation matrix exhaustive."
+  ],
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence roots under .omo/evidence; no production code, tests, Gradle logic, manifest, plan checkbox, Boulder state, Git index/history, issue, PR, or later-task work was changed. Temporary probe sources remain outside the repository under /tmp/opencode."
+}
+```
