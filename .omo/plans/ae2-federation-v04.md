@@ -357,21 +357,21 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationBenchmark -Pprofile=processing-small -PevidenceDir=.omo/evidence/task-20`; `./gradlew :neoforge-1.21.1:federationVerify -Pcases=benchmark.reject-empty-work,benchmark.resource-accounting,benchmark.evidence-identity,benchmark.execution-timeout,benchmark.shutdown-timeout -PevidenceDir=.omo/evidence/task-20-selftest`. After the harness repair, run one final independent Task 20 review limited to this task's acceptance and the cross-cutting contracts cited here; additional non-plan enhancements are recorded as follow-up and do not reopen Task 20.
   - Commit: proposed `test(perf): establish reproducible Processing factory baseline`.
 
-- [ ] 21. Mount authorized native Storage projections once per relationship
+- [x] 21. Mount authorized native Storage projections once per relationship
   - Work: `storage/mount/` using task 8's qualified native boundary. Forward AEKey, quantity, action and source; compose native filter/access/priority behavior with Policy, not a new allocator. Distinguish visibility/extraction/insertion and source readiness. Hub and Bridge use the same policy service; no Endpoint inventory automatically exported merely by processing reachability.
   - References: D5,T-F01..06,T-C01,T-C03; A-storage; task 8. Depends on 8,14.
   - Acceptance: native terminal/automation sees permitted resources; actual accepted amount controls mutation; simulate has no side effects; redundant connections add no mounts/capacity.
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=storage.native-access,storage.priority,storage.view-only,storage.simulate,storage.reject-revoked -PevidenceDir=.omo/evidence/task-21`.
   - Commit: proposed `feat(storage): mount authorized native access`.
 
-- [ ] 22. Implement provenance aliasing and source-only export lifecycle
+- [x] 22. Implement provenance aliasing and source-only export lifecycle
   - Work: `storage/provenance/`, map native source domains, ExportSource and aliases, distinguish managed projections from true native sources. Unmount/reattach with generation changes; diagnose opaque external aliases without claiming full third-party dedup. Two Bridges or two Hub faces reaching one source are aliases, not inventories.
   - References: D2.3,4.5-4.6,5.3,T-F02..03,T-S10; A-storage; C; task 8. Depends on 8,21.
   - Acceptance: exact same origin listed once across entry aliases and Grid rebound; unsupported alias configuration cannot silently double quantities; native stores remain operation authority.
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=provenance.multi-entry,provenance.native-rebind,provenance.exclude-import,provenance.opaque-boundary -PevidenceDir=.omo/evidence/task-22`.
   - Commit: proposed `feat(storage): preserve true source identity`.
 
-- [ ] 23. Compile chain-sharing policies into bounded effective source relationships
+- [x] 23. Compile chain-sharing policies into bounded effective source relationships
   - Work: `storage/dependency/` and `policy/` effective rule composition. Initial reexport off; per-chain intersection and alternative-chain union retain operation and resource scope. Stop origin cycles and deduplicate origin/consumer pairs; do not enumerate all complete paths. Track candidate relationship revisions and gate actual operations through permitted native chains.
   - References: D4.5-4.7,T-S01..02,T-G11; C; tasks 14,22. Depends on 14,22.
   - Acceptance: four independent Bridge Fabrics form A-B/C-D dependency without common Hub; D sees A once. A-C direct inactive rule stays inactive even when a chain permits access. One allowed filter cannot widen another forbidden resource.
