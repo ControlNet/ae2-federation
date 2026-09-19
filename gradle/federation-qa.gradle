@@ -407,6 +407,9 @@ def verifyTaskTwentyOneEvidence
 def taskTwentyTwoCases = ['provenance.multi-entry', 'provenance.native-rebind', 'provenance.exclude-import',
         'provenance.opaque-boundary']
 def verifyTaskTwentyTwoEvidence
+def taskTwentyThreeCases = ['chain.four-fabric-diamond', 'chain.filter-union-intersection',
+        'chain.toggle-reexport', 'chain.reject-direct-activation', 'chain.reject-cycle']
+def verifyTaskTwentyThreeEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -2890,6 +2893,106 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 22 opaque alias boundary semantics are incomplete')
     }
 }
+verifyTaskTwentyThreeEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyThreeCases }) return
+    if (requested != taskTwentyThreeCases) {
+        throw new GradleException('Task 23 evidence must select the exact canonical case set')
+    }
+    def expected = [chainfourfabricdiamond: 12, chainfilterunionintersection: 11, chaintogglereexport: 8,
+            chainrejectdirectactivation: 8, chainrejectcycle: 9]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-chain') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 23 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 23 native child exits are incomplete')
+    }
+    if (declaredPaths.count { it == 'cleanup-receipt.txt' } != 1
+            || new File(attempt, 'cleanup-receipt.txt').text !=
+            'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n') {
+        throw new GradleException('Task 23 cleanup receipt is missing or malformed')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 23 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 23 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 23 operations') != 1) {
+            throw new GradleException("Task 23 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_POLICY_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 23 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 23 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def diamond = parsed.chainfourfabricdiamond as Properties
+    def capacity = parsePositiveInteger(diamond.getProperty('consumerCapacity'), 'Task 23 consumer capacity')
+    def expectedCapacity = parsePositiveInteger(diamond.getProperty('expectedCapacity'), 'Task 23 expected capacity')
+    if (diamond.getProperty('fabricCount') != '4' || diamond.getProperty('alternativeChains') != '2'
+            || diamond.getProperty('effectiveRelationships') != '5' || diamond.getProperty('originQuantity') != '13'
+            || diamond.getProperty('consumerVisibleQuantity') != '13' || capacity != expectedCapacity
+            || diamond.getProperty('originConsumerRelationships') != '1' || diamond.getProperty('minimumDepth') != '2'
+            || diamond.getProperty('completePathsStored') != 'false' || diamond.getProperty('nativeAuthority') != 'true'
+            || diamond.getProperty('deduplicated') != 'true') {
+        throw new GradleException('Task 23 duplicate origin quantity/capacity semantics are incomplete')
+    }
+    def filters = parsed.chainfilterunionintersection as Properties
+    if (filters.getProperty('visibleIron') != '6' || filters.getProperty('visibleGold') != '5'
+            || filters.getProperty('visibleCopper') != '0' || filters.getProperty('extractedIron') != '0'
+            || filters.getProperty('extractedGold') != '2' || filters.getProperty('serialComposition') != 'intersection'
+            || filters.getProperty('alternativeComposition') != 'union' || filters.getProperty('filterWidened') != 'false'
+            || filters.getProperty('operationWidened') != 'false' || filters.getProperty('nativeMutation') != 'true') {
+        throw new GradleException('Task 23 filter union/intersection semantics are incomplete')
+    }
+    def toggle = parsed.chaintogglereexport as Properties
+    if (toggle.getProperty('defaultReexport') != 'false' || toggle.getProperty('visibleBefore') != '0'
+            || toggle.getProperty('visibleAfter') != '7' || toggle.getProperty('explicitEnableRequired') != 'true'
+            || toggle.getProperty('directRuleRewritten') != 'false'
+            || toggle.getProperty('effectiveRelationshipAfter') != 'true'
+            || toggle.getProperty('failClosedBeforeRecompile') != 'true') {
+        throw new GradleException('Task 23 re-export revision semantics are incomplete')
+    }
+    def direct = parsed.chainrejectdirectactivation as Properties
+    if (direct.getProperty('configuredDirectRule') != 'true' || direct.getProperty('directActivation') != 'DISCONNECTED'
+            || direct.getProperty('derivedEffectivePermission') != 'true' || direct.getProperty('visibleQuantity') != '5'
+            || direct.getProperty('directRuleSynthesized') != 'false' || direct.getProperty('directRuleMutated') != 'false'
+            || direct.getProperty('commonDirectFabric') != 'false') {
+        throw new GradleException('Task 23 direct activation separation semantics are incomplete')
+    }
+    def cycle = parsed.chainrejectcycle as Properties
+    if (cycle.getProperty('originQuantity') != '9' || cycle.getProperty('originVisible') != '9'
+            || cycle.getProperty('downstreamVisible') != '9' || cycle.getProperty('cycleAccepted') != 'false'
+            || parsePositiveInteger(cycle.getProperty('originCycleRejections'), 'Task 23 cycle rejections') < 1
+            || cycle.getProperty('recursiveReexport') != 'false' || cycle.getProperty('duplicateCapacity') != 'false'
+            || parsePositiveInteger(cycle.getProperty('frontierRelaxations'), 'Task 23 frontier relaxations') < 1
+            || cycle.getProperty('completePathsStored') != 'false') {
+        throw new GradleException('Task 23 cycle rejection and bounded frontier semantics are incomplete')
+    }
+}
 def loadTaskTwentyMetrics = { File file ->
     if (!file.isFile()) throw new GradleException("Task 20 benchmark metrics are missing: ${file}")
     def metrics = new LinkedHashMap<String, String>()
@@ -3456,6 +3559,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskTwentyTwoEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskTwentyThreeEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -4006,7 +4111,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
-                    || testCase.id.startsWith('provenance.')) ? 1 : 2,
+                    || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4014,7 +4119,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
-                            || testCase.id.startsWith('provenance.')])
+                            || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -4337,6 +4442,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'chain.four-fabric-diamond':
+                case 'chain.filter-union-intersection':
+                case 'chain.toggle-reexport':
+                case 'chain.reject-direct-activation':
+                case 'chain.reject-cycle':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
                 case 'provenance.multi-entry':
                 case 'provenance.native-rebind':
                 case 'provenance.exclude-import':
@@ -4427,6 +4544,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskNineteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyThreeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -6391,5 +6509,62 @@ tasks.register('federationTaskTwentyTwoEvidenceSelfTest') {
             throw new GradleException("Task 22 adversarial provenance evidence was accepted: ${accepted.join(', ')}")
         }
         logger.lifecycle('Task 22 adversarial provenance evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyThreeEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 23 chain-sharing evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 23 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String value, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task23-${artifactId}-${fact}", expectedMessage) {
+                    File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 23 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def probes = [
+                duplicateOriginQuantity: mutateFact('chainfourfabricdiamond', 'consumerVisibleQuantity', '26',
+                        'Task 23 duplicate origin quantity/capacity semantics are incomplete'),
+                duplicateOriginCapacity: taskSevenEvidenceProbeRejects(sourceResult, 'task23-duplicate-capacity',
+                        'Task 23 duplicate origin quantity/capacity semantics are incomplete') { File attempt, Map report ->
+                    def file = new File(attempt, 'native-chainfourfabricdiamond.properties')
+                    def properties = loadProperties(file)
+                    def oldValue = properties.getProperty('consumerCapacity')
+                    def value = (oldValue.toLong() * 2).toString()
+                    properties.setProperty('consumerCapacity', value)
+                    file.withOutputStream { properties.store(it, 'Task 23 duplicate capacity probe') }
+                    def log = new File(attempt, 'positive-chainfourfabricdiamond.log')
+                    log.text = log.text.replace("fact=consumerCapacity value=${oldValue}",
+                            "fact=consumerCapacity value=${value}")
+                },
+                filterWidening: mutateFact('chainfilterunionintersection', 'visibleCopper', '4',
+                        'Task 23 filter union/intersection semantics are incomplete'),
+                forgedDirectActivation: mutateFact('chainrejectdirectactivation', 'directActivation', 'ACTIVE',
+                        'Task 23 direct activation separation semantics are incomplete'),
+                staleRevisionAcceptance: mutateFact('chaintogglereexport', 'failClosedBeforeRecompile', 'false',
+                        'Task 23 re-export revision semantics are incomplete'),
+                cycleAcceptance: mutateFact('chainrejectcycle', 'cycleAccepted', 'true',
+                        'Task 23 cycle rejection and bounded frontier semantics are incomplete'),
+                cleanupOmission: taskSevenEvidenceProbeRejects(sourceResult, 'task23-cleanup-omission',
+                        'Task 23 cleanup receipt is missing or malformed') { File attempt, Map report ->
+                    new File(attempt, 'cleanup-receipt.txt').text = 'cleanup omitted\n'
+                }
+        ]
+        def accepted = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 23 adversarial chain evidence was accepted: ${accepted.join(', ')}")
+        }
+        logger.lifecycle('Task 23 adversarial chain-sharing evidence probes were rejected for intended reasons')
     }
 }
