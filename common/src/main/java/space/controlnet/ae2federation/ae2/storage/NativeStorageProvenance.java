@@ -23,7 +23,7 @@ public final class NativeStorageProvenance {
             throw new StorageProvenanceException(StorageProvenanceException.Diagnostic.UNKNOWN_PROVIDER,
                     "Native Grid node has no registered storage provider");
         }
-        if (provider instanceof NativeStorageProvider) {
+        if (provider instanceof space.controlnet.ae2federation.storage.provenance.FederationManagedStorageProvider) {
             throw new StorageProvenanceException(StorageProvenanceException.Diagnostic.UNKNOWN_PROVIDER,
                     "Federation providers cannot qualify native source handles");
         }

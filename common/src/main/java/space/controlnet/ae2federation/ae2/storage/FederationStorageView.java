@@ -7,7 +7,7 @@ import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import net.minecraft.network.chat.Component;
 
-final class FederationStorageView implements MEStorage {
+final class FederationStorageView implements space.controlnet.ae2federation.storage.provenance.FederationManagedStorage {
     private final String name;
     private final MEStorage delegate;
 

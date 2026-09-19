@@ -5,7 +5,8 @@ import appeng.api.storage.MEStorage;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public final class NativeStorageProvider implements IStorageProvider {
+public final class NativeStorageProvider implements
+        space.controlnet.ae2federation.storage.provenance.FederationManagedStorageProvider {
     private final NativeStorageProvenance owner;
     private final Map<MEStorage, Integer> mounts = new LinkedHashMap<>();
 
