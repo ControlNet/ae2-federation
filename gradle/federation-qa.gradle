@@ -401,6 +401,9 @@ def taskNineteenCases = ['processing.native-differential', 'processing.shared-ca
         'processing.lock-isolation', 'processing.disconnect-restart', 'processing.dismantle',
         'processing.reject-false-replay']
 def verifyTaskNineteenEvidence
+def taskTwentyOneCases = ['storage.native-access', 'storage.priority', 'storage.view-only', 'storage.simulate',
+        'storage.reject-revoked']
+def verifyTaskTwentyOneEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -1239,6 +1242,10 @@ verifyTaskElevenEvidence = { File attempt, List requested, List<String> declared
             throw new GradleException("Task 11 requires exactly one hash-bound artifact and log for ${testId}")
         }
         def file = new File(attempt, artifact)
+        if (!new File(attempt, log).text.contains('AE2F_STORAGE_LEVEL_CLOSED dimension=minecraft:overworld '
+                + 'mountsRemoved=true registriesRemoved=true')) {
+            throw new GradleException("Task 21 level-unload cleanup receipt is missing from ${log}")
+        }
         def properties = loadProperties(file)
         requireProperty(properties, 'schemaVersion', '1', file)
         requireProperty(properties, 'status', 'passed', file)
@@ -2530,6 +2537,154 @@ verifyTaskNineteenEvidence = { File attempt, List requested, List<String> declar
         throw new GradleException('Task 19 false-replay native receipts are incomplete')
     }
 }
+verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyOneCases }) return
+    if (requested != taskTwentyOneCases) throw new GradleException('Task 21 evidence must select the exact canonical case set')
+    def expected = [storagenativeaccess: 20, storagepriority: 16, storageviewonly: 10, storagesimulate: 9,
+            storagerejectrevoked: 20]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def declaredNativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-storage') && it.endsWith('.properties')
+    }
+    if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 21 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 21 native child exits are incomplete')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 21 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 21 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 21 operations') != 1) {
+            throw new GradleException("Task 21 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_POLICY_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 21 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 21 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def access = parsed.storagenativeaccess as Properties
+    if (access.getProperty('mountedRelationships') != '1' || access.getProperty('insertAccepted') != '9'
+            || access.getProperty('consumerExtracted') != '4' || access.getProperty('providerRemaining') != '5'
+            || access.getProperty('nativeConsumerAggregate') != 'true'
+            || access.getProperty('nativeProviderSource') != 'true'
+            || access.getProperty('direction') != 'consumer-to-provider'
+            || access.getProperty('customInventory') != 'false' || access.getProperty('twoHubFabric') != 'true'
+            || access.getProperty('nativeCaller') != 'player-source') {
+        throw new GradleException('Task 21 native relationship access semantics are incomplete')
+    }
+    def cleanupFields = ['cleanupConsumerBefore', 'cleanupConsumerAfter', 'cleanupServicePresentBefore',
+            'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServiceRemoved',
+            'cleanupRegistryPresentBefore', 'cleanupRegistryRemoved', 'cleanupRegistryAbsentAfter',
+            'cleanupNativeProviderRemoved']
+    if (cleanupFields.any { access.getProperty(it) == null }
+            || access.getProperty('cleanupConsumerBefore') != '5'
+            || access.getProperty('cleanupConsumerAfter') != '0'
+            || access.getProperty('cleanupServicePresentBefore') != 'true'
+            || access.getProperty('cleanupMountedProvidersBefore') != '1'
+            || access.getProperty('cleanupMountedProvidersRemoved') != '1'
+            || access.getProperty('cleanupServiceRemoved') != 'true'
+            || access.getProperty('cleanupRegistryPresentBefore') != 'true'
+            || access.getProperty('cleanupRegistryRemoved') != 'true'
+            || access.getProperty('cleanupRegistryAbsentAfter') != 'true'
+            || access.getProperty('cleanupNativeProviderRemoved') != 'true') {
+        throw new GradleException('Task 21 level cleanup semantics are incomplete')
+    }
+    def priority = parsed.storagepriority as Properties
+    parsePositiveInteger(priority.getProperty('nativePriority'), 'Task 21 native priority')
+    if (priority.getProperty('nativePriority') != priority.getProperty('mountedPriority')
+            || priority.getProperty('priorityPreserved') != 'true'
+            || priority.getProperty('mountedRelationships') != '1'
+            || priority.getProperty('logicalDeduplication') != 'true'
+            || priority.getProperty('aggregateRemounted') != 'false' || priority.getProperty('redundantRoutes') != '2'
+            || priority.getProperty('firstRemovalAccepted') != '1'
+            || priority.getProperty('finalRemovalAccepted') != '0'
+            || priority.getProperty('nonzeroPriority') != 'true') {
+        throw new GradleException('Task 21 native priority or logical mount semantics are incomplete')
+    }
+    def aggregateFields = ['providerInsertedQuantity', 'providerQuantity', 'consumerVisibleQuantity',
+            'providerRemainingCapacity', 'consumerLocalCapacity', 'consumerDeduplicatedCapacity']
+    if (aggregateFields.any { priority.getProperty(it) == null }) {
+        throw new GradleException('Task 21 redundant aggregate quantity/capacity semantics are incomplete')
+    }
+    def providerInsertedQuantity = parsePositiveInteger(priority.getProperty('providerInsertedQuantity'),
+            'Task 21 provider inserted quantity')
+    def providerQuantity = parsePositiveInteger(priority.getProperty('providerQuantity'),
+            'Task 21 provider quantity')
+    def consumerVisibleQuantity = parsePositiveInteger(priority.getProperty('consumerVisibleQuantity'),
+            'Task 21 consumer visible quantity')
+    def providerRemainingCapacity = parsePositiveInteger(priority.getProperty('providerRemainingCapacity'),
+            'Task 21 provider remaining capacity')
+    def consumerLocalCapacity = parsePositiveInteger(priority.getProperty('consumerLocalCapacity'),
+            'Task 21 consumer local capacity')
+    def consumerDeduplicatedCapacity = parsePositiveInteger(priority.getProperty('consumerDeduplicatedCapacity'),
+            'Task 21 consumer deduplicated capacity')
+    if (providerInsertedQuantity != 13 || providerQuantity != providerInsertedQuantity
+            || consumerVisibleQuantity != providerQuantity
+            || consumerDeduplicatedCapacity != providerRemainingCapacity + consumerLocalCapacity) {
+        throw new GradleException('Task 21 redundant aggregate quantity/capacity semantics are incomplete')
+    }
+    def view = parsed.storageviewonly as Properties
+    if (view.getProperty('visibleAmount') != '6' || view.getProperty('insertAccepted') != '0'
+            || view.getProperty('extractAccepted') != '0' || view.getProperty('providerRemaining') != '6'
+            || view.getProperty('viewAllowed') != 'true' || view.getProperty('insertAllowed') != 'false'
+            || view.getProperty('extractAllowed') != 'false' || view.getProperty('nativeMutation') != 'false'
+            || view.getProperty('deniedVisible') != '0' || view.getProperty('allowListApplied') != 'true') {
+        throw new GradleException('Task 21 VIEW-only authorization semantics are incomplete')
+    }
+    def simulation = parsed.storagesimulate as Properties
+    if (simulation.getProperty('simulateInsertAccepted') != '7'
+            || simulation.getProperty('afterSimulateInsert') != '0'
+            || simulation.getProperty('modulatedAmount') != '7'
+            || simulation.getProperty('simulateExtractAccepted') != '3'
+            || simulation.getProperty('afterSimulateExtract') != '7'
+            || simulation.getProperty('actionablePreserved') != 'true'
+            || simulation.getProperty('sourcePreserved') != 'true'
+            || simulation.getProperty('nativeMutationDuringSimulation') != 'false'
+            || simulation.getProperty('deniedResourceAccepted') != '0') {
+        throw new GradleException('Task 21 native simulation semantics are incomplete')
+    }
+    def revoked = parsed.storagerejectrevoked as Properties
+    if (revoked.getProperty('insertAfterRevoke') != '0' || revoked.getProperty('extractAfterRevoke') != '0'
+            || revoked.getProperty('visibleAfterRevoke') != '0'
+            || revoked.getProperty('mountedRelationships') != '0'
+            || revoked.getProperty('providerRemaining') != '5'
+            || revoked.getProperty('dynamicAuthorization') != 'true' || revoked.getProperty('failClosed') != 'true'
+            || revoked.getProperty('globalProviderRemoved') != 'true'
+            || revoked.getProperty('cachedSpendableInventory') != 'false'
+            || revoked.getProperty('reactivated') != 'true'
+            || revoked.getProperty('invalidSecondCallback') != 'BACKEND_UNREADY'
+            || revoked.getProperty('repeatedRevocation') != 'true'
+            || revoked.getProperty('sourceReplacementAccepted') != '0'
+            || revoked.getProperty('staleSourceMountRemoved') != 'true'
+            || revoked.getProperty('providerInactiveAccepted') != '0'
+            || revoked.getProperty('inactiveMountRemoved') != 'true') {
+        throw new GradleException('Task 21 revoked relationship rejection semantics are incomplete')
+    }
+}
 def loadTaskTwentyMetrics = { File file ->
     if (!file.isFile()) throw new GradleException("Task 20 benchmark metrics are missing: ${file}")
     def metrics = new LinkedHashMap<String, String>()
@@ -3092,6 +3247,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskNineteenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskTwentyOneEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -3641,14 +3798,14 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                     || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
-                    || testCase.id.startsWith('processing.')) ? 1 : 2,
+                    || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                             || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
-                            || testCase.id.startsWith('processing.')])
+                            || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -3959,6 +4116,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'storage.native-access':
+                case 'storage.priority':
+                case 'storage.view-only':
+                case 'storage.simulate':
+                case 'storage.reject-revoked':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
                 case 'provider.pattern-mapping':
                 case 'provider.refresh-priority':
                 case 'provider.single-inventory':
@@ -4036,6 +4205,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskSeventeenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskEighteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskNineteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -5734,5 +5904,115 @@ tasks.register('federationTaskNineteenEvidenceSelfTest') {
             throw new GradleException("Task 19 adversarial Processing evidence was accepted at probe ${acceptedProbe}")
         }
         logger.lifecycle('Task 19 adversarial Processing evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 21 authorized native Storage evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 21 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String value, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task21-${artifactId}-${fact}", expectedMessage) { attempt, report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 21 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def mutateNumericFact = { String artifactId, String fact, Closure<Long> mutation, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task21-${artifactId}-${fact}-numeric", expectedMessage) {
+                    attempt, report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                def value = mutation(oldValue.toLong()).toString()
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 21 adversarial numeric probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def mutateMissingFact = { String artifactId, String fact, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task21-${artifactId}-${fact}-missing", expectedMessage) {
+                    attempt, report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                properties.remove(fact)
+                file.withOutputStream { properties.store(it, 'Task 21 adversarial missing-fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().findAll { !it.contains("fact=${fact} ") }.join('\n') + '\n'
+            }
+        }
+        def mutateFacts = { String artifactId, Map<String, String> mutations, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task21-${artifactId}-cleanup-false", expectedMessage) {
+                    attempt, report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def log = new File(attempt, "positive-${artifactId}.log")
+                def logText = log.text
+                mutations.each { fact, value ->
+                    def oldValue = properties.getProperty(fact)
+                    properties.setProperty(fact, value)
+                    logText = logText.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+                }
+                file.withOutputStream { properties.store(it, 'Task 21 adversarial cleanup probe') }
+                log.text = logText
+            }
+        }
+        def probes = [
+                customInventory: mutateFact('storagenativeaccess', 'customInventory', 'true',
+                        'Task 21 native relationship access semantics are incomplete'),
+                twoHubFabric: mutateFact('storagenativeaccess', 'twoHubFabric', 'false',
+                        'Task 21 native relationship access semantics are incomplete'),
+                mountedPriority: mutateFact('storagepriority', 'mountedPriority', '2147483647',
+                        'Task 21 native priority or logical mount semantics are incomplete'),
+                redundantRoutes: mutateFact('storagepriority', 'redundantRoutes', '1',
+                        'Task 21 native priority or logical mount semantics are incomplete'),
+                doubledConsumerQuantity: mutateNumericFact('storagepriority', 'consumerVisibleQuantity',
+                        { value -> value * 2 },
+                        'Task 21 redundant aggregate quantity/capacity semantics are incomplete'),
+                missingConsumerQuantity: mutateMissingFact('storagepriority', 'consumerVisibleQuantity',
+                        'Task 21 redundant aggregate quantity/capacity semantics are incomplete'),
+                doubledConsumerCapacity: mutateNumericFact('storagepriority', 'consumerDeduplicatedCapacity',
+                        { value -> value * 2 },
+                        'Task 21 redundant aggregate quantity/capacity semantics are incomplete'),
+                missingConsumerCapacity: mutateMissingFact('storagepriority', 'consumerDeduplicatedCapacity',
+                        'Task 21 redundant aggregate quantity/capacity semantics are incomplete'),
+                falseCleanupReceipt: mutateFacts('storagenativeaccess', [cleanupConsumerBefore: '0',
+                        cleanupConsumerAfter: '5',
+                        cleanupServicePresentBefore: 'false', cleanupMountedProvidersBefore: '0',
+                        cleanupMountedProvidersRemoved: '0', cleanupServiceRemoved: 'false',
+                        cleanupRegistryPresentBefore: 'false', cleanupRegistryRemoved: 'false',
+                        cleanupRegistryAbsentAfter: 'false', cleanupNativeProviderRemoved: 'false'],
+                        'Task 21 level cleanup semantics are incomplete'),
+                viewExtract: mutateFact('storageviewonly', 'extractAccepted', '2',
+                        'Task 21 VIEW-only authorization semantics are incomplete'),
+                simulateMutation: mutateFact('storagesimulate', 'afterSimulateExtract', '4',
+                        'Task 21 native simulation semantics are incomplete'),
+                revokedProvider: mutateFact('storagerejectrevoked', 'globalProviderRemoved', 'false',
+                        'Task 21 revoked relationship rejection semantics are incomplete'),
+                sourceReplacement: mutateFact('storagerejectrevoked', 'sourceReplacementAccepted', '1',
+                        'Task 21 revoked relationship rejection semantics are incomplete'),
+                callbackValidity: mutateFact('storagerejectrevoked', 'invalidSecondCallback', 'READY',
+                        'Task 21 revoked relationship rejection semantics are incomplete'),
+                incompleteTrace: taskSevenEvidenceProbeRejects(sourceResult, 'task21-incomplete-trace',
+                        'Task 21 runtime trace mismatch') { attempt, report ->
+                    def log = new File(attempt, 'positive-storagerejectrevoked.log')
+                    log.text = log.readLines().findAll { !it.contains('fact=dynamicAuthorization ') }.join('\n') + '\n'
+                }
+        ]
+        def accepted = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 21 adversarial Storage evidence was accepted: ${accepted.join(', ')}")
+        }
+        logger.lifecycle('Task 21 adversarial authorized Storage evidence probes were rejected for intended reasons')
     }
 }
