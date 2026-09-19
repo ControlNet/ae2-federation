@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.fabric.port.FederationPort;
 import space.controlnet.ae2federation.fabric.port.HubFacePort;
 import space.controlnet.ae2federation.fabric.port.HubPortBinding;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.fabric.FabricInvalidationReason;
 import space.controlnet.ae2federation.fabric.FabricNodeEvidence;
 import space.controlnet.ae2federation.fabric.FabricNodeId;
@@ -140,7 +141,8 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.get(serverLevel).removeNode(fabricNodeId);
+            FabricRegistryAccess.removeNodeIfPresent(serverLevel, fabricNodeId);
+            StorageMountService.reconcileIfPresent(serverLevel);
         }
         initialized = false;
         fabricDirty = true;
@@ -150,8 +152,9 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
     private void invalidateFabricTopology() {
         fabricDirty = true;
         if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.get(serverLevel).invalidateNode(fabricNodeId,
+            FabricRegistryAccess.invalidateNodeIfPresent(serverLevel, fabricNodeId,
                     FabricInvalidationReason.TOPOLOGY_CHANGED);
+            StorageMountService.reconcileIfPresent(serverLevel);
         }
     }
 
@@ -172,6 +175,7 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
             }
         }
         FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
+        StorageMountService.get(serverLevel).observeFabricMembers(nativeFacesByGrid().keySet());
         fabricDirty = false;
     }
 }

@@ -29,6 +29,7 @@ import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 public final class MultipartBridgePart extends AEBasePart {
     @PartModels
@@ -213,15 +214,18 @@ public final class MultipartBridgePart extends AEBasePart {
         }
         var candidate = nextStatus.membershipCandidate().orElse(null);
         if (candidate == null) {
-            FabricRegistryAccess.get(serverLevel).invalidateDirectBridge(fabricSource);
+            FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
+            StorageMountService.reconcileIfPresent(serverLevel);
             return;
         }
         var mainId = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid());
         var outerId = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid());
         if (mainId.isEmpty() || outerId.isEmpty()) {
-            FabricRegistryAccess.get(serverLevel).invalidateDirectBridge(fabricSource);
+            FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
+            StorageMountService.reconcileIfPresent(serverLevel);
             return;
         }
         FabricRegistryAccess.get(serverLevel).upsertDirectBridge(fabricSource, mainId.get(), outerId.get());
+        StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }

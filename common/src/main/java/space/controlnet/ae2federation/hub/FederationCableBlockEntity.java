@@ -17,6 +17,7 @@ import space.controlnet.ae2federation.fabric.FabricPortEvidence;
 import space.controlnet.ae2federation.fabric.FabricPortId;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.fabric.port.CableFacePort;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 public final class FederationCableBlockEntity extends BlockEntity {
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
@@ -77,8 +78,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private void invalidateFabricTopology() {
         fabricDirty = true;
         if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.get(serverLevel).invalidateNode(fabricNodeId,
+            FabricRegistryAccess.invalidateNodeIfPresent(serverLevel, fabricNodeId,
                     FabricInvalidationReason.TOPOLOGY_CHANGED);
+            StorageMountService.topologyChangedIfPresent(serverLevel);
         }
     }
 
@@ -96,12 +98,14 @@ public final class FederationCableBlockEntity extends BlockEntity {
             }
         });
         FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
+        StorageMountService.topologyChangedIfPresent(serverLevel);
         fabricDirty = false;
     }
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.get(serverLevel).removeNode(fabricNodeId);
+            FabricRegistryAccess.removeNodeIfPresent(serverLevel, fabricNodeId);
+            StorageMountService.topologyChangedIfPresent(serverLevel);
         }
         initialized = false;
         fabricDirty = true;
