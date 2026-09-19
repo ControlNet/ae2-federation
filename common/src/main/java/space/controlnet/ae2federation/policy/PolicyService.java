@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.persistence.PolicySavedData;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 public final class PolicyService {
     private final ServerLevel level;
@@ -20,11 +21,19 @@ public final class PolicyService {
     }
 
     public PolicyMutationResult edit(PolicyEdit edit) {
-        return data.edit(edit);
+        var result = data.edit(edit);
+        if (result instanceof PolicyMutationResult.Accepted) {
+            StorageMountService.reconcileIfPresent(level);
+        }
+        return result;
     }
 
     public PolicyMutationResult delete(PolicyDelete deletion) {
-        return data.delete(deletion);
+        var result = data.delete(deletion);
+        if (result instanceof PolicyMutationResult.Accepted) {
+            StorageMountService.reconcileIfPresent(level);
+        }
+        return result;
     }
 
     public Optional<PolicyRecord.Configured> configured(PolicyKey key) {
