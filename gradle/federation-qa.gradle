@@ -404,6 +404,9 @@ def verifyTaskNineteenEvidence
 def taskTwentyOneCases = ['storage.native-access', 'storage.priority', 'storage.view-only', 'storage.simulate',
         'storage.reject-revoked']
 def verifyTaskTwentyOneEvidence
+def taskTwentyTwoCases = ['provenance.multi-entry', 'provenance.native-rebind', 'provenance.exclude-import',
+        'provenance.opaque-boundary']
+def verifyTaskTwentyTwoEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -2685,6 +2688,208 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 21 revoked relationship rejection semantics are incomplete')
     }
 }
+verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyTwoCases }) return
+    if (requested != taskTwentyTwoCases) throw new GradleException('Task 22 evidence must select the exact canonical case set')
+    def expected = [provenancemultientry: 10, provenancenativerebind: 32,
+            provenanceexcludeimport: 8, provenanceopaqueboundary: 8]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-provenance') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 22 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 22 native child exits are incomplete')
+    }
+    if (declaredPaths.count { it == 'cleanup-receipt.txt' } != 1
+            || new File(attempt, 'cleanup-receipt.txt').text !=
+            'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n') {
+        throw new GradleException('Task 22 cleanup receipt is missing or malformed')
+    }
+    def parsed = [:]
+    def nativeRecords = [:].withDefault { [] }
+    def rejectionRecords = [:].withDefault { [] }
+    def callbackRecords = [:].withDefault { [] }
+    def mountRecords = [:].withDefault { [] }
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 22 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 22 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 22 operations') != 1) {
+            throw new GradleException("Task 22 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def logText = new File(attempt, log).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_POLICY_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 22 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 22 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        (logText =~ /AE2F_PROVENANCE_NATIVE testId=([a-z0-9]+) phase=([^\s]+) origin=([^\s]+) generation=([0-9]+) grid=([0-9]+) source=([^\s]+) storage=([0-9]+) aliases=([^\s]+) priority=(-?[0-9]+)/).each { match ->
+            if (match[1] == testId) nativeRecords[testId] << [phase: match[2], origin: match[3],
+                    generation: match[4], grid: match[5], source: match[6], storage: match[7],
+                    aliases: match[8], priority: match[9]]
+        }
+        (logText =~ /AE2F_PROVENANCE_REJECTION testId=([a-z0-9]+) origin=([^\s]+) generation=([0-9]+) diagnostic=([^\s]+) current=([^\s]+)/).each { match ->
+            if (match[1] == testId) rejectionRecords[testId] << [origin: match[2], generation: match[3],
+                    diagnostic: match[4], current: match[5]]
+        }
+        (logText =~ /AE2F_PROVENANCE_CALLBACK testId=([a-z0-9]+) phase=([^\s]+) slot=([0-9]+) managed=(true|false)/).each { match ->
+            if (match[1] == testId) callbackRecords[testId] << [phase: match[2], slot: match[3], managed: match[4]]
+        }
+        (logText =~ /AE2F_PROVENANCE_MOUNT testId=([a-z0-9]+) projectionBefore=([0-9]+) projectionAfter=([0-9]+) sourceGenerationBefore=([0-9]+) sourceGenerationAfter=([0-9]+) mountGenerationBefore=([0-9]+) mountGenerationAfter=([0-9]+) removalsBefore=([0-9]+) removalsAfterRemount=([0-9]+) removalsAfterStale=([0-9]+) oldVisible=([0-9]+) oldInserted=([0-9]+) oldExtracted=([0-9]+) newInserted=([0-9]+) newVisible=([0-9]+) newExtracted=([0-9]+) newRemaining=([0-9]+)/).each { match ->
+            if (match[1] == testId) mountRecords[testId] << [projectionBefore: match[2], projectionAfter: match[3],
+                    sourceGenerationBefore: match[4], sourceGenerationAfter: match[5],
+                    mountGenerationBefore: match[6], mountGenerationAfter: match[7], removalsBefore: match[8],
+                    removalsAfterRemount: match[9], removalsAfterStale: match[10], oldVisible: match[11],
+                    oldInserted: match[12], oldExtracted: match[13], newInserted: match[14],
+                    newVisible: match[15], newExtracted: match[16], newRemaining: match[17]]
+        }
+        parsed[testId] = properties
+    }
+    def sourcePattern = ~/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9]+$/
+    def multi = parsed.provenancemultientry as Properties
+    def multiNative = nativeRecords.provenancemultientry
+    def providerCapacity = parsePositiveInteger(multi.getProperty('providerCapacity'), 'Task 22 provider capacity')
+    def visibleCapacity = parsePositiveInteger(multi.getProperty('visibleCapacity'), 'Task 22 visible capacity')
+    if (multiNative.size() != 1 || multi.getProperty('exportSourceId') != multiNative[0].source
+            || !(multiNative[0].source ==~ sourcePattern) || multi.getProperty('originNetworkId') != multiNative[0].origin
+            || multi.getProperty('generation') != multiNative[0].generation
+            || multi.getProperty('nativeStorageIdentity') != multiNative[0].storage
+            || multi.getProperty('aliasIds') != multiNative[0].aliases
+            || !multiNative[0].aliases.split(',').contains(multiNative[0].source)
+            || multi.getProperty('selectedPriority') != multiNative[0].priority
+            || multi.getProperty('aliasCount') != '3' || multi.getProperty('exportSourceCount') != '1'
+            || multi.getProperty('providerQuantity') != '11' || multi.getProperty('visibleQuantity') != '11'
+            || providerCapacity != visibleCapacity || multi.getProperty('nativeAuthority') != 'true') {
+        throw new GradleException('Task 22 multi-entry alias or quantity/capacity semantics are incomplete')
+    }
+    def rebound = parsed.provenancenativerebind as Properties
+    def reboundNative = nativeRecords.provenancenativerebind.sort { it.phase }
+    if (reboundNative*.phase != ['after', 'before', 'slot-before']) {
+        throw new GradleException('Task 22 native rebound trace phases are incomplete')
+    }
+    def after = reboundNative[0]
+    def before = reboundNative[1]
+    def slotBefore = reboundNative[2]
+    if (before.origin != after.origin || before.source != after.source || before.aliases != after.aliases
+            || before.grid == after.grid || before.storage == after.storage
+            || before.generation.toLong() >= after.generation.toLong()
+            || rebound.getProperty('originBefore') != before.origin || rebound.getProperty('originAfter') != after.origin
+            || rebound.getProperty('sourceBefore') != before.source || rebound.getProperty('sourceAfter') != after.source
+            || rebound.getProperty('aliasBefore') != before.aliases || rebound.getProperty('aliasAfter') != after.aliases
+            || rebound.getProperty('storageBefore') != before.storage || rebound.getProperty('storageAfter') != after.storage
+            || rebound.getProperty('generationBefore') != before.generation
+            || rebound.getProperty('generationAfter') != after.generation
+            || rebound.getProperty('gridBefore') != before.grid || rebound.getProperty('gridAfter') != after.grid
+            || rebound.getProperty('oldGenerationCurrent') != 'false'
+            || rebound.getProperty('newGenerationCurrent') != 'true'
+            || rebound.getProperty('acceptedAfterRebind') != '7' || rebound.getProperty('sourceCount') != '1') {
+        throw new GradleException('Task 22 native rebound identity or generation semantics are incomplete')
+    }
+    def callback = callbackRecords.provenancenativerebind
+    def reboundRejection = rejectionRecords.provenancenativerebind
+    if (callback.size() != 3
+            || callback.findAll { it.phase == 'slot-before' }*.slot != ['0', '1']
+            || callback.findAll { it.phase == 'slot-before' }*.managed != ['true', 'false']
+            || callback.findAll { it.phase == 'slot-after' }*.slot != ['0']
+            || callback.findAll { it.phase == 'slot-after' }*.managed != ['false']
+            || reboundRejection.size() != 1 || reboundRejection[0].origin != slotBefore.origin
+            || reboundRejection[0].generation != slotBefore.generation
+            || reboundRejection[0].diagnostic != 'UNPROVEN_GRID_REBOUND'
+            || reboundRejection[0].current != 'false'
+            || rebound.getProperty('slotOrigin') != slotBefore.origin
+            || rebound.getProperty('slotSourceBefore') != slotBefore.source
+            || rebound.getProperty('slotAliasBefore') != slotBefore.aliases
+            || !(slotBefore.source ==~ sourcePattern) || !slotBefore.source.endsWith(':1')
+            || slotBefore.aliases != slotBefore.source || rebound.getProperty('slotBeforeNativeIndex') != '1'
+            || rebound.getProperty('slotAfterNativeIndex') != '0'
+            || rebound.getProperty('slotManagedBefore') != '1'
+            || rebound.getProperty('slotManagedAfter') != '0'
+            || rebound.getProperty('slotReboundDiagnostic') != 'UNPROVEN_GRID_REBOUND'
+            || rebound.getProperty('slotOldGenerationCurrent') != 'false') {
+        throw new GradleException('Task 22 callback-slot continuity semantics are incomplete')
+    }
+    def mount = mountRecords.provenancenativerebind
+    if (mount.size() != 1 || rebound.getProperty('mountProjectionBefore') != mount[0].projectionBefore
+            || rebound.getProperty('mountProjectionAfter') != mount[0].projectionAfter
+            || rebound.getProperty('mountSourceGenerationBefore') != mount[0].sourceGenerationBefore
+            || rebound.getProperty('mountSourceGenerationAfter') != mount[0].sourceGenerationAfter
+            || rebound.getProperty('mountGenerationBefore') != mount[0].mountGenerationBefore
+            || rebound.getProperty('mountGenerationAfter') != mount[0].mountGenerationAfter
+            || rebound.getProperty('providerRemovalsBefore') != mount[0].removalsBefore
+            || rebound.getProperty('providerRemovalsAfterRemount') != mount[0].removalsAfterRemount
+            || rebound.getProperty('providerRemovalsAfterStale') != mount[0].removalsAfterStale
+            || rebound.getProperty('oldVisibleAfterRemount') != mount[0].oldVisible
+            || rebound.getProperty('oldInsertAfterRemount') != mount[0].oldInserted
+            || rebound.getProperty('oldExtractAfterRemount') != mount[0].oldExtracted
+            || rebound.getProperty('newInsertAccepted') != mount[0].newInserted
+            || rebound.getProperty('newVisible') != mount[0].newVisible
+            || rebound.getProperty('newExtractAccepted') != mount[0].newExtracted
+            || rebound.getProperty('newRemaining') != mount[0].newRemaining
+            || mount[0].projectionBefore == mount[0].projectionAfter
+            || mount[0].sourceGenerationBefore.toLong() >= mount[0].sourceGenerationAfter.toLong()
+            || mount[0].mountGenerationBefore.toLong() >= mount[0].mountGenerationAfter.toLong()
+            || mount[0].removalsAfterRemount.toLong() != mount[0].removalsBefore.toLong() + 1
+            || mount[0].removalsAfterStale != mount[0].removalsAfterRemount
+            || [mount[0].oldVisible, mount[0].oldInserted, mount[0].oldExtracted] != ['0', '0', '0']
+            || [mount[0].newInserted, mount[0].newVisible, mount[0].newExtracted, mount[0].newRemaining]
+                    != ['6', '6', '2', '4']
+            || rebound.getProperty('mountedAfterStale') != '1'
+            || rebound.getProperty('newProjectionCurrent') != 'true') {
+        throw new GradleException('Task 22 stale old-projection isolation semantics are incomplete')
+    }
+    def excluded = parsed.provenanceexcludeimport as Properties
+    def excludedNative = nativeRecords.provenanceexcludeimport
+    if (excludedNative.size() != 1 || excluded.getProperty('originNetworkId') != excludedNative[0].origin
+            || excluded.getProperty('exportSourceId') != excludedNative[0].source
+            || excluded.getProperty('generation') != excludedNative[0].generation
+            || excluded.getProperty('aliasId') != excludedNative[0].aliases
+            || excluded.getProperty('nativeStorageIdentity') != excludedNative[0].storage
+            || excluded.getProperty('exportSourceCount') != '1' || excluded.getProperty('nativeAliasCount') != '1'
+            || excluded.getProperty('managedPriorityAccepted') != 'false'
+            || excluded.getProperty('nativeAccepted') != '5'
+            || excluded.getProperty('managedImportsExcluded') != 'true') {
+        throw new GradleException('Task 22 managed import exclusion semantics are incomplete')
+    }
+    def opaque = parsed.provenanceopaqueboundary as Properties
+    def opaqueNative = nativeRecords.provenanceopaqueboundary
+    def opaqueRejection = rejectionRecords.provenanceopaqueboundary
+    if (opaqueNative.size() != 1 || opaqueRejection.size() != 1
+            || opaque.getProperty('originNetworkId') != opaqueNative[0].origin
+            || opaque.getProperty('originNetworkId') != opaqueRejection[0].origin
+            || opaque.getProperty('generationBefore') != opaqueNative[0].generation
+            || opaque.getProperty('generationBefore') != opaqueRejection[0].generation
+            || opaque.getProperty('diagnostic') != 'OPAQUE_EXTERNAL_ALIAS'
+            || opaque.getProperty('diagnostic') != opaqueRejection[0].diagnostic
+            || opaqueRejection[0].current != 'false' || opaque.getProperty('wholeRelationshipRejected') != 'true'
+            || opaque.getProperty('partialSourcesAccepted') != '0'
+            || opaque.getProperty('oldGenerationCurrent') != 'false'
+            || opaque.getProperty('nativeQuantity') != '0'
+            || opaque.getProperty('opaqueCompatibility') != 'unsupported-fail-closed') {
+        throw new GradleException('Task 22 opaque alias boundary semantics are incomplete')
+    }
+}
 def loadTaskTwentyMetrics = { File file ->
     if (!file.isFile()) throw new GradleException("Task 20 benchmark metrics are missing: ${file}")
     def metrics = new LinkedHashMap<String, String>()
@@ -3249,6 +3454,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskTwentyOneEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskTwentyTwoEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -3798,14 +4005,16 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                     || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
-                    || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')) ? 1 : 2,
+                    || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
+                    || testCase.id.startsWith('provenance.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
                             || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
-                            || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')])
+                            || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
+                            || testCase.id.startsWith('provenance.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -4128,6 +4337,17 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
+                case 'provenance.multi-entry':
+                case 'provenance.native-rebind':
+                case 'provenance.exclude-import':
+                case 'provenance.opaque-boundary':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                            allowZeroWork: true])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
                 case 'provider.pattern-mapping':
                 case 'provider.refresh-priority':
                 case 'provider.single-inventory':
@@ -4206,6 +4426,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskEighteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskNineteenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -6014,5 +6235,161 @@ tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
             throw new GradleException("Task 21 adversarial Storage evidence was accepted: ${accepted.join(', ')}")
         }
         logger.lifecycle('Task 21 adversarial authorized Storage evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyTwoEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 22 provenance evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 22 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String value, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task22-${artifactId}-${fact}", expectedMessage) {
+                    File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 22 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def mutateNative = { String name, String artifactId, Object oldText, String newText, String expectedMessage,
+                Closure mutateProperties ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task22-${name}", expectedMessage) { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def before = properties.stringPropertyNames().collectEntries { [(it): properties.getProperty(it)] }
+                mutateProperties(properties)
+                file.withOutputStream { properties.store(it, "Task 22 ${name} probe") }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                def logText = log.text
+                properties.stringPropertyNames().findAll { before[it] != properties.getProperty(it) }.each { fact ->
+                    logText = logText.replace("fact=${fact} value=${before[fact]}",
+                            "fact=${fact} value=${properties.getProperty(fact)}")
+                }
+                log.text = oldText instanceof java.util.regex.Pattern
+                        ? logText.replaceAll(oldText, newText) : logText.replace(oldText as String, newText)
+            }
+        }
+        def fabricatedAlias = '00000000-0000-0000-0000-000000000001:99'
+        def probes = [
+                fabricatedAliasIds: mutateNative('fabricated-alias-ids', 'provenancemultientry',
+                        ~/aliases=[^\s]+/, "aliases=${fabricatedAlias}",
+                        'Task 22 multi-entry alias or quantity/capacity semantics are incomplete') { properties ->
+                    properties.setProperty('aliasIds', fabricatedAlias)
+                },
+                removedGenerationTransition: taskSevenEvidenceProbeRejects(sourceResult,
+                        'task22-removed-generation-transition',
+                        'Task 22 native rebound identity or generation semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-provenancenativerebind.properties')
+                    def properties = loadProperties(file)
+                    properties.remove('generationAfter')
+                    file.withOutputStream { properties.store(it, 'Task 22 removed generation transition') }
+                },
+                ('duplicate-origins'): mutateNative('duplicate-origins', 'provenancenativerebind',
+                        ~/phase=after origin=[^\s]+/, 'phase=after origin=00000000-0000-0000-0000-000000000002',
+                        'Task 22 native rebound identity or generation semantics are incomplete') { properties ->
+                    properties.setProperty('originAfter', '00000000-0000-0000-0000-000000000002')
+                    properties.setProperty('originBefore', '00000000-0000-0000-0000-000000000003')
+                },
+                importedProjectionAcceptance: mutateFact('provenanceexcludeimport', 'managedPriorityAccepted', 'true',
+                        'Task 22 managed import exclusion semantics are incomplete'),
+                ('opaque-wrapper-acceptance'): mutateFact('provenanceopaqueboundary', 'wholeRelationshipRejected', 'false',
+                        'Task 22 opaque alias boundary semantics are incomplete'),
+                quantityDoubling: mutateFact('provenancemultientry', 'visibleQuantity', '22',
+                        'Task 22 multi-entry alias or quantity/capacity semantics are incomplete'),
+                capacityDoubling: taskSevenEvidenceProbeRejects(sourceResult, 'task22-capacity-doubling',
+                        'Task 22 multi-entry alias or quantity/capacity semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-provenancemultientry.properties')
+                    def properties = loadProperties(file)
+                    def oldValue = properties.getProperty('visibleCapacity')
+                    def value = (oldValue.toLong() * 2).toString()
+                    properties.setProperty('visibleCapacity', value)
+                    file.withOutputStream { properties.store(it, 'Task 22 capacity doubling') }
+                    def log = new File(attempt, 'positive-provenancemultientry.log')
+                    log.text = log.text.replace("fact=visibleCapacity value=${oldValue}",
+                            "fact=visibleCapacity value=${value}")
+                },
+                wrongReboundIdentity: mutateNative('wrong-rebound-identity', 'provenancenativerebind',
+                        ~/phase=after origin=([^\s]+) generation=([^\s]+) grid=([^\s]+) source=[^\s]+/,
+                        'phase=after origin=$1 generation=$2 grid=$3 source=00000000-0000-0000-0000-000000000004:0',
+                        'Task 22 native rebound identity or generation semantics are incomplete') { properties ->
+                    properties.setProperty('sourceAfter', '00000000-0000-0000-0000-000000000004:0')
+                },
+                staleGenerationAcceptance: mutateFact('provenancenativerebind', 'oldGenerationCurrent', 'true',
+                        'Task 22 native rebound identity or generation semantics are incomplete'),
+                callbackSlotCollisionAcceptance: taskSevenEvidenceProbeRejects(sourceResult,
+                        'task22-callback-slot-collision-acceptance',
+                        'Task 22 callback-slot continuity semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-provenancenativerebind.properties')
+                    def properties = loadProperties(file)
+                    def before = properties.stringPropertyNames().collectEntries { [(it): properties.getProperty(it)] }
+                    properties.setProperty('slotBeforeNativeIndex', '0')
+                    properties.setProperty('slotSourceBefore', properties.getProperty('slotSourceBefore').replaceFirst(/:1$/, ':0'))
+                    properties.setProperty('slotAliasBefore', properties.getProperty('slotAliasBefore').replaceFirst(/:1$/, ':0'))
+                    file.withOutputStream { properties.store(it, 'Task 22 callback slot collision acceptance') }
+                    def log = new File(attempt, 'positive-provenancenativerebind.log')
+                    def text = log.text
+                    properties.stringPropertyNames().findAll { before[it] != properties.getProperty(it) }.each { fact ->
+                        text = text.replace("fact=${fact} value=${before[fact]}",
+                                "fact=${fact} value=${properties.getProperty(fact)}")
+                    }
+                    text = text.replaceFirst(/(phase=slot-before[^\n]*source=[^\s]+):1( storage=[^\n]*aliases=[^\s]+):1/,
+                            '$1:0$2:0')
+                    text = text.replace('phase=slot-before slot=1 managed=false',
+                            'phase=slot-before slot=0 managed=false')
+                    log.text = text
+                },
+                staleOldProjectionAcceptance: taskSevenEvidenceProbeRejects(sourceResult,
+                        'task22-stale-old-projection-acceptance',
+                        'Task 22 stale old-projection isolation semantics are incomplete') { attempt, report ->
+                    def file = new File(attempt, 'native-provenancenativerebind.properties')
+                    def properties = loadProperties(file)
+                    def before = properties.stringPropertyNames().collectEntries { [(it): properties.getProperty(it)] }
+                    def staleRemovals = (properties.getProperty('providerRemovalsAfterRemount').toLong() + 1).toString()
+                    ['oldInsertAfterRemount': '2', 'providerRemovalsAfterStale': staleRemovals,
+                     'mountedAfterStale': '0', 'newProjectionCurrent': 'false', 'newInsertAccepted': '0',
+                     'newVisible': '0', 'newExtractAccepted': '0', 'newRemaining': '0'].each {
+                        fact, value -> properties.setProperty(fact, value)
+                    }
+                    file.withOutputStream { properties.store(it, 'Task 22 stale old projection acceptance') }
+                    def log = new File(attempt, 'positive-provenancenativerebind.log')
+                    def text = log.text
+                    properties.stringPropertyNames().findAll { before[it] != properties.getProperty(it) }.each { fact ->
+                        text = text.replace("fact=${fact} value=${before[fact]}",
+                                "fact=${fact} value=${properties.getProperty(fact)}")
+                    }
+                    ['removalsAfterStale': staleRemovals, 'oldInserted': '2', 'newInserted': '0',
+                     'newVisible': '0', 'newExtracted': '0', 'newRemaining': '0'].each { fact, value ->
+                        text = text.replaceFirst(/(${fact}=)[^\s]+/, '$1' + value)
+                    }
+                    log.text = text
+                },
+                opaqueCurrentAcceptance: mutateFact('provenanceopaqueboundary', 'oldGenerationCurrent', 'true',
+                        'Task 22 opaque alias boundary semantics are incomplete'),
+                malformedProvenanceRecord: taskSevenEvidenceProbeRejects(sourceResult,
+                        'task22-malformed-provenance-record', 'Task 22 native rebound trace phases are incomplete') {
+                            attempt, report ->
+                    def log = new File(attempt, 'positive-provenancenativerebind.log')
+                    log.text = log.text.replaceFirst(/phase=after origin=([^\s]+) generation=[0-9]+/,
+                            'phase=after origin=$1 generation=malformed')
+                },
+                cleanupOmission: taskSevenEvidenceProbeRejects(sourceResult, 'task22-cleanup-omission',
+                        'Task 22 cleanup receipt is missing or malformed') { attempt, report ->
+                    report.artifacts.removeIf { it.path == 'cleanup-receipt.txt' }
+                    project.delete(new File(attempt, 'cleanup-receipt.txt'))
+                }
+        ]
+        def accepted = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 22 adversarial provenance evidence was accepted: ${accepted.join(', ')}")
+        }
+        logger.lifecycle('Task 22 adversarial provenance evidence probes were rejected for intended reasons')
     }
 }
