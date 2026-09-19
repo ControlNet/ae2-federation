@@ -2,13 +2,18 @@ package space.controlnet.ae2federation.test.policy;
 
 import appeng.api.networking.IGrid;
 import appeng.api.util.AEColor;
+import appeng.blockentity.storage.MEChestBlockEntity;
+import appeng.core.definitions.AEBlocks;
+import appeng.core.definitions.AEItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.bridge.BridgeFixtures;
+import space.controlnet.ae2federation.test.storage.InvalidSecondCallbackProvider;
 
 public final class PolicyBridgeFixtures implements AutoCloseable {
     private final GameTestHelper helper;
@@ -17,6 +22,7 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     private final BlockPos secondPosition;
     private MultipartBridgePart first;
     private MultipartBridgePart second;
+    private final InvalidSecondCallbackProvider callbackProbe = new InvalidSecondCallbackProvider();
 
     public PolicyBridgeFixtures(GameTestHelper helper, BlockPos firstPosition) {
         this.helper = helper;
@@ -36,6 +42,14 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
                 && FabricRegistryAccess.confirmedNetworkId(outerGrid()).isPresent();
     }
 
+    public void installStorageCells() {
+        helper.setBlock(firstPosition.south().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(firstPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.<MEChestBlockEntity>getBlockEntity(firstPosition.south()).setCell(AEItems.ITEM_CELL_1K.stack());
+        helper.<MEChestBlockEntity>getBlockEntity(firstPosition.north(2)).setCell(AEItems.ITEM_CELL_1K.stack());
+        bridges.nativePorts().createStorageProvider(Direction.SOUTH, secondPosition.north(2), callbackProbe);
+    }
+
     public MultipartBridgePart placeFirstBridge() {
         first = bridges.placeBridge(firstPosition, Direction.NORTH);
         return first;
@@ -50,12 +64,33 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         return bridgeReady(first);
     }
 
+    public void refreshFirstBridge() {
+        first.onNeighborChanged(helper.getLevel(), helper.absolutePos(firstPosition),
+                helper.absolutePos(firstPosition.north()));
+    }
+
     public boolean secondBridgeReady() {
         return bridgeReady(second);
     }
 
     public void removeFirstBridge() {
         helper.assertTrue(first.getHost().removePart(first), "Original Bridge part must be removed from its AE2 host");
+    }
+
+    public void removeSecondBridge() {
+        helper.assertTrue(second.getHost().removePart(second), "Redundant Bridge part must be removed from its AE2 host");
+    }
+
+    public MEChestBlockEntity providerChest() {
+        return helper.getBlockEntity(firstPosition.north(2));
+    }
+
+    public InvalidSecondCallbackProvider callbackProbe() {
+        return callbackProbe;
+    }
+
+    public void removeProviderChest() {
+        helper.setBlock(firstPosition.north(2), Blocks.AIR);
     }
 
     public IGrid mainGrid() {
