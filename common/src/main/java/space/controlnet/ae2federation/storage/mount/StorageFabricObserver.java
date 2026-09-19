@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.storage.mount;
 import appeng.api.networking.IGrid;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -26,8 +27,7 @@ final class StorageFabricObserver {
     }
 
     Map<PolicyKey, StorageRelationship> relationships() {
-        loadedGrids.entrySet().removeIf(entry -> FabricRegistryAccess.confirmedNetworkId(entry.getValue())
-                .filter(entry.getKey()::equals).isEmpty());
+        discardStaleGrids();
         var relationships = new HashMap<PolicyKey, StorageRelationship>();
         for (var fabric : FabricRegistryAccess.get(level).snapshot().fabrics().values()) {
             var members = fabric.memberships().keySet().stream().map(loadedGrids::get)
@@ -46,6 +46,24 @@ final class StorageFabricObserver {
         return relationships;
     }
 
+    Map<NetworkId, IGrid> loadedGrids() {
+        discardStaleGrids();
+        return Map.copyOf(loadedGrids);
+    }
+
+    Set<space.controlnet.ae2federation.fabric.FabricReference> references(StorageRelationship relationship) {
+        var registry = FabricRegistryAccess.get(level);
+        var consumerFabrics = registry.fabricsFor(relationship.key().consumerNetworkId());
+        var providerFabrics = registry.fabricsFor(relationship.key().providerNetworkId());
+        return consumerFabrics.stream().filter(providerFabrics::contains).map(registry::fabric)
+                .flatMap(java.util.Optional::stream).map(space.controlnet.ae2federation.fabric.FabricSnapshot::reference)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    long topologyRevision() {
+        return FabricRegistryAccess.get(level).snapshot().topologyRevision();
+    }
+
     boolean contains(StorageRelationship relationship) {
         var consumerId = FabricRegistryAccess.confirmedNetworkId(relationship.consumerGrid());
         var providerId = FabricRegistryAccess.confirmedNetworkId(relationship.providerGrid());
@@ -59,5 +77,10 @@ final class StorageFabricObserver {
 
     void clear() {
         loadedGrids.clear();
+    }
+
+    private void discardStaleGrids() {
+        loadedGrids.entrySet().removeIf(entry -> FabricRegistryAccess.confirmedNetworkId(entry.getValue())
+                .filter(entry.getKey()::equals).isEmpty());
     }
 }
