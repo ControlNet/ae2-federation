@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.processing.NativeEndpointObservation;
 import space.controlnet.ae2federation.test.processing.ProviderRuntimeReplayControl;
 import space.controlnet.ae2federation.test.processing.ProviderTargetObservation;
+import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
 
 @Mixin(value = PatternProviderLogic.class, priority = 500)
 public abstract class PatternProviderLogicNativeEvidenceMixin {
@@ -20,6 +21,7 @@ public abstract class PatternProviderLogicNativeEvidenceMixin {
     private void ae2federation_test$observePush(IPatternDetails patternDetails, KeyCounter[] inputHolder,
             CallbackInfoReturnable<Boolean> callback) {
         NativeEndpointObservation.recordPush(this);
+        TerminalNativeObservation.recordProviderPush(this);
     }
 
     @Inject(method = "findAdapter(Lnet/minecraft/core/Direction;)Lappeng/helpers/patternprovider/PatternProviderTarget;",
