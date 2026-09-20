@@ -415,6 +415,9 @@ def taskTwentyFourCases = ['subscription.two-same-key-events', 'subscription.dia
         'subscription.listener-cleanup',
         'subscription.reject-stale-generation']
 def verifyTaskTwentyFourEvidence
+def taskTwentyFiveCases = ['resources.item-fluid-components', 'resources.stored-fe', 'resources.optional-absent',
+        'resources.reject-overflow', 'resources.reject-fe-power-coupling']
+def verifyTaskTwentyFiveEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -3204,6 +3207,160 @@ def taskTwentyProjection = { Map metrics, Map budgets, Map lifecycle ->
              outputEquation: metrics['reconciliation.outputEquation'], currentRun: metrics['reconciliation.currentRun'],
              crossRunCarryover: metrics['reconciliation.crossRunCarryover']], budgets: budgets]
 }
+verifyTaskTwentyFiveEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyFiveCases }) return
+    if (requested != taskTwentyFiveCases) {
+        throw new GradleException('Task 25 evidence must select the exact canonical case set')
+    }
+    def expected = [resourcesitemfluidcomponents: 20, resourcesstoredfe: 21, resourcesoptionalabsent: 4,
+            resourcesrejectoverflow: 7, resourcesrejectfepowercoupling: 6]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-resources') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 25 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 25 native child exits are incomplete')
+    }
+    def qualificationName = 'applied-flux-qualification.properties'
+    if (declaredPaths.count { it == qualificationName } != 1
+            || declaredPaths.count { new File(it).name == qualificationName } != 1) {
+        throw new GradleException('Task 25 requires exactly one Applied Flux qualification dossier')
+    }
+    def qualificationFile = new File(attempt, qualificationName)
+    def qualification = loadProperties(qualificationFile)
+    def qualificationKeys = ['status', 'repository', 'branch', 'inspectedCommit', 'branchHeadAtVerification',
+            'sourceVersion', 'sourceLicense', 'minecraftVersion', 'neoForgeRange', 'ae2Range', 'versionId',
+            'metadataTitle', 'artifactFilename', 'artifactSize', 'artifactSha1', 'artifactSha256', 'artifactSha512',
+            'modrinthDependencies', 'jarRequiredDependencies', 'registeredKeyType', 'keyFactory', 'quantityType',
+            'sourceArtifactCorrelation', 'exactSourceArtifactMapping', 'guideMeCoordinate', 'glodiumCoordinate',
+            'appfluxCoordinate'] as Set
+    if (qualification.stringPropertyNames() != qualificationKeys
+            || qualification.getProperty('status') != 'QUALIFIED'
+            || qualification.getProperty('repository') != 'https://github.com/GlodBlock/ExtendedAE'
+            || qualification.getProperty('branch') != 'appflux/1.21.1-neoforge'
+            || qualification.getProperty('inspectedCommit') != 'a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4'
+            || qualification.getProperty('branchHeadAtVerification') != 'd7488e01e29a49c65a8f2fb9a453f08ae723d6cd'
+            || qualification.getProperty('sourceVersion') != '1.21-2.1.4-neoforge'
+            || qualification.getProperty('sourceLicense') != 'LGPL-3.0-only'
+            || qualification.getProperty('minecraftVersion') != '1.21.1'
+            || qualification.getProperty('neoForgeRange') != '[21.1.113,)'
+            || qualification.getProperty('ae2Range') != '[19.2.2-beta,)'
+            || qualification.getProperty('versionId') != 'sD979rMC'
+            || qualification.getProperty('metadataTitle') != 'AppFlux 1.21-2.1.4-neoforge'
+            || qualification.getProperty('artifactFilename') != 'AppliedFlux-1.21-2.1.4-neoforge.jar'
+            || qualification.getProperty('artifactSize') != '337796'
+            || qualification.getProperty('artifactSha1') != '741e856b0c928fc15b59e92d98ea75ef98541ee8'
+            || qualification.getProperty('artifactSha256') != '2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555'
+            || qualification.getProperty('artifactSha512') != '5dc7119bf192ee798b65dea7f28e279b74ef371a8e59f5147518dd7cddfcc3d45fd6161ce48815ff07f756a3226819f0ca03f62c8549dfe4d8ecc6191f70bd64'
+            || qualification.getProperty('modrinthDependencies') != 'none'
+            || qualification.getProperty('jarRequiredDependencies') != 'ae2,guideme,glodium'
+            || qualification.getProperty('registeredKeyType') != 'appflux:flux'
+            || qualification.getProperty('keyFactory') != 'FluxKey.of(EnergyType.FE)'
+            || qualification.getProperty('quantityType') != 'long'
+            || qualification.getProperty('sourceArtifactCorrelation') != 'authoritative-ordinary'
+            || qualification.getProperty('exactSourceArtifactMapping') != 'not-claimed'
+            || qualification.getProperty('guideMeCoordinate') != 'org.appliedenergistics:guideme:21.1.1'
+            || qualification.getProperty('glodiumCoordinate') != 'maven.modrinth:glodium:1.21-2.2-neoforge'
+            || qualification.getProperty('appfluxCoordinate') != 'maven.modrinth:appflux:1.21-2.1.4-neoforge') {
+        throw new GradleException('Task 25 Applied Flux qualification dossier is malformed or fabricated')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 25 requires one native artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 25 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 25 operations') != 1) {
+            throw new GradleException("Task 25 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_RESOURCE_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 25 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 25 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def nativeKeys = parsed.resourcesitemfluidcomponents as Properties
+    if (nativeKeys.getProperty('componentKeysDistinct') != 'true'
+            || nativeKeys.getProperty('componentRoundTrip') != 'true'
+            || nativeKeys.getProperty('fluidRoundTrip') != 'true'
+            || nativeKeys.getProperty('exactFilterDistinct') != 'true'
+            || nativeKeys.getProperty('firstQuantity') != '7'
+            || nativeKeys.getProperty('secondQuantity') != '11'
+            || nativeKeys.getProperty('fluidInserted') != '5000'
+            || nativeKeys.getProperty('fluidSimulatedExtract') != '1250'
+            || nativeKeys.getProperty('fluidRemaining') != '3750'
+            || nativeKeys.getProperty('nativeAmountType') != 'long'
+            || nativeKeys.getProperty('fluidUnit') != 'millibucket') {
+        throw new GradleException('Task 25 native item/fluid/component semantics are incomplete')
+    }
+    def storedFe = parsed.resourcesstoredfe as Properties
+    if (storedFe.getProperty('apiBinding') != 'direct'
+            || storedFe.getProperty('registeredKeyType') != 'appflux:flux'
+            || storedFe.getProperty('keyFactory') != 'FluxKey.of(EnergyType.FE)'
+            || storedFe.getProperty('genericCodecRoundTrip') != 'true'
+            || storedFe.getProperty('nativeTypeFilter') != 'true'
+            || storedFe.getProperty('exactFilterIdentity') != 'true'
+            || storedFe.getProperty('registeredCell') != 'FE_CELL_256M'
+            || storedFe.getProperty('simulationMutation') != 'false'
+            || storedFe.getProperty('inserted') != '4294967311'
+            || storedFe.getProperty('listed') != '4294967311'
+            || storedFe.getProperty('simulatedExtract') != '1073741829'
+            || storedFe.getProperty('extracted') != '1073741829'
+            || storedFe.getProperty('remaining') != '3221225482'
+            || storedFe.getProperty('quantityType') != 'long'
+            || storedFe.getProperty('aboveIntegerMax') != 'true'
+            || storedFe.getProperty('aePowerBefore') != storedFe.getProperty('aePowerAfter')
+            || storedFe.getProperty('unitConversion') != 'none'
+            || storedFe.getProperty('coupled') != 'false') {
+        throw new GradleException('Task 25 Applied Flux stored-FE semantics are incomplete')
+    }
+    def absent = parsed.resourcesoptionalabsent as Properties
+    if (absent.getProperty('addonClassPresent') != 'false'
+            || absent.getProperty('addonKeyTypePresent') != 'false'
+            || absent.getProperty('compatibility') != 'missing'
+            || absent.getProperty('substituteKeyCreated') != 'false'
+            || absent.getProperty('defaultRuntimeIsolated') != 'true') {
+        throw new GradleException('Task 25 optional absence leaked or was silently substituted')
+    }
+    def overflow = parsed.resourcesrejectoverflow as Properties
+    if (overflow.getProperty('overflowRejected') != 'true' || overflow.getProperty('negativeRejected') != 'true'
+            || overflow.getProperty('negativeSubmittedToNative') != 'false'
+            || overflow.getProperty('simulationNonNegative') != 'true'
+            || overflow.getProperty('simulationMutation') != 'false'
+            || overflow.getProperty('largestValid') != Long.toString(Long.MAX_VALUE)
+            || overflow.getProperty('quantityType') != 'long') {
+        throw new GradleException('Task 25 overflow or negative quantity rejection is incomplete')
+    }
+    def coupling = parsed.resourcesrejectfepowercoupling as Properties
+    if (coupling.getProperty('aePowerBefore') != coupling.getProperty('aePowerAfter')
+            || coupling.getProperty('feKeyPresent') != 'false'
+            || coupling.getProperty('syntheticFeKey') != 'false'
+            || coupling.getProperty('unitConversion') != 'none'
+            || coupling.getProperty('coupled') != 'false') {
+        throw new GradleException('Task 25 FE-to-AE-power coupling rejection is incomplete')
+    }
+}
+
 verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
     if (report.kind != 'benchmark' || report.requested != ['processing-small']) return null
     def required = ['benchmark-native.properties', 'benchmark-profile.json', 'benchmark-baseline.json',
@@ -3746,6 +3903,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskTwentyFourEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskTwentyFiveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -3764,7 +3923,7 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
         report.assertions.each { assertion ->
             def expected = expectedEntries[assertion.caseId]
             if (expected == null) throw new GradleException("Result references an unknown manifest entry: ${assertion.caseId}")
-            if ((report.kind == 'benchmark' || expected.backend in ['gametest', 'gametest-restart'])
+            if ((report.kind == 'benchmark' || expected.backend in ['gametest', 'gametest-restart', 'appflux-gametest'])
                     && (assertion.nativeTestId != expected.testId
                     || assertion.assertionCount != expected.assertions)) {
                 throw new GradleException("Result native identity does not match manifest entry: ${assertion.caseId}")
@@ -3803,7 +3962,7 @@ def verifyNativeEvidence = { File evidenceFile, Map expected ->
     def extracted = parseNonnegativeInteger(properties.getProperty('extracted'), 'native extracted')
     def elapsedNanos = parseNonnegativeInteger(properties.getProperty('elapsedNanos'), 'native elapsedNanos')
     if (assertions != expected.assertions as long || operations != expected.operations as long
-            || (!expected.allowZeroWork && inserted <= 0) || extracted != inserted
+            || (!expected.allowZeroWork && inserted <= 0) || (!expected.allowUnequalWork && extracted != inserted)
             || (expected.kind == 'benchmark' && elapsedNanos <= 0)) {
         throw new GradleException("Native evidence accounting mismatch: ${evidenceFile}; actual assertions=${assertions}, operations=${operations}, inserted=${inserted}, extracted=${extracted}, elapsedNanos=${elapsedNanos}; expected=${expected}")
     }
@@ -4297,7 +4456,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
-                    || testCase.id.startsWith('subscription.')) ? 1 : 2,
+                    || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4306,7 +4465,23 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
-                            || testCase.id.startsWith('subscription.')])
+                            || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')])
+            childArtifacts.add(nativeEvidence)
+        }
+        def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
+        appfluxCases.each { testCase ->
+            def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+            def child = gradleCommand("positive-${testCase.testId}",
+                    [':neoforge-1.21.1:runAppfluxGameTestServer',
+                     '-PenableAppfluxCompatibility=true',
+                     "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"],
+                    [timeout: 180, retainRuntime: false])
+            if (child.result.exit != 0) {
+                throw new GradleException("Applied Flux GameTest failed; report=${childArtifacts.last().absolutePath}")
+            }
+            verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                    structure: testCase.structure, assertions: testCase.assertions, operations: 1,
+                    allowZeroWork: true, allowUnequalWork: true])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -4641,10 +4816,15 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'subscription.first-filter':
                 case 'subscription.listener-cleanup':
                 case 'subscription.reject-stale-generation':
+                case 'resources.item-fluid-components':
+                case 'resources.optional-absent':
+                case 'resources.reject-overflow':
+                case 'resources.reject-fe-power-coupling':
+                case 'resources.stored-fe':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
-                            allowZeroWork: true])
+                            allowZeroWork: true, allowUnequalWork: caseId == 'resources.stored-fe'])
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
@@ -4710,6 +4890,12 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             ? 'Task 19: six serialized GameTest child finalizers copied diagnostics and removed task-owned runtime data; no session.lock remains.\n'
             : 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
     childArtifacts.add(cleanupReceipt)
+    if (requestedCases == taskTwentyFiveCases) {
+        def source = strictCanonicalPath(rootProject.file('tests/compatibility/applied-flux.properties'))
+        def qualification = new File(attempt, 'applied-flux-qualification.properties')
+        qualification.bytes = source.bytes
+        childArtifacts.add(qualification)
+    }
     def artifacts = childArtifacts.unique().collect { file ->
         def canonical = file.canonicalFile
         if (!canonical.toPath().startsWith(attempt.canonicalFile.toPath()) || !canonical.isFile()) {
@@ -4740,16 +4926,19 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyThreeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyFourEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
-    def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
+    def reportBlocked = taskTenBlocked
+    def reportStatus = taskTenBlocked ? 'BLOCKED' : 'complete'
+    def report = [schemaVersion: 3, status: reportStatus, runId: runId, kind: kind,
             evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
             pathIdentitySha256: sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
             sourceRevision: sourceIdentity.revision,
             dirtyDiffSha256: sourceIdentity.dirtySha256, dependencyLockSha256: sha256(verificationMetadata.asFile.bytes),
             productJarSha256: sha256(jar.bytes), seed: 0, startedAt: startedAt, endedAt: Instant.now().toString(),
             requested: kind == 'verify' ? requestedCases : [profile], executed: executed, assertions: assertions,
-            parentExit: taskTenBlocked ? 1 : 0, childExits: childExits,
+            parentExit: reportBlocked ? 1 : 0, childExits: childExits,
             childLifecycles: childLifecycles, artifacts: artifacts]
     if (kind == 'benchmark') report.profileLifecycle = assertions[0].lifecycle
     if (kind == 'benchmark' && profile == 'processing-small') report.profile = assertions[0].profile
@@ -6866,5 +7055,137 @@ tasks.register('federationTaskTwentyFourEvidenceSelfTest') {
             throw new GradleException("Task 24 adversarial subscription evidence was accepted: ${accepted.join(', ')}")
         }
         logger.lifecycle('Task 24 adversarial subscription evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyFiveEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 25 result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskTwentyFiveCases) throw new GradleException('Result is not the canonical Task 25 case set')
+        logger.lifecycle('Task 25 completed resource evidence verified')
+    }
+}
+
+tasks.register('federationTaskTwentyFiveEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated, stale, incomplete, truncated, coupled, and optional-leaking Task 25 evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 25 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def probe = { String name, String expectedMessage, boolean rehash, Closure mutate ->
+            def sourceAttempt = sourceResult.parentFile.canonicalFile
+            def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+            def runId = "task25-${name}-${UUID.randomUUID()}"
+            def attempt = new File(evidenceRoot, "attempt-${runId}")
+            sourceAttempt.eachFileRecurse(FileType.FILES) { source ->
+                def target = attempt.toPath().resolve(sourceAttempt.toPath().relativize(source.toPath()))
+                Files.createDirectories(target.parent)
+                Files.copy(source.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            def resultFile = new File(attempt, 'result.json')
+            def report = new JsonSlurper().parse(resultFile) as Map
+            mutate(attempt, report)
+            report.runId = runId
+            report.evidenceRoot = evidenceRoot.canonicalPath
+            report.attemptPath = attempt.canonicalPath
+            def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+            report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+            report.startedAt = Instant.now().minusSeconds(1).toString()
+            report.endedAt = Instant.now().toString()
+            if (rehash) {
+                report.artifacts.each { artifact ->
+                    def file = new File(attempt, artifact.path as String)
+                    if (file.isFile()) artifact.sha256 = sha256(file.bytes)
+                }
+            }
+            resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+            try {
+                verifyPersistedReport(resultFile, false)
+                false
+            } catch (GradleException exception) {
+                if (!exception.message.contains(expectedMessage)) throw exception
+                true
+            } finally {
+                if (attempt.exists()) {
+                    Files.walk(attempt.toPath()).withCloseable { paths ->
+                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                    }
+                }
+            }
+        }
+        def mutateFact = { String artifactId, String fact, String value, String expectedMessage ->
+            probe("${artifactId}-${fact}", expectedMessage, true) { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 25 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def mutateQualification = { String name, String property, String value ->
+            probe(name, 'Task 25 Applied Flux qualification dossier is malformed or fabricated', true) {
+                    File attempt, Map report ->
+                def file = new File(attempt, 'applied-flux-qualification.properties')
+                def properties = loadProperties(file)
+                properties.setProperty(property, value)
+                file.withOutputStream { properties.store(it, 'Task 25 adversarial qualification probe') }
+            }
+        }
+        def probes = [
+                incomplete: probe('incomplete', 'Result report is incomplete or has an unsupported schema',
+                        true) { File attempt, Map report -> report.status = 'running' },
+                missingAddonChild: probe('missing-addon-child', 'Positive GameTest child exit is missing or nonzero', true) {
+                        File attempt, Map report ->
+                    report.childExits.remove('positive-resourcesstoredfe')
+                    report.childLifecycles.remove('positive-resourcesstoredfe')
+                },
+                caseLabel: probe('case-label', 'Requested, executed, or assertion accounting is incomplete', true) {
+                        File attempt, Map report -> report.requested[1] = 'resources.synthetic-fe'
+                },
+                sourceVersion: mutateQualification('source-version', 'sourceVersion', '1.21-2.1.5-neoforge'),
+                sourceCommit: mutateQualification('source-commit', 'inspectedCommit', '0000000000000000000000000000000000000000'),
+                artifactHash: mutateQualification('artifact-hash', 'artifactSha256', '0' * 64),
+                fakeKey: mutateQualification('fake-key', 'registeredKeyType', 'ae2federation:synthetic_fe'),
+                provenanceClaim: mutateQualification('provenance-claim', 'exactSourceArtifactMapping', 'verified'),
+                staleArtifact: probe('stale-artifact', 'Artifact is missing, outside the attempt, or hash-mismatched', false) {
+                        File attempt, Map report ->
+                    new File(attempt, 'applied-flux-qualification.properties').append('\nstale=true\n')
+                },
+                cannedQuantity: mutateFact('resourcesstoredfe', 'listed', '7',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                intTruncation: mutateFact('resourcesstoredfe', 'quantityType', 'int',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                codecBypass: mutateFact('resourcesstoredfe', 'genericCodecRoundTrip', 'false',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                filterBypass: mutateFact('resourcesstoredfe', 'nativeTypeFilter', 'false',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                reflectionOnly: mutateFact('resourcesstoredfe', 'apiBinding', 'reflection-only',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                fePowerCoupling: mutateFact('resourcesstoredfe', 'coupled', 'true',
+                        'Task 25 Applied Flux stored-FE semantics are incomplete'),
+                cannedIdentity: mutateFact('resourcesitemfluidcomponents', 'componentKeysDistinct', 'false',
+                        'Task 25 native item/fluid/component semantics are incomplete'),
+                wrongQuantityType: mutateFact('resourcesrejectoverflow', 'quantityType', 'int',
+                        'Task 25 overflow or negative quantity rejection is incomplete'),
+                unitConversion: mutateFact('resourcesrejectfepowercoupling', 'unitConversion', 'fe-to-ae',
+                        'Task 25 FE-to-AE-power coupling rejection is incomplete'),
+                optionalLeak: mutateFact('resourcesoptionalabsent', 'addonClassPresent', 'true',
+                        'Task 25 optional absence leaked or was silently substituted')
+        ]
+        def accepted = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 25 adversarial resource evidence was accepted: ${accepted.join(', ')}")
+        }
+        logger.lifecycle('Task 25 adversarial completed evidence probes were rejected for intended reasons')
     }
 }
