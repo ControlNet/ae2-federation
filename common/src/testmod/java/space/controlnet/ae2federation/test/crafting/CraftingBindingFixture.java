@@ -43,10 +43,15 @@ public final class CraftingBindingFixture implements AutoCloseable {
     }
 
     public CraftingBindingFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern) {
+        this(helper, withCpu, withForbiddenPattern, false);
+    }
+
+    public CraftingBindingFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern,
+            boolean withProviderFluidChest) {
         this.helper = helper;
         this.withCpu = withCpu;
         nativeSource = new CraftingNativeSourceFixture(helper, withCpu, withForbiddenPattern);
-        bridge = new PolicyBridgeFixtures(helper, BASE);
+        bridge = new PolicyBridgeFixtures(helper, BASE, withProviderFluidChest);
         bridge.installStorageCells();
     }
 
@@ -250,6 +255,18 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return java.util.Objects.requireNonNull(sourceChest().getOriginalCellInventory(0));
     }
 
+    public appeng.api.storage.MEStorage sourceFluidStorage() {
+        return java.util.Objects.requireNonNull(bridge.providerFluidChest().getOriginalCellInventory(0));
+    }
+
+    public appeng.api.storage.MEStorage sourceStorage() {
+        return bridge.outerGrid().getStorageService().getInventory();
+    }
+
+    public MEChestBlockEntity consumerChest() {
+        return bridge.consumerChest();
+    }
+
     public appeng.api.networking.crafting.ICraftingService sourceService() {
         return bridge.outerGrid().getCraftingService();
     }
@@ -264,10 +281,6 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public appeng.api.networking.IGrid providerGrid() {
         return bridge.outerGrid();
-    }
-
-    private appeng.api.storage.MEStorage sourceStorage() {
-        return bridge.outerGrid().getStorageService().getInventory();
     }
 
     private MEChestBlockEntity sourceChest() {

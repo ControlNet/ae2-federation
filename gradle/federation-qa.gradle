@@ -424,6 +424,9 @@ def verifyTaskTwentySixEvidence
 def taskTwentySevenCases = ['terminal.native-crafting', 'terminal.native-result', 'terminal.missing-material',
         'terminal.no-cpu', 'terminal.reject-async-world-access']
 def verifyTaskTwentySevenEvidence
+def taskTwentyEightCases = ['automation.interface-stock', 'automation.crafting-card', 'automation.native-buses',
+        'automation.reject-duplicate-demand', 'automation.contention']
+def verifyTaskTwentyEightEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -3613,7 +3616,7 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
                 throw new GradleException("Task 27 semantic trace mismatch in ${artifact}: ${name}")
             }
         }
-        def parseReceipt = { String marker, Set fields ->
+        def parseReceipt = { String marker, Set fields, String phase ->
             def lines = logText.readLines().findAll { it.contains(marker + " testId=${testId} ") }
             if (lines.size() != 1) {
                 throw new GradleException("Task 27 ${marker} receipt set is missing or duplicated: ${testId}")
@@ -3627,7 +3630,7 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
                 }
             }
             if (receipt.keySet() != fields || receipt.testId != testId || receipt.selected != testId
-                    || receipt.phase != 'final') {
+                    || receipt.phase != phase) {
                 throw new GradleException("Task 27 ${marker} child identity is invalid: ${testId}")
             }
             receipt
@@ -3882,6 +3885,195 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
             || asyncPlanner.rejectedMutableAccess != async.getProperty('rejectedMutableAccess')
             || rejectedRuntime != ['backend', 'fabric', 'gametest-helper', 'policy', 'world-block'] as Set) {
         throw new GradleException('Task 27 planner thread touched mutable server authority')
+    }
+}
+
+verifyTaskTwentyEightEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyEightCases }) return
+    if (requested != taskTwentyEightCases) {
+        throw new GradleException('Task 28 evidence must select the exact canonical case set')
+    }
+    def expected = [automationinterfacestock: 14, automationcraftingcard: 15, automationnativebuses: 21,
+            automationrejectduplicatedemand: 18, automationcontention: 15]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-automation') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 28 native child is missing, extra, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 28 native child exits are incomplete')
+    }
+    def nativeFields = ['testId', 'selected', 'phase', 'trackerOwner', 'trackerCalls', 'trackerSubmissions',
+            'jobs', 'importBus', 'exportBus', 'importWork', 'exportWork', 'projection', 'storageInsertCalls',
+            'storageExtractCalls', 'storageInserted', 'storageExtracted', 'maxRequested', 'keys'] as Set
+    def authorityFields = ['testId', 'selected', 'phase', 'owner', 'source', 'destination', 'storageKey',
+            'craftingKey', 'forward', 'reverse', 'nativeState', 'controller', 'ledger'] as Set
+    def preOperationFields = ['testId', 'selected', 'phase', 'interfaceOwners', 'projection', 'storageKey',
+            'mountGeneration', 'sourceGeneration', 'sourceNetwork', 'sourceGrid', 'relationshipRevision',
+            'operations'] as Set
+    def parsed = [:]
+    def nativeReceipts = [:]
+    def preOperationReceipts = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 28 requires one native child artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 28 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 28 operations') != 1) {
+            throw new GradleException("Task 28 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def logText = new File(attempt, log).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_AUTOMATION_FACT testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 28 duplicate semantic trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 28 semantic trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        def parseReceipt = { String marker, Set fields ->
+            def expectedPhase = marker == 'AE2F_AUTOMATION_PREOP_AUTHORITY' ? 'pre-operation' : 'final'
+            def lines = logText.readLines().findAll { it.contains("${marker} testId=${testId} ") }
+            if (lines.size() != 1) {
+                throw new GradleException("Task 28 ${marker} receipt is missing or duplicated: ${testId}")
+            }
+            def payload = lines.first().substring(lines.first().indexOf(marker + ' ') + marker.length() + 1)
+            def receipt = [:]
+            payload.split(/\s+/).each { token ->
+                def separator = token.indexOf('=')
+                if (separator < 1 || receipt.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                    throw new GradleException("Task 28 malformed or duplicate ${marker} field: ${testId}")
+                }
+            }
+            if (receipt.keySet() != fields || receipt.testId != testId || receipt.selected != testId
+                    || receipt.phase != expectedPhase) {
+                throw new GradleException("Task 28 ${marker} child identity is invalid: ${testId}")
+            }
+            receipt
+        }
+        def nativeReceipt = parseReceipt('AE2F_AUTOMATION_NATIVE_ENTRY', nativeFields)
+        def authority = parseReceipt('AE2F_AUTOMATION_AUTHORITY', authorityFields)
+        def preOperation = parseReceipt('AE2F_AUTOMATION_PREOP_AUTHORITY', preOperationFields)
+        def interfaceOwners = preOperation.interfaceOwners == 'none' ? [] as Set
+                : preOperation.interfaceOwners.split(',') as Set
+        def projections = preOperation.projection.split(',') as Set
+        if (interfaceOwners.any { !(it ==~ /0|[1-9][0-9]*/) }
+                || projections.isEmpty() || projections.any { !(it ==~ /0|[1-9][0-9]*/) }
+                || !(preOperation.sourceGrid ==~ /0|[1-9][0-9]*/)
+                || !(preOperation.relationshipRevision ==~ /0|[1-9][0-9]*/)
+                || parsePositiveInteger(preOperation.mountGeneration, 'Task 28 mount generation') < 1
+                || parsePositiveInteger(preOperation.sourceGeneration, 'Task 28 source generation') < 1
+                || preOperation.storageKey != properties.getProperty('storageKey')
+                || !preOperation.storageKey.contains("_providerNetworkId=${preOperation.sourceNetwork}")) {
+            throw new GradleException("Task 28 pre-operation projection authority is invalid: ${testId}")
+        }
+        if (nativeReceipt.trackerOwner != 'none' && !interfaceOwners.contains(nativeReceipt.trackerOwner)
+                || testId in ['automationinterfacestock', 'automationcraftingcard',
+                        'automationrejectduplicatedemand', 'automationcontention']
+                        && !interfaceOwners.contains(properties.getProperty('owner'))) {
+            throw new GradleException("Task 28 pre-operation Interface owner mismatch: ${testId}")
+        }
+        if (nativeReceipt.projection != 'none') {
+            def nativeProjections = nativeReceipt.projection.split(',') as Set
+            if (nativeProjections.isEmpty() || !projections.containsAll(nativeProjections)) {
+                throw new GradleException("Task 28 pre-operation projection mismatch: ${testId}")
+            }
+        }
+        if (authority.owner != properties.getProperty('owner') || authority.source != properties.getProperty('source')
+                || authority.destination != properties.getProperty('destination')
+                || authority.storageKey != properties.getProperty('storageKey')
+                || authority.craftingKey != properties.getProperty('craftingKey')
+                || authority.forward != properties.getProperty('forwardAuthority')
+                || authority.reverse != properties.getProperty('reverseAuthority')
+                || authority.nativeState != properties.getProperty('nativeState')
+                || authority.controller != properties.getProperty('federationController')
+                || authority.ledger != properties.getProperty('federationLedger')
+                || properties.getProperty('mountCount') != '1') {
+            throw new GradleException("Task 28 native authority mismatch: ${testId}")
+        }
+        parsed[testId] = properties
+        nativeReceipts[testId] = nativeReceipt
+        preOperationReceipts[testId] = preOperation
+    }
+    def stocked = parsed.automationinterfacestock as Properties
+    def stockedNative = nativeReceipts.automationinterfacestock as Map
+    def stockedAuthority = preOperationReceipts.automationinterfacestock as Map
+    if (stocked.stocked != '5' || stocked.sourceBefore != '7' || stocked.sourceAfter != '2'
+            || stocked.craftingCard != 'false' || stocked.requestCount != '0' || stocked.resourceType != 'item'
+            || stocked.optionalAddon != 'absent' || stockedNative.trackerCalls != '0'
+            || stockedNative.storageExtracted != '5' || stockedNative.projection == 'none'
+            || stockedAuthority.operations != 'extract:ae2:i|minecraft:diamond') {
+        throw new GradleException('Task 28 fixture-only or manual demand was substituted')
+    }
+    def card = parsed.automationcraftingcard as Properties
+    def cardNative = nativeReceipts.automationcraftingcard as Map
+    if (card.configured != '4' || card.accepted != '4' || card.materialBefore != '2' || card.materialAfter != '0'
+            || card.craftingCard != 'true' || card.jobCardinality != '1' || card.jobIds != cardNative.jobs
+            || cardNative.trackerOwner != card.owner || cardNative.trackerSubmissions != '1'
+            || cardNative.jobs == 'none'
+            || (preOperationReceipts.automationcraftingcard as Map).operations != 'none') {
+        throw new GradleException('Task 28 fixture-only or manual demand was substituted')
+    }
+    def buses = parsed.automationnativebuses as Properties
+    def busesNative = nativeReceipts.automationnativebuses as Map
+    def busesAuthority = preOperationReceipts.automationnativebuses as Map
+        if (buses.imported != '3' || buses.exported != '4' || buses.sourceGold != '3' || buses.sourceDiamond != '0'
+                || buses.itemPath != 'native-buses' || buses.fluidPath != 'native-interface-storage'
+                || buses.fluidStocked != '1000' || buses.fluidSourceAfter != '500'
+                || buses.optionalAddon != 'absent' || busesNative.importBus == 'none' || busesNative.exportBus == 'none'
+            || parsePositiveInteger(busesNative.importWork, 'Task 28 import work') < 1
+            || parsePositiveInteger(busesNative.exportWork, 'Task 28 export work') < 1
+                || busesNative.storageInserted != '3' || busesNative.storageExtracted != '1004'
+                || busesAuthority.operations != 'extract:ae2:f|minecraft:water,extract:ae2:i|minecraft:diamond,insert:ae2:i|minecraft:gold_ingot') {
+        throw new GradleException('Task 28 fake native bus transfer detected')
+    }
+    def duplicate = parsed.automationrejectduplicatedemand as Properties
+    def duplicateNative = nativeReceipts.automationrejectduplicatedemand as Map
+    if (duplicate.jobCardinality != '1' || duplicate.jobIds != duplicate.linkId
+            || duplicate.jobIds != duplicateNative.jobs || duplicate.trackerSubmissions != '1'
+            || duplicate.duplicateTicks != 'true' || duplicate.canceled != 'true'
+            || duplicate.replacement != 'false' || duplicate.materialBefore != '64' || duplicate.materialAfter != '64'
+            || parsePositiveInteger(duplicateNative.trackerCalls, 'Task 28 tracker calls') < 2
+            || duplicateNative.trackerSubmissions != '1'
+            || (preOperationReceipts.automationrejectduplicatedemand as Map).operations != 'none') {
+        throw new GradleException('Task 28 duplicate native demand or job detected')
+    }
+    def contention = parsed.automationcontention as Properties
+    def contentionNative = nativeReceipts.automationcontention as Map
+    def firstAccepted = parseNonnegativeInteger(contention.firstAccepted, 'Task 28 first accepted')
+    def secondAccepted = parseNonnegativeInteger(contention.secondAccepted, 'Task 28 second accepted')
+    if (contention.physicalBefore != '5' || contention.physicalAfter != '0'
+            || firstAccepted + secondAccepted != 5L || contention.acceptedTotal != '5'
+            || contention.extractedTotal != '5' || contention.configuredTotal != '8'
+            || contention.overExtracted != 'false' || contention.reservationEngine != 'false'
+            || contentionNative.storageExtracted != '5'
+            || (preOperationReceipts.automationcontention as Map).operations != 'extract:ae2:i|minecraft:diamond') {
+        throw new GradleException('Task 28 contention exceeded physical stock')
+    }
+    if (parsed.values().any { it.getProperty('reverseAuthority') != 'false' }) {
+        throw new GradleException('Task 28 reciprocal stocking authority was inferred')
+    }
+    if (parsed.values().any { it.getProperty('federationController') != 'false'
+            || it.getProperty('federationLedger') != 'false' }) {
+        throw new GradleException('Task 28 hidden reservation, controller, or ledger detected')
+    }
+    if (stocked.optionalAddon != 'absent' || buses.optionalAddon != 'absent') {
+        throw new GradleException('Task 28 optional addon isolation is incomplete')
     }
 }
 
@@ -4432,6 +4624,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwentySixEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentySevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskTwentyEightEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -4985,7 +5179,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')) ? 1 : 2,
+                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
+                    || testCase.id.startsWith('automation.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4995,7 +5190,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')])
+                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
+                            || testCase.id.startsWith('automation.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -5264,6 +5460,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'terminal.missing-material':
                 case 'terminal.no-cpu':
                 case 'terminal.reject-async-world-access':
+                case 'automation.interface-stock':
+                case 'automation.crafting-card':
+                case 'automation.native-buses':
+                case 'automation.reject-duplicate-demand':
+                case 'automation.contention':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -5468,6 +5669,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentySevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyEightEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -8121,5 +8323,164 @@ tasks.register('federationTaskTwentySevenEvidenceSelfTest') {
                     .replace("owner=${oldValue} key=", "owner=${replacement} key=")
         }, 'Task 27 native result authority mismatch: destination')
         logger.lifecycle('Task 27 adversarial native terminal evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyEightEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 28 native automation result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskTwentyEightCases) {
+            throw new GradleException('Result is not the canonical Task 28 case set')
+        }
+        logger.lifecycle('Task 28 native automation evidence verified')
+    }
+}
+
+tasks.register('federationTaskTwentyEightEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated owner, transfer, demand, cancellation, contention, and authority Task 28 evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 28 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateAttempt = { String name, Closure mutation, String expectedMessage ->
+            def sourceAttempt = sourceResult.parentFile.canonicalFile
+            def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+            def runId = "task28-${name}-${UUID.randomUUID()}"
+            def attempt = new File(evidenceRoot, "attempt-${runId}")
+            sourceAttempt.eachFileRecurse(FileType.FILES) { source ->
+                def target = attempt.toPath().resolve(sourceAttempt.toPath().relativize(source.toPath()))
+                Files.createDirectories(target.parent)
+                Files.copy(source.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            try {
+                def resultFile = new File(attempt, 'result.json')
+                def report = new JsonSlurper().parse(resultFile) as Map
+                mutation(attempt, report)
+                report.runId = runId
+                report.evidenceRoot = evidenceRoot.canonicalPath
+                report.attemptPath = attempt.canonicalPath
+                def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+                report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+                report.startedAt = Instant.now().minusSeconds(1).toString()
+                report.endedAt = Instant.now().toString()
+                report.artifacts.each { artifact ->
+                    def artifactFile = new File(attempt, artifact.path as String)
+                    if (artifactFile.isFile()) artifact.sha256 = sha256(artifactFile.bytes)
+                }
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                try {
+                    verifyPersistedReport(resultFile, false)
+                    throw new GradleException("Task 28 adversarial evidence was accepted: ${name}")
+                } catch (GradleException exception) {
+                    if (exception.message.startsWith('Task 28 adversarial evidence was accepted')
+                            || !exception.message.contains(expectedMessage)) throw exception
+                }
+            } finally {
+                if (attempt.exists()) {
+                    Files.walk(attempt.toPath()).withCloseable { paths ->
+                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                    }
+                }
+            }
+        }
+        def mutateFact = { String name, String artifactId, String fact, String value, String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 28 fully rebound semantic probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }, expectedMessage)
+        }
+        def mutateAuthorityFact = { String name, String artifactId, String fact, String receiptField, String value,
+                String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 28 fully rebound authority probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().collect { line ->
+                    def rebound = line.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+                    if (line.contains('AE2F_AUTOMATION_AUTHORITY ')) {
+                        rebound = rebound.replace("${receiptField}=${oldValue}", "${receiptField}=${value}")
+                    }
+                    rebound
+                }.join('\n') + '\n'
+            }, expectedMessage)
+        }
+        mutateAttempt('missing-native-child', { File attempt, Map report ->
+            def path = 'native-automationinterfacestock.properties'
+            report.artifacts.removeIf { it.path == path }
+            Files.delete(new File(attempt, path).toPath())
+        }, 'Task 28 native child is missing, extra, or substituted')
+        mutateFact('manual-interface-demand', 'automationinterfacestock', 'requestCount', '1',
+                'Task 28 fixture-only or manual demand was substituted')
+        mutateFact('fake-crafting-card', 'automationcraftingcard', 'craftingCard', 'false',
+                'Task 28 fixture-only or manual demand was substituted')
+        mutateFact('fake-bus-transfer', 'automationnativebuses', 'itemPath', 'direct-storage',
+                'Task 28 fake native bus transfer detected')
+        mutateFact('duplicate-demand', 'automationrejectduplicatedemand', 'jobCardinality', '2',
+                'Task 28 duplicate native demand or job detected')
+        mutateFact('fabricated-cancellation', 'automationrejectduplicatedemand', 'canceled', 'false',
+                'Task 28 duplicate native demand or job detected')
+        mutateFact('automatic-replacement', 'automationrejectduplicatedemand', 'replacement', 'true',
+                'Task 28 duplicate native demand or job detected')
+        mutateFact('over-extraction', 'automationcontention', 'extractedTotal', '6',
+                'Task 28 contention exceeded physical stock')
+        mutateFact('hidden-reservation', 'automationcontention', 'reservationEngine', 'true',
+                'Task 28 contention exceeded physical stock')
+        mutateAuthorityFact('hidden-controller', 'automationcontention', 'federationController', 'controller', 'true',
+                'Task 28 hidden reservation, controller, or ledger detected')
+        mutateAuthorityFact('hidden-ledger', 'automationcontention', 'federationLedger', 'ledger', 'true',
+                'Task 28 hidden reservation, controller, or ledger detected')
+        mutateAuthorityFact('reciprocal-rule', 'automationinterfacestock', 'reverseAuthority', 'reverse', 'true',
+                'Task 28 reciprocal stocking authority was inferred')
+        mutateFact('optional-addon-leak', 'automationnativebuses', 'optionalAddon', 'present',
+                'Task 28 fake native bus transfer detected')
+        mutateFact('canned-quantity', 'automationcontention', 'acceptedTotal', '8',
+                'Task 28 contention exceeded physical stock')
+        mutateAttempt('coordinated-interface-owner', { File attempt, Map ignored ->
+            def artifactId = 'automationcraftingcard'
+            def file = new File(attempt, "native-${artifactId}.properties")
+            def properties = loadProperties(file)
+            def oldValue = properties.getProperty('owner')
+            def replacement = '4294967295'
+            properties.setProperty('owner', replacement)
+            file.withOutputStream { properties.store(it, 'Task 28 coordinated Interface owner probe') }
+            def log = new File(attempt, "positive-${artifactId}.log")
+            log.text = log.readLines().collect { line ->
+                def rebound = line.replace("fact=owner value=${oldValue}", "fact=owner value=${replacement}")
+                if (line.contains('AE2F_AUTOMATION_AUTHORITY ')) {
+                    rebound = rebound.replace("owner=${oldValue}", "owner=${replacement}")
+                }
+                if (line.contains('AE2F_AUTOMATION_NATIVE_ENTRY ')) {
+                    rebound = rebound.replace("trackerOwner=${oldValue}", "trackerOwner=${replacement}")
+                }
+                rebound
+            }.join('\n') + '\n'
+        }, 'Task 28 pre-operation Interface owner mismatch')
+        mutateAttempt('coordinated-projection-identity', { File attempt, Map ignored ->
+            def artifactId = 'automationinterfacestock'
+            def log = new File(attempt, "positive-${artifactId}.log")
+            def nativeLine = log.readLines().find { it.contains('AE2F_AUTOMATION_NATIVE_ENTRY ') }
+            def oldValue = (nativeLine =~ / projection=([0-9]+)/)[0][1]
+            log.text = log.readLines().collect { line ->
+                line.contains('AE2F_AUTOMATION_NATIVE_ENTRY ')
+                        ? line.replace("projection=${oldValue}", 'projection=4294967295') : line
+            }.join('\n') + '\n'
+        }, 'Task 28 pre-operation projection mismatch')
+        logger.lifecycle('Task 28 adversarial native automation evidence probes were rejected for intended reasons')
     }
 }

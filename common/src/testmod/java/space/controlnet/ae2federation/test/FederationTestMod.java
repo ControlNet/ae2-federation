@@ -32,6 +32,7 @@ public final class FederationTestMod {
 						 ResourceQualificationGameTests.class,
 						 CraftingBindingGameTests.class, CraftingBindingFailureGameTests.class,
 						 TerminalCraftingGameTests.class, TerminalCraftingFailureGameTests.class,
+						 NativeAutomationGameTests.class, NativeAutomationDemandGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,

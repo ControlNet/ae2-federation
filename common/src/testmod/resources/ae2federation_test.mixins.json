@@ -28,7 +28,11 @@
     "TerminalFabricThreadGuardMixin",
     "TerminalBackendThreadGuardMixin",
     "TerminalGameTestHelperThreadGuardMixin",
-    "TerminalWorldThreadGuardMixin"
+    "TerminalWorldThreadGuardMixin",
+    "MultiCraftingTrackerAutomationEvidenceMixin",
+    "ImportBusAutomationEvidenceMixin",
+    "ExportBusAutomationEvidenceMixin",
+    "AuthorizedStorageProjectionAutomationEvidenceMixin"
   ],
   "injectors": {
     "defaultRequire": 1

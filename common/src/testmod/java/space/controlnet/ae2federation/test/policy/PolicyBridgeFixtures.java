@@ -20,13 +20,19 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     private final BridgeFixtures bridges;
     private final BlockPos firstPosition;
     private final BlockPos secondPosition;
+    private final boolean withProviderFluidChest;
     private MultipartBridgePart first;
     private MultipartBridgePart second;
     private final InvalidSecondCallbackProvider callbackProbe = new InvalidSecondCallbackProvider();
 
     public PolicyBridgeFixtures(GameTestHelper helper, BlockPos firstPosition) {
+        this(helper, firstPosition, false);
+    }
+
+    public PolicyBridgeFixtures(GameTestHelper helper, BlockPos firstPosition, boolean withProviderFluidChest) {
         this.helper = helper;
         this.firstPosition = firstPosition;
+        this.withProviderFluidChest = withProviderFluidChest;
         secondPosition = firstPosition.east();
         bridges = new BridgeFixtures(helper);
         bridges.nativePorts().placeCable(firstPosition, AEColor.RED);
@@ -35,6 +41,9 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         bridges.nativePorts().placeCable(firstPosition.north(), AEColor.BLUE);
         bridges.nativePorts().placeCable(secondPosition.north(), AEColor.BLUE);
         bridges.nativePorts().placeChest(firstPosition.north(2));
+        if (withProviderFluidChest) {
+            bridges.nativePorts().placeChest(secondPosition.north(2));
+        }
     }
 
     public boolean networksSettled() {
@@ -47,7 +56,12 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         helper.setBlock(firstPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.<MEChestBlockEntity>getBlockEntity(firstPosition.south()).setCell(AEItems.ITEM_CELL_1K.stack());
         helper.<MEChestBlockEntity>getBlockEntity(firstPosition.north(2)).setCell(AEItems.ITEM_CELL_1K.stack());
-        bridges.nativePorts().createStorageProvider(Direction.SOUTH, secondPosition.north(2), callbackProbe);
+        if (withProviderFluidChest) {
+            helper.setBlock(secondPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+            providerFluidChest().setCell(AEItems.FLUID_CELL_1K.stack());
+        } else {
+            bridges.nativePorts().createStorageProvider(Direction.SOUTH, secondPosition.north(2), callbackProbe);
+        }
     }
 
     public MultipartBridgePart placeFirstBridge() {
@@ -88,6 +102,17 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
 
     public MEChestBlockEntity providerChest() {
         return helper.getBlockEntity(firstPosition.north(2));
+    }
+
+    public MEChestBlockEntity providerFluidChest() {
+        if (!withProviderFluidChest) {
+            throw new IllegalStateException("Provider fluid chest is not installed");
+        }
+        return helper.getBlockEntity(secondPosition.north(2));
+    }
+
+    public MEChestBlockEntity consumerChest() {
+        return helper.getBlockEntity(firstPosition.south());
     }
 
     public void replaceCallbackProbeWithSecondChest() {

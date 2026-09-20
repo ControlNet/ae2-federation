@@ -406,7 +406,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=terminal.native-crafting,terminal.native-result,terminal.missing-material,terminal.no-cpu,terminal.reject-async-world-access -PevidenceDir=.omo/evidence/task-27`.
   - Commit: proposed `feat(crafting): preserve native terminal request flow`.
 
-- [ ] 28. Verify native Interface/Crafting Card and bus automation over shared capabilities
+- [x] 28. Verify native Interface/Crafting Card and bus automation over shared capabilities
   - Work: qualify actual Interface stocking, Crafting Card and native Import/Export Bus use with tasks 21-27. Reuse native request/in-flight state; no Federation duplicate bookkeeping or stocking controller. Test item/fluid/addon absence and source contention using actual native inventories.
   - References: D7,T-F09,T-C03,T-S07; A-craft `InterfaceLogic`; A-storage. Depends on 25,27.
   - Acceptance: one native demand does not resubmit each tick; canceled demand follows native cancellation; simultaneous consumers never extract more than real stock; no implicit reciprocal stocking rule.

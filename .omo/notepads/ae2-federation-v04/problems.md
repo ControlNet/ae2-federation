@@ -4,6 +4,13 @@ Unresolved blockers and technical debt discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-20 Task 28 result
+
+- No unresolved Task 28 implementation blocker is known. The exact five-case producer, persisted consumer, fully rebound
+  adversarial mutation suite, focused Task 9/21/25/27 native regressions, strict build/archive, and Java diagnostics pass.
+- Canonical evidence is `.omo/evidence/task-28/attempt-20260920T102042301Z/result.json`. Task 28 remains unchecked and
+  uncommitted pending independent review; no issue or PR was created.
+
 ## 2026-09-16 - Task 20 remaining T-S04/T-S06 work
 
 - The current evidence schema stores one aggregate observation per native/Federation scene. It cannot independently prove
@@ -2758,5 +2765,117 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   ],
   "scopeAndCleanup": "No Task 28 stocking, Task 29 cancellation/reload, Federation planner/CPU/result ledger, plan checkbox, commit, issue, or PR was introduced. No GameTest process, run-gametest tree, session.lock, tracked evidence/build/runtime/class artifact, or surviving child remains.",
   "repositoryChangesByReviewer": "Only this append-only problems.md second-gate report plus ignored reviewer evidence and attack outputs; production, tests, Gradle, manifest, docs, plan, knowledge, other notepads, Git index/history, issues, and PRs were untouched."
+}
+```
+
+## 2026-09-20T21:21:07+10:00 Task 28 independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 28,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "Fresh exact execution proves real AE2 Interface/Crafting Card objects, MultiCraftingTracker submission, native Import/Export Bus work, directional AuthorizedStorageProjection calls, and physical item/fluid accounting. Focused Task 9/21/25/27 regressions and strict build/archive isolation pass. Acceptance remains blocked because the current-identity Task 28 consumer accepts independently rebound fabricated native projection and Interface owner identities, so persisted evidence does not prove the claimed runtime authority.",
+  "confirmedRuntimeBehavior": [
+    "The five exact Task 28 cases passed in fresh serialized GameTest children with assertion counts 14, 15, 21, 18, and 15, one operation each, zero child exits, no timeout, and no surviving descendants.",
+    "The implementation constructs real InterfaceBlockEntity and AEItems.CRAFTING_CARD state, observes MultiCraftingTracker, ImportBusPart, ExportBusPart, and AuthorizedStorageProjection runtime calls, and checks source/destination inventories rather than substituting a Federation controller or task ledger.",
+    "Task 9, Task 21, Task 25, and Task 27 exact native regression matrices passed unchanged."
+  ],
+  "blockingFindings": [
+    {
+      "id": "task28-native-authority-identities-are-consistently-rebindable",
+      "severity": "blocking-evidence",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/automation/AutomationEvidence.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/automation/AutomationNativeObservation.java",
+        "gradle/federation-qa.gradle"
+      ],
+      "evidence": "A reviewer-owned fully rebound copy changed the automation.interface-stock native-entry projection identity from 830165218 to arbitrary 4294967295, updated the log hash, run/path/timestamps, and path identity, and federationTaskTwentyEightEvidenceConsumer still exited 0. A second fully rebound copy consistently changed the Interface owner from 705810512 to 4294967295 in both native properties and the authority log, updated both artifact hashes and the complete envelope identity, and the same consumer again exited 0. These are semantic runtime-authority substitutions, not stale-path or stale-hash attacks.",
+      "artifacts": [
+        ".omo/evidence/task-28-reviewer/attempt-reviewer-fake-projection/result.json",
+        ".omo/evidence/task-28-reviewer/attempt-reviewer-fake-interface-owner/result.json"
+      ],
+      "requiredFix": "Capture the expected Interface owner and AuthorizedStorageProjection identities through independent pre-operation runtime authority receipts, correlate them to the operation observations in the consumer, and add fully rebound current-identity self-test mutations that consistently replace each identity and must fail for a Task 28 semantic reason."
+    }
+  ],
+  "freshEvidence": {
+    "task28": ".omo/evidence/task-28-reviewer/attempt-20260920T104744447Z/result.json",
+    "task09Regression": ".omo/evidence/task-28-reviewer-regression-09/attempt-20260920T105746960Z/result.json",
+    "task21Regression": ".omo/evidence/task-28-reviewer-regression-21/attempt-20260920T110410905Z/result.json",
+    "task25Regression": ".omo/evidence/task-28-reviewer-regression-25/attempt-20260920T110925629Z/result.json",
+    "task27Regression": ".omo/evidence/task-28-reviewer-regression-27/attempt-20260920T111432050Z/result.json"
+  },
+  "adversarialVerification": [
+    "The canonical persisted consumer and built-in Task 28 self-test passed, but the built-in mutation matrix does not cover the two coordinated substitutions above.",
+    "Both reviewer attacks passed envelope, current-source identity, artifact hashing, and Task 28 semantic consumption after independent rebinding."
+  ],
+  "verification": [
+    "NativeAutomationContractTest passed with rerun-tasks.",
+    "Strict dependency-verified check, build, sourcesJar, and verifySharedJarContent passed with warning-mode fail.",
+    "Binary and sources archives contain no Task 28 testmod, evidence, native-observation, or test mixin entries.",
+    "All changed Java files report zero LSP diagnostics and git diff --check passes."
+  ],
+  "scopeAndCleanup": "No Task 29 cancellation/reload behavior, Federation planner/CPU/result ledger, plan checkbox, commit, issue, or PR was introduced. Gradle daemons were stopped; no run-gametest tree or session lock remains.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer evidence outputs; production, tests, Gradle, manifest, docs, plan, knowledge, other notepads, Git index/history, issues, and PRs were untouched."
+}
+```
+
+## 2026-09-20 Task 28 independent-authority repair resolution
+
+- The blocking `task28-native-authority-identities-are-consistently-rebindable` finding is repaired by independent
+  pre-operation Interface-owner and projection authority capture plus runtime exact-object enforcement.
+- Coordinated owner and projection mutation probes now fail with Task 28 semantic mismatch reasons.
+- Fresh canonical evidence is
+  `.omo/evidence/task-28-authority-repair/attempt-20260920T115809462Z/result.json`; producer, consumers, adversarial
+  self-test, focused Task 9/21/25/27 contracts, strict build/archive isolation, diagnostics, and diff hygiene pass.
+- Task 28 remains unchecked and uncommitted pending independent re-review. No Task 29 behavior, issue, or PR was added.
+
+## 2026-09-20T22:24:37+10:00 Task 28 independent authority-repair re-review
+
+```json
+{
+  "type": "IndependentAdversarialRepairReReview",
+  "task": 28,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "closedFinding": "task28-native-authority-identities-are-consistently-rebindable",
+  "summary": "The sole prior blocker is closed. Interface owners and AuthorizedStorageProjection instances are captured as exact live object references in a dedicated pre-operation observer, native tracker/projection hooks require those identities and authorized operation/key tuples, and persisted verification cross-correlates final semantic/native observations against the independent authority receipt. Fresh exact runtime, both independently rebound attacks, consumers, self-test, focused contract, strict build/archive isolation, diagnostics, and cleanup pass with no remaining Task 28 plan-grounded blocker.",
+  "authorityReview": [
+    "AutomationAuthorityObservation begins from the live NativeAutomationFixture and captures the current StorageMountService projection, storage key, mount generation, source generation/network/Grid, and effective relationship revision without reading AutomationNativeObservation or final semantic maps.",
+    "Each InterfaceLogic owner is added to an identity-backed set after placement and before configuration can trigger MultiCraftingTracker; the HEAD injection rejects any tracker owner outside that exact pre-authorized object set.",
+    "Projection operation/key tuples are authorized before configuration or native bus work. Topology-settled remounts are captured as additional exact projection objects before fluid/contention configuration; no wildcard identity is accepted.",
+    "The consumer requires exactly one receipt with exact fields, child/test ID, selected test, pre-operation phase, storage relationship, positive mount/source generations, source network/Grid, relationship revision, operation/key set, and identities that contain every observed native owner/projection. Missing, duplicate, malformed/conflicting, wrong-phase, or substituted receipts fail closed."
+  ],
+  "freshEvidence": {
+    "canonical": ".omo/evidence/task-28-reviewer-repair/attempt-20260920T121713119Z/result.json",
+    "interfaceOwnerAttack": ".omo/evidence/task-28-reviewer-repair/attempt-reviewer-coordinated-interface-owner/result.json",
+    "projectionAttack": ".omo/evidence/task-28-reviewer-repair/attempt-reviewer-coordinated-projection-identity/result.json"
+  },
+  "adversarialVerification": [
+    "The coordinated Interface attack changed automation.crafting-card properties owner, semantic owner fact, final authority owner, and native trackerOwner to 4294967295; it rebound run ID, canonical paths, timestamps, path identity, and all artifact hashes while preserving the independent pre-operation receipt. The dedicated consumer rejected it with 'Task 28 pre-operation Interface owner mismatch: automationcraftingcard'.",
+    "The coordinated projection attack changed automation.interface-stock native projection to 4294967295; it rebound run ID, canonical paths, timestamps, path identity, and the modified artifact hash while preserving the independent pre-operation receipt. The dedicated consumer rejected it with 'Task 28 pre-operation projection mismatch: automationinterfacestock'.",
+    "A reviewer assertion compared canonical and attack channels and confirmed both independent pre-operation receipt lines remained byte-identical while the coordinated semantic/native channels changed."
+  ],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=automation.interface-stock,automation.crafting-card,automation.native-buses,automation.reject-duplicate-demand,automation.contention -PevidenceDir=.omo/evidence/task-28-reviewer-repair --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-28-reviewer-repair/attempt-20260920T121713119Z/result.json --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyEightEvidenceConsumer -PresultFile=.omo/evidence/task-28-reviewer-repair/attempt-20260920T121713119Z/result.json --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyEightEvidenceConsumer -PresultFile=.omo/evidence/task-28-reviewer-repair/attempt-reviewer-coordinated-interface-owner/result.json --no-configuration-cache -> expected BUILD FAILED with Task 28 pre-operation Interface owner mismatch",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyEightEvidenceConsumer -PresultFile=.omo/evidence/task-28-reviewer-repair/attempt-reviewer-coordinated-projection-identity/result.json --no-configuration-cache -> expected BUILD FAILED with Task 28 pre-operation projection mismatch",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyEightEvidenceSelfTest -PresultFile=.omo/evidence/task-28-reviewer-repair/attempt-20260920T121713119Z/result.json --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:test --tests space.controlnet.ae2federation.qa.NativeAutomationContractTest --rerun-tasks --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --dependency-verification=strict --warning-mode=fail --no-configuration-cache -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> pass",
+    "./gradlew --stop -> daemon stopped"
+  ],
+  "runtimeReconfirmation": [
+    "All five exact native cases passed with assertion counts 14, 15, 21, 18, and 15, one operation each, zero child exits, no timeout, and no surviving descendants.",
+    "Existing Interface/Crafting Card ownership, one native demand/no resubmission, native cancellation, item/fluid bus accounting, physical source equations, contention ceiling, addon absence, no reciprocal rule, and no Federation controller/ledger checks remain unchanged and pass.",
+    "Generic and dedicated consumers, expanded fully rebound self-test, NativeAutomationContractTest, strict check/build/sourcesJar/verifySharedJarContent, and manual binary/source archive inspection passed."
+  ],
+  "diagnosticsAndCleanup": "All fourteen changed/repaired Java files report zero LSP diagnostics. Binary and source archives contain no Task 28 testmod/evidence/authority-observation classes or test mixin resources. No run-gametest tree or session lock remains and Gradle daemons were stopped.",
+  "scope": "Task 28 remains unchecked and uncommitted. No Task 29 lifecycle requirement, production/test/Gradle/manifest/docs/plan/knowledge/other-notepad change, Git index/history operation, issue, or PR was introduced by this reviewer.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence and attack outputs."
 }
 ```

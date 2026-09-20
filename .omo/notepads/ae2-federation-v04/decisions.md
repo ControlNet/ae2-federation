@@ -4,6 +4,15 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-20 Task 28 native automation
+
+- Keep Task 28 qualification-only. Federation exposes the authorized Storage projection; native `InterfaceLogic`,
+  `MultiCraftingTracker`, `ImportBusPart`, and `ExportBusPart` own demand and transfer state.
+- Use an automation-only second provider ME Chest with a native fluid cell, created before topology settlement. Preserve the
+  callback-probe slot and behavior for every other `PolicyBridgeFixtures` consumer.
+- Require physical source and destination observations for real item/fluid movement and exact native owner receipts. Do not
+  infer reciprocal authority or add a controller, scheduler, task queue, reservation engine, ledger, replay, or buffer.
+
 ---
 
 ## 2026-09-13 - Task 1
@@ -435,3 +444,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Prove Policy scope with two genuine patterns owned by the same native provider and an exact stick `ALLOW_LIST`. Keep
   consumer-native craftables empty and reject copied patterns, alternate providers, and recursive projections.
 - Leave the plan checkbox unchanged pending a new independent acceptance verdict; add no Task 28/29 behavior.
+
+## 2026-09-20 Task 28 independent-authority repair
+
+- Establish Interface and Storage projection authority before native operations in a dedicated observer that does not read
+  semantic facts or native operation observations.
+- Treat projection remounts as distinct authorities: capture the newly current projection only after topology settlement
+  and before configuration, retain earlier authorized projections, and require every observed identity to be authorized.
+- Leave Task 28 unchecked and uncommitted pending independent re-review; introduce no Task 29 behavior.

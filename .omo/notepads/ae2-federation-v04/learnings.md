@@ -4,6 +4,18 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-20 Task 28 native automation
+
+- Native AE2 automation can consume the Task 21 directional Storage projection without a Federation scheduler: Interface
+  stocking, Crafting Card demand, Import/Export Buses, duplicate-demand rejection, cancellation, and contention all remain
+  owned by AE2 native logic and trackers.
+- Restored AE2 parts use managed-node tag `gn`; explicit cable reconnection is required after loading seeded part identity.
+- A pre-settled fluid source must be created in the provider topology before identity settlement. The stable location is
+  `secondPosition.north(2)`, adjacent to the existing provider cable; adding a chest below an established cable caused a
+  late identity merge and prevented fixture readiness.
+- Real fluid automation moved 1000 mB water into a native Interface and left 500 mB in the physical provider cell. Final
+  source-bound evidence is `.omo/evidence/task-28/attempt-20260920T102042301Z/result.json`.
+
 ## 2026-09-16 - Task 20 T-S04 large variant
 
 - T-S04 quantities describe processing input volume. A valid large call consumes 256 cobblestone while returning ordinary
@@ -682,3 +694,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Final repaired evidence is
   `.omo/evidence/task-27-acceptance-repair-final/attempt-20260920T075857792Z/result.json`; fresh Task 9 and Task 26
   regressions are under their matching `task-*-task27-acceptance-repair-final` evidence roots.
+
+## 2026-09-20 Task 28 independent-authority repair
+
+- Cross-correlating two mutable final observations does not prove runtime authority. A separate pre-operation observer must
+  own the exact object references and gate the runtime hooks before producing its receipt.
+- Native topology settlement can replace an `AuthorizedStorageProjection` between item-bus and fluid-Interface phases.
+  Persist an exact set of independently authorized projection identities and verify observed identities are a nonempty
+  subset; equality incorrectly rejects authorized but unused projections.
+- Repaired evidence is `.omo/evidence/task-28-authority-repair/attempt-20260920T115809462Z/result.json`.

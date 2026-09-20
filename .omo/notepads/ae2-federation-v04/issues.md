@@ -4,6 +4,16 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-20 Task 28 resolution
+
+- The first real-fluid fixture placed a new ME Chest below an already-created provider cable. Its late native node merge
+  prevented `CraftingBindingFixture.ready()` from settling. An automation-only chest pre-placed in the established second
+  provider storage slot fixed the topology while preserving the callback probe for all non-automation fixtures.
+- The first canonical rerun exposed stale verifier accounting: the manifest expected 21 native-buses assertions while the
+  Task 28 semantic verifier still expected 16. Aligning the exact verifier count restored fail-closed production.
+- Groovy Gradle LSP remains unavailable. Executable producer, consumer, adversarial self-test, and strict Gradle build
+  validate the changed verifier surface; all changed Java files report no diagnostics.
+
 ---
 
 ## 2026-09-13 - Task 1
@@ -476,3 +486,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   discovery, widened filter, copied pattern, alternate provider, and projection-recursion substitutions are rejected.
 - No Task 27 repair blocker remains after exact producer/consumer/self-test, Task 9/26 regressions, strict build/archive and
   process-isolation checks. Groovy LSP remains unavailable; executable Gradle validation covers the changed verifier.
+
+## 2026-09-20 Task 28 independent-authority repair resolution
+
+- Resolved: independently captured pre-operation Interface owners now reject coordinated semantic/native owner rebinding.
+- Resolved: independently captured projection identity sets now reject unapproved projection substitution while allowing
+  genuine projection replacement after the fluid Interface or contention consumers join and remount storage.
+- Fresh exact producer, generic/dedicated consumers, adversarial self-test, focused regressions, and strict build/archive
+  checks pass. Groovy LSP remains unavailable; executable Gradle validation covers the verifier.
