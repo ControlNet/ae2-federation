@@ -30,6 +30,7 @@ import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 
 public final class MultipartBridgePart extends AEBasePart {
     @PartModels
@@ -216,6 +217,7 @@ public final class MultipartBridgePart extends AEBasePart {
         if (candidate == null) {
             FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
             StorageMountService.reconcileIfPresent(serverLevel);
+            CraftingBindingService.reconcileIfPresent(serverLevel);
             return;
         }
         var mainId = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid());
@@ -223,9 +225,11 @@ public final class MultipartBridgePart extends AEBasePart {
         if (mainId.isEmpty() || outerId.isEmpty()) {
             FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
             StorageMountService.reconcileIfPresent(serverLevel);
+            CraftingBindingService.reconcileIfPresent(serverLevel);
             return;
         }
         FabricRegistryAccess.get(serverLevel).upsertDirectBridge(fabricSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }
