@@ -415,3 +415,23 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   no-CPU/no-fallback proof.
 - Make `crafting.native-state-owner` a real A-to-B replacement on one settled source NetworkId. Persist both complete native
   authority snapshots and prove retained A remains empty after B is active.
+
+## 2026-09-20 Task 27 native terminal flow
+
+- Keep terminal discovery, plan polling, and submission state server-thread owned. Cross into AE2's planner thread only
+  through an immutable requester containing the already-captured action source and provider node.
+- Recheck Policy revision, Fabric generation/topology, service/Grid identity, and exact provider node/provider identity at
+  submission. Do not include CPU presence in that check, because native `submitJob` must produce `NO_CPU_FOUND` itself.
+- Recognize completed output through native CPU callback plus physical cell insertion correlated to one native job. Do not
+  add a Federation result ledger or infer ownership from public aggregate storage.
+- Keep Task 27 evidence as an exact five-child schema-v3 contract with a dedicated consumer and fully rebound adversarial
+  self-test; do not mark the plan complete before independent Atlas review.
+
+## 2026-09-20 Task 27 independent-gate repair
+
+- Establish result authority before submission from the exact physical cell delegate, then extend it only from actual AE2
+  submission/callback/insertion hooks. Do not derive destination authority from `TerminalNativeObservation` or accept an
+  arbitrary matching `BasicCellInventory` insertion.
+- Prove Policy scope with two genuine patterns owned by the same native provider and an exact stick `ALLOW_LIST`. Keep
+  consumer-native craftables empty and reject copied patterns, alternate providers, and recursive projections.
+- Leave the plan checkbox unchanged pending a new independent acceptance verdict; add no Task 28/29 behavior.

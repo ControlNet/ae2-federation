@@ -454,3 +454,25 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   denied old accessors; the no-CPU case no longer claims Fabric withdrawal.
 - The old ownership case stopped after provider A removal. The repaired phased fixture installs provider B with a freshly
   seeded node and pattern, re-observes the Bridge lifecycle, and proves distinct A/B authority plus stale-A isolation.
+
+## 2026-09-20 Task 27 resolution
+
+- The initial world-access guard targeted inherited `getBlockEntity` on `ServerLevel`; Mixin requires the declaring
+  `Level` owner. The corrected target starts under the real NeoForge GameTest runtime.
+- Positive terminal tests initially inspected submission state without calling `submit`; both now invoke the native request
+  first. The no-CPU test also stops requiring the initial CPU-ready topology after intentionally removing that CPU.
+- Generic evidence accounting initially treated `terminal.*` as two operations and disallowed zero-work rejection cases.
+  It now classifies this family alongside other one-operation task-specific native GameTests.
+- The first provider-forgery self-test accidentally rewrote the independent authority receipt. Probe rebinding is now scoped
+  to terminal semantic/native/runtime channels, leaving direct authority as the rejection oracle.
+
+## 2026-09-20 Task 27 independent-gate repair resolution
+
+- Resolved: `AE2F_TERMINAL_RESULT_AUTHORITY` now records destination, submission, callback, and physical phases from a
+  pre-established exact cell delegate. Fully rebound job, logic/callback, and destination substitutions fail specifically
+  at native result authority correlation.
+- Resolved: `AE2F_TERMINAL_DISCOVERY_AUTHORITY` directly observes two genuine source patterns, exact allow-list state,
+  forbidden absence, empty consumer-native craftables, and original pattern/provider identities. Single-pattern, forbidden
+  discovery, widened filter, copied pattern, alternate provider, and projection-recursion substitutions are rejected.
+- No Task 27 repair blocker remains after exact producer/consumer/self-test, Task 9/26 regressions, strict build/archive and
+  process-isolation checks. Groovy LSP remains unavailable; executable Gradle validation covers the changed verifier.

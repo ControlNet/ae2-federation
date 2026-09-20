@@ -2634,3 +2634,129 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer evidence/build outputs; no production, test, Gradle, manifest, docs, plan, knowledge, Boulder, Git index/history, issue, or PR changes."
 }
 ```
+
+## 2026-09-20T17:18:37+10:00 Task 27 independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 27,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The production path is directionally scoped, uses the exact Task 26 native source, delegates planning and submission to AE2, rechecks submission authority, and preserves native no-CPU behavior. Fresh canonical execution, regressions, strict build/archive checks, diagnostics, and cleanup pass. Acceptance remains blocked because a fully rebound fabricated native result owner is accepted as current evidence and the canonical discovery case never supplies a forbidden craftable with which to prove exact Policy filtering or non-widening.",
+  "confirmedProductionBehavior": [
+    "NativeTerminalAdapter discovers through CraftingBindingService for the exact requester node and source NetworkId, reads the provider ICraftingService directly on the server thread, applies Policy output filtering, and deduplicates native IPatternDetails identities.",
+    "NativeTerminalRequest delegates to ICraftingService.beginCraftingCalculation and submitJob; it adds no Federation planner, CPU, task ledger, or synthetic result path.",
+    "Submission rechecks current session, binding, service, provider, and pattern authority while intentionally leaving CPU selection and native NO_CPU_FOUND semantics to AE2.",
+    "The canonical result is emitted by native CraftingCPUCluster/CraftingCpuLogic processing and reaches a real BasicCellInventory."
+  ],
+  "blockingFindings": [
+    {
+      "id": "task27-result-owner-evidence-is-consistently-rebindable",
+      "severity": "blocking-evidence",
+      "source": ["TerminalNativeObservation.java", "TerminalPhysicalResultEvidenceMixin.java", "TerminalCraftingGameTests.java", "gradle/federation-qa.gradle"],
+      "evidence": "A fully path/timestamp/hash-rebound copy replaced the job UUID with 00000000-0000-0000-0000-000000000027, CPU-logic/callback owner with 4294967294, and physical insertion owner with 4294967295. federationTaskTwentySevenEvidenceConsumer still exited 0. TerminalPhysicalResultEvidenceMixin accepts any matching BasicCellInventory insertion without binding it to TerminalCraftingFixture.sourcePhysicalStorage().",
+      "artifact": ".omo/evidence/task-27-independent-review/attempt-reviewer-fabricated-result-owner-5ce1692c-2c64-46c4-bc7b-0a7fae7b998d/result.json",
+      "requiredFix": "Correlate link/job, CraftingCpuLogic, callback owner, and the pre-established exact physical destination through independent runtime receipts. Add a fully rebound current-identity self-test that changes all owners consistently and requires semantic rejection."
+    },
+    {
+      "id": "task27-filter-scope-has-no-forbidden-native-pattern",
+      "severity": "blocking-coverage",
+      "source": ["TerminalCraftingFixture.java", "TerminalCraftingGameTests.java", "gradle/federation-qa.gradle"],
+      "evidence": "The success fixture publishes only the permitted stick craftable. Fixed filter-scoped/non-recursive booleans and a one-pattern count cannot prove exclusion of a genuine Policy-forbidden pattern, alternate provider/resource widening, or projection recursion.",
+      "requiredFix": "Publish a second genuinely craftable but Policy-forbidden native output and prove only the exact permitted native pattern from the bound provider is discovered. Exercise an alternate/projection candidate where applicable and reject forbidden/copied-pattern evidence substitution."
+    }
+  ],
+  "freshEvidence": {
+    "task27": ".omo/evidence/task-27-independent-review/attempt-20260920T070409749Z/result.json",
+    "task26Regression": ".omo/evidence/task-26-task27-independent-regression/attempt-20260920T070836362Z/result.json",
+    "task09Regression": ".omo/evidence/task-09-task27-independent-regression/attempt-20260920T071109825Z/result.json"
+  },
+  "verification": [
+    "All five exact Task 27 cases, generic/current-identity consumers, built-in self-test, and NativeTerminalFlowContractTest passed with strict dependency verification and warning-mode fail.",
+    "Fresh exact Task 26 and Task 9 regressions, consumers, and adversarial self-tests passed.",
+    "Strict check, build, verifySharedJarContent, archive inspection, and git diff --check passed; no Task 27 test/evidence class is shipped or tracked as a class artifact.",
+    "LSP reports zero diagnostics across changed production terminal/binding Java, NativeTerminalFlowContractTest, Task 27 GameTests/fixtures/observations, and test Mixins."
+  ],
+  "cleanup": "No GameTest process, run-gametest tree, session.lock, tracked evidence, class, build, or runtime artifact remains; cleanup receipt is under the fresh Task 27 attempt.",
+  "continuation": "Keep Task 27 unchecked. Repair only these two evidence/coverage blockers and rerun the same Task 27, Task 26, and Task 9 matrix; do not add Task 28/29 behavior or a Federation planner/CPU/result ledger.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer evidence/build outputs; no production, test, Gradle, manifest, docs, plan, knowledge, Boulder state, Git index/history, issue, or PR changes."
+}
+```
+
+## 2026-09-20 Task 27 independent-gate repair result
+
+```json
+{
+  "type": "AcceptanceRepair",
+  "task": 27,
+  "status": "ready-for-independent-review",
+  "repairedFindings": [
+    "task27-result-owner-evidence-is-consistently-rebindable",
+    "task27-filter-scope-has-no-forbidden-native-pattern"
+  ],
+  "resultAuthority": "A pre-submission authority receipt captures the exact physical source cell delegate and then correlates destination, native job UUID, CPU, CraftingCpuLogic, callback owner, output key/amount, and exact physical insertion across four phases.",
+  "discoveryAuthority": "A direct source observer proves two genuine patterns from one native provider, exact stick ALLOW_LIST state, crafting-table exclusion, empty consumer-native craftables, and original pattern identities.",
+  "adversarialVerification": "Fully rebound job, logic/callback, destination, single-pattern source, forbidden discovery, widened filter, copied pattern, alternate provider, and projection-recursion substitutions were rejected for intended semantic reasons.",
+  "freshEvidence": {
+    "task27": ".omo/evidence/task-27-acceptance-repair-final/attempt-20260920T075857792Z/result.json",
+    "task26Regression": ".omo/evidence/task-26-task27-acceptance-repair-final/attempt-20260920T080506270Z/result.json",
+    "task09Regression": ".omo/evidence/task-09-task27-acceptance-repair-final/attempt-20260920T080216332Z/result.json"
+  },
+  "verification": [
+    "Exact Task 27 producer, persisted consumer, and adversarial self-test passed.",
+    "Fresh exact Task 26 and Task 9 producers, consumers, and adversarial self-tests passed.",
+    "NativeTerminalFlowContractTest, strict build, sourcesJar, verifySharedJarContent, process-isolation contract, Java diagnostics, and git diff --check passed."
+  ],
+  "scope": "No Task 28/29 behavior, Federation planner, CPU, result ledger, commit, PR, issue, or plan-checkbox change was added."
+}
+```
+
+## 2026-09-20T18:37:38+10:00 Task 27 independent second acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptanceSecondGate",
+  "task": 27,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "Both original blockers are closed. Fresh independent execution proves exact native discovery, planning, one-job submission, callback ownership, and physical destination ownership; current-identity consumption rejects coordinated ownership and discovery/filter fabrications against independent authority receipts. Task 9/26 regressions, strict build/archive checks, diagnostics, and cleanup pass without Task 28/29 scope.",
+  "closedFindings": [
+    {
+      "id": "task27-result-owner-evidence-is-consistently-rebindable",
+      "status": "closed",
+      "proof": "TerminalResultAuthorityReceipt.captureDestination runs after the plan completes and before submit, capturing the exact snapshot provider, sole native CPU, output key/amount, and CraftingBindingFixture.sourcePhysicalStorage(), which is the source ME chest's original cell inventory. Submission accepts only that CPU and its live native link; callback accepts only the captured CraftingCpuLogic, same link UUID, key, amount, and MODULATE action; physical insertion accepts only the pre-established destination, key, amount, and inserted amount. The fresh four phases correlate CPU 1499848644, logic/callback 1858820756, link 8b1fb3df-9eaa-4d9f-9a52-fedd1244fbdb, destination 465642291, minecraft:stick, and amount 4."
+    },
+    {
+      "id": "task27-filter-scope-has-no-forbidden-native-pattern",
+      "status": "closed",
+      "proof": "The real Pattern Provider exposes genuine stick and crafting-table encoded patterns. TerminalDiscoveryAuthorityReceipt directly observes source keys {minecraft:stick,minecraft:crafting_table}, two provider-owned pattern identities, empty consumer-native craftables, exact stick ALLOW_LIST state, and terminal discovery containing only the original stick pattern from the same provider."
+    }
+  ],
+  "freshEvidence": {
+    "task27": ".omo/evidence/task-27-independent-second-gate/attempt-20260920T082029366Z/result.json",
+    "task26Regression": ".omo/evidence/task-26-task27-independent-second-gate/attempt-20260920T082828329Z/result.json",
+    "task09Regression": ".omo/evidence/task-09-task27-independent-second-gate/attempt-20260920T083116806Z/result.json",
+    "reviewerAttacks": ".omo/evidence/task-27-independent-second-gate-attacks"
+  },
+  "canonicalTask27": {
+    "requestedExecuted": ["terminal.native-crafting", "terminal.native-result", "terminal.missing-material", "terminal.no-cpu", "terminal.reject-async-world-access"],
+    "assertionCounts": {"terminal.native-crafting": 21, "terminal.native-result": 15, "terminal.missing-material": 10, "terminal.no-cpu": 10, "terminal.reject-async-world-access": 10},
+    "result": "all passed with one operation each, zero child exits, no timeout, and no surviving descendant"
+  },
+  "adversarialVerification": [
+    "Generic consumer, current-identity Task 27 consumer, and expanded built-in self-test passed; the self-test rejected individual fabricated link, logic/callback, and destination mutations plus all repaired discovery/filter mutations for their expected Task 27 reasons.",
+    "A reviewer-created fully rebound attempt consistently changed semantic/runtime job UUID to 00000000-0000-0000-0000-000000000027, CPU logic/callback owner to 4294967294, and physical/expected destination to 4294967295 while preserving the independent four-phase authority receipt. After run/path/timestamp/report/artifact-hash rebinding, the current-identity consumer rejected it with 'Task 27 native result authority mismatch: link'.",
+    "Reviewer-created fully rebound fake-single-pattern-source, forbidden-pattern-discovery, widened-policy-filter, copied-allowed-pattern, alternate-provider, and projection-recursion attempts preserved the direct discovery authority receipt. All six passed envelope/current-identity validation and were rejected for Task 27 native terminal or native provider authority semantics, not hash/path identity."
+  ],
+  "verification": [
+    "Fresh exact Task 26 four-case producer, generic/dedicated consumers, and adversarial self-test passed.",
+    "Fresh exact Task 9 five-case producer, generic consumer, and adversarial self-test passed.",
+    "NativeTerminalFlowContractTest, strict check, build, sourcesJar, and verifySharedJarContent passed with strict dependency verification and warning-mode fail.",
+    "Production binding/terminal Java, Task 27 contract/GameTests/fixtures/authority observers, and test Mixins report zero LSP diagnostics; one initial file request timed out and its focused retry returned zero diagnostics.",
+    "Binary and sources archives contain production terminal classes and no testmod/evidence classes or resources; git diff --check passes."
+  ],
+  "scopeAndCleanup": "No Task 28 stocking, Task 29 cancellation/reload, Federation planner/CPU/result ledger, plan checkbox, commit, issue, or PR was introduced. No GameTest process, run-gametest tree, session.lock, tracked evidence/build/runtime/class artifact, or surviving child remains.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md second-gate report plus ignored reviewer evidence and attack outputs; production, tests, Gradle, manifest, docs, plan, knowledge, other notepads, Git index/history, issues, and PRs were untouched."
+}
+```

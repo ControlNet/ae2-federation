@@ -659,3 +659,26 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   service/CPU identity survives AE2 reconstruction.
 - Provider removal temporarily unsettles dynamic lookup. Pin the already-authorized directional `PolicyKey`, seed provider B
   from its provider `NetworkId`, then drive the existing Bridge neighbor lifecycle to re-observe the settled current Grid.
+
+## 2026-09-20 Task 27 native terminal flow
+
+- AE2 planning needs the provider's native `IGridNode` on its `AE Crafting Calculator` thread; a requester captured on the
+  server thread is sufficient and avoids planner-thread discovery or mutable world authority access.
+- AE2 does not necessarily call the simulation requester's `getActionSource()` during planning. Evidence must require the
+  captured node call and calculator thread while accepting a zero, independently accounted action-source call count.
+- Exact result ownership needs both the native CPU logic callback and physical `BasicCellInventory` insertion. Aggregate
+  storage growth alone cannot identify which Grid, CPU, job, or cell owns the result.
+- Canonical final-tree evidence is retained under `.omo/evidence/task-27-final/attempt-*/result.json`; Task 9 and Task 26 regression suites
+  also pass after the terminal boundary changes.
+
+## 2026-09-20 Task 27 independent-gate repair
+
+- A semantic/runtime result trace is not independent authority when every owner can be rebound consistently. Capturing the
+  exact physical cell delegate before submission provides an immutable destination oracle for later job, CPU logic,
+  callback, key/amount, and insertion correlation.
+- A one-pattern source cannot prove allow-list filtering. The repaired source publishes real stick and crafting-table
+  patterns from the same native provider; direct source/service observation proves the forbidden pattern exists while only
+  the original allowed stick pattern is discovered.
+- Final repaired evidence is
+  `.omo/evidence/task-27-acceptance-repair-final/attempt-20260920T075857792Z/result.json`; fresh Task 9 and Task 26
+  regressions are under their matching `task-*-task27-acceptance-repair-final` evidence roots.
