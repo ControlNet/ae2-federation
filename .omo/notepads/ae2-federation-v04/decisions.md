@@ -398,3 +398,20 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   the dedicated compatibility process. Default main, testmod, runtime, and archives remain addon-free.
 - Require five zero-exit native children and use the ordinary schema-v3 completed consumer. Keep Task 25-specific adversarial
   rejection for provenance, real addon execution, codec/filter identity, long quantities, coupling, and optional absence.
+
+## 2026-09-20 Task 26 native Crafting binding
+
+- Key one logical capability by ordered consumer/provider `NetworkId` plus `CRAFTING`, independent of physical Bridge count.
+- Expose exact native `ICraftingService`, providers, provider sources, and CPUs; do not add a Federation planner, CPU,
+  order queue, reservation engine, result ledger, or copied executable pattern state.
+- Bind validity to Policy revision, Fabric generation, provider generation, settled source identity, and native readiness.
+  Any mismatch withdraws the old capability and fails closed before another binding access.
+
+## 2026-09-20 Task 26 first-gate repair
+
+- Keep semantic facts in `NativeCraftingEvidence`, but establish authority through a separate direct native observer. Require
+  exact per-child receipt phases and reject any missing, duplicate, substituted, or conflicting phase before correlation.
+- Put live final-Fabric removal in `crafting.native-binding`; retain `crafting.reject-unavailable` solely as the independent
+  no-CPU/no-fallback proof.
+- Make `crafting.native-state-owner` a real A-to-B replacement on one settled source NetworkId. Persist both complete native
+  authority snapshots and prove retained A remains empty after B is active.

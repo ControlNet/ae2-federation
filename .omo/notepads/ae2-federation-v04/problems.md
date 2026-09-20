@@ -327,6 +327,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 }
 ```
 
+## 2026-09-20 Task 26
+
+- No unresolved Task 26 implementation blocker is known. Production binding, four canonical native GameTests, exact
+  schema-v3 production/consumption, four fully rebound semantic rejection probes, focused tests, and Java diagnostics pass.
+- Task 26 remains unchecked and uncommitted for independent orchestrator review; no issue or PR was created.
+
 ## 2026-09-20T12:15:00+10:00 Task 25 review correction result
 
 - Independent review finding accepted: `a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4` is the matching AppFlux 2.1.4
@@ -2480,5 +2486,151 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
     "diffCheck": "passed"
   },
   "scope": "Task 25 remains unchecked and uncommitted. Reviewer changed only this append-only report and ignored .omo/evidence/task-25-independent-rerun evidence; no production code, tests, Gradle, dependency metadata, manifest, docs, plan, Boulder state, Git index/history, issue, or PR was changed. Task 21 was not rerun because no storage-authority path changed; Task 24 was not rerun because no subscription integration path changed."
+}
+```
+
+## 2026-09-20T04:32:57Z Task 26 independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 26,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The production boundary is directionally keyed, revision-bound, and delegates real planning/execution to exact AE2 objects without implementing Task 27 terminal adaptation. Fresh native execution and every ordinary gate pass. Acceptance still fails because the current-identity persisted consumer accepts fully rebound fabricated source/provider/pattern identities, and the claimed Fabric-loss withdrawal is emitted by a no-CPU fixture that never had a live capability to withdraw.",
+  "scopeBoundary": {
+    "confirmed": [
+      "Task 26 publishes a CraftingCapabilityBinding over the provider ICraftingService, provider node/provider objects, provider Grid, and native CPU set; it does not inject provider nodes into the consumer Grid.",
+      "No Federation planner, CPU, task/result ledger, material contract, copied pattern list, terminal adapter, stocking controller, or cancellation/reload implementation was added.",
+      "Task 27 remains responsible for terminal discovery/planning/result recognition; lack of consumer-Grid provider injection is not treated as a defect."
+    ]
+  },
+  "confirmedProductionBehavior": [
+    "PolicyKey is ordered consumer/provider/CRAFTING; relationships deduplicate across common Fabrics and physical Bridge routes.",
+    "Publication and every CraftingCapabilityBinding accessor recheck exact Policy revision, enabled REQUEST authority, current common-Fabric references/topology revision, settled identities, provider generation, native provider readiness, and nonempty native CPU capacity.",
+    "Bridge, Hub, Federation Cable, Policy edit/delete, provider discovery, and server-level unload paths reach Crafting binding reconciliation or closure without menu ownership.",
+    "Native discovery restricts node services to active, booted nodes on the exact provider Grid; the capability returns AE2-owned service/provider/node/CPU objects and the real source Grid.",
+    "CraftingProviderGenerationLedger compares service/provider/CPU identities, rejects duplicate object identity, and uses Math.incrementExact so generation wrap cannot silently alias an old generation."
+  ],
+  "blockingFindings": [
+    {
+      "id": "task26-native-identity-evidence-is-self-authored",
+      "severity": "blocking-evidence",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingGameTests.java:66",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingFailureGameTests.java:40",
+        "gradle/federation-qa.gradle:3364"
+      ],
+      "evidence": "NativeCraftingEvidence writes each property and AE2F_CRAFT_NATIVE_ENTRY line from the same fixture-authored Map. verifyTaskTwentySixEvidence only compares those two mutable projections and fixed booleans. Reviewer copies fully rebound run/path/timestamps and every artifact hash under current source/product identity. Changing sourceGridIdentity, providerIdentity, or patternIdentity to canonical fabricated 4294967295 in both projections was accepted by federationTaskTwentySixEvidenceConsumer with exit 0. The duplicate-capacity, disabled-revocation, and missing-child attacks correctly failed.",
+      "artifacts": ".omo/evidence/task-26-reviewer-attacks-2/{attempt-stale-source-identity,attempt-fake-native-ownership,attempt-copied-pattern-identity}",
+      "requiredFix": "Correlate service, provider registration node, provider object, source Grid/NetworkId, CPU, and exact pattern object identity with independently emitted native/runtime authority receipts rather than the evidence Map that reports the assertions. Add fully rebound current-identity self-test probes for stale source Grid/NetworkId, fabricated service/provider/node/CPU identity, and copied/substituted pattern identity, and require rejection for Task 26 semantic reasons."
+    },
+    {
+      "id": "fabric-loss-withdrawal-never-starts-live",
+      "severity": "blocking-coverage",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingFailureGameTests.java:54",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingFailureGameTests.java:65",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingFailureGameTests.java:68"
+      ],
+      "evidence": "crafting.reject-unavailable constructs CraftingBindingFixture(withCpu=false), proves capability and relationship counts are already zero, removes the Bridges, proves they remain zero, then emits fabricLossWithdrawn=true. This is no resurrection from an unavailable backend, not withdrawal of a current capability or invalidation of a held binding. The verifier accepts the canned label. No other Task 26 case removes a Fabric while a live binding exists.",
+      "requiredFix": "Within the exact four-case suite, obtain and retain a live authorized binding, remove the last common Fabric through the real Bridge/Hub/Cable lifecycle, and prove the held binding exposes no service/provider/source/CPU before the next request while the service publishes no replacement. Persist pre/post binding identity, Fabric reference/generation, withdrawal receipt, and access outcome; reject fully rebound fabricated success."
+    },
+    {
+      "id": "provider-replacement-generation-not-runtime-proven",
+      "severity": "blocking-coverage",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingBindingFailureGameTests.java:36",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingBindingFixture.java:179"
+      ],
+      "evidence": "crafting.native-state-owner removes the Pattern Provider and proves loss, but never installs a distinct replacement provider/backend while retaining the logical source identity. Therefore provider replacement, generation advance, stale-A rejection after B exists, and exact new provider/node attribution are source-inspected only, despite the explicit removed/replaced-provider lifecycle requirement.",
+      "requiredFix": "Replace the native provider with a distinct real provider on the same settled source, reconcile a new binding/generation, then invoke the retained old binding and prove it cannot expose or affect B. Bind both registration-node/provider identities and generations into independent runtime evidence and adversarially substitute them."
+    }
+  ],
+  "freshEvidence": {
+    "task26": ".omo/evidence/task-26-independent-review/attempt-20260920T041835906Z/result.json",
+    "task09Regression": ".omo/evidence/task-26-independent-review-task09/attempt-20260920T042331352Z/result.json",
+    "task14Regression": ".omo/evidence/task-26-independent-review-task14/attempt-20260920T042628499Z/result.json"
+  },
+  "verification": [
+    "Exact four Task 26 native GameTests ran serially and passed; generic consumer, dedicated current-identity consumer, and built-in four-probe self-test passed.",
+    "Task 9 exact five-case native regression, persisted consumer, and adversarial self-test passed.",
+    "Task 14 exact five-case Policy regression, persisted consumer, and adversarial self-test passed.",
+    "CraftingProviderGenerationLedgerTest passed under strict dependency verification.",
+    "Strict dependency-verified check, build, sourcesJar, and verifySharedJarContent reran without cache and passed.",
+    "All 23 changed/untracked Java files report zero LSP errors, warnings, or hints.",
+    "Binary and sources JAR scans found zero Task 26 testmod/evidence classes; the binary contains 14 production crafting/binding entries.",
+    "git diff --check passed; no GameTest process, run-gametest tree, session.lock, or tracked evidence/build/runtime artifact remains."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "neoforge-1.21.1/run-gametest absent",
+    "sessionLock": "none",
+    "reviewerEvidence": "ignored under .omo/evidence/task-26-independent-review*, .omo/evidence/task-26-reviewer-attacks*"
+  },
+  "continuation": "Keep Task 26 unchecked. Repair only the three Task 26 evidence/lifecycle gaps above, then rerun the same independent matrix. Do not add Task 27 terminal integration, Task 28 stocking, Task 29 cancellation/reload, a Federation planner/CPU/result ledger, or consumer-Grid provider injection.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer evidence/build outputs; no production, test, Gradle, manifest, docs, plan, knowledge, Boulder, Git index/history, issue, or PR changes."
+}
+```
+
+
+## 2026-09-20T15:42:23+10:00 Task 26 independent second-gate result
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 26,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "The three prior Task 26 blockers are closed by independently observed native authority, live Fabric withdrawal, and distinct provider replacement evidence. Fresh exact-case execution, persisted consumption, fully rebound adversarial self-test, regressions, strict build/archive checks, diagnostics, and cleanup all pass.",
+  "freshEvidence": {
+    "task26": ".omo/evidence/task-26-independent-second-gate/attempt-20260920T053217742Z/result.json",
+    "task09Regression": ".omo/evidence/task-26-second-gate-task09/attempt-20260920T053531021Z/result.json",
+    "task14Regression": ".omo/evidence/task-26-second-gate-task14/attempt-20260920T053811722Z/result.json"
+  },
+  "canonicalCases": {
+    "requested": [
+      "crafting.native-binding",
+      "crafting.deduplicate-capability",
+      "crafting.native-state-owner",
+      "crafting.reject-unavailable"
+    ],
+    "statuses": "all passed",
+    "assertionCounts": {
+      "crafting.native-binding": 18,
+      "crafting.deduplicate-capability": 8,
+      "crafting.native-state-owner": 18,
+      "crafting.reject-unavailable": 5
+    }
+  },
+  "blockingFindingsClosed": [
+    {
+      "id": "task26-native-identity-evidence-is-self-authored",
+      "evidence": "NativeCraftingAuthorityReceipt observes the live source Grid/NetworkId, Crafting service, provider node UUID/object, provider object, CPU identity, pattern identity, authority phase, and test ID. The fresh native-binding receipt records direct authority facts and the verifier/self-test rejects fully rebound fabricated source, service, provider, node, CPU, pattern, phase, and test identity mutations for semantic reasons."
+    },
+    {
+      "id": "fabric-loss-withdrawal-never-starts-live",
+      "evidence": "Fresh native-binding evidence records fabricCommonBefore=1, fabricCommonAfter=0, heldAccessDenied=true, heldBindingWithdrawn=true, withdrawalsBefore=1, and withdrawalsAfter=2. The retained live binding is invalidated after the last common Fabric is removed and no replacement is published."
+    },
+    {
+      "id": "provider-replacement-generation-not-runtime-proven",
+      "evidence": "Fresh native-state-owner evidence records generationA=1 and generationB=3, distinct A/B binding, service, provider, provider-node UUID/object, source Grid, and pattern identities, providerReplaced=true, sourceGenerationWithdrawn=true, oldBindingDenied=true, and oldSubmitAvailable=false."
+    }
+  ],
+  "adversarialVerification": [
+    "federationTaskTwentySixEvidenceSelfTest passed; its copied attempts fully rebind run ID, paths, timestamps, report identity, and artifact hashes before mutation.",
+    "The self-test rejected fabricated native ownership, stale source identity, service/provider/node/CPU substitutions, copied pattern identity, duplicate capability, disabled revocation, unavailable backend, and replacement-generation/stale-binding mutations for intended semantic messages.",
+    "Task 9 exact five-case regression, persisted consumer, and adversarial self-test passed.",
+    "Task 14 exact five-case regression, persisted consumer, and adversarial self-test passed."
+  ],
+  "verification": [
+    "Strict dependency-verified exact Task 26 producer, consumer, and self-test passed.",
+    "Strict dependency-verified check, build, and sourcesJar passed; verifySharedJarContent passed as part of check.",
+    "All inspected repaired Java files report zero LSP diagnostics.",
+    "git diff --check passed.",
+    "GameTest cleanup completed; no runtime process, run-gametest tree, or session lock remains."
+  ],
+  "scopeBoundary": "Task 26 remains limited to Policy-authorized directional native Crafting capability publication and revocation. No Task 27 terminal integration, Federation planner/CPU/result ledger, consumer-Grid provider injection, Task 28 stocking, or Task 29 cancellation/reload behavior is required or admitted.",
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer evidence/build outputs; no production, test, Gradle, manifest, docs, plan, knowledge, Boulder, Git index/history, issue, or PR changes."
 }
 ```

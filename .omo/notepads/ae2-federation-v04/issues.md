@@ -435,3 +435,22 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   Glodium runtime presence. Both are now pinned explicitly under strict dependency verification.
 - The generic native accounting verifier originally required inserted and extracted totals to match. Stored FE intentionally
   proves a non-empty final quantity, so only that case opts into truthful unequal-work accounting.
+
+## 2026-09-20 Task 26 resolution
+
+- Initial native fixtures intermittently reached `AMBIGUOUS_MERGE` because provider/assembler/CPU nodes could settle before
+  joining the source Grid. Staged placement plus pre-tick `NetworkIdentityNodeSeed` loading resolved the race.
+- Newly placed Bridge parts required a post-settlement neighbor refresh in the fixture; both primary and duplicate routes
+  now use the same bounded lifecycle.
+- The first QA integration omitted Task 26 from generic one-operation accounting and from both semantic-verifier call chains.
+  Exact producer, persisted consumer, and adversarial self-test now exercise the final wiring successfully.
+
+## 2026-09-20 Task 26 first-gate repair
+
+- The first accepted evidence compared properties and logs emitted from the same Map, so fully rebound fabricated native
+  identities survived. Direct native authority receipts and semantic cross-correlation close that gap.
+- The old unavailable case labeled Fabric loss after starting with zero bindings. The repaired live case now retains a
+  current binding, removes the sole Bridge Fabric, and receipts topology advance, one withdrawal, zero common Fabrics, and
+  denied old accessors; the no-CPU case no longer claims Fabric withdrawal.
+- The old ownership case stopped after provider A removal. The repaired phased fixture installs provider B with a freshly
+  seeded node and pattern, re-observes the Bridge lifecycle, and proves distinct A/B authority plus stale-A isolation.

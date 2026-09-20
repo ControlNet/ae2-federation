@@ -640,3 +640,22 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `enableAppfluxCompatibility` property keeps both paths honest.
 - The registered `FE_CELL_256M` inventory retains native values above `Integer.MAX_VALUE`; a real run inserted
   4,294,967,311 FE and left 3,221,225,482 FE after extraction while AE power remained unchanged.
+
+## 2026-09-20 Task 26 native Crafting binding
+
+- Native Crafting publication can retain exact AE2 service/provider/pattern/CPU ownership while Federation owns only a
+  directional Policy/Fabric authorization binding and its invalidation.
+- Identity-aware GameTests must seed newly placed AE2 managed nodes from the already-settled provider `NetworkId` before
+  their first tick. Staging alone can still observe stale settlement under the schema-v3 child launcher.
+- Final exact evidence is `.omo/evidence/task-26-final/attempt-20260920T035302303Z/result.json`; four isolated native
+  children, current-identity consumption, and fully rebound adversarial probes passed.
+
+## 2026-09-20 Task 26 first-gate repair
+
+- A log projection of the semantic evidence Map is not independent authority. The repaired observer scans the exact live
+  AE2 Grid, node services, node lineage, crafting service, CPU set, and provider pattern objects without reading that Map.
+- Native Pattern Provider replacement can rebuild runtime Grid/service objects while retaining the settled source
+  `NetworkId`. Receipt A and receipt B must therefore preserve and correlate each phase independently rather than assuming
+  service/CPU identity survives AE2 reconstruction.
+- Provider removal temporarily unsettles dynamic lookup. Pin the already-authorized directional `PolicyKey`, seed provider B
+  from its provider `NetworkId`, then drive the existing Bridge neighbor lifecycle to re-observe the settled current Grid.
