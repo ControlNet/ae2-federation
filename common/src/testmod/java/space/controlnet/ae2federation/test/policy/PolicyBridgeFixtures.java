@@ -73,6 +73,11 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         return bridgeReady(second);
     }
 
+    public void refreshSecondBridge() {
+        second.onNeighborChanged(helper.getLevel(), helper.absolutePos(secondPosition),
+                helper.absolutePos(secondPosition.north()));
+    }
+
     public void removeFirstBridge() {
         helper.assertTrue(first.getHost().removePart(first), "Original Bridge part must be removed from its AE2 host");
     }
