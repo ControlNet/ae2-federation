@@ -421,6 +421,9 @@ def verifyTaskTwentyFiveEvidence
 def taskTwentySixCases = ['crafting.native-binding', 'crafting.deduplicate-capability',
         'crafting.native-state-owner', 'crafting.reject-unavailable']
 def verifyTaskTwentySixEvidence
+def taskTwentySevenCases = ['terminal.native-crafting', 'terminal.native-result', 'terminal.missing-material',
+        'terminal.no-cpu', 'terminal.reject-async-world-access']
+def verifyTaskTwentySevenEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -3544,6 +3547,344 @@ verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> decla
     }
 }
 
+verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentySevenCases }) return
+    if (requested != taskTwentySevenCases) {
+        throw new GradleException('Task 27 evidence must select the exact canonical case set')
+    }
+    def expected = [terminalnativecrafting: 21, terminalnativeresult: 15, terminalmissingmaterial: 10,
+            terminalnocpu: 10, terminalrejectasyncworldaccess: 10]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-terminal') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 27 native child is missing, extra, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 27 native child exits are incomplete')
+    }
+    def nativeFields = ['testId', 'selected', 'phase', 'service', 'requester', 'requesterNode', 'provider', 'cpu',
+            'jobs', 'beginCalls', 'submitCalls', 'providerPushes', 'cpuSubmissions', 'resultCallbacks',
+            'physicalInserts', 'cpuLogic', 'callbackOwner', 'physicalOwner'] as Set
+    def plannerFields = ['testId', 'selected', 'phase', 'thread', 'actionCalls', 'nodeCalls',
+            'rejectedMutableAccess'] as Set
+    def authorityFields = ['testId', 'selected', 'phase', 'networkId', 'grid', 'service', 'nodeId', 'node',
+            'provider', 'cpus', 'pattern', 'binding', 'generation', 'fabrics', 'topology', 'commonFabrics',
+            'withdrawals', 'access', 'capability'] as Set
+    def discoveryAuthorityFields = ['testId', 'selected', 'phase', 'provider', 'providerPatterns', 'allowedPattern',
+            'forbiddenPattern', 'sourceKeys', 'sourceCount', 'consumerKeys', 'consumerCount', 'discoveredKeys',
+            'discoveredCount', 'allowedKey', 'forbiddenKey', 'filterMode', 'filterEntries'] as Set
+    def resultAuthorityFields = ['testId', 'selected', 'phase', 'job', 'cpu', 'cpuLogic', 'callbackOwner', 'provider',
+            'destination', 'key', 'amount', 'inserted'] as Set
+    def parsed = [:]
+    def nativeReceipts = [:]
+    def plannerReceipts = [:]
+    def runtimeReceipts = [:]
+    def discoveryAuthorityReceipts = [:]
+    def resultAuthorityReceipts = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 27 requires one native child artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 27 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 27 operations') != 1) {
+            throw new GradleException("Task 27 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def logText = new File(attempt, log).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_TERMINAL_FACT testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 27 duplicate semantic trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 27 semantic trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        def parseReceipt = { String marker, Set fields ->
+            def lines = logText.readLines().findAll { it.contains(marker + " testId=${testId} ") }
+            if (lines.size() != 1) {
+                throw new GradleException("Task 27 ${marker} receipt set is missing or duplicated: ${testId}")
+            }
+            def payload = lines.first().substring(lines.first().indexOf(marker + ' ') + marker.length() + 1)
+            def receipt = [:]
+            payload.split(/\s+/).each { token ->
+                def separator = token.indexOf('=')
+                if (separator < 1 || receipt.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                    throw new GradleException("Task 27 malformed or duplicate ${marker} receipt field: ${testId}")
+                }
+            }
+            if (receipt.keySet() != fields || receipt.testId != testId || receipt.selected != testId
+                    || receipt.phase != 'final') {
+                throw new GradleException("Task 27 ${marker} child identity is invalid: ${testId}")
+            }
+            receipt
+        }
+        def nativeReceipt = parseReceipt('AE2F_TERMINAL_NATIVE_ENTRY', nativeFields)
+        def plannerReceipt = parseReceipt('AE2F_TERMINAL_PLANNER', plannerFields)
+        def authorityLines = logText.readLines().findAll {
+            it.contains("AE2F_CRAFT_AUTHORITY testId=${testId} selected=${testId} phase=terminal-discovery")
+        }
+        if (authorityLines.size() != 1) {
+            throw new GradleException("Task 27 native authority receipt is missing or duplicated: ${testId}")
+        }
+        def authorityPayload = authorityLines.first().substring(
+                authorityLines.first().indexOf('AE2F_CRAFT_AUTHORITY ') + 'AE2F_CRAFT_AUTHORITY '.length())
+        def authority = [:]
+        authorityPayload.split(/\s+/).each { token ->
+            def separator = token.indexOf('=')
+            if (separator < 1 || authority.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                throw new GradleException("Task 27 malformed native authority receipt: ${testId}")
+            }
+        }
+        if (authority.keySet() != authorityFields || authority.access != 'current' || authority.capability != 'true') {
+            throw new GradleException("Task 27 native authority receipt is invalid: ${testId}")
+        }
+        def parseAuthorityLines = { String marker, Set fields ->
+            def receipts = []
+            logText.readLines().findAll { it.contains("${marker} testId=${testId} ") }.each { line ->
+                def payload = line.substring(line.indexOf(marker + ' ') + marker.length() + 1)
+                def receipt = [:]
+                payload.split(/\s+/).each { token ->
+                    def separator = token.indexOf('=')
+                    if (separator < 1 || receipt.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                        throw new GradleException("Task 27 malformed or duplicate ${marker} field: ${testId}")
+                    }
+                }
+                if (receipt.keySet() != fields || receipt.testId != testId) {
+                    throw new GradleException("Task 27 ${marker} schema or child identity is invalid: ${testId}")
+                }
+                receipts.add(receipt)
+            }
+            receipts
+        }
+        def discoveryAuthorities = parseAuthorityLines('AE2F_TERMINAL_DISCOVERY_AUTHORITY',
+                discoveryAuthorityFields)
+        if (discoveryAuthorities.size() != 1) {
+            throw new GradleException("Task 27 discovery authority receipt is missing or duplicated: ${testId}")
+        }
+        def discoveryAuthority = discoveryAuthorities.first()
+        def sourceKeys = discoveryAuthority.sourceKeys == 'none' ? [] as Set
+                : discoveryAuthority.sourceKeys.split(',') as Set
+        def consumerKeys = discoveryAuthority.consumerKeys == 'none' ? [] as Set
+                : discoveryAuthority.consumerKeys.split(',') as Set
+        def discoveredKeys = discoveryAuthority.discoveredKeys == 'none' ? [] as Set
+                : discoveryAuthority.discoveredKeys.split(',') as Set
+        def patternIdentities = discoveryAuthority.providerPatterns.split(',') as Set
+        if (discoveryAuthority.selected != testId || discoveryAuthority.phase != 'terminal-discovery'
+                || discoveryAuthority.sourceCount != '2'
+                || sourceKeys != ['minecraft:stick', 'minecraft:crafting_table'] as Set
+                || discoveryAuthority.consumerCount != '0' || !consumerKeys.empty
+                || discoveryAuthority.discoveredCount != '1' || discoveredKeys != ['minecraft:stick'] as Set
+                || discoveryAuthority.allowedKey != 'minecraft:stick'
+                || discoveryAuthority.forbiddenKey != 'minecraft:crafting_table'
+                || discoveryAuthority.filterMode != 'ALLOW_LIST'
+                || !discoveryAuthority.filterEntries.endsWith('|minecraft:stick')
+                || patternIdentities.size() != 2
+                || discoveryAuthority.allowedPattern == discoveryAuthority.forbiddenPattern
+                || !patternIdentities.contains(discoveryAuthority.allowedPattern)
+                || !patternIdentities.contains(discoveryAuthority.forbiddenPattern)
+                || discoveryAuthority.provider != authority.provider) {
+            throw new GradleException("Task 27 discovery authority mismatch: ${testId}")
+        }
+        [sourceNetworkId: 'networkId', sourceGrid: 'grid', service: 'service', providerNodeId: 'nodeId',
+                providerNode: 'node', provider: 'provider', cpu: 'cpus', binding: 'binding'].each { fact, field ->
+            if (properties.getProperty(fact) != authority[field]) {
+                throw new GradleException("Task 27 native authority mismatch: ${testId}.${field}")
+            }
+        }
+        parseNonnegativeInteger(plannerReceipt.actionCalls, 'Task 27 planner action calls')
+        if (nativeReceipt.service != properties.getProperty('service')
+                || nativeReceipt.requesterNode != properties.getProperty('providerNode')
+                || plannerReceipt.thread == 'none'
+                || !plannerReceipt.thread.startsWith('AE_Crafting_Calculator')
+                || parsePositiveInteger(plannerReceipt.nodeCalls, 'Task 27 planner node calls') < 1) {
+            throw new GradleException("Task 27 planner/native entry correlation is incomplete: ${testId}")
+        }
+        def runtime = []
+        logText.readLines().findAll { it.contains("AE2F_TERMINAL_RUNTIME testId=${testId} ") }.each { line ->
+            def payload = line.substring(line.indexOf('AE2F_TERMINAL_RUNTIME ') + 'AE2F_TERMINAL_RUNTIME '.length())
+            def fields = [:]
+            payload.split(/\s+/).each { token ->
+                def separator = token.indexOf('=')
+                if (separator < 1 || fields.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                    throw new GradleException("Task 27 malformed runtime entry receipt: ${testId}")
+                }
+            }
+            if (fields.testId != testId || fields.event == null) {
+                throw new GradleException("Task 27 runtime entry child identity is invalid: ${testId}")
+            }
+            runtime.add(fields)
+        }
+        def eventCount = { String event -> runtime.count { it.event == event } }
+        if (eventCount('begin').toString() != nativeReceipt.beginCalls
+                || eventCount('submit').toString() != nativeReceipt.submitCalls
+                || eventCount('provider-push').toString() != nativeReceipt.providerPushes
+                || eventCount('cpu-submit').toString() != nativeReceipt.cpuSubmissions
+                || eventCount('result-callback').toString() != nativeReceipt.resultCallbacks
+                || eventCount('physical-insert').toString() != nativeReceipt.physicalInserts
+                || eventCount('planner-action').toString() != plannerReceipt.actionCalls
+                || eventCount('planner-node').toString() != plannerReceipt.nodeCalls) {
+            throw new GradleException("Task 27 native runtime entry cardinality mismatch: ${testId}")
+        }
+        parsed[testId] = properties
+        nativeReceipts[testId] = nativeReceipt
+        plannerReceipts[testId] = plannerReceipt
+        runtimeReceipts[testId] = runtime
+        discoveryAuthorityReceipts[testId] = discoveryAuthority
+        resultAuthorityReceipts[testId] = parseAuthorityLines('AE2F_TERMINAL_RESULT_AUTHORITY', resultAuthorityFields)
+    }
+    def crafting = parsed.terminalnativecrafting as Properties
+    def craftingNative = nativeReceipts.terminalnativecrafting as Map
+    def craftingRuntime = runtimeReceipts.terminalnativecrafting as List
+    def craftingDiscovery = discoveryAuthorityReceipts.terminalnativecrafting as Map
+    if (crafting.getProperty('staleBindingSubmitted') != 'false') {
+        throw new GradleException('Task 27 stale binding was submitted')
+    }
+    if (crafting.getProperty('discoveredCraftables') != '1'
+            || crafting.getProperty('discoveredKeys') != craftingDiscovery.discoveredKeys
+            || crafting.getProperty('sourceNativeCraftableCount') != craftingDiscovery.sourceCount
+            || crafting.getProperty('sourceNativeCraftables') != craftingDiscovery.sourceKeys
+            || crafting.getProperty('consumerNativeCraftables') != craftingDiscovery.consumerKeys
+            || crafting.getProperty('allowedKey') != craftingDiscovery.allowedKey
+            || crafting.getProperty('forbiddenKey') != craftingDiscovery.forbiddenKey
+            || crafting.getProperty('providerPatterns') != craftingDiscovery.providerPatterns
+            || crafting.getProperty('allowedPattern') != craftingDiscovery.allowedPattern
+            || crafting.getProperty('forbiddenPattern') != craftingDiscovery.forbiddenPattern
+            || crafting.getProperty('filterMode') != craftingDiscovery.filterMode
+            || crafting.getProperty('filterEntries') != craftingDiscovery.filterEntries
+            || crafting.getProperty('pattern') != craftingDiscovery.allowedPattern
+            || crafting.getProperty('planSimulation') != 'false'
+            || crafting.getProperty('plannedInput') != '2' || crafting.getProperty('resultAmount') != '4'
+            || crafting.getProperty('jobCardinality') != '1'
+            || crafting.getProperty('jobIds') != craftingNative.jobs || crafting.getProperty('gridsDistinct') != 'true'
+            || crafting.getProperty('providerInjected') != 'false' || crafting.getProperty('aggregateCopied') != 'false'
+            || crafting.getProperty('patternsCopied') != 'false' || crafting.getProperty('storageWidened') != 'false'
+            || crafting.getProperty('staleBindingSubmitted') != 'false'
+            || craftingNative.provider != crafting.getProperty('provider')
+            || craftingNative.cpu != crafting.getProperty('cpu') || craftingNative.providerPushes != '1'
+            || craftingNative.cpuSubmissions != '1' || craftingNative.submitCalls != '1'
+            || craftingRuntime.find { it.event == 'provider-push' }?.provider != crafting.getProperty('provider')
+            || craftingRuntime.find { it.event == 'cpu-submit' }?.cpu != crafting.getProperty('cpu')
+            || craftingRuntime.find { it.event == 'cpu-submit' }?.job != crafting.getProperty('jobIds')) {
+        throw new GradleException('Task 27 native terminal discovery, planning, or submission is incomplete')
+    }
+    def result = parsed.terminalnativeresult as Properties
+    def resultNative = nativeReceipts.terminalnativeresult as Map
+    def resultRuntime = runtimeReceipts.terminalnativeresult as List
+    def resultAuthority = resultAuthorityReceipts.terminalnativeresult as List
+    if (resultAuthority.size() != 4 || resultAuthority.any { it.selected != 'terminalnativeresult' }
+            || resultAuthority*.phase.toSet() != ['destination', 'submission', 'callback',
+            'physical'] as Set || resultAuthority*.phase.size() != resultAuthority*.phase.toSet().size()) {
+        throw new GradleException('Task 27 native result authority phase set is incomplete')
+    }
+    def destinationAuthority = resultAuthority.find { it.phase == 'destination' }
+    def submissionAuthority = resultAuthority.find { it.phase == 'submission' }
+    def callbackAuthority = resultAuthority.find { it.phase == 'callback' }
+    def physicalAuthority = resultAuthority.find { it.phase == 'physical' }
+    if (destinationAuthority.job != 'none' || destinationAuthority.cpu != result.getProperty('cpu')
+            || destinationAuthority.provider != result.getProperty('provider')
+            || destinationAuthority.key != result.getProperty('allowedKey') || destinationAuthority.amount != '4'
+            || submissionAuthority.job != result.getProperty('jobIds')
+            || submissionAuthority.cpu != result.getProperty('cpu')
+            || submissionAuthority.key != result.getProperty('allowedKey') || submissionAuthority.amount != '4'
+            || callbackAuthority.job != result.getProperty('jobIds')
+            || callbackAuthority.cpu != result.getProperty('cpu')
+            || callbackAuthority.key != result.getProperty('allowedKey') || callbackAuthority.amount != '4'
+            || physicalAuthority.job != result.getProperty('jobIds')
+            || physicalAuthority.cpu != result.getProperty('cpu')
+            || physicalAuthority.key != result.getProperty('allowedKey') || physicalAuthority.amount != '4'
+            || resultAuthority.any { it.provider != result.getProperty('provider') }) {
+        throw new GradleException('Task 27 native result authority mismatch: link')
+    }
+    if (destinationAuthority.cpuLogic != 'none' || destinationAuthority.callbackOwner != 'none'
+            || submissionAuthority.cpuLogic != resultNative.cpuLogic || submissionAuthority.callbackOwner != 'none'
+            || callbackAuthority.cpuLogic != resultNative.cpuLogic
+            || callbackAuthority.callbackOwner != resultNative.callbackOwner
+            || physicalAuthority.cpuLogic != resultNative.cpuLogic
+            || physicalAuthority.callbackOwner != resultNative.callbackOwner) {
+        throw new GradleException('Task 27 native result authority mismatch: logic')
+    }
+    if (result.getProperty('expectedDestination') != destinationAuthority.destination
+            || result.getProperty('physicalOwner') != destinationAuthority.destination
+            || submissionAuthority.destination != destinationAuthority.destination
+            || callbackAuthority.destination != destinationAuthority.destination
+            || physicalAuthority.destination != destinationAuthority.destination
+            || physicalAuthority.inserted != '4') {
+        throw new GradleException('Task 27 native result authority mismatch: destination')
+    }
+    if (result.getProperty('resultRecognition') != 'native-callback-and-physical-owner'
+            || result.getProperty('publicAggregateOnly') != 'false' || result.getProperty('resultAmount') != '4'
+            || result.getProperty('jobCardinality') != '1' || result.getProperty('jobIds') != resultNative.jobs
+            || result.getProperty('callbackOwner') != resultNative.callbackOwner
+            || result.getProperty('physicalOwner') != resultNative.physicalOwner
+            || resultNative.cpuLogic != resultNative.callbackOwner
+            || parsePositiveInteger(resultNative.resultCallbacks, 'Task 27 native result callbacks') < 1
+            || parsePositiveInteger(resultNative.physicalInserts, 'Task 27 physical result inserts') < 1
+            || resultNative.physicalOwner == 'none'
+            || resultRuntime.find { it.event == 'cpu-submit' }?.cpuLogic != resultNative.cpuLogic
+            || resultRuntime.find { it.event == 'result-callback' }?.owner != resultNative.callbackOwner
+            || resultRuntime.find { it.event == 'result-callback' }?.job != result.getProperty('jobIds')
+            || resultRuntime.find { it.event == 'result-callback' }?.key != result.getProperty('allowedKey')
+            || resultRuntime.find { it.event == 'result-callback' }?.amount != '4'
+            || resultRuntime.find { it.event == 'physical-insert' }?.owner != resultNative.physicalOwner
+            || resultRuntime.find { it.event == 'physical-insert' }?.key != result.getProperty('allowedKey')
+            || resultRuntime.find { it.event == 'physical-insert' }?.amount != '4'
+            || resultRuntime.find { it.event == 'physical-insert' }?.inserted != '4') {
+        throw new GradleException('Task 27 result ownership correlation is incomplete')
+    }
+    def missing = parsed.terminalmissingmaterial as Properties
+    def missingNative = nativeReceipts.terminalmissingmaterial as Map
+    if (missing.getProperty('planSimulation') != 'true' || missing.getProperty('missingMaterial') != '2'
+            || missing.getProperty('submitError') != 'INCOMPLETE_PLAN' || missing.getProperty('submitted') != 'false'
+            || missing.getProperty('cannedError') != 'false' || missing.getProperty('materialBefore') != '0'
+            || missing.getProperty('materialAfter') != '0' || missing.getProperty('jobCardinality') != '0'
+            || missingNative.jobs != 'none' || missingNative.cpuSubmissions != '0' || missingNative.submitCalls != '1') {
+        throw new GradleException('Task 27 missing-material native result is incomplete')
+    }
+    def noCpu = parsed.terminalnocpu as Properties
+    def noCpuNative = nativeReceipts.terminalnocpu as Map
+    if (noCpu.getProperty('planSimulation') != 'false' || noCpu.getProperty('cpuCount') != '0'
+            || noCpu.getProperty('submitError') != 'NO_CPU_FOUND' || noCpu.getProperty('submitted') != 'false'
+            || noCpu.getProperty('cannedError') != 'false' || noCpu.getProperty('authorityCurrent') != 'true'
+            || noCpu.getProperty('materialBefore') != '2' || noCpu.getProperty('materialAfter') != '2'
+            || noCpu.getProperty('jobCardinality') != '0' || noCpuNative.jobs != 'none'
+            || noCpuNative.cpuSubmissions != '0' || noCpuNative.submitCalls != '1') {
+        throw new GradleException('Task 27 no-CPU native result is incomplete')
+    }
+    def async = parsed.terminalrejectasyncworldaccess as Properties
+    def asyncNative = nativeReceipts.terminalrejectasyncworldaccess as Map
+    def asyncPlanner = plannerReceipts.terminalrejectasyncworldaccess as Map
+    def asyncRuntime = runtimeReceipts.terminalrejectasyncworldaccess as List
+    def rejectedRuntime = asyncRuntime.findAll { it.event == 'planner-reject' }.collect { it.boundary }.toSet()
+    if (async.getProperty('staleBindingSubmitted') != 'false') {
+        throw new GradleException('Task 27 stale binding was submitted')
+    }
+    if (async.getProperty('capturedPlanUsable') != 'true' || async.getProperty('staleBindingRejected') != 'true'
+            || async.getProperty('plannerWorldAccess') != 'false'
+            || async.getProperty('staleBindingSubmitted') != 'false' || async.getProperty('nativeSubmitCalls') != '0'
+            || async.getProperty('jobCardinality') != '0' || async.getProperty('materialBefore') != '2'
+            || async.getProperty('materialAfter') != '2' || asyncNative.submitCalls != '0'
+            || asyncNative.jobs != 'none'
+            || async.getProperty('rejectedMutableAccess') != 'backend,fabric,gametest-helper,policy,world-block'
+            || asyncPlanner.rejectedMutableAccess != async.getProperty('rejectedMutableAccess')
+            || rejectedRuntime != ['backend', 'fabric', 'gametest-helper', 'policy', 'world-block'] as Set) {
+        throw new GradleException('Task 27 planner thread touched mutable server authority')
+    }
+}
+
 verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
     if (report.kind != 'benchmark' || report.requested != ['processing-small']) return null
     def required = ['benchmark-native.properties', 'benchmark-profile.json', 'benchmark-baseline.json',
@@ -4089,6 +4430,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwentyFiveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentySixEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskTwentySevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -4642,7 +4985,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                    || testCase.id.startsWith('crafting.')) ? 1 : 2,
+                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4652,7 +4995,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                            || testCase.id.startsWith('crafting.')])
+                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -4916,6 +5259,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.deduplicate-capability':
                 case 'crafting.native-state-owner':
                 case 'crafting.reject-unavailable':
+                case 'terminal.native-crafting':
+                case 'terminal.native-result':
+                case 'terminal.missing-material':
+                case 'terminal.no-cpu':
+                case 'terminal.reject-async-world-access':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -5119,6 +5467,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyFourEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentySevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -7523,5 +7872,254 @@ tasks.register('federationTaskTwentySixEvidenceSelfTest') {
             text + line.replaceFirst(/service=[^\s]+/, 'service=4294967295') + '\n'
         }, 'Task 26 duplicate native authority receipt phase')
         logger.lifecycle('Task 26 adversarial native Crafting evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentySevenEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 27 native terminal result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskTwentySevenCases) {
+            throw new GradleException('Result is not the canonical Task 27 case set')
+        }
+        logger.lifecycle('Task 27 native terminal evidence verified')
+    }
+}
+
+tasks.register('federationTaskTwentySevenEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated discovery, planner, submission, ownership, and failure Task 27 evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 27 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateAttempt = { String name, Closure mutation, String expectedMessage ->
+            def sourceAttempt = sourceResult.parentFile.canonicalFile
+            def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+            def runId = "task27-${name}-${UUID.randomUUID()}"
+            def attempt = new File(evidenceRoot, "attempt-${runId}")
+            sourceAttempt.eachFileRecurse(FileType.FILES) { source ->
+                def target = attempt.toPath().resolve(sourceAttempt.toPath().relativize(source.toPath()))
+                Files.createDirectories(target.parent)
+                Files.copy(source.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            try {
+                def resultFile = new File(attempt, 'result.json')
+                def report = new JsonSlurper().parse(resultFile) as Map
+                mutation(attempt, report)
+                report.runId = runId
+                report.evidenceRoot = evidenceRoot.canonicalPath
+                report.attemptPath = attempt.canonicalPath
+                def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+                report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+                report.startedAt = Instant.now().minusSeconds(1).toString()
+                report.endedAt = Instant.now().toString()
+                report.artifacts.each { artifact ->
+                    def artifactFile = new File(attempt, artifact.path as String)
+                    if (artifactFile.isFile()) artifact.sha256 = sha256(artifactFile.bytes)
+                }
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                try {
+                    verifyPersistedReport(resultFile, false)
+                    throw new GradleException("Task 27 adversarial evidence was accepted: ${name}")
+                } catch (GradleException exception) {
+                    if (exception.message.startsWith('Task 27 adversarial evidence was accepted')
+                            || !exception.message.contains(expectedMessage)) throw exception
+                }
+            } finally {
+                if (attempt.exists()) {
+                    Files.walk(attempt.toPath()).withCloseable { paths ->
+                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                    }
+                }
+            }
+        }
+        def mutateFact = { String name, String artifactId, String fact, String value, String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 27 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }, expectedMessage)
+        }
+        def reboundIdentity = { String name, String artifactId, String fact, String receiptField, String runtimeField,
+                String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                def replacement = '4294967295'
+                properties.setProperty(fact, replacement)
+                file.withOutputStream { properties.store(it, 'Task 27 fully rebound identity probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().collect { line ->
+                    def rebound = line.replace("fact=${fact} value=${oldValue}",
+                            "fact=${fact} value=${replacement}")
+                    if (line.contains('AE2F_TERMINAL_NATIVE_ENTRY ')) {
+                        rebound = rebound.replaceAll(
+                                "(${receiptField}=)${java.util.regex.Pattern.quote(oldValue)}(\\s)",
+                                "\$1${replacement}\$2")
+                    }
+                    if (line.contains('AE2F_TERMINAL_RUNTIME ')) {
+                        rebound = rebound.replaceAll(
+                                "(${runtimeField}=)${java.util.regex.Pattern.quote(oldValue)}(\\s|\\z)",
+                                "\$1${replacement}\$2")
+                    }
+                    rebound
+                }.join('\n') + '\n'
+            }, expectedMessage)
+        }
+        def reboundFacts = { String name, String artifactId, Map<String, String> replacements,
+                String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValues = replacements.collectEntries { fact, replacement ->
+                    [(fact): properties.getProperty(fact)]
+                }
+                replacements.each { fact, replacement -> properties.setProperty(fact, replacement) }
+                file.withOutputStream { properties.store(it, 'Task 27 fully rebound semantic probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.readLines().collect { line ->
+                    def rebound = line
+                    replacements.each { fact, replacement ->
+                        rebound = rebound.replace("fact=${fact} value=${oldValues[fact]}",
+                                "fact=${fact} value=${replacement}")
+                    }
+                    rebound
+                }.join('\n') + '\n'
+            }, expectedMessage)
+        }
+        mutateAttempt('missing-native-child', { File attempt, Map report ->
+            def path = 'native-terminalnativecrafting.properties'
+            report.artifacts.removeIf { it.path == path }
+            Files.delete(new File(attempt, path).toPath())
+        }, 'Task 27 native child is missing, extra, or substituted')
+        mutateFact('fake-discovery', 'terminalnativecrafting', 'discoveredCraftables', '2',
+                'Task 27 native terminal discovery, planning, or submission is incomplete')
+        reboundFacts('fake-single-pattern-source', 'terminalnativecrafting', [
+                sourceNativeCraftableCount: '1', sourceNativeCraftables: 'minecraft:stick',
+                providerPatterns: '4294967295'
+        ], 'Task 27 native terminal discovery, planning, or submission is incomplete')
+        reboundFacts('forbidden-pattern-discovery', 'terminalnativecrafting', [
+                discoveredCraftables: '2', discoveredKeys: 'minecraft:crafting_table,minecraft:stick'
+        ], 'Task 27 native terminal discovery, planning, or submission is incomplete')
+        reboundFacts('widened-policy-filter', 'terminalnativecrafting', [
+                filterMode: 'ALL', filterEntries: 'none'
+        ], 'Task 27 native terminal discovery, planning, or submission is incomplete')
+        mutateAttempt('copied-allowed-pattern', { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-terminalnativecrafting.properties')
+            def properties = loadProperties(file)
+            def oldAllowed = properties.getProperty('allowedPattern')
+            def oldProviderPatterns = properties.getProperty('providerPatterns')
+            def replacement = '4294967295'
+            ['allowedPattern', 'pattern'].each { properties.setProperty(it, replacement) }
+            def replacementProviderPatterns = oldProviderPatterns.replace(oldAllowed, replacement)
+            properties.setProperty('providerPatterns', replacementProviderPatterns)
+            file.withOutputStream { properties.store(it, 'Task 27 copied allowed pattern probe') }
+            def log = new File(attempt, 'positive-terminalnativecrafting.log')
+            log.text = log.readLines().collect { line ->
+                line.replace("fact=allowedPattern value=${oldAllowed}", "fact=allowedPattern value=${replacement}")
+                        .replace("fact=pattern value=${oldAllowed}", "fact=pattern value=${replacement}")
+                        .replace("fact=providerPatterns value=${oldProviderPatterns}",
+                                "fact=providerPatterns value=${replacementProviderPatterns}")
+            }.join('\n') + '\n'
+        }, 'Task 27 native terminal discovery, planning, or submission is incomplete')
+        reboundFacts('projection-recursion', 'terminalnativecrafting', [
+                consumerNativeCraftables: 'minecraft:stick'
+        ], 'Task 27 native terminal discovery, planning, or submission is incomplete')
+        mutateFact('copied-patterns', 'terminalnativecrafting', 'patternsCopied', 'true',
+                'Task 27 native terminal discovery, planning, or submission is incomplete')
+        mutateFact('widened-storage', 'terminalnativecrafting', 'storageWidened', 'true',
+                'Task 27 native terminal discovery, planning, or submission is incomplete')
+        mutateFact('stale-binding', 'terminalnativecrafting', 'staleBindingSubmitted', 'true',
+                'Task 27 stale binding was submitted')
+        mutateFact('canned-missing-error', 'terminalmissingmaterial', 'cannedError', 'true',
+                'Task 27 missing-material native result is incomplete')
+        mutateFact('canned-no-cpu-error', 'terminalnocpu', 'cannedError', 'true',
+                'Task 27 no-CPU native result is incomplete')
+        mutateFact('planner-world-access', 'terminalrejectasyncworldaccess', 'plannerWorldAccess', 'true',
+                'Task 27 planner thread touched mutable server authority')
+        mutateFact('public-aggregate-result', 'terminalnativeresult', 'publicAggregateOnly', 'true',
+                'Task 27 result ownership correlation is incomplete')
+        mutateFact('duplicate-jobs', 'terminalnativecrafting', 'jobCardinality', '2',
+                'Task 27 native terminal discovery, planning, or submission is incomplete')
+        reboundIdentity('fabricated-provider', 'terminalnativecrafting', 'provider', 'provider', 'provider',
+                'Task 27 native authority mismatch: terminalnativecrafting.provider')
+        reboundIdentity('alternate-provider', 'terminalnativecrafting', 'provider', 'provider', 'provider',
+                'Task 27 native authority mismatch: terminalnativecrafting.provider')
+        reboundIdentity('fabricated-cpu', 'terminalnativecrafting', 'cpu', 'cpu', 'cpu',
+                'Task 27 native authority mismatch: terminalnativecrafting.cpus')
+        mutateAttempt('fabricated-planner', { File attempt, Map ignored ->
+            def log = new File(attempt, 'positive-terminalnativecrafting.log')
+            log.text = log.text.replaceAll(/(AE2F_TERMINAL_PLANNER[^\n]* thread=)[^\s]+/, '\$1main')
+        }, 'Task 27 planner/native entry correlation is incomplete')
+        mutateAttempt('fabricated-result-link', { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-terminalnativeresult.properties')
+            def properties = loadProperties(file)
+            def oldValue = properties.getProperty('jobIds')
+            def replacement = '00000000-0000-0000-0000-000000000027'
+            properties.setProperty('jobIds', replacement)
+            file.withOutputStream { properties.store(it, 'Task 27 fully rebound result link probe') }
+            def log = new File(attempt, 'positive-terminalnativeresult.log')
+            log.text = log.readLines().collect { line ->
+                def rebound = line.replace("fact=jobIds value=${oldValue}", "fact=jobIds value=${replacement}")
+                if (line.contains('AE2F_TERMINAL_NATIVE_ENTRY ')) {
+                    rebound = rebound.replace("jobs=${oldValue}", "jobs=${replacement}")
+                }
+                if (line.contains('AE2F_TERMINAL_RUNTIME ')) {
+                    rebound = rebound.replace("job=${oldValue}", "job=${replacement}")
+                }
+                rebound
+            }.join('\n') + '\n'
+        }, 'Task 27 native result authority mismatch: link')
+        mutateAttempt('fabricated-result-logic', { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-terminalnativeresult.properties')
+            def properties = loadProperties(file)
+            def oldValue = properties.getProperty('callbackOwner')
+            def replacement = '4294967295'
+            properties.setProperty('callbackOwner', replacement)
+            file.withOutputStream { properties.store(it, 'Task 27 fully rebound result logic probe') }
+            def log = new File(attempt, 'positive-terminalnativeresult.log')
+            log.text = log.readLines().collect { line ->
+                def rebound = line.replace("fact=callbackOwner value=${oldValue}",
+                        "fact=callbackOwner value=${replacement}")
+                if (line.contains('AE2F_TERMINAL_NATIVE_ENTRY ')) {
+                    rebound = rebound.replace("cpuLogic=${oldValue}", "cpuLogic=${replacement}")
+                            .replace("callbackOwner=${oldValue}", "callbackOwner=${replacement}")
+                }
+                if (line.contains('AE2F_TERMINAL_RUNTIME ')) {
+                    rebound = rebound.replace("cpuLogic=${oldValue}", "cpuLogic=${replacement}")
+                            .replace("owner=${oldValue}", "owner=${replacement}")
+                }
+                rebound
+            }.join('\n') + '\n'
+        }, 'Task 27 native result authority mismatch: logic')
+        mutateAttempt('fabricated-result-destination', { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-terminalnativeresult.properties')
+            def properties = loadProperties(file)
+            def oldValue = properties.getProperty('physicalOwner')
+            def replacement = '4294967295'
+            properties.setProperty('physicalOwner', replacement)
+            properties.setProperty('expectedDestination', replacement)
+            file.withOutputStream { properties.store(it, 'Task 27 fully rebound result destination probe') }
+            def log = new File(attempt, 'positive-terminalnativeresult.log')
+            log.text = log.text.replace("fact=physicalOwner value=${oldValue}",
+                    "fact=physicalOwner value=${replacement}")
+                    .replace("fact=expectedDestination value=${oldValue}",
+                            "fact=expectedDestination value=${replacement}")
+                    .replace("physicalOwner=${oldValue}", "physicalOwner=${replacement}")
+                    .replace("owner=${oldValue} key=", "owner=${replacement} key=")
+        }, 'Task 27 native result authority mismatch: destination')
+        logger.lifecycle('Task 27 adversarial native terminal evidence probes were rejected for intended reasons')
     }
 }
