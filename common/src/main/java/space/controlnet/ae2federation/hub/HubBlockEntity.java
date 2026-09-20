@@ -23,6 +23,7 @@ import space.controlnet.ae2federation.fabric.port.FederationPort;
 import space.controlnet.ae2federation.fabric.port.HubFacePort;
 import space.controlnet.ae2federation.fabric.port.HubPortBinding;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.fabric.FabricInvalidationReason;
 import space.controlnet.ae2federation.fabric.FabricNodeEvidence;
 import space.controlnet.ae2federation.fabric.FabricNodeId;
@@ -143,6 +144,7 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
         if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
             FabricRegistryAccess.removeNodeIfPresent(serverLevel, fabricNodeId);
             StorageMountService.reconcileIfPresent(serverLevel);
+            CraftingBindingService.reconcileIfPresent(serverLevel);
         }
         initialized = false;
         fabricDirty = true;
@@ -155,6 +157,7 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
             FabricRegistryAccess.invalidateNodeIfPresent(serverLevel, fabricNodeId,
                     FabricInvalidationReason.TOPOLOGY_CHANGED);
             StorageMountService.reconcileIfPresent(serverLevel);
+            CraftingBindingService.reconcileIfPresent(serverLevel);
         }
     }
 
@@ -176,6 +179,7 @@ public final class HubBlockEntity extends BlockEntity implements IInWorldGridNod
         }
         FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
         StorageMountService.get(serverLevel).observeFabricMembers(nativeFacesByGrid().keySet());
+        CraftingBindingService.get(serverLevel).observeFabricMembers(nativeFacesByGrid().keySet());
         fabricDirty = false;
     }
 }
