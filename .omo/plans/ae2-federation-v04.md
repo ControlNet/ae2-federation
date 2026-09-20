@@ -392,7 +392,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=resources.item-fluid-components,resources.stored-fe,resources.optional-absent,resources.reject-overflow,resources.reject-fe-power-coupling -PevidenceDir=.omo/evidence/task-25`. Missing qualifying addon makes stored-FE case BLOCKED, never mocked PASS.
   - Commit: proposed `test(storage): qualify native addon resource keys`.
 
-- [ ] 26. Integrate the verified native Crafting capability binding under global Policy
+- [x] 26. Integrate the verified native Crafting capability binding under global Policy
   - Work: `crafting/binding/` and only hooks proven by task 9's native contract. Publish each genuine capability once; preserve native service/planner/CPU/request/result ownership and actual source attribution. Bind/unbind on Policy and common-Fabric lifecycle, not menu state. Do not add an independent order manager or canned material contract.
   - References: D6,T-F02,T-F07,T-C06..08; A-craft; task 9 PASS contract. Depends on 9,14.
   - Acceptance: real target capability visible through the selected native boundary; duplicate connections do not add execution capacity; unavailable native path is not advertised as working.
