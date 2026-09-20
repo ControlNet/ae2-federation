@@ -29,13 +29,15 @@ final class CraftingNativeSourceFixture {
 
     private final GameTestHelper helper;
     private final boolean withCpu;
+    private final boolean withForbiddenPattern;
     private int placementStage;
     private boolean patternInstalled;
     private boolean replacementStarted;
 
-    CraftingNativeSourceFixture(GameTestHelper helper, boolean withCpu) {
+    CraftingNativeSourceFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern) {
         this.helper = helper;
         this.withCpu = withCpu;
+        this.withForbiddenPattern = withForbiddenPattern;
     }
 
     boolean advanceInitialPlacement(NetworkId networkId) {
@@ -67,11 +69,16 @@ final class CraftingNativeSourceFixture {
         if (!patternInstalled) {
             installPattern();
         }
-        return sourceGrid.getCraftingService().isCraftable(outputKey());
+        return sourceGrid.getCraftingService().isCraftable(outputKey())
+                && (!withForbiddenPattern || sourceGrid.getCraftingService().isCraftable(forbiddenOutputKey()));
     }
 
     void removeProvider() {
         helper.setBlock(PROVIDER, Blocks.AIR);
+    }
+
+    void removeCpu() {
+        helper.setBlock(CPU, Blocks.AIR);
     }
 
     void beginReplacement(NetworkId networkId) {
@@ -115,6 +122,9 @@ final class CraftingNativeSourceFixture {
 
     private void installPattern() {
         provider().getLogic().getPatternInv().addItems(stickPattern());
+        if (withForbiddenPattern) {
+            provider().getLogic().getPatternInv().addItems(craftingTablePattern());
+        }
         provider().getLogic().updatePatterns();
         patternInstalled = true;
     }
@@ -138,7 +148,24 @@ final class CraftingNativeSourceFixture {
                 recipe.value().assemble(input, helper.getLevel().registryAccess()), false, false);
     }
 
+    private ItemStack craftingTablePattern() {
+        var items = NonNullList.withSize(9, ItemStack.EMPTY);
+        items.set(0, new ItemStack(Items.OAK_PLANKS));
+        items.set(1, new ItemStack(Items.OAK_PLANKS));
+        items.set(3, new ItemStack(Items.OAK_PLANKS));
+        items.set(4, new ItemStack(Items.OAK_PLANKS));
+        var input = CraftingInput.of(3, 3, items);
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input,
+                helper.getLevel()).orElseThrow();
+        return PatternDetailsHelper.encodeCraftingPattern(recipe, items.toArray(ItemStack[]::new),
+                recipe.value().assemble(input, helper.getLevel().registryAccess()), false, false);
+    }
+
     private static AEItemKey outputKey() {
         return AEItemKey.of(Items.STICK);
+    }
+
+    private static AEItemKey forbiddenOutputKey() {
+        return AEItemKey.of(Items.CRAFTING_TABLE);
     }
 }

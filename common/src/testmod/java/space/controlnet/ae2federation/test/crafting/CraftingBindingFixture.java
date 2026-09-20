@@ -39,9 +39,13 @@ public final class CraftingBindingFixture implements AutoCloseable {
     private ICraftingPlan plan;
 
     public CraftingBindingFixture(GameTestHelper helper, boolean withCpu) {
+        this(helper, withCpu, false);
+    }
+
+    public CraftingBindingFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern) {
         this.helper = helper;
         this.withCpu = withCpu;
-        nativeSource = new CraftingNativeSourceFixture(helper, withCpu);
+        nativeSource = new CraftingNativeSourceFixture(helper, withCpu, withForbiddenPattern);
         bridge = new PolicyBridgeFixtures(helper, BASE);
         bridge.installStorageCells();
     }
@@ -146,6 +150,10 @@ public final class CraftingBindingFixture implements AutoCloseable {
         bindings().reconcileAll();
     }
 
+    public void removeCpu() {
+        nativeSource.removeCpu();
+    }
+
     public void beginProviderReplacement() {
         nativeSource.beginReplacement(key().providerNetworkId());
     }
@@ -232,6 +240,14 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public long outputAmount() {
         return sourceStorage().extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    public long materialAmount() {
+        return sourceStorage().extract(inputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    public appeng.api.storage.MEStorage sourcePhysicalStorage() {
+        return java.util.Objects.requireNonNull(sourceChest().getOriginalCellInventory(0));
     }
 
     public appeng.api.networking.crafting.ICraftingService sourceService() {
