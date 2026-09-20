@@ -22,20 +22,26 @@ public final class FederationTestMod {
     private void registerGameTests(RegisterGameTestsEvent event) {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
-        Arrays.stream(new Class<?>[] { FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
+        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
 					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
 					 StorageProvenanceGameTests.class, StorageChainGameTests.class,
 					 StorageSubscriptionGameTests.class, StorageSubscriptionDiamondGameTest.class,
 					 StorageSubscriptionBoundaryGameTest.class, StorageSubscriptionMaskingGameTest.class,
+					 ResourceQualificationGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 					   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 						   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
-						   ProcessingBenchmarkGameTests.class })
+                         ProcessingBenchmarkGameTests.class));
+        try {
+            testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
+        } catch (ClassNotFoundException ignored) {
+        }
+        testClasses.stream()
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))
                 .forEach(event::register);
