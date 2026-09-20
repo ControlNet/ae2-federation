@@ -37,6 +37,12 @@ def testmod = sourceSets.create('testmod') {
     runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath
 }
 
+def appfluxTest = sourceSets.create('appfluxTest') {
+    java.srcDir(rootProject.file('common/src/appfluxtest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
 repositories {
     mavenCentral()
     maven {
@@ -46,6 +52,14 @@ repositories {
             includeGroup('com.lowdragmc.ldlib2')
             includeGroup('dev.vfyjxf')
             includeGroup('org.appliedenergistics.yoga')
+        }
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeModule('maven.modrinth', 'appflux')
+            includeModule('maven.modrinth', 'glodium')
         }
     }
 }
@@ -107,6 +121,16 @@ neoForge {
             systemProperty('ae2federation.policyStateFile', providers.gradleProperty('federationPolicyStateFile').getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
         }
+        appfluxGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-appflux-gametest')
+            sourceSet = appfluxTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', 'resourcesstoredfe')
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
         uiTestClient {
             client()
             gameDirectory = project.file('run-uitest')
@@ -129,12 +153,21 @@ neoForge {
         }
         ae2federation_test {
             sourceSet(testmod)
+            if (providers.gradleProperty('enableAppfluxCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(appfluxTest)
+            }
         }
     }
 }
 
 configurations {
     runtimeClasspath.extendsFrom(localRuntime)
+    appliedFluxCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 25 Applied Flux compatibility runtime.'
+    }
+    appfluxTestImplementation.extendsFrom(appliedFluxCompatibility)
 }
 
 dependencies {
@@ -143,10 +176,21 @@ dependencies {
     testImplementation(platform('org.junit:junit-bom:5.10.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    appliedFluxCompatibility('maven.modrinth:appflux:1.21-2.1.4-neoforge')
+    appliedFluxCompatibility('org.appliedenergistics:guideme:21.1.1')
+    appliedFluxCompatibility('maven.modrinth:glodium:1.21-2.2-neoforge')
 }
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+}
+
+def cleanupAppfluxGameTest = tasks.register('cleanupAppfluxGameTest', Delete) {
+    delete(layout.projectDirectory.dir('run-appflux-gametest'))
+}
+
+tasks.named('runAppfluxGameTestServer').configure {
+    finalizedBy(cleanupAppfluxGameTest)
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -193,7 +237,7 @@ def verifySharedJarContent = tasks.register('verifySharedJarContent') {
         new java.util.zip.ZipFile(archive).withCloseable { zip ->
             def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
                     'ProviderRuntimeReplayControl', 'ae2federation_test']
-            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'NativeStorageTrace',
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'com/glodblock/github/appflux/', 'NativeStorageTrace',
                     'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
                     'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
                     'ae2federation_test.mixins.json']
@@ -217,7 +261,7 @@ def verifySharedJarContent = tasks.register('verifySharedJarContent') {
             def sourceNames = zip.entries().collect { it.name }
             def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
                     'ProviderRuntimeReplayControl', 'ae2federation_test']
-            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'NativeStorageTrace',
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'com/glodblock/github/appflux/', 'NativeStorageTrace',
                     'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
                     'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
                     'ae2federation_test.mixins.json']
@@ -246,6 +290,30 @@ tasks.named('check').configure {
 
 apply from: rootProject.file('gradle/federation-qa.gradle')
 apply from: rootProject.file('gradle/federation-ui.gradle')
+
+tasks.register('federationAppliedFluxCompatibility') {
+    group = 'verification'
+    description = 'Resolves the pinned isolated Applied Flux compatibility runtime and validates its dossier.'
+    def dossier = rootProject.layout.projectDirectory.file('tests/compatibility/applied-flux.properties')
+    inputs.file(dossier)
+
+    doLast {
+        def facts = new Properties()
+        dossier.asFile.withInputStream { facts.load(it) }
+        if (facts.getProperty('status') != 'QUALIFIED'
+                || facts.getProperty('inspectedCommit') != 'a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4'
+                || facts.getProperty('artifactSha256') != '2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555'
+                || facts.getProperty('sourceArtifactCorrelation') != 'authoritative-ordinary') {
+            throw new GradleException('Applied Flux qualification dossier is malformed')
+        }
+        def resolved = configurations.appliedFluxCompatibility.resolve()
+        if (resolved*.name.toSet() != ['appflux-1.21-2.1.4-neoforge.jar',
+                'guideme-21.1.1.jar', 'glodium-1.21-2.2-neoforge.jar'] as Set) {
+            throw new GradleException("Applied Flux compatibility artifacts are incomplete: ${resolved*.name}")
+        }
+        logger.lifecycle('Applied Flux 2.1.4 isolated compatibility artifacts verified')
+    }
+}
 
 tasks.register('dependencyVerificationSelfTest') {
     group = 'verification'
