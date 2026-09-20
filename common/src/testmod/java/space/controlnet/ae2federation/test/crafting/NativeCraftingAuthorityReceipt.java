@@ -89,10 +89,11 @@ public final class NativeCraftingAuthorityReceipt {
         }
         var node = providers.getFirst();
         var provider = node.getService(ICraftingProvider.class);
-        var patterns = provider.getAvailablePatterns();
-        if (patterns.size() != 1) {
-            throw new IllegalStateException("Authority receipt requires exactly one native pattern object");
+        var patterns = new java.util.ArrayList<>(provider.getAvailablePatterns());
+        if (patterns.isEmpty()) {
+            throw new IllegalStateException("Authority receipt requires at least one native pattern object");
         }
+        patterns.sort(Comparator.comparing(pattern -> pattern.getPrimaryOutput().what().getId().toString()));
         var identityService = grid.getService(NetworkIdentityService.class);
         var networkId = FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
         var service = grid.getCraftingService();
