@@ -16,6 +16,15 @@ The accepted public lifecycle is:
 
 No compatibility shim, replacement planner, replacement CPU, or alternate crafting ledger is used.
 
+Task 26 binds that native lifecycle across an authorized Federation relationship. A directional
+`PolicyKey(consumerNetworkId, providerNetworkId, CRAFTING)` selects one revision-bound capability regardless of how many
+physical Bridge routes connect the networks. The capability exposes the provider Grid's exact native crafting service,
+providers, provider nodes, and CPUs; Federation does not copy patterns or own planning, execution, task, or result state.
+
+The binding fails closed when Policy is disabled or deleted, a held revision becomes stale, Fabric connectivity is lost,
+the provider generation changes, source identity is no longer settled, or native provider/CPU readiness disappears.
+Reconciliation withdraws the old binding before a subsequent capability access can use it.
+
 ## Pinned Sources
 
 All source links refer to AE2 commit `79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a`.
@@ -62,6 +71,13 @@ through a second reload.
 - Available materials and pattern with no crafting CPU produce an executable plan and native `NO_CPU_FOUND`; materials
   remain untouched.
 - Native completion is not treated as proof of delivery. Stocking separately asserts the amount accepted by the requester.
+- An authorized source with patterns but no native CPU advertises no Federation Crafting capability and has no fallback.
+- Replacing provider A with a separately constructed Pattern Provider B on the same settled source `NetworkId` advances the
+  provider generation. B has a different registration node UUID/node object, provider object, pattern object, and binding;
+  every accessor on retained binding A remains empty after B becomes current.
+- Removing the final real Bridge Fabric from a live binding advances topology, increments the withdrawal counter, empties
+  every retained accessor, and publishes no replacement capability. This is separate from the no-CPU rejection proof.
+- Two physical Bridge routes for the same directional relationship retain one provider, pattern set, and CPU capacity.
 
 ## Evidence And Verification
 
@@ -82,3 +98,20 @@ their link IDs, validates the exact native artifact set and runtime facts, and b
 identity. The adversarial self-test fully rebinds copied evidence and rejects forged duplicate counts/UUIDs, a submitted
 duplicate invocation, missing provider dispatch, unaccepted stocking output, invalid missing-material/no-CPU submissions,
 forged pre-cancel Grid/CPU extraction, altered return facts, and missing artifacts.
+
+Task 26 adds the exact four-case binding set with assertion counts `18`, `8`, `18`, and `5`:
+
+```sh
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.native-binding,crafting.deduplicate-capability,crafting.native-state-owner,crafting.reject-unavailable -PevidenceDir=.omo/evidence/task-26 --no-configuration-cache
+RESULT_FILE=$(ls -td .omo/evidence/task-26/attempt-*/result.json | sed -n '1p')
+./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile="$RESULT_FILE" -PevidenceDir=.omo/evidence/task-26 --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationTaskTwentySixEvidenceConsumer -PresultFile="$RESULT_FILE" --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationTaskTwentySixEvidenceSelfTest -PresultFile="$RESULT_FILE" --no-configuration-cache
+```
+
+`AE2F_CRAFT_NATIVE_ENTRY` remains the semantic evidence channel. A separate `AE2F_CRAFT_AUTHORITY` observer scans the live
+AE2 Grid and node services directly, without reading that semantic Map, and receipts the settled NetworkId, Grid/service,
+registration node UUID/node object, provider object, CPU set, exact pattern object, binding/generation, Fabric references,
+topology revision, common-Fabric count, withdrawal count, and access state. The consumer requires the exact phase set for
+each child and cross-correlates both channels. Missing, duplicate, substituted, conflicting, or fully rebound fabricated
+authority is rejected for Task 26-specific semantic reasons.
