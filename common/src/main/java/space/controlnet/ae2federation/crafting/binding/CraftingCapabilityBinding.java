@@ -55,4 +55,13 @@ public final class CraftingCapabilityBinding {
     public Set<ICraftingCPU> nativeCpus() {
         return isCurrent() ? backend.cpus() : Set.of();
     }
+
+    public Optional<CraftingSubmissionSnapshot> submissionSnapshot() {
+        if (!isCurrent()) {
+            return Optional.empty();
+        }
+        var snapshot = new CraftingSubmissionSnapshot(this, backend.service(), backend.sourceGrid(), backend.providers(),
+                backend.cpus());
+        return isCurrent() ? Optional.of(snapshot) : Optional.empty();
+    }
 }

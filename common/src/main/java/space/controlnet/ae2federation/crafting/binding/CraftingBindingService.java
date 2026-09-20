@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.crafting.binding;
 
 import appeng.api.networking.IGrid;
+import appeng.api.networking.crafting.ICraftingProvider;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,54 @@ public final class CraftingBindingService implements AutoCloseable {
         reconcileAll();
         var binding = bindings.get(key);
         return binding != null && binding.isCurrent() ? Optional.of(binding) : Optional.empty();
+    }
+
+    public boolean submissionAuthorityCurrent(CraftingSubmissionSnapshot snapshot) {
+        var binding = snapshot.binding();
+        if (bindings.get(binding.relationship().key()) != binding
+                || binding.relationship().providerGrid() != snapshot.sourceGrid()
+                || snapshot.sourceGrid().getCraftingService() != snapshot.service()
+                || fabrics.topologyRevision() != binding.revision().topologyRevision()) {
+            return false;
+        }
+        var registry = FabricRegistryAccess.get(level);
+        if (binding.revision().fabrics().stream().noneMatch(registry::isCurrent)) {
+            return false;
+        }
+        var policies = PolicyService.get(level);
+        var configured = policies.configured(binding.relationship().key()).orElse(null);
+        if (configured == null || !configured.revision().equals(binding.revision().policyRevision())
+                || !configured.rule().enabled()
+                || !configured.rule().operations().contains(PolicyOperation.REQUEST)
+                || policies.activation(binding.relationship().key(), new PolicyRuntimeEndpoints(
+                        binding.relationship().consumerGrid(), binding.relationship().providerGrid(), BackendStatus.READY))
+                        != PolicyActivationState.ACTIVE) {
+            return false;
+        }
+        var identity = snapshot.sourceGrid().getService(
+                space.controlnet.ae2federation.identity.NetworkIdentityService.class);
+        var currentProviders = new java.util.ArrayList<NativeCraftingProviderSource>();
+        for (var node : snapshot.sourceGrid().getNodes()) {
+            var provider = node.getService(ICraftingProvider.class);
+            if (provider != null && node.isActive() && node.hasGridBooted()
+                    && node.getGrid() == snapshot.sourceGrid()) {
+                currentProviders.add(new NativeCraftingProviderSource(identity.lineage(node).nodeId(), node, provider));
+            }
+        }
+        currentProviders.sort((left, right) -> left.registrationNodeId().toString()
+                .compareTo(right.registrationNodeId().toString()));
+        if (currentProviders.size() != snapshot.providerSources().size()) {
+            return false;
+        }
+        for (var index = 0; index < currentProviders.size(); index++) {
+            var current = currentProviders.get(index);
+            var captured = snapshot.providerSources().get(index);
+            if (!current.registrationNodeId().equals(captured.registrationNodeId())
+                    || current.node() != captured.node() || current.provider() != captured.provider()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int relationshipCount() {
