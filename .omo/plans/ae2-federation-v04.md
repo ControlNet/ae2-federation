@@ -399,7 +399,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.native-binding,crafting.deduplicate-capability,crafting.native-state-owner,crafting.reject-unavailable -PevidenceDir=.omo/evidence/task-26`.
   - Commit: proposed `feat(crafting): bind authorized native capabilities`.
 
-- [ ] 27. Integrate native terminal discovery, planning and result recognition
+- [x] 27. Integrate native terminal discovery, planning and result recognition
   - Work: adapt the exact native terminal entrypoints proven in task 9, including permitted storage visibility, planner snapshot/thread constraints, missing-material feedback and native CPU selection. Do not broaden terminal behavior beyond the approved native delegation contract. Result ownership follows actual native callback paths, not public inventory increments.
   - References: D6.3-6.6,T-B09,T-C03; A-craft `CraftConfirmMenu`, A-storage; task 9. Depends on 24,26.
   - Acceptance: native terminal can complete permitted remote-capability demand; missing-material/no-CPU cases remain accurate; backend world access does not occur illegally on planner thread.
