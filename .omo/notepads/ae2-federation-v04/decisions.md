@@ -4,6 +4,25 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 30 mixed factory load
+
+- Compose Task 30 on one `NativeAutomationFixture` / `CraftingBindingFixture` topology. Seed and attach the mapped
+  Processing provider to the existing provider Grid; do not nest fixtures that create independent Grids.
+- Use two independent one-slot `NativeCraftingRequester` owners for concurrent blocked and progressing jobs. Use one
+  occupied one-slot tracker for the overload negative case; bounded native rejection is the proof, not a Federation queue.
+- Keep benchmark lifecycle, profile copying, evidence envelopes, source identity, persisted consumption, and mutation
+  probes in the Task 20 runner. Task 30 adds profile-specific semantic checks but no parallel benchmark framework.
+
+## 2026-09-21 Task 30 five-blocker repair
+
+- Delete the self-authored mixed lifecycle aggregate. Build each iteration from terminal, CPU, Provider, return-inventory,
+  projection, tracker, and bus hook snapshots plus pre-authorized physical handler/Interface receipts.
+- Treat warmup as a correctness run only and exclude it from measured operations, transfer totals, and elapsed aggregation.
+- Enforce one exact properties schema derived from the profile and frozen baseline, including fixed receipt cardinalities,
+  exact per-key fields, unique runtime/job identities, and fully rebound intended-reason mutation probes.
+- Refresh Task 20 capture identity only from profile, budget, dependency-lock, and pinned-version hashes; preserve current
+  source identity and stale-attempt rejection in the shared outer evidence envelope.
+
 ## 2026-09-20 Task 28 native automation
 
 - Keep Task 28 qualification-only. Federation exposes the authorized Storage projection; native `InterfaceLogic`,
@@ -480,3 +499,24 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   closure invalidates session APIs only and must not cancel or own the native job or its result.
 - Give every Task 29 child an exact semantic field set and reject unknown property or trace facts before semantic values.
   Retain both coordinated identity forgery and fully rebound extra-fact adversarial probes.
+
+## 2026-09-21 Task 30 second re-review repair
+
+- Register a minimal testmod processing block entity rather than promoting a fixture helper: AE2 invokes its capability,
+  the machine owns transformation state, and the machine alone injects produced output into the authorized native return
+  handler.
+- Keep canonical `mixed-small` values while accepting bounded typed profile variations. Build all topology dimensions from
+  the parsed profile and execute independent construction probes during the benchmark.
+- Require `benchmark-runtime.properties` as a distinct hashed artifact and compare its exact schema/value set against every
+  authority-bearing benchmark property before equation checks.
+- Persist negative-case values from native/physical before-and-after snapshots and observed tick order; retain no Federation
+  queue, scheduler, planner, CPU, result ledger, or stocking controller.
+
+## 2026-09-21 Task 30 final metric-authority repair
+
+- Define per-scene `handlerQuantity` as the checked sum of exact positive `MACHINE_TRANSITION` amounts after owner,
+  resource, accepted-input, order, and canonical-count validation.
+- Define per-scene `peakInFlight` as the maximum operation-time busy CPU count from `CPU_IN_FLIGHT` receipts correlated to
+  submitted job/CPU owners and exact `WAITING` observations, bounded by both the configured CPU limit and owner set.
+- Compare both aggregates inside each raw warmup/measured receipt stream. Projected properties and final iteration objects
+  are consumers only and cannot authorize either aggregate.

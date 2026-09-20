@@ -57,7 +57,8 @@ public final class NativeAutomationFixture implements AutoCloseable {
         }
         if (!authorized) {
             binding.enable();
-            var result = PolicyService.get(helper.getLevel()).edit(new PolicyEdit(storageKey(), PolicyRevision.NONE,
+            var policies = PolicyService.get(helper.getLevel());
+            var result = policies.edit(new PolicyEdit(storageKey(), policies.revision(storageKey()),
                     PolicyRule.enabled(Set.of(PolicyOperation.VIEW, PolicyOperation.EXTRACT, PolicyOperation.INSERT))));
             helper.assertTrue(result instanceof PolicyMutationResult.Accepted,
                     "Forward native Storage policy must be accepted");
@@ -71,6 +72,10 @@ public final class NativeAutomationFixture implements AutoCloseable {
 
     public InterfaceBlockEntity placeConsumerInterface(boolean second) {
         return placeInterface(second ? SECOND_INTERFACE : CONSUMER_INTERFACE, false);
+    }
+
+    public InterfaceBlockEntity placeConsumerInterface(BlockPos position) {
+        return placeInterface(position, false);
     }
 
     public InterfaceBlockEntity placeProviderInterface() {
@@ -105,6 +110,24 @@ public final class NativeAutomationFixture implements AutoCloseable {
                 appeng.api.networking.security.IActionSource.empty());
     }
 
+    public long physicalSourceTotal() {
+        long total = 0;
+        for (var entry : binding.sourcePhysicalStorage().getAvailableStacks()) {
+            total = Math.addExact(total, entry.getLongValue());
+        }
+        return total;
+    }
+
+    public long physicalConsumerTotal() {
+        var storage = binding.consumerChest().getOriginalCellInventory(0);
+        if (storage == null) return 0;
+        long total = 0;
+        for (var entry : storage.getAvailableStacks()) {
+            total = Math.addExact(total, entry.getLongValue());
+        }
+        return total;
+    }
+
     public long insertFluidSource(AEKey key, long amount) {
         return binding.sourceFluidStorage().insert(key, amount, Actionable.MODULATE,
                 appeng.api.networking.security.IActionSource.empty());
@@ -118,6 +141,14 @@ public final class NativeAutomationFixture implements AutoCloseable {
     public long interfaceAmount(InterfaceBlockEntity blockEntity, int slot) {
         var stack = blockEntity.getInterfaceLogic().getStorage().getStack(slot);
         return stack == null ? 0 : stack.amount();
+    }
+
+    public long consumeInterfaceSlot(InterfaceBlockEntity blockEntity, int slot) {
+        var storage = blockEntity.getInterfaceLogic().getStorage();
+        var stack = storage.getStack(slot);
+        if (stack == null) return 0;
+        storage.setStack(slot, null);
+        return stack.amount();
     }
 
     public boolean interfaceReady(InterfaceBlockEntity blockEntity, boolean provider) {
@@ -204,6 +235,14 @@ public final class NativeAutomationFixture implements AutoCloseable {
 
     @Override
     public void close() {
+        var policies = PolicyService.get(helper.getLevel());
+        if (policies.configured(storageKey()).isPresent()) {
+            policies.delete(new space.controlnet.ae2federation.policy.PolicyDelete(
+                    storageKey(), policies.revision(storageKey())));
+        }
+        if (policies.configured(binding.key()).isPresent()) {
+            binding.delete(policies.revision(binding.key()));
+        }
         binding.close();
     }
 

@@ -144,10 +144,13 @@
 {"id":"processing.dismantle","backend":"gametest","testId":"processingdismantle","structure":"ae2federation_test:harness_native_smoke","assertions":17},
     {"id":"processing.reject-false-replay","backend":"gametest","testId":"processingrejectfalsereplay","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"benchmark.reject-empty-work","backend":"self-test","assertions":1},
-    {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1}
+    {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1},
+    {"id":"mixed.reject-empty-orders","backend":"gametest","testId":"mixedrejectemptyorders","structure":"ae2federation_test:harness_native_smoke","assertions":16},
+    {"id":"mixed.overload-backpressure","backend":"gametest","testId":"mixedoverloadbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":25}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8,"lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},
-{"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v3","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}}
+{"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v3","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}},
+    {"id":"mixed-small","testId":"mixedbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":54,"assertions":48,"profileVersion":"mixed-small-v1","seed":30028029,"config":"tests/benchmarks/mixed/mixed-small.json","baseline":"tests/benchmarks/mixed/baseline.json","budgets":"tests/benchmarks/mixed/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}}
   ]
 }

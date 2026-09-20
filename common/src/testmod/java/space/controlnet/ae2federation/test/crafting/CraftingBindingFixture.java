@@ -9,6 +9,10 @@ import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
+import appeng.blockentity.crafting.CraftingBlockEntity;
+import appeng.api.networking.GridHelper;
+import appeng.core.definitions.AEBlocks;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import net.minecraft.core.BlockPos;
@@ -106,7 +110,8 @@ public final class CraftingBindingFixture implements AutoCloseable {
     }
 
     public PolicyRevision enable() {
-        return accepted(PolicyService.get(helper.getLevel()).edit(new PolicyEdit(key(), PolicyRevision.NONE,
+        var policies = PolicyService.get(helper.getLevel());
+        return accepted(policies.edit(new PolicyEdit(key(), policies.revision(key()),
                 PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST)))));
     }
 
@@ -295,6 +300,24 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public long busyCpuCount() {
         return sourceService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
+    }
+
+    public void addNativeCpu(BlockPos position) {
+        helper.setBlock(position, AEBlocks.CRAFTING_STORAGE_1K.block());
+        var cpu = helper.<CraftingBlockEntity>getBlockEntity(position);
+        cpu.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", key().providerNetworkId()));
+        connectNativeCpu(position);
+    }
+
+    public boolean connectNativeCpu(BlockPos position) {
+        var cpu = helper.<CraftingBlockEntity>getBlockEntity(position);
+        var cpuNode = cpu.getMainNode().getNode();
+        var sourceNode = sourceChest().getMainNode().getNode();
+        if (cpuNode != null && sourceNode != null && cpuNode.getGrid() != sourceNode.getGrid()) {
+            GridHelper.createConnection(cpuNode, sourceNode);
+            return false;
+        }
+        return cpuNode != null && sourceNode != null && cpuNode.getGrid() == sourceNode.getGrid();
     }
 
     public appeng.api.storage.MEStorage sourcePhysicalStorage() {

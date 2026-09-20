@@ -4,6 +4,30 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 30 mixed factory load
+
+- A second AE2 crafting storage joins the provider crafting service only when it forms through a real adjacent network
+  block. A remote managed-node connection can share the Grid while `getCpus()` remains unchanged. The stable second CPU
+  position is another free face of the provider ME Chest.
+- `MultiCraftingTracker.handleCrafting` owns an asynchronous calculation. `NativeTerminalRequest.submitTracked` may return
+  empty with no link on its first call; retry it on later ticks only until that request is accepted, then never resubmit it.
+- Task 28's default consumer Interface and Import Bus source chest both use `BASE.west()`. Mixed fixtures that need both
+  simultaneously must place the stocking Interface on a dedicated consumer-Grid-adjacent block.
+- The accepted mixed scene used two native CPUs, six Processing patterns, two alternative stone inputs, one delayed lane,
+  a four-stage emerald chain, one glass order, three Interface stocking cycles, and Import/Export Bus work. Thirty-one
+  source diamonds reconciled to two consumed nine-item stocks, nine final stocked items, and four exported items.
+
+## 2026-09-21 Task 30 five-blocker repair
+
+- A mixed benchmark cannot summarize multiple profile iterations in one scene. Clearing the bounded fixture volume after
+  each close permits one warmup plus three genuinely reconstructed native topologies without carrying policies or nodes.
+- Planner, CPU submission, Provider push/return, projection, tracker, and bus Mixins already expose sufficient native
+  authority. Task 30 now cross-correlates those receipts with pre-authorized handler/Interface owners and physical deltas.
+- The universal per-key equation is `initial + projectionInserted + handlerProduced = projectionExtracted +
+  handlerConsumed + finalSource`; callback, stocking, and export receipts independently corroborate final destinations.
+- A one-slot overload retry must wait for `activeLink() == null`, not merely `observedDone()`, before the one controlled
+  retry. This produces exactly two native submissions and two UUIDs without a Federation queue.
+
 ## 2026-09-20 Task 28 native automation
 
 - Native AE2 automation can consume the Task 21 directional Storage projection without a Federation scheduler: Interface
@@ -736,3 +760,26 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   comparing values; otherwise a fully rebound extra property and trace line remain self-authorizing.
 - Final evidence is `.omo/evidence/task-29-final-repair/attempt-20260920T161953674Z/result.json`; the fresh Task 27 regression
   is `.omo/evidence/task-27-task29-final-repair/attempt-20260920T162342556Z/result.json`.
+
+## 2026-09-21 Task 30 second re-review repair
+
+- A truthful Processing test boundary is a registered world block entity reached by AE2 through NeoForge's item-handler
+  capability. The block entity owns input/output inventories and deterministic recipe transitions; orchestration only
+  configures recipes and releases the deliberately blocked lane.
+- Profile axes must build topology, not validate one fixture. A typed topology now derives CPUs, lanes/requesters,
+  alternatives, chain stages, and the seed-selected tracked resource set, with runtime variation checks for each axis.
+- Independent evidence can share native observations but cannot share the final property map. A separately emitted exact
+  runtime artifact binds machine owners, projection operations, bus owners/work, stocking owners, jobs, and per-key
+  physical snapshots, so coordinated property substitutions fail while the runtime artifact remains unchanged.
+- Negative evidence is strongest when every zero and bound is a subtraction or relationship between captured boundary
+  snapshots. Overload tick order, registry/link cardinality, submissions, callbacks, and physical source deltas now form
+  one independently recomputable recovery timeline.
+
+## 2026-09-21 Task 30 final metric-authority repair
+
+- A bounded projected aggregate is still forgeable when the independent stream proves only its components. The consumer
+  must recompute the aggregate from operation-time receipts and require exact equality, not merely enforce a ceiling.
+- CPU pressure needs a receipt at each native observation point, not only the final waiting snapshot. The maximum of those
+  observations is the independent authority for `peakInFlight`; waiting facts then provide exact job/blocking correlation.
+- Groovy interpolated map values can remain `GString` instances. Normalize resource IDs to `String` before comparing them
+  with Base64-decoded Java strings, or valid raw transitions fail closed through `containsValue`.

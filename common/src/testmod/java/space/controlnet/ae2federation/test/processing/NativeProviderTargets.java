@@ -106,6 +106,10 @@ final class NativeProviderTargets {
         return snapshot.toString();
     }
 
+    Object targetOwner() {
+        return targetChest();
+    }
+
     void leaveOneSharedTargetSlot() {
         var chest = targetChest();
         for (int slot = 0; slot < chest.getContainerSize() - 1; slot++) {

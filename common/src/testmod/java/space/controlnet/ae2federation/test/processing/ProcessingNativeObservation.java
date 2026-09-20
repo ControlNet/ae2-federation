@@ -13,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.controlnet.ae2federation.test.mixed.MixedFactoryRuntimeReceipt;
 
 public final class ProcessingNativeObservation {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProcessingNativeObservation.class);
@@ -91,6 +92,20 @@ public final class ProcessingNativeObservation {
         return EVENTS.stream().filter(event -> event.startsWith(operation + "|")).count();
     }
 
+    public static synchronized long count(String operation, String detail) {
+        return EVENTS.stream().filter(event -> event.startsWith(operation + "|") && event.endsWith(detail)).count();
+    }
+
+    public static synchronized List<Receipt> snapshot() {
+        return EVENTS.stream().map(event -> {
+            var fields = event.split("\\|", 3);
+            return new Receipt(fields[0], fields[1], fields[2]);
+        }).toList();
+    }
+
+    public record Receipt(String operation, String owner, String detail) {
+    }
+
     public static synchronized String owners(String operation) {
         return EVENTS.stream().filter(event -> event.startsWith(operation + "|"))
                 .map(event -> event.split("\\|", 3)[1]).distinct().sorted().reduce((left, right) -> left + "," + right)
@@ -145,6 +160,7 @@ public final class ProcessingNativeObservation {
     private static void record(String operation, Object owner, String detail) {
         var ownerIdentity = identity(owner);
         EVENTS.add(operation + "|" + ownerIdentity + "|" + detail);
+        MixedFactoryRuntimeReceipt.processing(operation, owner, detail);
         LOGGER.info("AE2F_PROCESSING_NATIVE_OBSERVATION testId={} operation={} owner={} detail={}",
                 System.getProperty("ae2federation.testId", "unknown"), operation, ownerIdentity, detail);
         receipt("observation", operation, ownerIdentity, "detail=" + detail);

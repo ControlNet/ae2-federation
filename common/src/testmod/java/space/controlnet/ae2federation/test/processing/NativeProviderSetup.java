@@ -15,6 +15,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
+import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
 final class NativeProviderSetup {
     private static final IGridNodeListener<NativeProviderLaneFixtures> LISTENER = (owner, node) -> {
@@ -26,7 +28,7 @@ final class NativeProviderSetup {
     }
 
     static State create(GameTestHelper helper, NativeProviderLaneFixtures owner, List<IntPredicate> assignments,
-            boolean isolatedPower, int patternSlots) {
+            boolean isolatedPower, int patternSlots, NetworkId networkId) {
         helper.setBlock(NativeProviderLaneFixtures.HOST_POS, Blocks.CHEST);
         helper.setBlock(NativeProviderLaneFixtures.TARGET_POS, Blocks.CHEST);
         var energyPosition = isolatedPower ? ISOLATED_ENERGY_POS : ENERGY_POS;
@@ -39,6 +41,9 @@ final class NativeProviderSetup {
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0)
                 .setExposedOnSides(EnumSet.of(Direction.WEST));
+        if (networkId != null) {
+            node.loadFromNBT(NetworkIdentityNodeSeed.managedNode("provider", networkId));
+        }
         if (isolatedPower) {
             node.addService(IAEPowerStorage.class,
                     helper.<CreativeEnergyCellBlockEntity>getBlockEntity(energyPosition));

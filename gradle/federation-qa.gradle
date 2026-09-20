@@ -430,9 +430,12 @@ def verifyTaskTwentyEightEvidence
 def taskTwentyNineCases = ['crafting.cancel-native', 'crafting.disconnect-restart', 'crafting.reject-cycle',
         'crafting.reject-replay', 'crafting.replace-requester']
 def verifyTaskTwentyNineEvidence
+def taskThirtyCases = ['mixed.reject-empty-orders', 'mixed.overload-backpressure']
+def verifyTaskThirtyNegativeEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
+def verifyTaskThirtyBenchmarkEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -4660,6 +4663,494 @@ verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> dec
     }
     projection
 }
+verifyTaskThirtyBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
+    if (report.kind != 'benchmark' || report.requested != ['mixed-small']) return null
+    def taskThirtyUuid = ~/(?i)[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/
+    def required = ['benchmark-native.properties', 'benchmark-runtime.receipts', 'benchmark-profile.json',
+            'benchmark-baseline.json',
+            'benchmark-budgets.json', 'cleanup-receipt.txt'].each { name ->
+        if (declaredPaths.count { it == name } != 1 || declaredPaths.count { new File(it).name == name } != 1) {
+            throw new GradleException("Task 30 benchmark artifact mismatch: ${name}")
+        }
+    }
+    def profileFile = new File(attempt, 'benchmark-profile.json')
+    def profile = new JsonSlurper().parse(profileFile) as Map
+    def baseline = new JsonSlurper().parse(new File(attempt, 'benchmark-baseline.json')) as Map
+    def budgets = new JsonSlurper().parse(new File(attempt, 'benchmark-budgets.json')) as Map
+    def profileFields = ['schemaVersion', 'profileVersion', 'id', 'testId', 'structure', 'seed', 'lifecycle',
+            'warmupIterations', 'measuredIterations', 'recipeChainLength', 'alternativeInputs', 'blockedLanes',
+            'cpuLimit', 'stockingCycles', 'resourceKeyCount', 'largeBatchCalls', 'largeBatchUnits',
+            'smallBatchCalls', 'smallBatchUnits', 'variants', 'initial', 'requested'] as Set
+    def baselineFields = ['schemaVersion', 'profileVersion', 'seed', 'captureIdentitySha256', 'profileSha256',
+            'budgetSha256', 'dependencyLockSha256', 'minecraftVersion', 'neoForgeVersion', 'ae2Version',
+            'ldlib2Version', 'correctness'] as Set
+    def budgetFields = ['schemaVersion', 'profileVersion', 'seed', 'timingClassification', 'maxInFlight',
+            'maxWaiting', 'maxRetainedOrders', 'resourceReconciliationRequired', 'baselineUpdate'] as Set
+    if (profile.keySet() != profileFields || baseline.keySet() != baselineFields || budgets.keySet() != budgetFields
+            || profile.lifecycle.keySet() as Set != ['executionTimeoutSeconds', 'shutdownGraceSeconds'] as Set
+            || profile.initial.keySet() as Set != ['diamonds', 'cobblestone', 'dirt', 'redstone'] as Set
+            || profile.requested.keySet() as Set != ['emeralds', 'glass', 'stockedDiamonds', 'busDiamonds'] as Set
+            || baseline.correctness.keySet() as Set != ['recipeChainLength', 'cpuLimit', 'stockingCycles',
+            'handlerCallsPerRun', 'providerExecutionsPerRun', 'resourceReconciliationRequired'] as Set
+            || profile.id != 'mixed-small' || profile.testId != 'mixedbenchmarksmall'
+            || profile.structure != 'ae2federation_test:harness_native_smoke'
+            || profile.profileVersion != 'mixed-small-v1' || profile.seed != 30028029
+            || profile.recipeChainLength != 4 || profile.alternativeInputs != 2 || profile.blockedLanes != 1
+            || profile.cpuLimit != 2 || profile.stockingCycles != 3 || profile.resourceKeyCount != 11
+            || profile.warmupIterations != 1 || profile.measuredIterations != 3
+            || profile.variants != ['large-batch-low-frequency', 'small-batch-high-frequency']
+            || profile.largeBatchCalls * profile.largeBatchUnits != profile.smallBatchCalls * profile.smallBatchUnits
+            || baseline.schemaVersion != 2 || baseline.profileVersion != profile.profileVersion
+            || baseline.seed != profile.seed
+            || baseline.correctness.handlerCallsPerRun != 9 || baseline.correctness.providerExecutionsPerRun != 9
+            || budgets.profileVersion != profile.profileVersion || budgets.seed != profile.seed
+            || budgets.maxInFlight != 2 || budgets.maxWaiting != 1
+            || budgets.maxRetainedOrders != 2 || budgets.resourceReconciliationRequired != true
+            || budgets.baselineUpdate != 'explicit-edit-and-rerun-required') {
+        throw new GradleException('Task 30 mixed benchmark profile or budget mismatch')
+    }
+    def captureBinding = [profileSha256: baseline.profileSha256, budgetSha256: baseline.budgetSha256,
+            dependencyLockSha256: baseline.dependencyLockSha256, minecraftVersion: baseline.minecraftVersion,
+            neoForgeVersion: baseline.neoForgeVersion, ae2Version: baseline.ae2Version,
+            ldlib2Version: baseline.ldlib2Version]
+    if (baseline.profileSha256 != sha256(profileFile.bytes)
+            || baseline.budgetSha256 != sha256(new File(attempt, 'benchmark-budgets.json').bytes)
+            || baseline.dependencyLockSha256 != sha256(verificationMetadata.asFile.bytes)
+            || baseline.captureIdentitySha256 != sha256(JsonOutput.toJson(captureBinding).getBytes(StandardCharsets.UTF_8))
+            || baseline.minecraftVersion != minecraft_version || baseline.neoForgeVersion != neo_version
+            || baseline.ae2Version != ae2_version || baseline.ldlib2Version != ldlib2_version) {
+        throw new GradleException('Task 30 benchmark capture identity is stale')
+    }
+    def metrics = new Properties()
+    new File(attempt, 'benchmark-native.properties').withInputStream { metrics.load(it) }
+    def numeric = { String key -> parseNonnegativeInteger(metrics.getProperty(key), "Task 30 ${key}") }
+    def resources = ['diamond', 'cobblestone', 'dirt', 'stone', 'iron_ingot', 'gold_ingot', 'emerald',
+            'redstone', 'glass', 'lapis_lazuli', 'quartz']
+    def resourceFields = ['initial', 'projectionInserted', 'projectionExtracted', 'handlerConsumed',
+            'handlerProduced', 'callbackInserted', 'finalSource', 'finalStocked', 'finalExported',
+            'stockingConsumed', 'equation']
+    def commonFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos', 'profileVersion', 'profileSha256', 'seed', 'warmupCount',
+            'measuredCount', 'resourceKeyCount', 'reconciliation.currentRun'] as Set
+    def runFields = ['index', 'phase', 'runtimeIdentity', 'selectedAlternative', 'planning', 'submitted', 'jobIds',
+             'waiting', 'executing', 'returnInjections', 'providerOwners', 'returnOwners', 'handlerCalls',
+            'projectionReceipts', 'busReceipt', 'handlerQuantity', 'stockingReceipts',
+            'peakInFlight', 'elapsedNanos', 'batch.large.calls', 'batch.large.quantity', 'batch.small.calls',
+            'batch.small.quantity']
+    def prefixes = ['warmup.0', 'iteration.0', 'iteration.1', 'iteration.2']
+    def expectedFields = new LinkedHashSet<String>(commonFields)
+    prefixes.each { prefix ->
+        runFields.each { expectedFields.add("${prefix}.${it}") }
+        (0..<baseline.correctness.handlerCallsPerRun).each { expectedFields.add("${prefix}.handler.${it}") }
+        (0..<profile.stockingCycles).each { expectedFields.add("${prefix}.stocking.${it}") }
+        resources.each { resource -> resourceFields.each { expectedFields.add("${prefix}.resource.${resource}.${it}") } }
+    }
+    if (metrics.keySet() as Set != expectedFields
+            || metrics.getProperty('schemaVersion') != '1' || metrics.getProperty('status') != 'passed'
+            || metrics.getProperty('kind') != 'benchmark' || metrics.getProperty('testId') != 'mixedbenchmarksmall'
+            || metrics.getProperty('structure') != 'ae2federation_test:harness_native_smoke'
+            || metrics.getProperty('profileVersion') != profile.profileVersion
+            || metrics.getProperty('profileSha256') != sha256(profileFile.bytes)
+            || metrics.getProperty('seed') != profile.seed.toString()
+            || numeric('warmupCount') != profile.warmupIterations
+            || numeric('measuredCount') != profile.measuredIterations
+            || numeric('resourceKeyCount') != resources.size()
+            || metrics.getProperty('reconciliation.currentRun') != 'true') {
+        throw new GradleException('Task 30 exact benchmark schema or identity mismatch')
+    }
+    def rawFile = new File(attempt, 'benchmark-runtime.receipts')
+    def rawRuns = prefixes.collectEntries { [(it): []] }
+    def decoder = Base64.urlDecoder
+    def schemas = [HEADER: 2, SCENE_BEGIN: 0, SCENE_END: 1, TERMINAL_BEGIN: 2, TERMINAL_SUBMIT: 1,
+            TERMINAL_PROVIDER_PUSH: 1, TERMINAL_CPU_SUBMIT: 3, TRACKER_CALL: 1, TRACKER_RESULT: 3,
+            PROJECTION: 5, IMPORT_BUS: 2, EXPORT_BUS: 2, PROCESSING: 3, MACHINE_ACCEPTED: 4,
+            MACHINE_TRANSITION: 7, WAITING: 3, CPU_IN_FLIGHT: 4, STOCKING: 4, CALLBACK: 5, INVENTORY: 3,
+            DESTINATION: 3]
+    def header
+    rawFile.readLines(StandardCharsets.UTF_8.name()).eachWithIndex { line, expectedSequence ->
+        def encoded = line.split('\\|', -1) as List
+        if (encoded.size() < 4 || encoded[0] != expectedSequence.toString()) {
+            throw new GradleException('Task 30 raw receipt sequence mismatch')
+        }
+        def event = encoded[3]
+        def fields = encoded.drop(4).collect { new String(decoder.decode(it), StandardCharsets.UTF_8) }
+        if (!schemas.containsKey(event) || fields.size() != schemas[event]) {
+            throw new GradleException('Task 30 raw receipt schema mismatch')
+        }
+        def iteration = encoded[1] as int
+        def phase = encoded[2]
+        if (event == 'HEADER') {
+            if (expectedSequence != 0 || iteration != -1 || phase != 'benchmark') {
+                throw new GradleException('Task 30 raw receipt header mismatch')
+            }
+            header = fields
+        } else {
+            def prefix = (iteration == 0 ? 'warmup.0' : "iteration.${iteration - 1}").toString()
+            if (!rawRuns.containsKey(prefix) || phase != (iteration == 0 ? 'warmup' : 'measured')) {
+                throw new GradleException('Task 30 raw receipt iteration or phase mismatch')
+            }
+            rawRuns[prefix] << [event: event, fields: fields]
+        }
+    }
+    if (header != [sha256(profileFile.bytes), profile.seed.toString()]) {
+        throw new GradleException('Task 30 raw receipt identity mismatch')
+    }
+    def resourceIds = resources.collectEntries { alias ->
+        [(alias): (alias == 'lapis_lazuli' ? 'minecraft:lapis_lazuli' : "minecraft:${alias}").toString()]
+    }
+    rawRuns.each { prefix, receipts ->
+        if (receipts.first().event != 'SCENE_BEGIN' || receipts.last().event != 'SCENE_END'
+                || receipts.count { it.event == 'SCENE_BEGIN' } != 1
+                || receipts.count { it.event == 'SCENE_END' } != 1) {
+            throw new GradleException("Task 30 raw receipt scene envelope mismatch: ${prefix}")
+        }
+        def projections = receipts.findAll { it.event == 'PROJECTION' }.collect { it.fields.join('|') }.sort().join(';')
+        if (projections != metrics.getProperty("${prefix}.projectionReceipts")) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.projectionReceipts")
+        }
+        def transitions = receipts.findAll { it.event == 'MACHINE_TRANSITION' }
+        def accepted = receipts.findAll { it.event == 'MACHINE_ACCEPTED' }
+        if (transitions.size() != baseline.correctness.handlerCallsPerRun) {
+            throw new GradleException("Task 30 raw handler receipt count mismatch: ${prefix}")
+        }
+        def handlerQuantity = 0L
+        transitions.each { receipt ->
+            if ((0..<4).any { !(receipt.fields[it] ==~ /0|[1-9][0-9]*/) }
+                    || !resourceIds.containsValue(receipt.fields[4])
+                    || !resourceIds.containsValue(receipt.fields[5])) {
+                throw new GradleException("Task 30 raw machine transition mismatch: ${prefix}")
+            }
+            handlerQuantity = Math.addExact(handlerQuantity,
+                    parsePositiveInteger(receipt.fields[6], "Task 30 raw machine transition amount"))
+        }
+        if (numeric("${prefix}.handlerQuantity") != handlerQuantity) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.handlerQuantity")
+        }
+        if (accepted.size() != transitions.size() || accepted.any { receipt ->
+            !(receipt.fields[0] ==~ /0|[1-9][0-9]*/) || !(receipt.fields[1] ==~ /0|[1-9][0-9]*/)
+                    || !resourceIds.containsValue(receipt.fields[2])
+                    || parsePositiveInteger(receipt.fields[3], "Task 30 raw machine accepted amount") < 1
+        }) {
+            throw new GradleException("Task 30 raw machine acceptance mismatch: ${prefix}")
+        }
+        def acceptedFacts = accepted.collect { it.fields.join('|') }.sort()
+        def transitionInputs = transitions.collect {
+            [it.fields[0], it.fields[1], it.fields[4], it.fields[6]].join('|')
+        }.sort()
+        if (acceptedFacts != transitionInputs) {
+            throw new GradleException("Task 30 raw accepted/transition mismatch: ${prefix}")
+        }
+        transitions.eachWithIndex { receipt, index ->
+            def amount = receipt.fields[6]
+            def projected = receipt.fields.take(6) + [amount, amount, amount]
+            if (projected.join('|') != metrics.getProperty("${prefix}.handler.${index}")) {
+                throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.handler.${index}")
+            }
+        }
+        def stocking = receipts.findAll { it.event == 'STOCKING' }
+        if (stocking.size() != profile.stockingCycles) {
+            throw new GradleException("Task 30 raw stocking receipt count mismatch: ${prefix}")
+        }
+        stocking.eachWithIndex { receipt, index ->
+            if (receipt.fields.join('|') != metrics.getProperty("${prefix}.stocking.${index}")) {
+                throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.stocking.${index}")
+            }
+        }
+        def terminalBegins = receipts.findAll { it.event == 'TERMINAL_BEGIN' }
+        def cpuSubmits = receipts.findAll { it.event == 'TERMINAL_CPU_SUBMIT' }
+        def terminalSubmits = receipts.findAll { it.event == 'TERMINAL_SUBMIT' }
+        def trackerCalls = receipts.findAll { it.event == 'TRACKER_CALL' }
+        def trackerResults = receipts.findAll { it.event == 'TRACKER_RESULT' }
+        def waiting = receipts.findAll { it.event == 'WAITING' }
+        def cpuInFlight = receipts.findAll { it.event == 'CPU_IN_FLIGHT' }
+        def jobs = cpuSubmits.collect { it.fields[2] }.sort()
+        def runtimeIdentity = terminalBegins.last().fields[0] + ':' + cpuSubmits.last().fields[0] + ':' + jobs.join(',')
+        if (terminalBegins.size().toString() != metrics.getProperty("${prefix}.planning")
+                || cpuSubmits.size().toString() != metrics.getProperty("${prefix}.submitted")
+                || trackerCalls.size() != trackerResults.size()
+                || trackerResults.count { it.fields[1] == 'true' } != cpuSubmits.size()
+                || trackerResults.count { it.fields[1] == 'false' } != cpuSubmits.size()
+                || waiting.size().toString() != metrics.getProperty("${prefix}.waiting")
+                || jobs.join(',') != metrics.getProperty("${prefix}.jobIds")
+                || runtimeIdentity != metrics.getProperty("${prefix}.runtimeIdentity")
+                || waiting.collect { it.fields[0] }.toSet().size().toString()
+                        != metrics.getProperty("${prefix}.waiting")) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.terminal")
+        }
+        def cpuOwnersByJob = cpuSubmits.collectEntries { [(it.fields[2]): it.fields[0]] }
+        def cpuOwners = cpuOwnersByJob.values().toSet()
+        if (cpuOwnersByJob.size() != cpuSubmits.size()
+                || cpuSubmits.any { !(it.fields[0] ==~ /0|[1-9][0-9]*/)
+                || !(it.fields[1] ==~ /0|[1-9][0-9]*/) }
+                || cpuInFlight.isEmpty()) {
+            throw new GradleException("Task 30 raw CPU owner coverage mismatch: ${prefix}")
+        }
+        def inFlightValues = cpuInFlight.collect { receipt ->
+            def busy = parseNonnegativeInteger(receipt.fields[1], "Task 30 raw busy CPU amount")
+            def blocked = parseNonnegativeInteger(receipt.fields[2], "Task 30 raw blocked input amount")
+            if (!cpuOwnersByJob.containsKey(receipt.fields[0]) || !(receipt.fields[3] in ['true', 'false'])
+                    || busy > profile.cpuLimit || busy > cpuOwners.size() || blocked < 0) {
+                throw new GradleException("Task 30 raw CPU in-flight mismatch: ${prefix}")
+            }
+            busy
+        }
+        waiting.each { receipt ->
+            def busy = parsePositiveInteger(receipt.fields[1], "Task 30 raw waiting busy CPU amount")
+            def blocked = parsePositiveInteger(receipt.fields[2], "Task 30 raw waiting blocked input amount")
+            if (!cpuOwnersByJob.containsKey(receipt.fields[0]) || busy > profile.cpuLimit
+                    || !cpuInFlight.any { cpu -> cpu.fields == [receipt.fields[0], receipt.fields[1],
+                    receipt.fields[2], 'true'] }) {
+                throw new GradleException("Task 30 raw waiting CPU correlation mismatch: ${prefix}")
+            }
+        }
+        def peakInFlight = inFlightValues.max() as long
+        if (numeric("${prefix}.peakInFlight") != peakInFlight) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.peakInFlight")
+        }
+        def processing = receipts.findAll { it.event == 'PROCESSING' }
+        def pushHeads = processing.count { it.fields[0] == 'push-head' }
+        def pushReturns = processing.count { it.fields[0] == 'push-return' }
+        def returnAttempts = processing.count { it.fields[0] == 'return-inject' }
+        def providerOwners = processing.findAll { it.fields[0] == 'push-return' }
+                .collect { it.fields[1] }.toSet().sort().join(',')
+        def returnOwners = processing.findAll { it.fields[0] == 'return-inject' }
+                .collect { it.fields[1] }.toSet().sort().join(',')
+        def executions = processing.count { it.fields[0] == 'push-return' && it.fields[2] == 'accepted=true' }
+        def returns = processing.count { it.fields[0] == 'return-inject' && it.fields[2] == 'changed=true' }
+        if (providerOwners != metrics.getProperty("${prefix}.providerOwners")
+                || returnOwners != metrics.getProperty("${prefix}.returnOwners")
+                || executions.toString() != metrics.getProperty("${prefix}.executing")
+                || returns.toString() != metrics.getProperty("${prefix}.returnInjections")
+                || processing.any { !(it.fields[0] in ['push-head', 'push-return', 'return-inject']) }
+                || pushHeads != executions || pushReturns != executions || returnAttempts != executions * 2 + 1
+                || receipts.count { it.event == 'TERMINAL_PROVIDER_PUSH' } != executions
+                || terminalSubmits.size() != cpuSubmits.size()
+                || terminalBegins.any { receipts.indexOf(it) > receipts.indexOf(terminalSubmits.first()) }) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.processing")
+        }
+        def imports = receipts.findAll { it.event == 'IMPORT_BUS' }
+        def exports = receipts.findAll { it.event == 'EXPORT_BUS' }
+        def busReceipt = [imports.last().fields[0], imports.count { it.fields[1] == 'true' },
+                exports.last().fields[0], exports.count { it.fields[1] == 'true' }].join('|')
+        if (imports.size() != profile.requested.busDiamonds || exports.size() != profile.requested.busDiamonds
+                || imports.any { it.fields[1] != 'false' } || exports.any { it.fields[1] != 'true' }
+                || busReceipt != metrics.getProperty("${prefix}.busReceipt")) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.busReceipt")
+        }
+        ['initial', 'final'].each { boundary ->
+            def inventoryReceipts = receipts.findAll { it.event == 'INVENTORY' && it.fields[0] == boundary }
+            def inventory = inventoryReceipts
+                    .collectEntries { [(it.fields[1]): it.fields[2]] }
+            if (inventoryReceipts.size() != resources.size() || inventory.size() != resources.size()) {
+                throw new GradleException("Task 30 raw inventory mismatch: ${prefix}")
+            }
+            resourceIds.each { alias, id ->
+                def field = boundary == 'initial' ? 'initial' : 'finalSource'
+                if (inventory[id] != metrics.getProperty("${prefix}.resource.${alias}.${field}")) {
+                    throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.resource.${alias}.${field}")
+                }
+            }
+        }
+        def destination = receipts.findAll { it.event == 'DESTINATION' && it.fields[0] == 'final' }
+        def initialDestination = receipts.findAll { it.event == 'DESTINATION' && it.fields[0] == 'initial' }
+        if (initialDestination.size() != 1 || initialDestination[0].fields.drop(1) != ['0', '0']
+                || destination.size() != 1
+                || destination[0].fields[1] != metrics.getProperty("${prefix}.resource.diamond.finalStocked")
+                || destination[0].fields[2] != metrics.getProperty("${prefix}.resource.diamond.finalExported")) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.destination")
+        }
+        resourceIds.each { alias, id ->
+            def callback = receipts.findAll { it.event == 'CALLBACK' && it.fields[2] == id }
+                    .sum(0L) { receipt -> receipt.fields[4] as long }
+            if (callback.toString() != metrics.getProperty("${prefix}.resource.${alias}.callbackInserted")) {
+                throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.resource.${alias}.callbackInserted")
+            }
+            def inserted = receipts.findAll { it.event == 'PROJECTION' && it.fields[1] == 'insert'
+                    && it.fields[2].endsWith('|' + id) }.sum(0L) { receipt -> receipt.fields[4] as long }
+            def extracted = receipts.findAll { it.event == 'PROJECTION' && it.fields[1] == 'extract'
+                    && it.fields[2].endsWith('|' + id) }.sum(0L) { receipt -> receipt.fields[4] as long }
+            def consumed = transitions.findAll { it.fields[4] == id }
+                    .sum(0L) { receipt -> receipt.fields[6] as long }
+            def produced = transitions.findAll { it.fields[5] == id }
+                    .sum(0L) { receipt -> receipt.fields[6] as long }
+            ['projectionInserted': inserted, 'projectionExtracted': extracted, 'handlerConsumed': consumed,
+                    'handlerProduced': produced].each { field, value ->
+                if (value.toString() != metrics.getProperty("${prefix}.resource.${alias}.${field}")) {
+                    throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.resource.${alias}.${field}")
+                }
+            }
+        }
+        def callbacks = receipts.findAll { it.event == 'CALLBACK' }
+        if (callbacks.any { (it.fields[3] as long) <= 0 || it.fields[3] != it.fields[4] }
+                || callbacks.size() != callbacks.sum(0L) { it.fields[4] as long }) {
+            throw new GradleException("Task 30 raw callback receipt mismatch: ${prefix}")
+        }
+        transitions.each { transition ->
+            def inputFact = [transition.fields[0], transition.fields[1], transition.fields[4],
+                    transition.fields[6]].join('|')
+            def prior = accepted.find { candidate -> candidate.fields.join('|') == inputFact
+                    && receipts.indexOf(candidate) < receipts.indexOf(transition) }
+            if (prior == null) throw new GradleException("Task 30 raw receipt operation order mismatch: ${prefix}")
+        }
+        def elapsed = receipts.last().fields[0]
+        if (elapsed != metrics.getProperty("${prefix}.elapsedNanos")) {
+            throw new GradleException("Task 30 independent runtime authority mismatch: ${prefix}.elapsedNanos")
+        }
+    }
+    def runtimeIdentities = new LinkedHashSet<String>()
+    def measuredElapsed = 0L
+    prefixes.eachWithIndex { prefix, position ->
+        def actualIndex = position
+        def jobs = metrics.getProperty("${prefix}.jobIds").split(',', -1) as List
+        def runtimeIdentity = metrics.getProperty("${prefix}.runtimeIdentity")
+        if (numeric("${prefix}.index") != actualIndex
+                || metrics.getProperty("${prefix}.phase") != (position == 0 ? 'warmup' : 'measured')
+                || !runtimeIdentities.add(runtimeIdentity) || jobs.size() != 2 || jobs.toSet().size() != 2
+                || jobs.any { !taskThirtyUuid.matcher(it).matches() }
+                || numeric("${prefix}.selectedAlternative") != Math.floorMod(profile.seed as int + actualIndex,
+                profile.alternativeInputs as int)
+                || numeric("${prefix}.planning") != (profile.blockedLanes + 1) * 2
+                || numeric("${prefix}.submitted") != profile.blockedLanes + 1
+                || numeric("${prefix}.waiting") != profile.blockedLanes
+                || numeric("${prefix}.executing") != baseline.correctness.providerExecutionsPerRun
+                || numeric("${prefix}.handlerCalls") != baseline.correctness.handlerCallsPerRun
+                || numeric("${prefix}.stockingReceipts") != profile.stockingCycles
+                || numeric("${prefix}.peakInFlight") > profile.cpuLimit
+                || numeric("${prefix}.elapsedNanos") < 1
+                || numeric("${prefix}.batch.large.calls") != profile.largeBatchCalls
+                || numeric("${prefix}.batch.large.quantity") != profile.largeBatchCalls * profile.largeBatchUnits
+                || numeric("${prefix}.batch.small.calls") != profile.smallBatchCalls
+                || numeric("${prefix}.batch.small.quantity") != profile.smallBatchCalls * profile.smallBatchUnits) {
+            throw new GradleException("Task 30 native iteration authority mismatch: ${prefix}")
+        }
+        def returnOwners = metrics.getProperty("${prefix}.returnOwners").split(',', -1) as Set
+        if (returnOwners.isEmpty() || returnOwners.contains('')
+                || returnOwners.any { !(it ==~ /0|[1-9][0-9]*/) }) {
+            throw new GradleException("Task 30 native return authority mismatch: ${prefix}")
+        }
+        (0..<baseline.correctness.handlerCallsPerRun).each { receiptIndex ->
+            def parts = metrics.getProperty("${prefix}.handler.${receiptIndex}").split('\\|', -1)
+            if (parts.size() != 9 || (0..<4).any { !(parts[it] ==~ /0|[1-9][0-9]*/) }
+                    || !(parts[3] in returnOwners) || !parts[4].contains('minecraft:')
+                    || !parts[5].contains('minecraft:')
+                    || parsePositiveInteger(parts[6], 'Task 30 machine accepted amount')
+                            != parsePositiveInteger(parts[7], 'Task 30 machine consumed amount')
+                    || parsePositiveInteger(parts[7], 'Task 30 machine consumed amount')
+                            != parsePositiveInteger(parts[8], 'Task 30 machine produced amount')) {
+                throw new GradleException("Task 30 handler authority receipt mismatch: ${prefix}")
+            }
+        }
+        def stockingOwners = new LinkedHashSet<String>()
+        (0..<profile.stockingCycles).each { receiptIndex ->
+            def parts = metrics.getProperty("${prefix}.stocking.${receiptIndex}").split('\\|', -1)
+            if (parts.size() != 4 || !(parts[0] ==~ /0|[1-9][0-9]*/)
+                    || (parts[1] as long) + (parts[2] as long) != (parts[3] as long)) {
+                throw new GradleException("Task 30 stocking authority receipt mismatch: ${prefix}")
+            }
+            stockingOwners.add(parts[0])
+        }
+        if (stockingOwners.size() != 1) {
+            throw new GradleException("Task 30 stocking owner attribution mismatch: ${prefix}")
+        }
+        if (position > 0) measuredElapsed += numeric("${prefix}.elapsedNanos")
+        resources.each { resource ->
+            def stem = "${prefix}.resource.${resource}."
+            def initial = numeric(stem + 'initial')
+            def projectionInserted = numeric(stem + 'projectionInserted')
+            def projectionExtracted = numeric(stem + 'projectionExtracted')
+            def consumed = numeric(stem + 'handlerConsumed')
+            def produced = numeric(stem + 'handlerProduced')
+            def finalSource = numeric(stem + 'finalSource')
+            if (metrics.getProperty(stem + 'equation') != 'true'
+                    || initial + projectionInserted + produced != projectionExtracted + consumed + finalSource) {
+                throw new GradleException("Task 30 per-key physical equation mismatch: ${prefix}.${resource}")
+            }
+        }
+        def diamond = "${prefix}.resource.diamond."
+        if (numeric(diamond + 'projectionExtracted') != numeric(diamond + 'stockingConsumed')
+                + numeric(diamond + 'finalStocked') + numeric(diamond + 'finalExported')
+                || numeric(diamond + 'finalStocked') != profile.requested.stockedDiamonds
+                || numeric(diamond + 'finalExported') != profile.requested.busDiamonds
+                || numeric("${prefix}.resource.emerald.callbackInserted") != profile.requested.emeralds
+                || numeric("${prefix}.resource.glass.callbackInserted") != profile.requested.glass) {
+            throw new GradleException("Task 30 destination or callback equation mismatch: ${prefix}")
+        }
+    }
+    if (numeric('elapsedNanos') != measuredElapsed
+            || numeric('operations') != profile.measuredIterations * (profile.largeBatchCalls + profile.smallBatchCalls)
+            || numeric('inserted') != numeric('extracted')) {
+        throw new GradleException('Task 30 measured aggregate recomputation mismatch')
+    }
+}
+verifyTaskThirtyNegativeEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (requested != taskThirtyCases) return
+    def taskThirtyUuid = ~/(?i)[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/
+    def common = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions'] as Set
+    def expected = [mixedrejectemptyorders: [rejected: 'true', amount: '0', queueGrowth: '0', plannerDelta: '0',
+                    trackerCallDelta: '0', nativeSubmissionDelta: '0', projectionCallDelta: '0',
+                    projectionQuantityDelta: '0', handlerCallDelta: '0', handlerQuantityDelta: '0',
+                    interfaceWorkDelta: '0', busWorkDelta: '0', inFlightDelta: '0', waitingDelta: '0',
+                    sourceInventoryDelta: '0', consumerInventoryDelta: '0'],
+            mixedoverloadbackpressure: [logicalCompletions: '2', initialDeferred: '1', retries: '1',
+                    nativeSubmissions: '2', uniqueJobIds: '2', peakInFlight: '1', hardPeakBound: '1',
+                    queueGrowth: '0', silentDrops: '0', resultAccepted: '8', resultPhysical: '8',
+                    registryPeak: '1', registryFinal: '0', linkOwnersFinal: '0']]
+    expected.each { testId, facts ->
+        def name = "native-${testId}.properties"
+        if (declaredPaths.count { it == name } != 1 || childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Task 30 negative artifact mismatch: ${testId}")
+        }
+        def properties = new Properties()
+        new File(attempt, name).withInputStream { properties.load(it) }
+        def dynamicOverload = ['jobIds', 'sourceInitial', 'sourceConsumed', 'sourceFinal', 'completionWindowBound',
+                'firstDeferredTick', 'capacityReleaseTick', 'retryTick', 'firstCompletionTick',
+                'secondSubmissionTick', 'secondCompletionTick'] as Set
+        def expectedFields = common + facts.keySet()
+        if (testId == 'mixedoverloadbackpressure') expectedFields += dynamicOverload
+        if (properties.keySet() as Set != expectedFields
+                || properties.getProperty('schemaVersion') != '1'
+                || properties.getProperty('status') != 'passed'
+                || properties.getProperty('kind') != 'verify'
+                || properties.getProperty('testId') != testId
+                || properties.getProperty('structure') != 'ae2federation_test:harness_native_smoke'
+                || parsePositiveInteger(properties.getProperty('assertions'), "Task 30 ${testId} assertions")
+                        != expectedFields.size() - common.size()) {
+            throw new GradleException("Task 30 exact negative schema mismatch: ${testId}")
+        }
+        facts.each { key, value ->
+            if (properties.getProperty(key) != value) {
+                throw new GradleException("Task 30 bounded backpressure evidence mismatch: ${testId}.${key}")
+            }
+        }
+        if (testId == 'mixedoverloadbackpressure') {
+            def jobs = properties.getProperty('jobIds').split(',', -1) as List
+            def firstDeferred = parseNonnegativeInteger(properties.getProperty('firstDeferredTick'),
+                    'Task 30 overload first deferred tick')
+            def release = parseNonnegativeInteger(properties.getProperty('capacityReleaseTick'),
+                    'Task 30 overload capacity release tick')
+            def retry = parseNonnegativeInteger(properties.getProperty('retryTick'), 'Task 30 overload retry tick')
+            def firstCompletion = parseNonnegativeInteger(properties.getProperty('firstCompletionTick'),
+                    'Task 30 overload first completion tick')
+            def secondSubmission = parseNonnegativeInteger(properties.getProperty('secondSubmissionTick'),
+                    'Task 30 overload second submission tick')
+            def secondCompletion = parseNonnegativeInteger(properties.getProperty('secondCompletionTick'),
+                    'Task 30 overload second completion tick')
+            def completionWindow = parsePositiveInteger(properties.getProperty('completionWindowBound'),
+                    'Task 30 overload completion window')
+            if (jobs.size() != 2 || jobs.toSet().size() != 2 || jobs.any { !taskThirtyUuid.matcher(it).matches() }
+                    || parseNonnegativeInteger(properties.getProperty('sourceInitial'), 'Task 30 overload source initial')
+                            != parseNonnegativeInteger(properties.getProperty('sourceConsumed'),
+                            'Task 30 overload source consumed')
+                            + parseNonnegativeInteger(properties.getProperty('sourceFinal'),
+                            'Task 30 overload source final')
+                    || firstDeferred > release || release != firstCompletion || retry != release
+                    || secondSubmission != retry || secondCompletion < secondSubmission
+                    || completionWindow != secondCompletion - firstDeferred || completionWindow > 2000) {
+                throw new GradleException('Task 30 overload recovery or physical equation mismatch')
+            }
+        }
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -4837,6 +5328,9 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwentyNineEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
+    verifyTaskThirtyNegativeEvidence(attempt, report.requested as List,
+            report.artifacts.collect { it.path as String }, report.childExits as Map)
+    verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
         def identity = currentSourceIdentity(identityDir)
@@ -5329,7 +5823,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 '-PfederationGameTestSelection=benchmark', "-PfederationGameTestId=${benchmarkProfile.testId}",
                 "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"]
         File benchmarkBudget = null
-        if (profile == 'processing-small') {
+        if (profile in ['processing-small', 'mixed-small']) {
             def copies = [config: 'benchmark-profile.json', baseline: 'benchmark-baseline.json',
                     budgets: 'benchmark-budgets.json'].collectEntries { field, name ->
                 def source = strictCanonicalPath(rootProject.file(benchmarkProfile[field] as String))
@@ -5339,10 +5833,14 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 [(field): target]
             }
             benchmarkBudget = copies.budgets
-            benchmarkArgs.add("-PfederationProcessingBenchmarkProfile=${copies.config.absolutePath}")
-            def replaySeed = providers.gradleProperty('processingBenchmarkSeed').orNull
-            if (replaySeed != null && !replaySeed.isBlank()) {
-                benchmarkArgs.add("-PfederationProcessingBenchmarkSeed=${replaySeed}")
+            if (profile == 'processing-small') {
+                benchmarkArgs.add("-PfederationProcessingBenchmarkProfile=${copies.config.absolutePath}")
+                def replaySeed = providers.gradleProperty('processingBenchmarkSeed').orNull
+                if (replaySeed != null && !replaySeed.isBlank()) {
+                    benchmarkArgs.add("-PfederationProcessingBenchmarkSeed=${replaySeed}")
+                }
+            } else {
+                benchmarkArgs.add("-PfederationMixedBenchmarkProfile=${copies.config.absolutePath}")
             }
         }
         def child = gradleCommand('benchmark-gametest', benchmarkArgs,
@@ -5355,6 +5853,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 structure: benchmarkProfile.structure, assertions: benchmarkProfile.assertions,
                 operations: benchmarkProfile.operations])
         childArtifacts.add(nativeEvidence)
+        if (profile == 'mixed-small') {
+            def runtimeEvidence = new File(attempt, 'benchmark-runtime.receipts')
+            if (!runtimeEvidence.isFile()) throw new GradleException('Task 30 independent runtime receipt is missing')
+            childArtifacts.add(runtimeEvidence)
+        }
         executed.add(profile)
         def assertion = [caseId: profile, status: 'passed', nativeTestId: benchmarkProfile.testId,
                 structure: benchmarkProfile.structure,
@@ -5378,7 +5881,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             }
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                     structure: testCase.structure, assertions: testCase.assertions,
-                    accounting: !(testCase.id in taskEighteenCases || testCase.id.startsWith('processing.')),
+                    accounting: !(testCase.id in taskEighteenCases || testCase.id.startsWith('processing.')
+                            || testCase.id.startsWith('mixed.')),
                     operations: (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -5829,6 +6333,14 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             structure: testCase.structure, assertions: testCase.assertions, accounting: false])
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
+                             assertionCount: nativeResult.assertions]); break
+                case 'mixed.reject-empty-orders':
+                case 'mixed.overload-backpressure':
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
+                            structure: testCase.structure, assertions: testCase.assertions, accounting: false])
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions]); break
             }
         }
@@ -5840,6 +6352,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
     cleanupReceipt.text = kind == 'benchmark' && profile == 'processing-small'
             ? 'Task 20: generated native and Federation scenes completed serially; runtime data and session.lock were removed.\n'
+            : kind == 'benchmark' && profile == 'mixed-small'
+            ? 'Task 30: native mixed factory completed; runtime data and session.lock were removed.\n'
             : requestedCases == taskNineteenCases
             ? 'Task 19: six serialized GameTest child finalizers copied diagnostics and removed task-owned runtime data; no session.lock remains.\n'
             : 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
@@ -5885,6 +6399,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentySevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyEightEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyNineEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskThirtyNegativeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -5901,6 +6416,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     if (kind == 'benchmark') report.profileLifecycle = assertions[0].lifecycle
     if (kind == 'benchmark' && profile == 'processing-small') report.profile = assertions[0].profile
     verifyTaskTwentyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
+    verifyTaskThirtyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
     if (taskTenBlocked) {
         report.reason = 'native-energy-directionality-unavailable'
         report.missingHooks = ['shared EnergyOverlayGrid has no caller/edge direction, route identity, or authorization boundary']
@@ -8831,5 +9347,235 @@ tasks.register('federationTaskTwentyNineEvidenceSelfTest') {
             log << "AE2F_CRAFT_NATIVE_ENTRY testId=${artifactId} fact=nativeFailure value=true\n"
         }, 'Task 29 unexpected native semantic fact')
         logger.lifecycle('Task 29 adversarial native lifecycle evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskThirtyBenchmarkEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete Task 30 mixed-small benchmark result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.kind != 'benchmark' || report.requested != ['mixed-small']) {
+            throw new GradleException('Result is not the canonical Task 30 benchmark')
+        }
+        logger.lifecycle('Task 30 mixed benchmark evidence verified')
+    }
+}
+
+tasks.register('federationTaskThirtyBenchmarkEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated Task 30 mixed benchmark resource and lifecycle accounting.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def source = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateMetrics = { String name, String expected, Closure mutation ->
+            def rejection = taskFiveEvidenceProbeRejects(source, "task30-${name}") { File attempt, Map report ->
+                def file = new File(attempt, 'benchmark-native.properties')
+                def metrics = loadProperties(file)
+                mutation(metrics)
+                file.withOutputStream { metrics.store(it, "Task 30 ${name} fully rebound probe") }
+            }
+            if (!(rejection instanceof String && rejection.contains(expected))) {
+                logger.lifecycle("Task 30 probe ${name} rejection: ${rejection}")
+                return false
+            }
+            true
+        }
+        def mutateRaw = { String name, String expected, Closure mutation ->
+            def rejection = taskFiveEvidenceProbeRejects(source, "task30-${name}") { File attempt, Map report ->
+                def file = new File(attempt, 'benchmark-runtime.receipts')
+                def lines = file.readLines(StandardCharsets.UTF_8.name())
+                mutation(lines)
+                file.text = lines.join('\n') + '\n'
+            }
+            if (!(rejection instanceof String && rejection.contains(expected))) {
+                logger.lifecycle("Task 30 probe ${name} rejection: ${rejection}")
+                return false
+            }
+            true
+        }
+        def renumberRaw = { List<String> lines ->
+            lines.eachWithIndex { line, index ->
+                def fields = line.split('\\|', -1)
+                fields[0] = index.toString()
+                lines[index] = fields.join('|')
+            }
+        }
+        def probes = [
+                'fabricated-accounting': mutateMetrics('fabricated-accounting', 'independent runtime authority mismatch') { metrics ->
+                    metrics['iteration.0.resource.diamond.initial'] = '32'
+                },
+                'fake-handler-attribution': mutateMetrics('fake-handler-attribution', 'independent runtime authority mismatch') { metrics ->
+                    def parts = metrics['iteration.0.handler.0'].split('\\|', -1)
+                    parts[1] = '4294967295'
+                    metrics['iteration.0.handler.0'] = parts.join('|')
+                },
+                'fake-stocking-attribution': mutateMetrics('fake-stocking-attribution', 'independent runtime authority mismatch') { metrics ->
+                    def parts = metrics['iteration.0.stocking.1'].split('\\|', -1)
+                    parts[0] = '4294967295'
+                    metrics['iteration.0.stocking.1'] = parts.join('|')
+                },
+                'call-quantity-conflation': mutateMetrics('call-quantity-conflation', 'native iteration authority mismatch') { metrics ->
+                    metrics['iteration.0.batch.large.calls'] = metrics['iteration.0.batch.large.quantity']
+                },
+                'changed-iteration-count': mutateMetrics('changed-iteration-count', 'exact benchmark schema or identity mismatch') { metrics ->
+                    metrics['measuredCount'] = '2'
+                },
+                'extra-metric': mutateMetrics('extra-metric', 'exact benchmark schema or identity mismatch') { metrics ->
+                    metrics['unexpected.metric'] = '1'
+                },
+                'copied-iteration-facts': mutateMetrics('copied-iteration-facts', 'independent runtime authority mismatch') { metrics ->
+                    metrics['iteration.1.runtimeIdentity'] = metrics['iteration.0.runtimeIdentity']
+                },
+                'coordinated-accounting': mutateMetrics('coordinated-accounting', 'independent runtime authority mismatch') { metrics ->
+                    metrics['iteration.0.resource.cobblestone.initial'] =
+                            ((metrics['iteration.0.resource.cobblestone.initial'] as long) + 1).toString()
+                    metrics['iteration.0.resource.cobblestone.finalSource'] =
+                            ((metrics['iteration.0.resource.cobblestone.finalSource'] as long) + 1).toString()
+                },
+                'coordinated-projections': mutateMetrics('coordinated-projections', 'independent runtime authority mismatch') { metrics ->
+                    metrics['iteration.0.resource.cobblestone.initial'] =
+                            ((metrics['iteration.0.resource.cobblestone.initial'] as long) + 1).toString()
+                    metrics['iteration.0.resource.cobblestone.finalSource'] =
+                            ((metrics['iteration.0.resource.cobblestone.finalSource'] as long) + 1).toString()
+                },
+                'coordinated-handler-owner': mutateMetrics('coordinated-handler-owner', 'independent runtime authority mismatch') { metrics ->
+                    def replacement = metrics['iteration.0.handler.2'].split('\\|', -1)[3]
+                    def parts = metrics['iteration.0.handler.0'].split('\\|', -1)
+                    parts[3] = replacement
+                    metrics['iteration.0.handler.0'] = parts.join('|')
+                },
+                'coordinated-stocking-owner': mutateMetrics('coordinated-stocking-owner', 'independent runtime authority mismatch') { metrics ->
+                    (0..<3).each { index ->
+                        def parts = metrics["iteration.0.stocking.${index}"].split('\\|', -1)
+                        parts[0] = '4294967295'
+                        metrics["iteration.0.stocking.${index}"] = parts.join('|')
+                    }
+                },
+                'unbound-handler-quantity': mutateMetrics('unbound-handler-quantity',
+                        'independent runtime authority mismatch: iteration.0.handlerQuantity') { metrics ->
+                    metrics['iteration.0.handlerQuantity'] = '999'
+                },
+                'unbound-peak-in-flight': mutateMetrics('unbound-peak-in-flight',
+                        'independent runtime authority mismatch: iteration.0.peakInFlight') { metrics ->
+                    metrics['iteration.0.peakInFlight'] = '1'
+                },
+                'duplicate-raw-receipt': mutateRaw('duplicate-raw-receipt', 'raw receipt sequence mismatch') { lines ->
+                    lines.add(lines.last())
+                },
+                'replace-raw-receipt': mutateRaw('replace-raw-receipt', 'raw receipt identity mismatch') { lines ->
+                    def fields = lines.first().split('\\|', -1)
+                    fields[4] = Base64.urlEncoder.withoutPadding()
+                            .encodeToString('forged-profile'.getBytes(StandardCharsets.UTF_8))
+                    lines[0] = fields.join('|')
+                },
+                'missing-raw-receipt': mutateRaw('missing-raw-receipt', 'raw inventory mismatch') { lines ->
+                    lines.remove(lines.findIndexOf { it.contains('|INVENTORY|') })
+                    renumberRaw(lines)
+                },
+                'extra-raw-receipt': mutateRaw('extra-raw-receipt', 'independent runtime authority mismatch') { lines ->
+                    def callback = lines.find { it.contains('|CALLBACK|') }
+                    lines.add(lines.findIndexOf { it.contains('|SCENE_END|') }, callback)
+                    renumberRaw(lines)
+                },
+                'conflicting-raw-receipt': mutateRaw('conflicting-raw-receipt', 'independent runtime authority mismatch') { lines ->
+                    def index = lines.findIndexOf { it.contains('|INVENTORY|') }
+                    def fields = lines[index].split('\\|', -1)
+                    fields[fields.length - 1] = Base64.urlEncoder.withoutPadding()
+                            .encodeToString('999'.getBytes(StandardCharsets.UTF_8))
+                    lines[index] = fields.join('|')
+                },
+                'out-of-order-raw-receipt': mutateRaw('out-of-order-raw-receipt', 'operation order mismatch') { lines ->
+                    def accepted = lines.findIndexOf { it.contains('|MACHINE_ACCEPTED|') }
+                    def transition = lines.findIndexOf { it.contains('|MACHINE_TRANSITION|') }
+                    def line = lines[accepted]
+                    lines[accepted] = lines[transition]
+                    lines[transition] = line
+                    renumberRaw(lines)
+                },
+                'wrong-phase-raw-receipt': mutateRaw('wrong-phase-raw-receipt', 'iteration or phase mismatch') { lines ->
+                    def index = lines.findIndexOf { it.contains('|1|measured|SCENE_BEGIN') }
+                    lines[index] = lines[index].replace('|1|measured|', '|1|warmup|')
+                },
+                'wrong-iteration-raw-receipt': mutateRaw('wrong-iteration-raw-receipt', 'scene envelope mismatch') { lines ->
+                    def index = lines.findIndexOf { it.contains('|1|measured|SCENE_BEGIN') }
+                    lines[index] = lines[index].replace('|1|measured|', '|2|measured|')
+                },
+                'changed-seed': taskSevenEvidenceProbeRejects(source, 'task30-changed-seed',
+                        'mixed benchmark profile or budget mismatch') { File attempt, Map report ->
+                    def file = new File(attempt, 'benchmark-profile.json')
+                    def profile = new JsonSlurper().parse(file) as Map
+                    profile.seed = 30028030
+                    file.text = JsonOutput.prettyPrint(JsonOutput.toJson(profile)) + '\n'
+                }
+        ]
+        def failedProbes = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!failedProbes.isEmpty()) throw new GradleException("Task 30 benchmark probes failed: ${failedProbes}")
+        logger.lifecycle('Task 30 fully rebound benchmark evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskThirtyNegativeEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes the canonical Task 30 empty-order and overload result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskThirtyCases) {
+            throw new GradleException('Result is not the canonical Task 30 negative case set')
+        }
+        logger.lifecycle('Task 30 negative evidence verified')
+    }
+}
+
+tasks.register('federationTaskThirtyNegativeEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated Task 30 hidden-queue and overload evidence.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def source = strictCanonicalPath(rootProject.file(resultPath))
+        def mutate = { String name, String artifact, String expected, Closure mutation ->
+            taskSevenEvidenceProbeRejects(source, "task30-${name}", expected) { File attempt, Map report ->
+                def file = new File(attempt, "native-${artifact}.properties")
+                def properties = loadProperties(file)
+                mutation(properties)
+                file.withOutputStream { properties.store(it, "Task 30 ${name} fully rebound probe") }
+            }
+        }
+        def probes = [
+                mutate('empty-native-work', 'mixedrejectemptyorders', 'bounded backpressure evidence mismatch') {
+                    it['trackerCallDelta'] = '1'
+                },
+                mutate('empty-physical-work', 'mixedrejectemptyorders', 'bounded backpressure evidence mismatch') {
+                    it['sourceInventoryDelta'] = '1'
+                },
+                mutate('silent-drop', 'mixedoverloadbackpressure', 'bounded backpressure evidence mismatch') {
+                    it['logicalCompletions'] = '1'
+                },
+                mutate('no-recovery', 'mixedoverloadbackpressure', 'bounded backpressure evidence mismatch') {
+                    it['retries'] = '0'
+                },
+                mutate('hidden-queue', 'mixedoverloadbackpressure', 'bounded backpressure evidence mismatch') {
+                    it['queueGrowth'] = '1'
+                },
+                mutate('extra-negative-metric', 'mixedoverloadbackpressure', 'exact negative schema mismatch') {
+                    it['unexpected.metric'] = '1'
+                },
+                mutate('duplicate-job', 'mixedoverloadbackpressure', 'overload recovery or physical equation mismatch') {
+                    def jobs = it['jobIds'].split(',', -1)
+                    it['jobIds'] = jobs[0] + ',' + jobs[0]
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('A Task 30 fully rebound negative probe was accepted')
+        logger.lifecycle('Task 30 fully rebound negative evidence probes were rejected for intended reasons')
     }
 }

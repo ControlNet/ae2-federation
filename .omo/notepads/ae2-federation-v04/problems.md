@@ -3127,3 +3127,353 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   "repositoryScope": "Task 29 remains unchecked and uncommitted. This reviewer changed only this append-only problems.md report plus ignored reviewer-owned evidence/attack copies; no production, test, Gradle, manifest, docs, plan, knowledge, other notepad, index, history, issue, or PR was modified."
 }
 ```
+
+## 2026-09-21T04:19:41+10:00 Task 30 independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 30,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The fresh mixed benchmark, both negative cases, dedicated consumers/self-tests, Tasks 28-29 regressions, focused contract test, strict build, diagnostics, and cleanup pass. Task 30 is not acceptable because the mixed workload fabricates its lifecycle, processing return, stocking, and aggregate accounting evidence instead of deriving distinct native states and exact per-key physical equations; profile iteration and workload axes do not drive the claimed executions; overload never proves rejected-order retry or eventual progress; the evidence consumer accepts multiple fully rebound semantic forgeries; and the shared fixture/source change makes the Task 20 processing benchmark identity stale.",
+  "freshEvidence": {
+    "benchmark": ".omo/evidence/task-30-reviewer-benchmark/attempt-20260920T180321457Z/result.json",
+    "negative": ".omo/evidence/task-30-reviewer-negative/attempt-20260920T180416296Z/result.json",
+    "mutations": ".omo/evidence/task-30-reviewer-mutations/",
+    "task20Regression": ".omo/evidence/task-30-reviewer-task20-regression/"
+  },
+  "blockingFindings": [
+    {
+      "id": "mixed-native-authority-is-self-authored",
+      "planGrounding": "Task 30 and DESIGN sections 16.6 and 19.9-19.13 require one mixed native Storage/Crafting/Processing/Stocking execution with independently attributable lifecycle and physical outcomes.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryObservation.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryScene.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/MixedFactoryGameTests.java"
+      ],
+      "evidence": "MixedFactoryObservation exposes mutable counters that the fixture increments for planning, waiting, executing, handler, and stocking phases. MixedFactoryScene manually extracts fixture inputs and inserts fabricated processing outputs into return inventories. MixedFactoryGameTests writes benchmark totals with literal values including physical total 95, lifecycle failure total 0, measured iteration count 3, and assertion count 16. These values are not independently derived from distinct native callbacks, handlers, or inventories.",
+      "requiredFix": "Drive every claimed phase through the real native service/CPU/pattern-provider/handler/stocking paths and derive exact per-key input, intermediate, output, return, crafting callback, result, and stocking equations from independently observed native state. Remove manual counter advancement and fabricated return insertion."
+    },
+    {
+      "id": "profile-and-iteration-axes-do-not-drive-workload",
+      "planGrounding": "The mixed-small profile is required to deterministically configure the measured workload and its warmup/measured iterations, chain length, alternatives, blocked lanes, CPU limit, stocking cycles, and resource identities.",
+      "source": [
+        "tests/benchmarks/mixed/mixed-small.json",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryProfile.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryScene.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/MixedFactoryGameTests.java"
+      ],
+      "evidence": "warmupIterations=1 and measuredIterations=3 are validated and persisted but fresh evidence contains one aggregate sample rather than one warmup plus three measured executions. Seed, chain length, alternatives, blocked lanes, CPU limit, stocking cycles, and resource keys predominantly validate one fixed implementation instead of configuring it.",
+      "requiredFix": "Build the workload from the parsed profile and execute the requested warmup and measured iterations as separate native runs, persisting iteration-indexed observations whose aggregate is recomputed by the consumer."
+    },
+    {
+      "id": "negative-cases-do-not-prove-zero-work-and-recovery",
+      "planGrounding": "Task 30 negative acceptance requires empty orders to perform no native work and overload to demonstrate bounded backpressure plus eventual progress rather than loss.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/MixedFactoryGameTests.java",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryEvidence.java"
+      ],
+      "evidence": "The empty-order record omits native planner, submission, extraction, handler, and stocking zero-delta fields. The overload case admits one order, rejects one, and completes the admitted order, but never retries or defers the rejected order and never proves eventual second-order progress.",
+      "requiredFix": "Persist independently measured zero deltas for every native work boundary in the empty case. In overload, retain/defer the rejected order, release capacity, and prove exactly-once eventual native submission and physical completion of both orders within bounded windows."
+    },
+    {
+      "id": "mixed-evidence-consumer-allows-semantic-forgery",
+      "planGrounding": "Task 30 evidence must fail closed under fabricated accounting, attribution, iteration, metric, negative-work, and recovery claims after ordinary run/path/hash identity is rebound.",
+      "source": [
+        "gradle/federation-qa.gradle",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixed/MixedFactoryEvidence.java"
+      ],
+      "evidence": "Reviewer-owned fully rebound copied attempts were incorrectly accepted after fabricated accounting, fake handler attribution, fake stocking attribution, call-quantity conflation, changed iteration counts, an extra metric, empty-order work, and silent drop without recovery. The same harness correctly rejected fabricated output, hardcoded lifecycle, missing phase, changed seed, hidden queue growth, and missing child, proving the accepted mutations reached semantic validation rather than merely failing identity checks.",
+      "requiredFix": "Define exact per-child schemas, reject extra/missing facts, independently recompute every physical and lifecycle equation from native receipts, bind iterations and phase attribution to distinct observations, and add fully rebound adversarial probes for every accepted mutation class."
+    },
+    {
+      "id": "task20-processing-benchmark-identity-regression",
+      "planGrounding": "Task 30 must preserve prior benchmark/evidence consumers that share the processing fixture and source identity.",
+      "evidence": "A fresh processing-small regression failed with 'Task 20 benchmark capture identity is stale' after the shared fixture/source changes.",
+      "requiredFix": "Restore current source-bound Task 20 capture identity and rerun its producer and dedicated consumer without weakening stale-evidence checks."
+    }
+  ],
+  "verification": [
+    "Fresh mixed-small federationBenchmark -> BUILD SUCCESSFUL at task-30-reviewer-benchmark/attempt-20260920T180321457Z.",
+    "Fresh mixed.reject-empty-orders and mixed.overload-backpressure federationVerify -> BUILD SUCCESSFUL at task-30-reviewer-negative/attempt-20260920T180416296Z.",
+    "Canonical Task 30 benchmark/negative consumers and self-tests -> BUILD SUCCESSFUL.",
+    "Fresh Task 28 and Task 29 regressions, consumers, and self-tests -> BUILD SUCCESSFUL.",
+    "Fresh Task 20 processing-small benchmark -> BUILD FAILED with 'Task 20 benchmark capture identity is stale'.",
+    "MixedFactoryBenchmarkContractTest -> BUILD SUCCESSFUL.",
+    "check, build, sourcesJar, and verifySharedJarContent -> BUILD SUCCESSFUL.",
+    "All changed Java files -> zero LSP diagnostics; git diff --check passed."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "reviewerEvidence": "ignored .omo/evidence roots only"
+  },
+  "repositoryScope": "Task 30 remains unchecked and uncommitted. This reviewer changed only this append-only problems.md report plus ignored reviewer-owned evidence; no production code, tests, benchmark files, Gradle, manifest, docs, plan, knowledge, other notepad, Git index/history, issue, or PR was modified."
+}
+```
+
+## 2026-09-21T05:48:05+10:00 Task 30 repaired-path independent adversarial re-gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 30,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "Fresh Task 30 benchmark/negative runs, ordinary fully rebound self-tests, current Task 20 capture and stale-baseline probe, Tasks 28-29 regressions, focused contract, strict build/archive, diagnostics, and cleanup pass. One warmup plus three reset measured scenes now have distinct runtime/job identities and overload completes both orders after one bounded retry. Acceptance still fails because the processing transformation remains fixture-created, several profile axes only validate a hardcoded topology, empty/overload evidence still emits literal zero/drop/bound claims instead of independent boundary observations, and the dedicated benchmark consumer accepts coordinated fully rebound accounting and owner substitutions while the independent runtime log remains unchanged.",
+  "freshEvidence": {
+    "task30Benchmark": ".omo/evidence/task-30-rereview-benchmark/attempt-20260920T193124871Z/result.json",
+    "task30Negative": ".omo/evidence/task-30-rereview-negative/attempt-20260920T193209603Z/result.json",
+    "coordinatedAttacks": ".omo/evidence/task-30-rereview-coordinated-attacks/",
+    "task20": ".omo/evidence/task-20-task30-rereview/attempt-20260920T193419850Z/result.json",
+    "task28": ".omo/evidence/task-28-task30-rereview/attempt-20260920T193649306Z/result.json",
+    "task29": ".omo/evidence/task-29-task30-rereview/attempt-20260920T193956060Z/result.json"
+  },
+  "priorBlockers": [
+    {
+      "id": "mixed-native-authority-is-self-authored",
+      "status": "partially-repaired-still-blocking",
+      "confirmedRepair": "Planning, submissions, UUIDs, waiting, provider push acceptance, return injection, projection operations, stocking owner/deltas, and bus work are now collected from terminal, tracker, CPU, PatternProviderLogic, return-inventory, projection, Interface, and bus observations. Fresh evidence contains four distinct runtime identities, eight handler receipts and nine provider executions per scene, eleven per-key equations, native callbacks, final stocked inventory, and final export inventory.",
+      "remainingGap": "MixedProcessingMachine.process still calls processing.extractTargetItem directly, constructs new ItemStack(output, extracted), inserts it directly into PatternProviderLogic.getReturnInv through GenericStackItemStorage, and only then wakes the native ticker. MixedFactoryObservation.handler records the exact input/output/amount immediately before that fixture-created insertion. The later push-return and return-inject Mixins prove native transport of the fabricated stack, not execution of an independently native machine transformation. This is the manual extraction plus fabricated processing output path the re-review explicitly forbids.",
+      "requiredFix": "Execute the transformation through a real native/world processing-machine handler whose accepted input and produced output are observed independently. Bind exact pre-authorized target/return owners and correlate native push, machine consumption/production, return injection, callback, and physical storage without creating the output in the Task 30 fixture."
+    },
+    {
+      "id": "profile-and-iteration-axes-do-not-drive-workload",
+      "status": "iteration-lifecycle-repaired-axis-construction-still-blocking",
+      "confirmedRepair": "MixedFactoryBenchmarkState constructs and closes four separate scenes, clears the bounded world volume between them, records one warmup and three measured runs, excludes warmup elapsed/operations from measured aggregates, and persists unique service/CPU/job runtime identities. Seed selects the per-iteration alternative; stocking cycles and batch call/quantity axes drive loops.",
+      "remainingGap": "MixedFactoryProfile.requireSupported fixes every profile value to one constant shape. MixedFactoryScene always adds one second CPU and exactly two requesters, while MixedProcessingMachine installs six fixed patterns and executes a fixed cobblestone/dirt-to-emerald plus redstone-to-glass chain. recipeChainLength, alternativeInputs, blockedLanes, cpuLimit, and resourceKeyCount predominantly validate those hardcoded choices; they do not construct variable chain, lane, CPU, alternative, or resource topology from the parsed profile.",
+      "requiredFix": "Construct CPU count, blocked requesters/lanes, alternative set, chain stages, and resource set from the typed profile. Add a profile variation probe that changes each axis independently and proves the native topology/receipts change accordingly rather than failing fixed-value validation."
+    },
+    {
+      "id": "negative-cases-do-not-prove-zero-work-and-recovery",
+      "status": "overload-behavior-repaired-independent-negative-receipts-incomplete",
+      "confirmedRepair": "Fresh overload execution observes one initial tracker-slot rejection, waits for activeLink()==null, performs exactly one retry, creates two distinct native UUIDs/submissions, keeps peak busy CPU at one, and physically accepts eight output once across two logical orders. The empty case snapshots projection/tracker/bus and physical source/consumer totals around the rejected zero-amount boundary.",
+      "remainingGap": "mixedRejectEmptyOrders writes plannerDelta, handlerCallDelta, handlerQuantityDelta, interfaceWorkDelta, inFlightDelta, waitingDelta, and queueGrowth as literal zero strings rather than before/after native observations. mixedOverloadBackpressure likewise emits logicalCompletions, hardPeakBound, queueGrowth, silentDrops, sourceInitial/sourceConsumed/sourceFinal, and completionWindowBound as literals; it does not persist measured retry/completion tick bounds or an independent queue/drop observation. Passing assertions make the runtime behavior credible, but the persisted contract still claims unobserved negative facts.",
+      "requiredFix": "Snapshot every named native boundary and physical owner before/after empty submission. For overload, persist observed defer/retry/completion tick indices, tracker/link cardinality, submissions, callback/physical deltas, and absence of retained queue/drop state; derive every emitted fact from those observations."
+    },
+    {
+      "id": "mixed-evidence-consumer-allows-semantic-forgery",
+      "status": "ordinary-probes-repaired-coordinated-independent-correlation-still-blocking",
+      "confirmedRepair": "Exact benchmark and negative schemas reject missing/extra fields and the built-in fully rebound probes now reject the eight previously accepted single-field classes for their intended Task 30 reasons. The consumer recomputes elapsed/operation aggregates from three measured iteration records, validates distinct runtime/job identities, and checks per-key equations.",
+      "independentAttack": "Three copies of the fresh benchmark retained the unchanged benchmark-gametest.log and all native authority receipts while run ID, canonical root/path, timestamps, path identity, and artifact hashes were rebound. The dedicated consumer incorrectly accepted all three: coordinated-accounting changed iteration.0 cobblestone initial 2->3 and finalSource 0->1 while preserving the equation; coordinated-handler-owner changed handler.0 to another valid return owner; coordinated-stocking-owner changed all three stocking receipts to the same fabricated numeric owner. Each printed 'Task 30 mixed benchmark evidence verified' and exited zero.",
+      "requiredFix": "Cross-correlate properties with exact independent terminal/provider/return/projection/tracker/Interface/bus and physical receipts, including per-key quantities and owner-operation relationships. Add fully rebound coordinated probes so equation-preserving accounting changes and internally consistent owner substitutions fail for a specific Task 30 independent-authority reason."
+    },
+    {
+      "id": "task20-processing-benchmark-identity-regression",
+      "status": "closed",
+      "proof": "Fresh processing-small producer completed at task-20-task30-rereview/attempt-20260920T193419850Z. federationVerifyEvidence and federationTaskTwentyEvidenceSelfTest passed; the latter rejected 56 fully rebound semantic probes, including stale-baseline captureIdentitySha256, preserving strict current profile/budget/dependency/version binding."
+    }
+  ],
+  "verification": [
+    "./gradlew :neoforge-1.21.1:federationBenchmark -Pprofile=mixed-small -PevidenceDir=.omo/evidence/task-30-rereview-benchmark --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; attempt-20260920T193124871Z.",
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=mixed.reject-empty-orders,mixed.overload-backpressure -PevidenceDir=.omo/evidence/task-30-rereview-negative --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; attempt-20260920T193209603Z.",
+    "Task 30 benchmark and negative dedicated consumers plus both fully rebound self-tests -> BUILD SUCCESSFUL; all configured probes rejected for intended reasons.",
+    "Dedicated Task 30 benchmark consumer against coordinated-accounting, coordinated-handler-owner, and coordinated-stocking-owner -> BUILD SUCCESSFUL for all three unexpected acceptances.",
+    "Fresh processing-small producer, federationVerifyEvidence, and federationTaskTwentyEvidenceSelfTest -> BUILD SUCCESSFUL; 56 Task 20 probes rejected.",
+    "Fresh exact Task 28 and Task 29 producers, dedicated consumers, and adversarial self-tests -> BUILD SUCCESSFUL.",
+    "MixedFactoryBenchmarkContractTest with rerun tasks -> BUILD SUCCESSFUL.",
+    "check, build, sourcesJar, and verifySharedJarContent under strict dependency verification and warning-mode fail -> BUILD SUCCESSFUL.",
+    "All nineteen changed/untracked Java files -> zero LSP diagnostics; git diff --check passed."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "gradleDaemon": "stopped",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "debugJournal": "removed",
+    "reviewerArtifacts": "ignored fresh evidence and coordinated-attack results only"
+  },
+  "repositoryScope": "Task 30 remains unchecked and uncommitted. This reviewer appended only this problems.md report and created ignored reviewer evidence; no production code, tests, benchmark files, Gradle, manifest, docs, plan, knowledge, other notepad, Git index/history, issue, or PR was modified."
+}
+```
+
+## 2026-09-21T07:24:41+10:00 Task 30 final independent adversarial re-review
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 30,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The capability-backed ticking machine now owns input acceptance, recipe consumption/production, and native return insertion; profile axes construct the CPU, lane, requester, alternative, chain, and resource topology; empty/overload facts are derived from before/after observations; one warmup plus three measured scenes remain isolated; overload proves bounded retry and exactly-once completion; fresh Tasks 20, 28, and 29 regressions pass. Acceptance still fails because benchmark-runtime.properties is emitted immediately from the same MixedFactoryIteration objects as benchmark-native.properties, so it is not an independent authority. A fully rebound copied attempt that changed the same equation-preserving accounting fields in both files was accepted by the dedicated Task 30 consumer.",
+  "reviewedEvidence": {
+    "task30Benchmark": ".omo/evidence/task-30-atlas-final/attempt-20260920T210418137Z/result.json",
+    "task30Negative": ".omo/evidence/task-30-negative-atlas-final/attempt-20260920T210521567Z/result.json",
+    "dualAuthorityAttack": ".omo/evidence/task-30-final-review-dual-authority/attempt-task30-dual-authority/result.json",
+    "task20Fresh": ".omo/evidence/task-20-task30-final-review/attempt-20260920T211317883Z/result.json",
+    "task28Fresh": ".omo/evidence/task-28-task30-final-review/attempt-20260920T211519833Z/result.json",
+    "task29Fresh": ".omo/evidence/task-29-task30-final-review/attempt-20260920T211824287Z/result.json"
+  },
+  "priorBlockers": [
+    {
+      "id": "mixed-native-authority-is-self-authored",
+      "status": "closed",
+      "proof": "MixedMachineRegistration exposes the MixedMachineBlockEntity input handler as the NeoForge block item capability. PatternProviderLogic targets that world capability; the block entity server tick extracts accepted input, creates and stages recipe output in its own output inventory, inserts physical output into the configured native return handler, and records the transition only after those operations. MixedProcessingMachine now only places/configures the machine and installs patterns."
+    },
+    {
+      "id": "profile-and-iteration-axes-do-not-drive-workload",
+      "status": "closed",
+      "proof": "MixedFactoryTopology derives alternatives, chain stages, blocked recipes, lanes, and resources from typed profile axes; MixedFactoryScene derives extra CPUs and requesters from cpuLimit and blockedLanes; MixedFactoryProfile accepts bounded axis ranges and its variation probe demonstrates topology changes. Four isolated scenes provide one warmup and three measured observations."
+    },
+    {
+      "id": "negative-cases-do-not-prove-zero-work-and-recovery",
+      "status": "closed",
+      "proof": "The empty case snapshots terminal, tracker, projection, processing, bus, registry, CPU, source, and consumer boundaries before and after rejection. The overload case persists observed defer/release/retry/submission/completion ticks, registry/link cardinality, two distinct jobs, physical source/result equations, bounded peak, zero queue growth, and zero silent drops."
+    },
+    {
+      "id": "mixed-evidence-consumer-allows-semantic-forgery",
+      "status": "still-blocking",
+      "evidence": "MixedFactoryEvidence.writeBenchmark first calls MixedFactoryRuntimeReceipt.write(profile, runs), then writes benchmark-native.properties from those same runs. The consumer only checks field equality between these sibling projections. The reviewer copied the current accepted attempt, changed iteration.0.resource.cobblestone.initial and finalSource by +1 in both files, rebound run/path/artifact hashes, and retained all source/runtime logs unchanged. federationTaskThirtyBenchmarkEvidenceConsumer printed 'Task 30 mixed benchmark evidence verified' and exited zero.",
+      "requiredFix": "Produce the runtime authority through a genuinely independent observation/artifact path and correlate final properties against immutable raw native receipts or logs. Add a fully rebound probe that mutates both projected property files consistently while leaving independent runtime evidence unchanged, and require rejection for a Task 30 semantic-authority reason."
+    },
+    {
+      "id": "task20-processing-benchmark-identity-regression",
+      "status": "closed",
+      "proof": "Fresh processing-small production and federationVerifyEvidence passed; federationTaskTwentyEvidenceSelfTest rejected all 56 fully rebound semantic probes."
+    }
+  ],
+  "verification": [
+    "Task 30 benchmark and negative consumers plus their built-in fully rebound self-tests -> BUILD SUCCESSFUL.",
+    "Reviewer dual-file coordinated-accounting attack -> unexpectedly BUILD SUCCESSFUL and accepted.",
+    "Fresh Task 20 processing-small producer, consumer, and 56-probe self-test -> BUILD SUCCESSFUL.",
+    "Fresh Task 28 and Task 29 producers, dedicated consumers, and adversarial self-tests -> BUILD SUCCESSFUL.",
+    "MixedFactoryBenchmarkContractTest, check, build, sourcesJar, and verifySharedJarContent with rerun tasks, strict dependency verification, and warning-mode fail -> BUILD SUCCESSFUL.",
+    "Changed Java and mixed-package diagnostics -> zero errors; git diff --check passed."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "gradleDaemon": "stopped",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "reviewerArtifacts": "ignored evidence under .omo/evidence/task-30-final-review-dual-authority and fresh regression roots only"
+  },
+  "repositoryScope": "Task 30 remains unchecked and uncommitted. This reviewer appended only this problems.md report and created ignored reviewer evidence; no production code, tests, benchmark files, Gradle, manifest, docs, plan, knowledge, other notepad, Git index/history, issue, or PR was modified."
+}
+```
+
+## 2026-09-21T08:31:53+10:00 Task 30 final runtime-authority re-review
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 30,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The prior sibling-projection blocker is repaired: benchmark-runtime.receipts is now an append-only operation-time authority, and the consumer independently reconstructs accounting and owner relationships from its raw events. Fully rebound accounting, handler-owner, and stocking-owner mutations are rejected against unchanged receipts. Acceptance still fails because iteration.N.handlerQuantity and iteration.N.peakInFlight are only checked against baseline bounds, not correlated with recomputed raw MACHINE_TRANSITION and WAITING receipts. Fully rebound copies changed those claims while retaining the exact raw receipt artifact and were accepted by the dedicated Task 30 consumer.",
+  "reviewedEvidence": {
+    "task30Benchmark": ".omo/evidence/task-30-atlas-authority-final/attempt-20260920T221222791Z/result.json",
+    "task30Negative": ".omo/evidence/task-30-negative-atlas-authority-final/attempt-20260920T221310727Z/result.json",
+    "attackRoot": ".omo/evidence/task-30-final-authority-review-attacks/",
+    "acceptedHandlerQuantityAttack": ".omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-unbound-handler-quantity/result.json",
+    "acceptedPeakInFlightAttack": ".omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-unbound-peak-in-flight/result.json",
+    "rejectedAccountingAttack": ".omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-accounting/result.json",
+    "rejectedHandlerOwnerAttack": ".omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-handler-owner/result.json",
+    "rejectedStockingOwnerAttack": ".omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-stocking-owner/result.json",
+    "task20Fresh": ".omo/evidence/task-20-task30-authority-final-review/attempt-20260920T222030195Z/result.json",
+    "task28Fresh": ".omo/evidence/task-28-task30-authority-final-review/attempt-20260920T222228276Z/result.json",
+    "task29Fresh": ".omo/evidence/task-29-task30-authority-final-review/attempt-20260920T222530500Z/result.json"
+  },
+  "authorityAssessment": {
+    "status": "partially-correct-but-incomplete",
+    "confirmed": "MixedFactoryRuntimeReceipt begins before scene execution and appends sequenced operation-time events from terminal, automation, processing, machine, callback, bus, waiting, stocking, and physical inventory observation points. MixedFactoryEvidence.writeBenchmark no longer creates runtime authority. The consumer validates raw schema, sequence, profile/seed, phase/iteration, operation ordering, identities, scene envelopes, and reconstructs per-resource accounting and owner-operation relationships.",
+    "rejectedAttacks": [
+      "Equation-preserving cobblestone initial/finalSource changes were rejected with 'Task 30 independent runtime authority mismatch: iteration.0.resource.cobblestone.initial'.",
+      "A valid but substituted handler owner was rejected with 'Task 30 independent runtime authority mismatch: iteration.0.handler.0'.",
+      "A coordinated fabricated stocking owner was rejected with 'Task 30 independent runtime authority mismatch: iteration.0.stocking.0'."
+    ],
+    "acceptedAttacks": [
+      "iteration.0.handlerQuantity was changed to 999 with benchmark-runtime.receipts unchanged; the consumer printed 'Task 30 mixed benchmark evidence verified' and exited zero.",
+      "iteration.0.peakInFlight was changed to 1 with benchmark-runtime.receipts unchanged; the consumer printed 'Task 30 mixed benchmark evidence verified' and exited zero."
+    ],
+    "receiptIdentity": "The accepted attack result manifests retain benchmark-runtime.receipts SHA-256 50059025e455555541dfd125c75a87ebc6bde842635bcd1c046af84b3655a8ec, identical to the raw receipt artifact used by the rejected coordinated-accounting attack.",
+    "requiredFix": "Recompute each iteration's handlerQuantity and peakInFlight from the raw operation-time receipts and require exact equality with benchmark-native.properties. Add fully rebound self-test probes that mutate each field independently while leaving benchmark-runtime.receipts unchanged, and require rejection for a Task 30 independent-authority reason."
+  },
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-accounting/result.json --dependency-verification=strict --no-configuration-cache -> rejected for iteration.0.resource.cobblestone.initial",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-handler-owner/result.json --dependency-verification=strict --no-configuration-cache -> rejected for iteration.0.handler.0",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-coordinated-stocking-owner/result.json --dependency-verification=strict --no-configuration-cache -> rejected for iteration.0.stocking.0",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-unbound-handler-quantity/result.json --dependency-verification=strict --no-configuration-cache -> unexpectedly BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-authority-review-attacks/attempt-task30-final-authority-unbound-peak-in-flight/result.json --dependency-verification=strict --no-configuration-cache -> unexpectedly BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyEightEvidenceConsumer :neoforge-1.21.1:federationTaskTwentyEightEvidenceSelfTest -PresultFile=.omo/evidence/task-28-task30-authority-final-review/attempt-20260920T222228276Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.cancel-native,crafting.disconnect-restart,crafting.reject-cycle,crafting.reject-replay,crafting.replace-requester -PevidenceDir=.omo/evidence/task-29-task30-authority-final-review --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; attempt-20260920T222530500Z",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceConsumer :neoforge-1.21.1:federationTaskTwentyNineEvidenceSelfTest -PresultFile=.omo/evidence/task-29-task30-authority-final-review/attempt-20260920T222530500Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:test --tests space.controlnet.ae2federation.qa.MixedFactoryBenchmarkContractTest :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --rerun-tasks --dependency-verification=strict --no-configuration-cache --warning-mode=fail -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> passed",
+    "./gradlew --stop -> one daemon stopped"
+  ],
+  "verification": [
+    "Task 30 benchmark and negative consumers plus built-in fully rebound self-tests passed against fresh accepted evidence.",
+    "Fresh Task 20 producer, consumer, and 56-probe self-test passed.",
+    "Fresh Task 28 producer, consumer, and adversarial self-test passed.",
+    "Fresh Task 29 producer, consumer, and adversarial self-test passed.",
+    "MixedFactoryBenchmarkContractTest, check, build, sourcesJar, and verifySharedJarContent passed with rerun tasks, strict dependency verification, and warning-mode fail.",
+    "All changed and newly added Java files reported zero LSP errors; git diff --check passed."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "gradleDaemon": "stopped",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "temporaryAttackHelper": "removed",
+    "reviewerArtifacts": "ignored fresh evidence and attack results only"
+  },
+  "repositoryScope": "Task 30 remains unchecked and uncommitted. This reviewer appended only this problems.md report and created ignored reviewer evidence; no production code, tests, benchmark files, Gradle, manifest, docs, plan, knowledge, other notepad, Git index/history, issue, or PR was modified."
+}
+```
+
+## 2026-09-21T09:27:51+10:00 Task 30 final projected-metric authority re-review
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 30,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "handlerQuantity now equals the Math.addExact sum of validated per-scene MACHINE_TRANSITION amounts. peakInFlight now equals the maximum validated per-scene CPU_IN_FLIGHT busy-CPU observation correlated to submitted jobs, exact CPU owners, native capacity, and WAITING evidence. Fully rebound projected-field-only attacks retained the canonical raw receipt SHA-256 and failed at their exact independent-authority comparisons. No Task 30 plan-grounded blocker remains.",
+  "evidence": {
+    "benchmark": ".omo/evidence/task-30-atlas-metric-final/attempt-20260920T230729571Z/result.json",
+    "negative": ".omo/evidence/task-30-negative-atlas-metric-final/attempt-20260920T230818347Z/result.json",
+    "handlerAttack": ".omo/evidence/task-30-final-metric-rereview-attacks/attempt-task30-final-metric-unbound-handler-quantity/result.json",
+    "peakAttack": ".omo/evidence/task-30-final-metric-rereview-attacks/attempt-task30-final-metric-unbound-peak-in-flight/result.json",
+    "task20": ".omo/evidence/task-20-task30-final-metric-rereview/attempt-20260920T231723599Z/result.json",
+    "task28": ".omo/evidence/task-28-task30-final-metric-rereview/attempt-20260920T231907097Z/result.json",
+    "task29": ".omo/evidence/task-29-task30-final-metric-rereview/attempt-20260920T232226561Z/result.json",
+    "rawReceiptSha256": "5feebf2ab26b7d74c528f51da4c29e746f0e35f4e838c210f87edeae3ac847c6"
+  },
+  "authorityProof": [
+    "MACHINE_TRANSITION requires seven exact fields plus sequenced scene iteration/phase; owner/resource validation, positive parsing, canonical count, MACHINE_ACCEPTED equality, operation order, and Math.addExact precede exact handlerQuantity comparison.",
+    "CPU_IN_FLIGHT requires job, busy, blocked, and active fields in its scene; every job maps to one TERMINAL_CPU_SUBMIT CPU owner, busy is bounded by profile and distinct owners, WAITING requires an identical active observation, and the maximum raw busy value is compared exactly.",
+    "Warmup and three measured scenes have separate SCENE_BEGIN/SCENE_END envelopes and rawRuns prefixes, so warmup cannot authorize measured values.",
+    "Missing/duplicate transitions fail count; conflicting/negative/overflowed/wrong-owner transitions fail parsing, checked addition, acceptance, handler, or order correlation; wrong phase/iteration fails stream routing or scene envelope validation.",
+    "Built-in probes retain coordinated accounting, handler-owner, stocking-owner, duplicate/replacement/missing/extra/conflicting/out-of-order raw receipts, wrong phase, and wrong iteration."
+  ],
+  "manualMutations": [
+    "iteration.0.handlerQuantity 9->999 with raw receipts unchanged rejected: Task 30 independent runtime authority mismatch: iteration.0.handlerQuantity",
+    "iteration.0.peakInFlight 2->1 with raw receipts unchanged rejected: Task 30 independent runtime authority mismatch: iteration.0.peakInFlight"
+  ],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceSelfTest -PresultFile=.omo/evidence/task-30-atlas-metric-final/attempt-20260920T230729571Z/result.json --dependency-verification=strict --no-configuration-cache -> benchmark verified; probes rejected",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyNegativeEvidenceConsumer :neoforge-1.21.1:federationTaskThirtyNegativeEvidenceSelfTest -PresultFile=.omo/evidence/task-30-negative-atlas-metric-final/attempt-20260920T230818347Z/result.json --dependency-verification=strict --no-configuration-cache -> negative verified; probes rejected",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-metric-rereview-attacks/attempt-task30-final-metric-unbound-handler-quantity/result.json --dependency-verification=strict --no-configuration-cache -> exact handlerQuantity rejection",
+    "./gradlew :neoforge-1.21.1:federationTaskThirtyBenchmarkEvidenceConsumer -PresultFile=.omo/evidence/task-30-final-metric-rereview-attacks/attempt-task30-final-metric-unbound-peak-in-flight/result.json --dependency-verification=strict --no-configuration-cache -> exact peakInFlight rejection",
+    "./gradlew :neoforge-1.21.1:test --tests space.controlnet.ae2federation.qa.MixedFactoryBenchmarkContractTest --rerun-tasks --dependency-verification=strict --no-configuration-cache --warning-mode=fail -> BUILD SUCCESSFUL",
+    "Fresh Task 20 processing-small producer/consumer/56-probe self-test -> BUILD SUCCESSFUL",
+    "Fresh Task 28 five-case producer/consumer/self-test -> BUILD SUCCESSFUL",
+    "Fresh Task 29 five-case producer/consumer/self-test -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --rerun-tasks --dependency-verification=strict --no-configuration-cache --warning-mode=fail -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> passed; changed/new Java LSP diagnostics -> zero errors",
+    "./gradlew --stop -> one daemon stopped"
+  ],
+  "priorTask30Findings": "all closed: real machine ownership, profile construction, iteration isolation, derived negatives, bounded overload recovery, independent authority, handlerQuantity authority, peakInFlight authority",
+  "cleanup": {
+    "gameTestProcess": "none",
+    "gradleDaemon": "stopped",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "temporaryMutationHelper": "removed"
+  },
+  "repositoryScope": "Task 30 remains unchecked and uncommitted. Only this problems.md report and ignored reviewer evidence were added by this review; no production/test/Gradle/manifest/docs/plan/knowledge/other-notepad/index/history/issue/PR change was made."
+}
+```

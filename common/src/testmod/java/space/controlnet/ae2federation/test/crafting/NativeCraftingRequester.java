@@ -16,11 +16,14 @@ import appeng.me.helpers.MachineSource;
 import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.Level;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
+import space.controlnet.ae2federation.test.mixed.MixedFactoryRuntimeReceipt;
 
 public final class NativeCraftingRequester implements ICraftingRequester, AutoCloseable {
     private static final IGridNodeListener<NativeCraftingRequester> LISTENER = (owner, node) -> {
@@ -32,6 +35,7 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
     private final Set<String> observedCraftingIds = new TreeSet<>();
     private ICraftingLink submittedLink;
     private long acceptedAmount;
+    private final Map<AEKey, Long> acceptedByKey = new HashMap<>();
     private int stateChanges;
     private boolean observedDone;
     private boolean observedCanceled;
@@ -128,6 +132,10 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
         return acceptedAmount;
     }
 
+    public long acceptedAmount(AEKey key) {
+        return acceptedByKey.getOrDefault(key, 0L);
+    }
+
     public int stateChanges() {
         return stateChanges;
     }
@@ -159,8 +167,10 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
         var accepted = destination.insert(what, amount, mode, actionSource);
         if (mode == Actionable.MODULATE) {
             acceptedAmount += accepted;
+            acceptedByKey.merge(what, accepted, Math::addExact);
         }
         CraftingLifecycleAuthorityObservation.recordCallbackAccepted(this, link, what, amount, mode, accepted);
+        MixedFactoryRuntimeReceipt.callback(this, link.getCraftingID(), what, amount, mode, accepted);
         return accepted;
     }
 

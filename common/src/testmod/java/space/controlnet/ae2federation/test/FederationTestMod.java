@@ -6,6 +6,7 @@ import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import appeng.api.networking.GridServices;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbe;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbeService;
+import space.controlnet.ae2federation.test.mixed.MixedMachineRegistration;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -16,6 +17,7 @@ public final class FederationTestMod {
 
     public FederationTestMod(IEventBus modBus) {
         GridServices.register(NativeNodeDataProbe.class, NativeNodeDataProbeService.class);
+        MixedMachineRegistration.register(modBus);
         modBus.addListener(this::registerGameTests);
     }
 
@@ -40,7 +42,7 @@ public final class FederationTestMod {
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 					   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 						   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
-                         ProcessingBenchmarkGameTests.class));
+						   ProcessingBenchmarkGameTests.class, MixedFactoryGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {

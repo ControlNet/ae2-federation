@@ -4,6 +4,9 @@ import appeng.api.networking.crafting.ICraftingRequester;
 import appeng.api.stacks.AEKey;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.List;
+import space.controlnet.ae2federation.test.mixed.MixedFactoryRuntimeReceipt;
 
 public final class AutomationNativeObservation {
     private static Mutable active;
@@ -22,24 +25,30 @@ public final class AutomationNativeObservation {
         }
         active.trackerOwner = identity(owner);
         active.trackerCalls++;
+        MixedFactoryRuntimeReceipt.tracker("CALL", identity(owner));
     }
 
     public static synchronized void trackerResult(ICraftingRequester owner, boolean submitted) {
         if (active == null) return;
         if (submitted) active.trackerSubmissions++;
         owner.getRequestedJobs().forEach(link -> active.jobIds.add(link.getCraftingID().toString()));
+        MixedFactoryRuntimeReceipt.tracker("RESULT", identity(owner), Boolean.toString(submitted),
+                owner.getRequestedJobs().stream().map(link -> link.getCraftingID().toString()).sorted()
+                        .reduce((left, right) -> left + "," + right).orElse(""));
     }
 
     public static synchronized void importBus(Object bus, boolean worked) {
         if (active == null) return;
         active.importBus = identity(bus);
         if (worked) active.importWork++;
+        MixedFactoryRuntimeReceipt.bus("IMPORT", bus, worked);
     }
 
     public static synchronized void exportBus(Object bus, boolean worked) {
         if (active == null) return;
         active.exportBus = identity(bus);
         if (worked) active.exportWork++;
+        MixedFactoryRuntimeReceipt.bus("EXPORT", bus, worked);
     }
 
     public static synchronized void projection(Object projection, String operation, AEKey key, long requested,
@@ -59,6 +68,9 @@ public final class AutomationNativeObservation {
             active.storageExtracted += accepted;
         }
         active.maxRequested = Math.max(active.maxRequested, requested);
+        active.operations.add(new ProjectionReceipt(identity(projection), operation,
+                key.getType().getId() + "|" + key.getId(), requested, accepted));
+        MixedFactoryRuntimeReceipt.projection(projection, operation, key, requested, accepted);
     }
 
     public static synchronized Snapshot snapshot() {
@@ -77,7 +89,7 @@ public final class AutomationNativeObservation {
     public record Snapshot(String testId, String trackerOwner, int trackerCalls, int trackerSubmissions,
             Set<String> jobIds, String importBus, String exportBus, int importWork, int exportWork, String projection,
             int storageInsertCalls, int storageExtractCalls, long storageInserted, long storageExtracted,
-            long maxRequested, Set<String> keys) {
+            long maxRequested, Set<String> keys, List<ProjectionReceipt> operations) {
         public String joinedJobs() {
             return jobIds.isEmpty() ? "none" : String.join(",", jobIds);
         }
@@ -85,6 +97,9 @@ public final class AutomationNativeObservation {
         public String joinedKeys() {
             return keys.isEmpty() ? "none" : String.join(",", keys);
         }
+    }
+
+    public record ProjectionReceipt(String owner, String operation, String key, long requested, long accepted) {
     }
 
     private static final class Mutable {
@@ -104,6 +119,7 @@ public final class AutomationNativeObservation {
         private long storageExtracted;
         private long maxRequested;
         private final Set<String> keys = new TreeSet<>();
+        private final List<ProjectionReceipt> operations = new ArrayList<>();
 
         private Mutable(String testId) {
             this.testId = testId;
@@ -112,7 +128,7 @@ public final class AutomationNativeObservation {
         private Snapshot snapshot() {
             return new Snapshot(testId, trackerOwner, trackerCalls, trackerSubmissions, Set.copyOf(jobIds), importBus,
                     exportBus, importWork, exportWork, joined(projections), storageInsertCalls, storageExtractCalls,
-                    storageInserted, storageExtracted, maxRequested, Set.copyOf(keys));
+                    storageInserted, storageExtracted, maxRequested, Set.copyOf(keys), List.copyOf(operations));
         }
 
         private static String joined(Set<String> values) {

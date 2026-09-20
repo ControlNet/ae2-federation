@@ -14,6 +14,15 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Groovy Gradle LSP remains unavailable. Executable producer, consumer, adversarial self-test, and strict Gradle build
   validate the changed verifier surface; all changed Java files report no diagnostics.
 
+## 2026-09-21 Task 30 five-blocker repair resolution
+
+- Reconstructing a second mixed scene initially reused tombstoned Policy keys and stale physical blocks. Recreating from
+  the current revision and clearing the bounded fixture volume after each close produced isolated native run identities.
+- `TerminalNativeObservation.beginCalls` records both terminal calculations and tracker-owned recalculations, so two
+  logical orders truthfully produce four planner hooks and two CPU submissions per run.
+- No blocker remains after fresh Task 30 benchmark/negative evidence, fully rebound probes, and current-source Task 20/28/29
+  producer/consumer regressions. Groovy remains validated through executable Gradle tasks rather than LSP.
+
 ---
 
 ## 2026-09-13 - Task 1
@@ -524,3 +533,22 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   with `IllegalStateException`, and then completes the same UUID into the exact authorized physical cell.
 - Resolved: Task 29 verifier enforces exact child-specific semantic schemas and its self-test rejects a fully rebound extra
   `nativeFailure=true` fact with `Task 29 unexpected native semantic fact`.
+
+## 2026-09-21 Task 30 second re-review resolution
+
+- Resolved: fixture-created processing output was removed. The registered mixed machine receives native provider input via
+  its actual block capability, records accepted input and owned inventory transitions, and returns machine-produced output.
+- Resolved: fixed topology checks were replaced by bounded profile parsing plus topology construction and per-axis runtime
+  variation checks.
+- Resolved: empty and overload facts now derive from terminal, tracker, registry/link, projection, handler, bus, CPU,
+  callback, tick, and physical-inventory observations.
+- Resolved: exact independent runtime receipts reject coordinated equation-preserving accounting, valid-return-owner
+  substitution, and stocking-owner collapse after full evidence rebinding.
+
+## 2026-09-21 Task 30 final metric-authority resolution
+
+- Resolved: unchanged raw evidence can no longer authorize forged `handlerQuantity` or `peakInFlight` projections. The
+  consumer recomputes both values independently for warmup and every measured iteration.
+- Resolved: exact fully rebound probes for `handlerQuantity=999` and `peakInFlight=1` reject for their intended aggregate
+  mismatch; fresh benchmark, negative cases, Tasks 20/28/29 regressions, strict build/archive checks, and Java diagnostics
+  pass.

@@ -26,11 +26,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
+import space.controlnet.ae2federation.identity.NetworkId;
 
 public final class NativeProviderLaneFixtures implements MappedPatternProviderHost, AutoCloseable {
     static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
     private static final BlockPos ENERGY_POS = HOST_POS.west();
-    static final BlockPos TARGET_POS = HOST_POS.east();
+    public static final BlockPos TARGET_POS = HOST_POS.east();
     private final GameTestHelper helper;
     private final IManagedGridNode node;
     private final MappedPatternProvider composition;
@@ -52,9 +53,14 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
             int patternSlots) {
+        this(helper, assignments, isolatedPower, patternSlots, null);
+    }
+
+    public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
+            int patternSlots, NetworkId networkId) {
         this.helper = helper;
         targets = new NativeProviderTargets(helper);
-        var setup = NativeProviderSetup.create(helper, this, assignments, isolatedPower, patternSlots);
+        var setup = NativeProviderSetup.create(helper, this, assignments, isolatedPower, patternSlots, networkId);
         node = setup.node();
         composition = setup.composition();
         hosts = setup.hosts();
@@ -138,6 +144,13 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         return false;
     }
 
+    public void connectTo(IGridNode gridNode) {
+        var providerNode = node.getNode();
+        if (providerNode != null && providerNode.getGrid() != gridNode.getGrid()) {
+            GridHelper.createConnection(providerNode, gridNode);
+        }
+    }
+
     public MappedPatternProvider composition() { return composition; }
 
     @Override
@@ -178,6 +191,10 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
     }
 
     public String targetSnapshot() { return targets.targetSnapshot(); }
+
+    public Object targetOwner() { return targets.targetOwner(); }
+
+    public BlockPos targetPosition() { return helper.absolutePos(TARGET_POS); }
 
     public void leaveOneSharedTargetSlot() { targets.leaveOneSharedTargetSlot(); }
 

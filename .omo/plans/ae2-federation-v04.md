@@ -420,7 +420,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.cancel-native,crafting.disconnect-restart,crafting.reject-cycle,crafting.reject-replay,crafting.replace-requester -PevidenceDir=.omo/evidence/task-29`.
   - Commit: proposed `test(crafting): lock native lifecycle and failure parity`.
 
-- [ ] 30. Exercise mixed Storage/Crafting/Processing/Stocking factory load
+- [x] 30. Exercise mixed Storage/Crafting/Processing/Stocking factory load
   - Work: `tests/benchmarks/mixed/`, seeded long recipe chains, varied batch/key sizes, native CPU limits and repeated stocking. Include independent-call-frequency versus quantity axes, alternative inputs and blocked lanes. Attribute native planner/storage/handler work instead of only direct Federation cost.
   - References: D16.6,19.10-19.13,T-S04..07; tasks 20,28,29. Depends on 20,28,29.
   - Acceptance: actual output completes and accounts reconcile; submitted/planning/waiting/executing counts remain distinct; overload produces bounded backpressure, not a growing hidden task queue.

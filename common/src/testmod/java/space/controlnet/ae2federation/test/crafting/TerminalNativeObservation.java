@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import space.controlnet.ae2federation.test.mixed.MixedFactoryRuntimeReceipt;
 
 public final class TerminalNativeObservation {
     private static final Logger LOGGER = LoggerFactory.getLogger(TerminalNativeObservation.class);
@@ -68,6 +69,7 @@ public final class TerminalNativeObservation {
         beginCalls++;
         serviceIdentity = identity(service);
         requesterIdentity = identity(requester);
+        MixedFactoryRuntimeReceipt.terminal("BEGIN", serviceIdentity, requesterIdentity);
         LOGGER.info("AE2F_TERMINAL_RUNTIME testId={} event=begin service={} requester={}",
                 activeTest, serviceIdentity, requesterIdentity);
     }
@@ -76,6 +78,7 @@ public final class TerminalNativeObservation {
         if (!selected()) return;
         submitCalls++;
         serviceIdentity = identity(service);
+        MixedFactoryRuntimeReceipt.terminal("SUBMIT", serviceIdentity);
         LOGGER.info("AE2F_TERMINAL_RUNTIME testId={} event=submit service={}", activeTest, serviceIdentity);
     }
 
@@ -102,6 +105,7 @@ public final class TerminalNativeObservation {
         if (!selected()) return;
         providerPushes++;
         providerIdentity = identity(provider);
+        MixedFactoryRuntimeReceipt.terminal("PROVIDER_PUSH", providerIdentity);
         LOGGER.info("AE2F_TERMINAL_RUNTIME testId={} event=provider-push provider={}", activeTest, providerIdentity);
     }
 
@@ -112,6 +116,8 @@ public final class TerminalNativeObservation {
         cpuLogicIdentity = identity(cpu.craftingLogic);
         var link = cpu.craftingLogic.getLastLink();
         if (link != null) jobIds.add(link.getCraftingID().toString());
+        MixedFactoryRuntimeReceipt.terminal("CPU_SUBMIT", cpuIdentity, cpuLogicIdentity,
+                link == null ? "none" : link.getCraftingID().toString());
         LOGGER.info("AE2F_TERMINAL_RUNTIME testId={} event=cpu-submit cpu={} cpuLogic={} job={}", activeTest,
                 cpuIdentity, cpuLogicIdentity, link == null ? "none" : link.getCraftingID().toString());
     }
