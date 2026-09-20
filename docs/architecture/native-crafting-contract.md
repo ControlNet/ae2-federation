@@ -115,3 +115,29 @@ registration node UUID/node object, provider object, CPU set, exact pattern obje
 topology revision, common-Fabric count, withdrawal count, and access state. The consumer requires the exact phase set for
 each child and cross-correlates both channels. Missing, duplicate, substituted, conflicting, or fully rebound fabricated
 authority is rejected for Task 26-specific semantic reasons.
+
+Task 27 adds the exact five-case native terminal set with assertion counts `21`, `15`, `10`, `10`, and `10`:
+
+```sh
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=terminal.native-crafting,terminal.native-result,terminal.missing-material,terminal.no-cpu,terminal.reject-async-world-access -PevidenceDir=.omo/evidence/task-27 --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+RESULT_FILE=$(ls -td .omo/evidence/task-27/attempt-*/result.json | sed -n '1p')
+./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceConsumer -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceSelfTest -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+```
+
+Terminal discovery captures the authorized provider service, native provider node, CPU set, action source, and filtered
+craftables on the server thread. AE2's calculator receives only the immutable captured requester. Submission rechecks the
+Policy/Fabric/provider authority snapshot before calling native `submitJob`; native AE2 remains responsible for executable,
+missing-material, and no-CPU outcomes. Result evidence correlates the native job, CPU logic callback, provider push, and
+physical cell insertion rather than accepting a public aggregate quantity increase.
+
+The discovery fixture publishes two genuine native patterns from the same bound provider: sticks are explicitly allow-listed
+and a crafting table is forbidden. An independent discovery receipt scans the source and consumer crafting services, exact
+provider pattern objects, discovered key set, and configured filter. It proves that only the original allowed pattern is
+visible, with no copied pattern, alternate provider, or consumer-side projection recursion.
+
+Before submission, result authority captures the exact physical cell delegate selected as the destination. Independent
+submission, callback, and insertion receipts then correlate that object with the native link UUID, selected CPU,
+`CraftingCpuLogic`, callback owner, output key, requested amount, and inserted amount. Fully rebound substitutions of the
+job, logic/callback, or destination across semantic/native/runtime channels are rejected because they cannot change the
+pre-established authority receipts.
