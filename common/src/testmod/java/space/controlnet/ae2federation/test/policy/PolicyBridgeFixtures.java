@@ -85,6 +85,15 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         return helper.getBlockEntity(firstPosition.north(2));
     }
 
+    public void replaceCallbackProbeWithSecondChest() {
+        helper.setBlock(secondPosition.north(2), AEBlocks.ME_CHEST.block());
+        secondProviderChest().setCell(AEItems.ITEM_CELL_1K.stack());
+    }
+
+    public MEChestBlockEntity secondProviderChest() {
+        return helper.getBlockEntity(secondPosition.north(2));
+    }
+
     public InvalidSecondCallbackProvider callbackProbe() {
         return callbackProbe;
     }

@@ -39,6 +39,7 @@ final class StorageDependencyIndex {
     private Map<PolicyKey, ProvenanceDiagnostic> diagnostics = Map.of();
     private DependencyCompilation compilation = new DependencyCompilation(Map.of(), 0, 0);
     private long compilationRevision;
+    private long refreshCount;
 
     StorageDependencyIndex(ServerLevel level, StorageFabricObserver fabrics, NativeSourceDomainRegistry provenance) {
         this.level = level;
@@ -47,6 +48,7 @@ final class StorageDependencyIndex {
     }
 
     void refresh() {
+        refreshCount = Math.incrementExact(refreshCount);
         directRelationships = fabrics.relationships();
         var nextDomains = new HashMap<OriginNetworkId, NativeSourceDomain>();
         var nextDiagnostics = new HashMap<PolicyKey, ProvenanceDiagnostic>();
@@ -105,6 +107,10 @@ final class StorageDependencyIndex {
 
     int originCycleRejections() {
         return compilation.originCycleRejections();
+    }
+
+    long refreshCount() {
+        return refreshCount;
     }
 
     NativeSourceDomain domain(OriginNetworkId origin) {

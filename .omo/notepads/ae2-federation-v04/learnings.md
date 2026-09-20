@@ -555,3 +555,63 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `VIEW iron` on one route plus `EXTRACT gold` on another from synthesizing `EXTRACT iron`.
 - AE2 fixture nodes created in one tick may receive independent identities before their native connections converge. Place
   each cable from the storage-adjacent anchor outward, and wait for all current identities to settle between additions.
+
+## 2026-09-20 Task 24 storage subscriptions
+
+- AE2 `IStorageWatcherNode.onStackChange` receives the new absolute amount. Subscribe at
+  `StorageService.postWatcherUpdate`, then re-read the qualified native source for that key rather than treating the value
+  as a delta or forwarding a Federation projection as a new origin.
+- Register before taking the initial snapshot and queue events at that boundary with a hard limit. Replaying the queue after
+  the baseline preserves concurrent same-key changes without an unbounded journal.
+- A true-source key of `ExportSourceId + SourceGeneration` naturally deduplicates diamond paths. Fan-out should invalidate
+  each identity-distinct consumer once while leaving the effective dependency topology untouched.
+- A phased GameTest must assert that staging reached its terminal phase before accessing the downstream Grid. Falling
+  through a `succeedWhen` tick during early attachment causes a fixture NPE that is unrelated to subscription behavior.
+
+## 2026-09-20 Task 24 independent-review repair
+
+- AE2's watcher boundary is aggregate, so a bounded per-source reconciliation path is required in addition to watcher
+  callbacks. Round-robin one listener per native service per server tick bounds work while eventually exposing masked
+  source-local changes; unchanged snapshots must not invalidate consumers.
+- Queue overflow is a binding lifecycle event, not only a ledger state. Compare-remove the exact binding, close its exact
+  registration, and let the same desired plan create a fresh binding on reconciliation.
+- A deterministic testmod-only injection at `SourceSnapshotLedger.completeSnapshot` can place a real native callback after
+  `beginSnapshot` and before completion. Capturing the actual old listener at registration similarly proves stale callbacks
+  cannot mutate or remove a rebound binding.
+
+## 2026-09-20T07:22:00+10:00 Task 24 second independent-review repair
+
+- Selecting one listener is not a work bound when the listener materializes all Grid/source keys. The pinned `MEStorage`
+  API supports a bounded keyed quantity probe through simulated extraction; a resumable cursor limits periodic work to one
+  qualified source and eight known keys per native service per tick.
+- A mutation inside `completeSnapshot` is not a race proof until the test explicitly invalidates and realizes AE2's cache.
+  Only then does `postWatcherUpdate` synchronously enter the production Mixin/hub while `snapshotting` remains true.
+- Two physical ME chests on the same native Grid provide a deterministic aggregate-mask fixture: `4+8` and `8+4` preserve
+  aggregate 12 while two source-local events publish over one listener rotation and the managed consumer import stays out
+  of origin subscriptions.
+- One-shot static hooks need ownership as well as consumption. Removing every queued/active hook for a closed owner prevents
+  an abandoned fixture from changing a later test's snapshot or registration boundary.
+
+## 2026-09-20T08:36:00+10:00 Task 24 third-gate repair
+
+- Per-source cursors cannot discover an initially absent key from an aggregate callback that equal-opposite changes suppress.
+  A bounded catalog owned by the native `IStorageService` closes the gap: every qualified source snapshot contributes keys,
+  late listeners replay them, and each listener probes the same retained authority independently of plan iteration order.
+- Never evict a discovery key silently. A 64-key hard ceiling on both service catalogs and listener cursors turns excess
+  distinct-key churn into an observable whole-service listener retirement; the unchanged plan recovers after pressure is
+  removed. With eight probes per listener visit and at most seven arrivals between visits, a stable key is revisited.
+- Aggregate callbacks must qualify a previously unknown key against true sources before catalog insertion. This keeps keys
+  visible only through managed Federation projections from becoming discovery authority.
+- Cleanup assertions belong outside cleanup control flow. Capturing the unconsumed-hook failure, clearing owner state and
+  closing the bridge in `finally`, then rethrowing the original assertion prevents abandoned fixture hooks from leaking.
+
+## 2026-09-20 Task 24 fourth-gate repair
+
+- Fail-closed ownership must remain with the hub: notifying listeners is advisory, while snapshot-closing the registry is
+  what guarantees exact retirement even for no-op listeners.
+- A native registration-order proof needs observable catalog state at each real registration boundary. Empty-first
+  broadcast and populated-first late replay together cover both paths without substituting a unit-only driver.
+- Correlating a callback by whichever trace is globally active is unsafe under interleaving. Carry the exact listener on a
+  delivery stack and look up trace state by exact ledger identity.
+- Recovery is only proven after invoking a retained retired callback and then causing a real cache-driven native event on
+  fresh registrations; direct hub publication would bypass the behavior under test.

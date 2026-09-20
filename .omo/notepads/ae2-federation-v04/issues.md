@@ -194,6 +194,16 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Resolved: persisted-link reload occurs before replacement-node registration, and cancellation returns the full initial
   CPU inventory with no accepted final output.
 
+## 2026-09-20T07:22:00+10:00 Task 24 second independent-review repair
+
+- The first bounded implementation stopped forcing AE2 cache realization, so empty sources had no known key until a real
+  watcher/cache callback. Native ordinary-event fixtures now explicitly invalidate and realize the pinned cache; periodic
+  production work remains bounded and probes keys seeded by lifecycle snapshots or real callbacks.
+- The first multi-contributor fixture reused an auxiliary callback provider that was not a second qualified source on the
+  target Grid. Replacing it with a second physical ME chest created two independently qualified native contributors.
+- The first phased overflow proof repeated its destructive 257-event action after a later assertion retried. Splitting
+  retirement, recovery, and post-recovery callback checks into distinct phases made each mutation execute exactly once.
+
 ## 2026-09-14T08:02:00Z Task 9 Review Gaps Resolved
 
 - Resolved: `uniqueNativeTasks` is no longer a literal claim. Runtime UUID sets from AE2 CPU/requester links determine the
@@ -387,8 +397,26 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - The first chain fixture used `List.of` while Grid handles were temporarily null and crashed instead of polling; explicit
   nullable iteration fixed startup. Incorrect north-facing Bridge geometry and same-tick bulk placement then caused stale
   attachment status. Correct WEST/EAST faces plus serialized placement resolved all five native cases.
+
+## 2026-09-20 Task 24 fourth-gate repair
+
+- One Task 22 regression run failed `provenance.opaque-boundary` while waiting for fixture readiness. The exact isolated case
+  passed immediately, followed by a green full four-case retry and green Task 23 matrix; no Task 24 code change was made for
+  this pre-existing native timing flake.
+- Groovy Gradle LSP is unavailable. The exact producer, persisted consumer, adversarial self-test, focused contracts, strict
+  build/archive tasks, and native regressions execute the changed verifier surface.
 - Aggregate execution exposed two further fixture defects: readiness diagnostics dereferenced unsettled identities, and
   bulk cable creation intermittently produced `AMBIGUOUS_MERGE`. Null-safe status reporting plus one-settled-tick cable
   staging removed both races without weakening production settlement checks.
 - The first successful isolated cycle emitted native evidence but the outer verifier reported `executed=[]`; the chain
   cases were missing from the generic evidence-accounting switch. Registering all five canonical IDs restored accounting.
+
+## 2026-09-20T08:36:00+10:00 Task 24 third-gate repair
+
+- The previous known-key masking proof began both physical sources with iron, so it did not exercise discovery for an
+  initially empty contributor. The repaired native case begins `0/8`, transitions to `8/0` without aggregate cache
+  realization, and observes both source-local updates while the aggregate remains eight.
+- The append-only cursor had no memory ceiling. Service and listener retention now share a hard 64-key limit; crossing it
+  retires all listeners for that service, removes its catalog, increments a diagnostic receipt, and permits clean recovery.
+- `DirectSubscriptionFixture.close()` previously let `assertConsumedAndClose()` bypass bridge and hook cleanup. Cleanup now
+  runs in `finally`, and the native boundary case proves snapshot, registration, and trace hooks remain inert after failure.

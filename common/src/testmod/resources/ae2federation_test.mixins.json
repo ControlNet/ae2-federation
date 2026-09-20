@@ -16,7 +16,9 @@
     "NativeStorageProviderEvidenceMixin",
     "FederationNativeTargetEvidenceMixin",
     "EndpointTargetBindingEvidenceMixin",
-    "EndpointPersistenceEvidenceMixin"
+    "EndpointPersistenceEvidenceMixin",
+    "SourceSnapshotLedgerTestHookMixin",
+    "NativeStorageNotificationHubTestHookMixin"
   ],
   "injectors": {
     "defaultRequire": 1

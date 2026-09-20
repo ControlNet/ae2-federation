@@ -378,7 +378,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=chain.four-fabric-diamond,chain.filter-union-intersection,chain.toggle-reexport,chain.reject-direct-activation,chain.reject-cycle -PevidenceDir=.omo/evidence/task-23`.
   - Commit: proposed `feat(storage): compile controlled chain sharing`.
 
-- [ ] 24. Implement source subscriptions, snapshot/increment boundaries and bounded invalidation
+- [x] 24. Implement source subscriptions, snapshot/increment boundaries and bounded invalidation
   - Work: `storage/subscription/` with task 8's verified native notification boundary. Single forwarding responsibility, source generation/event identity when native events permit it, correct absolute-count versus delta interpretation, snapshot version baseline and affected-range reconciliation. Quantity changes do not rebuild topology. Do not mute required native notifications or count imported updates as new local origins.
   - References: D4.7,16.2-16.3,T-S03,T-S08..10; A-storage; C. Depends on 23.
   - Acceptance: two legitimate same-key changes retained; diamond consumer effective update once; first filter/reset/reconnect correct; listeners released; invalid policies block mutations before deferred recomputation completes.

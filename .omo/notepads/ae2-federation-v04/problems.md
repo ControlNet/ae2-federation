@@ -327,6 +327,19 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 }
 ```
 
+## 2026-09-20 Task 24 fourth-gate repair result
+
+- Hub overflow now independently closes both exact no-op registrations before removing the service catalog.
+- Native masking covers empty-first broadcast and populated-first late replay, retained-old-callback rejection, fresh-ID
+  recovery, and a real post-recovery native event.
+- Snapshot tracing now correlates exact listener and ledger identities and passes reversed two-owner interleaving with zero
+  pending trace state.
+- Canonical evidence, consumer, expanded adversarial self-test, focused tests, strict build/JAR isolation, and fresh Tasks
+  21-23 regressions pass. Task 22 required one retry after an isolated readiness timing miss; the exact failed case passed
+  independently before the full retry.
+- Evidence: `.omo/evidence/task-24-fourth-repair-final/attempt-20260919T235419263Z/result.json`.
+- Task 24 remains unchecked pending independent acceptance.
+
 ## 2026-09-20 Task 23 chain sharing
 
 - Focused compiler/mount tests and all five serial native GameTests passed. The Task 23 persisted verifier is wired into
@@ -1827,5 +1840,492 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
     "The built-in self-test samples seven semantic fields and the verifier ignores unrelated extra trace facts; the independent fully rebound semantic mutation adds coverage but does not make the mutation matrix exhaustive."
   ],
   "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence roots under .omo/evidence; no production code, tests, Gradle logic, manifest, plan checkbox, Boulder state, Git index/history, issue, PR, or later-task work was changed. Temporary probe sources remain outside the repository under /tmp/opencode."
+}
+```
+
+## 2026-09-20 Task 24 implementation and verification
+
+- Initial `subscription.diamond-once` attempts failed before exercising subscriptions because the phased test fell through
+  to `fixture.d()` while the downstream Grid was still null. Guarding all pre-terminal phases with a waiting assertion and
+  reconciling Bridges only once at phase 5 fixed the fixture without changing production semantics.
+- The final exact six-case producer passed at
+  `.omo/evidence/task-24-final-3/attempt-20260919T183654494Z/result.json`; persisted consumption and all eight fully rebound Task 24
+  adversarial probes passed for their intended rejection reasons.
+- Fresh serial Task 21, Task 22, and Task 23 native regressions passed, followed by focused subscription/contract tests and
+  strict dependency-verified `check build` with binary/sources JAR isolation.
+- No plan checkbox, Boulder state, Git index/history, issue, PR, or Task 25 behavior was changed.
+
+## 2026-09-20T05:13:53+10:00 Task 24 independent adversarial verification
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 24,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "Pinned AE2 source, bytecode, and fresh native execution confirm absolute watcher arguments, a live non-cancelling Mixin, two tick-separated same-key source events, diamond-once delivery, cache-only invalidation, filter/reset behavior, ordinary stale-generation gating, and normal lifecycle cleanup. Acceptance remains blocked because the native snapshot case does not place an event inside the snapshot boundary, queue overflow leaves the production binding and exact native listener installed and reconciliation cannot recover it, and a Grid-aggregate listener can miss a true-source change hidden by an equal opposite local/imported change.",
+  "freshArtifacts": {
+    "task24": ".omo/evidence/task-24-independent-review/attempt-20260919T185222479Z/result.json",
+    "task21Regression": ".omo/evidence/task-24-independent-regression-21/attempt-20260919T185632171Z/result.json",
+    "task22RegressionRetry": ".omo/evidence/task-24-independent-regression-22-retry/attempt-20260919T190211205Z/result.json",
+    "task23Regression": ".omo/evidence/task-24-independent-regression-23/attempt-20260919T190451734Z/result.json"
+  },
+  "confirmed": [
+    "AE2 19.2.17 source and javap bytecode both show updateCachedStacks compares aggregate cached amounts and invokes postWatcherUpdate(AEKey,long) with the new absolute amount, including zero for removals. The inspected source and binary SHA-256 values are d2f451203cb61c2d21fae52c683083d2f72441ca7d26725f4df5934290492e6a and 460d779a0609b81409907d9956de8f6f70a1b0912257e3e5c3c7e75ac9630e95.",
+    "StorageServiceNotificationMixin targets the exact (AEKey,long) private method at HEAD and onServerEndTick at TAIL, is registered with defaultRequire=1, returns void, is not cancellable, and does not alter watcher iteration or cached amount updates. Fresh same-key native inserts produced eventVersionDelta=2, source eventDelta=2, deliveryDelta=2, finalAbsolute=9, and topologyRefreshDelta=0 without any manual hub publication.",
+    "StorageSubscriptionPlanner groups by ExportSourceId plus SourceGeneration. StorageSubscriptionService deduplicates each event by consumer IStorageService identity and only calls invalidateCache. The fresh four-Fabric diamond produced one source event, one effective delivery, visible absolute 13, and zero dependency refresh.",
+    "Target current predicates cover exact mounted object, mount generation, effective dependency revision, Policy revisions, Fabric references, and source-domain currency. Binding replacement compares exact source and native storage-service identity, and ledger acceptance checks source generation.",
+    "Fresh filter/reset and ordinary cleanup cases passed: filter activation did not replace the listener, the first post-reset absolute became 6, invalidation removed the listener, reconnect installed one listener, and level close reconciled two registrations with two removals and zero active listeners.",
+    "Fresh Task 21 and Task 23 exact regressions passed. Task 22 first failed provenance.opaque-boundary at its fixture precondition 'Waiting for native source callback'; the unchanged exact retry passed all four cases, so this was recorded as fixture timing rather than a reproducible Task 24 regression."
+  ],
+  "blockingFindings": [
+    {
+      "id": "snapshot-window-not-exercised",
+      "severity": "blocking-coverage",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:126",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:131",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:83",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:89"
+      ],
+      "evidence": "reset() calls beginSnapshot(), snapshot(), and completeSnapshot() synchronously. The GameTest inserts 4, calls resetSubscription to completion, and only then inserts 5. Therefore the 5 event is not queued during snapshot initialization/reset. The emitted snapshotAbsolute=4, racingAbsolute=9, raceLost=false, and boundedQueue=true fields describe sequential post-snapshot behavior; only the ledger unit test directly queues events, which is not proof of the Mixin/runtime boundary.",
+      "requiredFix": "Add a deterministic runtime boundary that causes a genuine native callback after listener registration and beginSnapshot but before completeSnapshot, then correlate native Mixin entry, queue/replay ordering, final absolute state, and consumer invalidation. Do not substitute two synchronous mutations after reset completion."
+    },
+    {
+      "id": "overflow-leaks-and-wedges-current-binding",
+      "severity": "blocking-correctness",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/SourceSnapshotLedger.java:110",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/SourceSnapshotLedger.java:114",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:27",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:38",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:137"
+      ],
+      "independentAttack": "A reviewer-owned Java driver outside the repository instantiated the real StorageSubscriptionService, registered one production binding, reflected only to begin its real ledger snapshot, then submitted 257 public acceptAbsolute events. Output: overflowThrown=true ledgerClosed=true activeBindings=1 hubActive=1 registrations=1 removals=0 registrationsAfterReconcile=1 removalsAfterReconcile=0. Only explicit service.close changed hubActive to 0 and removals to 1.",
+      "impact": "Overflow closes only SourceSnapshotLedger and throws through the callback. The SourceBinding remains in bindings with its exact native registration. A same-plan reconcile sees matching source/service handles, updates targets, and retains the closed ledger and leaked listener, permanently wedging the current relationship until some unrelated teardown changes the plan.",
+      "requiredFix": "Make overflow atomically retire/remove the current binding and exact listener registration, and make current-plan reconciliation install a fresh usable binding without allowing an old callback to remove the replacement. Add service-level and native runtime proof for overflow cleanup and recovery, not only ledger.closed()."
+    },
+    {
+      "id": "grid-aggregate-listener-can-mask-true-source-change",
+      "severity": "blocking-design",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/storage/mount/StorageSubscriptionPlanner.java:59",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:120",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:141"
+      ],
+      "pinnedBoundary": "AE2 StorageService emits postWatcherUpdate only when the whole Grid cached amount differs from its prior aggregate. Every true-source binding on that Grid listens to the same Grid IStorageService, then rereads its individual qualified MEStorage.",
+      "impact": "If source A gains N while another native source or imported projection on the same Grid loses N before the cache refresh, the Grid aggregate is unchanged and AE2 emits no callback. Source A changed, but its downstream consumer cache is never invalidated. Conversely, unrelated Grid events wake every source binding, although unchanged ledgers suppress publication. The existing one-source test cannot expose masking or prove imported/local attribution.",
+      "requiredFix": "Either bind to a native source-specific notification boundary or add a bounded source reconciliation trigger that cannot be canceled by unrelated aggregate changes. Add a real multi-source/import runtime case with an equal opposite same-key change and assert that the changed true source updates exactly once without re-originating the import."
+    },
+    {
+      "id": "stale-callback-and-rebound-receipts-not-proven",
+      "severity": "blocking-coverage",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:185",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:197",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:198"
+      ],
+      "evidence": "After source replacement, the stale test mutates the detached old source and manually publishes on the current provider Grid service. That invokes the current service registration and observes no ledger change because the new source remains zero; it does not retain and invoke an old listener callback after rebound. The case reports listenerReplacement=true without exact registration/removal deltas, while the cleanup case covers invalidation, reconnect, and level close but not source rebound.",
+      "requiredFix": "Capture a real old callback/registration before source replacement, invoke it after the new generation is authoritative, and prove no current ledger, target, cache, mount, Policy, or Fabric authority changes. Reconcile exact registration/removal identities and counts across rebound and fixture cleanup."
+    }
+  ],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=subscription.two-same-key-events,subscription.diamond-once,subscription.snapshot-race,subscription.first-filter,subscription.listener-cleanup,subscription.reject-stale-generation -PevidenceDir=.omo/evidence/task-24-independent-review --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-24-independent-review/attempt-20260919T185222479Z/result.json --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyFourEvidenceSelfTest -PresultFile=.omo/evidence/task-24-independent-review/attempt-20260919T185222479Z/result.json --no-configuration-cache -> all eight built-in mutations rejected",
+    "./gradlew :neoforge-1.21.1:test --tests '*SourceSnapshotLedgerTest' --tests '*StorageSubscriptionContractTest' --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "Task 21 exact regression -> BUILD SUCCESSFUL; Task 22 exact first run -> FAILED at provenance.opaque-boundary fixture wait; unchanged exact retry -> BUILD SUCCESSFUL; Task 23 exact regression -> BUILD SUCCESSFUL",
+    "reviewer Java overflow driver against compiled production classes -> reproduced leaked/wedged binding and listener"
+  ],
+  "diagnostics": "All 21 Task 24 production, unit-test, and testmod Java files returned zero LSP diagnostics after one timed-out FederationTestMod request was retried successfully. Gradle/Groovy has no configured LSP; producer, consumer, self-test, focused tests, and strict build executed that surface.",
+  "releaseIsolation": {
+    "binaryJar": "contains StorageServiceNotificationMixin and production storage/subscription classes; contains no Task 24 test/testmod entries",
+    "sourcesJar": "contains production Mixin and subscription sources; contains no Task 24 test/testmod sources"
+  },
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "neoforge-1.21.1/run-gametest absent",
+    "sessionLock": "none",
+    "debugJournal": "none created",
+    "taskListener": "none",
+    "hubListener": "independent attack explicitly closed service and observed hubActive=0"
+  },
+  "risks": [
+    "The live Mixin is pinned to AE2 19.2.17 private StorageService methods; any signature or cache-notification change requires requalification.",
+    "The built-in evidence verifier correlates fixture-emitted facts with fixture-emitted logs, but it cannot convert a sequential reset test into a snapshot-window race or exercise overflow teardown.",
+    "No Task 25 or later behavior was inferred."
+  ],
+  "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence roots. No production code, test, Gradle logic, manifest, plan checkbox, Boulder state, Git index/history, issue, PR, or Task 25+ work was changed."
+}
+```
+
+## 2026-09-20 Task 24 independent-review repair result
+
+- Repaired aggregate masking with bounded server-end round-robin reconciliation over true native source listeners.
+- Repaired overflow lifecycle with exact compare-and-remove retirement, exact registration closure, and fresh same-plan
+  recovery.
+- Replaced the sequential snapshot test with a testmod-synchronized native callback inside the open snapshot boundary and
+  added bounded-overflow retirement/recovery receipts.
+- Retained and invoked the actual old registration callback after source rebound; the current ledger and source remained
+  unchanged.
+- Canonical repaired evidence root: `.omo/evidence/task-24-repair-bound-final/`.
+- Adversarial evidence self-test passed, including the new boundary, overflow, recovery, and stale compare-remove probes.
+- Fresh Tasks 21, 22, and 23 regressions passed under `.omo/evidence/task-24-repair-regression-21/`,
+  `.omo/evidence/task-24-repair-regression-22/`, and `.omo/evidence/task-24-repair-regression-23/`.
+- Focused subscription tests, strict `check build`, `git diff --check`, and Java diagnostics passed.
+
+## 2026-09-20T06:39:18+10:00 Task 24 repaired-path independent adversarial re-gate
+
+```json
+{
+  "type": "AdversarialReverify",
+  "task": 24,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The overflow lifecycle, same-plan recovery, stale-callback gating, ordinary event paths, release isolation, and serial regressions are repaired and independently reproducible. Acceptance still fails because the snapshot fixture performs a native mutation inside the ledger boundary but AE2 emits the native Mixin/hub callback only later at server-end tick after snapshotting is false; no native multi-contributor equal-opposite test proves aggregate masking/import exclusion; the periodic path is one listener per service per tick but performs an unbudgeted full Grid cache realization plus a full source snapshot; and an unconsumed static test hook survives fixture abandonment and fires at a later boundary.",
+  "freshArtifacts": {
+    "task24": ".omo/evidence/task-24-independent-regate/attempt-20260919T201314750Z/result.json",
+    "task21Regression": ".omo/evidence/task-24-independent-regate-21/attempt-20260919T202248833Z/result.json",
+    "task22Regression": ".omo/evidence/task-24-independent-regate-22/attempt-20260919T202722236Z/result.json",
+    "task23Regression": ".omo/evidence/task-24-independent-regate-23/attempt-20260919T203037129Z/result.json"
+  },
+  "priorBlockers": [
+    {
+      "id": "snapshot-window-not-exercised",
+      "status": "still-blocking",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:89",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:90",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/mixin/SourceSnapshotLedgerTestHookMixin.java:13",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/SourceSnapshotLedger.java:58",
+        "common/src/main/java/space/controlnet/ae2federation/mixin/StorageServiceNotificationMixin.java:14",
+        "common/src/main/java/space/controlnet/ae2federation/mixin/StorageServiceNotificationMixin.java:19"
+      ],
+      "evidence": "The testmod Mixin fires at completeSnapshot HEAD while ledger.snapshotting is true, but its action only calls native MEStorage.insert. In pinned AE2 19.2.17, postWatcherUpdate is called only by StorageService.updateCachedStacks, reached from onServerEndTick or getCachedInventory. The hook action calls neither. completeSnapshot then sets snapshotting=false and returns; the later server-end callback advances the ledger from snapshot absolute 4 to 9. Fresh log lines 128-140 contain only PolicyEvidence facts written by the fixture, with callbackInsideBoundary=true supplied as a literal and no Mixin/hub ordering trace. eventVersionDelta=2 proves baseline 4 plus later absolute 9, not a queued/replayed native callback.",
+      "requiredFix": "Instrument the testmod boundary at the production StorageServiceNotificationMixin or NativeStorageNotificationHub entry and persist ordering/ledger-state receipts. Trigger updateCachedStacks/getCachedInventory while completeSnapshot is still open, assert snapshotting=true at the real callback, and prove one queued replay after completion. Remove the literal callbackInsideBoundary claim unless this trace exists."
+    },
+    {
+      "id": "overflow-leaks-and-wedges-current-binding",
+      "status": "repaired",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:106",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:161",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:206"
+      ],
+      "independentAttack": "A reviewer-owned driver exercised the real StorageSubscriptionService with 257 callbacks while its real ledger was snapshotting. Output: retired=true removalDelta=1 oldRegistration=3 newRegistration=4 active=1 staleEventDelta=0 futureDeliveryDelta=1. The exact old binding was compare-removed and closed, unchanged-plan reconcile installed a fresh registration, the retained old callback was inert, and publication through the hub reached the recovered binding.",
+      "residual": "The canonical overflow loop still calls NativeStorageNotificationHub.publishAbsolute manually and does not deliver a post-recovery native event, so the independent attack, source inspection, and registration receipts carry this conclusion rather than the fixture boolean alone."
+    },
+    {
+      "id": "grid-aggregate-listener-can-mask-true-source-change",
+      "status": "production-repair-confirmed-but-native-acceptance-unproven",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/mixin/StorageServiceNotificationMixin.java:19",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/NativeStorageNotificationHub.java:38",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/IdentityListenerRegistry.java:35",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:168"
+      ],
+      "independentAttack": "Two qualified MEStorage stand-ins sharing one production hub IStorageService were initialized at 0 and 10, changed equal-and-opposite to 5 and 5 without a watcher publication, and visited twice through NativeStorageNotificationHub.reconcileNext. Output: changedA=1 changedB=1 eventDelta=2 unchangedInvalidations=0 active=2. This confirms eventual per-source detection and no invalidation on the following two unchanged snapshots.",
+      "gap": "No Task 24 GameTest creates two qualified/native or local/imported contributors on one real Grid, performs an equal-opposite same-key mutation, or correlates both per-source native amounts with imported-origin exclusion. subscription.diamond-once has one source insertion, and subscription.two-same-key-events emits importReoriginated=false as a fixed map value. Therefore the requested native attack and origin correlation are absent.",
+      "requiredFix": "Add one real-Grid multi-contributor GameTest. Hold the Grid aggregate constant with equal-opposite same-key changes, wait at most the measured listener count in server ticks, and derive per-source amounts, event/delivery deltas, imported-origin count, unchanged dependency refresh, and subsequent unchanged-scan invalidation delta from live state."
+    },
+    {
+      "id": "stale-callback-and-rebound-receipts-not-proven",
+      "status": "repaired-with-limited-receipts",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:216",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/StorageSubscriptionGameTests.java:230",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:106",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:210"
+      ],
+      "evidence": "The repaired test captures the actual listener at registration, replaces the cell/source generation, invokes the retained old callback, and observes eventDelta=0 plus currentAbsolute=0. Source identity membership and usable-registration checks reject it, and retire uses bindings.remove(key,binding), protecting a successor. The independent overflow/recovery attack additionally retained the old callback and observed staleEventDelta=0 while registration 4 remained active and usable."
+    }
+  ],
+  "newBlockingFindings": [
+    {
+      "id": "periodic-work-not-bounded-by-size-budget",
+      "severity": "blocking-performance-contract",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/mixin/StorageServiceNotificationMixin.java:22",
+        "common/src/main/java/space/controlnet/ae2federation/storage/subscription/StorageSubscriptionService.java:173"
+      ],
+      "pinnedBoundary": "At onServerEndTick, pinned AE2 sets cachedStacksNeedUpdate=true when its native interest manager is empty. The TAIL Mixin then calls getCachedInventory, which invokes updateCachedStacks and scans the complete Grid storage aggregate. reconcileNext selects one listener, but reset(false) then snapshots every key in that source and compares the union of prior/current key sets.",
+      "quantifiedWork": "Per subscribed native service per tick: exactly one Grid-wide cache realization O(total Grid keys/providers), exactly one selected source snapshot O(source keys), and ledger comparison O(previous plus current source keys); target invalidation is zero for unchanged snapshots and O(current distinct consumers) only on changes. Listener selection is one per tick and stable-set fairness is one visit per active listener count, but key/provider work has no configured bound.",
+      "nativeBehavior": "getCachedInventory does not alter logical quantities or suppress AE2 watcher delivery, but it changes AE2's no-watcher behavior from lazy cache rebuild to eager full rebuild every subscribed-service tick.",
+      "requiredFix": "Use a genuinely budgeted incremental/native source check or define and enforce a key/provider work budget with resumable cursors. Do not describe one unbounded full aggregate plus one unbounded full source scan as bounded per-service/tick work."
+    },
+    {
+      "id": "test-hook-can-leak-after-abandoned-fixture",
+      "severity": "blocking-test-isolation",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/storage/SubscriptionTestHooks.java:7",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/storage/SubscriptionTestHooks.java:13",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/storage/SubscriptionTestHooks.java:21"
+      ],
+      "independentAttack": "A reviewer-owned testmod driver armed atNextSnapshotBoundary, simulated fixture abandonment by performing no boundary or reset, and then fired a later boundary. Output: abandonedSnapshotReachedLater=1 oneShotAfterReach=true. Clearing before invocation proves one-shot after reach, but there is no fixture close/reset API, ownership token, pending assertion, or process-independent leak guard.",
+      "requiredFix": "Scope hooks to an owning fixture/test token and clear/assert-consumed in fixture close/finally. Add a test that abandons an armed hook, closes the fixture, and proves a later unrelated snapshot/registration cannot invoke it."
+    }
+  ],
+  "fairness": "A reviewer registry attack visited first, removed it, added replacement, then continued through third, replacement, second; after removing second it visited replacement then third. The integer cursor can delay a listener by one rotation when an earlier entry is removed, but after finite churn every stable active registration is visited once per active-count ticks. No permanent starvation was reproduced.",
+  "verification": [
+    "Exact six-case Task 24 producer -> BUILD SUCCESSFUL at task-24-independent-regate/attempt-20260919T201314750Z.",
+    "Exact persisted consumer and federationTaskTwentyFourEvidenceSelfTest -> BUILD SUCCESSFUL; configured mutations rejected for intended reasons.",
+    "Fresh serial Task 21, Task 22, and Task 23 exact producers -> BUILD SUCCESSFUL.",
+    "Focused IdentityListenerRegistryTest, SourceSnapshotLedgerTest, and StorageSubscriptionContractTest -> BUILD SUCCESSFUL under strict dependency verification.",
+    "Strict check, build, sourcesJar, and verifySharedJarContent -> BUILD SUCCESSFUL.",
+    "All 27 repaired production, unit-test, and testmod Java files -> zero LSP diagnostics after eight timed-out requests passed on focused retry.",
+    "Binary and sources JAR listings contain the production Mixin/subscription implementation and no SubscriptionTestHooks, test hook Mixins, test package, or ae2federation_test resource."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "journal": "none created",
+    "taskListener": "none",
+    "reviewerTempSourcesAndClasses": "removed",
+    "reviewerGeneratedRootLogs": "removed"
+  },
+  "repositoryChangesByReviewer": "Only this append-only problems.md report and ignored reviewer evidence roots. No production code, tests, Gradle, manifest, plan, Boulder state, Git index/history, issue, PR, or Task 25+ behavior was changed."
+}
+```
+
+## 2026-09-20T07:22:00+10:00 Task 24 second independent-review repair result
+
+- Removed the periodic `getCachedInventory()` and full `source.getAvailableStacks()` path. Production now enforces one
+  provider visit and at most eight keyed source probes per native service per tick with resumable provider/key cursors.
+- Added a real two-chest native Grid test whose source amounts change `4/8 -> 8/4` while aggregate remains `12`; it derives
+  two source events/deliveries, zero imported origins, one live managed consumer import, zero topology refreshes, and zero
+  unchanged-follow-up invalidations from live state.
+- Snapshot acceptance now invalidates and realizes pinned AE2 storage while the ledger boundary is open. Testmod receipts
+  prove production hub entry precedes open-ledger acceptance, one event queues, one event replays, and completion follows.
+- Hook owners expose pending/consumed/cleared state. Fixture close asserts consumption, and an abandoned owner clears two
+  hooks that remain inert across later snapshot and registration boundaries.
+- Preserved overflow retirement/recovery, recovered real callback delivery, old-callback inertness, ordinary events,
+  cleanup, Policy/Fabric/mount currency, and prior regression behavior.
+- Canonical repaired evidence root: `.omo/evidence/task-24-second-final/`.
+
+## 2026-09-20T08:19:41+10:00 Task 24 third independent adversarial acceptance gate
+
+```json
+{
+  "type": "AdversarialReverify",
+  "task": 24,
+  "verdict": "needs-fix",
+  "confidence": 0.98,
+  "summary": "Fresh seven-case native execution, persisted consumption, evidence mutations, focused tests, strict build/JAR isolation, diagnostics, and Tasks 21-23 regressions all pass. The snapshot callback ordering, overflow recovery, real known-key equal-opposite masking case, and direct owner-close cleanup are repaired. Acceptance still fails because a source-local key absent from that source's initial snapshot is never discovered when an equal-opposite contributor change keeps the Grid aggregate unchanged, and fixture close throws before clearing an unconsumed owned hook, allowing failed/abandoned fixture state to reach a later boundary.",
+  "freshArtifacts": {
+    "task24": ".omo/evidence/task-24-third-gate/attempt-20260919T215956060Z/result.json",
+    "task21Regression": ".omo/evidence/task-24-third-gate-regression-21/attempt-20260919T220948159Z/result.json",
+    "task22Regression": ".omo/evidence/task-24-third-gate-regression-22/attempt-20260919T221310946Z/result.json",
+    "task23Regression": ".omo/evidence/task-24-third-gate-regression-23/attempt-20260919T221557382Z/result.json"
+  },
+  "priorBlockers": [
+    {
+      "id": "snapshot-window-not-exercised",
+      "status": "repaired",
+      "evidence": "StorageSubscriptionBoundaryGameTest invalidates and synchronously realizes pinned AE2 storage inside completeSnapshot. Testmod trace receipts from the production hub and ledger record hubOrder=1, ledgerAcceptOrder=2, snapshotCompleteOrder=3, boundaryOpen=true, queuedEvents=1, and replayedEvents=1 in the fresh attempt. The verifier binds every persisted field to the runtime trace log and rejects forged boundary/order/replay values."
+    },
+    {
+      "id": "overflow-leaks-and-wedges-current-binding",
+      "status": "repaired",
+      "evidence": "The fresh native boundary case retires the exact listener after 257 in-window events, observes one removal, reconciles the unchanged plan to a different registration ID, and receives one later real native callback. StorageSubscriptionService.retire uses compare-remove and the retained stale callback path remains gated."
+    },
+    {
+      "id": "grid-aggregate-listener-can-mask-true-source-change",
+      "status": "partially-repaired-still-blocking",
+      "evidence": "The fresh real-Grid masking case proves two already-known iron keys change 4/8 to 8/4 while aggregate remains 12, yielding exactly two source events/deliveries, zero imported origins, one managed import, no topology refresh, and no unchanged-rotation invalidation.",
+      "remainingGap": "StorageSubscriptionService seeds each source cursor only from that source's lifecycle snapshot or a Grid aggregate callback (lines 146 and 161), and steady-state reconciliation probes only cursor keys (lines 174-186). If source A initially has no iron, source B initially has 10 iron, then A gains 10 while B loses 10 before aggregate cache realization, the Grid remains 10 and emits no aggregate watcher update. B's cursor can observe removal, but A never learns iron and can remain stale indefinitely. This is the same aggregate-cancellation class the prior required fix demanded eliminate, now narrowed to genuinely new per-source keys.",
+      "requiredFix": "Provide a bounded discovery route for keys newly appearing on a source without relying on an aggregate watcher callback, and add a real two-source GameTest where the receiving source did not contain the key at its initial snapshot. Assert both source-local transitions are eventually observed while aggregate quantity stays constant."
+    },
+    {
+      "id": "test-hook-can-leak-after-abandoned-fixture",
+      "status": "partially-repaired-still-blocking",
+      "evidence": "SubscriptionHookOwner.close removes queued snapshot, registration, trace, and active-trace state; the fresh native case proves two directly abandoned hooks are cleared and remain inert.",
+      "remainingGap": "DirectSubscriptionFixture.close calls hooks.assertConsumedAndClose before bridge.close. When a fixture owns an unconsumed hook, assertConsumedAndClose throws before invoking close, so SubscriptionTestHooks.clear and bridge.close are skipped. The pending static hook can fire at a later unrelated boundary. This does not satisfy the prior requirement to clear/assert in fixture close/finally.",
+      "requiredFix": "Make fixture cleanup clear owner state and close the bridge in finally while preserving the unconsumed-hook assertion, then test an armed fixture hook whose fixture is closed before the boundary and prove a later snapshot/registration/trace boundary is inert."
+    }
+  ],
+  "repairIntroducedRisk": {
+    "id": "known-key-cursor-unbounded-retention-and-continuous-churn",
+    "severity": "blocking-boundedness-risk",
+    "evidence": "BoundedKeyCursor uses an append-only LinkedHashSet and never retires zero/obsolete keys. Per-tick provider/key work is capped at 1/8 and finite churn is fair, but retained state is unbounded by distinct AEKey churn. If more than eight new keys are appended per tick, the cursor need not wrap, so keys awaiting a subsequent rotation can be delayed indefinitely.",
+    "requiredFix": "Define and enforce a bounded retention/discovery policy that preserves required change detection, and add churn tests demonstrating a memory ceiling and progress for stable keys under the supported arrival bound."
+  },
+  "nonBlockingReviewNotes": [
+    "SubscriptionTestHooks uses one global activeTrace slot not associated with a ledger identity. Multiple armed owners can overwrite or mis-complete traces; canonical serial execution does not trigger this, but the helper should be owner/ledger correlated before broader reuse.",
+    "SourceSnapshotLedger.beginSnapshot clears an already-open pending queue, and replay callbacks can re-enter beginSnapshot and discard remaining events. No current production caller was shown to nest resets, so this is recorded as a follow-up rather than an additional Task 24 blocker.",
+    "Several persisted semantic facts remain literals, but the key native outcomes are asserted from live state and the trace/properties verifier cross-check passes."
+  ],
+  "verification": [
+    "Exact canonical seven-case Task 24 producer -> BUILD SUCCESSFUL; all requested/executed cases passed with zero child exits and no surviving descendants.",
+    "federationVerifyEvidence plus federationTaskTwentyFourEvidenceSelfTest -> BUILD SUCCESSFUL; all configured evidence mutations were rejected for intended reasons.",
+    "Focused subscription and StorageSubscriptionContractTest suite -> BUILD SUCCESSFUL.",
+    "Strict check, build, sourcesJar, and verifySharedJarContent -> BUILD SUCCESSFUL.",
+    "Task 24 production, boundary, masking, and hook-owner Java files inspected by the gate -> zero LSP diagnostics; git diff --check passed.",
+    "Fresh serial Task 21, Task 22, and Task 23 native regression matrices -> BUILD SUCCESSFUL."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "reviewerSourceEdits": "none",
+    "reviewerRepositoryEdit": "this append-only problems.md report"
+  },
+  "roundLimit": "The written plan permits at most two repair/re-review rounds. A prior aggregate-masking requirement and fixture-finally isolation requirement remain incomplete after the second repair, so Task 24 should be marked blocked and the exact unresolved requirements escalated rather than silently accepted."
+}
+```
+
+## 2026-09-20T08:36:00+10:00 Task 24 third-gate blocker repair
+
+- `grid-aggregate-listener-can-mask-true-source-change`: repaired with a bounded per-service shared discovery catalog,
+  lifecycle/callback seeding, late-listener replay, and true-source qualification. The isolated real-Grid case passes with
+  live `0/8 -> 8/0`, aggregate `8 -> 8`, two source events, two deliveries, and zero imported origins.
+- `test-hook-can-leak-after-abandoned-fixture`: repaired by preserving the unconsumed assertion while owner and bridge cleanup
+  execute in `finally`. The isolated boundary case clears all three hook kinds and later unrelated boundaries remain inert.
+- `known-key-cursor-unbounded-retention-and-continuous-churn`: repaired with a 64-key service/listener ceiling, supported
+  arrival bound of seven keys between listener visits, unit progress/churn coverage, observable fail-closed retirement,
+  catalog removal, and same-plan recovery after pressure removal.
+- Canonical source-bound evidence target: `.omo/evidence/task-24-third-repair-final/`. Task 24 remains unchecked.
+
+## 2026-09-20T09:30:55+10:00 Task 24 bounded shared-discovery independent adversarial gate
+
+```json
+{
+  "type": "AdversarialReverify",
+  "task": 24,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "Fresh canonical native execution, persisted consumption, mutation self-test, focused tests, strict build/JAR isolation, diagnostics, and cleanup pass. The repair closes initial-zero discovery for the exercised native order, caps retained state, detects 0/8 -> 8/0 under aggregate 8 -> 8, preserves bounded periodic probes, and fixes fixture-finally cleanup. Acceptance still fails because the native proof does not exercise both registration orders, retention-overflow recovery is not followed by a real native event or retained-old-callback attack, the hub itself does not retire exact registrations whose listeners fail to self-retire, and testmod hub-entry traces remain uncorrelated to an exact ledger and can cross-attribute/strand owner state.",
+  "freshArtifacts": {
+    "task24": ".omo/evidence/task-24-fourth-gate/attempt-20260919T231544570Z/result.json",
+    "reviewerAttacks": ".omo/evidence/task-24-fourth-gate/reviewer-attack/result.txt"
+  },
+  "thirdGateBlockers": [
+    {
+      "id": "grid-aggregate-listener-can-mask-true-source-change",
+      "status": "behavior-repaired-but-required-order-matrix-unproven",
+      "confirmed": [
+        "The real two-chest Grid starts the receiving source at zero and the contributing source at eight, transitions 0/8 -> 8/0 without aggregate realization, preserves aggregate 8 -> 8, and produces exactly two source events and two deliveries.",
+        "The same native receipt records zero imported origins, one managed import, zero topology refreshes, and zero unchanged-follow-up invalidations.",
+        "A reviewer-owned hub driver passed both populated-first replay and empty-first broadcast order attacks."
+      ],
+      "remainingGap": "StorageSubscriptionMaskingGameTest has one fixed fixture/planner order and emits no registration-order receipt. No second real-Grid execution reverses the source/listener registration order. The reviewer driver proves hub mechanics but is unit-level and cannot substitute for the explicitly required native order attack.",
+      "requiredFix": "Run the real 0/8 -> 8/0 scenario under both deterministic true-source registration orders and persist which path used late-listener replay versus live broadcast."
+    },
+    {
+      "id": "test-hook-can-leak-after-abandoned-fixture",
+      "status": "fixture-finally-repaired-trace-correlation-still-blocking",
+      "confirmed": "DirectSubscriptionFixture captures the original unconsumed-hooks assertion, clears owner state and closes the bridge in finally, then rethrows. Fresh native evidence records three cleared hooks, zero later invocations, bridgeClosed=true, and assertionPreserved=true.",
+      "remainingGap": "SubscriptionTestHooks.recordHubEntry has no owner, service, callback token, or ledger parameter; it assigns hub order to the first identity-map active trace with no hub order. A reviewer-owned two-owner/two-ledger driver chose the other ledger as the intended callback and reproduced crossLedgerHubAttribution=true plus strandedPendingTrace=1. recordSnapshotComplete removed that intended ledger's unaccepted trace, after which owner.close could not find or clear the pending accounting.",
+      "requiredFix": "Pass an exact callback/ledger correlation token from the native hub entry through ledger acceptance, or otherwise bind hub entry to the exact owner and ledger. Add a two-owner/two-ledger test proving neither callback can cross-attribute, cross-complete, or strand pending state."
+    },
+    {
+      "id": "known-key-cursor-unbounded-retention-and-continuous-churn",
+      "status": "retention-and-progress-repaired-with-overflow-lifecycle-gaps",
+      "confirmed": [
+        "Service catalog and every listener cursor have a hard 64-key ceiling and never silently evict.",
+        "The 65th native distinct key increments one diagnostic, removes the catalog, and production SourceBinding listeners self-retire to zero.",
+        "Periodic work remains one listener and at most eight simulated extraction probes with no steady-state Grid/source enumeration.",
+        "Cursor tests cover seven arrivals between visits, finite churn, ceiling retention, and observable overflow."
+      ],
+      "remainingGaps": [
+        "Native overflow inserts all 64 churn keys before one cache realization; it does not observe catalog size exactly 64 before admitting the 65th callback.",
+        "After retention overflow, the native case only checks two registrations and catalog size one. It does not emit a later real native event through the recovered registrations and does not invoke a retained pre-overflow callback to prove inertness.",
+        "NativeStorageNotificationHub.failClosed only calls listener.onDiscoveryOverflow and removes the catalog. A reviewer-owned exact hub attack registered two listeners with no-op overflow handlers; after the 65th key, catalogSize=0 but both exact registrations remained active. Therefore service-wide retirement is cooperative rather than guaranteed by the hub.",
+        "Final-listener catalog removal passes in the focused unit test, but native listener-cleanup evidence records only active/removal counts and does not persist serviceCatalogCount=0 after Level close."
+      ],
+      "requiredFix": "Make the hub close/remove every exact registration for the overflowing service independent of listener behavior. Split the native ceiling sequence to assert size 64 before key 65, retain and invoke an old callback after overflow, then remove pressure, reconcile, and deliver a later real native event through fresh registration IDs. Persist final service/global catalog counts after close."
+    }
+  ],
+  "evidenceSelfTest": {
+    "status": "passed-but-incomplete-for-new-receipts",
+    "confirmed": "The fresh self-test rejects forged initial-zero, aggregate masking, retention limit, overflow diagnostic, stayed-open overflow, fixture cleanup, and runtime ordering facts for intended reasons.",
+    "gap": "It does not mutate activeAfterRetentionRecovery, recoveredCatalogSize, supportedArrivalsBetweenVisits, overflowDistinctKeyCount, a post-recovery native event receipt, registration-order receipts, stale-retention-callback receipts, or final catalog cleanup receipts."
+  },
+  "verification": [
+    "Exact canonical seven-case Task 24 producer -> BUILD SUCCESSFUL; all seven children exited zero with no surviving descendants.",
+    "federationVerifyEvidence plus federationTaskTwentyFourEvidenceSelfTest -> BUILD SUCCESSFUL.",
+    "Focused BoundedKeyCursor, SharedDiscoveryCatalog, hub budget, registry, ledger, and subscription contract tests -> BUILD SUCCESSFUL with rerun tasks.",
+    "Reviewer registration-order and hub-overflow drivers -> BUILD SUCCESSFUL; both order mechanics passed and retainedRegistrations=2 after catalog overflow was reproduced.",
+    "Reviewer two-owner/two-ledger trace driver -> test passed while reproducing cross-ledger hub attribution and one stranded pending trace.",
+    "Strict check, build, sourcesJar, and verifySharedJarContent -> BUILD SUCCESSFUL; binary and sources JAR inspection found production subscription classes and no testmod/reviewer hooks.",
+    "All 17 production subscription files, five subscription tests, repaired native tests, fixture, hook owner/store, and hook Mixins -> zero LSP diagnostics; git diff --check passed."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "journal": "none found",
+    "taskListener": "none found",
+    "reviewerRepositoryEdits": "only this append-only problems.md report and ignored .omo/evidence/task-24-fourth-gate reviewer drivers/results"
+  },
+  "repositoryChangesByReviewer": "No production code, tests, Gradle, manifest, plan, Boulder state, Git index/history, issue, PR, or Task 25+ behavior was changed."
+}
+```
+
+## 2026-09-20T10:35:18+10:00 Task 24 fifth independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 24,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "Fresh canonical native execution, persisted evidence consumption, mutation self-test, reviewer-owned lifecycle and trace attacks, focused regression tests, strict build and JAR isolation, diagnostics, and cleanup all pass. The fourth-gate blockers are closed: both native registration orders are exercised; overflow is split at exactly 64/65 keys; stale callbacks are inert; recovery receives a later real native event through fresh registrations; hub fail-closed forcibly retires exact registrations even for no-op listeners; final listener and catalog counts reach zero; and callback traces bind exact listener and ledger identities without cross-attribution, cross-completion, or stranded owner state.",
+  "freshArtifacts": {
+    "atlasReference": ".omo/evidence/task-24-atlas-fourth-repair/attempt-20260920T001559581Z/result.json",
+    "task24": ".omo/evidence/task-24-fifth-gate/attempt-20260920T002202246Z/result.json",
+    "reviewerAttacks": ".omo/evidence/task-24-fifth-gate/reviewer-attack/results.md"
+  },
+  "fourthGateBlockers": [
+    {
+      "id": "grid-aggregate-listener-can-mask-true-source-change",
+      "status": "closed",
+      "proof": [
+        "The real two-source native case runs broadcast order from registration catalog precondition 0/0 and replay order from precondition 0/1.",
+        "Both paths perform live 0/8 -> 8/0 under aggregate 8 -> 8 and record two source events and two listener deliveries.",
+        "The receipt records one managed import, zero imported origins, and zero topology refreshes."
+      ]
+    },
+    {
+      "id": "known-key-cursor-unbounded-retention-and-continuous-churn",
+      "status": "closed",
+      "proof": [
+        "Native evidence observes catalog size 64 before admitting distinct key 65, then records one overflow diagnostic, two removals, zero active listeners, and catalog removal.",
+        "A retained pre-overflow callback produces zero event, delivery, and authority deltas after fail-closed retirement.",
+        "Pressure removal creates fresh registration identities, two recovered listeners, and a later real native event and delivery.",
+        "Native final cleanup records zero active listeners and zero service catalogs.",
+        "A reviewer-owned key-65 attack independently proves two no-op listeners become inactive, service active count and catalog size become zero, and removal delta is exactly two.",
+        "A reviewer-owned self-retirement attack proves listeners may close during the overflow callback before closeAll reaches its snapshot without a missed or duplicate removal; repeated registration close remains inert."
+      ]
+    },
+    {
+      "id": "test-hook-can-leak-after-abandoned-fixture",
+      "status": "closed",
+      "proof": [
+        "Native snapshot evidence records two owners and two ledgers with distinct exact listener and ledger identities, isolatedCrossAttribution=false, and isolatedTracePending=0.",
+        "A reviewer-owned reversed-delivery attack completes two owners in interleaved order and observes each exact listener/ledger pair with no cross-completion and zero pending traces.",
+        "A reviewer-owned incomplete-trace attack closes the owner before completion, observes clearedCount=1 and pendingCount=0, and proves later completion is inert."
+      ]
+    }
+  ],
+  "verification": [
+    "Exact canonical seven-case federationVerify producer -> BUILD SUCCESSFUL; all seven child scenarios exited zero and persisted source-bound evidence.",
+    "federationVerifyEvidence plus federationTaskTwentyFourEvidenceSelfTest -> BUILD SUCCESSFUL; configured receipt mutations were rejected for their intended reasons.",
+    "Reviewer lifecycle and trace driver -> BUILD SUCCESSFUL; four tests, zero failures, zero errors, zero skipped.",
+    "Focused storage.subscription tests plus StorageSubscriptionContractTest with rerun tasks -> BUILD SUCCESSFUL.",
+    "check, build, sourcesJar, and verifySharedJarContent with rerun tasks and warning-mode fail -> BUILD SUCCESSFUL.",
+    "Binary JAR has 24 production subscription entries and sources JAR has 18; neither contains testmod, SubscriptionTestHooks, NativeCallbackTrace, or reviewer content.",
+    "Production subscription sources, subscription unit tests, testmod hook/fixture sources, repaired native tests, and reviewer attack sources report zero LSP diagnostics; git diff --check passes."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeWorld": "absent",
+    "sessionLock": "absent",
+    "reviewerGeneratedLogs": "removed",
+    "taskListenerArtifacts": "none found",
+    "reviewerRepositoryEdits": "only this append-only problems.md report and ignored .omo/evidence/task-24-fifth-gate reviewer drivers/results"
+  },
+  "scope": "Task 24 remains unchecked and uncommitted. No production code, tests, Gradle, manifest, plan, Boulder state, Git index/history, issue, PR, or Task 25+ behavior was changed by this reviewer."
 }
 ```

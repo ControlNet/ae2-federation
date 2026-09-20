@@ -9,16 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
-import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationshipKey;
 import space.controlnet.ae2federation.storage.provenance.ExportSource;
 import space.controlnet.ae2federation.storage.provenance.MountGeneration;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
+import space.controlnet.ae2federation.storage.subscription.SourceSubscriptionKey;
+import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionService;
 
 public final class StorageMountService implements AutoCloseable {
     private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
@@ -27,11 +26,14 @@ public final class StorageMountService implements AutoCloseable {
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final StorageFabricObserver fabrics;
     private final StorageDependencyIndex dependencies;
+    private final StorageSubscriptionService subscriptions = new StorageSubscriptionService();
+    private final StorageSubscriptionPlanner subscriptionPlanner;
     private int removedProviderCount;
 
     private StorageMountService(ServerLevel level) {
         fabrics = new StorageFabricObserver(level);
         dependencies = new StorageDependencyIndex(level, fabrics, provenance);
+        subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
     }
 
     public static synchronized StorageMountService get(ServerLevel level) {
@@ -47,12 +49,12 @@ public final class StorageMountService implements AutoCloseable {
         reconcileIfPresent(level);
     }
 
-    static synchronized LevelCloseResult closeLevel(ServerLevel level) {
+    static synchronized StorageMountLevelCloseResult closeLevel(ServerLevel level) {
         var registered = SERVICES.get(level);
         var removed = SERVICES.remove(level);
         var mountedProvidersBefore = removed == null ? 0 : removed.mounts.size();
         var mountedProvidersRemoved = removed == null ? 0 : removed.closeState();
-        return new LevelCloseResult(registered != null, mountedProvidersBefore, mountedProvidersRemoved,
+        return new StorageMountLevelCloseResult(registered != null, mountedProvidersBefore, mountedProvidersRemoved,
                 registered != null && removed == registered && !SERVICES.containsKey(level));
     }
 
@@ -86,8 +88,9 @@ public final class StorageMountService implements AutoCloseable {
         var desired = dependencies.relationships();
         List.copyOf(mounts.keySet()).stream()
                 .filter(key -> desired.keySet().stream().noneMatch(effective -> effective.policyKey().equals(key)))
-                .forEach(this::remove);
+                .forEach(this::removeMount);
         desired.values().forEach(this::reconcileEffective);
+        subscriptionPlanner.reconcile(mounts, mountGenerations);
     }
 
     public int mountedRelationshipCount() {
@@ -118,6 +121,66 @@ public final class StorageMountService implements AutoCloseable {
         return dependencies.originCycleRejections();
     }
 
+    public long dependencyRefreshCount() {
+        return dependencies.refreshCount();
+    }
+
+    public int activeSubscriptionCount() {
+        return subscriptions.activeListenerCount();
+    }
+
+    public int subscriptionRegistrationCount() {
+        return subscriptions.listenerRegistrationCount();
+    }
+
+    public int subscriptionRemovalCount() {
+        return subscriptions.listenerRemovalCount();
+    }
+
+    public long sourceEventCount() {
+        return subscriptions.sourceEventCount();
+    }
+
+    public long consumerDeliveryCount() {
+        return subscriptions.consumerDeliveryCount();
+    }
+
+    public long consumerDeliveryCount(PolicyKey key) {
+        var mounted = mounts.get(key);
+        return mounted == null ? 0 : subscriptions.consumerDeliveryCount(mounted.effectiveKey());
+    }
+
+    public SourceSubscriptionKey subscriptionKey(PolicyKey key) {
+        var mounted = mounts.get(key);
+        if (mounted == null || mounted.domain().sources().isEmpty()) return null;
+        var source = mounted.domain().sources().getFirst();
+        return new SourceSubscriptionKey(source.id(), source.generation());
+    }
+
+    public long subscriptionEventVersion(PolicyKey key) {
+        var subscriptionKey = subscriptionKey(key);
+        return subscriptionKey == null ? 0 : subscriptions.eventVersion(subscriptionKey);
+    }
+
+    public long subscriptionSnapshotVersion(PolicyKey key) {
+        var subscriptionKey = subscriptionKey(key);
+        return subscriptionKey == null ? 0 : subscriptions.snapshotVersion(subscriptionKey);
+    }
+
+    public long subscriptionRegistrationId(PolicyKey key) {
+        var subscriptionKey = subscriptionKey(key);
+        return subscriptionKey == null ? 0 : subscriptions.registrationId(subscriptionKey);
+    }
+
+    public long subscriptionRegistrationId(MEStorage source) {
+        return subscriptions.registrationId(source);
+    }
+
+    public void resetSubscription(PolicyKey key) {
+        var subscriptionKey = subscriptionKey(key);
+        if (subscriptionKey != null) subscriptions.reset(subscriptionKey);
+    }
+
     public Integer mountedPriority(PolicyKey key) {
         var mounted = mounts.get(key);
         return mounted == null ? null : mounted.provider().priority();
@@ -142,6 +205,11 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     public void remove(PolicyKey key) {
+        removeMount(key);
+        subscriptionPlanner.reconcile(mounts, mountGenerations);
+    }
+
+    private void removeMount(PolicyKey key) {
         var mounted = mounts.remove(key);
         if (mounted != null) {
             nextMountGeneration(key);
@@ -170,7 +238,7 @@ public final class StorageMountService implements AutoCloseable {
                 && mounted.relationship().providerGrid() == domain.runtimeGrid() && mounted.domain() == domain) {
             return;
         }
-        remove(key);
+        removeMount(key);
         var delegate = aggregate(domain.sources());
         var holder = new MountedStorageRelationship[1];
         var authority = new StorageRelationshipAuthority(() -> dependencies.relationship(effective.key()),
@@ -197,6 +265,7 @@ public final class StorageMountService implements AutoCloseable {
 
     private int closeState() {
         var removed = mounts.size();
+        subscriptions.close();
         List.copyOf(mounts.values()).forEach(mounted -> mounted.relationship().consumerGrid()
                 .getService(IStorageService.class).removeGlobalStorageProvider(mounted.provider()));
         mounts.clear();
@@ -216,7 +285,10 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     private void removeIfCurrent(MountedStorageRelationship mounted) {
-        if (mounts.get(mounted.relationship().key()) == mounted) remove(mounted.relationship().key());
+        if (mounts.get(mounted.relationship().key()) == mounted) {
+            removeMount(mounted.relationship().key());
+            subscriptionPlanner.reconcile(mounts, mountGenerations);
+        }
     }
 
     private MountGeneration nextMountGeneration(PolicyKey key) {
@@ -226,7 +298,4 @@ public final class StorageMountService implements AutoCloseable {
         return next;
     }
 
-    record LevelCloseResult(boolean servicePresentBefore, int mountedProvidersBefore, int mountedProvidersRemoved,
-            boolean serviceRemoved) {
-    }
 }

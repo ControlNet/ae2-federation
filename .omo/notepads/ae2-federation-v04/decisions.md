@@ -328,3 +328,55 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   diagnostics, but runtime permission checks must select the filter belonging to the requested operation.
 - Keep identity reconciliation fail closed. Stabilize the GameTest by sequencing native topology creation through settled
   states rather than adding retries, timeout inflation, or production fallbacks for `AMBIGUOUS_MERGE`.
+
+## 2026-09-20 Task 24 storage subscriptions
+
+- Key one listener and ledger by `ExportSourceId + SourceGeneration`, not by route or mounted relationship. Reconcile a
+  target set onto that source binding so a diamond emits one effective consumer invalidation.
+- Preserve AE2's absolute watcher semantics at the native `StorageService.postWatcherUpdate` seam. Keep delta handling an
+  explicit ledger operation and never infer it from the native callback.
+- Quantity events invalidate current consumer caches only. Topology refresh remains reserved for Policy, Fabric, source,
+  and mount lifecycle changes.
+- Register the listener before snapshotting, use a bounded snapshot-race queue, and fail closed on overflow or stale
+  generation. Remove the exact registration on source replacement, relationship teardown, and level close.
+
+## 2026-09-20 Task 24 independent-review repair
+
+- Supplement AE2 aggregate watcher callbacks with server-end, cache-only round-robin source reconciliation. Keep the unit
+  of bounded work at one source binding per native storage service per tick and never rebuild dependency/Fabric topology.
+- Give every registration an immutable ID and active receipt. Overflow and stale work retire through
+  `bindings.remove(key, binding)` so an old callback cannot remove a newer generation or same-plan recovery binding.
+- Keep synchronization and callback-capture controls entirely in testmod Mixins; production exposes only read-only receipt
+  values needed by native evidence.
+
+## 2026-09-20T07:22:00+10:00 Task 24 second independent-review repair
+
+- Replace end-tick aggregate/source snapshots with `ReconciliationBudget(1, 8)`: one source provider and at most eight
+  keyed simulated-extraction probes per native service per tick. Preserve full snapshots only at explicit lifecycle reset.
+- Retain source-known zero keys after discovery so a later equal-opposite reappearance is detectable without aggregate key
+  enumeration. Append newly observed callback keys to the cursor and resume rather than restarting its rotation.
+- Require native acceptance to correlate hub, ledger-accept, replay-start, and snapshot-complete receipts. Literal race
+  booleans and manual hub publication are not accepted.
+- Scope testmod actions to an owner token. Normal fixture close asserts zero pending hooks; intentional abandonment closes
+  the temporary owner and proves its cleared actions remain inert at later production boundaries.
+
+## 2026-09-20T08:36:00+10:00 Task 24 third-gate repair
+
+- Own one `SharedDiscoveryCatalog<AEKey>` per identity-distinct native `IStorageService`. Seed it only from qualified source
+  lifecycle snapshots and aggregate callbacks whose key is already retained or currently present in a qualified true source.
+- Set `MAX_RETAINED_KEYS` to 64 for both the service catalog and every source cursor. Do not evict: overflow increments an
+  observable diagnostic, retires every service listener, removes catalog state, and relies on normal plan reconciliation
+  for recovery. The supported arrival bound is seven newly retained keys between visits to a listener.
+- Remove catalog state with the final exact listener registration. Managed projections neither own source registrations nor
+  qualify previously unknown aggregate callback keys.
+- Bind testmod callback traces to the exact `SourceSnapshotLedger` identity selected by the hook owner instead of one global
+  active trace slot.
+
+## 2026-09-20 Task 24 fourth-gate repair
+
+- Make `IdentityListenerRegistry.closeAll(source)` idempotently snapshot-close every exact registration. Invoke it from hub
+  overflow after notification and before catalog removal, independent of listener behavior.
+- Keep production dispatch explicit so the testmod `@Redirect` can bracket each exact listener callback. Bind the resulting
+  listener identity only to the active trace selected by the accepting ledger.
+- Require persisted evidence for both real registration-order paths, two exact overflow removals, inert retained callbacks,
+  fresh recovered IDs, a real post-recovery event/delivery, and zero final service catalogs.

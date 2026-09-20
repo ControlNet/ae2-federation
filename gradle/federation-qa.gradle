@@ -410,6 +410,11 @@ def verifyTaskTwentyTwoEvidence
 def taskTwentyThreeCases = ['chain.four-fabric-diamond', 'chain.filter-union-intersection',
         'chain.toggle-reexport', 'chain.reject-direct-activation', 'chain.reject-cycle']
 def verifyTaskTwentyThreeEvidence
+def taskTwentyFourCases = ['subscription.two-same-key-events', 'subscription.diamond-once',
+        'subscription.snapshot-race', 'subscription.masked-equal-opposite', 'subscription.first-filter',
+        'subscription.listener-cleanup',
+        'subscription.reject-stale-generation']
+def verifyTaskTwentyFourEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -2993,6 +2998,184 @@ verifyTaskTwentyThreeEvidence = { File attempt, List requested, List<String> dec
         throw new GradleException('Task 23 cycle rejection and bounded frontier semantics are incomplete')
     }
 }
+verifyTaskTwentyFourEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyFourCases }) return
+    if (requested != taskTwentyFourCases) {
+        throw new GradleException('Task 24 evidence must select the exact canonical case set')
+    }
+    def expected = [subscriptiontwosamekeyevents: 10, subscriptiondiamondonce: 10,
+            subscriptionsnapshotrace: 30, subscriptionmaskedequalopposite: 42, subscriptionfirstfilter: 10,
+            subscriptionlistenercleanup: 12, subscriptionrejectstalegeneration: 11]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-subscription') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 24 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 24 native child exits are incomplete')
+    }
+    if (declaredPaths.count { it == 'cleanup-receipt.txt' } != 1
+            || new File(attempt, 'cleanup-receipt.txt').text !=
+            'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n') {
+        throw new GradleException('Task 24 cleanup receipt is missing or malformed')
+    }
+    def parsed = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1
+                || declaredPaths.count { new File(it).name == artifact } != 1
+                || declaredPaths.count { new File(it).name == log } != 1) {
+            throw new GradleException("Task 24 requires exactly one hash-bound artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 24 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 24 operations') != 1) {
+            throw new GradleException("Task 24 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_POLICY_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 24 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 24 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    def repeated = parsed.subscriptiontwosamekeyevents as Properties
+    if (repeated.getProperty('eventDelta') != '2' || repeated.getProperty('deliveryDelta') != '2'
+            || repeated.getProperty('finalAbsolute') != '9' || repeated.getProperty('nativeSemantics') != 'absolute'
+            || repeated.getProperty('topologyRefreshDelta') != '0' || repeated.getProperty('sameKeyRetained') != 'true'
+            || repeated.getProperty('eventVersionDelta') != '2'
+            || repeated.getProperty('importReoriginated') != 'false') {
+        throw new GradleException('Task 24 same-key absolute event semantics are incomplete')
+    }
+    def diamond = parsed.subscriptiondiamondonce as Properties
+    if (diamond.getProperty('alternativeChains') != '2' || diamond.getProperty('effectiveUpdates') != '1'
+            || diamond.getProperty('visibleAbsolute') != '13' || diamond.getProperty('sourceEvents') != '1'
+            || diamond.getProperty('diamondDeduplicated') != 'true'
+            || diamond.getProperty('topologyRefreshDelta') != '0'
+            || diamond.getProperty('completePathsStored') != 'false'
+            || diamond.getProperty('nativeAuthority') != 'true') {
+        throw new GradleException('Task 24 diamond forwarding semantics are incomplete')
+    }
+    def race = parsed.subscriptionsnapshotrace as Properties
+    if (parsePositiveInteger(race.getProperty('snapshotAfter'), 'Task 24 snapshot after')
+                    <= parsePositiveInteger(race.getProperty('snapshotBefore'), 'Task 24 snapshot before')
+            || parsePositiveInteger(race.getProperty('eventVersionDelta'), 'Task 24 race event delta') < 2
+            || race.getProperty('snapshotAbsolute') != '4' || race.getProperty('racingAbsolute') != '9'
+            || race.getProperty('finalAbsolute') != '9' || race.getProperty('raceLost') != 'false'
+            || race.getProperty('boundedQueue') != 'true' || race.getProperty('boundaryOpen') != 'true'
+            || parsePositiveInteger(race.getProperty('hubOrder'), 'Task 24 hub order')
+                    >= parsePositiveInteger(race.getProperty('ledgerAcceptOrder'), 'Task 24 ledger accept order')
+            || parsePositiveInteger(race.getProperty('ledgerAcceptOrder'), 'Task 24 ledger accept order')
+                    >= parsePositiveInteger(race.getProperty('snapshotCompleteOrder'), 'Task 24 snapshot complete order')
+            || race.getProperty('queuedEvents') != '1' || race.getProperty('replayedEvents') != '1'
+            || race.getProperty('overflowRetired') != 'true' || race.getProperty('samePlanRecovered') != 'true'
+            || race.getProperty('recoveredNativeEventDelta') != '1'
+            || race.getProperty('abandonedHooksCleared') != '3'
+            || race.getProperty('abandonedHookInvocations') != '0'
+            || race.getProperty('fixtureBridgeClosed') != 'true'
+            || race.getProperty('fixtureCloseAssertionPreserved') != 'true'
+            || parsePositiveInteger(race.getProperty('traceListenerIdentity'), 'Task 24 trace listener identity') < 1
+            || parsePositiveInteger(race.getProperty('traceLedgerIdentity'), 'Task 24 trace ledger identity') < 1
+            || race.getProperty('isolatedTraceOwners') != '2'
+            || race.getProperty('isolatedTraceLedgers') != '2'
+            || race.getProperty('isolatedTracePending') != '0'
+            || parsePositiveInteger(race.getProperty('isolatedFirstListenerIdentity'),
+                    'Task 24 first isolated listener identity')
+                    == parsePositiveInteger(race.getProperty('isolatedSecondListenerIdentity'),
+                            'Task 24 second isolated listener identity')
+            || parsePositiveInteger(race.getProperty('isolatedFirstLedgerIdentity'),
+                    'Task 24 first isolated ledger identity')
+                    == parsePositiveInteger(race.getProperty('isolatedSecondLedgerIdentity'),
+                            'Task 24 second isolated ledger identity')
+            || race.getProperty('isolatedCrossAttribution') != 'false'
+            || parsePositiveInteger(race.getProperty('registrationAfterOverflow'), 'Task 24 registration after overflow')
+                    == parsePositiveInteger(race.getProperty('registrationBeforeOverflow'),
+                            'Task 24 registration before overflow')) {
+        throw new GradleException('Task 24 snapshot race semantics are incomplete')
+    }
+    def masking = parsed.subscriptionmaskedequalopposite as Properties
+    if (masking.getProperty('broadcastFirstBefore') != '0' || masking.getProperty('broadcastSecondBefore') != '8'
+            || masking.getProperty('broadcastFirstAfter') != '8' || masking.getProperty('broadcastSecondAfter') != '0'
+            || masking.getProperty('broadcastEventDelta') != '2'
+            || masking.getProperty('broadcastDeliveryDelta') != '2'
+            || masking.getProperty('broadcastCatalogBeforeFirst') != '0'
+            || masking.getProperty('broadcastCatalogBeforeSecond') != '0'
+            || masking.getProperty('replayFirstBefore') != '8' || masking.getProperty('replaySecondBefore') != '0'
+            || masking.getProperty('replayFirstAfter') != '0' || masking.getProperty('replaySecondAfter') != '8'
+            || masking.getProperty('replayEventDelta') != '2' || masking.getProperty('replayDeliveryDelta') != '2'
+            || masking.getProperty('replayCatalogBeforeFirst') != '0'
+            || masking.getProperty('replayCatalogBeforeSecond') != '1'
+            || masking.getProperty('registrationOrderStable') != 'true'
+            || masking.getProperty('aggregateBefore') != '8' || masking.getProperty('aggregateAfter') != '8'
+            || masking.getProperty('importOriginCount') != '0'
+            || parsePositiveInteger(masking.getProperty('consumerManagedImportCount'),
+                    'Task 24 managed import count') < 1
+            || masking.getProperty('topologyRefreshDelta') != '0'
+            || masking.getProperty('unchangedFollowupInvalidationDelta') != '0'
+            || masking.getProperty('providerBudget') != '1'
+            || parsePositiveInteger(masking.getProperty('keysPerProviderBudget'), 'Task 24 key budget') > 8
+            || masking.getProperty('retentionLimit') != '64'
+            || masking.getProperty('supportedArrivalsBetweenVisits') != '7'
+            || masking.getProperty('catalogSizeBeforeOverflow') != '64'
+            || masking.getProperty('overflowDistinctKeyCount') != '65'
+            || masking.getProperty('retentionOverflowDelta') != '1'
+            || masking.getProperty('overflowRemovalDelta') != '2'
+            || masking.getProperty('activeAfterRetentionOverflow') != '0'
+            || masking.getProperty('oldCallbackEventDelta') != '0'
+            || masking.getProperty('oldCallbackDeliveryDelta') != '0'
+            || masking.getProperty('oldCallbackAuthorityDelta') != '0'
+            || masking.getProperty('freshRegistrationIds') != 'true'
+            || masking.getProperty('postRecoveryNativeEventDelta') != '1'
+            || masking.getProperty('postRecoveryDeliveryDelta') != '1'
+            || masking.getProperty('activeAfterRetentionRecovery') != '2'
+            || masking.getProperty('recoveredCatalogSize') != '1') {
+        throw new GradleException('Task 24 aggregate masking and bounded reconciliation semantics are incomplete')
+    }
+    def filter = parsed.subscriptionfirstfilter as Properties
+    if (filter.getProperty('visibleBefore') != '0' || filter.getProperty('visibleAfter') != '5'
+            || filter.getProperty('postResetAbsolute') != '6' || filter.getProperty('filterInvalidations') != '1'
+            || filter.getProperty('listenerReplaced') != 'false' || filter.getProperty('firstChangeDropped') != 'false'
+            || parsePositiveInteger(filter.getProperty('snapshotVersion'), 'Task 24 filter snapshot') < 2
+            || filter.getProperty('nativeSemantics') != 'absolute') {
+        throw new GradleException('Task 24 first-filter/reset semantics are incomplete')
+    }
+    def cleanup = parsed.subscriptionlistenercleanup as Properties
+    def registrations = parsePositiveInteger(cleanup.getProperty('registrations'), 'Task 24 listener registrations')
+    if (parsePositiveInteger(cleanup.getProperty('removals'), 'Task 24 listener removals') != registrations
+            || cleanup.getProperty('activeAfterInvalidation') != '0'
+            || cleanup.getProperty('activeAfterReconnect') != '1' || cleanup.getProperty('activeAfterClose') != '0'
+            || cleanup.getProperty('serviceCatalogsAfterClose') != '0'
+            || cleanup.getProperty('relationshipReleased') != 'true'
+            || cleanup.getProperty('disconnectReleased') != 'true' || cleanup.getProperty('levelReleased') != 'true') {
+        throw new GradleException('Task 24 listener cleanup semantics are incomplete')
+    }
+    def stale = parsed.subscriptionrejectstalegeneration as Properties
+    if (parsePositiveInteger(stale.getProperty('newGeneration'), 'Task 24 new generation')
+                    <= parsePositiveInteger(stale.getProperty('oldGeneration'), 'Task 24 old generation')
+            || stale.getProperty('staleAccepted') != 'false' || stale.getProperty('currentAbsolute') != '0'
+            || stale.getProperty('staleAbsolute') != '3' || stale.getProperty('eventDelta') != '0'
+            || stale.getProperty('listenerReplacement') != 'true' || stale.getProperty('mutationGated') != 'true'
+            || stale.getProperty('retainedOldCallbackInvoked') != 'true'
+            || stale.getProperty('compareAndRemoveProtected') != 'true') {
+        throw new GradleException('Task 24 stale-generation semantics are incomplete')
+    }
+}
 def loadTaskTwentyMetrics = { File file ->
     if (!file.isFile()) throw new GradleException("Task 20 benchmark metrics are missing: ${file}")
     def metrics = new LinkedHashMap<String, String>()
@@ -3561,6 +3744,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskTwentyThreeEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyTaskTwentyFourEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -4111,7 +4296,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
-                    || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')) ? 1 : 2,
+                    || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
+                    || testCase.id.startsWith('subscription.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4119,7 +4305,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
-                            || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')])
+                            || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
+                            || testCase.id.startsWith('subscription.')])
             childArtifacts.add(nativeEvidence)
         }
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
@@ -4447,6 +4634,13 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'chain.toggle-reexport':
                 case 'chain.reject-direct-activation':
                 case 'chain.reject-cycle':
+                case 'subscription.two-same-key-events':
+                case 'subscription.diamond-once':
+                case 'subscription.snapshot-race':
+                case 'subscription.masked-equal-opposite':
+                case 'subscription.first-filter':
+                case 'subscription.listener-cleanup':
+                case 'subscription.reject-stale-generation':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -4545,6 +4739,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyThreeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyFourEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def report = [schemaVersion: 3, status: taskTenBlocked ? 'BLOCKED' : 'complete', runId: runId, kind: kind,
@@ -6566,5 +6761,110 @@ tasks.register('federationTaskTwentyThreeEvidenceSelfTest') {
             throw new GradleException("Task 23 adversarial chain evidence was accepted: ${accepted.join(', ')}")
         }
         logger.lifecycle('Task 23 adversarial chain-sharing evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyFourEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Proves Task 24 subscription evidence fails closed after full rebinding.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 24 evidence for semantic probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateFact = { String artifactId, String fact, String value, String expectedMessage ->
+            taskSevenEvidenceProbeRejects(sourceResult, "task24-${artifactId}-${fact}", expectedMessage) {
+                    File attempt, Map report ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 24 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+        }
+        def probes = [
+                lostDuplicateEvent: mutateFact('subscriptiontwosamekeyevents', 'eventDelta', '1',
+                        'Task 24 same-key absolute event semantics are incomplete'),
+                doubledDiamondDelivery: mutateFact('subscriptiondiamondonce', 'effectiveUpdates', '2',
+                        'Task 24 diamond forwarding semantics are incomplete'),
+                deltaAbsoluteConfusion: mutateFact('subscriptiontwosamekeyevents', 'nativeSemantics', 'delta',
+                        'Task 24 same-key absolute event semantics are incomplete'),
+                forgedFirstBaseline: mutateFact('subscriptionfirstfilter', 'visibleAfter', '0',
+                        'Task 24 first-filter/reset semantics are incomplete'),
+                staleGenerationAcceptance: mutateFact('subscriptionrejectstalegeneration', 'staleAccepted', 'true',
+                        'Task 24 stale-generation semantics are incomplete'),
+                acceptedRetainedCallback: mutateFact('subscriptionrejectstalegeneration',
+                        'compareAndRemoveProtected', 'false', 'Task 24 stale-generation semantics are incomplete'),
+                missingBoundaryCallback: mutateFact('subscriptionsnapshotrace', 'boundaryOpen', 'false',
+                        'Task 24 snapshot race semantics are incomplete'),
+                forgedReplayCount: mutateFact('subscriptionsnapshotrace', 'replayedEvents', '2',
+                        'Task 24 snapshot race semantics are incomplete'),
+                forgedTraceOrder: mutateFact('subscriptionsnapshotrace', 'hubOrder', '2',
+                        'Task 24 snapshot race semantics are incomplete'),
+                missingOverflowRetirement: mutateFact('subscriptionsnapshotrace', 'overflowRetired', 'false',
+                        'Task 24 snapshot race semantics are incomplete'),
+                missingSamePlanRecovery: mutateFact('subscriptionsnapshotrace', 'samePlanRecovered', 'false',
+                        'Task 24 snapshot race semantics are incomplete'),
+                leakedAbandonedHook: mutateFact('subscriptionsnapshotrace', 'abandonedHookInvocations', '1',
+                        'Task 24 snapshot race semantics are incomplete'),
+                fixtureBridgeLeak: mutateFact('subscriptionsnapshotrace', 'fixtureBridgeClosed', 'false',
+                        'Task 24 snapshot race semantics are incomplete'),
+                fixtureAssertionLost: mutateFact('subscriptionsnapshotrace', 'fixtureCloseAssertionPreserved', 'false',
+                        'Task 24 snapshot race semantics are incomplete'),
+                crossAttributedTrace: mutateFact('subscriptionsnapshotrace', 'isolatedCrossAttribution', 'true',
+                        'Task 24 snapshot race semantics are incomplete'),
+                strandedTraceOwner: mutateFact('subscriptionsnapshotrace', 'isolatedTracePending', '1',
+                        'Task 24 snapshot race semantics are incomplete'),
+                duplicateTraceLedger: mutateFact('subscriptionsnapshotrace', 'isolatedSecondLedgerIdentity',
+                        loadProperties(new File(sourceResult.parentFile, 'native-subscriptionsnapshotrace.properties'))
+                                .getProperty('isolatedFirstLedgerIdentity'),
+                        'Task 24 snapshot race semantics are incomplete'),
+                zeroKeyWasAlreadyKnown: mutateFact('subscriptionmaskedequalopposite', 'broadcastFirstBefore', '4',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                maskedAggregateChanged: mutateFact('subscriptionmaskedequalopposite', 'aggregateAfter', '13',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                maskedSourceMissed: mutateFact('subscriptionmaskedequalopposite', 'broadcastEventDelta', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                importedOriginAccepted: mutateFact('subscriptionmaskedequalopposite', 'importOriginCount', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                unchangedInvalidation: mutateFact('subscriptionmaskedequalopposite',
+                        'unchangedFollowupInvalidationDelta', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                unboundedProviderWork: mutateFact('subscriptionmaskedequalopposite', 'providerBudget', '2',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                unboundedKeyWork: mutateFact('subscriptionmaskedequalopposite', 'keysPerProviderBudget', '9',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                unboundedRetention: mutateFact('subscriptionmaskedequalopposite', 'retentionLimit', '65',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                missingRetentionOverflow: mutateFact('subscriptionmaskedequalopposite', 'retentionOverflowDelta', '0',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                retentionOverflowStayedOpen: mutateFact('subscriptionmaskedequalopposite',
+                        'activeAfterRetentionOverflow', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                missingExactOverflowClosure: mutateFact('subscriptionmaskedequalopposite', 'overflowRemovalDelta', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                retainedCallbackAccepted: mutateFact('subscriptionmaskedequalopposite', 'oldCallbackEventDelta', '1',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                unstableRegistrationOrder: mutateFact('subscriptionmaskedequalopposite', 'registrationOrderStable',
+                        'false', 'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                fabricatedRecovery: mutateFact('subscriptionmaskedequalopposite', 'postRecoveryNativeEventDelta', '0',
+                        'Task 24 aggregate masking and bounded reconciliation semantics are incomplete'),
+                missingListenerCleanup: mutateFact('subscriptionlistenercleanup', 'activeAfterClose', '1',
+                        'Task 24 listener cleanup semantics are incomplete'),
+                leakedServiceCatalog: mutateFact('subscriptionlistenercleanup', 'serviceCatalogsAfterClose', '1',
+                        'Task 24 listener cleanup semantics are incomplete'),
+                importedReoriginating: mutateFact('subscriptiontwosamekeyevents', 'importReoriginated', 'true',
+                        'Task 24 same-key absolute event semantics are incomplete'),
+                topologyRebuild: mutateFact('subscriptiontwosamekeyevents', 'topologyRefreshDelta', '1',
+                        'Task 24 same-key absolute event semantics are incomplete')
+        ]
+        def accepted = probes.findAll { name, rejected -> !rejected }.keySet()
+        if (!accepted.isEmpty()) {
+            throw new GradleException("Task 24 adversarial subscription evidence was accepted: ${accepted.join(', ')}")
+        }
+        logger.lifecycle('Task 24 adversarial subscription evidence probes were rejected for intended reasons')
     }
 }
