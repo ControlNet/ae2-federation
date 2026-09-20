@@ -29,6 +29,7 @@
     "TerminalBackendThreadGuardMixin",
     "TerminalGameTestHelperThreadGuardMixin",
     "TerminalWorldThreadGuardMixin",
+    "CraftingBackendLifecycleEvidenceMixin",
     "MultiCraftingTrackerAutomationEvidenceMixin",
     "ImportBusAutomationEvidenceMixin",
     "ExportBusAutomationEvidenceMixin",

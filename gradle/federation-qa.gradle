@@ -427,6 +427,9 @@ def verifyTaskTwentySevenEvidence
 def taskTwentyEightCases = ['automation.interface-stock', 'automation.crafting-card', 'automation.native-buses',
         'automation.reject-duplicate-demand', 'automation.contention']
 def verifyTaskTwentyEightEvidence
+def taskTwentyNineCases = ['crafting.cancel-native', 'crafting.disconnect-restart', 'crafting.reject-cycle',
+        'crafting.reject-replay', 'crafting.replace-requester']
+def verifyTaskTwentyNineEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -3616,7 +3619,7 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
                 throw new GradleException("Task 27 semantic trace mismatch in ${artifact}: ${name}")
             }
         }
-        def parseReceipt = { String marker, Set fields, String phase ->
+        def parseTaskTwentySevenReceipt = { String marker, Set fields, String phase ->
             def lines = logText.readLines().findAll { it.contains(marker + " testId=${testId} ") }
             if (lines.size() != 1) {
                 throw new GradleException("Task 27 ${marker} receipt set is missing or duplicated: ${testId}")
@@ -3635,8 +3638,8 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
             }
             receipt
         }
-        def nativeReceipt = parseReceipt('AE2F_TERMINAL_NATIVE_ENTRY', nativeFields)
-        def plannerReceipt = parseReceipt('AE2F_TERMINAL_PLANNER', plannerFields)
+        def nativeReceipt = parseTaskTwentySevenReceipt('AE2F_TERMINAL_NATIVE_ENTRY', nativeFields, 'final')
+        def plannerReceipt = parseTaskTwentySevenReceipt('AE2F_TERMINAL_PLANNER', plannerFields, 'final')
         def authorityLines = logText.readLines().findAll {
             it.contains("AE2F_CRAFT_AUTHORITY testId=${testId} selected=${testId} phase=terminal-discovery")
         }
@@ -4074,6 +4077,210 @@ verifyTaskTwentyEightEvidence = { File attempt, List requested, List<String> dec
     }
     if (stocked.optionalAddon != 'absent' || buses.optionalAddon != 'absent') {
         throw new GradleException('Task 28 optional addon isolation is incomplete')
+    }
+}
+
+verifyTaskTwentyNineEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentyNineCases }) return
+    if (requested != taskTwentyNineCases) {
+        throw new GradleException('Task 29 evidence must select the exact canonical case set')
+    }
+    def expected = [craftingcancelnative: 16, craftingdisconnectrestart: 18, craftingrejectcycle: 12,
+            craftingrejectreplay: 15, craftingreplacerequester: 16]
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-crafting') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 29 native child is missing, extra, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 29 native child exits are incomplete')
+    }
+    def parsed = [:]
+    def lifecycleReceipts = [:]
+    def artifactFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos'] as Set
+    def commonRequestFacts = ['linkId', 'nativeJobIds', 'uniqueNativeTasks', 'requester', 'nativeLink',
+            'craftingService', 'provider', 'physicalDestination', 'federationScheduler'] as Set
+    def semanticFields = [
+            craftingcancelnative: commonRequestFacts + ['linkCanceled', 'resultOwner', 'closedUiResult',
+                    'materialAfterCancel', 'lateWindowTicks'],
+            craftingdisconnectrestart: commonRequestFacts + ['disconnected', 'restored', 'resubmitted',
+                    'linkRetained', 'restartReloaded', 'closedUi', 'acceptedResult', 'physicalResult'],
+            craftingrejectcycle: ['cycle', 'forwardPublished', 'reversePublished', 'nativeSubmitCalls',
+                    'jobCardinality', 'scheduler', 'cycleEdges', 'backendDiscoveryDelta'] as Set,
+            craftingrejectreplay: commonRequestFacts + ['duplicateSubmitted', 'replayRejected', 'jobCardinality',
+                    'nativeState'],
+            craftingreplacerequester: commonRequestFacts + ['sameCoordinate', 'requesterIdentityReused',
+                    'oldLinkInherited', 'nativeState', 'authorizedResult', 'replacementResult']
+    ]
+    def requestAuthorityFields = ['testId', 'selected', 'phase', 'policy', 'policyRevision', 'topologyRevision',
+            'providerGeneration', 'requester', 'requesterNode', 'link', 'linkOwner', 'service', 'sourceGrid',
+            'provider', 'destination', 'session', 'key', 'amount', 'inputBefore', 'inputAfter', 'outputBefore',
+            'outputAfter', 'trackerCalls', 'trackerSubmissions', 'cpuLogic', 'callbackAccepted',
+            'physicalInserted', 'replacementRequester', 'replacementNode'] as Set
+    def cycleAuthorityFields = ['testId', 'selected', 'phase', 'forward', 'reverse', 'cycleEdges',
+            'backendDiscoveries'] as Set
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 29 requires one native child artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 29 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 29 operations') != 1) {
+            throw new GradleException("Task 29 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def logText = new File(attempt, log).text
+        def traceFacts = [:]
+        (logText =~ /AE2F_CRAFT_NATIVE_ENTRY testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 29 duplicate semantic trace fact in ${log}: ${match[2]}")
+            }
+        }
+        def expectedSemanticFields = semanticFields[testId] as Set
+        if (properties.stringPropertyNames() != artifactFields + expectedSemanticFields
+                || traceFacts.keySet() != expectedSemanticFields) {
+            throw new GradleException("Task 29 unexpected native semantic fact: ${testId}")
+        }
+        expectedSemanticFields.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 29 semantic trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        def phases = [:]
+        logText.readLines().findAll { it.contains("AE2F_CRAFT_LIFECYCLE_AUTHORITY testId=${testId} ") }.each { line ->
+            def marker = 'AE2F_CRAFT_LIFECYCLE_AUTHORITY '
+            def payload = line.substring(line.indexOf(marker) + marker.length())
+            def receipt = [:]
+            payload.split(/\s+/).each { token ->
+                def separator = token.indexOf('=')
+                if (separator < 1 || receipt.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                    throw new GradleException("Task 29 malformed independent lifecycle authority: ${testId}")
+                }
+            }
+            def expectedFields = testId == 'craftingrejectcycle' ? cycleAuthorityFields : requestAuthorityFields
+            if (receipt.keySet() != expectedFields || receipt.testId != testId || receipt.selected != testId
+                    || phases.put(receipt.phase, receipt) != null) {
+                throw new GradleException("Task 29 independent lifecycle authority is missing, duplicated, or malformed: ${testId}")
+            }
+        }
+        if (testId == 'craftingrejectcycle') {
+            if (phases.keySet() != ['cycle-authorized', 'cycle-rejected'] as Set
+                    || phases.values().any { it.cycleEdges != '2' }
+                    || phases['cycle-authorized'].backendDiscoveries != phases['cycle-rejected'].backendDiscoveries) {
+                throw new GradleException('Task 29 cyclic relationships reached native backend discovery')
+            }
+        } else {
+            def requiredPhases = [
+                    craftingcancelnative: ['authorized', 'submitted', 'canceled', 'session-closed', 'retired', 'late-window'],
+                    craftingdisconnectrestart: ['authorized', 'submitted', 'session-closed', 'reloaded',
+                            'duplicate-rejected', 'cpu-result', 'callback', 'callback-accepted', 'physical',
+                            'completed', 'retired'],
+                    craftingrejectreplay: ['authorized', 'submitted', 'reloaded', 'duplicate-rejected', 'canceled',
+                            'retired', 'late-window'],
+                    craftingreplacerequester: ['authorized', 'submitted', 'reloaded', 'replacement-rejected',
+                            'cpu-result', 'callback', 'callback-accepted', 'physical', 'completed', 'retired']
+            ][testId] as Set
+            if (phases.keySet() != requiredPhases) {
+                throw new GradleException("Task 29 independent lifecycle phase set is incomplete: ${testId}")
+            }
+            def submitted = phases.submitted
+            def current = phases.reloaded ?: submitted
+            if (submitted.link == 'none' || !(submitted.link ==~ /[0-9a-f-]{36}/)
+                    || parsePositiveInteger(submitted.trackerCalls, 'Task 29 tracker calls') < 1
+                    || submitted.trackerSubmissions != '1'
+                    || submitted.inputBefore != '64' || submitted.inputAfter != '0'
+                    || properties.getProperty('linkId') != submitted.link
+                    || properties.getProperty('nativeJobIds') != submitted.link
+                    || properties.getProperty('requester') != current.requester
+                    || properties.getProperty('nativeLink') != current.linkOwner
+                    || properties.getProperty('craftingService') != submitted.service
+                    || properties.getProperty('provider') != submitted.provider
+                    || properties.getProperty('physicalDestination') != submitted.destination) {
+                throw new GradleException("Task 29 independent native authority correlation failed: ${testId}")
+            }
+            if (phases.reloaded != null && (phases.reloaded.requesterNode != submitted.requesterNode
+                    || phases.reloaded.link != submitted.link || phases.reloaded.requester == submitted.requester)) {
+                throw new GradleException("Task 29 loaded requester lineage transition is unauthorized: ${testId}")
+            }
+            if (phases.physical != null && (phases['callback-accepted'].callbackAccepted != '128'
+                    || phases.physical.physicalInserted != '128' || phases.physical.outputAfter != '128'
+                    || phases.physical.destination != submitted.destination || phases.physical.link != submitted.link)) {
+                throw new GradleException("Task 29 exact physical result authority failed: ${testId}")
+            }
+            if (phases['late-window'] != null && (phases['late-window'].trackerSubmissions != '1'
+                    || phases['late-window'].callbackAccepted != '0'
+                    || phases['late-window'].physicalInserted != '0'
+                    || phases['late-window'].outputAfter != '0')) {
+                throw new GradleException("Task 29 bounded late-event window changed native state: ${testId}")
+            }
+            if (phases['replacement-rejected'] != null
+                    && (phases['replacement-rejected'].replacementRequester == 'none'
+                    || phases['replacement-rejected'].replacementNode == 'none'
+                    || phases['replacement-rejected'].replacementRequester == phases['replacement-rejected'].requester
+                    || phases['replacement-rejected'].replacementNode == phases['replacement-rejected'].requesterNode)) {
+                throw new GradleException('Task 29 same-coordinate replacement inherited native authority')
+            }
+        }
+        lifecycleReceipts[testId] = phases
+        if (testId != 'craftingrejectcycle') {
+            ['linkId', 'nativeJobIds', 'requester', 'nativeLink', 'craftingService', 'provider',
+                    'physicalDestination'].each { name ->
+                if (properties.getProperty(name) == null || properties.getProperty(name).isBlank()) {
+                    throw new GradleException("Task 29 missing native lifecycle authority: ${name}")
+                }
+            }
+            if (properties.getProperty('linkId') != properties.getProperty('nativeJobIds')
+                    || properties.getProperty('uniqueNativeTasks') != '1'
+                    || properties.getProperty('federationScheduler') != 'false'
+                    || ['requester', 'nativeLink', 'craftingService', 'provider', 'physicalDestination'].any {
+                        !(properties.getProperty(it) ==~ /0|[1-9][0-9]*/)
+                    }
+                    || !(properties.getProperty('linkId') ==~ /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)) {
+                throw new GradleException("Task 29 native lifecycle authority mismatch: ${testId}")
+            }
+        }
+        parsed[testId] = properties
+    }
+    if (parsed.craftingcancelnative.getProperty('linkCanceled') != 'true'
+            || parsed.craftingcancelnative.getProperty('materialAfterCancel') != '64'
+            || parsed.craftingcancelnative.getProperty('closedUiResult') != '0') {
+        throw new GradleException('Task 29 fake cancellation or closed-UI ownership detected')
+    }
+    if (parsed.craftingdisconnectrestart.getProperty('disconnected') != 'true'
+            || parsed.craftingdisconnectrestart.getProperty('restored') != 'true'
+            || parsed.craftingdisconnectrestart.getProperty('resubmitted') != 'false'
+            || parsed.craftingdisconnectrestart.getProperty('linkRetained') != 'true'
+            || parsed.craftingdisconnectrestart.getProperty('restartReloaded') != 'true'
+            || parsed.craftingdisconnectrestart.getProperty('closedUi') != 'true'
+            || parsed.craftingdisconnectrestart.getProperty('acceptedResult') != '128'
+            || parsed.craftingdisconnectrestart.getProperty('physicalResult') != '128') {
+        throw new GradleException('Task 29 disconnect was treated as failure or resubmission')
+    }
+    if (parsed.craftingrejectcycle.getProperty('cycle') != 'native-policy'
+            || parsed.craftingrejectcycle.getProperty('nativeSubmitCalls') != '0'
+            || parsed.craftingrejectcycle.getProperty('jobCardinality') != '0'
+            || parsed.craftingrejectcycle.getProperty('scheduler') != 'false') {
+        throw new GradleException('Task 29 cycle rejection is canned or scheduled')
+    }
+    if (parsed.craftingrejectreplay.getProperty('duplicateSubmitted') != 'false'
+            || parsed.craftingrejectreplay.getProperty('replayRejected') != 'true'
+            || parsed.craftingrejectreplay.getProperty('jobCardinality') != '1') {
+        throw new GradleException('Task 29 duplicate replay or changed job detected')
+    }
+    if (parsed.craftingreplacerequester.getProperty('sameCoordinate') != 'true'
+            || parsed.craftingreplacerequester.getProperty('requesterIdentityReused') != 'false'
+            || parsed.craftingreplacerequester.getProperty('oldLinkInherited') != 'false') {
+        throw new GradleException('Task 29 same-coordinate requester identity was reused')
     }
 }
 
@@ -4626,6 +4833,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwentySevenEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyEightEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskTwentyNineEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -5465,6 +5674,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'automation.native-buses':
                 case 'automation.reject-duplicate-demand':
                 case 'automation.contention':
+                case 'crafting.cancel-native':
+                case 'crafting.disconnect-restart':
+                case 'crafting.reject-cycle':
+                case 'crafting.reject-replay':
+                case 'crafting.replace-requester':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -5670,6 +5884,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentySevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyEightEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentyNineEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -8482,5 +8697,139 @@ tasks.register('federationTaskTwentyEightEvidenceSelfTest') {
             }.join('\n') + '\n'
         }, 'Task 28 pre-operation projection mismatch')
         logger.lifecycle('Task 28 adversarial native automation evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentyNineEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 29 native crafting lifecycle result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskTwentyNineCases) {
+            throw new GradleException('Result is not the canonical Task 29 case set')
+        }
+        logger.lifecycle('Task 29 native crafting lifecycle evidence verified')
+    }
+}
+
+tasks.register('federationTaskTwentyNineEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated cancellation, reconnect, cycle, replay, requester, result, and identity evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 29 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateAttempt = { String name, Closure mutation, String expectedMessage ->
+            def sourceAttempt = sourceResult.parentFile.canonicalFile
+            def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+            def runId = "task29-${name}-${UUID.randomUUID()}"
+            def attempt = new File(evidenceRoot, "attempt-${runId}")
+            sourceAttempt.eachFileRecurse(FileType.FILES) { source ->
+                def target = attempt.toPath().resolve(sourceAttempt.toPath().relativize(source.toPath()))
+                Files.createDirectories(target.parent)
+                Files.copy(source.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            try {
+                def resultFile = new File(attempt, 'result.json')
+                def report = new JsonSlurper().parse(resultFile) as Map
+                mutation(attempt, report)
+                report.runId = runId
+                report.evidenceRoot = evidenceRoot.canonicalPath
+                report.attemptPath = attempt.canonicalPath
+                def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+                report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+                report.startedAt = Instant.now().minusSeconds(1).toString()
+                report.endedAt = Instant.now().toString()
+                report.artifacts.each { artifact ->
+                    def artifactFile = new File(attempt, artifact.path as String)
+                    if (artifactFile.isFile()) artifact.sha256 = sha256(artifactFile.bytes)
+                }
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                try {
+                    verifyPersistedReport(resultFile, false)
+                    throw new GradleException("Task 29 adversarial evidence was accepted: ${name}")
+                } catch (GradleException exception) {
+                    if (exception.message.startsWith('Task 29 adversarial evidence was accepted')
+                            || !exception.message.contains(expectedMessage)) throw exception
+                }
+            } finally {
+                if (attempt.exists()) {
+                    Files.walk(attempt.toPath()).withCloseable { paths ->
+                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                    }
+                }
+            }
+        }
+        def mutateFact = { String name, String artifactId, String fact, String value, String expectedMessage ->
+            mutateAttempt(name, { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 29 fully rebound semantic probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }, expectedMessage)
+        }
+        mutateFact('fake-cancellation-no-consumption', 'craftingcancelnative', 'materialAfterCancel', '0',
+                'Task 29 fake cancellation or closed-UI ownership detected')
+        mutateFact('disconnect-as-failure', 'craftingdisconnectrestart', 'linkRetained', 'false',
+                'Task 29 disconnect was treated as failure or resubmission')
+        mutateFact('duplicate-resubmission', 'craftingdisconnectrestart', 'resubmitted', 'true',
+                'Task 29 disconnect was treated as failure or resubmission')
+        mutateFact('canned-cycle-label', 'craftingrejectcycle', 'cycle', 'label-only',
+                'Task 29 cycle rejection is canned or scheduled')
+        mutateFact('replay-changed-job', 'craftingrejectreplay', 'jobCardinality', '2',
+                'Task 29 duplicate replay or changed job detected')
+        mutateFact('same-coordinate-identity-reuse', 'craftingreplacerequester', 'requesterIdentityReused', 'true',
+                'Task 29 same-coordinate requester identity was reused')
+        mutateFact('closed-ui-result-loss', 'craftingcancelnative', 'closedUiResult', '1',
+                'Task 29 fake cancellation or closed-UI ownership detected')
+        mutateFact('aggregate-only-result', 'craftingcancelnative', 'physicalDestination', 'aggregate-only',
+                'Task 29 independent native authority correlation failed')
+        mutateFact('forged-lifecycle-authority', 'craftingrejectreplay', 'uniqueNativeTasks', '2',
+                'Task 29 native lifecycle authority mismatch')
+        mutateAttempt('missing-child', { File attempt, Map report ->
+            def path = 'native-craftingcancelnative.properties'
+            report.artifacts.removeIf { it.path == path }
+            Files.delete(new File(attempt, path).toPath())
+        }, 'Task 29 native child is missing, extra, or substituted')
+        mutateAttempt('extra-child', { File attempt, Map report ->
+            def source = new File(attempt, 'native-craftingcancelnative.properties')
+            def target = new File(attempt, 'native-craftingunexpected.properties')
+            Files.copy(source.toPath(), target.toPath())
+            report.artifacts.add([path: target.name, sha256: sha256(target.bytes)])
+        }, 'Task 29 native child is missing, extra, or substituted')
+        mutateFact('stale-identity', 'craftingreplacerequester', 'requester', 'stale',
+                'Task 29 independent native authority correlation failed')
+        mutateAttempt('coordinated-lifecycle-forgery', { File attempt, Map ignored ->
+            def artifactId = 'craftingdisconnectrestart'
+            def file = new File(attempt, "native-${artifactId}.properties")
+            def properties = loadProperties(file)
+            def log = new File(attempt, "positive-${artifactId}.log")
+            ['requester', 'nativeLink', 'craftingService', 'provider', 'physicalDestination'].eachWithIndex {
+                fact, index ->
+                def oldValue = properties.getProperty(fact)
+                def forgedValue = Integer.toString(4294967200L.plus(index) as int).replace('-', '')
+                properties.setProperty(fact, forgedValue)
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${forgedValue}")
+            }
+            file.withOutputStream { properties.store(it, 'Task 29 coordinated lifecycle forgery probe') }
+        }, 'Task 29 independent native authority correlation failed')
+        mutateAttempt('extra-native-semantic-fact', { File attempt, Map ignored ->
+            def artifactId = 'craftingdisconnectrestart'
+            def file = new File(attempt, "native-${artifactId}.properties")
+            def properties = loadProperties(file)
+            properties.setProperty('nativeFailure', 'true')
+            file.withOutputStream { properties.store(it, 'Task 29 fully rebound extra semantic fact probe') }
+            def log = new File(attempt, "positive-${artifactId}.log")
+            log << "AE2F_CRAFT_NATIVE_ENTRY testId=${artifactId} fact=nativeFailure value=true\n"
+        }, 'Task 29 unexpected native semantic fact')
+        logger.lifecycle('Task 29 adversarial native lifecycle evidence probes were rejected for intended reasons')
     }
 }

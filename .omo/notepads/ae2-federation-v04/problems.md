@@ -410,6 +410,11 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 }
 ```
 
+## 2026-09-20 Task 29
+
+- No unresolved Task 29 blocker remains. Canonical evidence:
+  `.omo/evidence/task-29/attempt-20260920T130507949Z/result.json`.
+
 ## 2026-09-15T06:40:00Z Task 18 third-gate repair
 
 - Removed `ProviderRuntimeProbe` and all replay-only production fields/methods. The release JAR and sources JAR contain no
@@ -2877,5 +2882,248 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   "diagnosticsAndCleanup": "All fourteen changed/repaired Java files report zero LSP diagnostics. Binary and source archives contain no Task 28 testmod/evidence/authority-observation classes or test mixin resources. No run-gametest tree or session lock remains and Gradle daemons were stopped.",
   "scope": "Task 28 remains unchecked and uncommitted. No Task 29 lifecycle requirement, production/test/Gradle/manifest/docs/plan/knowledge/other-notepad change, Git index/history operation, issue, or PR was introduced by this reviewer.",
   "repositoryChangesByReviewer": "Only this append-only problems.md report plus ignored reviewer-owned evidence and attack outputs."
+}
+```
+
+## 2026-09-20T13:42:54Z Task 29 independent adversarial review
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 29,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The five native children are green and AE2 really reloads one MultiCraftingTracker link across requester-node replacement, but Task 29 does not close the plan's ownership/evidence boundary. Production retains terminal request/link objects forever, the UI-close and physical-result claims are not exercised through their claimed surfaces, canceled/replayed/replaced paths omit the required late/reloaded ownership outcomes, and the current-identity consumer accepts a fully rebound coordinated forgery of those facts and authorities.",
+  "freshEvidence": {
+    "task29": ".omo/evidence/task-29-independent-review/attempt-20260920T132126342Z/result.json",
+    "acceptedAttack": ".omo/evidence/task-29-independent-review/attempt-task29-coordinated-forgery-a4c73c65-e8a2-4c55-b5a9-40d919e0c52e/result.json",
+    "task9": ".omo/evidence/task-09-task29-independent-review/attempt-20260920T132618210Z/result.json",
+    "task19": ".omo/evidence/task-19-task29-independent-review/attempt-20260920T132948353Z/result.json",
+    "task26": ".omo/evidence/task-26-task29-independent-review/attempt-20260920T133403124Z/result.json",
+    "task27Children": ".omo/evidence/task-27-task29-independent-review/attempt-20260920T133644057Z/"
+  },
+  "confirmed": [
+    "AE2 19.2.17 MultiCraftingTracker.readFromNBT calls StorageHelper.loadCraftingLink with the new requester; CraftingService removes the destroyed requester link and reattaches the loaded same-UUID link when the replacement node joins before CraftingLinkNexus death.",
+    "crafting.disconnect-restart destroys and recreates a real managed requester node, reloads tracker and managed-node NBT, physically removes/restores the Bridge, observes capability withdrawal without native cancellation, rejects handleCrafting while the loaded link exists, and receives 128 sticks through the requester callback.",
+    "NativeCraftingRequestKey contains directional PolicyKey, requester lineage UUID, and slot; nativeLinkOwners rejects one UUID under another key, and the same-coordinate test creates a distinct managed requester node.",
+    "CraftingDependencyCycleGuard is finite visited-set reachability; unit tests cover acyclic and transitive three-edge cycles, and the runtime reciprocal REQUEST policies withdraw both capability edges before reconcile backend discovery.",
+    "No Federation scheduler, CPU, planner, queue, reservation engine, result ledger/buffer, copied pattern state, or replay engine was added."
+  ],
+  "blockingFindings": [
+    {
+      "id": "unbounded-and-stale-native-request-retention",
+      "planGrounding": "Task 29 Work requires only necessary native link/state mapping; D6.5-6.6 and T-C08 keep native objects authoritative; acceptance requires lifecycle-safe restart and ownership.",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/CraftingBindingService.java:33",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/CraftingBindingService.java:160",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/CraftingBindingService.java:195",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:61"
+      ],
+      "evidence": "nativeRequests and nativeLinkOwners are append-only until whole-level close; no completion/cancel/requester retirement removes either entry. After the disconnect case destroys the old requester and constructs the real loaded requester/link object, the Federation entry still points to the destroyed requester and pre-reload link. No GameTest exercises closeLevel or proves terminal entries are reclaimed, so a long-lived level accumulates two strong-reference maps without bound.",
+      "requiredFix": "Retain only live native authority, rebind through authoritative loaded requester/link identity where continuity is allowed, and retire both key and UUID ownership at the correct native terminal lifecycle without permitting replay. Add real GameTests for completion, cancellation, replacement, and level/service close cardinality."
+    },
+    {
+      "id": "ui-close-and-physical-result-surface-not-proven",
+      "planGrounding": "Task 29 acceptance says closed UI cannot lose results; T-F12 says closing UI cannot affect business; Task 27 and Task 29 require actual callback plus exact physical ownership, not public aggregate growth.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingLifecycleFixture.java:47",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingLifecycleFixture.java:57",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/terminal/NativeTerminalSession.java:12",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingBindingFixture.java:269"
+      ],
+      "evidence": "openTerminalSession creates a plain discovery value; closeTerminalSession only assigns the fixture field to null and closes no menu, screen, subscription, or lifecycle owner. physicalResult calls outputAmount, which reads the Grid aggregate storage service, while the persisted physicalDestination identity is merely emitted from a different exact cell object. acceptedAmount proves the callback delegate accepted 128 but the claimed exact physical post-state is never read.",
+      "requiredFix": "Close an actual menu/UI/session lifecycle object, pre-authorize the exact destination independently, and read the exact physical cell before/after completion. Correlate callback, key/amount, destination object, and cell delta; do not use aggregate Grid inventory as the physical-result proof."
+    },
+    {
+      "id": "terminal-cancel-replay-and-replacement-outcomes-incomplete",
+      "planGrounding": "Task 29 acceptance and T-R02..05/T-G12 require no late delivery, replay, duplicate work, or wrong owner across cancellation, reload/reactivation, and same-coordinate replacement.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:20",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:126",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:153"
+      ],
+      "evidence": "cancel-native observes consumed material and the cancellation callback, then immediately closes without reactivation or a bounded late-callback/output window. reject-replay neither serializes/reloads nor restores service/node visibility; it calls handleCrafting on the same tracker before cancellation, cancels, and checks idempotent rebinding of the same object. replace-requester proves only bindNativeRequest rejection and then cancels the old link; it never completes old work and proves the replacement cannot receive/access the result.",
+      "requiredFix": "Drive canceled, completed, and reloaded links through real withdrawal/reactivation. Prove one UUID and one extraction, no late callback/insertion after cancellation, no changed-job replay, and old-requester-only result ownership after a distinct same-position replacement."
+    },
+    {
+      "id": "persisted-evidence-has-no-independent-authority",
+      "planGrounding": "Plan evidence contract requires semantic current-attempt validation; Task 29 requires exact evidence and fully rebound attacks, and final mutable traces cannot define their own expected authority.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/NativeCraftingEvidence.java:20",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:180",
+        "gradle/federation-qa.gradle:4118",
+        "gradle/federation-qa.gradle:4150",
+        "gradle/federation-qa.gradle:8614"
+      ],
+      "evidence": "Properties and AE2F_CRAFT_NATIVE_ENTRY lines come from the same final Map, and the verifier compares them only to each other plus hard-coded labels. inserted and extracted are both copied from acceptedResult rather than independently observed physical flows. The reviewer copied the fresh attempt, changed/rebound run ID, canonical paths, timestamps, path identity and all artifact hashes, then supplied zero consumption, fixture-reference UI close, two tracker submissions, nativeFailure=true, aggregate-grid result source, zero real cycle edges/two backend discoveries, changed link UUIDs, and coordinated forged requester/link/service/provider/destination identities. The dedicated consumer still printed 'Task 29 native crafting lifecycle evidence verified' and exited zero.",
+      "requiredFix": "Capture independent pre-operation authority for policy, requester lineage/object, native link/job, exact destination, provider/source generation, and lifecycle phase; consume exact native hook receipts and physical accounting. Reject coordinated numeric identity/UUID substitutions and contradictory extra facts. Make fake consumption, disconnect failure, duplicate submission, canned cycle, changed-job replay, same-coordinate reuse, aggregate-only result, and forged authority attacks fail for their semantic reason after full rebinding."
+    }
+  ],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.cancel-native,crafting.disconnect-restart,crafting.reject-cycle,crafting.reject-replay,crafting.replace-requester -PevidenceDir=.omo/evidence/task-29-independent-review --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-29-independent-review/attempt-20260920T132126342Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceConsumer -PresultFile=.omo/evidence/task-29-independent-review/attempt-20260920T132126342Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceSelfTest -PresultFile=.omo/evidence/task-29-independent-review/attempt-20260920T132126342Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; built-in twelve mutations rejected",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceConsumer -PresultFile=.omo/evidence/task-29-independent-review/attempt-task29-coordinated-forgery-a4c73c65-e8a2-4c55-b5a9-40d919e0c52e/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL (unexpected accepted attack)",
+    "./gradlew :neoforge-1.21.1:test --tests '*CraftingDependencyCycleGuardTest' --tests '*CraftingLifecycleContractTest' --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "Task 9 exact five-case regression -> BUILD SUCCESSFUL at .omo/evidence/task-09-task29-independent-review/attempt-20260920T132618210Z/result.json",
+    "Task 19 exact six-case regression -> BUILD SUCCESSFUL at .omo/evidence/task-19-task29-independent-review/attempt-20260920T132948353Z/result.json",
+    "Task 26 exact four-case regression -> BUILD SUCCESSFUL at .omo/evidence/task-26-task29-independent-review/attempt-20260920T133403124Z/result.json",
+    "Task 27 exact five native children emitted all five artifacts/logs with cleanup, but federationVerify failed before result.json at gradle/federation-qa.gradle:3641 because parseReceipt is declared with three arguments and called with two; Task 29 did not modify that existing block",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> clean",
+    "./gradlew --stop -> one daemon stopped"
+  ],
+  "diagnosticsAndCleanup": "Zero LSP diagnostics on all ten changed/untracked Task 29 Java files. No GameTest/AE2 Federation/Gradle process, Java listener, run-gametest tree, or session.lock remains. Reviewer evidence is ignored by .gitignore.",
+  "repositoryScope": "Task 29 remains unchecked and uncommitted. This reviewer changed only this append-only problems.md report and ignored .omo/evidence/task-*-task29-independent-review artifacts; no production, test, Gradle, manifest, docs, plan, knowledge, other notepad, index, history, issue, or PR change was made."
+}
+```
+
+## 2026-09-20T16:03:11Z Task 29 repair re-review
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 29,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The repairs establish safe same-lineage tracker reload, exact-cell result observation, real NativeTerminalSession closed state, bounded late windows, and an independent authority correlation that rejects the requested coordinated copied-record mutation. Task 29 is not confirmable because terminal request retention still has no production lifecycle caller and completed replacement work survives until whole-level close, the closed session is not the session that submits the tested job, and the dedicated consumer accepts an extra fully rebound native semantic fact.",
+  "freshEvidence": {
+    "task29": ".omo/evidence/task-29-rereview/attempt-20260920T154857509Z/result.json",
+    "coordinatedAttackRejected": ".omo/evidence/task-29-atlas-final/attempt-task29-rereview-forgery-248b12ab-5f2a-4062-83e4-e67db24c2ebc/result.json",
+    "extraNativeFactAccepted": ".omo/evidence/task-29-rereview/attempt-task29-rereview-extra-native-cf0e883c-ae6b-4a36-b9b4-4d1f6c380f42/result.json",
+    "task27": ".omo/evidence/task-27-task29-rereview/attempt-20260920T155340254Z/result.json"
+  },
+  "confirmedRepairs": [
+    "NativeCraftingRequestRegistry keeps paired request-key and UUID-owner indexes, rejects changed UUIDs and distinct-lineage same-coordinate requesters, and permits reload rebinding only for the same PolicyKey/requester lineage/slot plus the same UUID held by the loaded requester's actual MultiCraftingTracker.",
+    "Cancellation, disconnect/restart, replay, and replacement execute real managed-node and tracker persistence paths; the fresh five-case run passed, including visibility withdrawal/restoration, one native UUID, bounded late windows, authorized-owner completion, and replacement isolation.",
+    "CraftingLifecycleAuthorityObservation preselects the exact original cell object before submission, gates live callback/insertion hooks by requester/link/key/amount/destination identity, and reads physicalMaterialAmount/physicalOutputAmount directly from that cell rather than aggregate Grid storage.",
+    "NativeTerminalSession.close() now changes real server-thread-owned session state and its public active APIs reject later use by implementation contract.",
+    "The fully rebound coordinated attack changed consumption, submission/failure facts, UUIDs, aggregate-source claim, cycle facts, lineage reuse, and final requester/link/service/provider/destination identities while leaving lifecycle authority unchanged; the dedicated consumer rejected it at Task 29 independent native authority correlation, not metadata validation.",
+    "Task 27 exact five-case runtime and dedicated consumer passed, confirming the shared parseReceipt regression remains fixed."
+  ],
+  "blockingFindings": [
+    {
+      "id": "terminal-request-retirement-remains-test-driven",
+      "planGrounding": "Task 29 Work requires necessary native references across actual service/node lifecycle and only live mapping; acceptance and the re-review contract require completion/cancellation/replacement cleanup before whole-level close.",
+      "source": [
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/CraftingBindingService.java:150",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/CraftingBindingService.java:161",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/binding/NativeCraftingRequestRegistry.java:15",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingLifecycleFixture.java:74",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:285"
+      ],
+      "evidence": "Workspace call-path search finds synchronizeNativeRequest/retireNativeRequester callers only in CraftingLifecycleFixture/GameTests, not a production requester, node, callback, or service lifecycle hook. Disconnect completion and replay retirement are induced by explicit fixture synchronize calls. In craftingReplaceRequester, the authorized link completes and delivers 128, then closeLevel reports nativeRequestsRetired=1; this directly proves the terminal completed entry remained in both indexes until whole-level close. A long-lived production level therefore has no path that performs the cleanup demonstrated by the fixture.",
+      "requiredFix": "Integrate registration/rebind/terminal retirement with the real production requester/node/link lifecycle, retire both indexes on completion/cancellation/replacement without a later test-only synchronize call, and prove zero request/owner cardinality before separately testing closeLevel."
+    },
+    {
+      "id": "closed-session-is-not-the-submitting-session",
+      "planGrounding": "Task 29 acceptance requires that closing the UI/session does not lose the native result; the re-review contract requires actual NativeTerminalSession.close(), rejected post-close use, and native completion continuing from that session's work.",
+      "source": [
+        "common/src/testmod/java/space/controlnet/ae2federation/test/CraftingLifecycleGameTests.java:360",
+        "common/src/testmod/java/space/controlnet/ae2federation/test/crafting/CraftingLifecycleFixture.java:62",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/terminal/NativeTerminalSession.java:36",
+        "common/src/main/java/space/controlnet/ae2federation/crafting/terminal/NativeTerminalRequest.java:58"
+      ],
+      "evidence": "The fixture opens and later closes a real NativeTerminalSession, but LifecycleState.submit bypasses session.begin()/NativeTerminalRequest.submit() and directly invokes NativeCraftingRequester.handleCrafting against sourceService. The session is only recorded as an identity beside an independently submitted tracker job. No GameTest calls a post-close session API and observes rejection. Completion after close therefore does not prove that closing the session associated with submission is independent from that job.",
+      "requiredFix": "Submit the tested terminal work through the same session/request lifecycle that is closed, assert a public active API rejects use after close, and then correlate continued native completion and exact-cell delivery to that request."
+    },
+    {
+      "id": "extra-native-semantic-facts-do-not-fail-closed",
+      "planGrounding": "Task 29's exact evidence contract and this re-review require missing, duplicate, conflicting, extra, wrong-phase, and substituted authority/native facts to fail closed.",
+      "source": [
+        "gradle/federation-qa.gradle:4127",
+        "gradle/federation-qa.gradle:4133",
+        "gradle/federation-qa.gradle:8790"
+      ],
+      "evidence": "A fresh attempt copy gained only nativeFailure=true in native-craftingdisconnectrestart.properties and one matching AE2F_CRAFT_NATIVE_ENTRY line; run ID, canonical paths, timestamps, path identity, and artifact hashes were rebound. The dedicated consumer printed 'Task 29 native crafting lifecycle evidence verified' and exited zero. The parser accepts every non-base property when the mutable trace repeats it, and the built-in coordinated-lifecycle-forgery changes known identity fields but does not probe an extra native fact.",
+      "requiredFix": "Define an exact allowed native semantic field set per child, reject extra property/trace facts before semantic evaluation, and add a fully rebound extra-fact self-test with an exact Task 29 rejection reason."
+    }
+  ],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.cancel-native,crafting.disconnect-restart,crafting.reject-cycle,crafting.reject-replay,crafting.replace-requester -PevidenceDir=.omo/evidence/task-29-rereview --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; fresh result attempt-20260920T154857509Z",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-29-rereview/attempt-20260920T154857509Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceConsumer -PresultFile=.omo/evidence/task-29-rereview/attempt-20260920T154857509Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceSelfTest -PresultFile=.omo/evidence/task-29-rereview/attempt-20260920T154857509Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "Dedicated Task 29 consumer against coordinatedAttackRejected -> BUILD FAILED at federation-qa.gradle:4189 with 'Task 29 independent native authority correlation failed: craftingdisconnectrestart'",
+    "Dedicated Task 29 consumer against extraNativeFactAccepted -> BUILD SUCCESSFUL (unexpected acceptance)",
+    "./gradlew :neoforge-1.21.1:test --tests '*CraftingDependencyCycleGuardTest' --tests '*CraftingLifecycleContractTest' --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=terminal.native-crafting,terminal.native-result,terminal.missing-material,terminal.no-cpu,terminal.reject-async-world-access -PevidenceDir=.omo/evidence/task-27-task29-rereview --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceConsumer -PresultFile=.omo/evidence/task-27-task29-rereview/attempt-20260920T155340254Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> clean"
+  ],
+  "diagnosticsAndCleanup": "All eighteen changed/untracked Java files report zero LSP diagnostics. Product binary and source archives contain no Task 29 GameTest, authority-observer, or test-mixin classes/resources. GameTest runs cleaned their runtime trees and session locks; Gradle daemon cleanup was requested after verification.",
+  "repositoryScope": "Task 29 remains unchecked and uncommitted. This reviewer changed only this append-only problems.md report and ignored reviewer-owned evidence/attack copies; no production, tests, Gradle, manifest, docs, plan, knowledge, other notepad, index, history, issue, or PR was modified."
+}
+```
+
+## 2026-09-20T16:27:00Z Task 29 second re-review repair verification
+
+- Production registration/rebinding now runs through `NativeTerminalRequest.submitTracked`/`synchronizeTracked`; terminal
+  polling removes completed or canceled entries from both registry indexes before whole-level close.
+- The disconnect/restart case submits through the exact session request, closes that session, verifies post-close API
+  rejection, and observes the same UUID deliver 128 sticks into the exact preauthorized cell.
+- Task 29 child schemas are exact, and the adversarial self-test includes a fully rebound extra semantic fact.
+- Exact Task 29 runtime, persisted consumer, adversarial self-test, focused JUnit, Task 27 runtime/consumer, and strict
+  check/build/source/archive gates passed. Canonical result:
+  `.omo/evidence/task-29-final-repair/attempt-20260920T161953674Z/result.json`.
+
+## 2026-09-20T16:52:08Z Task 29 final independent re-review
+
+```json
+{
+  "type": "AdversarialVerify",
+  "task": 29,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "All three remaining Task 29 findings are closed. Production NativeTerminalRequest code now owns tracked registration/rebinding and terminal retirement reaches zero before closeLevel; the exact session-created request is submitted, its session is closed and rejects active use while the same UUID completes into the exact pre-authorized cell; and exact per-child schemas reject a fully rebound extra native field for the intended Task 29 reason. No Task 29 plan-grounded blocker remains.",
+  "freshEvidence": {
+    "task29": ".omo/evidence/task-29-final-rereview/attempt-20260920T164051682Z/result.json",
+    "extraFieldAttack": ".omo/evidence/task-29-atlas-final-repair/attempt-task29-final-rereview-extra-native-a8b79231-5aae-477c-b44d-d7ba7208fb10/result.json",
+    "task27": ".omo/evidence/task-27-task29-final-rereview/attempt-20260920T164513551Z/result.json",
+    "atlasFinal": ".omo/evidence/task-29-atlas-final-repair/attempt-20260920T163206824Z/result.json"
+  },
+  "closedFindings": [
+    {
+      "id": "terminal-request-retirement-remains-test-driven",
+      "result": "closed",
+      "evidence": "NativeTerminalRequest.submitTracked calls production synchronizeTracked, which derives the requester's one live tracker link and calls CraftingBindingService.synchronizeNativeRequest. The service derives PolicyKey plus requester lineage plus slot and the registry requires same UUID and actual tracker ownership for reload. reconcileAll and cardinality polling retire done/canceled links from both maps; active links survive visibility withdrawal. Fresh cancellation, completion, replay, and replacement paths emit retired only after both counts are zero, and replacement separately proves closeLevel.nativeRequestsRetired=0."
+    },
+    {
+      "id": "closed-session-is-not-the-submitting-session",
+      "result": "closed",
+      "evidence": "LifecycleState creates its NativeTerminalRequest with terminalSession.begin and submits only through that request's submitTracked path; no parallel direct initial submission remains. Disconnect/restart closes the originating session, verifies craftables() throws the closed-session error, preserves the same native UUID through managed-node/MultiCraftingTracker reload, and observes 128 accepted and physically inserted into the exact destination cell after closure."
+    },
+    {
+      "id": "extra-native-semantic-facts-do-not-fail-closed",
+      "result": "closed",
+      "evidence": "The verifier defines exact artifact/common/per-child semantic sets and requires exact equality for both property and trace key sets. A copied fresh attempt with nativeFailure=true in disconnect-restart properties plus matching final receipt, fully rebound run/path/timestamps/path identity/artifact hashes, and unchanged independent authority failed at federation-qa.gradle:4152 with 'Task 29 unexpected native semantic fact: craftingdisconnectrestart'. The built-in self-test contains both coordinated-lifecycle-forgery and extra-native-semantic-fact probes."
+    }
+  ],
+  "reconfirmed": [
+    "Exact-cell before/after ownership remains bound to the live destination, requester/link UUID, key, amount, accepted callback, and physical insertion hook.",
+    "Cancellation consumes and returns real material, restores visibility, retires authority, and completes a 40-tick late window without callback, insertion, or duplicate submission.",
+    "Reload/replay uses managed-node and MultiCraftingTracker serialization with one UUID; terminal links cannot rebind or resubmit.",
+    "Distinct same-coordinate replacement lineage cannot inherit or receive old work; only the authorized reloaded owner receives 128.",
+    "Reciprocal cycle rejection precedes backend discovery and native submission.",
+    "Independent lifecycle authority still rejects coordinated final-record identity substitution."
+  ],
+  "blockingFindings": [],
+  "commands": [
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.cancel-native,crafting.disconnect-restart,crafting.reject-cycle,crafting.reject-replay,crafting.replace-requester -PevidenceDir=.omo/evidence/task-29-final-rereview --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; attempt-20260920T164051682Z",
+    "./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-29-final-rereview/attempt-20260920T164051682Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceConsumer -PresultFile=.omo/evidence/task-29-final-rereview/attempt-20260920T164051682Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentyNineEvidenceSelfTest -PresultFile=.omo/evidence/task-29-final-rereview/attempt-20260920T164051682Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "Dedicated Task 29 consumer against extraFieldAttack -> BUILD FAILED at federation-qa.gradle:4152 with 'Task 29 unexpected native semantic fact: craftingdisconnectrestart'",
+    "./gradlew :neoforge-1.21.1:test --tests '*CraftingDependencyCycleGuardTest' --tests '*CraftingLifecycleContractTest' --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:federationVerify -Pcases=terminal.native-crafting,terminal.native-result,terminal.missing-material,terminal.no-cpu,terminal.reject-async-world-access -PevidenceDir=.omo/evidence/task-27-task29-final-rereview --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL; attempt-20260920T164513551Z",
+    "./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceConsumer -PresultFile=.omo/evidence/task-27-task29-final-rereview/attempt-20260920T164513551Z/result.json --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build :neoforge-1.21.1:sourcesJar :neoforge-1.21.1:verifySharedJarContent --dependency-verification=strict --no-configuration-cache -> BUILD SUCCESSFUL",
+    "GIT_MASTER=1 git diff --check -> clean",
+    "./gradlew --stop -> one daemon stopped"
+  ],
+  "diagnosticsAndCleanup": "All nineteen changed/untracked Java files report zero LSP diagnostics. Binary and source archives contain no Task 29 GameTest, authority-observer, or test-mixin classes/resources. No GameTest/Minecraft/Gradle process, run-gametest tree, or session.lock remains.",
+  "repositoryScope": "Task 29 remains unchecked and uncommitted. This reviewer changed only this append-only problems.md report plus ignored reviewer-owned evidence/attack copies; no production, test, Gradle, manifest, docs, plan, knowledge, other notepad, index, history, issue, or PR was modified."
 }
 ```

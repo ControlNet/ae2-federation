@@ -8,6 +8,7 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import net.minecraft.core.BlockPos;
@@ -150,6 +151,29 @@ public final class CraftingBindingFixture implements AutoCloseable {
         }
     }
 
+    public void restoreBridge() {
+        bridge.placeFirstBridge();
+        bindings().reconcileAll();
+    }
+
+    public boolean restoredBridgeReady() {
+        if (!bridge.firstBridgeReady()) {
+            bridge.refreshFirstBridge();
+            return false;
+        }
+        bindings().observeConnectedGrids(consumerGrid(), providerGrid());
+        return bindings().capability(key()).isPresent();
+    }
+
+    public PolicyKey reverseKey() {
+        return new PolicyKey(key().providerNetworkId(), key().consumerNetworkId(), PolicyCapability.CRAFTING);
+    }
+
+    public PolicyRevision enableReverse() {
+        return accepted(PolicyService.get(helper.getLevel()).edit(new PolicyEdit(reverseKey(), PolicyRevision.NONE,
+                PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST)))));
+    }
+
     public void removeProvider() {
         nativeSource.removeProvider();
         bindings().reconcileAll();
@@ -247,8 +271,30 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return sourceStorage().extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
     }
 
+    public long physicalOutputAmount() {
+        return sourcePhysicalStorage().extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
     public long materialAmount() {
         return sourceStorage().extract(inputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    public long physicalMaterialAmount() {
+        return sourcePhysicalStorage().extract(inputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    public void suspendCpu() {
+        sourceService().getCpus().stream().filter(cpu -> cpu.isBusy()).map(CraftingCPUCluster.class::cast)
+                .forEach(cpu -> cpu.craftingLogic.setJobSuspended(true));
+    }
+
+    public void resumeCpu() {
+        sourceService().getCpus().stream().filter(cpu -> cpu.isBusy()).map(CraftingCPUCluster.class::cast)
+                .forEach(cpu -> cpu.craftingLogic.setJobSuspended(false));
+    }
+
+    public long busyCpuCount() {
+        return sourceService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
     }
 
     public appeng.api.storage.MEStorage sourcePhysicalStorage() {
@@ -283,7 +329,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return bridge.outerGrid();
     }
 
-    private MEChestBlockEntity sourceChest() {
+    public MEChestBlockEntity sourceChest() {
         return bridge.providerChest();
     }
 
@@ -295,7 +341,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return AEItemKey.of(Items.OAK_PLANKS);
     }
 
-    private static AEItemKey outputKey() {
+    public static AEItemKey outputKey() {
         return AEItemKey.of(Items.STICK);
     }
 

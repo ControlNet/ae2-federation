@@ -452,3 +452,31 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Treat projection remounts as distinct authorities: capture the newly current projection only after topology settlement
   and before configuration, retain earlier authorized projections, and require every observed identity to be authorized.
 - Leave Task 28 unchecked and uncommitted pending independent re-review; introduce no Task 29 behavior.
+
+## 2026-09-20 Task 29
+
+- Retain native request authority across capability withdrawal in `CraftingBindingService`; clear it at level closure.
+- Reject rebinding one native crafting UUID to another policy/requester-node/slot authority. Same coordinates do not imply
+  requester continuity.
+- Reject enabled reciprocal/transitive Crafting request cycles before native backend reconciliation. Add no Federation
+  scheduler, queue, result ledger, or result buffer.
+
+## 2026-09-20 Task 29 independent-review repair
+
+- Keep active request ownership in a dedicated bounded registry with one key entry and one UUID entry. Permit an atomic
+  object rebind only for a loaded tracker link with the same policy, lineage, slot, and UUID; never infer continuity from
+  coordinates or UUID alone.
+- Treat capability visibility and native job lifetime as separate concerns. Bridge withdrawal invalidates capability access
+  but does not cancel or retire active work; only native terminal state, requester retirement, or level close retires it.
+- Establish evidence authority before submission and extend it only through native tracker, CPU, requester callback, and
+  exact physical-cell hooks. Semantic properties remain a presentation channel and cannot authorize themselves.
+- Keep Task 29 unchecked and uncommitted; this repair does not implement Task 30 or introduce Federation scheduling state.
+
+## 2026-09-20 Task 29 second re-review repair
+
+- Register tracked native work from `NativeTerminalRequest`, rebind it through that same request after requester reload, and
+  retire terminal links by polling AE2's `ICraftingLink`; fixture-only synchronization is not lifecycle authority.
+- Require the disconnect/restart proof to plan and submit through the exact session request that is later closed. Session
+  closure invalidates session APIs only and must not cancel or own the native job or its result.
+- Give every Task 29 child an exact semantic field set and reject unknown property or trace facts before semantic values.
+  Retain both coordinated identity forgery and fully rebound extra-fact adversarial probes.

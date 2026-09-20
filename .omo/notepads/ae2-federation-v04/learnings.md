@@ -703,3 +703,36 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   Persist an exact set of independently authorized projection identities and verify observed identities are a nonempty
   subset; equality incorrectly rejects authorized but unused projections.
 - Repaired evidence is `.omo/evidence/task-28-authority-repair/attempt-20260920T115809462Z/result.json`.
+
+## 2026-09-20 Task 29 native crafting lifecycle
+
+- Federation retains only native requester/link authority keyed by policy, requester node lineage, and tracker slot;
+  cancellation and completion remain live `ICraftingLink` state.
+- Bridge removal withdraws capability visibility without canceling native work. Reloaded `MultiCraftingTracker` NBT keeps
+  the same native UUID, rejects duplicate submission, and delivers the result into physical ME cell storage.
+- Crafting policy cycles are rejected before backend discovery by testing provider-to-consumer reachability for each edge.
+- Canonical evidence is `.omo/evidence/task-29/attempt-20260920T130507949Z/result.json`.
+
+## 2026-09-20 Task 29 independent-review repair
+
+- UUID continuity is necessary but insufficient for reload authority. Rebinding also requires the same policy, requester
+  node lineage, tracker slot, and a live loaded `MultiCraftingTracker` containing that exact link.
+- Native result delivery is chunked. Independent evidence must accumulate callback acceptance and exact physical cell
+  insertion to the requested total; requiring one 128-item callback falsely rejects the real AE2 path.
+- A cancellation can return partially crafted intermediates to source storage. Replay proof therefore distinguishes those
+  native returns from delivery of the requested result and suspends execution before serialization when zero result
+  insertion is the property under test.
+- Final repaired evidence is
+  `.omo/evidence/task-29-repair-final-9/attempt-20260920T145510366Z/result.json`; fresh Task 9/19/26/27/28 regressions are
+  retained under the matching `task-*-task29-repair-regression` roots.
+
+## 2026-09-20 Task 29 second re-review repair
+
+- Registration must be owned by the real terminal request path, not a test fixture. `submitTracked` can retain AE2's real
+  `MultiCraftingTracker` as the submitter while binding the resulting owner/link under the captured terminal snapshot.
+- Terminal cleanup does not require a Federation callback state machine. Polling live `ICraftingLink` terminal state while
+  reconciling or querying cardinality removes both request-key and UUID-owner entries before level close.
+- Exact evidence schemas must compare both property names and runtime trace fact names against a child-specific set before
+  comparing values; otherwise a fully rebound extra property and trace line remain self-authorizing.
+- Final evidence is `.omo/evidence/task-29-final-repair/attempt-20260920T161953674Z/result.json`; the fresh Task 27 regression
+  is `.omo/evidence/task-27-task29-final-repair/attempt-20260920T162342556Z/result.json`.

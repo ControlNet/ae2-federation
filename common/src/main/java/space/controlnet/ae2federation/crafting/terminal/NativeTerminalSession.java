@@ -9,13 +9,14 @@ import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.crafting.binding.CraftingSubmissionSnapshot;
 
-public final class NativeTerminalSession {
+public final class NativeTerminalSession implements AutoCloseable {
     private final ServerLevel level;
     private final Thread serverThread;
     private final CraftingBindingService authority;
     private final CraftingSubmissionSnapshot snapshot;
     private final IActionSource actionSource;
     private final Set<AEKey> craftables;
+    private boolean closed;
 
     NativeTerminalSession(ServerLevel level, CraftingBindingService authority, CraftingSubmissionSnapshot snapshot,
             IActionSource actionSource, Set<AEKey> craftables) {
@@ -28,12 +29,12 @@ public final class NativeTerminalSession {
     }
 
     public Set<AEKey> craftables() {
-        requireServerThread();
+        requireActive();
         return craftables;
     }
 
     public Optional<NativeTerminalRequest> begin(AEKey output, long amount) {
-        requireServerThread();
+        requireActive();
         Objects.requireNonNull(output);
         if (amount <= 0) {
             throw new IllegalArgumentException("Native terminal amount must be positive");
@@ -45,12 +46,35 @@ public final class NativeTerminalSession {
     }
 
     public CraftingSubmissionSnapshot snapshot() {
+        requireActive();
         return snapshot;
+    }
+
+    public boolean isClosed() {
+        requireServerThread();
+        return closed;
+    }
+
+    @Override
+    public void close() {
+        requireServerThread();
+        closed = true;
     }
 
     private void requireServerThread() {
         if (Thread.currentThread() != serverThread) {
             throw new IllegalStateException("Native terminal session is server-thread owned");
+        }
+    }
+
+    private void requireActive() {
+        requireServerThread();
+        requireOpen();
+    }
+
+    private void requireOpen() {
+        if (closed) {
+            throw new IllegalStateException("Native terminal session is closed");
         }
     }
 }

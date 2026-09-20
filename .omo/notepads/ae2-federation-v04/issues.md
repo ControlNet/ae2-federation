@@ -494,3 +494,33 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   genuine projection replacement after the fluid Interface or contention consumers join and remount storage.
 - Fresh exact producer, generic/dedicated consumers, adversarial self-test, focused regressions, and strict build/archive
   checks pass. Groovy LSP remains unavailable; executable Gradle validation covers the verifier.
+
+## 2026-09-20 Task 29 resolution
+
+- Exact five-case native QA, current-source persisted consumption, twelve adversarial probes, strict build, Java
+  diagnostics, and runtime cleanup pass.
+- Dedicated persisted consumer/self-test commands require `--no-configuration-cache` because Gradle cannot serialize
+  reflected primitive `long` metadata in the shared verifier closure graph.
+
+## 2026-09-20 Task 29 independent-review repair resolution
+
+- Resolved: active request authority is bounded and indexed by both exact request key and native crafting UUID. Terminal
+  synchronization, requester retirement, and level close remove both indexes with checked cardinality.
+- Resolved: terminal closure now invokes a real `AutoCloseable` session lifecycle, while submitted native work survives
+  visibility withdrawal and completes through the reloaded requester into the preauthorized physical cell.
+- Resolved: the five native cases now cover consumption, completion/cancellation, NBT reload, same-UUID no-resubmit,
+  distinct-lineage replacement, bounded late-event windows, and pre-discovery cycle rejection.
+- Resolved: independent lifecycle receipts are emitted from native tracker/CPU/callback/cell hooks and reject the
+  coordinated semantic identity forgery. Task 27's receipt parser has a unique closure name and its fresh five-case
+  regression passes.
+
+## 2026-09-20 Task 29 second re-review resolution
+
+- Resolved: `NativeTerminalRequest.submitTracked` is now the production registration caller and `synchronizeTracked` owns
+  same-lineage reload rebinding; fixture synchronization and requester-retirement calls were removed.
+- Resolved: completed/canceled native links are polled out of both indexes before `closeLevel`; replacement completion now
+  proves zero request and UUID-owner cardinality before separately asserting that level close retires zero requests.
+- Resolved: disconnect/restart uses the exact session's returned request for submission, rejects post-close `craftables()`
+  with `IllegalStateException`, and then completes the same UUID into the exact authorized physical cell.
+- Resolved: Task 29 verifier enforces exact child-specific semantic schemas and its self-test rejects a fully rebound extra
+  `nativeFailure=true` fact with `Task 29 unexpected native semantic fact`.

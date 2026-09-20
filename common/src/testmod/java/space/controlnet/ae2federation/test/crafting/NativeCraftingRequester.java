@@ -35,6 +35,7 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
     private int stateChanges;
     private boolean observedDone;
     private boolean observedCanceled;
+    private boolean closed;
 
     public NativeCraftingRequester(Level level, BlockPos position, MEStorage destination) {
         this(level, position, destination, null, null);
@@ -42,8 +43,12 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
 
     public NativeCraftingRequester(Level level, BlockPos position, MEStorage destination, NetworkId networkId,
             CompoundTag persistedState) {
+        this(level, position, destination, networkId, persistedState, networkId == null);
+    }
+
+    public NativeCraftingRequester(Level level, BlockPos position, MEStorage destination, NetworkId networkId,
+            CompoundTag persistedState, boolean inWorld) {
         this.destination = destination;
-        var inWorld = networkId == null;
         managedNode = GridHelper.createManagedNode(this, LISTENER)
                 .setTagName("gn")
                 .setInWorldNode(inWorld)
@@ -139,6 +144,10 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
         return actionSource;
     }
 
+    public boolean isClosed() {
+        return closed;
+    }
+
     @Override
     public ImmutableSet<ICraftingLink> getRequestedJobs() {
         return tracker.getRequestedJobs();
@@ -146,15 +155,18 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
 
     @Override
     public long insertCraftedItems(ICraftingLink link, AEKey what, long amount, Actionable mode) {
+        CraftingLifecycleAuthorityObservation.recordCallbackStart(this, link, what, amount, mode);
         var accepted = destination.insert(what, amount, mode, actionSource);
         if (mode == Actionable.MODULATE) {
             acceptedAmount += accepted;
         }
+        CraftingLifecycleAuthorityObservation.recordCallbackAccepted(this, link, what, amount, mode, accepted);
         return accepted;
     }
 
     @Override
     public void jobStateChange(ICraftingLink link) {
+        CraftingLifecycleAuthorityObservation.recordTerminal(this, link);
         stateChanges++;
         observedDone |= link.isDone();
         observedCanceled |= link.isCanceled();
@@ -168,6 +180,9 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
 
     @Override
     public void close() {
-        managedNode.destroy();
+        if (!closed) {
+            managedNode.destroy();
+            closed = true;
+        }
     }
 }

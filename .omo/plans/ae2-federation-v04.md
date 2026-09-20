@@ -413,7 +413,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=automation.interface-stock,automation.crafting-card,automation.native-buses,automation.reject-duplicate-demand,automation.contention -PevidenceDir=.omo/evidence/task-28`.
   - Commit: proposed `test(automation): qualify native stocking and buses`.
 
-- [ ] 29. Close Crafting cancellation, cycles, disconnect and native reload lifecycle
+- [x] 29. Close Crafting cancellation, cycles, disconnect and native reload lifecycle
   - Work: bind necessary native request references across actual service/node lifecycle as proven in task 9. Cycle detection protects capability/request dependency without becoming a scheduler. Separate lost visibility from native task failure; reactivation cannot resubmit already-existing native work. Retain only necessary mapping to native link/state; no default result buffer.
   - References: D6.5-6.6,15,T-F07..08,T-R01..05,T-G12; A-craft. Depends on 19,26.
   - Acceptance: native cancel semantics preserved after material consumption; closed UI does not lose results; disconnect/restart/different same-coordinate node cannot cause duplicate job or wrong result owner.

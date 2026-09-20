@@ -1,14 +1,19 @@
 package space.controlnet.ae2federation.crafting.binding;
 
 import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingProvider;
-import java.util.HashMap;
+import appeng.api.networking.crafting.ICraftingRequester;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -22,7 +27,8 @@ public final class CraftingBindingService implements AutoCloseable {
     private final ServerLevel level;
     private final CraftingFabricObserver fabrics;
     private final NativeCraftingBackendRegistry backends = new NativeCraftingBackendRegistry();
-    private final Map<PolicyKey, CraftingCapabilityBinding> bindings = new HashMap<>();
+    private final Map<PolicyKey, CraftingCapabilityBinding> bindings = new java.util.HashMap<>();
+    private final NativeCraftingRequestRegistry nativeRequests = new NativeCraftingRequestRegistry();
     private int publications;
     private int withdrawals;
 
@@ -50,9 +56,13 @@ public final class CraftingBindingService implements AutoCloseable {
         var service = SERVICES.remove(level);
         var active = service == null ? 0 : service.bindings.size();
         if (service != null) {
+            service.nativeRequests.retireTerminal();
+        }
+        var nativeRequests = service == null ? 0 : service.nativeRequests.requestCount();
+        if (service != null) {
             service.close();
         }
-        return new CloseReceipt(service != null, active);
+        return new CloseReceipt(service != null, active, nativeRequests);
     }
 
     public void observeConnectedGrids(IGrid first, IGrid second) {
@@ -67,9 +77,24 @@ public final class CraftingBindingService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        nativeRequests.retireTerminal();
         var desired = fabrics.relationships();
-        List.copyOf(bindings.keySet()).stream().filter(key -> !desired.containsKey(key)).forEach(this::remove);
-        desired.values().forEach(this::reconcile);
+        var policies = PolicyService.get(level);
+        var eligible = new HashSet<PolicyKey>();
+        for (var key : desired.keySet()) {
+            var configured = policies.configured(key).orElse(null);
+            if (configured != null && configured.rule().enabled()
+                    && configured.rule().operations().contains(PolicyOperation.REQUEST)) {
+                eligible.add(key);
+            }
+        }
+        var cyclic = CraftingDependencyCycleGuard.cyclicKeys(eligible);
+        List.copyOf(bindings.keySet()).stream()
+                .filter(key -> !eligible.contains(key) || cyclic.contains(key))
+                .forEach(this::remove);
+        desired.values().stream()
+                .filter(relationship -> eligible.contains(relationship.key()) && !cyclic.contains(relationship.key()))
+                .forEach(this::reconcile);
     }
 
     public Optional<CraftingCapabilityBinding> capability(PolicyKey key) {
@@ -126,6 +151,36 @@ public final class CraftingBindingService implements AutoCloseable {
         return true;
     }
 
+    public Optional<NativeCraftingRequestBinding> synchronizeNativeRequest(CraftingSubmissionSnapshot snapshot,
+            IGridNode requesterNode, int slot, ICraftingRequester requester, ICraftingLink link) {
+        if (requesterNode.getGrid() != snapshot.sourceGrid()
+                || requester.getActionableNode() != requesterNode) {
+            return Optional.empty();
+        }
+        var lineage = snapshot.sourceGrid().getService(NetworkIdentityService.class).lineage(requesterNode);
+        var key = new NativeCraftingRequestKey(snapshot.binding().relationship().key(), lineage.nodeId(), slot);
+        return nativeRequests.synchronize(key, requester, link, submissionAuthorityCurrent(snapshot));
+    }
+
+    public int retireNativeRequester(ICraftingRequester requester) {
+        var node = requester.getActionableNode();
+        return node == null || !node.isActive() ? nativeRequests.retireRequester(requester) : 0;
+    }
+
+    public Optional<NativeCraftingRequestBinding> nativeRequest(NativeCraftingRequestKey key) {
+        return nativeRequests.get(key);
+    }
+
+    public int nativeRequestCount() {
+        nativeRequests.retireTerminal();
+        return nativeRequests.requestCount();
+    }
+
+    public int nativeLinkOwnerCount() {
+        nativeRequests.retireTerminal();
+        return nativeRequests.linkOwnerCount();
+    }
+
     public int relationshipCount() {
         return bindings.size();
     }
@@ -142,6 +197,7 @@ public final class CraftingBindingService implements AutoCloseable {
     public void close() {
         withdrawals += bindings.size();
         bindings.clear();
+        nativeRequests.close();
         backends.clear();
         fabrics.clear();
     }
@@ -214,6 +270,6 @@ public final class CraftingBindingService implements AutoCloseable {
         }
     }
 
-    public record CloseReceipt(boolean servicePresent, int bindingsWithdrawn) {
+    public record CloseReceipt(boolean servicePresent, int bindingsWithdrawn, int nativeRequestsRetired) {
     }
 }
