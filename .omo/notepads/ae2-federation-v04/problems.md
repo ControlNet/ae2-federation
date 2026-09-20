@@ -327,6 +327,15 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 }
 ```
 
+## 2026-09-20T12:15:00+10:00 Task 25 review correction result
+
+- Independent review finding accepted: `a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4` is the matching AppFlux 2.1.4
+  revision, not the later 2.1.5 commit used by the original dossier.
+- Real isolated NeoForge execution loaded Applied Flux 2.1.4, GuideME 21.1.1, and Glodium 2.2, then passed registered key,
+  generic codec, native filters, registered FE cell, long insert/list/extract, and AE-power-isolation assertions.
+- The corrected producer now writes an ordinary complete five-case report; generic consumption, dedicated current-identity
+  consumption, and adversarial mutation rejection all pass. Task 25 remains unchecked as required.
+
 ## 2026-09-20 Task 24 fourth-gate repair result
 
 - Hub overflow now independently closes both exact no-op registrations before removing the service catalog.
@@ -339,6 +348,20 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   independently before the full retry.
 - Evidence: `.omo/evidence/task-24-fourth-repair-final/attempt-20260919T235419263Z/result.json`.
 - Task 24 remains unchecked pending independent acceptance.
+
+## 2026-09-20T11:04:56+10:00 Task 25 BLOCKED
+
+- `resources.stored-fe` cannot honestly pass: the exact published Applied Flux 2.1.4 artifact is checksum-identifiable, and
+  commit `474bd48230de391bca29b0bfd9d6bd5410c4ec79` proves the required native FE key implementation at source version
+  2.1.5, but no evidence binds that JAR to an exact source commit.
+- Resolution requires a trustworthy artifact-to-source attestation or reproducible build for the exact published JAR.
+  Until then, no addon binary, Maven coordinate, class linkage, synthetic FE key, or FE-to-AE-power conversion is admitted.
+
+## 2026-09-20T11:24:11+10:00 Task 25 verification result
+
+- The blocker is reproducible and isolated rather than a test failure: all four supported native cases, persisted BLOCKED
+  consumption, adversarial self-test, strict build, release isolation, Task 21, Task 24, diagnostics, and cleanup passed.
+  Task 25 remains unchecked and `resources.stored-fe` remains honestly BLOCKED.
 
 ## 2026-09-20 Task 23 chain sharing
 
@@ -2327,5 +2350,135 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
     "reviewerRepositoryEdits": "only this append-only problems.md report and ignored .omo/evidence/task-24-fifth-gate reviewer drivers/results"
   },
   "scope": "Task 24 remains unchecked and uncommitted. No production code, tests, Gradle, manifest, plan, Boulder state, Git index/history, issue, PR, or Task 25+ behavior was changed by this reviewer."
+}
+```
+
+## 2026-09-20T11:47:13+10:00 Task 25 independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 25,
+  "verdict": "needs-fix",
+  "confidence": 0.99,
+  "summary": "The four native cases, BLOCKED report mechanics, dedicated consumer, mutation matrix, generic-consumer rejection, strict build, default isolation, diagnostics, and cleanup are sound. Task 25 cannot be accepted as BLOCKED because authoritative ordinary release/source correlation identifies public commit a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4 as the matching Applied Flux 2.1.4 source. Requiring a reproducible-build or explicit commit attestation exceeds the written plan's verify-source/license/artifact requirement.",
+  "freshArtifact": ".omo/evidence/task-25-independent-review/attempt-20260920T014207748Z/result.json",
+  "blockingFinding": {
+    "id": "matching-2.1.4-source-revision-ignored",
+    "severity": "blocking-classification",
+    "evidence": [
+      "Modrinth project oMgZ004U is owned by GlodBlock and names https://github.com/GlodBlock/ExtendedAE as its source repository; version sD979rMC is Applied Flux 1.21-2.1.4-neoforge, published 2026-02-20.",
+      "Upstream branch appflux/1.21.1-neoforge commit a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4 is the explicit 2.1.3 -> 2.1.4 version bump and contains mod_id=appflux, AppliedFlux, LGPL-3.0, Minecraft 1.21.1, and the matching NeoForge/AE2 metadata.",
+      "The downloaded artifact is exactly 337796 bytes with SHA-1 741e856b0c928fc15b59e92d98ea75ef98541ee8, SHA-256 2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555, and SHA-512 5dc7119bf192ee798b65dea7f28e279b74ef371a8e59f5147518dd7cddfcc3d45fd6161ce48815ff07f756a3226819f0ca03f62c8549dfe4d8ecc6191f70bd64; its embedded version/license/dependency metadata matches the 2.1.4 source.",
+      "The JAR resource timestamps are 2026-01-07, the date of a54eafb7, and its resource set omits pt_br.json. The only later 2.1.4 branch change before publication is commits 51c8d97b/e4afc550 adding exactly pt_br.json, so the artifact state narrows to the public a54eafb7 source revision rather than the later 2.1.5 commit 474bd482.",
+      "Javap inspection of FluxKeyType, FluxKey, EnergyType, AFRegistryHandler, and FluxCellInventory matches the a54eafb7 source: FluxKeyType extends AEKeyType, AEKeyTypes.register installs TYPE, FluxKey.of(EnergyType.FE) is real, serialization uses the native codec, and cell quantities/insert/extract/listing use long.",
+      "The similarly named GitHub tag/release is correctly rejected as unrelated ExtendedAE: tag 35562a7b publishes ExtendedAE-1.21-2.1.4-neoforge.jar, not the Modrinth Applied Flux artifact."
+    ],
+    "requiredFix": "Replace the 2.1.5-only dossier analysis with the matching a54eafb7 2.1.4 source correlation, then run resources.stored-fe against the isolated verified artifact and its required dependencies. Prove the real appflux:flux key, FE identity, codec/filter behavior, and cell-backed long storage. Do not mark the case PASS from source inspection alone."
+  },
+  "nativeReview": {
+    "itemFluid": "Two component-distinct AEItemKey values, generic AEKey tag round-trips, native type and exact-key filters, independent 7/11 item quantities, and 5000 -> simulated 1250 -> modulated 3750 millibucket fluid behavior executed successfully.",
+    "storageDelegate": "ResourceStorageFixture takes the first ME Chest provider mount; pinned AE2 19.2.17 MEChestBlockEntity.mountInventories mounts exactly one non-null cellHandler when online, so the selected delegate is the installed physical item/fluid cell inventory rather than an unrelated Grid mount.",
+    "overflow": "The repository-owned NativeResourceAmounts.checkedAdd rejects Long.MAX_VALUE+1 and negative input and accepts Long.MAX_VALUE exactly. The native storage receives Long.MAX_VALUE only in SIMULATE, is required merely to return non-negative capacity, and remains empty; no claim says native storage accepted Long.MAX_VALUE.",
+    "optionalAbsence": "The default runtime checks class-resource absence, Class.forName absence, missing AEKeyTypes appflux:flux registration, and no appflux namespace key without constructing a substitute.",
+    "powerIsolation": "A real AE2 EnergyCellBlockEntity implementing IAEPowerStorage is charged to 1000, a separate physical item-cell delegate modulates 64 redstone, and the native AE power reading remains 1000; no FE key or conversion is synthesized."
+  },
+  "evidenceReview": {
+    "report": "Fresh schema-3 status BLOCKED, parentExit=1, exact five requested/executed cases, four passed assertions, one blocked stored-FE assertion, four zero child exits, no timeout, and no surviving descendants.",
+    "identity": "Dedicated consumption verified run/path identity, every artifact hash, current source/diff identity, dependency verification metadata hash, and product JAR hash.",
+    "mutations": "All 12 completed-looking, stored-FE-pass, case-label, source-version, artifact-hash, fake-key, provenance-claim, stale-artifact, canned-identity, quantity-type, conversion, and optional-leak probes rejected for their intended reasons.",
+    "genericConsumer": "federationVerifyEvidence rejected the BLOCKED report as incomplete/unsupported, so it cannot forge ordinary completion."
+  },
+  "verification": [
+    "Exact five-case federationVerify with strict dependency verification and warning-mode fail: expected nonzero parent after four serial native child successes; fresh BLOCKED report persisted.",
+    "federationTaskTwentyFiveEvidenceConsumer plus federationTaskTwentyFiveEvidenceSelfTest with warning-mode fail: BUILD SUCCESSFUL.",
+    "Generic federationVerifyEvidence: expected BUILD FAILED with 'Result report is incomplete or has an unsupported schema'.",
+    "ResourceQualificationContractTest, check, build, sourcesJar, and verifySharedJarContent with strict dependency verification and warning-mode fail: BUILD SUCCESSFUL.",
+    "runtimeClasspath dependencyInsight found no appflux dependency; appliedFluxCompatibility is non-resolvable and has no dependencies; binary/source JAR byte scans found zero Applied Flux class, binary, or hard-linkage strings.",
+    "All six changed/untracked Task 25 Java files plus FederationTestMod report zero LSP diagnostics; git diff --check passes."
+  ],
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTree": "neoforge-1.21.1/run-gametest absent",
+    "sessionLock": "none",
+    "mutationAttempts": "none remain under the fresh evidence root",
+    "addonJarInRepository": "none",
+    "reviewDownload": "checksum-verified artifact removed after inspection"
+  },
+  "scope": "Task 25 remains unchecked. Reviewer changed only this append-only report and generated ignored reviewer evidence/build outputs; no production code, tests, Gradle, manifest, docs, plan, Boulder state, dependency metadata, Git index/history, issue, or PR was changed."
+}
+```
+
+## 2026-09-20T12:57:55+10:00 Task 25 second independent adversarial acceptance gate
+
+```json
+{
+  "type": "IndependentAdversarialAcceptance",
+  "task": 25,
+  "verdict": "confirmed",
+  "confidence": 0.99,
+  "summary": "The prior matching-source blocker is closed. Fresh independent execution proves all five canonical cases, including direct strongly linked Applied Flux 2.1.4 registration, native FE codec/filter identity, a registered FE_CELL_256M inventory, exact long-valued simulation/modulation/listing/extraction, unchanged real AE power, and addon-free default execution. Persisted evidence, current identity, mutation rejection, strict dependency verification, default/archive isolation, builds, diagnostics, and cleanup all pass.",
+  "priorFinding": {
+    "id": "matching-2.1.4-source-revision-ignored",
+    "status": "closed",
+    "proof": [
+      "GitHub commit a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4 is independently confirmed as the one-file 2.1.3 to 2.1.4 version bump on appflux/1.21.1-neoforge; its tree declares AppliedFlux, Minecraft 1.21.1, NeoForge [21.1.113,), AE2 [19.2.2-beta,), GuideME, Glodium, and LGPL-3.0.",
+      "Official Modrinth project oMgZ004U links https://github.com/GlodBlock/ExtendedAE, declares LGPL-3.0-only, and version sD979rMC publishes AppliedFlux-1.21-2.1.4-neoforge.jar at 337796 bytes with matching SHA-1 and SHA-512. Resolved SHA-256 is 2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555.",
+      "The dossier correctly calls this authoritative ordinary source-artifact correlation and explicitly disclaims reproducible-build or cryptographic source-to-binary identity."
+    ]
+  },
+  "dependencies": {
+    "coordinates": [
+      "maven.modrinth:appflux:1.21-2.1.4-neoforge",
+      "org.appliedenergistics:guideme:21.1.1",
+      "maven.modrinth:glodium:1.21-2.2-neoforge"
+    ],
+    "resolvedJarSha256": {
+      "appflux": "2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555",
+      "guideme": "62229015025b7c0a741590b626b6719631f6b8a945c483ece12e7035d4fd903d",
+      "glodium": "369e99753df0bdc90a38a8c52df4abb37baf6b18c6ca130af4c7bc75fb160a85"
+    },
+    "resolvedPomSha256": {
+      "appflux": "66f1bd747e6bc4a4961e93601fdf7679a456bb0af75cd755377ce68e0c868c43",
+      "guideme": "53b1dadb42150bad4d50f9021d9c1e5f6714b0bf556ea95a33bf9485476200df",
+      "glodium": "eb0e400482989aca2ac0a682e768a7e6096e5e21122fddbe6af36a3f7d74ef7e"
+    },
+    "verification": "Strict metadata pins each exact JAR and POM. No trusted-artifact wildcard, regex trust, key trust, or also-trust rule exists. federationAppliedFluxCompatibility resolved exactly the three expected JARs."
+  },
+  "freshEvidence": {
+    "result": ".omo/evidence/task-25-independent-rerun/attempt-20260920T025048988Z/result.json",
+    "schemaVersion": 3,
+    "status": "complete",
+    "parentExit": 0,
+    "requestedExecuted": "the exact five canonical cases in manifest order",
+    "childExits": "five zero exits; no execution timeout, shutdown timeout, or surviving descendant",
+    "storedFe": {
+      "binding": "direct imports of AppFlux API classes; runtime loaded AppliedFlux 1.21-2.1.4-neoforge and Glodium 1.21-2.2-neoforge",
+      "key": "AEKeyTypes.get(appflux:flux) returned FluxKeyType.TYPE; generic AEKey round-trip preserved EnergyType.FE; native type filter accepted FE and rejected item; exact filter rejected GTEU",
+      "cell": "StorageCells.getCellInventory(FE_CELL_256M) returned FECellInventory and FECellHandler recognized the registered cell",
+      "amounts": "inserted/listed 4294967311; simulated/modulated extraction 1073741829; remaining 3221225482; simulation left inventory unchanged; all native long values exceed int where intended",
+      "power": "real EnergyCellBlockEntity remained exactly 1000 AE before and after; unitConversion=none and coupled=false"
+    },
+    "optionalAbsence": "The addon-free child ran before the compatibility child in a separate finalized process and proved no AppFlux class, registered key type, namespace key, or substitute. The later compatibility child used a distinct run directory and classloader process.",
+    "identity": "Artifact hashes, path/run binding, source revision, dirty identity, dependency metadata hash, product JAR hash, manifest IDs, and assertion counts validated against the current worktree."
+  },
+  "adversarialEvidence": {
+    "builtIn": "Generic consumer, current-identity Task 25 consumer, and Task 25 self-test passed with warning mode fail. Mutations for incomplete report, missing addon child, case substitution, wrong source version/commit and artifact hash, fake key, overstated provenance, stale artifact, canned/truncated quantities, codec/filter/reflection bypass, FE-power coupling, component identity, wrong quantity type, unit conversion, and optional leakage were rejected for their intended reasons.",
+    "reviewerAttack": "A copied and fully path-rebound report with only sourceRevision made stale was rejected with 'Result source, dependency, or product identity is stale'; the mutation attempt was then removed."
+  },
+  "isolation": {
+    "configuration": "Only appfluxTestImplementation extends appliedFluxCompatibility. Default compileClasspath, runtimeClasspath, and testmodRuntimeClasspath dependencyInsight found no AppFlux or Glodium dependency.",
+    "archives": "Strict build, sourcesJar, and verifySharedJarContent passed. Entry and byte scans of binary and source JARs found no appflux, glodium, FluxKey, FECellInventory, or com/glodblock/github linkage.",
+    "diagnostics": "NativeResourceAmounts, ResourceQualificationContractTest, FederationTestMod, both resource GameTest classes, ResourceEvidence, and ResourceStorageFixture report zero LSP diagnostics."
+  },
+  "cleanup": {
+    "gameTestProcess": "none",
+    "runtimeTrees": "run-gametest and run-appflux-gametest absent",
+    "sessionLock": "none",
+    "mutationAttempts": "none",
+    "addonJarsInRepository": "none",
+    "diffCheck": "passed"
+  },
+  "scope": "Task 25 remains unchecked and uncommitted. Reviewer changed only this append-only report and ignored .omo/evidence/task-25-independent-rerun evidence; no production code, tests, Gradle, dependency metadata, manifest, docs, plan, Boulder state, Git index/history, issue, or PR was changed. Task 21 was not rerun because no storage-authority path changed; Task 24 was not rerun because no subscription integration path changed."
 }
 ```

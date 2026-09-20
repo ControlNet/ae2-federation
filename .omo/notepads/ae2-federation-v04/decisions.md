@@ -380,3 +380,21 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   listener identity only to the active trace selected by the accepting ledger.
 - Require persisted evidence for both real registration-order paths, two exact overflow removals, inert retained callbacks,
   fresh recovered IDs, a real post-recovery event/delivery, and zero final service catalogs.
+
+## 2026-09-20T11:04:56+10:00 Task 25 resource qualification
+
+- Keep Applied Flux off every default and compatibility classpath until a published artifact is exactly mapped to source.
+  The isolated `appliedFluxCompatibility` configuration is intentionally empty and non-resolvable while blocked.
+- Use no production addon adapter: AE2 already owns native key registration, serialization, filtering, and storage. Add only
+  a generic non-negative checked-long arithmetic boundary under `storage/resources/`.
+- Represent `resources.stored-fe` as a source-bound BLOCKED assertion while running the other four cases as real GameTests;
+  do not let a factual source inspection become a native stored-FE PASS.
+
+## 2026-09-20T12:15:00+10:00 Task 25 Applied Flux correction
+
+- Supersede the earlier BLOCKED decision using matching commit `a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4` and
+  authoritative ordinary correlation. Continue to disclaim reproducible-build or cryptographic binary identity.
+- Resolve Applied Flux, GuideME, and Glodium only through `appliedFluxCompatibility` and compile/run `appfluxTest` only in
+  the dedicated compatibility process. Default main, testmod, runtime, and archives remain addon-free.
+- Require five zero-exit native children and use the ordinary schema-v3 completed consumer. Keep Task 25-specific adversarial
+  rejection for provenance, real addon execution, codec/filter identity, long quantities, coupling, and optional absence.

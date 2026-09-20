@@ -411,6 +411,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - The first successful isolated cycle emitted native evidence but the outer verifier reported `executed=[]`; the chain
   cases were missing from the generic evidence-accounting switch. Registering all five canonical IDs restored accounting.
 
+## 2026-09-20T11:04:56+10:00 Task 25 resource qualification
+
+- Modrinth `sD979rMC` publishes no dependency records although its JAR metadata requires AE2, GuideME, and Glodium.
+- The inspected commit is a 2.1.5 version bump, while the candidate artifact is 2.1.4. No reproducible-build metadata or
+  exact commit attestation was found, so adding the artifact coordinate or verification metadata would overstate support.
+
 ## 2026-09-20T08:36:00+10:00 Task 24 third-gate repair
 
 - The previous known-key masking proof began both physical sources with iron, so it did not exercise discovery for an
@@ -420,3 +426,12 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   retires all listeners for that service, removes its catalog, increments a diagnostic receipt, and permits clean recovery.
 - `DirectSubscriptionFixture.close()` previously let `assertConsumedAndClose()` bypass bridge and hook cleanup. Cleanup now
   runs in `finally`, and the native boundary case proves snapshot, registration, and trace hooks remain inert after failure.
+
+## 2026-09-20T12:15:00+10:00 Task 25 Applied Flux correction
+
+- The earlier BLOCKED classification inspected the wrong later source revision. Independent review identified the matching
+  2.1.4 bump commit, so the blocker was removed only after a real isolated addon runtime passed.
+- Modrinth declares no dependencies for `sD979rMC`; its embedded NeoForge metadata is authoritative for required GuideME and
+  Glodium runtime presence. Both are now pinned explicitly under strict dependency verification.
+- The generic native accounting verifier originally required inserted and extracted totals to match. Stored FE intentionally
+  proves a non-empty final quantity, so only that case opts into truthful unequal-work accounting.

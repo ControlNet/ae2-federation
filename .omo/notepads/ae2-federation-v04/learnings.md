@@ -615,3 +615,28 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   delivery stack and look up trace state by exact ledger identity.
 - Recovery is only proven after invoking a retained retired callback and then causing a real cache-driven native event on
   fresh registrations; direct hub publication would bypass the behavior under test.
+
+## 2026-09-20T11:04:56+10:00 Task 25 resource qualification
+
+- AE2 generic key serialization preserves `AEItemKey` data components and `AEFluidKey` identity; physical item/fluid cell
+  delegates retain independent component quantities and millibucket-scale long amounts through native operations.
+- Live Modrinth metadata corrected the inherited title mismatch: `sD979rMC` is consistently 2.1.4 by title, version, JAR
+  metadata, and filename. The remaining blocker is exact source-artifact provenance, not artifact identity.
+- The similarly named GitHub tag `1.21-2.1.4-neoforge` belongs to an older ExtendedAE tree and cannot qualify Applied Flux.
+
+## 2026-09-20T11:24:11+10:00 Task 25 verification
+
+- The exact five-case producer persisted `.omo/evidence/task-25/attempt-20260920T011257199Z/result.json`: four real native
+  GameTests exited zero and only `resources.stored-fe` remained BLOCKED. The blocked consumer and twelve adversarial probes
+  passed, as did strict build/archive isolation and exact Task 21/24 regressions.
+
+## 2026-09-20T12:15:00+10:00 Task 25 Applied Flux correction
+
+- Commit `a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4` is the exact public 2.1.3 to 2.1.4 version bump. Official
+  Modrinth project linkage, artifact metadata, implementation, timestamps, and resource history establish an authoritative
+  ordinary correlation without implying reproducible-build identity.
+- A conditional ModDev source-set association is required: globally associating the compatibility source set leaks its class
+  metadata into default GameTests, while leaving it unassociated prevents compatibility registration. The explicit
+  `enableAppfluxCompatibility` property keeps both paths honest.
+- The registered `FE_CELL_256M` inventory retains native values above `Integer.MAX_VALUE`; a real run inserted
+  4,294,967,311 FE and left 3,221,225,482 FE after extraction while AE power remained unchanged.
