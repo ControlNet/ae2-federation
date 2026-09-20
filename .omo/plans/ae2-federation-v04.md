@@ -385,7 +385,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=subscription.two-same-key-events,subscription.diamond-once,subscription.snapshot-race,subscription.first-filter,subscription.listener-cleanup,subscription.reject-stale-generation -PevidenceDir=.omo/evidence/task-24`.
   - Commit: proposed `perf(storage): bound provenance-aware notification work`.
 
-- [ ] 25. Qualify registered addon resources including stored FE
+- [x] 25. Qualify registered addon resources including stored FE
   - Work: `storage/resources/` only where native type registration/serialization requires glue, plus isolated compatibility test profiles. Select a published MC1.21.1 NeoForge addon that actually registers an AE2-storable energy key, verify source/license/artifact, pin in `docs/compatibility/resources.md`. Do not invent a synthetic FE key and label it ecosystem support. Preserve component identity, native long quantities and units; no FE-to-ME conversion.
   - References: D5.5,T-C02,T-B04; A-storage; task 21. Depends on 21.
   - Acceptance: real item/fluid/addon key round-trips through storage and filters, absence of optional addon loads cleanly; unsupported registrations are reported as missing compatibility, not silently converted.
