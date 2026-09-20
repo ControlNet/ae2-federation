@@ -418,6 +418,9 @@ def verifyTaskTwentyFourEvidence
 def taskTwentyFiveCases = ['resources.item-fluid-components', 'resources.stored-fe', 'resources.optional-absent',
         'resources.reject-overflow', 'resources.reject-fe-power-coupling']
 def verifyTaskTwentyFiveEvidence
+def taskTwentySixCases = ['crafting.native-binding', 'crafting.deduplicate-capability',
+        'crafting.native-state-owner', 'crafting.reject-unavailable']
+def verifyTaskTwentySixEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -3361,6 +3364,186 @@ verifyTaskTwentyFiveEvidence = { File attempt, List requested, List<String> decl
     }
 }
 
+verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskTwentySixCases }) return
+    if (requested != taskTwentySixCases) throw new GradleException('Task 26 evidence must select the exact canonical case set')
+    def expected = [craftingnativebinding: 18, craftingdeduplicatecapability: 8,
+            craftingnativestateowner: 18, craftingrejectunavailable: 5]
+    def expectedAuthorityPhases = [craftingnativebinding: ['fabric-live', 'fabric-withdrawn'],
+            craftingdeduplicatecapability: ['deduplicated'],
+            craftingnativestateowner: ['provider-a', 'provider-b'], craftingrejectunavailable: ['no-cpu']]
+    def authorityFields = ['testId', 'selected', 'phase', 'networkId', 'grid', 'service', 'nodeId', 'node',
+            'provider', 'cpus', 'pattern', 'binding', 'generation', 'fabrics', 'topology', 'commonFabrics',
+            'withdrawals', 'access', 'capability'] as Set
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-crafting') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Task 26 native artifact set is duplicated, missing, or substituted')
+    }
+    if (expected.keySet().any { childExits["positive-${it}"] != 0 }) {
+        throw new GradleException('Task 26 native child exits are incomplete')
+    }
+    def parsed = [:]
+    def authorities = [:]
+    expected.each { testId, assertionCount ->
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Task 26 requires one native artifact and execution log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 26 assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 26 operations') != 1) {
+            throw new GradleException("Task 26 assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        def logText = new File(attempt, log).text
+        (logText =~ /AE2F_CRAFT_NATIVE_ENTRY testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Task 26 duplicate runtime trace fact in ${log}: ${match[2]}")
+            }
+        }
+        def authority = [:]
+        logText.readLines().findAll { it.contains('AE2F_CRAFT_AUTHORITY ') }.each { line ->
+            def payload = line.substring(line.indexOf('AE2F_CRAFT_AUTHORITY ') + 'AE2F_CRAFT_AUTHORITY '.length())
+            def fields = [:]
+            payload.split(/\s+/).each { token ->
+                def separator = token.indexOf('=')
+                if (separator < 1 || fields.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
+                    throw new GradleException("Task 26 malformed or duplicate native authority field in ${log}")
+                }
+            }
+            if (fields.keySet() != authorityFields || fields.testId != testId || fields.selected != testId) {
+                throw new GradleException("Task 26 native authority receipt child identity is invalid: ${testId}")
+            }
+            if (authority.put(fields.phase, fields) != null) {
+                throw new GradleException("Task 26 duplicate native authority receipt phase: ${testId}/${fields.phase}")
+            }
+        }
+        if (authority.keySet() != expectedAuthorityPhases[testId] as Set) {
+            throw new GradleException("Task 26 native authority receipt set is missing, extra, or substituted: ${testId}")
+        }
+        properties.stringPropertyNames().findAll { it !in ['schemaVersion', 'status', 'kind', 'testId', 'structure',
+                'assertions', 'operations', 'inserted', 'extracted', 'elapsedNanos'] }.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Task 26 runtime trace mismatch in ${artifact}: ${name}")
+            }
+        }
+        parsed[testId] = properties
+        authorities[testId] = authority
+    }
+    def correlate = { Properties properties, Map receipt, Map<String, String> facts, String context ->
+        facts.each { fact, field ->
+            if (properties.getProperty(fact) != receipt[field]) {
+                throw new GradleException("Task 26 native authority mismatch: ${context}.${field}")
+            }
+        }
+    }
+    def binding = parsed.craftingnativebinding as Properties
+    if (binding.getProperty('relationshipBindings') != '1' || binding.getProperty('nativeProviders') != '1'
+            || binding.getProperty('nativeCpus') != '1' || binding.getProperty('nativeTaskSubmitted') != 'true'
+            || binding.getProperty('childExecution') != 'true' || binding.getProperty('outputAmount') != '4'
+            || binding.getProperty('gridsDistinct') != 'true' || binding.getProperty('disabledWithdrawn') != 'true'
+            || binding.getProperty('deletedWithdrawn') != 'true' || binding.getProperty('staleRevisionRejected') != 'true'
+            || binding.getProperty('nativeOwnership') != 'true'
+            || binding.getProperty('heldBindingWithdrawn') != 'true'
+            || binding.getProperty('heldAccessDenied') != 'true'
+            || binding.getProperty('fabricCommonBefore') != '1'
+            || binding.getProperty('fabricCommonAfter') != '0'
+            || parseNonnegativeInteger(binding.getProperty('fabricTopologyAfter'), 'Task 26 Fabric topology after')
+                    <= parseNonnegativeInteger(binding.getProperty('fabricTopologyBefore'), 'Task 26 Fabric topology before')
+            || parseNonnegativeInteger(binding.getProperty('withdrawalsAfter'), 'Task 26 withdrawals after')
+                    != parseNonnegativeInteger(binding.getProperty('withdrawalsBefore'), 'Task 26 withdrawals before') + 1) {
+        throw new GradleException('Task 26 native binding semantics are incomplete')
+    }
+    def live = authorities.craftingnativebinding['fabric-live'] as Map
+    correlate(binding, live, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid', serviceIdentity: 'service',
+            providerNodeId: 'nodeId', providerNodeIdentity: 'node', providerIdentity: 'provider',
+            cpuIdentities: 'cpus', patternIdentity: 'pattern', bindingIdentity: 'binding',
+            providerGeneration: 'generation', fabricReferences: 'fabrics', fabricTopologyBefore: 'topology',
+            fabricCommonBefore: 'commonFabrics', withdrawalsBefore: 'withdrawals'], 'fabric-live')
+    if (live.access != 'current' || live.capability != 'true') {
+        throw new GradleException('Task 26 native authority mismatch: fabric-live.access')
+    }
+    def withdrawn = authorities.craftingnativebinding['fabric-withdrawn'] as Map
+    correlate(binding, withdrawn, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid', serviceIdentity: 'service',
+            bindingIdentity: 'binding', providerGeneration: 'generation', fabricReferences: 'fabrics',
+            fabricTopologyAfter: 'topology', fabricCommonAfter: 'commonFabrics', withdrawalsAfter: 'withdrawals'],
+            'fabric-withdrawn')
+    if (withdrawn.access != 'withdrawn' || withdrawn.capability != 'false'
+            || withdrawn.nodeId != 'withdrawn' || withdrawn.provider != 'withdrawn') {
+        throw new GradleException('Task 26 native authority mismatch: fabric-withdrawn.access')
+    }
+    def duplicate = parsed.craftingdeduplicatecapability as Properties
+    if (duplicate.getProperty('physicalRoutes') != '2' || duplicate.getProperty('relationshipBindings') != '1'
+            || duplicate.getProperty('providerPatterns') != '1' || duplicate.getProperty('nativeProviders') != '1'
+            || duplicate.getProperty('nativeCpus') != '1' || duplicate.getProperty('duplicateCapacity') != 'false'
+            || duplicate.getProperty('routeKeyed') != 'false') {
+        throw new GradleException('Task 26 capability deduplication semantics are incomplete')
+    }
+    def deduplicated = authorities.craftingdeduplicatecapability.deduplicated as Map
+    correlate(duplicate, deduplicated, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid',
+            serviceIdentity: 'service', providerNodeId: 'nodeId', providerNodeIdentity: 'node',
+            providerIdentity: 'provider', cpuIdentities: 'cpus', patternIdentity: 'pattern',
+            bindingIdentity: 'binding', providerGeneration: 'generation', fabricReferences: 'fabrics',
+            topologyRevision: 'topology'], 'deduplicated')
+    if (deduplicated.access != 'current' || deduplicated.capability != 'true'
+            || deduplicated.commonFabrics != '2') {
+        throw new GradleException('Task 26 native authority mismatch: deduplicated.access')
+    }
+    def owner = parsed.craftingnativestateowner as Properties
+    if (owner.getProperty('patternCopied') != 'false' || owner.getProperty('federationPlanner') != 'false'
+            || owner.getProperty('federationCpu') != 'false' || owner.getProperty('federationResultLedger') != 'false'
+            || owner.getProperty('sourceGenerationWithdrawn') != 'true'
+            || owner.getProperty('aggregateRepublished') != 'false' || owner.getProperty('providerReplaced') != 'true'
+            || owner.getProperty('generationAdvanced') != 'true' || owner.getProperty('oldBindingDenied') != 'true'
+            || owner.getProperty('oldSubmitAvailable') != 'false'
+            || owner.getProperty('providerANodeId') == owner.getProperty('providerBNodeId')
+            || owner.getProperty('providerANodeIdentity') == owner.getProperty('providerBNodeIdentity')
+            || owner.getProperty('providerAIdentity') == owner.getProperty('providerBIdentity')
+            || owner.getProperty('patternAIdentity') == owner.getProperty('patternBIdentity')
+            || Long.parseLong(owner.getProperty('generationB')) <= Long.parseLong(owner.getProperty('generationA'))) {
+        throw new GradleException('Task 26 native ownership semantics are incomplete')
+    }
+    def providerA = authorities.craftingnativestateowner['provider-a'] as Map
+    correlate(owner, providerA, [sourceNetworkId: 'networkId', sourceGridAIdentity: 'grid', serviceAIdentity: 'service',
+            providerANodeId: 'nodeId', providerANodeIdentity: 'node', providerAIdentity: 'provider',
+            cpuAIdentities: 'cpus', patternAIdentity: 'pattern', bindingAIdentity: 'binding',
+            generationA: 'generation', fabricReferencesA: 'fabrics', topologyA: 'topology'], 'provider-a')
+    def providerB = authorities.craftingnativestateowner['provider-b'] as Map
+    correlate(owner, providerB, [sourceNetworkId: 'networkId', sourceGridBIdentity: 'grid', serviceBIdentity: 'service',
+            providerBNodeId: 'nodeId', providerBNodeIdentity: 'node', providerBIdentity: 'provider',
+            cpuBIdentities: 'cpus', patternBIdentity: 'pattern', bindingBIdentity: 'binding',
+            generationB: 'generation', fabricReferencesB: 'fabrics', topologyB: 'topology'], 'provider-b')
+    if (providerA.access != 'current' || providerB.access != 'current'
+            || providerA.capability != 'true' || providerB.capability != 'true') {
+        throw new GradleException('Task 26 native authority mismatch: provider-replacement.access')
+    }
+    def unavailable = parsed.craftingrejectunavailable as Properties
+    if (unavailable.getProperty('nativeCpus') != '0' || unavailable.getProperty('relationshipBindings') != '0'
+            || unavailable.getProperty('capabilityAdvertised') != 'false'
+            || unavailable.getProperty('fallbackExecution') != 'false'
+            || unavailable.getProperty('cannedAvailable') != 'false'
+            || unavailable.getProperty('nativeProviderReady') != 'true') {
+        throw new GradleException('Task 26 unavailable-backend rejection semantics are incomplete')
+    }
+    def noCpu = authorities.craftingrejectunavailable['no-cpu'] as Map
+    correlate(unavailable, noCpu, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid',
+            serviceIdentity: 'service', providerNodeId: 'nodeId', providerNodeIdentity: 'node',
+            providerIdentity: 'provider', patternIdentity: 'pattern'], 'no-cpu')
+    if (noCpu.cpus != 'none' || noCpu.access != 'unavailable' || noCpu.capability != 'false') {
+        throw new GradleException('Task 26 native authority mismatch: no-cpu.access')
+    }
+}
+
 verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
     if (report.kind != 'benchmark' || report.requested != ['processing-small']) return null
     def required = ['benchmark-native.properties', 'benchmark-profile.json', 'benchmark-baseline.json',
@@ -3904,6 +4087,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskTwentyFourEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyFiveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
+    verifyTaskTwentySixEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -4456,7 +4641,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
-                    || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')) ? 1 : 2,
+                    || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
+                    || testCase.id.startsWith('crafting.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -4465,7 +4651,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
-                            || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')])
+                            || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
+                            || testCase.id.startsWith('crafting.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -4725,6 +4912,10 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'craft-proof.missing-material':
                 case 'craft-proof.no-cpu':
                 case 'craft-proof.disconnect-cancel-restart':
+                case 'crafting.native-binding':
+                case 'crafting.deduplicate-capability':
+                case 'crafting.native-state-owner':
+                case 'crafting.reject-unavailable':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -4927,6 +5118,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyThreeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyFourEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskTwentySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -7187,5 +7379,149 @@ tasks.register('federationTaskTwentyFiveEvidenceSelfTest') {
             throw new GradleException("Task 25 adversarial resource evidence was accepted: ${accepted.join(', ')}")
         }
         logger.lifecycle('Task 25 adversarial completed evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskTwentySixEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete four-case Task 26 native Crafting binding result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskTwentySixCases) throw new GradleException('Result is not the canonical Task 26 case set')
+        logger.lifecycle('Task 26 native Crafting binding evidence verified')
+    }
+}
+
+tasks.register('federationTaskTwentySixEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated ownership, deduplication, availability, and revocation Task 26 evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 26 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutateAttempt = { String name, Closure mutation, String expectedMessage ->
+            def sourceAttempt = sourceResult.parentFile.canonicalFile
+            def evidenceRoot = sourceAttempt.parentFile.canonicalFile
+            def runId = "task26-${name}-${UUID.randomUUID()}"
+            def attempt = new File(evidenceRoot, "attempt-${runId}")
+            sourceAttempt.eachFileRecurse(FileType.FILES) { source ->
+                def target = attempt.toPath().resolve(sourceAttempt.toPath().relativize(source.toPath()))
+                Files.createDirectories(target.parent)
+                Files.copy(source.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            try {
+                def resultFile = new File(attempt, 'result.json')
+                def report = new JsonSlurper().parse(resultFile) as Map
+                mutation(attempt)
+                report.runId = runId
+                report.evidenceRoot = evidenceRoot.canonicalPath
+                report.attemptPath = attempt.canonicalPath
+                def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: runId]
+                report.pathIdentitySha256 = sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+                report.startedAt = Instant.now().minusSeconds(1).toString()
+                report.endedAt = Instant.now().toString()
+                report.artifacts.each { artifact ->
+                    def artifactFile = new File(attempt, artifact.path as String)
+                    if (artifactFile.isFile()) artifact.sha256 = sha256(artifactFile.bytes)
+                }
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                try {
+                    verifyPersistedReport(resultFile, false)
+                    throw new GradleException("Task 26 adversarial evidence was accepted: ${name}")
+                } catch (GradleException exception) {
+                    if (exception.message.startsWith('Task 26 adversarial evidence was accepted')
+                            || !exception.message.contains(expectedMessage)) throw exception
+                }
+            } finally {
+                if (attempt.exists()) {
+                    Files.walk(attempt.toPath()).withCloseable { paths ->
+                        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+                    }
+                }
+            }
+        }
+        def mutateFact = { String name, String artifactId, String fact, String value, String expectedMessage ->
+            mutateAttempt(name, { File attempt ->
+                def file = new File(attempt, "native-${artifactId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 26 adversarial fact probe') }
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }, expectedMessage)
+        }
+        def mutateAuthority = { String name, String artifactId, Closure transform, String expectedMessage ->
+            mutateAttempt(name, { File attempt ->
+                def log = new File(attempt, "positive-${artifactId}.log")
+                log.text = transform(log.text)
+            }, expectedMessage)
+        }
+        mutateFact('copied-pattern', 'craftingnativestateowner', 'patternCopied', 'true',
+                'Task 26 native ownership semantics are incomplete')
+        mutateFact('duplicate-capacity', 'craftingdeduplicatecapability', 'nativeCpus', '2',
+                'Task 26 capability deduplication semantics are incomplete')
+        mutateFact('fallback', 'craftingrejectunavailable', 'fallbackExecution', 'true',
+                'Task 26 unavailable-backend rejection semantics are incomplete')
+        mutateFact('revocation', 'craftingnativebinding', 'disabledWithdrawn', 'false',
+                'Task 26 native binding semantics are incomplete')
+        mutateFact('stale-source-grid', 'craftingnativebinding', 'sourceGridIdentity', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.grid')
+        mutateFact('stale-source-network', 'craftingnativebinding', 'sourceNetworkId',
+                'ae2federation:network:v1:ffffffff-ffff-4fff-8fff-ffffffffffff',
+                'Task 26 native authority mismatch: fabric-live.networkId')
+        mutateFact('fabricated-service', 'craftingnativebinding', 'serviceIdentity', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.service')
+        mutateFact('fabricated-node-id', 'craftingnativebinding', 'providerNodeId',
+                'ffffffff-ffff-4fff-8fff-ffffffffffff', 'Task 26 native authority mismatch: fabric-live.nodeId')
+        mutateFact('fabricated-node-object', 'craftingnativebinding', 'providerNodeIdentity', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.node')
+        mutateFact('fabricated-provider', 'craftingnativebinding', 'providerIdentity', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.provider')
+        mutateFact('fabricated-cpu', 'craftingnativebinding', 'cpuIdentities', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.cpus')
+        mutateFact('fabricated-pattern', 'craftingnativebinding', 'patternIdentity', '4294967295',
+                'Task 26 native authority mismatch: fabric-live.pattern')
+        mutateFact('substituted-provider-a', 'craftingnativestateowner', 'providerAIdentity',
+                '4294967295', 'Task 26 native authority mismatch: provider-a.provider')
+        mutateFact('substituted-pattern-a', 'craftingnativestateowner', 'patternAIdentity',
+                '4294967295', 'Task 26 native authority mismatch: provider-a.pattern')
+        mutateAttempt('forged-withdrawal-counter', { File attempt ->
+            def file = new File(attempt, 'native-craftingnativebinding.properties')
+            def properties = loadProperties(file)
+            def oldBefore = properties.getProperty('withdrawalsBefore')
+            def oldAfter = properties.getProperty('withdrawalsAfter')
+            properties.setProperty('withdrawalsBefore', '100')
+            properties.setProperty('withdrawalsAfter', '101')
+            file.withOutputStream { properties.store(it, 'Task 26 adversarial withdrawal probe') }
+            def log = new File(attempt, 'positive-craftingnativebinding.log')
+            log.text = log.text.replace("fact=withdrawalsBefore value=${oldBefore}",
+                    'fact=withdrawalsBefore value=100').replace("fact=withdrawalsAfter value=${oldAfter}",
+                    'fact=withdrawalsAfter value=101')
+        }, 'Task 26 native authority mismatch: fabric-live.withdrawals')
+        mutateAuthority('missing-authority', 'craftingnativebinding', { String text ->
+            text.readLines().findAll { !it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
+                    || !it.contains('phase=fabric-live') }.join('\n') + '\n'
+        }, 'Task 26 native authority receipt set is missing, extra, or substituted')
+        mutateAuthority('duplicate-authority', 'craftingnativebinding', { String text ->
+            def line = text.readLines().find { it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
+                    && it.contains('phase=fabric-live') }
+            text + line + '\n'
+        }, 'Task 26 duplicate native authority receipt phase')
+        mutateAuthority('substituted-authority-child', 'craftingnativebinding', { String text ->
+            text.replace('selected=craftingnativebinding phase=fabric-live',
+                    'selected=craftingdeduplicatecapability phase=fabric-live')
+        }, 'Task 26 native authority receipt child identity is invalid')
+        mutateAuthority('conflicting-authority', 'craftingnativebinding', { String text ->
+            def line = text.readLines().find { it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
+                    && it.contains('phase=fabric-live') }
+            text + line.replaceFirst(/service=[^\s]+/, 'service=4294967295') + '\n'
+        }, 'Task 26 duplicate native authority receipt phase')
+        logger.lifecycle('Task 26 adversarial native Crafting evidence probes were rejected for intended reasons')
     }
 }
