@@ -18,7 +18,17 @@
     "EndpointTargetBindingEvidenceMixin",
     "EndpointPersistenceEvidenceMixin",
     "SourceSnapshotLedgerTestHookMixin",
-    "NativeStorageNotificationHubTestHookMixin"
+    "NativeStorageNotificationHubTestHookMixin",
+    "CapturedTerminalRequesterEvidenceMixin",
+    "TerminalCraftingServiceEvidenceMixin",
+    "TerminalCraftingCpuEvidenceMixin",
+    "TerminalCraftingResultEvidenceMixin",
+    "TerminalPhysicalResultEvidenceMixin",
+    "TerminalPolicyThreadGuardMixin",
+    "TerminalFabricThreadGuardMixin",
+    "TerminalBackendThreadGuardMixin",
+    "TerminalGameTestHelperThreadGuardMixin",
+    "TerminalWorldThreadGuardMixin"
   ],
   "injectors": {
     "defaultRequire": 1
