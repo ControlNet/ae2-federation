@@ -4,6 +4,18 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 31 directional ME energy
+
+- AE2 cold-start recovery works through a consumer-local read-only `IAEPowerStorage` plus a native
+  `GridPowerStorageStateChanged(PROVIDE_POWER)` event; no artificial startup reserve is needed.
+- Native source rediscovery reconstructs descriptor records. Generation tracking must compare those immutable descriptors
+  by value while retaining exact node/storage identities inside each descriptor.
+- Provider accounting must sum all native public stores on the provider Grid; an ME Chest can charge an adjacent energy
+  cell before the assertion tick, so one-cell deltas are not authoritative for aggregate service extraction.
+- AE2's production `EnergyCellBlock` constructor supplies the finite maximum enforced by `EnergyCellBlockEntity` and
+  `StoredEnergyAmount`; a testmod registration can therefore exercise native values above 1e9 without a fake source or
+  the non-debiting creative cell.
+
 ## 2026-09-21 Task 30 mixed factory load
 
 - A second AE2 crafting storage joins the provider crafting service only when it forms through a real adjacent network

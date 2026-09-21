@@ -4,6 +4,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import appeng.api.networking.GridServices;
+import space.controlnet.ae2federation.test.energy.LargeEnergyCellRegistration;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbe;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbeService;
 import space.controlnet.ae2federation.test.mixed.MixedMachineRegistration;
@@ -17,6 +18,7 @@ public final class FederationTestMod {
 
     public FederationTestMod(IEventBus modBus) {
         GridServices.register(NativeNodeDataProbe.class, NativeNodeDataProbeService.class);
+        LargeEnergyCellRegistration.register(modBus);
         MixedMachineRegistration.register(modBus);
         modBus.addListener(this::registerGameTests);
     }
@@ -37,6 +39,7 @@ public final class FederationTestMod {
 						 NativeAutomationGameTests.class, NativeAutomationDemandGameTests.class,
 						 CraftingLifecycleGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
+					 DirectionalEnergyGameTests.class,
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,

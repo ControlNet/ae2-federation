@@ -19,6 +19,7 @@ import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.fabric.port.CableFacePort;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 public final class FederationCableBlockEntity extends BlockEntity {
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
@@ -83,6 +84,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
                     FabricInvalidationReason.TOPOLOGY_CHANGED);
             StorageMountService.topologyChangedIfPresent(serverLevel);
             CraftingBindingService.topologyChangedIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
         }
     }
 
@@ -102,6 +104,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
         StorageMountService.topologyChangedIfPresent(serverLevel);
         CraftingBindingService.topologyChangedIfPresent(serverLevel);
+        EnergyBindingService.reconcileIfPresent(serverLevel);
         fabricDirty = false;
     }
 
@@ -110,6 +113,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
             FabricRegistryAccess.removeNodeIfPresent(serverLevel, fabricNodeId);
             StorageMountService.topologyChangedIfPresent(serverLevel);
             CraftingBindingService.topologyChangedIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
         }
         initialized = false;
         fabricDirty = true;

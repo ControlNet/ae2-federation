@@ -4,6 +4,16 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 31 resolution
+
+- Initial provider generation tracking compared newly reconstructed source descriptors by object identity, causing every
+  reconciliation to withdraw and republish the binding. A failing unit test locked value-stable rediscovery before repair.
+- Initial Task 31 tests reused Task 10 IDs, which incorrectly reached Task 10's intentional BLOCKED gate. Separate
+  `energy.*` cases preserve the historical characterization and validate the implemented directional path.
+- Groovy Gradle LSP is unavailable; executable semantic verification and the strict build validate the verifier changes.
+- The first large-value run exposed two independent hard-coded operation-count sites in the shared Gradle harness. Both
+  now derive two operations for `energydirectionalpolicy`; the exact Task 31 verifier independently enforces the receipt set.
+
 ## 2026-09-20 Task 28 resolution
 
 - The first real-fluid fixture placed a new ME Chest below an already-created provider cable. Its late native node merge

@@ -31,6 +31,8 @@ import space.controlnet.ae2federation.fabric.FabricSourceId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.energy.DirectionalEnergySource;
+import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 public final class MultipartBridgePart extends AEBasePart {
     @PartModels
@@ -39,11 +41,14 @@ public final class MultipartBridgePart extends AEBasePart {
     private static final IPartModel MODELS = new PartModel(MODEL);
     private static final IGridNodeListener<MultipartBridgePart> NODE_LISTENER = (owner, node) -> owner.refresh();
 
+    private final DirectionalEnergySource mainEnergySource = new DirectionalEnergySource();
+    private final DirectionalEnergySource outerEnergySource = new DirectionalEnergySource();
     private final IManagedGridNode outerNode = GridHelper.createManagedNode(this, NODE_LISTENER)
             .setTagName("outer")
             .setInWorldNode(true)
             .setIdlePowerUsage(0.0)
-            .setFlags(GridFlags.CANNOT_CARRY);
+            .setFlags(GridFlags.CANNOT_CARRY)
+            .addService(appeng.api.networking.energy.IAEPowerStorage.class, outerEnergySource);
     private BridgeStatus status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
     private boolean removed;
     private @Nullable FabricSourceId fabricSource;
@@ -52,7 +57,10 @@ public final class MultipartBridgePart extends AEBasePart {
 
     public MultipartBridgePart(IPartItem<?> partItem) {
         super(partItem);
-        getMainNode().setIdlePowerUsage(0.0).setFlags(GridFlags.CANNOT_CARRY);
+        getMainNode().setIdlePowerUsage(0.0).setFlags(GridFlags.CANNOT_CARRY)
+                .addService(appeng.api.networking.energy.IAEPowerStorage.class, mainEnergySource);
+        mainEnergySource.bind(getMainNode());
+        outerEnergySource.bind(outerNode);
     }
 
     @Override
@@ -218,6 +226,7 @@ public final class MultipartBridgePart extends AEBasePart {
             FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
             return;
         }
         var mainId = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid());
@@ -226,10 +235,12 @@ public final class MultipartBridgePart extends AEBasePart {
             FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
             return;
         }
         FabricRegistryAccess.get(serverLevel).upsertDirectBridge(fabricSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        EnergyBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }

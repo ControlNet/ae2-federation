@@ -4,6 +4,14 @@ Unresolved blockers and technical debt discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 31 result
+
+- No known Task 31 implementation blocker remains. The five live policy-backed GameTests, focused energy tests, strict
+  build, and Java diagnostics pass.
+- Task 31 remains unchecked and uncommitted pending independent review; no issue or PR was created.
+- Final review evidence is retained under `.omo/evidence/task-31-final-review/`; failed diagnostic attempts remain alongside
+  the successful attempt so the investigation history is not mistaken for canonical success.
+
 ## 2026-09-20 Task 28 result
 
 - No unresolved Task 28 implementation blocker is known. The exact five-case producer, persisted consumer, fully rebound

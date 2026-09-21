@@ -4,6 +4,16 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 31 directional ME energy
+
+- Bind ordered `ME_POWER/SUPPLY` Policy relationships to consumer-local sources on existing Bridge/Hub boundary nodes;
+  never connect or merge provider and consumer native Grids.
+- Capture Policy, Fabric topology/reference, provider generation, exact Grid, and exact native service identity in each
+  binding, and revalidate before every simulated or modulating extraction.
+- Preserve Task 10 blocked overlay evidence unchanged. Task 31 uses independent `energy.*` manifest cases and verifier.
+- Keep the existing 250 AE directional proof and add the >1e9 proof as a second operation in the same canonical case.
+  Persist both operations' summed fixed-point work and retain final-review evidence until Atlas and reviewer inspection.
+
 ## 2026-09-21 Task 30 mixed factory load
 
 - Compose Task 30 on one `NativeAutomationFixture` / `CraftingBindingFixture` topology. Seed and attach the mapped

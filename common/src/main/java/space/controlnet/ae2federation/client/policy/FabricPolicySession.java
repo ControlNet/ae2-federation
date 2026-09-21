@@ -238,7 +238,7 @@ public final class FabricPolicySession {
             case PROCESSING -> PolicyRule.enabled(java.util.Set.of(
                     space.controlnet.ae2federation.policy.PolicyOperation.EXECUTE,
                     space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY));
-            case ME_POWER -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.VIEW));
+            case ME_POWER -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY));
         };
     }
 

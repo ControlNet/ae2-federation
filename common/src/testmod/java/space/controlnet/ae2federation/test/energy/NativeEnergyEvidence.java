@@ -18,6 +18,10 @@ public final class NativeEnergyEvidence {
     }
 
     public static void write(String testId, int assertions, Map<String, String> facts) {
+        write(testId, assertions, 1, facts);
+    }
+
+    public static void write(String testId, int assertions, int operations, Map<String, String> facts) {
         var ordered = new TreeMap<>(facts);
         ordered.forEach((name, value) -> LOGGER.info("AE2F_ENERGY_NATIVE_ENTRY testId={} fact={} value={}",
                 testId, name, value));
@@ -34,7 +38,7 @@ public final class NativeEnergyEvidence {
         properties.setProperty("testId", testId);
         properties.setProperty("structure", STRUCTURE);
         properties.setProperty("assertions", Integer.toString(assertions));
-        properties.setProperty("operations", "1");
+        properties.setProperty("operations", Integer.toString(operations));
         properties.setProperty("inserted", facts.getOrDefault("extracted", "0"));
         properties.setProperty("extracted", properties.getProperty("inserted"));
         properties.setProperty("elapsedNanos", "0");

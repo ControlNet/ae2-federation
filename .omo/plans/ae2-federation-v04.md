@@ -427,7 +427,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationBenchmark -Pprofile=mixed-small -PevidenceDir=.omo/evidence/task-30`; `./gradlew :neoforge-1.21.1:federationVerify -Pcases=mixed.reject-empty-orders,mixed.overload-backpressure -PevidenceDir=.omo/evidence/task-30-negative`.
   - Commit: proposed `test(perf): exercise native mixed factory workloads`.
 
-- [ ] 31. Implement directional ME energy Policy binding and native cold-start recovery
+- [x] 31. Implement directional ME energy Policy binding and native cold-start recovery
   - Work: `energy/` using task 10 PASS contract. Attach through Hub/Bridge membership and local Endpoint supply boundary where appropriate. Real source/query/consume and native powered-state changes; no symmetric-overlay bypass, artificial startup energy, loss tax, Framework power cost or independent settlement store.
   - References: D8,T-F10..11,T-B02..05; A-energy; task 10. Depends on 10,14.
   - Acceptance: cold unpowered consumer can regain real supply while Grids/channels stay independent; reverse rule absent remains denied; stale route/supply cannot continue extraction; zero Fabric overhead remains true.

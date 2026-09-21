@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
+import space.controlnet.ae2federation.energy.DirectionalEnergySource;
 
 public final class HubFacePort {
     private static final IGridNodeListener<HubFacePort> NODE_LISTENER = (owner, node) -> owner.invalidate();
@@ -23,6 +24,7 @@ public final class HubFacePort {
     private final FederationPort hubFabricPort;
     private final Runnable topologyInvalidator;
     private final IManagedGridNode boundaryNode;
+    private final DirectionalEnergySource energySource;
     private HubPortBinding binding = HubPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
@@ -35,12 +37,15 @@ public final class HubFacePort {
         this.face = face;
         this.hubFabricPort = hubFabricPort;
         this.topologyInvalidator = topologyInvalidator;
+        energySource = new DirectionalEnergySource();
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0.0)
                 .setFlags(GridFlags.CANNOT_CARRY)
-                .setExposedOnSides(EnumSet.of(face));
+                .setExposedOnSides(EnumSet.of(face))
+                .addService(appeng.api.networking.energy.IAEPowerStorage.class, energySource);
+        energySource.bind(boundaryNode);
     }
 
     public void initialize(ServerLevel serverLevel) {

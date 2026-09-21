@@ -7,6 +7,7 @@ import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.persistence.PolicySavedData;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 public final class PolicyService {
     private final ServerLevel level;
@@ -26,6 +27,7 @@ public final class PolicyService {
         if (result instanceof PolicyMutationResult.Accepted) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            EnergyBindingService.reconcileIfPresent(level);
         }
         return result;
     }
@@ -35,6 +37,7 @@ public final class PolicyService {
         if (result instanceof PolicyMutationResult.Accepted) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            EnergyBindingService.reconcileIfPresent(level);
         }
         return result;
     }

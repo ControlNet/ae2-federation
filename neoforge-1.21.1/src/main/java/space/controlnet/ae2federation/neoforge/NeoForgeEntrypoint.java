@@ -12,6 +12,7 @@ import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.hub.HubRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
+import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 @Mod(NeoForgeEntrypoint.MOD_ID)
 public final class NeoForgeEntrypoint {
@@ -29,6 +30,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             CraftingBindingService.closeLevel(level);
+            EnergyBindingService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             LOGGER.info("AE2F_STORAGE_LEVEL_CLOSED dimension={} servicePresentBefore={} mountedProvidersBefore={} "
                             + "mountedProvidersRemoved={} serviceRemoved={} registryPresentBefore={} registryRemoved={} "
