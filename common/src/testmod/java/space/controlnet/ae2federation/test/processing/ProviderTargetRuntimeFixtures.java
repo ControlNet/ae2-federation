@@ -174,6 +174,14 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
 
     public ProviderRuntime runtime() { return lifecycle.runtime(); }
 
+    public boolean wakeNativeTicker() { return provider.wakeNativeTicker(); }
+
+    public java.util.List<Long> nativeTickerInvocations() { return provider.nativeTickerInvocations(); }
+
+    public int nativeTickerDelegateCount() { return provider.composition().nativeTickerDelegateCount(); }
+
+    public int nativeProgressOwnerIdentity() { return System.identityHashCode(provider.composition()); }
+
     public ProviderIdentity providerIdentity() { return lifecycle.providerIdentity(); }
 
     public FederatedSavedState reloadProductionEndpoint() {

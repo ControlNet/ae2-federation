@@ -22,11 +22,11 @@ import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 
-final class FabricGraphProjection {
+public final class FabricGraphProjection {
     private FabricGraphProjection() {
     }
 
-    static FabricGraphSnapshot snapshot(ServerLevel level, FabricReference scope,
+    public static FabricGraphSnapshot snapshot(ServerLevel level, FabricReference scope,
             Optional<ProviderObservationRegistry.Entry> selectedProvider) {
         var registry = FabricRegistryAccess.get(level);
         if (!registry.isCurrent(scope)) {

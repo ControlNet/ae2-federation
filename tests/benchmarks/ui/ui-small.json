@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "ui-small-v1",
+  "id": "ui-small",
+  "testId": "uigraphbenchmarksmall",
+  "structure": "ae2federation_test:harness_native_smoke",
+  "seed": 340034,
+  "members": 24,
+  "providers": 8,
+  "endpoints": 8,
+  "physicalEdges": 16,
+  "capabilityEdges": 8,
+  "patterns": 64,
+  "samples": 32,
+  "closedGuiTicks": 20,
+  "lifecycle": {
+    "executionTimeoutSeconds": 180,
+    "shutdownGraceSeconds": 10
+  }
+}

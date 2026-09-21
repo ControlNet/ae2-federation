@@ -118,6 +118,22 @@ final class RealObservationScene implements AutoCloseable {
         return scope(first);
     }
 
+    boolean wakeNativeTicker() {
+        return processing.wakeNativeTicker();
+    }
+
+    java.util.List<Long> nativeTickerInvocations() {
+        return processing.nativeTickerInvocations();
+    }
+
+    int nativeTickerDelegateCount() {
+        return processing.nativeTickerDelegateCount();
+    }
+
+    int nativeProgressOwnerIdentity() {
+        return processing.nativeProgressOwnerIdentity();
+    }
+
     FabricReference secondScope() {
         return scope(second);
     }

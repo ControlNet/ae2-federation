@@ -92,6 +92,30 @@ def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
     }
 }
 
+def multiClientGameDirectory = providers.gradleProperty('federationMultiClientGameDir')
+        .map { project.file(it) }.getOrElse(project.file('run-multiclient'))
+def multiClientPort = providers.gradleProperty('federationMultiClientPort').getOrElse('25565')
+def prepareMultiClientRuntime = tasks.register('prepareMultiClientRuntime') {
+    doLast {
+        def directory = multiClientGameDirectory
+        directory.mkdirs()
+        if (providers.gradleProperty('federationMultiClientRole').getOrElse('').isBlank()) {
+            def properties = new Properties()
+            properties.setProperty('server-ip', '127.0.0.1')
+            properties.setProperty('server-port', multiClientPort)
+            properties.setProperty('online-mode', 'false')
+            properties.setProperty('enforce-secure-profile', 'false')
+            properties.setProperty('level-name', 'task34-world')
+            new File(directory, 'server.properties').withOutputStream {
+                properties.store(it, 'Task 34 isolated loopback dedicated server')
+            }
+            new File(directory, 'eula.txt').text = 'eula=true\n'
+        } else {
+            new File(directory, 'options.txt').setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+        }
+    }
+}
+
 neoForge {
     version = neo_version
     validateAccessTransformers = true
@@ -114,7 +138,8 @@ neoForge {
             systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
             systemProperty('ae2federation.benchmarkEmpty', providers.gradleProperty('federationBenchmarkEmpty').getOrElse('false'))
     systemProperty('ae2federation.processingBenchmarkProfile', providers.gradleProperty('federationProcessingBenchmarkProfile').getOrElse(''))
-    systemProperty('ae2federation.processingBenchmarkSeed', providers.gradleProperty('federationProcessingBenchmarkSeed').getOrElse(''))
+            systemProperty('ae2federation.processingBenchmarkSeed', providers.gradleProperty('federationProcessingBenchmarkSeed').getOrElse(''))
+            systemProperty('ae2federation.uiBenchmarkProfile', providers.gradleProperty('federationUiBenchmarkProfile').getOrElse(''))
             systemProperty('ae2federation.mixedBenchmarkProfile', providers.gradleProperty('federationMixedBenchmarkProfile').getOrElse(''))
             systemProperty('ae2federation.identityPhase', providers.gradleProperty('federationIdentityPhase').getOrElse(''))
             systemProperty('ae2federation.identityStateFile', providers.gradleProperty('federationIdentityStateFile').getOrElse(''))
@@ -145,6 +170,47 @@ neoForge {
             systemProperty('ae2federation.ui.runId', providers.gradleProperty('federationUiRunId').getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareUiTestClientOptions)
+        }
+        multiclientServer {
+            server()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArgument('--nogui')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
+        }
+        multiclientClientA {
+            client()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArguments.addAll('--server', '127.0.0.1', '--port', multiClientPort, '--username', 'ClientA')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.role', 'A')
+            systemProperty('ae2federation.multiclient.port', multiClientPort)
+            systemProperty('ae2federation.multiclient.clientOutput',
+                    providers.gradleProperty('federationMultiClientClientOutput').getOrElse(''))
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
+        }
+        multiclientClientB {
+            client()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArguments.addAll('--server', '127.0.0.1', '--port', multiClientPort, '--username', 'ClientB')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.role', 'B')
+            systemProperty('ae2federation.multiclient.port', multiClientPort)
+            systemProperty('ae2federation.multiclient.clientOutput',
+                    providers.gradleProperty('federationMultiClientClientOutput').getOrElse(''))
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
         }
     }
 

@@ -582,3 +582,34 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   subscription identity under Fabric A's player/menu identity only in the encoded attack payload, never in the baseline.
 - Require the persisted verifier to correlate OPENED/snapshot/authority/CLOSED receipts by player, menu, Fabric, generation,
   subscription ID, and nonce, then reject missing or fabricated authority receipts for their intended reason.
+
+## 2026-09-22 Task 34 multi-client and UI benchmark
+
+- Use one dedicated server and two distinct real clients, with production `FabricPolicyMenu` RPCs and filesystem receipts
+  only for cross-process phase coordination.
+- Keep the benchmark data-only and GUI-closed while exercising production snapshot codecs and layout cache behavior.
+- Wait for both clients to exit and for server evidence independently; the server writes evidence only after both players
+  are absent and subscriptions remain closed for 20 ticks.
+
+## 2026-09-22 Task 34 Atlas authority repair
+
+- Expose `FabricGraphProjection.snapshot` as the production projection seam rather than duplicating its logic in testmod or
+  creating a split Java package across the production and test modules.
+- Derive the fixed 40-node benchmark from a stable real four-node production projection, while preserving exact source
+  payload provenance and rejecting source-count, hash, label, owner, menu-close, and ticker-delta fabrications.
+
+## 2026-09-22 Task 34 visual capture synchronization
+
+- Treat a stale class as authority state, not proof that its label has reached the framebuffer. Capture only after the
+  production bound label and class agree for three actual post-render frames, and persist both visible text and frame count.
+- Keep synchronization and transient HUD cleanup in the dev-only multi-client harness; do not alter production Policy,
+  menu, binding, graph, subscription, or benchmark semantics and do not fabricate screenshot text.
+
+## 2026-09-22 Task 34 deterministic split/rejoin
+
+- Retain the production registry as refreshed Hub authority: require exact expected membership, a current reference, and a
+  generation distinct from the invalidated original before reopening either editor.
+- Reconstruct only the Hub fixture at the supported block lifecycle boundary after both stale receipts and subscription
+  retirement; do not synthesize a Fabric/session or weaken `FabricPolicySession.forHub`.
+- Treat rendered member summary and nested identity rows as separate evidence facts while preserving the verifier's
+  canonical `refreshedRenderedMembers=2 members` projection.

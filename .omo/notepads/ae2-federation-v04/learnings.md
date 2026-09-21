@@ -859,3 +859,37 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   production menus and server-issued sessions. Directly constructed sessions prove value-object validation, not ownership.
 - Snapshot acknowledgement may legitimately remove historical flow-window entries in a following delta. Full-state
   non-mutation compares every collection and revision byte-for-byte/value-for-value without requiring every collection nonempty.
+
+## 2026-09-22 Task 34 multi-client runtime
+
+- LDLib2 server buttons bind `mouseDown`, and synchronized status classes are more reliable than localized label text.
+- Dedicated multi-client phases require authoritative receipts and explicit close/open ownership; fixed client ticks,
+  screen identity, and container ID are not stable synchronization boundaries.
+- Final evidence proves revision 1 acceptance, stale-revision rejection, Fabric split invalidation, refreshed scope,
+  six subscription removals or more, zero active subscriptions, and 20 closed-GUI server ticks.
+
+## 2026-09-22 Task 34 Atlas authority repair
+
+- Elapsed server ticks prove only time. Closed-GUI continuity requires a real native owner and independently observed state;
+  the AE2 provider composition's per-lane ticker counters advance from `0,0,0` to `1,1,1` after both menus close.
+- A useful bounded synthetic scale can remain honest when its source is an exact persisted production projection and the
+  derivation is explicit. The verifier must independently parse that source payload and bind its node kinds, edge layers,
+  Pattern rows, and digest before accepting scaled counts.
+
+## 2026-09-22 Task 34 rendered screenshot synchronization
+
+- `ClientTickEvent.Post` can observe the synchronized LDLib2 class and label value before the framebuffer has rendered
+  either change. Evidence capture must wait for consecutive `ScreenEvent.Render.Post` frames where both values agree.
+- Clearing test-client chat, toasts, and tutorial prompts before render prevents unrelated HUD fragments from appearing in
+  the margins of an otherwise valid production-menu capture; screenshot text itself must never be mutated or post-processed.
+
+## 2026-09-22 Task 34 refreshed topology authority
+
+- A non-original Fabric reference alone is insufficient after split/rejoin because an intermediate one-member publication
+  can satisfy it. Reopening is safe only after the registry has one current non-original Hub reference containing exactly
+  both expected confirmed identities.
+- Invalidating a Fabric retires its subscriptions immediately. Reconstruction must wait for both stale UI receipts and zero
+  subscriptions before removing the old Hub, then restore the physical extension and create a fresh Hub through normal
+  block lifecycle.
+- LDLib2 parent text aggregates child member rows. The refreshed capture gate validates the `2 members` summary and two
+  distinct nonblank member-ID rows for three rendered frames instead of comparing the aggregate to the summary alone.

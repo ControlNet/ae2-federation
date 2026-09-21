@@ -8,6 +8,8 @@ import space.controlnet.ae2federation.test.energy.LargeEnergyCellRegistration;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbe;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbeService;
 import space.controlnet.ae2federation.test.mixed.MixedMachineRegistration;
+import space.controlnet.ae2federation.test.multiclient.MultiClientClientHarness;
+import space.controlnet.ae2federation.test.multiclient.MultiClientServerHarness;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -21,6 +23,13 @@ public final class FederationTestMod {
         LargeEnergyCellRegistration.register(modBus);
         MixedMachineRegistration.register(modBus);
         ObservationRuntimeEvidence.register();
+        if (Boolean.getBoolean("ae2federation.multiclient.enabled")) {
+            if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+                MultiClientClientHarness.register();
+            } else {
+                MultiClientServerHarness.register();
+            }
+        }
         modBus.addListener(this::registerGameTests);
     }
 
@@ -45,9 +54,10 @@ public final class FederationTestMod {
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
-					   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
-						   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
-						   ProcessingBenchmarkGameTests.class, MixedFactoryGameTests.class));
+						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
+							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
+							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class,
+							   MixedFactoryGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {

@@ -448,7 +448,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationUiTest -Pcases=ui.graph-controls,ui.mapping,ui.endpoint,ui.multipart-attachments,ui.chinese-scales,ui.reject-claim-conflict -PevidenceDir=.omo/evidence/task-33`.
   - Commit: proposed `feat(ui): complete scoped graph and processing diagnostics`.
 
-- [ ] 34. Verify multi-client state consistency and bounded graph overhead
+- [x] 34. Verify multi-client state consistency and bounded graph overhead
   - Work: actual dedicated-server-connected clients, independent screen states and conflicting edits; qualify graph counts/grouping/layout/payload cost with real workloads. Multi-client automation must exercise a real connection, not several isolated singleplayer clients. Test claim/Policy conflicts and context invalidation under Hub/Fabric changes.
   - References: D17.10,T-R07,T-U03,T-U05..07,T-S09; tasks 30,31,33. Depends on 30,31,33.
   - Acceptance: two clients share authoritative revision; one stale edit rejected; close/disconnect frees subscriptions; topology changes refresh scope; native simulation keeps running with GUI closed.

@@ -621,3 +621,35 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   repaired case opens two production menus, consumes their encoded snapshots, and correlates full subscription lifecycles.
 - A first repair incorrectly required historical flows to remain nonempty after snapshot acknowledgement; the actual
   production delta correctly cleared them. The invariant is complete projection equality before and after the attack.
+
+## 2026-09-22 Task 34 resolution
+
+- Resolved ModDev run-file races, missing explicit connection, local/world click mismatch, wrong LDLib2 event type,
+  floating-player kicks, stale topology identities, fixed-tick races, close/reopen races, and client/server shutdown races.
+- Groovy Gradle LSP is unavailable; exact producer execution, persisted semantic verification, focused Java tests, and the
+  full Gradle build validate the changed harness.
+
+## 2026-09-22 Task 34 Atlas rejection resolution
+
+- Resolved the false `screen.mouseClicked` contract by asserting the actual LDLib2 `MOUSE_DOWN` dispatcher path.
+- Replaced elapsed-tick simulation claims with real per-delegate AE2 ticker observations after two production menu closes.
+- Replaced manual-only graph authority with a persisted production projection from an authentic runtime topology and exact
+  verifier-side payload/count/hash reconciliation.
+- Repaired evidence is rooted at `.omo/evidence/task-34/attempt-20260921T173244262Z` and
+  `.omo/evidence/task-34-perf/attempt-20260921T173601803Z`.
+
+## 2026-09-22 Task 34 visual evidence resolution
+
+- The rejected Client B capture had authoritative `staleRevision=true` but captured the previous READY framebuffer during
+  `ClientTickEvent.Post`. The repaired harness captures after three matching rendered frames and records the settled label.
+- A later clean-state review found a clipped Minecraft chat fragment in the screen margin. Clearing transient test-client
+  HUD text before render resolved it. Final evidence is `.omo/evidence/task-34/attempt-20260921T182540891Z` and
+  `.omo/evidence/task-34-perf/attempt-20260921T182805978Z`.
+
+## 2026-09-22 Task 34 refreshed topology resolution
+
+- Resolved acceptance of intermediate one-member publication by rebuilding the Hub after stale evidence and zero active
+  subscriptions, then requiring one current non-original Fabric with exactly both expected network identities.
+- Resolved the refreshed screenshot timeout caused by treating the nested `members_value` text as a scalar summary.
+- Canonical current-source evidence is `.omo/evidence/task-34/attempt-20260921T214717547Z` and
+  `.omo/evidence/task-34-perf/attempt-20260921T214535537Z`; persisted consumers and all rebound authority probes pass.

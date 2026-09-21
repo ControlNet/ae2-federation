@@ -8,6 +8,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import java.util.Properties
 
 def uiRepositoryDir = rootProject.layout.projectDirectory.asFile
 def uiVerificationMetadata = rootProject.layout.projectDirectory.file('gradle/verification-metadata.xml')
@@ -92,6 +93,8 @@ def uiTaskFifteenExpectedCases = uiTaskFifteenScenarioNames
 def uiTaskThirtyThreeScenarioNames = ['ui.graph-controls', 'ui.mapping', 'ui.endpoint',
         'ui.multipart-attachments', 'ui.chinese-scales', 'ui.reject-claim-conflict'] as Set
 def uiTaskThirtyThreeExpectedCases = uiTaskThirtyThreeScenarioNames
+def uiTaskThirtyFourExpectedCases = ['multiclient.shared-server', 'multiclient.conflicting-edit',
+        'multiclient.fabric-split', 'multiclient.disconnect-cleanup'] as Set
 def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames + uiTaskThirtyThreeScenarioNames
 
 def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
@@ -308,7 +311,7 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     def expectedCases = report.requested as Set
     if (!(report.requested instanceof List)
             || !(expectedCases == uiTaskThreeExpectedCases || expectedCases == uiTaskFifteenExpectedCases
-                    || expectedCases == uiTaskThirtyThreeExpectedCases)
+                    || expectedCases == uiTaskThirtyThreeExpectedCases || expectedCases == uiTaskThirtyFourExpectedCases)
             || report.executed != report.requested
             || !(report.assertions instanceof List) || report.assertions.size() != report.requested.size()
             || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }
@@ -330,31 +333,63 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             throw new GradleException("UI screenshot is stale or hash-mismatched: ${screenshot.path}")
         }
     }
-    def upstreamArtifacts = report.artifacts.findAll { it.path == 'ldlib2/report.json' }
-    if (upstreamArtifacts.size() != 1) {
-        throw new GradleException('UI result must bind exactly one LDLib2 report artifact')
-    }
-    def upstreamReport = new File(attempt, upstreamArtifacts[0].path as String).canonicalFile
-    if (!upstreamReport.toPath().startsWith(attempt.toPath()) || !upstreamReport.isFile()) {
-        throw new GradleException('Bound LDLib2 report is missing or external to the canonical attempt')
-    }
-    def selectedScenarios = expectedCases.findAll { it in uiAllScenarioNames } as Set
-    def verifiedUpstream = verifyLdlibReport(upstreamReport, upstreamReport.parentFile, selectedScenarios,
-            report.runId as String)
-    def upstreamAttachments = verifiedUpstream.attachments.findAll { !it.isEmpty() }
-    def renderer = upstreamAttachments.find { it.glRenderer != null } ?: [:]
-    if (report.upstreamReportRunId != verifiedUpstream.report.runId
-            || report.controls != verifiedUpstream.controls
-            || report.controlAttachments != upstreamAttachments
-            || report.screenshots != verifiedUpstream.captures
-            || report.guiScale != renderer.guiScale as double
-            || report.language != renderer.language
-            || report.glVendor != renderer.glVendor || report.glRenderer != renderer.glRenderer
-            || report.glVersion != renderer.glVersion
-            || report.window != [width: renderer.windowWidth as int, height: renderer.windowHeight as int,
-                    framebufferWidth: renderer.framebufferWidth as int,
-                    framebufferHeight: renderer.framebufferHeight as int]) {
-        throw new GradleException('UI result semantic projections do not match the bound LDLib2 report')
+    if (expectedCases == uiTaskThirtyFourExpectedCases) {
+        def server = new Properties(); server.load(new File(attempt, 'server.properties').newInputStream())
+        def clientA = new Properties(); clientA.load(new File(attempt, 'clients/client-a.properties').newInputStream())
+        def clientB = new Properties(); clientB.load(new File(attempt, 'clients/client-b.properties').newInputStream())
+        if (server.getProperty('status') != 'passed' || server.getProperty('dedicatedServer') != 'true'
+                || server.getProperty('connectedClients') != '2' || server.getProperty('authoritativeRevision') != '1'
+                || server.getProperty('staleRevisionRejected') != 'true'
+                || server.getProperty('fabricSplitInvalidated') != 'true'
+                || server.getProperty('scopeRefreshed') != 'true'
+                || server.getProperty('refreshedFabricMembers') != '2'
+                || server.getProperty('refreshedReferenceCurrent') != 'true'
+                || server.getProperty('refreshedExpectedIdentities') != 'true'
+                || server.getProperty('activeSubscriptions') != '0'
+                || (server.getProperty('subscriptionRemovals') as long) < 4
+                || (server.getProperty('closedGuiSimulationTicks') as long) < 20
+                || clientA.getProperty('singleplayer') != 'false' || clientB.getProperty('singleplayer') != 'false'
+                || clientA.getProperty('firstAccepted') != 'true' || clientB.getProperty('staleRevision') != 'true'
+                || clientA.getProperty('staleContext') != 'true'
+                || clientB.getProperty('staleRevisionRenderedText') != 'Rejected by server: policy revision is now 1'
+                || (clientB.getProperty('staleRevisionStableFrames') as int) < 3
+                || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Fabric topology changed; reopen this editor'
+                || (clientA.getProperty('staleContextStableFrames') as int) < 3
+                || !report.screenshots.any { it.path == 'clients/client-b-stale-revision.png' }
+                || !report.screenshots.any { it.path == 'clients/client-a-fabric-split.png' }
+                || clientA.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
+                || clientB.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
+                || clientA.getProperty('refreshedRenderedMembers') != '2 members'
+                || clientB.getProperty('refreshedRenderedMembers') != '2 members'
+                || (clientA.getProperty('refreshedStableFrames') as int) < 3
+                || (clientB.getProperty('refreshedStableFrames') as int) < 3
+                || !report.screenshots.any { it.path == 'clients/client-a-refreshed.png' }
+                || !report.screenshots.any { it.path == 'clients/client-b-refreshed.png' }
+                || clientA.getProperty('scopeRefreshed') != 'true' || clientB.getProperty('scopeRefreshed') != 'true'
+                || report.serverExit != 0 || report.clientExits != [A: 0, B: 0]) {
+            throw new GradleException('Task 34 dedicated-server authority, invalidation, or cleanup evidence is invalid')
+        }
+    } else {
+        def upstreamArtifacts = report.artifacts.findAll { it.path == 'ldlib2/report.json' }
+        if (upstreamArtifacts.size() != 1) {
+            throw new GradleException('UI result must bind exactly one LDLib2 report artifact')
+        }
+        def upstreamReport = new File(attempt, upstreamArtifacts[0].path as String).canonicalFile
+        def selectedScenarios = expectedCases.findAll { it in uiAllScenarioNames } as Set
+        def verifiedUpstream = verifyLdlibReport(upstreamReport, upstreamReport.parentFile, selectedScenarios,
+                report.runId as String)
+        def upstreamAttachments = verifiedUpstream.attachments.findAll { !it.isEmpty() }
+        def renderer = upstreamAttachments.find { it.glRenderer != null } ?: [:]
+        if (report.upstreamReportRunId != verifiedUpstream.report.runId
+                || report.controls != verifiedUpstream.controls || report.controlAttachments != upstreamAttachments
+                || report.screenshots != verifiedUpstream.captures || report.guiScale != renderer.guiScale as double
+                || report.language != renderer.language || report.glVendor != renderer.glVendor
+                || report.glRenderer != renderer.glRenderer || report.glVersion != renderer.glVersion
+                || report.window != [width: renderer.windowWidth as int, height: renderer.windowHeight as int,
+                        framebufferWidth: renderer.framebufferWidth as int,
+                        framebufferHeight: renderer.framebufferHeight as int]) {
+            throw new GradleException('UI result semantic projections do not match the bound LDLib2 report')
+        }
     }
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -406,10 +441,12 @@ def uiCreatePersistedProbe = { File resultFile, File probeRoot, String name, Clo
     report.ldlibJarSha256 = uiSha256(uiLdlibJar.get().bytes)
     report.startedAt = Instant.now().minusSeconds(1).toString()
     report.endedAt = Instant.now().toString()
-    def upstream = new File(attempt, 'ldlib2/report.json')
+    def upstream = report.requested as Set == uiTaskThirtyFourExpectedCases
+            ? attempt : new File(attempt, 'ldlib2/report.json')
     mutate(report, upstream)
-    def upstreamArtifact = report.artifacts.find { it.path == 'ldlib2/report.json' }
-    upstreamArtifact.sha256 = uiSha256(upstream.bytes)
+    report.artifacts.each { artifact ->
+        artifact.sha256 = uiSha256(new File(attempt, artifact.path as String).bytes)
+    }
     reboundResult.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
     reboundResult
 }
@@ -544,10 +581,65 @@ def uiTaskThirtyThreeUpstreamMutations = [
         }
 ]
 
+def uiTaskThirtyFourUpstreamMutations = [
+        'fabricated-authoritative-revision': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['authoritativeRevision'] = '0'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound authoritative revision probe') }
+        },
+        'fabricated-stale-revision': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['staleRevision'] = 'false'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound stale revision probe') }
+            report.controlAttachments.find { it.role == 'B' }.staleRevision = 'false'
+        },
+        'fabricated-stale-revision-render': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['staleRevisionRenderedText'] = 'Ready - changes require server confirmation'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound stale revision render probe') }
+            report.controlAttachments.find { it.role == 'B' }.staleRevisionRenderedText =
+                    'Ready - changes require server confirmation'
+        },
+        'fabricated-refreshed-render': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['refreshedRenderedStatus'] = 'Pending current topology'
+            properties['refreshedRenderedMembers'] = 'No confirmed Fabric membership'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound premature refreshed render probe') }
+            def attachment = report.controlAttachments.find { it.role == 'B' }
+            attachment.refreshedRenderedStatus = 'Pending current topology'
+            attachment.refreshedRenderedMembers = 'No confirmed Fabric membership'
+        },
+        'fabricated-refreshed-fabric': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['refreshedFabricMembers'] = '1'
+            properties['refreshedReferenceCurrent'] = 'false'
+            properties['refreshedExpectedIdentities'] = 'false'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound incomplete refreshed Fabric probe') }
+        },
+        'fabricated-cleanup': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['activeSubscriptions'] = '1'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound cleanup probe') }
+        }
+]
+
 def uiMutationsFor = { File resultFile ->
     def requested = new JsonSlurper().parse(resultFile).requested as Set
     requested == uiTaskFifteenExpectedCases ? uiTaskFifteenUpstreamMutations
-            : requested == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeUpstreamMutations : uiUpstreamMutations
+            : requested == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeUpstreamMutations
+            : requested == uiTaskThirtyFourExpectedCases ? uiTaskThirtyFourUpstreamMutations : uiUpstreamMutations
 }
 
 def cleanupUiRuntime = { File attempt ->
@@ -585,11 +677,12 @@ tasks.register('federationUiTest') {
     doLast {
         def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
         def requestedSet = requested as Set
+        def taskThirtyFour = requestedSet == uiTaskThirtyFourExpectedCases
         def selectedScenarioNames = requestedSet == uiTaskThreeExpectedCases ? uiTaskThreeScenarioNames
                 : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames
                 : requestedSet == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeScenarioNames : null
-        if (requested.isEmpty() || selectedScenarioNames == null) {
-            throw new GradleException("UI verification requires exact Task 3, Task 15, or Task 33 cases; requested=${requested}")
+        if (requested.isEmpty() || (selectedScenarioNames == null && !taskThirtyFour)) {
+            throw new GradleException("UI verification requires exact Task 3, Task 15, Task 33, or Task 34 cases; requested=${requested}")
         }
         def evidenceText = uiEvidenceProperty.orNull
         if (evidenceText == null || evidenceText.isBlank()) throw new GradleException('Missing -PevidenceDir')
@@ -603,6 +696,139 @@ tasks.register('federationUiTest') {
         def ldlib = uiLdlibJar.get()
         if (ldlib == null) throw new GradleException('Resolved LDLib2 2.2.34 all JAR is unavailable')
         def startedAt = Instant.now().toString()
+        if (taskThirtyFour) {
+            def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
+            def serverEvidence = new File(attempt, 'server.properties')
+            def clientsDir = new File(attempt, 'clients'); clientsDir.mkdirs()
+            def runtimeRoot = new File(layout.buildDirectory.get().asFile, "task34-runtime-${runId}")
+            def portSocket = new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())
+            def port = portSocket.localPort; portSocket.close()
+            def start = { List<String> command, File log, Map<String, String> environment ->
+                log.parentFile.mkdirs()
+                def builder = new ProcessBuilder(command.collect { it.toString() }).directory(uiRepositoryDir)
+                        .redirectErrorStream(true).redirectOutput(log)
+                builder.environment().putAll(environment)
+                builder.start()
+            }
+            def base = [gradleExecutable.absolutePath, '--no-daemon', '--no-configuration-cache',
+                    '--dependency-verification=strict']
+            def serverLog = new File(attempt, 'dedicated-server.log')
+            def serverDir = new File(runtimeRoot, 'server')
+            def server = start(base + [':neoforge-1.21.1:runMulticlientServer',
+                    "-PfederationMultiClientGameDir=${serverDir.absolutePath}",
+                    "-PfederationMultiClientPort=${port}",
+                    "-PfederationMultiClientServerEvidence=${serverEvidence.absolutePath}"], serverLog, [:])
+            def clientA = null
+            def clientB = null
+            try {
+                def readyDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120)
+                def listening = false
+                while (server.isAlive() && System.nanoTime() < readyDeadline && !listening) {
+                    try (def socket = new java.net.Socket()) {
+                        socket.connect(new java.net.InetSocketAddress('127.0.0.1', port), 250)
+                        listening = true
+                    } catch (IOException ignored) {
+                        TimeUnit.MILLISECONDS.sleep(250)
+                    }
+                }
+                if (!listening) throw new GradleException("Task 34 dedicated server did not listen; log=${serverLog}")
+                def clientCommand = { String role ->
+                    def clientGameDirectory = new File(runtimeRoot, "client-${role}").absolutePath
+                    def command = ['xvfb-run', '--auto-servernum',
+                            '--server-args=-screen 0 1280x720x24 -nolisten tcp']
+                    command.addAll(base)
+                    command.addAll([":neoforge-1.21.1:runMulticlientClient${role}",
+                            "-PfederationMultiClientGameDir=${clientGameDirectory}",
+                            "-PfederationMultiClientPort=${port}", "-PfederationMultiClientRole=${role}",
+                            "-PfederationMultiClientUsername=Client${role}",
+                            "-PfederationMultiClientClientOutput=${clientsDir.absolutePath}",
+                            "-PfederationMultiClientServerEvidence=${serverEvidence.absolutePath}"])
+                    command
+                }
+                clientA = start(clientCommand('A'), new File(attempt, 'client-a.log'), ['LIBGL_ALWAYS_SOFTWARE': '1'])
+                clientB = start(clientCommand('B'), new File(attempt, 'client-b.log'), ['LIBGL_ALWAYS_SOFTWARE': '1'])
+                def deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(300)
+                while ((clientA.isAlive() || clientB.isAlive()) && System.nanoTime() < deadline) {
+                    TimeUnit.MILLISECONDS.sleep(250)
+                }
+                if (clientA.isAlive() || clientB.isAlive()) throw new GradleException('Task 34 clients timed out')
+                if (clientA.exitValue() != 0 || clientB.exitValue() != 0) {
+                    throw new GradleException("Task 34 client/server evidence failed; A=${clientA.exitValue()}, B=${clientB.exitValue()}")
+                }
+                def evidenceDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
+                while (server.isAlive() && !serverEvidence.isFile() && System.nanoTime() < evidenceDeadline) {
+                    TimeUnit.MILLISECONDS.sleep(250)
+                }
+                if (!serverEvidence.isFile()) throw new GradleException('Task 34 server evidence timed out')
+                if (server.isAlive()) server.outputStream.withWriter { it.write('stop\n'); it.flush() }
+                if (!server.waitFor(30, TimeUnit.SECONDS)) throw new GradleException('Task 34 server did not stop cleanly')
+                if (server.exitValue() != 0) throw new GradleException("Task 34 server exit=${server.exitValue()}")
+
+                def screenshots = []
+                clientsDir.listFiles()?.findAll { it.name.endsWith('.png') }?.sort { it.name }?.each { image ->
+                    def dimensionsLog = File.createTempFile('ae2f-task34-identify-', '.txt')
+                    try {
+                        def identify = uiRunProcess(['identify', '-format', '%m %w %h %[mean] %[standard-deviation]',
+                                image.absolutePath], uiRepositoryDir, dimensionsLog, 20, [:])
+                        def metadata = dimensionsLog.text.trim().split(/\s+/)
+                        if (identify.exit != 0 || metadata.size() != 5 || metadata[0] != 'PNG'
+                                || (metadata[4] as double) <= 0d) {
+                            throw new GradleException("Task 34 screenshot is blank or malformed: ${image}")
+                        }
+                        screenshots.add([path: attempt.toPath().relativize(image.toPath()).toString(),
+                                sha256: uiSha256(image.bytes), width: metadata[1] as int, height: metadata[2] as int,
+                                mean: metadata[3] as double, standardDeviation: metadata[4] as double])
+                    } finally { dimensionsLog.delete() }
+                }
+                if (screenshots.size() < 4) throw new GradleException('Task 34 requires two screenshots from each client')
+                def load = { File file -> def value = new Properties(); file.withInputStream { value.load(it) }; value }
+                def clientFactsA = load(new File(clientsDir, 'client-a.properties'))
+                def clientFactsB = load(new File(clientsDir, 'client-b.properties'))
+                def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
+                cleanupReceipt.text = 'Task 34: two Xvfb clients and one loopback dedicated server exited; isolated game directories were removed.\n'
+                def files = []
+                Files.walk(attempt.toPath()).withCloseable { paths ->
+                    paths.filter { Files.isRegularFile(it) }.forEach { path ->
+                        if (path.fileName.toString() != 'result.json') files.add(path.toFile())
+                    }
+                }
+                def artifacts = files.collect { file -> [path: attempt.toPath().relativize(file.toPath()).toString(),
+                        sha256: uiSha256(file.bytes)] }
+                def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
+                def attachments = [['role': 'A'] + clientFactsA.collectEntries { key, value -> [(key.toString()): value.toString()] },
+                        ['role': 'B'] + clientFactsB.collectEntries { key, value -> [(key.toString()): value.toString()] }]
+                def report = [schemaVersion: 3, kind: 'ui', status: 'complete', runId: runId,
+                        evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
+                        pathIdentitySha256: uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
+                        sourceRevision: sourceIdentity.revision, dirtyDiffSha256: sourceIdentity.dirtySha256,
+                        dependencyLockSha256: uiSha256(uiVerificationMetadata.asFile.bytes),
+                        productJarSha256: uiSha256(jar.bytes), ldlibJarSha256: uiSha256(ldlib.bytes),
+                        startedAt: startedAt, endedAt: Instant.now().toString(), requested: requested,
+                        executed: requested, assertions: requested.collect { [caseId: it, status: 'passed'] },
+                        parentExit: 0, clientExit: 0, clientExits: [A: clientA.exitValue(), B: clientB.exitValue()],
+                        serverExit: server.exitValue(), displayMode: 'xvfb', displayNetwork: 'disabled (-nolisten tcp)',
+                        inputMode: 'SYNTHETIC', guiScale: clientFactsA.guiScale as double,
+                        language: clientFactsA.language, glVendor: clientFactsA.glVendor,
+                        glRenderer: clientFactsA.glRenderer, glVersion: clientFactsA.glVersion,
+                        window: [width: clientFactsA.windowWidth as int, height: clientFactsA.windowHeight as int,
+                                framebufferWidth: clientFactsA.framebufferWidth as int,
+                                framebufferHeight: clientFactsA.framebufferHeight as int],
+                        controls: [[selector: '#policy_toggle', clients: ['A', 'B']]],
+                        controlAttachments: attachments, screenshots: screenshots,
+                        upstreamReportRunId: null, artifacts: artifacts]
+                def resultFile = new File(attempt, 'result.json')
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                verifyUiPersistedReport(resultFile, true)
+                logger.lifecycle("Federation multi-client UI evidence: ${attempt}")
+                return
+            } finally {
+                [clientA, clientB, server].findAll { it != null && it.isAlive() }.each { process ->
+                    process.toHandle().descendants().toList().reverseEach { it.destroyForcibly() }
+                    process.destroyForcibly()
+                }
+                uiDeleteRecursively(runtimeRoot)
+            }
+        }
         def ldlibOutput = new File(attempt, 'ldlib2')
         def clientLog = new File(attempt, 'actual-client.log')
         def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')

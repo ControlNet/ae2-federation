@@ -442,6 +442,7 @@ def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accoun
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
 def verifyTaskThirtyBenchmarkEvidence
+def verifyTaskThirtyFourBenchmarkEvidence
 def strictCanonicalPath = { File file ->
     def absolute = file.absoluteFile.toPath()
     if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
@@ -5525,6 +5526,137 @@ verifyTaskThirtyNegativeEvidence = { File attempt, List requested, List<String> 
         }
     }
 }
+verifyTaskThirtyFourBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
+    if (report.kind != 'benchmark' || report.requested != ['ui-small']) return null
+    ['benchmark-native.properties', 'benchmark-profile.json', 'benchmark-baseline.json',
+            'benchmark-budgets.json', 'cleanup-receipt.txt'].each { name ->
+        if (declaredPaths.count { it == name } != 1 || declaredPaths.count { new File(it).name == name } != 1) {
+            throw new GradleException("Task 34 benchmark artifact mismatch: ${name}")
+        }
+    }
+    if (new File(attempt, 'cleanup-receipt.txt').text
+            != 'Task 34: graph workload completed with no open GUI; runtime data and session.lock were removed.\n') {
+        throw new GradleException('Task 34 benchmark cleanup receipt mismatch')
+    }
+    def profileFile = new File(attempt, 'benchmark-profile.json')
+    def budgetFile = new File(attempt, 'benchmark-budgets.json')
+    def profile = new JsonSlurper().parse(profileFile) as Map
+    def baseline = new JsonSlurper().parse(new File(attempt, 'benchmark-baseline.json')) as Map
+    def budgets = new JsonSlurper().parse(budgetFile) as Map
+    if (profile.id != 'ui-small' || profile.profileVersion != 'ui-small-v1'
+            || profile.testId != 'uigraphbenchmarksmall' || profile.seed != 340034
+            || profile.members != 24 || profile.providers != 8 || profile.endpoints != 8
+            || profile.physicalEdges != 16 || profile.capabilityEdges != 8 || profile.patterns != 64
+            || profile.samples != 32 || profile.closedGuiTicks != 20
+            || baseline.schemaVersion != 1 || baseline.profileVersion != profile.profileVersion
+            || baseline.seed != profile.seed || budgets.schemaVersion != 1
+            || budgets.profileVersion != profile.profileVersion || budgets.seed != profile.seed) {
+        throw new GradleException('Task 34 benchmark profile, baseline, or budget identity mismatch')
+    }
+    def captureBinding = [profileSha256: baseline.profileSha256, budgetSha256: baseline.budgetSha256,
+            dependencyLockSha256: baseline.dependencyLockSha256, minecraftVersion: baseline.minecraftVersion,
+            neoForgeVersion: baseline.neoForgeVersion, ae2Version: baseline.ae2Version,
+            ldlib2Version: baseline.ldlib2Version]
+    if (baseline.profileSha256 != sha256(profileFile.bytes) || baseline.budgetSha256 != sha256(budgetFile.bytes)
+            || baseline.dependencyLockSha256 != sha256(verificationMetadata.asFile.bytes)
+            || baseline.captureIdentitySha256 != sha256(JsonOutput.toJson(captureBinding).getBytes(StandardCharsets.UTF_8))
+            || baseline.minecraftVersion != minecraft_version || baseline.neoForgeVersion != neo_version
+            || baseline.ae2Version != ae2_version || baseline.ldlib2Version != ldlib2_version
+            || baseline.counts != [nodes: 40, physicalEdges: 16, capabilityEdges: 8, patterns: 64,
+                    retainedEntries: 128]) {
+        throw new GradleException('Task 34 benchmark capture identity is stale')
+    }
+    def metrics = loadProperties(new File(attempt, 'benchmark-native.properties'))
+    def numeric = { String name -> parseNonnegativeInteger(metrics.getProperty(name), "Task 34 ${name}") }
+    def counters = { String name ->
+        def value = metrics.getProperty(name)
+        if (!(value ==~ /[0-9]+(,[0-9]+)*/)) {
+            throw new GradleException("Task 34 ${name} native counter list is invalid")
+        }
+        value.split(',', -1).collect { parseNonnegativeInteger(it, "Task 34 ${name} counter") }
+    }
+    if (metrics.getProperty('schemaVersion') != '1' || metrics.getProperty('status') != 'passed'
+            || metrics.getProperty('kind') != 'benchmark' || metrics.getProperty('testId') != profile.testId
+            || metrics.getProperty('assertions') != '14' || metrics.getProperty('operations') != '34'
+            || metrics.getProperty('profileVersion') != profile.profileVersion
+            || metrics.getProperty('seed') != profile.seed.toString()
+            || metrics.getProperty('profileSha256') != sha256(profileFile.bytes)
+             || !(metrics.getProperty('structuralSignatureSha256') ==~ /[0-9a-f]{64}/)
+            || !(metrics.getProperty('layoutSignatureSha256') ==~ /[0-9a-f]{64}/)
+            || !(metrics.getProperty('productionProjectionSha256') ==~ /[0-9a-f]{64}/)) {
+        throw new GradleException('Task 34 benchmark metric identity or schema mismatch')
+    }
+    def projectionPayload
+    try {
+        projectionPayload = new String(Base64.decoder.decode(metrics.getProperty('productionProjectionPayloadBase64')),
+                StandardCharsets.UTF_8)
+    } catch (RuntimeException exception) {
+        throw new GradleException('Task 34 production projection payload is invalid', exception)
+    }
+    def projectionLines = projectionPayload.readLines()
+    def projectionCounts = [nodes: projectionLines.count { it.startsWith('N\t') },
+            members: projectionLines.count { it.startsWith('N\tMEMBER\t') },
+            providers: projectionLines.count { it.startsWith('N\tPROVIDER\t') },
+            endpoints: projectionLines.count { it.startsWith('N\tENDPOINT\t') },
+            edges: projectionLines.count { it.startsWith('E\t') },
+            physicalEdges: projectionLines.count { it.startsWith('E\tPHYSICAL\t') },
+            capabilityEdges: projectionLines.count { it.startsWith('E\tCAPABILITY\t') },
+            patterns: projectionLines.count { it.startsWith('P\t') }]
+    if (metrics.getProperty('productionProjectionAuthority') != 'true'
+            || metrics.getProperty('workloadDerivation') != 'bounded-production-replication-v1'
+            || sha256(projectionPayload.getBytes(StandardCharsets.UTF_8)) != metrics.getProperty('productionProjectionSha256')
+            || projectionCounts != baseline.productionProjection
+            || numeric('productionProjectionNodeCount') != projectionCounts.nodes
+            || numeric('productionProjectionEdgeCount') != projectionCounts.edges
+            || numeric('productionProjectionPatternCount') != projectionCounts.patterns
+            || numeric('productionProjectionSamples') != profile.samples + 1) {
+        throw new GradleException('Task 34 production projection authority mismatch')
+    }
+    def before = counters('nativeProgressBefore')
+    def after = counters('nativeProgressAfter')
+    def nativeDelta = after.withIndex().sum { value, index -> value - before[index] } as long
+    if (numeric('productionMenusOpened') != 2 || numeric('productionMenusClosed') != 2
+            || numeric('nativeProgressOwnerIdentity') <= 0
+            || numeric('nativeProgressDelegateCount') != before.size() || after.size() != before.size()
+            || before.isEmpty() || after.withIndex().any { value, index -> value <= before[index] }
+            || numeric('nativeProgressDelta') != nativeDelta || nativeDelta <= 0
+            || numeric('closedGuiTicks') < budgets.minimumClosedGuiTicks) {
+        throw new GradleException('Task 34 closed-GUI native progress authority mismatch')
+    }
+    if (numeric('nodeCount') != baseline.counts.nodes || numeric('physicalEdgeCount') != baseline.counts.physicalEdges
+            || numeric('capabilityEdgeCount') != baseline.counts.capabilityEdges
+            || numeric('patternCount') != baseline.counts.patterns || numeric('layoutNodeCount') != baseline.counts.nodes
+            || numeric('layoutEdgeCount') != baseline.counts.physicalEdges + baseline.counts.capabilityEdges
+            || numeric('layoutBuildCount') != 2 || numeric('layoutReuseCount') < budgets.minimumLayoutReuseCount
+            || metrics.getProperty('dataOnlyLayoutReused') != 'true'
+            || metrics.getProperty('topologyLayoutRebuilt') != 'true'
+            || numeric('encodedPayloadBytes') <= 0 || numeric('encodedPayloadBytes') > budgets.maxEncodedPayloadBytes
+            || numeric('maxRetainedGraphEntries') != baseline.counts.retainedEntries
+            || numeric('maxRetainedGraphEntries') > budgets.maxRetainedGraphEntries
+            || numeric('maxProjectionNanos') <= 0 || numeric('maxProjectionNanos') > budgets.maxProjectionNanos
+            || numeric('maxLayoutNanos') <= 0 || numeric('maxLayoutNanos') > budgets.maxLayoutNanos
+            || numeric('closedGuiTicks') < budgets.minimumClosedGuiTicks) {
+        throw new GradleException('Task 34 graph counts, cache behavior, payload, or closed-GUI progress is invalid')
+    }
+    def lifecycle = parseBenchmarkLifecycle(profile.lifecycle, 'persisted ui-small profile')
+    def projection = [profile: [version: profile.profileVersion, seed: profile.seed,
+            nodes: numeric('nodeCount'), edges: numeric('layoutEdgeCount'), patterns: numeric('patternCount')],
+             bounds: [payloadBytes: numeric('encodedPayloadBytes'), retainedEntries: numeric('maxRetainedGraphEntries')],
+             cache: [builds: numeric('layoutBuildCount'), reuses: numeric('layoutReuseCount')],
+            authority: projectionCounts + [sha256: metrics.getProperty('productionProjectionSha256')],
+            nativeProgress: [owner: numeric('nativeProgressOwnerIdentity'), delegates: before.size(),
+                    before: before, after: after, delta: nativeDelta],
+            closedGuiTicks: numeric('closedGuiTicks')]
+    def assertion = report.assertions[0]
+    if (report.assertions.size() != 1 || assertion.profile != projection.profile
+            || assertion.bounds != projection.bounds || assertion.cache != projection.cache
+            || assertion.authority != projection.authority || assertion.nativeProgress != projection.nativeProgress
+            || assertion.closedGuiTicks != projection.closedGuiTicks || assertion.lifecycle != lifecycle
+            || report.profile != projection.profile || report.profileLifecycle != lifecycle) {
+        throw new GradleException('Task 34 benchmark report projection mismatch')
+    }
+    projection
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -5709,6 +5841,7 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskThirtyTwoEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
+    verifyTaskThirtyFourBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
         def identity = currentSourceIdentity(identityDir)
@@ -6201,7 +6334,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 '-PfederationGameTestSelection=benchmark', "-PfederationGameTestId=${benchmarkProfile.testId}",
                 "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"]
         File benchmarkBudget = null
-        if (profile in ['processing-small', 'mixed-small']) {
+        if (profile in ['processing-small', 'mixed-small', 'ui-small']) {
             def copies = [config: 'benchmark-profile.json', baseline: 'benchmark-baseline.json',
                     budgets: 'benchmark-budgets.json'].collectEntries { field, name ->
                 def source = strictCanonicalPath(rootProject.file(benchmarkProfile[field] as String))
@@ -6217,8 +6350,10 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 if (replaySeed != null && !replaySeed.isBlank()) {
                     benchmarkArgs.add("-PfederationProcessingBenchmarkSeed=${replaySeed}")
                 }
-            } else {
+            } else if (profile == 'mixed-small') {
                 benchmarkArgs.add("-PfederationMixedBenchmarkProfile=${copies.config.absolutePath}")
+            } else {
+                benchmarkArgs.add("-PfederationUiBenchmarkProfile=${copies.config.absolutePath}")
             }
         }
         def child = gradleCommand('benchmark-gametest', benchmarkArgs,
@@ -6229,7 +6364,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         }
         def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'benchmark', testId: benchmarkProfile.testId,
                 structure: benchmarkProfile.structure, assertions: benchmarkProfile.assertions,
-                operations: benchmarkProfile.operations])
+                operations: benchmarkProfile.operations, allowZeroWork: profile == 'ui-small'])
         childArtifacts.add(nativeEvidence)
         if (profile == 'mixed-small') {
             def runtimeEvidence = new File(attempt, 'benchmark-runtime.receipts')
@@ -6245,6 +6380,28 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         if (profile == 'processing-small') {
             assertion.putAll(taskTwentyProjection(loadTaskTwentyMetrics(nativeEvidence),
                     new JsonSlurper().parse(benchmarkBudget) as Map, profileLifecycle))
+        } else if (profile == 'ui-small') {
+            def metrics = loadProperties(nativeEvidence)
+            def before = metrics.getProperty('nativeProgressBefore').split(',', -1).collect { it as long }
+            def after = metrics.getProperty('nativeProgressAfter').split(',', -1).collect { it as long }
+            assertion.profile = [version: benchmarkProfile.profileVersion, seed: benchmarkProfile.seed,
+                    nodes: metrics.getProperty('nodeCount') as long,
+                    edges: metrics.getProperty('layoutEdgeCount') as long,
+                    patterns: metrics.getProperty('patternCount') as long]
+            assertion.bounds = [payloadBytes: metrics.getProperty('encodedPayloadBytes') as long,
+                    retainedEntries: metrics.getProperty('maxRetainedGraphEntries') as long]
+            assertion.cache = [builds: metrics.getProperty('layoutBuildCount') as long,
+                    reuses: metrics.getProperty('layoutReuseCount') as long]
+            assertion.authority = [nodes: metrics.getProperty('productionProjectionNodeCount') as long,
+                    members: 2L, providers: 1L, endpoints: 1L,
+                    edges: metrics.getProperty('productionProjectionEdgeCount') as long,
+                    physicalEdges: 2L, capabilityEdges: 1L,
+                    patterns: metrics.getProperty('productionProjectionPatternCount') as long,
+                    sha256: metrics.getProperty('productionProjectionSha256')]
+            assertion.nativeProgress = [owner: metrics.getProperty('nativeProgressOwnerIdentity') as long,
+                    delegates: metrics.getProperty('nativeProgressDelegateCount') as long,
+                    before: before, after: after, delta: metrics.getProperty('nativeProgressDelta') as long]
+            assertion.closedGuiTicks = metrics.getProperty('closedGuiTicks') as long
         }
         assertions.add(assertion)
     } else {
@@ -6746,6 +6903,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             ? 'Task 20: generated native and Federation scenes completed serially; runtime data and session.lock were removed.\n'
             : kind == 'benchmark' && profile == 'mixed-small'
             ? 'Task 30: native mixed factory completed; runtime data and session.lock were removed.\n'
+            : kind == 'benchmark' && profile == 'ui-small'
+            ? 'Task 34: graph workload completed with no open GUI; runtime data and session.lock were removed.\n'
             : requestedCases == taskNineteenCases
             ? 'Task 19: six serialized GameTest child finalizers copied diagnostics and removed task-owned runtime data; no session.lock remains.\n'
             : 'GameTest child finalizers copied diagnostics before removing task-owned run-gametest runtime data.\n'
@@ -6809,8 +6968,10 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             childLifecycles: childLifecycles, artifacts: artifacts]
     if (kind == 'benchmark') report.profileLifecycle = assertions[0].lifecycle
     if (kind == 'benchmark' && profile == 'processing-small') report.profile = assertions[0].profile
+    if (kind == 'benchmark' && profile == 'ui-small') report.profile = assertions[0].profile
     verifyTaskTwentyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
     verifyTaskThirtyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
+    verifyTaskThirtyFourBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
     if (taskTenBlocked) {
         report.reason = 'native-energy-directionality-unavailable'
         report.missingHooks = ['shared EnergyOverlayGrid has no caller/edge direction, route identity, or authorization boundary']
@@ -10174,5 +10335,70 @@ tasks.register('federationTaskThirtyNegativeEvidenceSelfTest') {
         ]
         if (probes.any { !it }) throw new GradleException('A Task 30 fully rebound negative probe was accepted')
         logger.lifecycle('Task 30 fully rebound negative evidence probes were rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskThirtyFourBenchmarkEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete Task 34 ui-small benchmark result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.kind != 'benchmark' || report.requested != ['ui-small']) {
+            throw new GradleException('Result is not the canonical Task 34 benchmark')
+        }
+        logger.lifecycle('Task 34 UI benchmark evidence verified')
+    }
+}
+
+tasks.register('federationTaskThirtyFourBenchmarkEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated Task 34 projection and native-progress authority.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def source = strictCanonicalPath(rootProject.file(resultPath))
+        def mutate = { String name, String expected, Closure mutation ->
+            def rejection = taskFiveEvidenceProbeRejects(source, "task34-${name}") { File attempt, Map report ->
+                def file = new File(attempt, 'benchmark-native.properties')
+                def metrics = loadProperties(file)
+                mutation(metrics)
+                file.withOutputStream { metrics.store(it, "Task 34 ${name} fully rebound probe") }
+            }
+            if (!(rejection instanceof String && rejection.contains(expected))) {
+                logger.lifecycle("Task 34 probe ${name} rejection: ${rejection}")
+                return false
+            }
+            true
+        }
+        def probes = [
+                'literal-progress': mutate('literal-progress', 'closed-GUI native progress authority mismatch') {
+                    it['nativeProgressAfter'] = it['nativeProgressBefore']
+                    it['nativeProgressDelta'] = '0'
+                },
+                'fabricated-owner': mutate('fabricated-owner', 'closed-GUI native progress authority mismatch') {
+                    it['nativeProgressOwnerIdentity'] = '0'
+                },
+                'open-menu-progress': mutate('open-menu-progress', 'closed-GUI native progress authority mismatch') {
+                    it['productionMenusClosed'] = '1'
+                },
+                'projection-label': mutate('projection-label', 'production projection authority mismatch') {
+                    it['productionProjectionAuthority'] = 'false'
+                },
+                'projection-payload': mutate('projection-payload', 'production projection authority mismatch') {
+                    def payload = new String(Base64.decoder.decode(it['productionProjectionPayloadBase64']),
+                            StandardCharsets.UTF_8)
+                    def changed = payload.readLines().findAll { !it.startsWith('P\t') }.join('\n') + '\n'
+                    it['productionProjectionPayloadBase64'] = Base64.encoder.encodeToString(
+                            changed.getBytes(StandardCharsets.UTF_8))
+                    it['productionProjectionSha256'] = sha256(changed.getBytes(StandardCharsets.UTF_8))
+                    it['productionProjectionPatternCount'] = '0'
+                }
+        ]
+        if (probes.any { !it }) throw new GradleException('A Task 34 fully rebound authority probe was accepted')
+        logger.lifecycle('Task 34 fully rebound projection and native-progress probes were rejected for intended reasons')
     }
 }
