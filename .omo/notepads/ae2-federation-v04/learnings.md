@@ -4,6 +4,15 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 32 scoped observability
+
+- Exact native transport accounting belongs after positive `MODULATE` acceptance. Storage records after its authorized
+  delegate accepts; energy records only at the outermost accepted demand so recursion and simulations remain invisible.
+- A live projection does not need a second scheduler or shadow task model. Provider identity plus native Lane lock,
+  busy, send-list, and return-inventory state is sufficient to describe current operation without inventing completion.
+- Client deltas must match exact Fabric generation and topology revision and have a contiguous base data revision;
+  rejection transitions the client to explicit resnapshot-required state.
+
 ## 2026-09-21 Task 31 directional ME energy
 
 - AE2 cold-start recovery works through a consumer-local read-only `IAEPowerStorage` plus a native
@@ -795,3 +804,29 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   observations is the independent authority for `peakInFlight`; waiting facts then provide exact job/blocking correlation.
 - Groovy interpolated map values can remain `GString` instances. Normalize resource IDs to `String` before comparing them
   with Base64-decoded Java strings, or valid raw transitions fail closed through `containsValue`.
+
+## 2026-09-21 Task 32 independent-review repair
+
+- One process-global client projection is unsafe even when every record is Fabric-scoped. The ownership key must include
+  player, menu session, subscription generation, exact Fabric generation, and a server nonce.
+- Full replacement deltas are a small deterministic way to express additions, updates, and removals atomically while
+  preserving canonical bounded collections and no-mutation-on-rejection behavior.
+- Operation IDs may be random only when created once at the physical native boundary and carried through every observer;
+  minting inside observability turns repeated reports into distinct physical operations.
+
+## 2026-09-21 Task 32 final runtime lessons
+
+- GameTest setup must distinguish pre-attachment identity settlement from post-attachment runtime readiness. Rechecking
+  standalone-grid identity gates after a deliberate native attachment misdiagnoses later phases and can crash helpers that
+  assume an identity remains independently settled.
+- Native test nodes joining an established Fabric should load that Fabric member's `NetworkId` before node creation. A
+  physical connection between independently settled identities correctly fails closed as `AMBIGUOUS_MERGE`.
+- Framework UI lifecycle assumptions must be verified against source: LDLib2 removes `ModularUI` from client screen
+  mixins, not from the dedicated-server container menu, so server ownership requires a platform container-close event.
+
+## 2026-09-21 Task 32 cross-Fabric authority repair
+
+- A cross-scope client rejection is authoritative only when the baseline and competing scope originate from separate real
+  production menus and server-issued sessions. Directly constructed sessions prove value-object validation, not ownership.
+- Snapshot acknowledgement may legitimately remove historical flow-window entries in a following delta. Full-state
+  non-mutation compares every collection and revision byte-for-byte/value-for-value without requiring every collection nonempty.

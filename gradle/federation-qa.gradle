@@ -435,6 +435,9 @@ def verifyTaskThirtyNegativeEvidence
 def taskThirtyOneCases = ['energy.directional-policy', 'energy.cold-start', 'energy.ring-conservation',
         'energy.reject-reverse', 'energy.disconnect-no-source']
 def verifyTaskThirtyOneEvidence
+def taskThirtyTwoCases = ['observe.native-flow-once', 'observe.scoped-snapshot', 'observe.close-cleanup',
+        'observe.reject-stale-delta', 'observe.reject-cross-fabric-edit']
+def verifyTaskThirtyTwoEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -1412,10 +1415,14 @@ verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> decla
     def largeDirectionalOperation = operations.energydirectionalpolicy.'large-extract'
     if (directionalAuthority.access != 'current' || directionalAuthority.capability != 'true'
             || directionalOperation.providerService != directionalAuthority.providerService
+            || directionalOperation.consumerGrid != directionalAuthority.consumerGrid
+            || directionalOperation.providerGrid != directionalAuthority.providerGrid
             || new BigDecimal(directionalOperation.accepted) != decimal(directional, 'accepted')
             || new BigDecimal(directionalOperation.providerBefore) != decimal(directional, 'providerBefore')
             || new BigDecimal(directionalOperation.providerAfter) != decimal(directional, 'providerAfter')
             || largeDirectionalOperation.providerService != directionalAuthority.providerService
+            || largeDirectionalOperation.consumerGrid != directionalAuthority.consumerGrid
+            || largeDirectionalOperation.providerGrid != directionalAuthority.providerGrid
             || new BigDecimal(largeDirectionalOperation.requested) != decimal(directional, 'largeRequested')
             || new BigDecimal(largeDirectionalOperation.accepted) != decimal(directional, 'largeAccepted')
             || new BigDecimal(largeDirectionalOperation.providerBefore) != decimal(directional, 'largeProviderBefore')
@@ -1486,6 +1493,143 @@ verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> decla
             || new BigDecimal(operations.energydisconnectnosource.'stale-denied'.accepted) != 0
             || new BigDecimal(operations.energydisconnectnosource.'replacement-extract'.accepted) != 100) {
         throw new GradleException('Task 31 independent source lifecycle authority mismatch')
+    }
+}
+verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskThirtyTwoCases }) return
+    if (requested != taskThirtyTwoCases) throw new GradleException('Task 32 evidence must select the exact canonical case set')
+    def expected = [
+            observenativeflowonce: [accepted: '8', exactNano: '8000000000', events: '1', simulationEvents: '0',
+                    observationReads: '2', deduplicated: 'true', topologyStable: 'true'],
+            observescopedsnapshot: [members: '2', canonical: 'true', crossFabric: 'false', fabrics: '2',
+                    sessionBound: 'true', providers: '1', endpoints: '1', nonFlowDeltas: '2',
+                    processingSend: '1', aggregateReturn: '1', topologyStable: 'true'],
+            observeclosecleanup: [active: '0', removals: '1', idempotent: 'true', lateDelivery: 'false'],
+            observerejectstaledelta: [revision: '6', rejected: 'true', resnapshot: 'true',
+                    trailingRejected: 'true', wrongSessionRejected: 'true'],
+            observerejectcrossfabricedit: [rejected: 'true', serverIssued: 'true', encoded: 'true',
+                    clientValueStable: 'true', clientBytesStable: 'true', serverAStable: 'true',
+                    serverBStable: 'true', reboundStateAbsent: 'true', subscriptionsStable: 'true',
+                    removalsStable: 'true', policyStable: 'true', topologyStable: 'true', activeBefore: '2',
+                    activeAfter: '2', activeClosed: '0', removalDelta: '2', fabrics: '2', authorityReceipts: '2']]
+    def expectedAssertions = [observenativeflowonce: '7', observescopedsnapshot: '16', observeclosecleanup: '5',
+            observerejectstaledelta: '6', observerejectcrossfabricedit: '18']
+    def standardFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos'] as Set
+    expected.each { testId, facts ->
+        def artifact = "native-${testId}.properties".toString()
+        def logPath = "positive-${testId}.log".toString()
+        def file = new File(attempt, artifact)
+        def log = new File(attempt, logPath)
+        if (!file.isFile() || !log.isFile() || declaredPaths.count { it == artifact } != 1
+                || declaredPaths.count { it == logPath } != 1) {
+            throw new GradleException("Task 32 evidence is missing or undeclared: ${testId}")
+        }
+        if ((childExits["positive-${testId}"] as Integer) != 0) {
+            throw new GradleException("Task 32 child execution failed: ${testId}")
+        }
+        def properties = loadProperties(file)
+        def expectedFields = standardFields + facts.keySet()
+        if (properties.stringPropertyNames() != expectedFields
+                || properties.getProperty('schemaVersion') != '1'
+                || properties.getProperty('status') != 'passed'
+                || properties.getProperty('kind') != 'verify'
+                || properties.getProperty('testId') != testId
+                || properties.getProperty('structure') != 'ae2federation_test:harness_native_smoke'
+                || properties.getProperty('assertions') != expectedAssertions[testId]
+                || properties.getProperty('operations') != '1') {
+            throw new GradleException("Task 32 exact child schema mismatch: ${testId}")
+        }
+        def logText = log.text
+        facts.each { name, value ->
+            def receipt = "AE2F_ENERGY_NATIVE_ENTRY testId=${testId} fact=${name} value=${value}"
+            if (properties.getProperty(name) != value || logText.count(receipt) != 1) {
+                throw new GradleException("Task 32 semantic mismatch: ${testId}.${name}")
+            }
+        }
+        if (testId == 'observescopedsnapshot') {
+            def receipts = logText.readLines().findAll { it.contains('AE2F_OBSERVATION_RECEIPT testId=observescopedsnapshot') }
+            def snapshots = receipts.findAll { it.contains(' type=snapshot ') }
+            def deltas = receipts.findAll { it.contains(' type=delta ') }
+            def exactSends = receipts.findAll {
+                it.contains(' type=flow ') && it.contains(' value=1 ') && it.contains(' resource=minecraft:cobblestone ')
+                        && it.contains(' attribution=EXACT_OPERATION ') && it.endsWith(' exactBatch=false')
+            }
+            def aggregateReturns = receipts.findAll {
+                it.contains(' type=flow ') && it.contains(' value=1 ') && it.contains(' resource=minecraft:gold_ingot ')
+                        && it.contains(' attribution=AGGREGATE_LANE_RETURN ') && it.endsWith(' exactBatch=false')
+            }
+            if (snapshots.size() != 1 || deltas.size() < 2 || exactSends.size() != 1 || aggregateReturns.size() != 1
+                    || !snapshots[0].contains(' resource=members=2,providers=1,endpoints=1,policies=0,locks=3,tasks=3,flows=0 ')
+                    || !deltas.any { it.contains(' resource=members=2,providers=1,endpoints=1,policies=1,') }
+                    || !deltas.any { it.contains(' resource=members=2,providers=1,endpoints=1,policies=0,') }) {
+                throw new GradleException('Task 32 scoped runtime receipts are incomplete')
+            }
+            def identity = { String line ->
+                def match = line =~ / player=([^\s]+) menu=([^\s]+) scope=(.*?) event=/
+                if (!match.find()) throw new GradleException('Task 32 malformed scoped runtime receipt')
+                [match.group(1), match.group(2), match.group(3)]
+            }
+            def snapshotIdentity = identity(snapshots[0])
+            if (deltas.any { identity(it) != snapshotIdentity }) {
+                throw new GradleException('Task 32 scoped runtime receipts changed player, menu, or Fabric scope')
+            }
+        }
+        if (testId == 'observerejectcrossfabricedit') {
+            def receiptLines = logText.readLines().findAll {
+                it.contains('AE2F_OBSERVATION_RECEIPT testId=observerejectcrossfabricedit')
+            }
+            def parseCrossReceipt = { String line ->
+                def match = line =~ / type=(\S+) player=(\S*) menu=(\S*) scope=(.*?) event=(\S+) value=(\d+) secondary=(\d+) resource=(\S*) attribution=(\S*) exactBatch=(true|false)$/
+                if (!match.find()) throw new GradleException('Task 32 malformed cross-Fabric runtime receipt')
+                [type: match.group(1), player: match.group(2), menu: match.group(3), scope: match.group(4),
+                        event: match.group(5), value: match.group(6), secondary: match.group(7),
+                        resource: match.group(8), attribution: match.group(9), exactBatch: match.group(10)]
+            }
+            def receipts = receiptLines.collect(parseCrossReceipt)
+            def authorities = receipts.findAll { it.type == 'authority' }
+            def rejection = receipts.findAll { it.type == 'rejection' }
+            def opened = receipts.findAll { it.type == 'subscription' && it.event == 'OPENED' }
+            def closed = receipts.findAll { it.type == 'subscription' && it.event == 'CLOSED' }
+            def snapshots = receipts.findAll { it.type == 'snapshot' }
+            if (authorities.size() != 2 || rejection.size() != 1 || opened.size() != 2 || closed.size() != 2
+                    || snapshots.size() != 2) {
+                throw new GradleException('Task 32 cross-Fabric production authority receipts are incomplete')
+            }
+            def authorityA = authorities.find { it.attribution == 'A' }
+            def authorityB = authorities.find { it.attribution == 'B' }
+            if (authorityA == null || authorityB == null || authorityA.scope == authorityB.scope
+                    || authorityA.player == authorityB.player || authorityA.menu == authorityB.menu
+                    || authorities.any { it.value != '1' || it.secondary != '2' || it.event.isBlank()
+                            || it.resource.isBlank() || it.exactBatch != 'false' }) {
+                throw new GradleException('Task 32 cross-Fabric production authority receipts are invalid')
+            }
+            def matchesAuthority = { Map receipt, Map authority ->
+                receipt.player == authority.player && receipt.menu == authority.menu && receipt.scope == authority.scope
+            }
+            if (![authorityA, authorityB].every { authority ->
+                opened.any { matchesAuthority(it, authority) && it.value == authority.value
+                        && it.resource == authority.event && it.attribution == authority.resource }
+                        && closed.any { matchesAuthority(it, authority) && it.value == authority.value
+                                && it.resource == authority.event && it.attribution == authority.resource }
+                        && snapshots.any { matchesAuthority(it, authority) }
+            }) {
+                throw new GradleException('Task 32 cross-Fabric authority is not backed by production subscription lifecycle')
+            }
+            def snapshotA = snapshots.find { matchesAuthority(it, authorityA) }
+            def snapshotB = snapshots.find { matchesAuthority(it, authorityB) }
+            def expectedRejectionFacts = 'rejected=true,valueStable=true,bytesStable=true,serverAStable=true,' +
+                    'serverBStable=true,reboundAbsent=true,subscriptionsStable=true,removalsStable=true,' +
+                    'policyStable=true,topologyStable=true'
+            if (snapshotA.resource != 'members=2,providers=1,endpoints=1,policies=1,locks=3,tasks=3,flows=2'
+                    || snapshotB.resource != 'members=2,providers=0,endpoints=0,policies=0,locks=0,tasks=0,flows=0'
+                    || !matchesAuthority(rejection[0], authorityA) || rejection[0].event != 'rejected'
+                    || rejection[0].value != '2' || rejection[0].secondary != '0'
+                    || rejection[0].resource != expectedRejectionFacts
+                    || rejection[0].attribution != authorityB.event || rejection[0].exactBatch != 'false') {
+                throw new GradleException('Task 32 cross-Fabric encoded rejection or zero-mutation receipt is invalid')
+            }
+        }
     }
 }
 verifyTaskElevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
@@ -5562,6 +5706,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyOneEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
+    verifyTaskThirtyTwoEvidence(attempt, report.requested as List,
+            report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
         def identityDir = new File(attempt, '.identity-check')
@@ -6127,7 +6273,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                     || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
-                    || testCase.id.startsWith('automation.')) ? 1 : 2,
+                    || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -6139,7 +6285,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                             || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
-                            || testCase.id.startsWith('automation.')])
+                            || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -6435,6 +6581,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'energy.ring-conservation':
                 case 'energy.reject-reverse':
                 case 'energy.disconnect-no-source':
+                case 'observe.native-flow-once':
+                case 'observe.scoped-snapshot':
+                case 'observe.close-cleanup':
+                case 'observe.reject-stale-delta':
+                case 'observe.reject-cross-fabric-edit':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def energyOperations = testCase.testId == 'energydirectionalpolicy' ? 2 : 1
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
@@ -6642,6 +6793,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentyNineEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyNegativeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskThirtyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -9513,7 +9665,24 @@ tasks.register('federationTaskThirtyOneEvidenceSelfTest') {
                 mutateFact('merged-grid', 'energydirectionalpolicy', 'distinctGrids', 'false'),
                 mutateFact('hidden-loss', 'energydirectionalpolicy', 'providerDebit', '249.0'),
                 mutateFact('simulation-mutation', 'energydirectionalpolicy', 'providerAfterSimulation', '999.0'),
-                mutateFact('large-value-truncation', 'energydirectionalpolicy', 'largeAccepted', '1000000000.0'),
+                taskFiveEvidenceProbeRejects(sourceResult, 'task31-large-value-truncation') { File attempt, Map ignored ->
+                    def file = new File(attempt, 'native-energydirectionalpolicy.properties')
+                    def properties = loadProperties(file)
+                    def replacements = [largeRequested: '1.0E9', largeSimulated: '1.0E9',
+                            largeAccepted: '1.0E9', largeProviderDebit: '1.0E9',
+                            extracted: '1000000250000000000', inserted: '1000000250000000000']
+                    replacements.each { field, replacement -> properties.setProperty(field, replacement) }
+                    file.withOutputStream { properties.store(it, 'Task 31 rebound large-value probe') }
+                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
+                    replacements.each { field, replacement ->
+                        log.text = log.text.replaceFirst("fact=${field} value=[^\\s]+",
+                                "fact=${field} value=${replacement}")
+                    }
+                    log.text = log.text.replaceFirst(
+                            /(phase=large-extract[^\n]* requested=)[^\s]+( accepted=)[^\s]+/) {
+                        match, prefix, separator -> "${prefix}1.0E9${separator}1.0E9"
+                    }
+                },
                 mutateFact('double-delivery', 'energyringconservation', 'accepted', '600.0'),
                 mutateFact('missing-ring-edge', 'energyringconservation', 'directedEdges', '2'),
                 mutateFact('stale-generation', 'energydisconnectnosource', 'generationAfter', '1'),
@@ -9563,6 +9732,99 @@ tasks.register('federationTaskThirtyOneEvidenceSelfTest') {
             throw new GradleException('Task 31 rebound semantic mutation was accepted')
         }
         logger.lifecycle('Task 31 rebound semantic and exact-schema probes rejected')
+    }
+}
+
+tasks.register('federationTaskThirtyTwoEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 32 scoped observability result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskThirtyTwoCases) throw new GradleException('Result is not the canonical Task 32 case set')
+        logger.lifecycle('Task 32 scoped observability evidence verified')
+    }
+}
+
+tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects rebound Task 32 metering, scope, lifecycle, and revision substitutions.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 32 evidence.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutations = [
+                ['double-flow', 'observenativeflowonce', 'events', '2'],
+                ['simulation-count', 'observenativeflowonce', 'simulationEvents', '1'],
+                ['subscriber-multiplication', 'observenativeflowonce', 'observationReads', '3'],
+                ['inexact-energy', 'observenativeflowonce', 'exactNano', '9223372036854775807'],
+                ['topology-churn', 'observenativeflowonce', 'topologyStable', 'false'],
+                ['scope-leak', 'observescopedsnapshot', 'crossFabric', 'true'],
+                ['wrong-fabric-count', 'observescopedsnapshot', 'fabrics', '1'],
+                ['wrong-session', 'observescopedsnapshot', 'sessionBound', 'false'],
+                ['listener-leak', 'observeclosecleanup', 'active', '1'],
+                ['late-delivery', 'observeclosecleanup', 'lateDelivery', 'true'],
+                ['stale-applied', 'observerejectstaledelta', 'rejected', 'false'],
+                ['overflow-dead', 'observerejectstaledelta', 'resnapshot', 'false'],
+                ['trailing-accepted', 'observerejectstaledelta', 'trailingRejected', 'false'],
+                ['wrong-session-accepted', 'observerejectstaledelta', 'wrongSessionRejected', 'false'],
+                ['skipped-revision', 'observerejectstaledelta', 'revision', '7'],
+                ['cross-owner', 'observerejectcrossfabricedit', 'active', '1'],
+                ['cross-edit', 'observerejectcrossfabricedit', 'mutated', 'true']]
+        def rejected = mutations.collect { mutation ->
+            taskFiveEvidenceProbeRejects(sourceResult, "task32-${mutation[0]}") { File attempt, Map ignored ->
+                def file = new File(attempt, "native-${mutation[1]}.properties")
+                def properties = loadProperties(file)
+                def previous = properties.getProperty(mutation[2])
+                properties.setProperty(mutation[2], mutation[3])
+                file.withOutputStream { properties.store(it, 'Task 32 rebound semantic probe') }
+                def log = new File(attempt, "positive-${mutation[1]}.log")
+                log.text = log.text.replace(
+                        "fact=${mutation[2]} value=${previous}", "fact=${mutation[2]} value=${mutation[3]}")
+            }
+        }
+        rejected << taskFiveEvidenceProbeRejects(sourceResult, 'task32-extra-fact') { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-observenativeflowonce.properties')
+            def properties = loadProperties(file)
+            properties.setProperty('forged', 'true')
+            file.withOutputStream { properties.store(it, 'Task 32 extra fact probe') }
+        }
+        rejected << taskFiveEvidenceProbeRejects(sourceResult, 'task32-missing-fact') { File attempt, Map ignored ->
+            def file = new File(attempt, 'native-observenativeflowonce.properties')
+            def properties = loadProperties(file)
+            properties.remove('events')
+            file.withOutputStream { properties.store(it, 'Task 32 missing fact probe') }
+        }
+        def fabricatedSessionRejected = taskSevenEvidenceProbeRejects(sourceResult,
+                'task32-cross-fabricated-session', 'Task 32 cross-Fabric authority is not backed by production subscription lifecycle') {
+            File attempt, Map ignored ->
+                def log = new File(attempt, 'positive-observerejectcrossfabricedit.log')
+                def lines = log.readLines()
+                def authority = lines.find { it.contains(' type=authority ') && it.contains(' attribution=A ') }
+                log.text = lines.collect { line ->
+                    line == authority ? line.replaceFirst(/ event=\S+ /,
+                            ' event=subscription:fabricated-authority ') : line
+                }.join('\n') + '\n'
+        }
+        def missingAuthorityRejected = taskSevenEvidenceProbeRejects(sourceResult,
+                'task32-cross-missing-authority', 'Task 32 cross-Fabric production authority receipts are incomplete') {
+            File attempt, Map ignored ->
+                def log = new File(attempt, 'positive-observerejectcrossfabricedit.log')
+                log.text = log.readLines().findAll {
+                    !(it.contains(' type=authority ') && it.contains(' attribution=A '))
+                }.join('\n') + '\n'
+        }
+        if (rejected.any { !(it instanceof String) }) {
+            throw new GradleException('Task 32 rebound semantic mutation was accepted')
+        }
+        if (!fabricatedSessionRejected || !missingAuthorityRejected) {
+            throw new GradleException('Task 32 rebound menu-authority mutation was accepted')
+        }
+        logger.lifecycle('Task 32 rebound semantic probes rejected')
     }
 }
 

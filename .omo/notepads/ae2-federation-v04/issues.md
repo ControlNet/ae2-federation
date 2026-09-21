@@ -4,6 +4,15 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 32 resolution
+
+- The first final verification command addressed a nonexistent `:common` Gradle project. Shared sources compile through
+  `:neoforge-1.21.1`; rerunning the focused tests and strict build there passed.
+- Endpoint observation identity initially omitted the persisted instance epoch and used the wrong nested ID accessor.
+  The final scoped key includes both the native Endpoint UUID and instance epoch.
+- Groovy Gradle LSP is unavailable; the exact evidence producer, persisted consumer, mutation probes, and strict build
+  validate the verifier changes. All changed Java files report no diagnostics.
+
 ## 2026-09-21 Task 31 resolution
 
 - Initial provider generation tracking compared newly reconstructed source descriptors by object identity, causing every
@@ -562,3 +571,27 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Resolved: exact fully rebound probes for `handlerQuantity=999` and `peakInFlight=1` reject for their intended aggregate
   mismatch; fresh benchmark, negative cases, Tasks 20/28/29 regressions, strict build/archive checks, and Java diagnostics
   pass.
+
+## 2026-09-21 Task 32 independent-review repair
+
+- Resolved: snapshot/delta payloads now carry exact session identity and mutate only session-owned full projections.
+- Resolved: energy saturation/random observation IDs were replaced by checked nano-AE conversion and boundary-owned event
+  IDs; Processing accepted prefixes and native item/fluid return inventory transfers now report production flows.
+- The headless GameTest harness exposes only a mock `Player`, not a packet-capable `ServerPlayer`; real Fabric/projector,
+  subscription, and codec paths are exercised, but actual LDLib2 screen creation remains outside these server GameTests.
+
+## 2026-09-21 Task 32 final runtime resolution
+
+- Corrected: `GameTestHelper.makeMockServerPlayerInLevel()` provides a real `ServerPlayer`; a headless packet listener now
+  permits production LDLib2 menu creation while suppressing unsupported client packet delivery.
+- Resolved: production menu cleanup no longer depends on LDLib2's client-only removal callback. NeoForge's server-side
+  container-close event closes player observation ownership, with logout and level unload retained as idempotent backstops.
+- Resolved: the canonical scoped snapshot includes a real Provider, production Endpoint, three native Lane lock/task
+  projections, exact Processing send, aggregate Lane return, and policy addition/removal without reopening.
+
+## 2026-09-21 Task 32 cross-Fabric authority resolution
+
+- The prior cross-Fabric case constructed both sessions directly and asserted an already-zero subscription count. The
+  repaired case opens two production menus, consumes their encoded snapshots, and correlates full subscription lifecycles.
+- A first repair incorrectly required historical flows to remain nonempty after snapshot acknowledgement; the actual
+  production delta correctly cleared them. The invariant is complete projection equality before and after the attack.

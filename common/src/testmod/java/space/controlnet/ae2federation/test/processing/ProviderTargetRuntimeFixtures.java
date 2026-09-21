@@ -2,12 +2,16 @@ package space.controlnet.ae2federation.test.processing;
 
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.GridHelper;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import java.util.Objects;
 import java.util.Set;
 import net.minecraft.gametest.framework.GameTestHelper;
 import space.controlnet.ae2federation.policy.PolicyOperation;
+import space.controlnet.ae2federation.policy.PolicyDelete;
+import space.controlnet.ae2federation.policy.PolicyMutationResult;
+import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.claim.EndpointClaimAuthority;
@@ -18,6 +22,7 @@ import space.controlnet.ae2federation.processing.provider.ProviderFace;
 import space.controlnet.ae2federation.processing.provider.ProviderIdentity;
 import space.controlnet.ae2federation.processing.provider.ProviderRuntime;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
+import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.processing.endpoint.EndpointPersistenceObservation;
 
 public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
@@ -32,6 +37,23 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
 
     public ProviderTargetRuntimeFixtures(GameTestHelper helper, boolean federationEndpoint) {
         this(helper, federationEndpoint, ProviderIdentity.create());
+    }
+
+    public ProviderTargetRuntimeFixtures(GameTestHelper helper, boolean federationEndpoint,
+            NetworkId sourceNetwork, NetworkId targetNetwork) {
+        Objects.requireNonNull(sourceNetwork);
+        Objects.requireNonNull(targetNetwork);
+        var providerIdentity = ProviderIdentity.create();
+        ProviderTargetObservation.reset();
+        var assignments = NativeProviderLaneFixtures.sharedPatternAssignments(3);
+        provider = new NativeProviderLaneFixtures(helper, assignments, true, 3, sourceNetwork);
+        view = new ProviderTargetFixtureView(provider);
+        lifecycle = new ProviderTargetLifecycle(helper, provider, federationEndpoint, providerIdentity);
+        if (!federationEndpoint) {
+            throw new IllegalArgumentException("Seeded target identity requires a production Endpoint");
+        }
+        provider.seedFederationEndpointTarget(targetNetwork);
+        acceptedPushes = new Boolean[assignments.size()];
     }
 
     public ProviderTargetRuntimeFixtures(GameTestHelper helper, boolean federationEndpoint,
@@ -67,6 +89,30 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     public void connectFabric() { lifecycle.connectFabric(); }
 
     public void disconnectFabric() { lifecycle.disconnectFabric(); }
+
+    public void connectSourceTo(IGridNode node) {
+        provider.connectTo(node);
+    }
+
+    public boolean connectTargetTo(IGridNode node) {
+        var target = provider.endpointTargetNode();
+        if (target == null) {
+            return false;
+        }
+        if (target.getGrid() != node.getGrid()) {
+            GridHelper.createConnection(target, node);
+        }
+        return true;
+    }
+
+    public boolean deletePolicy() {
+        var service = PolicyService.get(provider.helper().getLevel());
+        var key = new space.controlnet.ae2federation.policy.PolicyKey(
+                space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
+                space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow(),
+                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
+        return service.delete(new PolicyDelete(key, service.revision(key))) instanceof PolicyMutationResult.Accepted;
+    }
 
     public boolean push() { return provider.push(0, 0); }
 

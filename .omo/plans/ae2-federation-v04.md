@@ -434,7 +434,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=energy.directional-policy,energy.cold-start,energy.ring-conservation,energy.reject-reverse,energy.disconnect-no-source -PevidenceDir=.omo/evidence/task-31`.
   - Commit: proposed `feat(energy): bind directional native ME supply`.
 
-- [ ] 32. Implement scoped state snapshots, native transport metering and subscription lifecycle
+- [x] 32. Implement scoped state snapshots, native transport metering and subscription lifecycle
   - Work: `observability/`, server snapshot/delta payloads with revisions and stable IDs, bounded event windows and per-Fabric subscriptions. Count native actual accepted resource amounts once, not simulation/path hops. Read native lock/task/send/return state; mark aggregate Lane returns, never exact untagged Batch completion. Avoid exposing all global Policy through one Fabric menu.
   - References: D16,17.1-17.7,17.10,T-R07,T-U06; tasks 14,24,31. Depends on 14,24,31.
   - Acceptance: repeat paths do not multiply flow; closed screens release listeners; invalid menu/context payload cannot mutate or subscribe outside scope; data-only updates do not trigger full topology work.

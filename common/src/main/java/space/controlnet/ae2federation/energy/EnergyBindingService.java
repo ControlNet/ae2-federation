@@ -19,6 +19,8 @@ import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.observability.state.ResourceUnit;
 
 public final class EnergyBindingService implements AutoCloseable {
     private static final Map<ServerLevel, EnergyBindingService> SERVICES = new WeakHashMap<>();
@@ -103,6 +105,7 @@ public final class EnergyBindingService implements AutoCloseable {
         if (!Double.isFinite(amount) || amount < 0) {
             throw new IllegalArgumentException("Energy amount must be finite and nonnegative");
         }
+        var outermost = demandDepth == 0;
         demandDepth++;
         try {
             reconcileAll();
@@ -114,7 +117,14 @@ public final class EnergyBindingService implements AutoCloseable {
                     .toList();
             var extracted = 0.0;
             for (var binding : candidates) {
-                extracted += binding.extract(amount - extracted, mode);
+                var accepted = binding.extract(amount - extracted, mode);
+                extracted += accepted;
+                if (outermost && mode == Actionable.MODULATE && accepted > 0) {
+                    LevelObservabilityService.get(level).recordAccepted(binding.revision().fabrics(),
+                            space.controlnet.ae2federation.observability.meter.OperationEventId.create(), "ae2:energy",
+                            nanoAe(accepted), ResourceUnit.NANO_AE,
+                            space.controlnet.ae2federation.observability.state.FlowState.Attribution.EXACT_OPERATION);
+                }
                 if (extracted >= amount) {
                     break;
                 }
@@ -123,6 +133,13 @@ public final class EnergyBindingService implements AutoCloseable {
         } finally {
             demandDepth--;
         }
+    }
+
+    static long nanoAe(double amount) {
+        if (!Double.isFinite(amount) || amount < 0) {
+            throw new ArithmeticException("Energy amount is not exactly representable");
+        }
+        return java.math.BigDecimal.valueOf(amount).movePointRight(9).longValueExact();
     }
 
     @Override

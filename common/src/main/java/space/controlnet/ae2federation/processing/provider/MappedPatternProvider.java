@@ -178,6 +178,7 @@ public final class MappedPatternProvider implements PatternContainer, AutoClosea
 
     @Override
     public void close() {
+        ProviderObservationRegistry.unregister(this);
         composition.close();
     }
 }

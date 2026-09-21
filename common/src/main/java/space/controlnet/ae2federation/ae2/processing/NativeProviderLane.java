@@ -14,6 +14,7 @@ import java.util.function.IntPredicate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import space.controlnet.ae2federation.mixin.PatternProviderLogicAccess;
+import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 
 public final class NativeProviderLane extends PatternProviderLogic {
     private final InternalInventory ownerInventory;
@@ -60,11 +61,22 @@ public final class NativeProviderLane extends PatternProviderLogic {
         if (!currentPatterns.contains(patternDetails)) {
             return false;
         }
-        return super.pushPattern(patternDetails, inputHolder);
+        var access = (PatternProviderLogicAccess) (Object) this;
+        var before = java.util.List.copyOf(access.ae2federation$getSendList());
+        var pushed = super.pushPattern(patternDetails, inputHolder);
+        if (pushed) {
+            ProviderObservationRegistry.recordSend(this, inputHolder, before,
+                    java.util.List.copyOf(access.ae2federation$getSendList()));
+        }
+        return pushed;
     }
 
     boolean isAssignedSlot(int slot) {
         return assignedSlot.test(slot);
+    }
+
+    public boolean hasPendingSend() {
+        return !((PatternProviderLogicAccess) (Object) this).ae2federation$getSendList().isEmpty();
     }
 
     @Override

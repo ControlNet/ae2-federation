@@ -41,4 +41,10 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
         var candidate = relationship.get();
         return sourceReady.getAsBoolean() && candidate != null && relationshipCurrent.test(candidate);
     }
+
+    @Override
+    public java.util.Set<space.controlnet.ae2federation.fabric.FabricReference> scopes() {
+        var candidate = relationship.get();
+        return candidate == null ? java.util.Set.of() : candidate.revision().fabricReferences();
+    }
 }

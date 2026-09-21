@@ -16,6 +16,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
 final class NativeProviderTargets {
     private static final BlockPos ENDPOINT_TARGET_POS = NativeProviderLaneFixtures.HOST_POS.east(2);
@@ -39,6 +41,13 @@ final class NativeProviderTargets {
 
     void installFederationEndpointTarget() {
         installEndpointTarget(ENDPOINT_TARGET_POS, ProcessingRegistration.ENDPOINT.get(), Direction.NORTH);
+    }
+
+    void seedFederationEndpointTarget(NetworkId networkId) {
+        var endpoint = (AENetworkedBlockEntity) helper.getBlockEntity(ENDPOINT_TARGET_POS);
+        endpoint.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
+        var backend = helper.<MEChestBlockEntity>getBlockEntity(ENDPOINT_TARGET_POS.north());
+        backend.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
     }
 
     void installFederationEndpointTarget(BlockPos endpointPosition) {

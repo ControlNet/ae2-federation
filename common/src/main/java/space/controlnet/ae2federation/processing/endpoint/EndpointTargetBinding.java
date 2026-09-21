@@ -80,6 +80,12 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         }
     }
 
+    public static List<EndpointTargetBinding> entries(ServerLevel level) {
+        synchronized (BINDINGS) {
+            return List.copyOf(BINDINGS.getOrDefault(level, Map.of()).values());
+        }
+    }
+
     public static boolean captureFederatedReturn(AuthorizedNativeTarget target) {
         var binding = findEndpoint(target.level(), target.position());
         return binding != null && binding.runtime.bindFederatedReturn(target);

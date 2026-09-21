@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.mixin;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import java.util.List;
 import java.util.Set;
@@ -15,4 +16,7 @@ public interface PatternProviderLogicAccess {
 
     @Accessor("patternInputs")
     Set<AEKey> ae2federation$getPatternInputs();
+
+    @Accessor("sendList")
+    List<GenericStack> ae2federation$getSendList();
 }

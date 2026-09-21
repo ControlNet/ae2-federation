@@ -1,11 +1,9 @@
 package space.controlnet.ae2federation.client.policy;
 
-import appeng.api.parts.PartHelper;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.UnaryOperator;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -13,7 +11,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
 import space.controlnet.ae2federation.bridge.BridgeRightClickContext;
-import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.fabric.FabricId;
 import space.controlnet.ae2federation.fabric.FabricNodeEvidence;
 import space.controlnet.ae2federation.fabric.FabricNodeId;
@@ -21,7 +18,6 @@ import space.controlnet.ae2federation.fabric.FabricReference;
 import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.fabric.FabricSnapshot;
 import space.controlnet.ae2federation.fabric.FabricSourceId;
-import space.controlnet.ae2federation.hub.HubBlockEntity;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -35,19 +31,21 @@ public final class FabricPolicySession {
 
     private final ServerPlayer player;
     private final ServerLevel level;
-    private final Entrance entrance;
+    private final FabricPolicyEntrance entrance;
     private final FabricReference context;
+    private final FabricPolicyObservation observation;
     private PolicyEditorSelection selection;
     private PolicyRevision expectedRevision = PolicyRevision.NONE;
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
 
-    private FabricPolicySession(ServerPlayer player, Entrance entrance, Optional<FabricSnapshot> fabric,
+    private FabricPolicySession(ServerPlayer player, FabricPolicyEntrance entrance, Optional<FabricSnapshot> fabric,
             PolicyEditorSessionState.Status emptyState) {
         this.player = player;
         level = player.serverLevel();
         this.entrance = entrance;
         context = fabric.map(FabricSnapshot::reference).orElse(null);
+        observation = context == null ? null : new FabricPolicyObservation(this, player, context);
         var members = fabric.map(snapshot -> List.copyOf(snapshot.memberships().keySet())).orElse(List.of());
         selection = members.size() >= 2 ? PolicyEditorSelection.initial(members) : null;
         var initialState = selection == null ? emptyState : PolicyEditorSessionState.Status.READY;
@@ -61,12 +59,12 @@ public final class FabricPolicySession {
         var fabrics = FabricRegistryAccess.get(level).snapshot().fabrics().values().stream()
                 .filter(snapshot -> snapshot.nodes().contains(nodeId)).toList();
         var current = fabrics.size() == 1 ? Optional.of(fabrics.getFirst()) : Optional.<FabricSnapshot>empty();
-        return new FabricPolicySession(player, new HubEntrance(position), current,
+        return new FabricPolicySession(player, new HubPolicyEntrance(position), current,
                 PolicyEditorSessionState.Status.PENDING);
     }
 
     public static FabricPolicySession forBridge(ServerPlayer player, BridgeRightClickContext bridge) {
-        var entrance = new BridgeEntrance(bridge.position(), bridge.side(), bridge.reason());
+        var entrance = new BridgePolicyEntrance(bridge.position(), bridge.side(), bridge.reason());
         return new FabricPolicySession(player, entrance, bridgeFabric(player.serverLevel(), bridge),
                 PolicyEditorSessionState.Status.DISABLED);
     }
@@ -80,6 +78,18 @@ public final class FabricPolicySession {
 
     public boolean canSubmit() {
         return state.editingAllowed();
+    }
+
+    public java.util.Optional<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>
+            openObservation() {
+        return observation == null ? java.util.Optional.empty() : observation.open();
+    }
+
+    public void closeObservation(
+            space.controlnet.ae2federation.observability.subscription.ObservationSubscription subscription) {
+        if (observation != null) {
+            observation.close(subscription);
+        }
     }
 
     public void nextConsumer() {
@@ -242,60 +252,4 @@ public final class FabricPolicySession {
         };
     }
 
-    private sealed interface Entrance permits HubEntrance, BridgeEntrance {
-        BlockPos position();
-
-        boolean present(ServerLevel level);
-
-        boolean enabled();
-
-        String diagnostic();
-
-        Component label();
-    }
-
-    private record HubEntrance(BlockPos position) implements Entrance {
-        @Override
-        public boolean present(ServerLevel level) {
-            return level.getBlockEntity(position) instanceof HubBlockEntity;
-        }
-
-        @Override
-        public boolean enabled() {
-            return true;
-        }
-
-        @Override
-        public String diagnostic() {
-            return "PENDING_TOPOLOGY";
-        }
-
-        @Override
-        public Component label() {
-            return Component.translatable("ae2federation.ui.fabric.entrance.hub");
-        }
-    }
-
-    private record BridgeEntrance(BlockPos position, Direction side, BridgeOperationalReason reason) implements Entrance {
-        @Override
-        public boolean present(ServerLevel level) {
-            var host = PartHelper.getPartHost(level, position);
-            return host != null && host.getPart(side) instanceof MultipartBridgePart;
-        }
-
-        @Override
-        public boolean enabled() {
-            return reason == BridgeOperationalReason.VALID;
-        }
-
-        @Override
-        public String diagnostic() {
-            return reason.name();
-        }
-
-        @Override
-        public Component label() {
-            return Component.translatable("ae2federation.ui.fabric.entrance.bridge");
-        }
-    }
 }

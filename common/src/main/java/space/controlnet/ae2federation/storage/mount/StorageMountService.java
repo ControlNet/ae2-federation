@@ -3,7 +3,6 @@ package space.controlnet.ae2federation.storage.mount;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.storage.IStorageService;
 import appeng.api.storage.MEStorage;
-import appeng.me.storage.NetworkStorage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,13 +10,13 @@ import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
-import space.controlnet.ae2federation.storage.provenance.ExportSource;
 import space.controlnet.ae2federation.storage.provenance.MountGeneration;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
 import space.controlnet.ae2federation.storage.subscription.SourceSubscriptionKey;
 import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionService;
+import space.controlnet.ae2federation.observability.LevelObservabilityService;
 
 public final class StorageMountService implements AutoCloseable {
     private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
@@ -28,12 +27,14 @@ public final class StorageMountService implements AutoCloseable {
     private final StorageDependencyIndex dependencies;
     private final StorageSubscriptionService subscriptions = new StorageSubscriptionService();
     private final StorageSubscriptionPlanner subscriptionPlanner;
+    private final LevelObservabilityService observability;
     private int removedProviderCount;
 
     private StorageMountService(ServerLevel level) {
         fabrics = new StorageFabricObserver(level);
         dependencies = new StorageDependencyIndex(level, fabrics, provenance);
         subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
+        observability = LevelObservabilityService.get(level);
     }
 
     public static synchronized StorageMountService get(ServerLevel level) {
@@ -212,7 +213,7 @@ public final class StorageMountService implements AutoCloseable {
     private void removeMount(PolicyKey key) {
         var mounted = mounts.remove(key);
         if (mounted != null) {
-            nextMountGeneration(key);
+            StorageMountHelpers.nextGeneration(mountGenerations, key);
             mounted.relationship().consumerGrid().getService(IStorageService.class)
                     .removeGlobalStorageProvider(mounted.provider());
             removedProviderCount++;
@@ -239,15 +240,17 @@ public final class StorageMountService implements AutoCloseable {
             return;
         }
         removeMount(key);
-        var delegate = aggregate(domain.sources());
+        var delegate = StorageMountHelpers.aggregate(domain.sources());
         var holder = new MountedStorageRelationship[1];
         var authority = new StorageRelationshipAuthority(() -> dependencies.relationship(effective.key()),
                 candidate -> dependencies.current(candidate, domain),
                 () -> holder[0] != null && sourceCurrent(holder[0]));
-        var projection = new AuthorizedStorageProjection(delegate, authority);
-        var priority = domain.sources().stream().mapToInt(ExportSource::priority).max().orElse(0);
+        var projection = new AuthorizedStorageProjection(delegate, authority,
+                operation -> observability.recordAcceptedStorage(authority.scopes(), operation));
+        var priority = domain.sources().stream().mapToInt(source -> source.priority()).max().orElse(0);
         var provider = new RelationshipStorageProvider(projection, priority);
-        var next = new MountedStorageRelationship(relationship, domain, nextMountGeneration(key), provider, effective.key());
+        var next = new MountedStorageRelationship(relationship, domain,
+                StorageMountHelpers.nextGeneration(mountGenerations, key), provider, effective.key());
         holder[0] = next;
         consumer.getService(IStorageService.class).addGlobalStorageProvider(provider);
         mounts.put(key, next);
@@ -277,25 +280,11 @@ public final class StorageMountService implements AutoCloseable {
         return removed;
     }
 
-    private static MEStorage aggregate(List<ExportSource> sources) {
-        if (sources.size() == 1) return sources.getFirst().storage();
-        var aggregate = new NetworkStorage();
-        sources.forEach(source -> aggregate.mount(source.priority(), source.storage()));
-        return aggregate;
-    }
-
     private void removeIfCurrent(MountedStorageRelationship mounted) {
         if (mounts.get(mounted.relationship().key()) == mounted) {
             removeMount(mounted.relationship().key());
             subscriptionPlanner.reconcile(mounts, mountGenerations);
         }
-    }
-
-    private MountGeneration nextMountGeneration(PolicyKey key) {
-        var current = mountGenerations.get(key);
-        var next = current == null ? new MountGeneration(1) : current.next();
-        mountGenerations.put(key, next);
-        return next;
     }
 
 }

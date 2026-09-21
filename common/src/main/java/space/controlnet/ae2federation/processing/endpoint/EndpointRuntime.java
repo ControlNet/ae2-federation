@@ -181,8 +181,8 @@ public final class EndpointRuntime {
     }
 
     private void installReturnOwner(EndpointReturnOwner owner) {
-        itemReturn = new EndpointItemReturnContext(owner);
-        fluidReturn = new EndpointFluidReturnContext(owner);
+        itemReturn = new EndpointItemReturnContext(level, owner);
+        fluidReturn = new EndpointFluidReturnContext(level, owner);
     }
 
     private void clearCurrentReturns() {

@@ -20,6 +20,7 @@ public final class FederationTestMod {
         GridServices.register(NativeNodeDataProbe.class, NativeNodeDataProbeService.class);
         LargeEnergyCellRegistration.register(modBus);
         MixedMachineRegistration.register(modBus);
+        ObservationRuntimeEvidence.register();
         modBus.addListener(this::registerGameTests);
     }
 
@@ -40,6 +41,7 @@ public final class FederationTestMod {
 						 CraftingLifecycleGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 DirectionalEnergyGameTests.class,
+					 ObservabilityGameTests.class,
 					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
 					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,

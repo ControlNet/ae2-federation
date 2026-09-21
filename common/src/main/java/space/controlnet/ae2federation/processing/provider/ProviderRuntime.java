@@ -38,6 +38,7 @@ public final class ProviderRuntime {
                     new ProviderLaneIdentity(identity, boundLaneIndex, 1));
             provider.bindTarget(boundLaneIndex, provenance, () -> resolveTarget(provenance));
         }
+        ProviderObservationRegistry.register(level, provider, identity, this);
     }
 
     public ProviderNodeWiring wiring() {

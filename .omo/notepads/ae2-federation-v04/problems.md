@@ -4,6 +4,13 @@ Unresolved blockers and technical debt discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 32 result
+
+- No known Task 32 implementation blocker remains. Focused observability tests, testmod compilation, strict build, exact
+  five-case GameTest evidence, persisted consumption, five rebound semantic probes, and Java diagnostics pass.
+- Canonical evidence is `.omo/evidence/task-32/attempt-20260921T033815407Z/result.json`. Task 32 remains unchecked and
+  uncommitted pending independent review; no issue or PR was created.
+
 ## 2026-09-21 Task 31 result
 
 - No known Task 31 implementation blocker remains. The five live policy-backed GameTests, focused energy tests, strict
@@ -3485,3 +3492,30 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   "repositoryScope": "Task 30 remains unchecked and uncommitted. Only this problems.md report and ignored reviewer evidence were added by this review; no production/test/Gradle/manifest/docs/plan/knowledge/other-notepad/index/history/issue/PR change was made."
 }
 ```
+
+## 2026-09-21 Task 32 repair result
+
+- Retained canonical result: `.omo/evidence/task-32-final-review/attempt-20260921T044110841Z/result.json`.
+- Exact producer, persisted consumer, 19 rebound mutations, Tasks 14/24/29/30/31 serial regressions, focused tests, strict
+  build/sources/shared-JAR isolation, and diff checks pass.
+- Remaining risk: server GameTests cannot create a real packet-backed LDLib2 menu because `GameTestHelper.makeMockPlayer`
+  returns a non-server mock. Real server Fabric/projector/subscription/payload paths are covered; rendered menu/client-screen
+  ownership remains a Task 33/client-runtime verification concern.
+- Task 31 remains checked, Task 32 remains unchecked, and no commit/issue/PR was created.
+
+## 2026-09-21 Task 32 final accepted state
+
+- Authoritative retained result: the sole complete attempt under `.omo/evidence/task-32-final-review/`.
+- The exact five-case producer and receipt-backed consumer pass with 7/16/5/6/3 assertions and all child exits zero.
+- Tasks 14/24/29/30/31 regressions, focused observability and exact-energy tests, strict build/sources/shared-JAR gates,
+  Java diagnostics, and `git diff --check` pass.
+- The previous headless-menu limitation is resolved with a real GameTest `ServerPlayer` and packet listener. Rendered
+  client-screen behavior remains Task 33 scope; server menu/session ownership is covered here.
+- Task 31 remains checked, Task 32 remains unchecked, and no commit, issue, or PR was created.
+
+## 2026-09-21 Task 32 cross-Fabric blocker repair
+
+- The remaining direct-session cross-Fabric authority blocker is resolved in runtime: two real production menus issue
+  distinct current Fabric sessions, the encoded rebound is rejected, and complete client/server/Policy/topology state is stable.
+- The exact evidence consumer now requires full menu authority and cleanup correlation. Fully rebound fabricated-session
+  and missing-authority mutations reject for the intended lifecycle reason. Task 32 remains unchecked.

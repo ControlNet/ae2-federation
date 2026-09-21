@@ -4,6 +4,15 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 32 scoped observability
+
+- Keep observation read-only and Fabric-scoped. Stable IDs hash the Fabric ID, entity kind, and authoritative native
+  identity; Provider and Endpoint generations prevent stale runtime replacement from retaining an observation ID.
+- Represent native aggregate return inventory as `return-buffered` task state. Do not emit an exact-operation flow unless
+  a positive native operation was actually accepted and metered.
+- Use one bounded level owner for transport windows and subscriptions, and production lifecycle seams for menu removal,
+  logout, invalidation, and level unload. Do not add a parallel polling or scheduling authority.
+
 ## 2026-09-21 Task 31 directional ME energy
 
 - Bind ordered `ME_POWER/SUPPLY` Policy relationships to consumer-local sources on existing Bridge/Hub boundary nodes;
@@ -530,3 +539,28 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   submitted job/CPU owners and exact `WAITING` observations, bounded by both the configured CPU limit and owner set.
 - Compare both aggregates inside each raw warmup/measured receipt stream. Projected properties and final iteration objects
   are consumers only and cannot authorize either aggregate.
+
+## 2026-09-21 Task 32 independent-review repair
+
+- Use a complete immutable `ObservationSession` in both envelopes and subscription ownership. Supersession creates a new
+  generation and nonce; stale packets can neither initialize nor mutate another active projection.
+- Use canonical full replacement projections for deltas instead of seven parallel mutable patch maps. Contiguous revision
+  checks provide ordering while replacement semantics make removals explicit through absence.
+- Treat untagged return-buffer insertions and drains as aggregate Lane returns only. Exact Batch completion remains false
+  even when provider/lane identity is known.
+
+## 2026-09-21 Task 32 final runtime acceptance
+
+- Seed the canonical Provider and production Endpoint nodes with the selected Fabric member identities before physical
+  attachment, so the test exercises real native grids without creating an ambiguous settled-grid merge.
+- Treat NeoForge `PlayerContainerEvent.Close` as the server-side menu ownership boundary. LDLib2's
+  `ModularUI.onRemoved()` is client-screen-only and cannot authorize dedicated-server subscription cleanup.
+- Require independent `AE2F_OBSERVATION_RECEIPT` records for the real player/menu/scope identity, projection counts,
+  Processing acceptance, aggregate-return attribution, and non-flow policy addition/removal.
+
+## 2026-09-21 Task 32 cross-Fabric authority repair
+
+- Bind canonical cross-Fabric rejection to two real production menu subscriptions. Rebound Fabric B's server-issued
+  subscription identity under Fabric A's player/menu identity only in the encoded attack payload, never in the baseline.
+- Require the persisted verifier to correlate OPENED/snapshot/authority/CLOSED receipts by player, menu, Fabric, generation,
+  subscription ID, and nonce, then reject missing or fabricated authority receipts for their intended reason.

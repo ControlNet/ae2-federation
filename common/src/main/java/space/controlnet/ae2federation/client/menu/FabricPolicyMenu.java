@@ -31,10 +31,12 @@ public final class FabricPolicyMenu {
     }
 
     private static boolean open(ServerPlayer player, FabricPolicySession session) {
-        PENDING.put(player.getUUID(), session);
+        if (PENDING.putIfAbsent(player.getUUID(), session) != null) {
+            return false;
+        }
         var opened = PlayerUIMenuType.openUI(player, ID);
         if (!opened) {
-            PENDING.remove(player.getUUID());
+            PENDING.remove(player.getUUID(), session);
         }
         return opened;
     }

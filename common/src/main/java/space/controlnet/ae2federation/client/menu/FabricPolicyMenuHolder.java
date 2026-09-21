@@ -26,7 +26,15 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
 
     @Override
     public ModularUI createUI(Player player) {
-        var document = Objects.requireNonNull(XmlUtils.loadXml(XML), "Missing production Fabric policy UI " + XML);
+        var document = XmlUtils.loadXml(XML);
+        if (document == null) {
+            try (var input = FabricPolicyMenuHolder.class.getResourceAsStream("/assets/ae2federation/ui/fabric.xml")) {
+                document = input == null ? null : XmlUtils.loadXml(input);
+            } catch (java.io.IOException exception) {
+                throw new IllegalStateException("Cannot load production Fabric policy UI " + XML, exception);
+            }
+        }
+        document = Objects.requireNonNull(document, "Missing production Fabric policy UI " + XML);
         var ui = UI.of(document);
         bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
@@ -51,7 +59,16 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
                 .build());
         state.addClass("state-sync");
         ui.rootElement.addChild(state);
-        return ModularUI.of(ui, player);
+        var observation = session == null ? java.util.Optional
+                .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
+                : session.openObservation();
+        return new ModularUI(ui, player) {
+            @Override
+            public void onRemoved() {
+                observation.ifPresent(value -> session.closeObservation(value));
+                super.onRemoved();
+            }
+        };
     }
 
     @Override

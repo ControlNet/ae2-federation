@@ -116,6 +116,10 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
 
     public void installFederationEndpointTarget() { targets.installFederationEndpointTarget(); }
 
+    public void seedFederationEndpointTarget(NetworkId networkId) {
+        targets.seedFederationEndpointTarget(networkId);
+    }
+
     public void installFederationEndpointTarget(BlockPos endpointPosition) {
         targets.installFederationEndpointTarget(endpointPosition);
     }

@@ -14,6 +14,8 @@ import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.bridge.BridgeFixtures;
 import space.controlnet.ae2federation.test.storage.InvalidSecondCallbackProvider;
+import space.controlnet.ae2federation.bridge.BridgeRightClickContext;
+import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
 
 public final class PolicyBridgeFixtures implements AutoCloseable {
     private final GameTestHelper helper;
@@ -154,6 +156,14 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
 
     public int secondBridgeIdentity() {
         return System.identityHashCode(second);
+    }
+
+    public BridgeRightClickContext firstBridgeContext() {
+        if (!firstBridgeReady()) {
+            throw new IllegalStateException("First Bridge is not ready");
+        }
+        return new BridgeRightClickContext(helper.absolutePos(firstPosition), Direction.NORTH,
+                BridgeOperationalReason.VALID, mainGrid(), outerGrid());
     }
 
     private boolean bridgeReady(MultipartBridgePart bridge) {
