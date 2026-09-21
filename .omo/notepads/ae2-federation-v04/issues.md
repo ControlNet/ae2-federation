@@ -4,6 +4,32 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 33 processing-row glyph resolution
+
+- The previous source-bound run was semantically correct but literal tab delimiters appeared as square glyphs in every
+  rendered processing row. A pure formatter now emits ` | ` and an executable regression rejects all ISO control characters.
+- Fresh evidence `attempt-20260921T120727803Z` passes 6/6 scenarios, 14/14 checks, persisted consumption, three rebound
+  mutations, strict build/archive gates, and inspection of all 10 captures at GUI scales 2, 3, and 4.
+
+## 2026-09-21 Task 33 visual repair resolution
+
+- Resolved English policy-button overflow by applying wrap, fixed width, and font metrics to LDLib2's internal text child
+  rather than relying on parent-button inheritance.
+- Resolved Simplified Chinese slot-label clipping by rebalancing six logical units from the graph to the diagnostics
+  column and sizing paired internal text directly; the graph remains 182 units wide and above its executable minimum.
+- Replaced fixture-authored cable extension `8` with the live multipart value `5`, rendered side/type/extension in the
+  visible server-bound caption, and added a persisted-verifier mutation that rejects a fully rebound fabricated value.
+- Final evidence has 6/6 scenarios, 14/14 checks, GUI scales 2/3/4, clean visual inspection, and complete cleanup.
+
+## 2026-09-21 Task 33 authority and evidence repair resolution
+
+- Removed the test-side Claim label mutation and literal mapping acknowledgment. Claim rejection now flows from
+  `EndpointClaimAuthority` through the live binding/session, while mapping evidence independently reads the real Lane set.
+- The first two fresh runs exposed virtual-scroller text lookup and normalized AE2 candidate quantities. Mounted-row lookup
+  plus the native input multiplier fixed both without weakening the `4000000000` requirement.
+- Fresh evidence `attempt-20260921T114637177Z` passes all six scenarios, persisted consumption, three rebound semantic
+  mutations, strict build, real policy editing, and three unobscured actual-world captures.
+
 ## 2026-09-21 Task 32 resolution
 
 - The first final verification command addressed a nonexistent `:common` Gradle project. Shared sources compile through

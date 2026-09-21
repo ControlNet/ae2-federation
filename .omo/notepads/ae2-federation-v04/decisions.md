@@ -4,6 +4,24 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 33 visible row delimiters
+
+- Treat processing-list rows as display strings and delimit visible fields with ASCII ` | `. Do not change tab-delimited
+  snapshot serialization because it is an internal wire/signature format rather than rendered UI content.
+
+## 2026-09-21 Task 33 LDLib2 Fabric workspace
+
+- Keep coordinates, zoom, layer visibility, and Pattern filtering client-local; keep topology, Provider mappings,
+  Endpoint Claims, modes, and acknowledgments server-owned and Fabric-scoped.
+- Resolve mapping targets by stable observation ID over the current live registry, then mutate only through a fresh
+  `PatternSlotHandle` and `MappedPatternProvider.replaceMapping`; never use a display label or list position as authority.
+- Reuse Task 3's actual-client runner and semantic persisted verifier with one exact Task 33 set and task-specific rebound
+  mutations rather than introducing a second UI evidence format.
+- Persist the latest production Claim result on `EndpointClaimAuthority` as transient diagnostic state and expose it through
+  `EndpointTargetBinding`; do not let dev-only scenarios write visible labels or own rejection reasons.
+- Treat live Lane membership as the independent mapping receipt, and require a real current-source policy click plus
+  server revision acknowledgment and actual-world captures in the canonical Task 33 evidence.
+
 ## 2026-09-21 Task 32 scoped observability
 
 - Keep observation read-only and Fabric-scoped. Stable IDs hash the Fabric ID, entity kind, and authoritative native

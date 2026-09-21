@@ -105,6 +105,22 @@ final class TaskFifteenWorldFixture {
         return context.menu() == context.player().inventoryMenu;
     }
 
+    static BlockPos hubPosition(ServerContext context) {
+        return world(context).hub;
+    }
+
+    static BlockPos bridgePosition(ServerContext context) {
+        return world(context).bridge;
+    }
+
+    static BlockPos mainNetworkCablePosition(ServerContext context) {
+        return world(context).bridge.east();
+    }
+
+    static MultipartBridgePart multipartBridge(ServerContext context) {
+        return bridge(context);
+    }
+
     static void mutateAfterClose(ServerContext context) {
         var world = world(context);
         var service = PolicyService.get(context.level());

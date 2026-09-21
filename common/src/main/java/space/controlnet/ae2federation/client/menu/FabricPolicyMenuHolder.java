@@ -4,15 +4,26 @@ import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.VirtualScrollerView;
 import com.lowdragmc.lowdraglib2.utils.XmlUtils;
+import dev.vfyjxf.taffy.style.TaffyPosition;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.client.fabric.FabricGraphLayer;
+import space.controlnet.ae2federation.client.fabric.FabricGraphLayout;
+import space.controlnet.ae2federation.client.fabric.FabricGraphLayoutCache;
+import space.controlnet.ae2federation.client.fabric.FabricGraphSnapshot;
 import space.controlnet.ae2federation.client.policy.FabricPolicySession;
 
 final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
@@ -42,6 +53,10 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
         bind(ui, "provider_value", this::providerText);
         bind(ui, "rule_value", this::ruleText);
         bind(ui, "ack_status", this::statusText);
+        bind(ui, "mapping_provider_value", this::mappingProviderText);
+        bind(ui, "mapping_selection_value", this::mappingSelectionText);
+        bind(ui, "mapping_status", this::mappingStatusText);
+        bind(ui, "endpoint_detail", this::endpointDetailText);
 
         var consumer = element(ui, "consumer_next", Button.class);
         var provider = element(ui, "provider_next", Button.class);
@@ -51,6 +66,25 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
         provider.setOnServerClick(event -> withSession(FabricPolicySession::nextProvider));
         capability.setOnServerClick(event -> withSession(FabricPolicySession::nextCapability));
         toggle.setOnServerClick(event -> withSession(FabricPolicySession::toggleEnabled));
+        element(ui, "mapping_provider_next", Button.class)
+                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingProvider));
+        element(ui, "mapping_slot_next", Button.class)
+                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingSlot));
+        element(ui, "mapping_lane_next", Button.class)
+                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingLane));
+        element(ui, "mapping_toggle", Button.class)
+                .setOnServerClick(event -> withSession(FabricPolicySession::toggleMapping));
+        element(ui, "endpoint_next", Button.class)
+                .setOnServerClick(event -> withSession(FabricPolicySession::nextEndpoint));
+
+        var graph = element(ui, "fabric_graph", GraphView.class);
+        var graphState = new ClientGraphState(graph, virtualList(ui, "member_list"), virtualList(ui, "pattern_list"));
+        element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
+        element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
+        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, 0.25f));
+        element(ui, "physical_layer_toggle", Button.class).setOnClick(event -> graphState.togglePhysical());
+        element(ui, "capability_layer_toggle", Button.class).setOnClick(event -> graphState.toggleCapability());
+        element(ui, "pattern_search", TextField.class).setTextResponder(graphState::setPatternFilter);
 
         var state = new BindableValue<String>("");
         state.bind(DataBindingBuilder.stringS2C(this::statusCode)
@@ -59,6 +93,13 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
                 .build());
         state.addClass("state-sync");
         ui.rootElement.addChild(state);
+        var graphBinding = new BindableValue<String>("");
+        graphBinding.bind(DataBindingBuilder.stringS2C(this::graphSnapshotText)
+                .initialValue("")
+                .remoteSetter(graphState::accept)
+                .build());
+        graphBinding.addClass("state-sync");
+        ui.rootElement.addChild(graphBinding);
         var observation = session == null ? java.util.Optional
                 .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
                 : session.openObservation();
@@ -110,6 +151,27 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
         return session == null ? Component.translatable("ae2federation.ui.fabric.status.pending") : session.statusText();
     }
 
+    private Component mappingProviderText() {
+        return session == null ? Component.literal("-") : session.mappingProviderText();
+    }
+
+    private Component mappingSelectionText() {
+        return session == null ? Component.literal("-") : session.mappingSelectionText();
+    }
+
+    private Component mappingStatusText() {
+        return session == null ? Component.literal("pending") : session.mappingStatusText();
+    }
+
+    private Component endpointDetailText() {
+        return session == null ? Component.translatable("ae2federation.ui.fabric.endpoint.none")
+                : session.endpointDetailText();
+    }
+
+    private String graphSnapshotText() {
+        return session == null ? FabricGraphSnapshot.empty().encode() : session.graphSnapshotText();
+    }
+
     private String statusCode() {
         return session == null ? "pending" : session.statusCode();
     }
@@ -132,5 +194,113 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
 
     private static <T> T element(UI ui, String id, Class<T> type) {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static VirtualScrollerView<String> virtualList(UI ui, String id) {
+        return (VirtualScrollerView<String>) (VirtualScrollerView<?>) element(ui, id, VirtualScrollerView.class);
+    }
+
+    private static UIElement row(String value) {
+        var row = new Label();
+        row.setText(Component.literal(value));
+        row.addClass("virtual-row");
+        return row;
+    }
+
+    private static final class ClientGraphState {
+        private final GraphView graph;
+        private final VirtualScrollerView<String> memberList;
+        private final VirtualScrollerView<String> patternList;
+        private final FabricGraphLayoutCache layoutCache = new FabricGraphLayoutCache();
+        private FabricGraphSnapshot snapshot = FabricGraphSnapshot.empty();
+        private boolean physical = true;
+        private boolean capability = true;
+        private String patternFilter = "";
+
+        private ClientGraphState(GraphView graph, VirtualScrollerView<String> memberList,
+                VirtualScrollerView<String> patternList) {
+            this.graph = graph;
+            this.memberList = memberList.setItemUIProvider(FabricPolicyMenuHolder::row);
+            this.patternList = patternList.setItemUIProvider(FabricPolicyMenuHolder::row);
+        }
+
+        private void accept(String encoded) {
+            if (encoded.isEmpty()) {
+                return;
+            }
+            snapshot = FabricGraphSnapshot.decode(encoded);
+            render();
+        }
+
+        private void togglePhysical() {
+            physical = !physical;
+            render();
+        }
+
+        private void toggleCapability() {
+            capability = !capability;
+            render();
+        }
+
+        private void setPatternFilter(String value) {
+            patternFilter = value.toLowerCase(java.util.Locale.ROOT);
+            refreshLists();
+        }
+
+        private void render() {
+            graph.clearAllContentChildren();
+            FabricGraphLayout layout = layoutCache.layout(snapshot);
+            var positions = new HashMap<String, FabricGraphLayout.Node>();
+            layout.nodes().forEach(node -> {
+                positions.put(node.id(), node);
+                var status = snapshot.nodes().stream().filter(value -> value.id().equals(node.id())).findFirst()
+                        .map(FabricGraphSnapshot.Node::status).orElse("");
+                var label = new Label();
+                label.setText(Component.literal(node.kind().name() + "\n" + shortId(node.id()) + "\n" + status));
+                label.setId("graph_node_" + safeId(node.id()));
+                label.addClass("graph-node");
+                label.addClass(node.kind().name().toLowerCase(java.util.Locale.ROOT));
+                label.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(node.x()).top(node.y())
+                        .width(96).height(31));
+                graph.addContentChild(label);
+            });
+            snapshot.edges().stream().filter(edge -> visible(edge.layer())).forEach(edge -> {
+                var from = positions.get(edge.from());
+                var to = positions.get(edge.to());
+                if (from == null || to == null) {
+                    return;
+                }
+                var label = new Label();
+                label.setText(Component.literal(edge.layer() == FabricGraphLayer.PHYSICAL ? "--- PHYS --->" : "--- CAP ---->"));
+                label.addClass("graph-edge");
+                label.addClass(edge.layer().name().toLowerCase(java.util.Locale.ROOT));
+                label.layout(style -> style.positionType(TaffyPosition.ABSOLUTE)
+                        .left((from.x() + to.x()) / 2f).top((from.y() + to.y()) / 2f + 11).width(88).height(9));
+                graph.addContentChild(label);
+            });
+            refreshLists();
+        }
+
+        private boolean visible(FabricGraphLayer layer) {
+            return layer == FabricGraphLayer.PHYSICAL ? physical : capability;
+        }
+
+        private void refreshLists() {
+            memberList.setItems(snapshot.nodes().stream()
+                    .filter(node -> node.kind() == space.controlnet.ae2federation.client.fabric.FabricGraphNodeKind.MEMBER)
+                    .map(node -> shortId(node.id()) + "  " + node.status()).toList());
+            List<String> patterns = snapshot.patterns().stream()
+                    .filter(value -> value.toLowerCase(java.util.Locale.ROOT).contains(patternFilter)).toList();
+            patternList.setItems(patterns);
+        }
+
+        private static String shortId(String value) {
+            return value.length() <= 12 ? value : value.substring(0, 12);
+        }
+
+        private static String safeId(String value) {
+            return value.replaceAll("[^a-zA-Z0-9_-]", "_");
+        }
     }
 }

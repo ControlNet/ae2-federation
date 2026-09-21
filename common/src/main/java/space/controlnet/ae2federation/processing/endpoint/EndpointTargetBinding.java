@@ -101,6 +101,10 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         return claims.state();
     }
 
+    public String lastClaimResultCode() {
+        return claims.lastResultCode();
+    }
+
     @Override
     public IGridNode subnetNode() {
         return subnetNode;

@@ -4,6 +4,35 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-21 Task 33 processing-row glyph repair
+
+- Minecraft's font renderer exposes literal tab characters as square control glyphs. Visible list rows should use explicit
+  ASCII separators such as ` | `, while tabs may remain in internal snapshot serialization that is never rendered.
+- Isolating visible row formatting in a pure Java formatter makes exact CJK text and control-character regressions testable
+  without loading Minecraft-owned projection classes in plain JUnit.
+
+## 2026-09-21 Task 33 LDLib2 Fabric workspace
+
+- LDLib2 2.2.34 registers `VirtualScrollerView` as `virtual-scroller-view` even though its pinned XSD omits that tag; the
+  runtime XML loader accepts it and Java must install the item provider.
+- Graph geometry can be keyed only by Task 32 topology revision while the full encoded snapshot remains the S2C binding
+  value. Provider status, Endpoint mode, and Pattern rows then refresh without relayout.
+- A usable actual-client mapping proof needs a live `ProviderRuntime`: constructing only `MappedPatternProvider` does not
+  register it in `ProviderObservationRegistry` and therefore cannot appear in the scoped workspace.
+- LDLib2 `Button` installs direct defaults on its internal `.__button_text__` element. Localized wrapping and font sizing
+  must target that child directly; styling only the parent button leaves adaptive-width and default font metrics active.
+- Text-element bounds alone do not prove glyph fit. The actual-client suite now compares rendered font width to content
+  width for the paired Chinese controls and exercises the shared workspace at GUI scales 2, 3, and 4.
+- Multipart diagnostics can remain server-authoritative without a parallel fixture label: resolve the live
+  `MultipartBridgePart` from the entrance position/side and render its actual cable connection length in the bound caption.
+- AE2 processing inputs expose normalized candidate stacks plus `IPatternDetails.IInput.getMultiplier()`; rendered native
+  quantities must multiply those checked-long values rather than displaying the candidate stack amount alone.
+- LDLib2 `ElementRef.text()` on a `VirtualScrollerView` reads the container, not mounted rows. Actual-client assertions for
+  virtualized content must inspect the rendered `.virtual-row` labels.
+- A Fabric topology revision does not cover independently registered Provider/Endpoint projection changes. Layout reuse
+  therefore requires both the topology revision and a deterministic node/edge structural signature; status-only changes
+  still reuse the exact layout object.
+
 ## 2026-09-21 Task 32 scoped observability
 
 - Exact native transport accounting belongs after positive `MODULATE` acceptance. Storage records after its authorized

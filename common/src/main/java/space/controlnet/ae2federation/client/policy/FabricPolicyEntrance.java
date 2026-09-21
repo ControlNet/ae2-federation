@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client.policy;
 
 import appeng.api.parts.PartHelper;
+import appeng.api.util.AECableType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -18,7 +19,7 @@ sealed interface FabricPolicyEntrance permits HubPolicyEntrance, BridgePolicyEnt
 
     String diagnostic();
 
-    Component label();
+    Component label(ServerLevel level);
 }
 
 record HubPolicyEntrance(BlockPos position) implements FabricPolicyEntrance {
@@ -38,7 +39,7 @@ record HubPolicyEntrance(BlockPos position) implements FabricPolicyEntrance {
     }
 
     @Override
-    public Component label() {
+    public Component label(ServerLevel level) {
         return Component.translatable("ae2federation.ui.fabric.entrance.hub");
     }
 }
@@ -62,7 +63,12 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
     }
 
     @Override
-    public Component label() {
+    public Component label(ServerLevel level) {
+        var host = PartHelper.getPartHost(level, position);
+        if (host != null && host.getPart(side) instanceof MultipartBridgePart bridge) {
+            return Component.translatable("ae2federation.ui.fabric.entrance.bridge_detail",
+                    side.getSerializedName(), bridge.getCableConnectionLength(AECableType.GLASS));
+        }
         return Component.translatable("ae2federation.ui.fabric.entrance.bridge");
     }
 }

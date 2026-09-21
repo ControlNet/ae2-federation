@@ -149,6 +149,23 @@ pgrep -af 'runUiTestClient|run-uitest|ae2federation.ui.runId|Xvfb.*1280x720x24'
 
 Expected result: the directory check exits 0 and the process search prints nothing.
 
+## Task 33 scoped Fabric workspace
+
+Run all six production LDLib2 scenarios in one actual client:
+
+```bash
+./gradlew :neoforge-1.21.1:federationUiTest \
+  -Pcases=ui.graph-controls,ui.mapping,ui.endpoint,ui.multipart-attachments,ui.chinese-scales,ui.reject-claim-conflict \
+  -PevidenceDir=.omo/evidence/task-33 \
+  --dependency-verification=strict --no-configuration-cache --warning-mode=fail
+```
+
+Expected signal: the graph pan/zoom and layer controls remain interactive; a real mapped Provider accepts slot 0 to Lane
+0 with a server acknowledgment; a claimed production Endpoint reports Federation mode and Claim epoch; the real
+multipart Bridge entrance exposes the same Fabric; Simplified Chinese renders at GUI scale 4 with the large quantity;
+and a competing Claim is rejected as `OWNER_CONFLICT`. The persisted verifier also rejects rebound forged mapping and
+Claim-success reports.
+
 ## Task 11 direct multipart Bridge
 
 Run the exact five-case Bridge set serially through the schema-v3 evidence harness:

@@ -441,7 +441,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=observe.native-flow-once,observe.scoped-snapshot,observe.close-cleanup,observe.reject-stale-delta,observe.reject-cross-fabric-edit -PevidenceDir=.omo/evidence/task-32`.
   - Commit: proposed `feat(observability): expose bounded native state and flow`.
 
-- [ ] 33. Complete Fabric graph, Provider mappings and Endpoint diagnostics in LDLib2
+- [x] 33. Complete Fabric graph, Provider mappings and Endpoint diagnostics in LDLib2
   - Work: shared XML/LSS and `client/` graph viewport with pan/zoom, physical/capability layers, grouped members, virtualized lists, filtered Pattern search/mapping and native state detail. Keep stable control IDs; data updates do not relayout static graph. Include provisional Bridge cable-extension and Hub/Provider/Endpoint face visuals in actual world captures. No Matrix, web clone or final visual redesign.
   - References: D17,T-U01..06,T-F12,T-B08; L; A-connect; tasks 3,15,32. Depends on 3,15,32.
   - Acceptance: actual client edits rules and mappings with server acknowledgment; long Chinese names/large quantities/GUI scales 2,3,4 readable; unauthorized-by-Policy or conflicting Claim explains reason; same Fabric entrances equivalent.

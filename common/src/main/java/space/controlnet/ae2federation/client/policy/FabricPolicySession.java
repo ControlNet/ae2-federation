@@ -2,6 +2,8 @@ package space.controlnet.ae2federation.client.policy;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.UnaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -25,6 +27,11 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.processing.claim.ClaimState;
+import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
+import space.controlnet.ae2federation.processing.provider.PatternSlotHandle;
+import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
+import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 
 public final class FabricPolicySession {
     private static final double MAX_DISTANCE_SQUARED = 64.0;
@@ -38,6 +45,11 @@ public final class FabricPolicySession {
     private PolicyRevision expectedRevision = PolicyRevision.NONE;
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
+    private int mappingProviderIndex;
+    private int mappingSlotIndex;
+    private int mappingLaneIndex;
+    private int endpointIndex;
+    private String mappingAcknowledgment = "ready";
 
     private FabricPolicySession(ServerPlayer player, FabricPolicyEntrance entrance, Optional<FabricSnapshot> fabric,
             PolicyEditorSessionState.Status emptyState) {
@@ -123,8 +135,104 @@ public final class FabricPolicySession {
         }
     }
 
+    public void nextMappingProvider() {
+        if (!authorizeAction()) {
+            mappingAcknowledgment = "rejected-session";
+            return;
+        }
+        var providers = currentProviders();
+        mappingProviderIndex = nextIndex(mappingProviderIndex, providers.size());
+        mappingSlotIndex = 0;
+        mappingLaneIndex = 0;
+        mappingAcknowledgment = "ready";
+    }
+
+    public void nextMappingSlot() {
+        selectedProvider().ifPresentOrElse(entry -> {
+            mappingSlotIndex = nextIndex(mappingSlotIndex, entry.provider().patternInventory().size());
+            mappingAcknowledgment = "ready";
+        }, () -> mappingAcknowledgment = "rejected-no-provider");
+    }
+
+    public void nextMappingLane() {
+        selectedProvider().ifPresentOrElse(entry -> {
+            mappingLaneIndex = nextIndex(mappingLaneIndex, entry.provider().nativeLanes().size());
+            mappingAcknowledgment = "ready";
+        }, () -> mappingAcknowledgment = "rejected-no-provider");
+    }
+
+    public void toggleMapping() {
+        if (!authorizeAction()) {
+            mappingAcknowledgment = "rejected-session";
+            return;
+        }
+        var entry = selectedProvider().orElse(null);
+        if (entry == null) {
+            mappingAcknowledgment = "rejected-no-provider";
+            return;
+        }
+        ProviderTargetState targetState = entry.runtime().lastResolution().state();
+        if (targetState == ProviderTargetState.POLICY_DENIED || targetState == ProviderTargetState.CLAIM_MISMATCH) {
+            mappingAcknowledgment = "rejected-" + targetState.name().toLowerCase(java.util.Locale.ROOT);
+            return;
+        }
+        try {
+            PatternSlotHandle handle = entry.provider().mappingHandle(mappingSlotIndex);
+            Set<Integer> replacement = new TreeSet<>(entry.provider().lanesForSlot(mappingSlotIndex));
+            if (!replacement.add(mappingLaneIndex)) {
+                replacement.remove(mappingLaneIndex);
+            }
+            mappingAcknowledgment = entry.provider().replaceMapping(handle, replacement)
+                    ? "accepted-" + handle.slot() + "-" + handle.generation()
+                    : "rejected-stale-slot";
+        } catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+            mappingAcknowledgment = "rejected-invalid-selection";
+        }
+    }
+
+    public void nextEndpoint() {
+        endpointIndex = nextIndex(endpointIndex, currentEndpoints().size());
+    }
+
+    public String graphSnapshotText() {
+        return context == null ? space.controlnet.ae2federation.client.fabric.FabricGraphSnapshot.empty().encode()
+                : FabricGraphProjection.snapshot(level, context, selectedProvider()).encode();
+    }
+
+    public Component mappingProviderText() {
+        return selectedProvider().map(entry -> Component.literal(shortId(FabricGraphProjection.providerId(context, entry))))
+                .orElseGet(() -> Component.literal("-"));
+    }
+
+    public Component mappingSelectionText() {
+        return Component.translatable("ae2federation.ui.fabric.mapping.selection", mappingSlotIndex, mappingLaneIndex);
+    }
+
+    public Component mappingStatusText() {
+        return Component.translatable("ae2federation.ui.fabric.mapping.status", mappingAcknowledgment);
+    }
+
+    public String mappingStatusCode() {
+        return mappingAcknowledgment;
+    }
+
+    public Component endpointDetailText() {
+        var endpoints = currentEndpoints();
+        if (endpoints.isEmpty()) {
+            return Component.translatable("ae2federation.ui.fabric.endpoint.none");
+        }
+        var binding = endpoints.get(Math.floorMod(endpointIndex, endpoints.size()));
+        var claim = binding.claimState();
+        var owner = claim instanceof ClaimState.Owned owned
+                ? shortId(owned.ownerIdentity().provider().id().value().toString())
+                : "unclaimed";
+        return Component.translatable("ae2federation.ui.fabric.endpoint.detail",
+                shortId(FabricGraphProjection.endpointId(context, binding)), binding.runtime().configuredMode().name(),
+                binding.runtime().generation(), claim.epoch().value(), owner, binding.lastClaimResultCode());
+    }
+
     public Component entranceText() {
-        return entrance.label();
+        return entrance.label(level);
     }
 
     public Component membersText() {
@@ -133,7 +241,7 @@ public final class FabricPolicySession {
         }
         var text = Component.translatable("ae2federation.ui.fabric.members", selection.members().size());
         for (var member : selection.members()) {
-            text.append("\n").append(Component.literal(member.value().toString()));
+            text.append("\n").append(Component.literal(shortId(member.value().toString())));
         }
         return text;
     }
@@ -177,12 +285,41 @@ public final class FabricPolicySession {
         return state.status().name().toLowerCase(java.util.Locale.ROOT);
     }
 
+    private List<ProviderObservationRegistry.Entry> currentProviders() {
+        return currentFabric().map(fabric -> FabricGraphProjection.providerEntries(level, fabric)).orElse(List.of());
+    }
+
+    private Optional<ProviderObservationRegistry.Entry> selectedProvider() {
+        var providers = currentProviders();
+        return providers.isEmpty() ? Optional.empty()
+                : Optional.of(providers.get(Math.floorMod(mappingProviderIndex, providers.size())));
+    }
+
+    private List<EndpointTargetBinding> currentEndpoints() {
+        return currentFabric().map(fabric -> FabricGraphProjection.endpointEntries(level, fabric)).orElse(List.of());
+    }
+
+    private Optional<FabricSnapshot> currentFabric() {
+        if (context == null || !FabricRegistryAccess.get(level).isCurrent(context)) {
+            return Optional.empty();
+        }
+        return FabricRegistryAccess.get(level).fabric(context.fabricId());
+    }
+
+    private static int nextIndex(int current, int size) {
+        return size == 0 ? 0 : Math.floorMod(current + 1, size);
+    }
+
     private Component selectionText(String key, boolean consumer) {
         if (selection == null) {
             return Component.translatable(key, "-");
         }
         var selected = consumer ? selection.key().consumerNetworkId() : selection.key().providerNetworkId();
-        return Component.translatable(key, selected.value().toString());
+        return Component.translatable(key, shortId(selected.value().toString()));
+    }
+
+    private static String shortId(String value) {
+        return value.length() <= 16 ? value : value.substring(0, 16);
     }
 
     private void changeSelection(UnaryOperator<PolicyEditorSelection> change) {

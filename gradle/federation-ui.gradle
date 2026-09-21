@@ -89,7 +89,10 @@ def uiTaskThreeExpectedCases = ['ui-harness.shared-resource', 'ui-harness.server
 def uiTaskFifteenScenarioNames = ['ui.hub', 'ui.bridge', 'ui.shared-policy', 'ui.stale-context',
         'ui.close-unsubscribe'] as Set
 def uiTaskFifteenExpectedCases = uiTaskFifteenScenarioNames
-def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames
+def uiTaskThirtyThreeScenarioNames = ['ui.graph-controls', 'ui.mapping', 'ui.endpoint',
+        'ui.multipart-attachments', 'ui.chinese-scales', 'ui.reject-claim-conflict'] as Set
+def uiTaskThirtyThreeExpectedCases = uiTaskThirtyThreeScenarioNames
+def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames + uiTaskThirtyThreeScenarioNames
 
 def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
     def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
@@ -131,6 +134,56 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
             || (closed.policyRevision as long) != (closed.previousRevision as long) + 1L
             || closed.visibleRule != "STORAGE: disabled (revision ${closed.policyRevision})") {
         throw new GradleException('Task 15 menu closure lifecycle or continued sharing is invalid')
+    }
+}
+
+def verifyTaskThirtyThreeReport = { List attachments, List controls, List captures, String runId ->
+    def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
+    if (outcomes.keySet() as Set != uiTaskThirtyThreeScenarioNames || captures.size() < 10
+            || controls.find { it.selector == '#fabric_graph' } == null
+            || controls.find { it.selector == '#mapping_toggle' } == null
+            || controls.find { it.selector == '#endpoint_detail' } == null) {
+        throw new GradleException('Task 33 graph, mapping, Endpoint, screenshot, or outcome accounting is incomplete')
+    }
+    if (outcomes.values().any { it.graphVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
+        throw new GradleException('Task 33 actual-client graph or renderer evidence is missing')
+    }
+    def mapping = outcomes['ui.mapping']
+    if (mapping.authoritativeMappingLanes != '[0]'
+            || mapping.mappingAck != 'Server: accepted-0-0'
+            || mapping.providerId == null || mapping.providerId.isBlank()) {
+        throw new GradleException('Task 33 authoritative Provider mapping acknowledgment is invalid')
+    }
+    def endpoint = outcomes['ui.endpoint']
+    if (endpoint.endpointMode != 'FEDERATED' || endpoint.endpointId == null || endpoint.endpointId.isBlank()
+            || !endpoint.endpointDetail.contains('Claim epoch 1')) {
+        throw new GradleException('Task 33 live Endpoint diagnostic is invalid')
+    }
+    def multipart = outcomes['ui.multipart-attachments']
+    if (multipart.multipartAttachment != 'north:bridge;cable-extension:5'
+            || multipart.visibleAttachment != 'Multipart Bridge - side north / type bridge / cable extension 5.0') {
+        throw new GradleException('Task 33 multipart Bridge attachment evidence is invalid')
+    }
+    def chinese = outcomes['ui.chinese-scales']
+    def exercisedScales = outcomes.values().collect { it.guiScale as double } as Set
+    if (chinese.language != 'zh_cn' || chinese.guiScale as double != 4d
+            || !chinese.largeQuantity.contains('4000000000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
+        throw new GradleException('Task 33 Chinese text, large quantity, or GUI scale evidence is invalid')
+    }
+    def conflict = outcomes['ui.reject-claim-conflict']
+    if (conflict.claimConflict != 'Rejected' || !conflict.claimConflictResult.contains('OWNER_CONFLICT')
+            || !conflict.endpointDetail.contains('Claim epoch 1')) {
+        throw new GradleException('Task 33 Claim conflict was not visibly rejected by production authority')
+    }
+    def controlsOutcome = outcomes['ui.graph-controls']
+    if ((controlsOutcome.policyRevision as long) <= 0L || controlsOutcome.policyEnabled != 'true'
+            || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
+            || controlsOutcome.worldCaptures != 'hub-overview,bridge-north,provider-host,endpoint-faces'
+            || !captures.any { it.path.contains('world-hub-overview') }
+            || !captures.any { it.path.contains('world-multipart-bridge-north') }
+            || !captures.any { it.path.contains('world-provider-host') }
+            || !captures.any { it.path.contains('world-endpoint-faces') }) {
+        throw new GradleException('Task 33 current-source policy edit or actual-world captures are incomplete')
     }
 }
 
@@ -208,6 +261,8 @@ def verifyLdlibReport = { File reportFile, File outputDir, Set<String> selectedS
         }
     } else if (selectedScenarios == uiTaskFifteenScenarioNames) {
         verifyTaskFifteenReport(attachments, controls, captures, runId)
+    } else if (selectedScenarios == uiTaskThirtyThreeScenarioNames) {
+        verifyTaskThirtyThreeReport(attachments, controls, captures, runId)
     } else {
         throw new GradleException("Unsupported LDLib2 scenario set: ${selectedScenarios}")
     }
@@ -252,7 +307,8 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     }
     def expectedCases = report.requested as Set
     if (!(report.requested instanceof List)
-            || !(expectedCases == uiTaskThreeExpectedCases || expectedCases == uiTaskFifteenExpectedCases)
+            || !(expectedCases == uiTaskThreeExpectedCases || expectedCases == uiTaskFifteenExpectedCases
+                    || expectedCases == uiTaskThirtyThreeExpectedCases)
             || report.executed != report.requested
             || !(report.assertions instanceof List) || report.assertions.size() != report.requested.size()
             || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }
@@ -457,9 +513,41 @@ def uiTaskFifteenUpstreamMutations = [
         }
 ]
 
+def uiTaskThirtyThreeUpstreamMutations = [
+        'forged-task33-mapping-lanes': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.mapping' }.steps
+                    .find { it.attachments?.caseId == 'ui.mapping' }.attachments
+            upstreamOutcome.authoritativeMappingLanes = '[]'
+            report.controlAttachments.find { it.caseId == 'ui.mapping' }.authoritativeMappingLanes =
+                    upstreamOutcome.authoritativeMappingLanes
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'claim-conflict-success': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.reject-claim-conflict' }.steps
+                    .find { it.attachments?.caseId == 'ui.reject-claim-conflict' }.attachments
+            upstreamOutcome.claimConflictResult = 'SUCCESS'
+            report.controlAttachments.find { it.caseId == 'ui.reject-claim-conflict' }.claimConflictResult = 'SUCCESS'
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'fabricated-task33-multipart': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.multipart-attachments' }.steps
+                    .find { it.attachments?.caseId == 'ui.multipart-attachments' }.attachments
+            upstreamOutcome.multipartAttachment = 'north:bridge;cable-extension:8'
+            upstreamOutcome.visibleAttachment = 'Multipart Bridge - side north / type bridge / cable extension 8.0'
+            def outerOutcome = report.controlAttachments.find { it.caseId == 'ui.multipart-attachments' }
+            outerOutcome.multipartAttachment = upstreamOutcome.multipartAttachment
+            outerOutcome.visibleAttachment = upstreamOutcome.visibleAttachment
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        }
+]
+
 def uiMutationsFor = { File resultFile ->
     def requested = new JsonSlurper().parse(resultFile).requested as Set
-    requested == uiTaskFifteenExpectedCases ? uiTaskFifteenUpstreamMutations : uiUpstreamMutations
+    requested == uiTaskFifteenExpectedCases ? uiTaskFifteenUpstreamMutations
+            : requested == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeUpstreamMutations : uiUpstreamMutations
 }
 
 def cleanupUiRuntime = { File attempt ->
@@ -498,9 +586,10 @@ tasks.register('federationUiTest') {
         def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
         def requestedSet = requested as Set
         def selectedScenarioNames = requestedSet == uiTaskThreeExpectedCases ? uiTaskThreeScenarioNames
-                : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames : null
+                : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames
+                : requestedSet == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeScenarioNames : null
         if (requested.isEmpty() || selectedScenarioNames == null) {
-            throw new GradleException("UI verification requires exact Task 3 or Task 15 cases; requested=${requested}")
+            throw new GradleException("UI verification requires exact Task 3, Task 15, or Task 33 cases; requested=${requested}")
         }
         def evidenceText = uiEvidenceProperty.orNull
         if (evidenceText == null || evidenceText.isBlank()) throw new GradleException('Missing -PevidenceDir')
@@ -517,12 +606,14 @@ tasks.register('federationUiTest') {
         def ldlibOutput = new File(attempt, 'ldlib2')
         def clientLog = new File(attempt, 'actual-client.log')
         def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
-        def command = ['xvfb-run', '--auto-servernum', '--server-args=-screen 0 1280x720x24 -nolisten tcp',
+        def taskThirtyThreeWindow = selectedScenarioNames == uiTaskThirtyThreeScenarioNames
+        def window = taskThirtyThreeWindow ? '1600x960' : '1280x720'
+        def command = ['xvfb-run', '--auto-servernum', "--server-args=-screen 0 ${window}x24 -nolisten tcp",
                 gradleExecutable.absolutePath, '--no-daemon', '--dependency-verification=strict',
                 ':neoforge-1.21.1:runUiTestClient',
                  "-PfederationUiSelection=${selectedScenarioNames.join(',')}",
                 "-PfederationUiOutputDir=${ldlibOutput.absolutePath}", "-PfederationUiRunId=${runId}",
-                '-PfederationUiGuiScale=3', '-PfederationUiWindow=1280x720', '-PfederationUiWatchdogSec=90']
+                '-PfederationUiGuiScale=3', "-PfederationUiWindow=${window}", '-PfederationUiWatchdogSec=90']
         def child
         try {
             child = uiRunProcess(command, uiRepositoryDir, clientLog, 240, ['LIBGL_ALWAYS_SOFTWARE': '1'])
