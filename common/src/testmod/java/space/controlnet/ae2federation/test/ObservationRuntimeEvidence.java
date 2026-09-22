@@ -9,6 +9,7 @@ import space.controlnet.ae2federation.fabric.FabricReference;
 import space.controlnet.ae2federation.observability.ObservationRuntimeReceiptSink;
 import space.controlnet.ae2federation.observability.ObservationSnapshotSink;
 import space.controlnet.ae2federation.observability.ObservationDeltaSink;
+import space.controlnet.ae2federation.observability.ObservationSessionLifecycleSink;
 import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationClientState;
@@ -70,6 +71,8 @@ public final class ObservationRuntimeEvidence {
     }
 
     public static void useHeadlessGameTestTransport() {
+        ObservationSessionLifecycleSink.register((player, session) -> clientStates.open(session),
+                (player, session) -> clientStates.close(session));
         ObservationSnapshotSink.register((player, snapshot) -> clientStates.apply(ObservationPayloadProbe.roundTrip(snapshot)));
         ObservationDeltaSink.register((player, delta) -> clientStates.apply(ObservationPayloadProbe.roundTrip(delta)));
     }

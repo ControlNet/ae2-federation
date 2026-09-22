@@ -18,7 +18,6 @@ public final class ObservationSubscriptionService implements AutoCloseable {
     private final int playerLimit;
     private final int queueLimit;
     private final Map<SubscriptionKey, ObservationSubscription> subscriptions = new HashMap<>();
-    private final Map<SubscriptionKey, Long> generations = new HashMap<>();
     private final Map<FabricReference, FabricStateSnapshot> projections = new HashMap<>();
     private long removalCount;
 
@@ -41,10 +40,10 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         if (existing == null && subscriptionsFor(authority.playerId()) >= playerLimit) {
             throw new IllegalStateException("Player observation subscription limit reached");
         }
+        var generation = existing == null ? 1 : Math.incrementExact(existing.generation());
         if (existing != null) {
             close(key, existing);
         }
-        var generation = generations.merge(key, 1L, Math::addExact);
         var subscription = new ObservationSubscription(
                 ObservationSession.create(authority.playerId(), authority.sessionId(), scope, generation), authority,
                 queueLimit);
@@ -163,6 +162,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
 
     private void close(SubscriptionKey key, ObservationSubscription subscription) {
         if (subscriptions.remove(key, subscription)) {
+            subscription.authority().close(subscription.session());
             subscription.close();
             ObservationRuntimeReceiptSink.subscription(subscription.session(),
                     ObservationRuntimeReceiptSink.SubscriptionEvent.CLOSED);

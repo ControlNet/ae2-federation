@@ -79,4 +79,23 @@ class NativeTransportMeterTest {
         assertFalse(meter.recordAccepted(SCOPE, second, "ae2:energy", 1, ResourceUnit.NANO_AE,
                 FlowState.Attribution.EXACT_OPERATION));
     }
+
+    @Test
+    void oversizedAmountLeavesMeterStateAndDeduplicationUnchanged() {
+        var meter = new NativeTransportMeter(4);
+        var event = new OperationEventId(UUID.randomUUID());
+        var before = meter.window(SCOPE);
+
+        assertThrows(IllegalArgumentException.class, () -> meter.recordAccepted(SCOPE, event, "minecraft:diamond",
+                ObservationLimits.MAX_RESOURCE_AMOUNT + 1, ResourceUnit.ITEM,
+                FlowState.Attribution.EXACT_OPERATION));
+
+        assertEquals(before, meter.window(SCOPE));
+        assertTrue(meter.recordAccepted(SCOPE, event, "minecraft:diamond", ObservationLimits.MAX_RESOURCE_AMOUNT,
+                ResourceUnit.ITEM, FlowState.Attribution.EXACT_OPERATION));
+        assertFalse(meter.recordAccepted(SCOPE, event, "minecraft:diamond", ObservationLimits.MAX_RESOURCE_AMOUNT,
+                ResourceUnit.ITEM, FlowState.Attribution.EXACT_OPERATION));
+        assertEquals(1, meter.window(SCOPE).dataRevision());
+        assertEquals(ObservationLimits.MAX_RESOURCE_AMOUNT, meter.window(SCOPE).events().getFirst().amount());
+    }
 }

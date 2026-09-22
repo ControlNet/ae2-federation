@@ -52,6 +52,12 @@ class ObservationSubscriptionServiceTest {
         service.closePlayer(authority.playerId());
         assertEquals(0, service.activeCount());
         assertEquals(1, service.removalCount());
+        assertEquals(1, authority.closeDeliveries);
+        assertEquals(subscription.session(), authority.lastClosedSession);
+
+        authority.current = true;
+        var reopened = service.subscribe(authority, SCOPE);
+        assertEquals(1, reopened.generation());
     }
 
     @Test
@@ -115,6 +121,8 @@ class ObservationSubscriptionServiceTest {
         private int snapshotDeliveries;
         private int deltaDeliveries;
         private FabricStateDelta lastDelta;
+        private int closeDeliveries;
+        private space.controlnet.ae2federation.observability.state.ObservationSession lastClosedSession;
 
         private MutableAuthority(UUID playerId, UUID sessionId, FabricReference scope, boolean current) {
             this.playerId = playerId;
@@ -155,6 +163,12 @@ class ObservationSubscriptionServiceTest {
             deltaDeliveries++;
             lastDelta = delta.delta();
             return deltaDelivery;
+        }
+
+        @Override
+        public void close(space.controlnet.ae2federation.observability.state.ObservationSession session) {
+            closeDeliveries++;
+            lastClosedSession = session;
         }
     }
 }

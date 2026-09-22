@@ -166,7 +166,12 @@
     {"id":"benchmark.reject-empty-work","backend":"self-test","assertions":1},
     {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1},
     {"id":"mixed.reject-empty-orders","backend":"gametest","testId":"mixedrejectemptyorders","structure":"ae2federation_test:harness_native_smoke","assertions":16},
-    {"id":"mixed.overload-backpressure","backend":"gametest","testId":"mixedoverloadbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":25}
+    {"id":"mixed.overload-backpressure","backend":"gametest","testId":"mixedoverloadbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":25},
+    {"id":"release.server-side-load","backend":"release-audit","assertions":4},
+    {"id":"release.no-test-content","backend":"release-audit","assertions":4},
+    {"id":"release.optional-absent","backend":"release-audit","assertions":3},
+    {"id":"packets.reject-malformed","backend":"packet-contract","assertions":4},
+    {"id":"packets.reject-out-of-context","backend":"packet-contract","assertions":5}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8,"lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},

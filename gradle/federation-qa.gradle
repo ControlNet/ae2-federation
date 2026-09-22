@@ -438,6 +438,9 @@ def verifyTaskThirtyOneEvidence
 def taskThirtyTwoCases = ['observe.native-flow-once', 'observe.scoped-snapshot', 'observe.close-cleanup',
         'observe.reject-stale-delta', 'observe.reject-cross-fabric-edit']
 def verifyTaskThirtyTwoEvidence
+def taskThirtyFiveCases = ['release.server-side-load', 'release.no-test-content', 'release.optional-absent',
+        'packets.reject-malformed', 'packets.reject-out-of-context']
+def verifyTaskThirtyFiveEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -1631,6 +1634,79 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
                 throw new GradleException('Task 32 cross-Fabric encoded rejection or zero-mutation receipt is invalid')
             }
         }
+    }
+}
+verifyTaskThirtyFiveEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskThirtyFiveCases }) return
+    if (requested != taskThirtyFiveCases) throw new GradleException('Task 35 evidence must select the exact canonical case set')
+    def releasePath = 'release-runtime.properties'
+    def packetPath = 'packet-rejection.properties'
+    def runtimePath = 'native-task35packetauthority.properties'
+    for (def path : [releasePath, packetPath, runtimePath, 'release-server.log', 'packet-probe.log',
+            'packet-runtime.log']) {
+        if (declaredPaths.count { it == path } != 1 || !new File(attempt, path).isFile()) {
+            throw new GradleException("Task 35 evidence artifact is missing or duplicated: ${path}")
+        }
+    }
+    if (childExits['release-server'] != 0 || childExits['packet-probe'] != 0
+            || childExits['packet-runtime'] != 0) {
+        throw new GradleException('Task 35 production runtime or packet probe failed')
+    }
+    def release = loadProperties(new File(attempt, releasePath))
+    def expectedRelease = [serverStarted: 'true', runtimeTerminated: 'true', sourceSet: 'main', testmodLoaded: 'false',
+            clientClassLoadFailure: 'false', optionalAddonPresent: 'false', debugRegistrationPresent: 'false',
+            productJarSha256: sha256(productJar.get().asFile.bytes),
+            sourcesJarSha256: sha256(tasks.named('sourcesJar', Jar).get().archiveFile.get().asFile.bytes)]
+    if (release.stringPropertyNames() != expectedRelease.keySet() as Set
+            || expectedRelease.any { name, value -> release.getProperty(name) != value }) {
+        throw new GradleException('Task 35 production release facts are fabricated or incomplete')
+    }
+    def serverLog = new File(attempt, 'release-server.log').text
+    if (!serverLog.contains('Done (') || !serverLog.contains('AE2 Federation common startup complete')
+            || ['ae2federation_test', 'com.glodblock.github.appflux', 'NoClassDefFoundError',
+                'ClassNotFoundException', 'Attempted to load class net/minecraft/client'].any(serverLog::contains)) {
+        throw new GradleException('Task 35 production server-load receipt is invalid')
+    }
+    def packets = loadProperties(new File(attempt, packetPath))
+    def exactPacketFields = ['actionCodecRoundTrip', 'actionOversizedRejected', 'actionTrailingRejected',
+            'actionUnknownRejected', 'snapshotOversizedRejected', 'deltaTrailingRejected', 'outOfContextRejected',
+            'snapshotRegressionRejected', 'closedSessionReplayRejected', 'meterOversizedRejected',
+            'meterUnchangedAfterReject', 'meterMaximumAcceptedExactlyOnce'] as Set
+    if (packets.stringPropertyNames() != exactPacketFields
+            || exactPacketFields.any { packets.getProperty(it) != 'true' }) {
+        throw new GradleException('Task 35 packet rejection or no-mutation facts are invalid')
+    }
+    def runtimeFile = new File(attempt, runtimePath)
+    def runtime = loadProperties(runtimeFile)
+    requireProperty(runtime, 'schemaVersion', '1', runtimeFile)
+    requireProperty(runtime, 'status', 'passed', runtimeFile)
+    requireProperty(runtime, 'kind', 'verify', runtimeFile)
+    requireProperty(runtime, 'testId', 'task35packetauthority', runtimeFile)
+    requireProperty(runtime, 'structure', 'ae2federation_test:harness_native_smoke', runtimeFile)
+    if (parsePositiveInteger(runtime.getProperty('assertions'), 'Task 35 packet authority assertions') != 13
+            || parsePositiveInteger(runtime.getProperty('operations'), 'Task 35 packet authority operations') != 1) {
+        throw new GradleException('Task 35 packet authority accounting is invalid')
+    }
+    def runtimeFields = ['containerChanged', 'contextRejected', 'inventoryUnchangedOnReject',
+            'mappingSessionUnchangedOnReject', 'menuAReplayRejected', 'meterUnchangedOnReject', 'nonceChanged',
+            'policyUnchangedOnReject', 'revisionRejected', 'serverThread', 'validAccepted', 'validExactlyOnce',
+            'worldUnchangedOnReject'] as Set
+    def metadataFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos'] as Set
+    def exactRuntimeFields = (metadataFields + runtimeFields) as Set
+    if (runtime.stringPropertyNames() != exactRuntimeFields
+            || runtimeFields.any { runtime.getProperty(it) != 'true' }) {
+        throw new GradleException('Task 35 production packet authority facts are invalid')
+    }
+    def runtimeTrace = [:]
+    (new File(attempt, 'packet-runtime.log').text =~ /AE2F_ENERGY_NATIVE_ENTRY testId=task35packetauthority fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+        if (runtimeTrace.put(match[1], match[2]) != null) {
+            throw new GradleException("Task 35 duplicate packet authority trace fact: ${match[1]}")
+        }
+    }
+    if (runtimeTrace.keySet() != runtimeFields
+            || runtimeFields.any { runtimeTrace[it] != runtime.getProperty(it) }) {
+        throw new GradleException('Task 35 production packet authority runtime trace mismatch')
     }
 }
 verifyTaskElevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
@@ -5840,6 +5916,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyTwoEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
+    verifyTaskThirtyFiveEvidence(attempt, report.requested as List,
+            report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     verifyTaskThirtyFourBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -6405,6 +6483,36 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         }
         assertions.add(assertion)
     } else {
+        if (requestedCases == taskThirtyFiveCases) {
+            def releaseEvidence = new File(attempt, 'release-runtime.properties')
+            def release = gradleCommand('release-server', [':neoforge-1.21.1:federationReleaseServerSmoke',
+                    "-PfederationReleaseEvidenceFile=${releaseEvidence.absolutePath}"],
+                    [timeout: 210, shutdownGrace: 30, retainRuntime: false])
+            if (release.result.exit != 0 || !releaseEvidence.isFile()) {
+                throw new GradleException('Task 35 production dedicated-server smoke failed')
+            }
+            childArtifacts.add(releaseEvidence)
+            def packetRuntimeEvidence = new File(attempt, 'native-task35packetauthority.properties')
+            def packetRuntime = gradleCommand('packet-runtime', [':neoforge-1.21.1:runGameTestServer',
+                    '-PfederationGameTestSelection=positive', '-PfederationGameTestId=packetAuthority',
+                    "-PfederationNativeEvidenceFile=${packetRuntimeEvidence.absolutePath}"],
+                    [timeout: 180, retainRuntime: false])
+            if (packetRuntime.result.exit != 0 || !packetRuntimeEvidence.isFile()) {
+                throw new GradleException('Task 35 production packet authority GameTest failed')
+            }
+            verifyNativeEvidence(packetRuntimeEvidence, [kind: 'verify', testId: 'task35packetauthority',
+                    structure: 'ae2federation_test:harness_native_smoke', assertions: 13, operations: 1,
+                    allowZeroWork: true])
+            childArtifacts.add(packetRuntimeEvidence)
+            def packetEvidence = new File(attempt, 'packet-rejection.properties')
+            def packets = gradleCommand('packet-probe', [':neoforge-1.21.1:federationTaskThirtyFivePacketProbe',
+                    "-PfederationPacketEvidenceFile=${packetEvidence.absolutePath}"],
+                    [timeout: 60, shutdownGrace: 10, retainRuntime: false])
+            if (packets.result.exit != 0 || !packetEvidence.isFile()) {
+                throw new GradleException('Task 35 packet rejection probe failed')
+            }
+            childArtifacts.add(packetEvidence)
+        }
         def gameTestCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'gametest' }
         gameTestCases.collectEntries { [(it.testId): it] }.each { testId, testCase ->
             def nativeEvidence = new File(attempt, "native-${testId}.properties")
@@ -6488,6 +6596,15 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         requestedCases.each { caseId ->
             def testCase = knownCases[caseId] as Map
             switch (caseId) {
+                case 'release.server-side-load':
+                case 'release.no-test-content':
+                case 'release.optional-absent':
+                case 'packets.reject-malformed':
+                case 'packets.reject-out-of-context':
+                    executed.add(caseId)
+                    assertions.add([caseId: caseId, status: 'passed',
+                            assertionCount: testCase.assertions as int])
+                    break
                 case 'harness.native-smoke':
                 case 'harness.gametest-registered':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
@@ -6953,6 +7070,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskThirtyNegativeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskThirtyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -7079,6 +7197,51 @@ tasks.register('federationVerifyEvidence') {
         }
         verifyPersistedReport(result, true)
         logger.lifecycle("Federation evidence verified: ${result}")
+    }
+}
+
+tasks.register('federationTaskThirtyFiveEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fully rebound fabricated Task 35 release, addon, packet, and no-mutation facts.'
+    dependsOn(tasks.named('jar'), tasks.named('sourcesJar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds Task 35 evidence for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        def mutate = { String name, String fileName, String property, String value, String expectedMessage ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, "task35-${name}") { attempt, report ->
+                def file = new File(attempt, fileName)
+                def facts = loadProperties(file)
+                facts.setProperty(property, value)
+                file.withOutputStream { facts.store(it, "Task 35 ${name} probe") }
+            }
+            if (!(rejection instanceof String) || !rejection.contains(expectedMessage)) {
+                throw new GradleException("Task 35 adversarial probe was accepted or rejected for the wrong reason: ${name}")
+            }
+        }
+        mutate('fabricated-server-load', 'release-runtime.properties', 'serverStarted', 'false',
+                'Task 35 production release facts are fabricated or incomplete')
+        mutate('archive-separation', 'release-runtime.properties', 'testmodLoaded', 'true',
+                'Task 35 production release facts are fabricated or incomplete')
+        mutate('optional-presence', 'release-runtime.properties', 'optionalAddonPresent', 'true',
+                'Task 35 production release facts are fabricated or incomplete')
+        mutate('packet-accepted', 'packet-rejection.properties', 'actionOversizedRejected', 'false',
+                'Task 35 packet rejection or no-mutation facts are invalid')
+        def reboundRuntime = taskFiveEvidenceProbeRejects(sourceResult, 'task35-rebound-menu-replay') { attempt, report ->
+            def file = new File(attempt, 'native-task35packetauthority.properties')
+            def facts = loadProperties(file)
+            facts.setProperty('menuAReplayRejected', 'false')
+            file.withOutputStream { facts.store(it, 'Task 35 rebound packet authority probe') }
+            def log = new File(attempt, 'packet-runtime.log')
+            log.text = log.text.replace(
+                    'AE2F_ENERGY_NATIVE_ENTRY testId=task35packetauthority fact=menuAReplayRejected value=true',
+                    'AE2F_ENERGY_NATIVE_ENTRY testId=task35packetauthority fact=menuAReplayRejected value=false')
+        }
+        if (!(reboundRuntime instanceof String)
+                || !reboundRuntime.contains('Task 35 production packet authority facts are invalid')) {
+            throw new GradleException('Task 35 fully rebound packet authority probe was accepted')
+        }
     }
 }
 

@@ -9,6 +9,7 @@ import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.observability.ObservationDeltaSink;
 import space.controlnet.ae2federation.observability.ObservationSnapshotSink;
+import space.controlnet.ae2federation.observability.ObservationSessionLifecycleSink;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
 import space.controlnet.ae2federation.observability.subscription.ObservationAuthority;
@@ -35,7 +36,8 @@ final class FabricPolicyObservation implements ObservationAuthority {
         var service = LevelObservabilityService.get(level);
         var snapshot = service.snapshot(scope);
         var subscription = service.subscriptions().subscribe(this, scope);
-        if (!ObservationSnapshotSink.send(player, new ObservationSnapshotEnvelope(subscription.session(), snapshot))) {
+        if (!ObservationSessionLifecycleSink.open(player, subscription.session())
+                || !ObservationSnapshotSink.send(player, new ObservationSnapshotEnvelope(subscription.session(), snapshot))) {
             service.subscriptions().close(subscription);
             return Optional.empty();
         }
@@ -45,6 +47,11 @@ final class FabricPolicyObservation implements ObservationAuthority {
 
     void close(ObservationSubscription subscription) {
         LevelObservabilityService.get(level).subscriptions().close(subscription);
+    }
+
+    @Override
+    public void close(space.controlnet.ae2federation.observability.state.ObservationSession closedSession) {
+        ObservationSessionLifecycleSink.close(player, closedSession);
     }
 
     @Override

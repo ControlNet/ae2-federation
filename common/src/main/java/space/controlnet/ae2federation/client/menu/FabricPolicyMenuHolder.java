@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client.menu;
 
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
+import com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerMenu;
 import com.lowdragmc.lowdraglib2.gui.sync.bindings.impl.DataBindingBuilder;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
@@ -16,9 +17,13 @@ import dev.vfyjxf.taffy.style.TaffyPosition;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.fabric.FabricGraphLayer;
 import space.controlnet.ae2federation.client.fabric.FabricGraphLayout;
@@ -30,9 +35,13 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
     private static final ResourceLocation XML = ResourceLocation.fromNamespaceAndPath(
             "ae2federation", "ui/fabric.xml");
     private final @Nullable FabricPolicySession session;
+    private final @Nullable UUID menuNonce;
+    private long menuSequence;
+    private @Nullable ClientAuthority clientAuthority;
 
     FabricPolicyMenuHolder(@Nullable FabricPolicySession session) {
         this.session = session;
+        menuNonce = session == null ? null : UUID.randomUUID();
     }
 
     @Override
@@ -62,20 +71,20 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
         var provider = element(ui, "provider_next", Button.class);
         var capability = element(ui, "capability_next", Button.class);
         var toggle = element(ui, "policy_toggle", Button.class);
-        consumer.setOnServerClick(event -> withSession(FabricPolicySession::nextConsumer));
-        provider.setOnServerClick(event -> withSession(FabricPolicySession::nextProvider));
-        capability.setOnServerClick(event -> withSession(FabricPolicySession::nextCapability));
-        toggle.setOnServerClick(event -> withSession(FabricPolicySession::toggleEnabled));
+        consumer.setOnClick(event -> send(FabricPolicyAction.NEXT_CONSUMER));
+        provider.setOnClick(event -> send(FabricPolicyAction.NEXT_PROVIDER));
+        capability.setOnClick(event -> send(FabricPolicyAction.NEXT_CAPABILITY));
+        toggle.setOnClick(event -> send(FabricPolicyAction.TOGGLE_POLICY));
         element(ui, "mapping_provider_next", Button.class)
-                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingProvider));
+                .setOnClick(event -> send(FabricPolicyAction.NEXT_MAPPING_PROVIDER));
         element(ui, "mapping_slot_next", Button.class)
-                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingSlot));
+                .setOnClick(event -> send(FabricPolicyAction.NEXT_MAPPING_SLOT));
         element(ui, "mapping_lane_next", Button.class)
-                .setOnServerClick(event -> withSession(FabricPolicySession::nextMappingLane));
+                .setOnClick(event -> send(FabricPolicyAction.NEXT_MAPPING_LANE));
         element(ui, "mapping_toggle", Button.class)
-                .setOnServerClick(event -> withSession(FabricPolicySession::toggleMapping));
+                .setOnClick(event -> send(FabricPolicyAction.TOGGLE_MAPPING));
         element(ui, "endpoint_next", Button.class)
-                .setOnServerClick(event -> withSession(FabricPolicySession::nextEndpoint));
+                .setOnClick(event -> send(FabricPolicyAction.NEXT_ENDPOINT));
 
         var graph = element(ui, "fabric_graph", GraphView.class);
         var graphState = new ClientGraphState(graph, virtualList(ui, "member_list"), virtualList(ui, "pattern_list"));
@@ -93,6 +102,13 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
                 .build());
         state.addClass("state-sync");
         ui.rootElement.addChild(state);
+        var authority = new BindableValue<String>("");
+        authority.bind(DataBindingBuilder.stringS2C(() -> authorityText(player))
+                .initialValue("")
+                .remoteSetter(this::acceptAuthority)
+                .build());
+        authority.addClass("authority-sync");
+        ui.rootElement.addChild(authority);
         var graphBinding = new BindableValue<String>("");
         graphBinding.bind(DataBindingBuilder.stringS2C(this::graphSnapshotText)
                 .initialValue("")
@@ -121,10 +137,109 @@ final class FabricPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
         element(ui, id, Label.class).bind(DataBindingBuilder.componentS2C(value).build());
     }
 
-    private void withSession(java.util.function.Consumer<FabricPolicySession> action) {
-        if (session != null) {
-            action.accept(session);
+    FabricPolicyActionResult dispatch(ServerPlayer player, ModularUIContainerMenu menu,
+            FabricPolicyActionRequest request) {
+        if (menu.uiHolder != this || session == null || menuNonce == null) {
+            return FabricPolicyActionResult.WRONG_MENU;
         }
+        if (request.containerId() != menu.containerId) {
+            return FabricPolicyActionResult.STALE_CONTAINER;
+        }
+        if (!menuNonce.equals(request.menuNonce())) {
+            return FabricPolicyActionResult.STALE_SESSION;
+        }
+        if (request.menuSequence() != menuSequence) {
+            return FabricPolicyActionResult.STALE_SEQUENCE;
+        }
+        var context = session.context().orElse(null);
+        if (context == null || !context.equals(request.context())) {
+            return FabricPolicyActionResult.STALE_CONTEXT;
+        }
+        if (!session.expectedRevision().equals(request.expectedRevision())) {
+            return FabricPolicyActionResult.STALE_REVISION;
+        }
+        if (!session.matchesAuthority(player, request.context(), request.expectedRevision())) {
+            if (session.rejectStaleContext(player)) {
+                return FabricPolicyActionResult.STALE_CONTEXT;
+            }
+            session.rejectStaleRevision();
+            return FabricPolicyActionResult.STALE_REVISION;
+        }
+        switch (request.action()) {
+            case NEXT_CONSUMER -> session.nextConsumer();
+            case NEXT_PROVIDER -> session.nextProvider();
+            case NEXT_CAPABILITY -> session.nextCapability();
+            case TOGGLE_POLICY -> session.toggleEnabled();
+            case NEXT_MAPPING_PROVIDER -> session.nextMappingProvider();
+            case NEXT_MAPPING_SLOT -> session.nextMappingSlot();
+            case NEXT_MAPPING_LANE -> session.nextMappingLane();
+            case TOGGLE_MAPPING -> session.toggleMapping();
+            case NEXT_ENDPOINT -> session.nextEndpoint();
+        }
+        menuSequence = Math.incrementExact(menuSequence);
+        return FabricPolicyActionResult.ACCEPTED;
+    }
+
+    java.util.Optional<FabricPolicyActionRequest> currentRequest(ModularUIContainerMenu menu,
+            FabricPolicyAction action) {
+        if (session == null || menuNonce == null || menu.uiHolder != this) {
+            return java.util.Optional.empty();
+        }
+        return session.context().map(context -> new FabricPolicyActionRequest(action, menu.containerId, menuNonce,
+                menuSequence, context, session.expectedRevision()));
+    }
+
+    long currentSequence() {
+        return menuSequence;
+    }
+
+    String currentMappingStatus() {
+        return session == null ? "pending" : session.mappingStatusCode();
+    }
+
+    private String authorityText(Player player) {
+        if (session == null || menuNonce == null || !(player.containerMenu instanceof ModularUIContainerMenu menu)
+                || menu.uiHolder != this) {
+            return "";
+        }
+        var context = session.context().orElse(null);
+        if (context == null) {
+            return "";
+        }
+        var encodedFabric = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(context.fabricId().value().getBytes(StandardCharsets.UTF_8));
+        return menu.containerId + ":" + menuNonce + ":" + menuSequence + ":" + context.generation() + ":"
+                + session.expectedRevision().value() + ":" + encodedFabric;
+    }
+
+    private void acceptAuthority(String encoded) {
+        if (encoded.isEmpty()) {
+            clientAuthority = null;
+            return;
+        }
+        var fields = encoded.split(":", 6);
+        if (fields.length != 6) {
+            throw new IllegalArgumentException("Malformed Fabric policy authority");
+        }
+        var fabricId = new String(Base64.getUrlDecoder().decode(fields[5]), StandardCharsets.UTF_8);
+        clientAuthority = new ClientAuthority(Integer.parseInt(fields[0]), UUID.fromString(fields[1]),
+                Long.parseLong(fields[2]),
+                new space.controlnet.ae2federation.fabric.FabricReference(
+                        new space.controlnet.ae2federation.fabric.FabricId(fabricId), Long.parseLong(fields[3])),
+                new space.controlnet.ae2federation.policy.PolicyRevision(Long.parseLong(fields[4])));
+    }
+
+    private void send(FabricPolicyAction action) {
+        var authority = clientAuthority;
+        if (authority != null) {
+            FabricPolicyActionSink.send(new FabricPolicyActionRequest(action, authority.containerId(),
+                    authority.menuNonce(), authority.menuSequence(), authority.context(), authority.expectedRevision()));
+        }
+    }
+
+    private record ClientAuthority(int containerId, UUID menuNonce, long menuSequence,
+            space.controlnet.ae2federation.fabric.FabricReference context,
+            space.controlnet.ae2federation.policy.PolicyRevision expectedRevision) {
     }
 
     private Component entranceText() {

@@ -4,6 +4,15 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-22 Task 35 resolution
+
+- A nested Gradle server run does not reliably forward `stop` through its JavaExec child. The smoke first requests graceful
+  shutdown, then terminates the complete child process tree within a fixed bound and verifies no descendant survives.
+- The first complete five-case run passed all semantic assertions but was correctly rejected as stale because the packet
+  probe created one additional Log4j rollover file after source capture. An evidence-local working directory fixed it.
+- Final evidence `attempt-20260921T230242137Z` passes all five cases, persisted consumption, five fully rebound mutation
+  probes, clean process lifecycle checks, Java diagnostics, and strict test/build/archive gates.
+
 ## 2026-09-21 Task 33 processing-row glyph resolution
 
 - The previous source-bound run was semantically correct but literal tab delimiters appeared as square glyphs in every
@@ -653,3 +662,21 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Resolved the refreshed screenshot timeout caused by treating the nested `members_value` text as a scalar summary.
 - Canonical current-source evidence is `.omo/evidence/task-34/attempt-20260921T214717547Z` and
   `.omo/evidence/task-34-perf/attempt-20260921T214535537Z`; persisted consumers and all rebound authority probes pass.
+
+## 2026-09-22 Task 35 packet authority repair resolution
+
+- Resolved menu A-to-B replay by removing mutation actions from generic LDLib2 server-click IDs and validating the owned
+  packet against the current server menu's container, nonce, sequence, Fabric context, and Policy revision.
+- Resolved snapshot regression and closed-session recreation with explicit OPEN/CLOSE ownership and monotonic snapshot
+  replacement. Resolved meter partial mutation by validating flow construction before window/dedup changes.
+- Canonical repaired evidence is `.omo/evidence/task-35/attempt-20260922T002606628Z/result.json`; its exact producer,
+  persisted consumer, adversarial self-test, production packet GameTest, and strict build/archive checks pass. Groovy LSP
+  remains unavailable; executable Gradle validation covers the changed verifier.
+
+## 2026-09-22 Task 35 multi-client rejection-state resolution
+
+- The owned payload correctly rejected Client B after Client A advanced the Policy revision, but the early handler return
+  did not mark B's server session stale. Its real UI remained READY and Task 34 waited forever for the stale receipt.
+- The handler now preserves replay no-mutation checks while transitioning only an otherwise current menu session to the
+  authoritative stale-context or stale-revision state. Exact Task 33, Task 34, and Task 35 runs pass.
+- Final Task 35 evidence is `.omo/evidence/task-35-final-current/attempt-20260922T015644119Z/result.json`.

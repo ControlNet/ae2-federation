@@ -4,6 +4,20 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-22 Task 35 release and packet hardening
+
+- An LDLib2 server callback still needs project-owned authority checks: server thread, current menu, exact holder, live
+  session, exact event schema, and current revision must all precede mutation.
+- Production separation needs executable coverage on both surfaces: semantic binary/sources archive inspection and a real
+  `sourceSets.main` dedicated-server startup with only the production mod loaded.
+- Evidence child probes that initialize Log4j need an isolated, removed working directory; otherwise post-capture rollover
+  logs alter dirty-source identity and make an otherwise valid current-source result stale.
+- Bounded quantity validation belongs in the immutable state constructor as well as packet parsing so every creation path
+  enforces the same exact-integer ceiling.
+- Owned packet rejection is also editor-state behavior. When a concurrently advanced Policy revision invalidates an
+  otherwise current request, the handler must refresh the expected revision and synchronize terminal `STALE_REVISION`
+  state rather than returning a rejection enum alone.
+
 ## 2026-09-21 Task 33 processing-row glyph repair
 
 - Minecraft's font renderer exposes literal tab characters as square control glyphs. Visible list rows should use explicit
@@ -893,3 +907,13 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   block lifecycle.
 - LDLib2 parent text aggregates child member rows. The refreshed capture gate validates the `2 members` summary and two
   distinct nonblank member-ID rows for three rendered frames instead of comparing the aggregate to the summary alone.
+
+## 2026-09-22 Task 35 packet authority repair
+
+- LDLib2 generic UI RPC IDs are resolved against the current holder and carry no project menu identity. Mutation-bearing
+  actions therefore require a project-owned payload with server-issued container, nonce, sequence, Fabric context, and
+  Policy revision authority.
+- Packet rejection is not sufficient evidence unless it drives the production menu handler. The repaired GameTest opens
+  menu A then B, replays A against B, checks all mutation receipts, accepts B exactly once, and emits log-correlated facts.
+- Validate complete `FlowState` input before touching meter windows or deduplication. Otherwise a rejected oversized event
+  can consume its event ID and advance hidden state even when no flow is visible.

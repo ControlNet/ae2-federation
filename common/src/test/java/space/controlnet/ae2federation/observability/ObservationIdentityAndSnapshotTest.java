@@ -13,8 +13,12 @@ import space.controlnet.ae2federation.fabric.FabricId;
 import space.controlnet.ae2federation.fabric.FabricReference;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.id.MemberId;
+import space.controlnet.ae2federation.observability.id.FlowId;
+import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.MemberState;
+import space.controlnet.ae2federation.observability.state.ResourceUnit;
 
 class ObservationIdentityAndSnapshotTest {
     private static final FabricReference FIRST = new FabricReference(new FabricId("physical:first"), 3);
@@ -54,5 +58,15 @@ class ObservationIdentityAndSnapshotTest {
                 }).toList();
         assertThrows(IllegalArgumentException.class, () -> new FabricStateSnapshot(FIRST, 9, 4, 7, oversized,
                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of()));
+    }
+
+    @Test
+    void flowRejectsQuantityAboveTheWireBound() {
+        var event = UUID.fromString("30000000-0000-0000-0000-000000000003");
+
+        assertThrows(IllegalArgumentException.class, () -> new FlowState(FIRST,
+                FlowId.forEvent(FIRST.fabricId(), event), new OperationEventId(event), "ae2:item",
+                ObservationLimits.MAX_RESOURCE_AMOUNT + 1, ResourceUnit.ITEM,
+                FlowState.Attribution.EXACT_OPERATION, false));
     }
 }

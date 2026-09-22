@@ -17,6 +17,7 @@ import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
+import space.controlnet.ae2federation.neoforge.network.FabricPolicyActionPayloads;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @Mod(NeoForgeEntrypoint.MOD_ID)
@@ -30,6 +31,7 @@ public final class NeoForgeEntrypoint {
         HubRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
         ObservationPayloads.register(modBus);
+        FabricPolicyActionPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);

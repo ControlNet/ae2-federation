@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.observability.subscription;
 import java.util.UUID;
 import space.controlnet.ae2federation.fabric.FabricReference;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
+import space.controlnet.ae2federation.observability.state.ObservationSession;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
 
 public interface ObservationAuthority {
@@ -20,5 +21,8 @@ public interface ObservationAuthority {
 
     default boolean deliverSnapshot(ObservationSnapshotEnvelope snapshot) {
         return false;
+    }
+
+    default void close(ObservationSession session) {
     }
 }

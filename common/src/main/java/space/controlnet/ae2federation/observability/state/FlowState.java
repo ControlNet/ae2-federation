@@ -13,8 +13,8 @@ public record FlowState(FabricReference scope, FlowId id, OperationEventId event
         Objects.requireNonNull(eventId);
         Objects.requireNonNull(unit);
         Objects.requireNonNull(attribution);
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Observed flow amount must be positive");
+        if (amount <= 0 || amount > ObservationLimits.MAX_RESOURCE_AMOUNT) {
+            throw new IllegalArgumentException("Observed flow amount is outside the supported range");
         }
         ObservationLimits.boundedString(resource, "Flow resource");
         if (exactBatchCompletion && attribution == Attribution.AGGREGATE_LANE_RETURN) {

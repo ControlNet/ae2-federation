@@ -92,6 +92,39 @@ public final class FabricPolicySession {
         return state.editingAllowed();
     }
 
+    public Optional<FabricReference> context() {
+        return Optional.ofNullable(context);
+    }
+
+    public PolicyRevision expectedRevision() {
+        return expectedRevision;
+    }
+
+    public boolean matchesAuthority(ServerPlayer candidate, FabricReference requestedContext,
+            PolicyRevision requestedRevision) {
+        if (!isStillValid(candidate) || context == null || !context.equals(requestedContext)
+                || !FabricRegistryAccess.get(level).isCurrent(context) || !state.editingAllowed() || selection == null
+                || !expectedRevision.equals(requestedRevision)) {
+            return false;
+        }
+        return PolicyService.get(level).revision(selection.key()).equals(requestedRevision);
+    }
+
+    public boolean rejectStaleContext(ServerPlayer candidate) {
+        if (isStillValid(candidate) && context != null && FabricRegistryAccess.get(level).isCurrent(context)) {
+            return false;
+        }
+        reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
+        return true;
+    }
+
+    public void rejectStaleRevision() {
+        if (selection != null) {
+            expectedRevision = PolicyService.get(level).revision(selection.key());
+        }
+        reject(PolicyEditorSessionState.Status.STALE_REVISION);
+    }
+
     public java.util.Optional<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>
             openObservation() {
         return observation == null ? java.util.Optional.empty() : observation.open();
@@ -148,6 +181,10 @@ public final class FabricPolicySession {
     }
 
     public void nextMappingSlot() {
+        if (!authorizeAction()) {
+            mappingAcknowledgment = "rejected-session";
+            return;
+        }
         selectedProvider().ifPresentOrElse(entry -> {
             mappingSlotIndex = nextIndex(mappingSlotIndex, entry.provider().patternInventory().size());
             mappingAcknowledgment = "ready";
@@ -155,6 +192,10 @@ public final class FabricPolicySession {
     }
 
     public void nextMappingLane() {
+        if (!authorizeAction()) {
+            mappingAcknowledgment = "rejected-session";
+            return;
+        }
         selectedProvider().ifPresentOrElse(entry -> {
             mappingLaneIndex = nextIndex(mappingLaneIndex, entry.provider().nativeLanes().size());
             mappingAcknowledgment = "ready";
@@ -191,6 +232,9 @@ public final class FabricPolicySession {
     }
 
     public void nextEndpoint() {
+        if (!authorizeAction()) {
+            return;
+        }
         endpointIndex = nextIndex(endpointIndex, currentEndpoints().size());
     }
 

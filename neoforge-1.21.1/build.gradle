@@ -2,6 +2,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.Properties
+import groovy.json.JsonSlurper
 
 plugins {
     id 'java-library'
@@ -81,6 +82,25 @@ def prepareLoopbackServerProperties = tasks.register('prepareLoopbackServerPrope
     }
 }
 
+def releaseServerGameDirectory = providers.gradleProperty('federationReleaseServerGameDir')
+        .map { project.file(it) }.getOrElse(layout.buildDirectory.dir('task35-release-server').get().asFile)
+def prepareReleaseServer = tasks.register('prepareReleaseServer') {
+    doLast {
+        def directory = releaseServerGameDirectory
+        directory.mkdirs()
+        def properties = new Properties()
+        properties.setProperty('server-ip', '127.0.0.1')
+        properties.setProperty('server-port', '0')
+        properties.setProperty('online-mode', 'false')
+        properties.setProperty('enforce-secure-profile', 'false')
+        properties.setProperty('level-name', 'task35-world')
+        new File(directory, 'server.properties').withOutputStream {
+            properties.store(it, 'Task 35 production-only dedicated server')
+        }
+        new File(directory, 'eula.txt').text = 'eula=true\n'
+    }
+}
+
 def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-uitest/options.txt')
     outputs.file(optionsFile)
@@ -127,6 +147,14 @@ neoForge {
             programArgument('--nogui')
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareLoopbackServerProperties)
+        }
+        releaseServer {
+            server()
+            gameDirectory = releaseServerGameDirectory
+            sourceSet = sourceSets.main
+            programArgument('--nogui')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareReleaseServer)
         }
         gameTestServer {
             type = 'gameTestServer'
@@ -225,6 +253,7 @@ neoForge {
             }
         }
     }
+    runs.releaseServer.loadedMods = [mods."${mod_id}"]
 }
 
 configurations {
@@ -250,6 +279,32 @@ dependencies {
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+}
+
+tasks.register('federationTaskThirtyFivePacketProbe', JavaExec) {
+    group = 'verification'
+    description = 'Executes production packet codecs and context rejection without starting a game runtime.'
+    dependsOn(tasks.named('testmodClasses'))
+    classpath = testmod.runtimeClasspath
+    mainClass = 'space.controlnet.ae2federation.test.TaskThirtyFivePacketProbe'
+    notCompatibleWithConfigurationCache('Reads the parent-selected evidence path at execution time.')
+    doFirst {
+        def evidencePath = providers.gradleProperty('federationPacketEvidenceFile').orNull
+        if (evidencePath == null || evidencePath.isBlank()) throw new GradleException('Missing packet evidence file')
+        def evidence = rootProject.file(evidencePath)
+        evidence.parentFile.mkdirs()
+        def runtimeDirectory = new File(evidence.parentFile, 'packet-probe-runtime')
+        runtimeDirectory.mkdirs()
+        workingDir(runtimeDirectory)
+        args(evidence.absolutePath)
+    }
+    doLast {
+        def evidencePath = providers.gradleProperty('federationPacketEvidenceFile').get()
+        def runtimeDirectory = new File(rootProject.file(evidencePath).parentFile, 'packet-probe-runtime')
+        if (runtimeDirectory.exists()) {
+            Files.walk(runtimeDirectory.toPath()).sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+        }
+    }
 }
 
 def cleanupAppfluxGameTest = tasks.register('cleanupAppfluxGameTest', Delete) {
@@ -280,6 +335,35 @@ tasks.named('jar', Jar).configure {
 
 def targetJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
 def targetSourcesJar = tasks.named('sourcesJar', Jar).flatMap { it.archiveFile }
+def verifyReleaseArchive = { File archive, boolean sources ->
+    def entries = [:]
+    new java.util.zip.ZipFile(archive).withCloseable { zip ->
+        zip.entries().findAll { !it.directory }.each { entry -> entries[entry.name] = zip.getInputStream(entry).bytes }
+    }
+    def forbiddenPaths = ['space/controlnet/ae2federation/test/', 'data/ae2federation_test/',
+            'assets/ae2federation_test/', 'com/glodblock/github/appflux/', 'ae2federation_test.mixins.json']
+    def forbiddenSymbols = ['FederationTestMod', 'RegisterGameTestsEvent', 'LDLRegisterClient',
+            'UIScenario', 'ae2federation.testId', 'ae2federation_test', 'RegisterCommandsEvent']
+    def leaked = entries.findAll { name, bytes ->
+        def text = new String(bytes, sources ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1)
+        forbiddenPaths.any(name::contains) || forbiddenSymbols.any(text::contains)
+    }.keySet().sort()
+    if (!leaked.isEmpty()) {
+        throw new GradleException("Test, scenario, instrumentation, or debug registration leaked into ${archive}: ${leaked}")
+    }
+    if (!sources) {
+        def metadata = new String(entries['META-INF/neoforge.mods.toml'], StandardCharsets.UTF_8)
+        if (metadata.count('modId="ae2federation"') != 1 || metadata.contains('modId="ae2federation_test"')
+                || metadata.count('config="ae2federation.mixins.json"') != 1) {
+            throw new GradleException("Production mod metadata is not exact in ${archive}")
+        }
+        def mixins = new JsonSlurper().parse(entries['ae2federation.mixins.json'])
+        if (mixins.package != 'space.controlnet.ae2federation.mixin'
+                || (mixins.mixins as List).any { (it as String).contains('test') }) {
+            throw new GradleException("Production Mixin registration is not release-only in ${archive}")
+        }
+    }
+}
 def verifySharedJarContent = tasks.register('verifySharedJarContent') {
     group = 'verification'
     description = 'Checks that the target JAR contains shared code and resources.'
@@ -346,6 +430,68 @@ def verifySharedJarContent = tasks.register('verifySharedJarContent') {
             }) {
                 throw new GradleException("Replay-only ProviderRuntime source leaked into ${sourcesArchive}")
             }
+        }
+        verifyReleaseArchive(archive, false)
+        verifyReleaseArchive(sourcesArchive, true)
+    }
+}
+
+tasks.register('federationReleaseServerSmoke') {
+    group = 'verification'
+    description = 'Starts and stops a production-source-set dedicated server without testmod or optional addons.'
+    dependsOn(tasks.named('jar'), tasks.named('verifySharedJarContent'))
+    notCompatibleWithConfigurationCache('Launches and controls an isolated nested production server.')
+    doLast {
+        def evidencePath = providers.gradleProperty('federationReleaseEvidenceFile').orNull
+        if (evidencePath == null || evidencePath.isBlank()) throw new GradleException('Missing release evidence file')
+        def evidence = rootProject.file(evidencePath)
+        evidence.parentFile.mkdirs()
+        def gameDirectory = new File(evidence.parentFile, 'release-server-runtime')
+        def command = [new File(gradle.gradleHomeDir, 'bin/gradle').absolutePath, '--no-daemon',
+                '--no-configuration-cache', '--dependency-verification=strict', ':neoforge-1.21.1:runReleaseServer',
+                "-PfederationReleaseServerGameDir=${gameDirectory.absolutePath}"].collect { it.toString() }
+        def processLog = new File(evidence.parentFile, 'release-server-process.log')
+        def process = new ProcessBuilder(command).directory(rootProject.projectDir).redirectErrorStream(true)
+                .redirectOutput(processLog).start()
+        def deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(120)
+        while (process.isAlive() && System.nanoTime() < deadline
+                && (!processLog.isFile() || !processLog.text.contains('Done ('))) {
+            java.util.concurrent.TimeUnit.MILLISECONDS.sleep(250)
+        }
+        def text = processLog.isFile() ? processLog.text : ''
+        def started = text.contains('Done (')
+        if (started && process.isAlive()) {
+            process.outputStream.withWriter { it.write('stop\n'); it.flush() }
+        }
+        if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.toHandle().descendants().forEach { it.destroy() }
+            process.destroy()
+        }
+        if (!process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.toHandle().descendants().forEach { it.destroyForcibly() }
+            process.destroyForcibly()
+            process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+        }
+        text = processLog.text
+        logger.lifecycle(text)
+        def forbidden = ['ae2federation_test', 'com.glodblock.github.appflux', 'Attempted to load class net/minecraft/client',
+                'NoClassDefFoundError', 'ClassNotFoundException', 'LoadingFailedException']
+        if (process.isAlive() || !started || forbidden.any(text::contains)) {
+            throw new GradleException('Production dedicated-server smoke failed or loaded forbidden content')
+        }
+        def facts = new Properties()
+        facts.setProperty('serverStarted', 'true')
+        facts.setProperty('runtimeTerminated', 'true')
+        facts.setProperty('sourceSet', 'main')
+        facts.setProperty('testmodLoaded', 'false')
+        facts.setProperty('clientClassLoadFailure', 'false')
+        facts.setProperty('optionalAddonPresent', 'false')
+        facts.setProperty('debugRegistrationPresent', 'false')
+        facts.setProperty('productJarSha256', MessageDigest.getInstance('SHA-256').digest(targetJar.get().asFile.bytes).encodeHex().toString())
+        facts.setProperty('sourcesJarSha256', MessageDigest.getInstance('SHA-256').digest(targetSourcesJar.get().asFile.bytes).encodeHex().toString())
+        evidence.withOutputStream { facts.store(it, 'Task 35 production release runtime') }
+        if (gameDirectory.exists()) {
+            Files.walk(gameDirectory.toPath()).sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
         }
     }
 }

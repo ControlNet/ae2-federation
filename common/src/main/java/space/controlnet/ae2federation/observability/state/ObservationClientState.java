@@ -16,10 +16,14 @@ public final class ObservationClientState {
 
     public boolean applySnapshot(ObservationSnapshotEnvelope envelope) {
         Objects.requireNonNull(envelope);
-        if (!session.equals(envelope.session())) {
+        var replacement = envelope.snapshot();
+        if (!session.equals(envelope.session()) || !session.scope().equals(replacement.scope())
+                || snapshot != null && (replacement.topologyRevision() < snapshot.topologyRevision()
+                        || replacement.policyRevision() < snapshot.policyRevision()
+                        || replacement.dataRevision() < snapshot.dataRevision())) {
             return false;
         }
-        snapshot = envelope.snapshot();
+        snapshot = replacement;
         resnapshotRequired = false;
         return true;
     }

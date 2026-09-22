@@ -12,6 +12,7 @@ import space.controlnet.ae2federation.fabric.FabricReference;
 import space.controlnet.ae2federation.observability.state.FabricStateDelta;
 import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
 import space.controlnet.ae2federation.observability.state.ObservationClientState;
+import space.controlnet.ae2federation.observability.state.ObservationClientStates;
 import space.controlnet.ae2federation.observability.state.MemberState;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSession;
@@ -57,5 +58,47 @@ class ObservationClientStateTest {
                 new FabricStateDelta(new FabricStateSnapshot(scope, 1, 2, 4, List.of(), List.of(), List.of(),
                         List.of(), List.of(), List.of(), List.of()), 3, false))));
         assertEquals(initial, state.snapshot().orElseThrow());
+    }
+
+    @Test
+    void rejectsSameSessionRegressiveSnapshotWithoutMutation() {
+        var scope = new FabricReference(new FabricId("physical:client-regression"), 4);
+        var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
+        var current = new FabricStateSnapshot(scope, 8, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of());
+        var state = new ObservationClientState(session);
+        assertTrue(state.applySnapshot(new ObservationSnapshotEnvelope(session, current)));
+
+        assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
+                new FabricStateSnapshot(scope, 7, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(), List.of()))));
+        assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
+                new FabricStateSnapshot(scope, 8, 6, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(), List.of()))));
+        assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
+                new FabricStateSnapshot(scope, 8, 7, 5, List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(), List.of()))));
+        assertEquals(current, state.snapshot().orElseThrow());
+        assertFalse(state.resnapshotRequired());
+    }
+
+    @Test
+    void closedSessionCannotBeRecreatedBySnapshotReplay() {
+        var scope = new FabricReference(new FabricId("physical:client-ownership"), 5);
+        var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
+        var envelope = new ObservationSnapshotEnvelope(session,
+                new FabricStateSnapshot(scope, 1, 1, 1, List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(), List.of()));
+        var states = new ObservationClientStates();
+
+        assertFalse(states.apply(envelope));
+        assertTrue(states.open(session));
+        assertTrue(states.apply(envelope));
+        assertTrue(states.close(session));
+        assertFalse(states.apply(envelope));
+        assertTrue(states.state(session).isEmpty());
+        states.reset();
+        assertTrue(states.open(session));
+        assertTrue(states.apply(envelope));
     }
 }

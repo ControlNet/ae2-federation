@@ -455,7 +455,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationUiTest -Pcases=multiclient.shared-server,multiclient.conflicting-edit,multiclient.fabric-split,multiclient.disconnect-cleanup -PevidenceDir=.omo/evidence/task-34`; `./gradlew :neoforge-1.21.1:federationBenchmark -Pprofile=ui-small -PevidenceDir=.omo/evidence/task-34-perf`.
   - Commit: proposed `test(ui): qualify dedicated-server multi-client behavior`.
 
-- [ ] 35. Audit production/dev separation, payload bounds and runtime-side loading
+- [x] 35. Audit production/dev separation, payload bounds and runtime-side loading
   - Work: separate scenario/debug registrations, test machine resources and instrumentation from release artifact. Enforce server-thread scheduling, menu/context/revision/payload validation, resource quantity limits and absent-addon handling. No owner/team ACL added. Dev commands cannot accidentally ship enabled.
   - References: D16.4,17.9,18.1,T-U07..08,T-V01..02; tasks 1-3,33. Depends on 33.
   - Acceptance: production dedicated server starts without client class loads; final JAR contains no dev scenario/test block registration; malformed/oversized/out-of-context payloads rejected without world mutation.

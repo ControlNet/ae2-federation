@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerMenu;
+import java.util.Optional;
 import space.controlnet.ae2federation.bridge.BridgeRightClickContext;
 import space.controlnet.ae2federation.client.policy.FabricPolicySession;
 
@@ -39,5 +41,35 @@ public final class FabricPolicyMenu {
             PENDING.remove(player.getUUID(), session);
         }
         return opened;
+    }
+
+    public static FabricPolicyActionResult dispatch(ServerPlayer player, FabricPolicyActionRequest request) {
+        if (!player.getServer().isSameThread()) {
+            return FabricPolicyActionResult.WRONG_THREAD;
+        }
+        if (!(player.containerMenu instanceof ModularUIContainerMenu menu)
+                || !(menu.uiHolder instanceof FabricPolicyMenuHolder holder)) {
+            return FabricPolicyActionResult.WRONG_MENU;
+        }
+        return holder.dispatch(player, menu, request);
+    }
+
+    public static Optional<FabricPolicyActionRequest> currentRequest(ServerPlayer player, FabricPolicyAction action) {
+        if (player.containerMenu instanceof ModularUIContainerMenu menu
+                && menu.uiHolder instanceof FabricPolicyMenuHolder holder) {
+            return holder.currentRequest(menu, action);
+        }
+        return Optional.empty();
+    }
+
+    public static Receipt currentReceipt(ServerPlayer player) {
+        if (player.containerMenu instanceof ModularUIContainerMenu menu
+                && menu.uiHolder instanceof FabricPolicyMenuHolder holder) {
+            return new Receipt(menu.containerId, holder.currentSequence(), holder.currentMappingStatus());
+        }
+        throw new IllegalStateException("Fabric policy menu is not current");
+    }
+
+    public record Receipt(int containerId, long sequence, String mappingStatus) {
     }
 }

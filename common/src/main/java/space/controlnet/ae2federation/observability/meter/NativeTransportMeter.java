@@ -36,6 +36,8 @@ public final class NativeTransportMeter {
         if (amount == 0) {
             return false;
         }
+        var flow = new FlowState(scope, FlowId.forEvent(scope.fabricId(), eventId.value()), eventId,
+                resource, amount, unit, attribution, false);
         var state = windows.computeIfAbsent(scope, ignored -> new WindowState());
         if (!state.eventIds.add(eventId)) {
             return false;
@@ -45,8 +47,6 @@ public final class NativeTransportMeter {
             state.eventIds.remove(state.eventOrder.removeFirst());
         }
         state.dataRevision = Math.incrementExact(state.dataRevision);
-        var flow = new FlowState(scope, FlowId.forEvent(scope.fabricId(), eventId.value()), eventId,
-                resource, amount, unit, attribution, false);
         if (!state.resnapshotRequired) {
             state.events.add(flow);
             if (state.events.size() > eventLimit) {

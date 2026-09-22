@@ -4,6 +4,15 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-22 Task 35 release and packet hardening
+
+- Keep Task 35 to release separation and input/context hardening. Do not introduce owner/team ACL behavior or any Task 36
+  authority model.
+- Parse policy mouse events into a small immutable request and reject non-exact schemas before resolving an action. Gate the
+  resulting mutation on the server thread, current menu/holder, live session, and existing revision checks.
+- Use one exact five-case schema-v3 evidence set backed by a production dedicated-server run, semantic archive inspection,
+  and a no-mutation packet probe. Reuse the shared persisted verifier and fully rebound adversarial framework.
+
 ## 2026-09-21 Task 33 visible row delimiters
 
 - Treat processing-list rows as display strings and delimit visible fields with ASCII ` | `. Do not change tab-delimited
@@ -613,3 +622,15 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   retirement; do not synthesize a Fabric/session or weaken `FabricPolicySession.forHub`.
 - Treat rendered member summary and nested identity rows as separate evidence facts while preserving the verifier's
   canonical `refreshedRenderedMembers=2 members` projection.
+
+## 2026-09-22 Task 35 packet authority repair
+
+- Keep read-only LDLib2 synchronization, but route every mutation-bearing policy action through a closed project-owned
+  payload. Never infer authority from a generic RPC ordinal rebound to the current UI holder.
+- Issue a random nonce and monotonic sequence per server menu, bind each request to the exact current container, Fabric
+  reference, and Policy revision, and advance sequence only after accepted dispatch.
+- Require Task 35 persisted evidence to combine executable malformed codec/lifecycle/meter checks with a production-menu
+  runtime GameTest whose exact facts are duplicated in and correlated against the child execution log.
+- Treat a current-menu authority failure caused by live context/revision drift as a terminal editor transition. Preserve
+  pure rejection for stale container, nonce, sequence, context, and revision fields so replay packets cannot poison a fresh
+  editor session.
