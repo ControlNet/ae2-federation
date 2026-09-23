@@ -98,4 +98,38 @@ class NativeTransportMeterTest {
         assertEquals(1, meter.window(SCOPE).dataRevision());
         assertEquals(ObservationLimits.MAX_RESOURCE_AMOUNT, meter.window(SCOPE).events().getFirst().amount());
     }
+
+    @Test
+    void largeNativeEnergyAcceptanceRemainsObservableInNanoAe() {
+        var meter = new NativeTransportMeter(4);
+        var acceptedNanoAe = 1_000_000_250_000_000_000L;
+
+        assertTrue(meter.recordAccepted(SCOPE, OperationEventId.create(), "ae2:energy", acceptedNanoAe,
+                ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
+
+        assertEquals(acceptedNanoAe, meter.window(SCOPE).events().getFirst().amount());
+    }
+
+    @Test
+    void nanoAeObservationsRejectAmountsBeyondTheirOwnBound() {
+        var meter = new NativeTransportMeter(4);
+        var event = OperationEventId.create();
+
+        assertThrows(IllegalArgumentException.class, () -> meter.recordAccepted(SCOPE, event, "ae2:energy",
+                ObservationLimits.MAX_NANO_AE_AMOUNT + 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION));
+
+        assertEquals(0, meter.window(SCOPE).dataRevision());
+        assertTrue(meter.recordAccepted(SCOPE, event, "ae2:energy", ObservationLimits.MAX_NANO_AE_AMOUNT,
+                ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
+    }
+
+    @Test
+    void fluidObservationsRetainTheExternalResourceBound() {
+        var meter = new NativeTransportMeter(4);
+
+        assertThrows(IllegalArgumentException.class, () -> meter.recordAccepted(SCOPE, OperationEventId.create(),
+                "minecraft:water", ObservationLimits.MAX_RESOURCE_AMOUNT + 1, ResourceUnit.FLUID_DROPLET,
+                FlowState.Attribution.EXACT_OPERATION));
+    }
 }

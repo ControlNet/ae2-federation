@@ -462,7 +462,7 @@ Implementation and tests are one task. Commands below use the entrypoint contrac
   - QA: `./gradlew :neoforge-1.21.1:federationVerify -Pcases=release.server-side-load,release.no-test-content,release.optional-absent,packets.reject-malformed,packets.reject-out-of-context -PevidenceDir=.omo/evidence/task-35`.
   - Commit: proposed `test(runtime): enforce production boundaries and safe payloads`.
 
-- [ ] 36. Build a pinned actual-mod compatibility matrix and differential factory scenes
+- [x] 36. Build a pinned actual-mod compatibility matrix and differential factory scenes
   - Work: `docs/compatibility/matrix.md` plus isolated dependency profiles covering actual storage, item/fluid logistics, native Provider-extension addon, storable FE addon and a compatible GregTech-style or other technology production line. Select by published MC1.21.1 NeoForge artifact and source-demonstrated capability path; record checksums/licenses before use. Every enabled combination gets native and Federation layouts with identical backends. Do not bundle optional mods or claim arbitrary ecosystem support.
   - References: D1.4,18.5,19.8-19.9,T-C01..08; tasks 2,25,31. Depends on 2,25,31.
   - Acceptance: each claimed combination has actual runtime evidence and preserved native hook trace; incompatible or unavailable combination explicitly unsupported/BLOCKED, never replaced with a mock. No license assumptions copied from researcher prose.

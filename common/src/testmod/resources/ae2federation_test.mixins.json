@@ -4,6 +4,7 @@
   "package": "space.controlnet.ae2federation.test.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "CompatibilityGameTestPlacementMixin",
     "ProviderRuntimeReplayMixin",
     "FederationPatternProviderTargetCacheReplayTraceMixin",
     "PatternProviderLogicNativeEvidenceMixin",
@@ -14,6 +15,7 @@
     "NetworkStorageNativeEvidenceMixin",
     "DelegatingMEInventoryNativeEvidenceMixin",
     "NativeStorageProviderEvidenceMixin",
+    "StorageBusCompatibilityEvidenceMixin",
     "FederationNativeTargetEvidenceMixin",
     "EndpointTargetBindingEvidenceMixin",
     "EndpointPersistenceEvidenceMixin",

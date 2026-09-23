@@ -4,6 +4,32 @@ Architectural choices and rationales discovered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-22 Task 36 actual-mod compatibility
+
+- Qualify only Applied Flux 1.21-2.1.4: the isolated differential uses one real FE cell backend through native storage and
+  the production Federation projection. Keep every other inspected candidate BLOCKED until its complete runtime scene is
+  authenticated.
+- Treat published artifact identity, source-demonstrated capability hooks, and license review as prerequisites rather than
+  runtime support. In particular, do not use or mock the All Rights Reserved Provider extension.
+- Keep compatibility code and dependencies in an opt-in source set/configuration and reject any promotion of blocked rows
+  through the persisted schema-v3 consumer.
+
+## 2026-09-23 Task 36 independent fail-closed correction
+
+- Retain Applied Flux 2.1.4 as the only exercised differential, update Functional Storage to the genuine 1.3.3 artifact,
+  and describe storage/logistics as UNQUALIFIED rather than licensing or runtime-incompatibility blockers.
+- Classify GTCEu only at the observed dedicated-server mod-construction failure; do not claim a machine recipe executed.
+  Require the exact child log exception if a future matrix asserts the startup-blocked outcome.
+- Reject five-case completion whenever storage, item logistics, fluid logistics, or GT child execution is absent. Keep
+  provider-extension BLOCKED_LICENSE and do not fetch its artifact.
+
+## 2026-09-23 Task 36 drawer backend authority
+
+- Keep the drawer differential entirely opt-in. Identify the real Functional Storage capability owner and the AE2 Storage
+  Bus callback delegate independently; retain AE2's native priority and mount behavior, with only testmod receipt capture.
+- Do not promote the storage row to a completed five-case claim until both logistics children and the GT startup diagnostic
+  are bound in the same current-source schema-v3 consumer.
+
 ## 2026-09-22 Task 35 release and packet hardening
 
 - Keep Task 35 to release separation and input/context hardening. Do not introduce owner/team ACL behavior or any Task 36
@@ -634,3 +660,17 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - Treat a current-menu authority failure caused by live context/revision drift as a terminal editor transition. Preserve
   pure rejection for stale container, nonce, sequence, context, and revision fields so replay packets cannot poison a fresh
   editor session.
+
+## 2026-09-23 Task 36 replay decision
+
+- Keep item and fluid logistics UNQUALIFIED. A single successful real pipe item run is insufficient because reruns show
+  stalled transport. Do not treat GT's zero Gradle exit as a successful GameTest: the FML child log authenticates the
+  startup block for the exact pinned tuple, but the five-case report still requires that child bound to current evidence.
+
+## 2026-09-23 Task 36 transport fixture decision
+
+- Qualify the actual pipe runs only in a near-origin isolated GameTest world, where the pinned addon's float position
+  increments remain representable. Keep the placement hook in the testmod, selected solely for the two logistics IDs;
+  assert actual destination contents and identical per-layout tick budgets before recording extraction evidence.
+- Represent GTCEu as a separately hash-bound BLOCKED startup receipt tied to its resolved artifact and exact
+  NeoForge/AE2/GT tuple. Require the FML exception and reject any GameTest-success log for that child.

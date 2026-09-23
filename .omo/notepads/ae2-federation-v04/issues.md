@@ -680,3 +680,69 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - The handler now preserves replay no-mutation checks while transitioning only an otherwise current menu session to the
   authoritative stale-context or stale-revision state. Exact Task 33, Task 34, and Task 35 runs pass.
 - Final Task 35 evidence is `.omo/evidence/task-35-final-current/attempt-20260922T015644119Z/result.json`.
+## 2026-09-22 Task 36 compatibility boundaries
+
+- Recursive AE2 Pattern Provider 1.0.8 is BLOCKED: published source metadata is All Rights Reserved, so no artifact was
+  used and no mock was substituted.
+- Functional Storage, Pretty Pipes/Fluids, and GTCEu candidate rows are BLOCKED rather than claimed. Their pinned
+  artifacts and source paths were inspected, but a complete isolated native/Federation runtime was not authenticated.
+
+## 2026-09-23 Task 36 unresolved execution gates
+
+- Functional Storage drawer/Storage Bus fixture does not retain a settled provider Grid after the bus attaches. The actual
+  isolated GameTest is failing, and no storage differential or independent hook receipt has been accepted.
+- Pretty Pipes item routing and Pretty Pipes Fluids routing still need connected real networks, native/Federation same-owner
+  scenes, and independent hook observations; a passing startup smoke is insufficient.
+- GTCEu aborts before machine recipes on dedicated-server class loading at `CommonInit.init(CommonInit.java:177)`:
+  `Attempted to load class net/minecraft/client/multiplayer/ClientLevel for invalid dist DEDICATED_SERVER`. The candidate
+  cannot qualify a production line on this tuple; the task-owned startup log records the exception.
+- Exact Task 36 QA correctly fails for missing storage/logistics/GT child receipts; no current completed result exists.
+  The prior completed-looking result is rejected by the persisted consumer. A self-test cannot validate full rebinding
+  until a genuinely complete baseline exists.
+- Task 31 regression fails in the inherited observability path: a large native energy operation calls
+  `NativeTransportMeter.recordAccepted` with `NANO_AE` above `ObservationLimits.MAX_RESOURCE_AMOUNT` and throws. Task 35
+  five-case regression, strict check/build/archive, and Java diagnostics pass.
+
+## 2026-09-23 Task 36 drawer repair follow-up
+
+- Resolved the drawer/Storage Bus Grid identity and backend-selection failure by seeding the real bus node, connecting the
+  native part, and setting native priority. The isolated differential passes; full Task 36 remains blocked by unbuilt
+  Pretty Pipes item/fluid routing scenes, GT startup failure, and incomplete schema-v3 producer/consumer qualification.
+
+## 2026-09-23 Task 36 replay blocker
+
+- Pretty Pipes item routing is intermittent, not a qualified differential: repeat GameTests leave an in-flight PipeItem
+  stationary at its source even with loaded chunks and 240 ticks. The fluid differential was not implemented. The exact
+  five-case producer fails at its missing item/fluid child gate; no canonical result exists to consume or self-test.
+- Three fixture approaches did not establish reliable transport. The current agent route did not provide an Oracle tool,
+  and continuation of the existing exploration session timed out. Preserve the fail-closed producer and investigate
+  real network tick/transport before any status promotion.
+
+## 2026-09-23 fluid replay blocker update
+
+- `compatPrettyFluids` now exists and ran four times in isolated actual-mod servers. Two launches passed the two-phase
+  same-tank native/Federation extraction differential; two failed with a real in-flight fluid item stationary at the
+  source after 120 ticks. The failed run at X=4,264,128 had `sourcePipeItems=1`, `destinationPipeItems=0`,
+  `onTheWay=1`, and `areaLoaded=true`. The pinned addon uses float world coordinates at 0.05 blocks/tick, while
+  GameTestServer randomly places structures up to ±15m blocks away. Do not promote Pretty Pipes Fluids.
+- The exact Task 36 producer still lacks the item/fluid/GT children and must fail closed. Task 31's large native energy
+  regression is separately fixed and its canonical five-case result passed; it does not qualify Task 36.
+
+## 2026-09-23 Task 36 pipe transport resolution
+
+- A real item run at world X=2,329,418 emptied the source but retained its 16-ingot in-flight object at the source after
+  120 ticks. The real pipe motion uses float world coordinates and at most 0.25 per update, so the random GameTest
+  placement makes valid transport intermittently immobile. A GameTest-only near-origin placement fixed all six fresh
+  item/fluid isolated runs without changing the addon transport or relaxing destination assertions.
+- The first complete producer passed every child but exposed a pre-existing Groovy newline/unary-plus expression in the
+  drawer hook validator. After correction, the next run exposed missing item/fluid trace labels in the observational
+  Storage Bus hook. Extending that test-only observation produced a complete five-case report.
+- Current-source result: `.omo/evidence/task-36/attempt-20260923T064759636Z/result.json`; exact producer, persisted
+  consumer, nine fully rebound adversarial probes, Task 31/35 five-case regressions and strict build/archive passed.
+
+## 2026-09-23 Task 36 current-source supersession
+
+- The old current-source pointer to `.omo/evidence/task-36/attempt-20260923T064759636Z/result.json` is superseded by
+  `.omo/evidence/task-36/attempt-20260923T070721501Z/result.json`. The knowledge summary now reflects the qualified
+  pinned Applied Flux, Functional Storage, and near-origin Pretty Pipes item/fluid scenes; GTCEu startup and Recursive AE2
+  Pattern Provider licensing remain blocked.

@@ -33,7 +33,10 @@ public final class NativeStorageObservation {
 
     private static String testId() {
         var value = System.getProperty("ae2federation.testId", "");
-        return value.startsWith("storageproof") ? value : "";
+        return value.startsWith("storageproof") ? value
+                : value.equalsIgnoreCase("compatfunctionalstorage") ? "compatfunctionalstorage"
+                : value.equalsIgnoreCase("compatprettyitems") ? "compatprettyitems"
+                : value.equalsIgnoreCase("compatprettyfluids") ? "compatprettyfluids" : "";
     }
 
     private static String identity(Object value) {

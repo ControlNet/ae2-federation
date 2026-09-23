@@ -441,6 +441,9 @@ def verifyTaskThirtyTwoEvidence
 def taskThirtyFiveCases = ['release.server-side-load', 'release.no-test-content', 'release.optional-absent',
         'packets.reject-malformed', 'packets.reject-out-of-context']
 def verifyTaskThirtyFiveEvidence
+def taskThirtySixCases = ['compat.native-differential', 'compat.provider-hooks', 'compat.real-tech-line',
+        'compat.optional-absent', 'compat.reject-unsupported']
+def verifyTaskThirtySixEvidence
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -1707,6 +1710,147 @@ verifyTaskThirtyFiveEvidence = { File attempt, List requested, List<String> decl
     if (runtimeTrace.keySet() != runtimeFields
             || runtimeFields.any { runtimeTrace[it] != runtime.getProperty(it) }) {
         throw new GradleException('Task 35 production packet authority runtime trace mismatch')
+    }
+}
+verifyTaskThirtySixEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in taskThirtySixCases }) return
+    if (requested != taskThirtySixCases) {
+        throw new GradleException('Task 36 evidence must select the exact canonical case set')
+    }
+    def drawerPath = 'native-compatfunctionalstorage.properties'
+    def drawerLogPath = 'positive-compatfunctionalstorage.log'
+    if (childExits['positive-compatfunctionalstorage'] != 0
+            || declaredPaths.count { it == drawerPath } != 1
+            || declaredPaths.count { it == drawerLogPath } != 1) {
+        throw new GradleException('Task 36 actual Functional Storage differential child is missing')
+    }
+    def drawer = loadProperties(new File(attempt, drawerPath))
+    def drawerFacts = [nativeInserted: '16', nativeExtracted: '4', projectedInserted: '16',
+            projectedExtracted: '4', nativeRemaining: '12', projectedRemaining: '12']
+    if (drawer.getProperty('status') != 'passed' || drawer.getProperty('testId') != 'compatfunctionalstorage'
+            || drawer.getProperty('assertions') != '6' || drawerFacts.any { name, value ->
+                drawer.getProperty(name) != value
+            } || !(drawer.getProperty('nativeBusIdentity') ==~ /0|[1-9][0-9]*/)
+            || !(drawer.getProperty('nativeStorageIdentity') ==~ /0|[1-9][0-9]*/)) {
+        throw new GradleException('Task 36 drawer differential facts are incomplete')
+    }
+    def drawerLog = new File(attempt, drawerLogPath).text
+    def nativeMount = "AE2F_STORAGE_PROVIDER_MOUNT testId=compatfunctionalstorage provider=${drawer.getProperty('nativeBusIdentity')} storage=${drawer.getProperty('nativeStorageIdentity')} priority=100"
+    if (!drawerLog.contains(nativeMount) || !drawerLog.contains('All 1 required tests passed :)')) {
+        throw new GradleException('Task 36 drawer owner/backend hook does not match the native Storage Bus')
+    }
+    ['compatfunctionalstorage', 'compatprettyitems', 'compatprettyfluids'].each { testId ->
+        def child = "positive-${testId}"
+        if (childExits[child] != 0 || declaredPaths.count { it == "native-${testId}.properties" } != 1
+                || declaredPaths.count { it == "${child}.log" } != 1) {
+            throw new GradleException("Task 36 actual storage and logistics differential child is missing: ${child}")
+        }
+        def file = new File(attempt, "native-${testId}.properties")
+        def facts = loadProperties(file)
+        def expected = testId == 'compatfunctionalstorage'
+                ? [nativeInserted: '16', nativeExtracted: '4', projectedInserted: '16',
+                   projectedExtracted: '4', nativeRemaining: '12', projectedRemaining: '12']
+                : testId == 'compatprettyitems'
+                ? [nativeExtracted: '4', projectedExtracted: '4', destinationRemaining: '12']
+                : [nativeExtracted: '250', projectedExtracted: '250', destinationRemaining: '750']
+        if (facts.getProperty('status') != 'passed' || facts.getProperty('testId') != testId
+                || facts.getProperty('assertions') != '6'
+                || expected.any { name, value -> facts.getProperty(name) != value }
+                || !(facts.getProperty('nativeStorageIdentity') ==~ /0|[1-9][0-9]*/)
+                || !(facts.getProperty('nativeBusIdentity') ==~ /0|[1-9][0-9]*/)) {
+            throw new GradleException("Task 36 physical differential is incomplete: ${testId}")
+        }
+        def log = new File(attempt, "${child}.log").text
+        def hook = "AE2F_STORAGE_PROVIDER_MOUNT testId=${testId} provider=${facts.getProperty('nativeBusIdentity')} storage=${facts.getProperty('nativeStorageIdentity')} priority=100"
+        if (!log.contains(hook) || !log.contains('All 1 required tests passed :)')) {
+            throw new GradleException("Task 36 pipe/drawer owner or delivery is unauthenticated: ${testId}")
+        }
+        expected.each { name, value ->
+            if (log.count("AE2F_RESOURCE_NATIVE_TRACE testId=${testId} fact=${name} value=${value}") != 1) {
+                throw new GradleException("Task 36 differential trace mismatch: ${testId} ${name}")
+            }
+        }
+    }
+    if (declaredPaths.count { it == 'positive-compatgtceu.log' } != 1
+            || !childExits.containsKey('positive-compatgtceu')) {
+        throw new GradleException('Task 36 GTCEu startup/recipe child execution is missing')
+    }
+    def gtLog = new File(attempt, 'positive-compatgtceu.log').text
+    if (childExits['positive-compatgtceu'] != 0
+            || gtLog.contains('All 1 required tests passed :)')
+            || !gtLog.contains('Failed to create mod instance. ModID: gtceu')
+            || !gtLog.contains('Attempted to load class net/minecraft/client/multiplayer/ClientLevel for invalid dist DEDICATED_SERVER')
+            || !gtLog.contains('com.gregtechceu.gtceu.common.CommonInit.init(CommonInit.java:177)')) {
+        throw new GradleException('Task 36 GTCEu blocked outcome lacks the authenticated startup exception')
+    }
+    def gt = loadProperties(new File(attempt, 'gtceu-startup.properties'))
+    if (declaredPaths.count { it == 'gtceu-startup.properties' } != 1
+            || gt.stringPropertyNames() != ['minecraft', 'loader', 'ae2', 'gtceu', 'artifactSha256',
+                    'outcome', 'exception', 'modConstructionFailed'] as Set
+            || gt.getProperty('minecraft') != '1.21.1' || gt.getProperty('loader') != '21.1.250'
+            || gt.getProperty('ae2') != '19.2.17' || gt.getProperty('gtceu') != '7.0.2'
+            || gt.getProperty('artifactSha256') != 'c09a550523e931342a575193cbaad2e4b643e5de2cefe280cd1de540022c6388'
+            || gt.getProperty('outcome') != 'BLOCKED_STARTUP_CLIENT_CLASS_LOAD'
+            || gt.getProperty('exception') != 'net/minecraft/client/multiplayer/ClientLevel'
+            || gt.getProperty('modConstructionFailed') != 'true') {
+        throw new GradleException('Task 36 GTCEu tuple and pinned artifact do not authenticate the blocked startup')
+    }
+    def nativePath = 'native-compatnativedifferential.properties'
+    def runtimeLog = 'positive-compatnativedifferential.log'
+    def matrixPath = 'compatibility-matrix.properties'
+    [nativePath, runtimeLog, matrixPath].each { path ->
+        if (declaredPaths.count { it == path } != 1 || !new File(attempt, path).isFile()) {
+            throw new GradleException("Task 36 evidence artifact is missing or duplicated: ${path}")
+        }
+    }
+    if (childExits['positive-compatnativedifferential'] != 0) {
+        throw new GradleException('Task 36 Applied Flux differential runtime failed')
+    }
+    def nativeFile = new File(attempt, nativePath)
+    def nativeFacts = loadProperties(nativeFile)
+    def metadata = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos'] as Set
+    def expectedFacts = [addon: 'applied_flux_2.1.4', backend: 'FE_CELL_256M', keyType: 'appflux:flux',
+            nativeInserted: '8192', federationInserted: '8192', nativeExtracted: '2048',
+            federationExtracted: '2048', nativeRemaining: '6144', federationRemaining: '6144',
+            sameBackend: 'true', nativeHook: 'IStorageProvider.mountInventories']
+    if (nativeFacts.stringPropertyNames() != (metadata + expectedFacts.keySet()) as Set
+            || nativeFacts.getProperty('schemaVersion') != '1' || nativeFacts.getProperty('status') != 'passed'
+            || nativeFacts.getProperty('kind') != 'verify'
+            || nativeFacts.getProperty('testId') != 'compatnativedifferential'
+            || nativeFacts.getProperty('structure') != 'ae2federation_test:harness_native_smoke'
+            || nativeFacts.getProperty('assertions') != '8' || nativeFacts.getProperty('operations') != '1'
+            || expectedFacts.any { name, value -> nativeFacts.getProperty(name) != value }) {
+        throw new GradleException('Task 36 actual-mod differential semantics are incomplete')
+    }
+    def logText = new File(attempt, runtimeLog).text
+    expectedFacts.each { name, value ->
+        if (logText.count("AE2F_RESOURCE_NATIVE_TRACE testId=compatnativedifferential fact=${name} value=${value}") != 1) {
+            throw new GradleException("Task 36 native hook trace is missing or duplicated: ${name}")
+        }
+    }
+    def matrix = loadProperties(new File(attempt, matrixPath))
+    def expectedMatrix = [schemaVersion: '1', status: 'QUALIFIED_WITH_BLOCKED_ROWS', minecraft: '1.21.1',
+            loader: 'NeoForge', nativeDifferential: 'QUALIFIED',
+            nativeDifferentialAddon: 'Applied Flux 1.21-2.1.4-neoforge',
+            nativeDifferentialArtifactSha256: '2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555',
+            nativeDifferentialLicense: 'LGPL-3.0-only', storageCandidate: 'Functional Storage 1.21.1-1.3.3',
+            storageArtifactSha256: '974a1b0e45e98a9769e84fdfe4d7e3eac3de3936ed7a9baf009026ebee98fc12',
+             storageLicense: 'MIT', storageStatus: 'QUALIFIED',
+            itemLogisticsCandidate: 'Pretty Pipes 1.21.1',
+            itemLogisticsArtifactSha256: '6559ba086101f955b83577f2bbe9c2b7bf829e71acfea8728d07da7a0ffa09c9',
+            fluidLogisticsCandidate: 'Pretty Pipes Fluids 1.21.1-3.1.0',
+            fluidLogisticsArtifactSha256: '925a34a87ed8036e28fdbde8c49132210e664971a99669e94d0ffd42bf54c256',
+             logisticsLicense: 'MIT', logisticsStatus: 'QUALIFIED',
+            providerAddon: 'Recursive AE2 Pattern Provider 1.0.8', providerArtifactUsed: 'false',
+            providerLicense: 'All Rights Reserved', providerStatus: 'BLOCKED_LICENSE',
+            technologyCandidate: 'GTCEu 1.21.1-7.0.2',
+            technologyArtifactSha256: 'c09a550523e931342a575193cbaad2e4b643e5de2cefe280cd1de540022c6388',
+             technologyStatus: 'BLOCKED_STARTUP_CLIENT_CLASS_LOAD', optionalBundled: 'false',
+            defaultRuntimeOptionalClasses: 'false', unsupportedPromoted: 'false']
+    if (matrix.stringPropertyNames() != expectedMatrix.keySet() as Set
+            || expectedMatrix.any { name, value -> matrix.getProperty(name) != value }) {
+        throw new GradleException('Task 36 compatibility matrix is malformed or promotes an unsupported row')
     }
 }
 verifyTaskElevenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
@@ -5918,6 +6062,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyFiveEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
+    verifyTaskThirtySixEvidence(attempt, report.requested as List,
+            report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     verifyTaskThirtyFourBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     if (requireCurrentIdentity) {
@@ -6513,6 +6659,80 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             }
             childArtifacts.add(packetEvidence)
         }
+        if (requestedCases == taskThirtySixCases) {
+            def compatibilityEvidence = new File(attempt, 'native-compatnativedifferential.properties')
+            def compatibility = gradleCommand('positive-compatnativedifferential',
+                     [':neoforge-1.21.1:runAppfluxGameTestServer',
+                      '-PenableAppfluxCompatibility=true',
+                     '-PfederationCompatibilityTestId=compatNativeDifferential',
+                     "-PfederationNativeEvidenceFile=${compatibilityEvidence.absolutePath}"],
+                    [timeout: 240, retainRuntime: false])
+            if (compatibility.result.exit != 0 || !compatibilityEvidence.isFile()) {
+                throw new GradleException('Task 36 Applied Flux compatibility differential failed')
+            }
+            verifyNativeEvidence(compatibilityEvidence, [kind: 'verify', testId: 'compatnativedifferential',
+                    structure: 'ae2federation_test:harness_native_smoke', assertions: 8, operations: 1,
+                    allowZeroWork: true, allowUnequalWork: true])
+            childArtifacts.add(compatibilityEvidence)
+            def drawerEvidence = new File(attempt, 'native-compatfunctionalstorage.properties')
+            def drawer = gradleCommand('positive-compatfunctionalstorage',
+                    [':neoforge-1.21.1:runFunctionalStorageGameTestServer',
+                     '-PenableFunctionalStorageCompatibility=true',
+                     '-PfederationCompatibilityTestId=compatFunctionalStorage',
+                     "-PfederationNativeEvidenceFile=${drawerEvidence.absolutePath}"],
+                    [timeout: 240, retainRuntime: false])
+            if (drawer.result.exit != 0 || !drawerEvidence.isFile()) {
+                throw new GradleException('Task 36 actual Functional Storage differential failed')
+            }
+            verifyNativeEvidence(drawerEvidence, [kind: 'verify', testId: 'compatfunctionalstorage',
+                    structure: 'ae2federation_test:harness_native_smoke', assertions: 6, operations: 1,
+                    allowZeroWork: true, allowUnequalWork: true])
+            childArtifacts.add(drawerEvidence)
+            ['compatprettyitems', 'compatprettyfluids'].each { testId ->
+                def nativeEvidence = new File(attempt, "native-${testId}.properties")
+                def child = gradleCommand("positive-${testId}",
+                        [':neoforge-1.21.1:runPrettyPipesGameTestServer',
+                         '-PenablePrettyPipesCompatibility=true',
+                         "-PfederationCompatibilityTestId=${testId}",
+                         "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"],
+                        [timeout: 240, retainRuntime: false])
+                if (child.result.exit != 0 || !nativeEvidence.isFile()
+                        || !child.output.contains('All 1 required tests passed :)')) {
+                    throw new GradleException("Task 36 real pipe delivery failed: ${testId}")
+                }
+                verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testId,
+                        structure: 'ae2federation_test:harness_native_smoke', assertions: 6, operations: 1,
+                        allowZeroWork: true, allowUnequalWork: true])
+                childArtifacts.add(nativeEvidence)
+            }
+            def gt = gradleCommand('positive-compatgtceu',
+                    [':neoforge-1.21.1:runGtceuGameTestServer', '-PenableGtceuCompatibility=true',
+                     '-PfederationCompatibilityTestId=harnessNativeSmoke'],
+                    [timeout: 240, retainRuntime: false])
+            def blocked = gt.output.contains('Failed to create mod instance. ModID: gtceu')
+                    && gt.output.contains('Attempted to load class net/minecraft/client/multiplayer/ClientLevel for invalid dist DEDICATED_SERVER')
+                    && gt.output.contains('com.gregtechceu.gtceu.common.CommonInit.init(CommonInit.java:177)')
+                    && !gt.output.contains('All 1 required tests passed :)')
+            if (gt.result.exit != 0 || !blocked) {
+                throw new GradleException('Task 36 GTCEu child did not reproduce the pinned dedicated-server startup block')
+            }
+            def gtArtifact = configurations.gtceuCompatibility.singleFile
+            def gtFacts = new Properties()
+            [minecraft: '1.21.1', loader: '21.1.250', ae2: '19.2.17', gtceu: '7.0.2',
+                    artifactSha256: sha256(gtArtifact.bytes), outcome: 'BLOCKED_STARTUP_CLIENT_CLASS_LOAD',
+                    exception: 'net/minecraft/client/multiplayer/ClientLevel', modConstructionFailed: 'true']
+                    .each { name, value -> gtFacts.setProperty(name, value) }
+            if (gtFacts.getProperty('artifactSha256') != 'c09a550523e931342a575193cbaad2e4b643e5de2cefe280cd1de540022c6388') {
+                throw new GradleException('Task 36 GTCEu runtime artifact differs from the pinned candidate')
+            }
+            def gtEvidence = new File(attempt, 'gtceu-startup.properties')
+            gtEvidence.withOutputStream { gtFacts.store(it, 'Observed GTCEu dedicated-server startup') }
+            childArtifacts.add(gtEvidence)
+            if (!['positive-compatfunctionalstorage', 'positive-compatprettyitems',
+                    'positive-compatprettyfluids', 'positive-compatgtceu'].every(childExits::containsKey)) {
+                throw new GradleException('Task 36 requires executed Functional Storage, Pretty Pipes item/fluid, and GTCEu children; FE/storage alone is incomplete')
+            }
+        }
         def gameTestCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'gametest' }
         gameTestCases.collectEntries { [(it.testId): it] }.each { testId, testCase ->
             def nativeEvidence = new File(attempt, "native-${testId}.properties")
@@ -6605,6 +6825,42 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     assertions.add([caseId: caseId, status: 'passed',
                             assertionCount: testCase.assertions as int])
                     break
+                case 'compat.native-differential':
+                    ['compatfunctionalstorage', 'compatprettyitems', 'compatprettyfluids'].each { testId ->
+                        if (childExits["positive-${testId}"] != 0
+                                || !new File(attempt, "native-${testId}.properties").isFile()) {
+                            throw new GradleException("Task 36 real differential child missing: ${testId}")
+                        }
+                    }
+                    def compatibilityEvidence = new File(attempt, 'native-compatnativedifferential.properties')
+                    def compatibilityResult = verifyNativeEvidence(compatibilityEvidence,
+                            [kind: 'verify', testId: 'compatnativedifferential',
+                             structure: 'ae2federation_test:harness_native_smoke', assertions: 8,
+                             operations: 1, allowZeroWork: true, allowUnequalWork: true])
+                    executed.add(caseId)
+                    assertions.add([caseId: caseId, status: 'passed', nativeTestId: 'compatnativedifferential',
+                            structure: 'ae2federation_test:harness_native_smoke',
+                            assertionCount: compatibilityResult.assertions,
+                            operationCount: compatibilityResult.operations, outcome: 'QUALIFIED'])
+                    break
+                case 'compat.provider-hooks':
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            assertionCount: testCase.assertions as int, outcome: 'BLOCKED_LICENSE']); break
+                case 'compat.real-tech-line':
+                    if (!new File(attempt, 'gtceu-startup.properties').isFile()
+                            || !new File(attempt, 'positive-compatgtceu.log').text.contains(
+                                    'Attempted to load class net/minecraft/client/multiplayer/ClientLevel for invalid dist DEDICATED_SERVER')) {
+                        throw new GradleException('Task 36 real technology startup outcome is missing')
+                    }
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            assertionCount: testCase.assertions as int,
+                            outcome: 'BLOCKED_STARTUP_CLIENT_CLASS_LOAD']); break
+                case 'compat.optional-absent':
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            assertionCount: testCase.assertions as int, outcome: 'PASSED']); break
+                case 'compat.reject-unsupported':
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            assertionCount: testCase.assertions as int, outcome: 'PASSED']); break
                 case 'harness.native-smoke':
                 case 'harness.gametest-registered':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
@@ -7032,6 +7288,12 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         qualification.bytes = source.bytes
         childArtifacts.add(qualification)
     }
+    if (requestedCases == taskThirtySixCases) {
+        def source = strictCanonicalPath(rootProject.file('tests/compatibility/matrix.properties'))
+        def matrix = new File(attempt, 'compatibility-matrix.properties')
+        matrix.bytes = source.bytes
+        childArtifacts.add(matrix)
+    }
     def artifacts = childArtifacts.unique().collect { file ->
         def canonical = file.canonicalFile
         if (!canonical.toPath().startsWith(attempt.canonicalFile.toPath()) || !canonical.isFile()) {
@@ -7071,6 +7333,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskThirtyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyFiveEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyTaskThirtySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
     def reportBlocked = taskTenBlocked
@@ -7242,6 +7505,97 @@ tasks.register('federationTaskThirtyFiveEvidenceSelfTest') {
                 || !reboundRuntime.contains('Task 35 production packet authority facts are invalid')) {
             throw new GradleException('Task 35 fully rebound packet authority probe was accepted')
         }
+    }
+}
+
+tasks.register('federationTaskThirtySixEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case Task 36 compatibility result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != taskThirtySixCases) {
+            throw new GradleException('Result is not the canonical Task 36 case set')
+        }
+        logger.lifecycle('Task 36 completed compatibility evidence verified')
+    }
+}
+
+tasks.register('federationTaskThirtySixEvidenceSelfTest') {
+    group = 'verification'
+    description = 'Rejects fabricated differential success and promotion of blocked Task 36 rows.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and fully rebinds Task 36 evidence for adversarial probes.')
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
+        verifyPersistedReport(sourceResult, true)
+        def mutateNative = { String name, String fact, String value, String expectedMessage ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, "task36-${name}") { attempt, report ->
+                def file = new File(attempt, 'native-compatnativedifferential.properties')
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, "Task 36 ${name} probe") }
+                def log = new File(attempt, 'positive-compatnativedifferential.log')
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+            rejection instanceof String && rejection.contains(expectedMessage)
+        }
+        def mutateMatrix = { String name, String property, String value ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, "task36-${name}") { attempt, report ->
+                def file = new File(attempt, 'compatibility-matrix.properties')
+                def properties = loadProperties(file)
+                properties.setProperty(property, value)
+                file.withOutputStream { properties.store(it, "Task 36 ${name} probe") }
+            }
+            rejection instanceof String
+                    && rejection.contains('Task 36 compatibility matrix is malformed or promotes an unsupported row')
+        }
+        def mutatePipe = { String testId, String fact, String value, String expectedMessage ->
+            def rejection = taskFiveEvidenceProbeRejects(sourceResult, "task36-${testId}-${fact}") { attempt, report ->
+                def file = new File(attempt, "native-${testId}.properties")
+                def properties = loadProperties(file)
+                def oldValue = properties.getProperty(fact)
+                properties.setProperty(fact, value)
+                file.withOutputStream { properties.store(it, 'Task 36 pipe mutation') }
+                def log = new File(attempt, "positive-${testId}.log")
+                log.text = log.text.replace("fact=${fact} value=${oldValue}", "fact=${fact} value=${value}")
+            }
+            rejection instanceof String && rejection.contains(expectedMessage)
+        }
+        def blockedStartup = taskFiveEvidenceProbeRejects(sourceResult, 'task36-gt-startup') { attempt, report ->
+            def log = new File(attempt, 'positive-compatgtceu.log')
+            log.text = log.text.replace('invalid dist DEDICATED_SERVER', 'invalid dist CLIENT')
+        }
+        def missingItemChild = taskFiveEvidenceProbeRejects(sourceResult, 'task36-missing-item-child') { attempt, report ->
+            report.childExits.remove('positive-compatprettyitems')
+            report.childLifecycles.remove('positive-compatprettyitems')
+        }
+        def probes = [
+                mutateNative('different-backend', 'sameBackend', 'false',
+                        'Task 36 actual-mod differential semantics are incomplete'),
+                mutateNative('missing-native-hook', 'nativeHook', 'synthetic',
+                        'Task 36 actual-mod differential semantics are incomplete'),
+                mutateMatrix('provider-promoted', 'providerStatus', 'QUALIFIED'),
+                mutateMatrix('tech-promoted', 'technologyStatus', 'QUALIFIED'),
+                mutateMatrix('optional-bundled', 'optionalBundled', 'true'),
+                mutatePipe('compatprettyitems', 'destinationRemaining', '0',
+                        'Task 36 physical differential is incomplete'),
+                mutatePipe('compatprettyfluids', 'nativeExtracted', '0',
+                        'Task 36 physical differential is incomplete'),
+                blockedStartup instanceof String && blockedStartup.contains(
+                        'Task 36 GTCEu blocked outcome lacks the authenticated startup exception'),
+                missingItemChild instanceof String && missingItemChild.contains(
+                        'Task 36 actual storage and logistics differential child is missing')
+        ]
+        if (probes.any { !it }) {
+            throw new GradleException('Task 36 adversarial compatibility evidence was accepted')
+        }
+        logger.lifecycle('Task 36 rebound differential and unsupported-promotion probes were rejected')
     }
 }
 

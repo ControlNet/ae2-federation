@@ -917,3 +917,62 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   menu A then B, replays A against B, checks all mutation receipts, accepts B exactly once, and emits log-correlated facts.
 - Validate complete `FlowState` input before touching meter windows or deduplication. Otherwise a rejected oversized event
   can consume its event ID and advance hidden state even when no flow is visible.
+## 2026-09-22 Task 36 actual-mod compatibility
+
+- Applied Flux 2.1.4 can be exercised through the production Storage mount without addon-specific production linkage:
+  native `IStorageProvider` discovery and the Federation projection retain the same `FE_CELL_256M` backend and
+  `appflux:flux` key, with matching 8192 insert, 2048 extract, and 6144 final quantity.
+- Artifact checksums and source-demonstrated capability paths are necessary but not sufficient for a compatibility claim.
+  Functional Storage, Pretty Pipes/Fluids, and GTCEu remain BLOCKED until complete runtime scenes exist.
+
+## 2026-09-23 Task 36 independent profile attempts
+
+- Modrinth version `jH3wVEds` is catalogued as Functional Storage 1.3.4 despite its 1.3.3-named JAR; the genuine 1.3.3
+  artifact is `qyocTQUb` and independently matches the matrix SHA-256. Titanium's embedded license text is GNU LGPL.
+- Functional Storage and Titanium load with AE2; an actual `DrawerTile` plus AE2 Storage Bus fixture currently unsettles
+  native Grid identity, so no differential is qualified. Pretty Pipes/Fluids both boot, but the smoke has no logistics.
+- GTCEu 7.0.2 embeds Registrate, LDLib 1.0.35.a, and Configuration 3.1.0; the exact pinned dedicated server rejects a
+  client `ClientLevel` class load during `CommonInit.init`. The Gradle child exit alone is not a startup-success signal.
+- Task 36's original producer called nonexistent `runCompatibilityGameTestServer`. Correcting it to the existing isolated
+  Applied Flux task preserved the actual FE child; the five-case producer now fails explicitly at missing other children.
+
+## 2026-09-23 Task 36 drawer identity repair
+
+- `StorageBusPart.getInternalHandler()` is the adjacent composite, while the native `mountInventories` callback publishes a
+  different `StorageBusInventory` object. Differential identity must compare that exact callback delegate with the
+  Federation source domain, not equate the composite with its mounted wrapper.
+- A newly attached Storage Bus requires the settled provider NetworkId seeded into `gn` and an explicit native cable-part
+  connection before discovery. Bus priority 100 ensures native/Federation insertions target the drawer rather than the
+  fixture's lower-priority ME Chest. Strict isolated GameTest passes with exact 16/4/12 physical counts.
+
+## 2026-09-23 Task 36 replay
+
+- The connected Pretty Pipes item scene passed once but subsequently failed three isolated runs. The actual network
+  accepted 16 ingots from the source chest, yet its PipeItem remained at the source after 120 or 240 GameTest ticks.
+  Extra tick budget and reducing mount trace volume did not resolve it. Neither item nor fluid routing is qualified.
+- Reconfirmed the GTCEu 7.0.2 dedicated-server `ClientLevel` invalid-dist crash at `CommonInit.init:177` with AE2
+  19.2.17/NeoForge 21.1.250. The launcher returned zero despite FML aborting; logs, not exit code, are authoritative.
+- The Applied Flux scene now checks Federation source-domain delegate and ME Chest owner identity, and passed in isolation.
+- Task 36 adversarial probes must validate their source result first: an incomplete baseline otherwise reports a generic
+  probe failure instead of the missing child. The old partial report is rejected before rebinding.
+
+## 2026-09-23 Task 31 observation and Pretty Pipes Fluids
+
+- The Task 31 accepted amount is 1,000,000,250 AE, or 1,000,000,250,000,000,000 nano-AE. A unit-specific 9e18
+  nano-AE observation bound fixes the native meter failure without changing the 9e15 item/fluid cap. A red-first unit
+  regression and canonical five-case Task 31 verify passed.
+- The actual Pretty Pipes Fluids network transported 1,000 mB into a Sky Stone Tank in two isolated launches; the
+  native AE2 Storage Bus and Federation projection each extracted 250 mB from the identical delegate and tank.
+  Two other launches left one real FluidPipeItem in the source pipe after 120 ticks despite loaded chunks.
+- Vanilla GameTestServer places structures at random coordinates up to ±15m; Pretty Pipes `PipeItem` uses float
+  absolute world coordinates and a 0.05-block/tick default speed. The failed run at X=4,264,128 had an unchanged
+  source-pipe position, consistent with movement rounding away. This is a native addon transport issue to investigate,
+  not license to replace the flow with a mock or treat successful runs as qualified.
+
+## 2026-09-23 Task 36 real logistics
+
+- Vanilla GameTestServer chooses a random ±15-million-block test location independently of the world spawn. A testmod
+  `startTests` local-position hook can constrain only the two real-pipe tests to origin while preserving the actual
+  block-entity ticker, addon routing, source extraction, physical destination and AE2 Storage Bus callback owner.
+- Check the nested GT child log for the FML invalid-dist exception and absence of GameTest completion; Gradle's exit
+  code alone is insufficient to classify a mod-construction failure.

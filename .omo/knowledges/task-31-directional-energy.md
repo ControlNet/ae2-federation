@@ -13,3 +13,14 @@
 - Canonical repaired evidence passed at `.omo/evidence/task-31-final/attempt-20260921T012646078Z`; the persisted consumer and rebound mutation suite also passed. Task 14 remained green. Task 10 remained intentionally BLOCKED by its frozen shared-overlay characterization and was not altered.
 - The truncation proof uses AE2's production `EnergyCellBlock` and `EnergyCellBlockEntity`, registered by the testmod with a finite 2,000,000,000 AE capacity. The canonical directional case preserves its 250 AE operation, then simulates and modulates 1,000,000,250 AE through the consumer Grid's native service; exact provider availability, unchanged simulation balance, acceptance, and debit are persisted and receipt-bound.
 - Final-review evidence is intentionally retained under `.omo/evidence/task-31-final-review/` for Atlas and independent review. Its mutation suite must reject a fully rebound `largeAccepted=1000000000.0` value, proving the semantic threshold rather than merely matching text.
+
+## 2026-09-23 large observation regression
+
+- `EnergyBindingService.nanoAe(1_000_000_250.0)` yields 1,000,000,250,000,000,000 nano-AE. The earlier
+  `FlowState` validation used the 9e15 item/fluid observation cap for all units, so the accepted native operation
+  threw after debiting the provider. A meter unit test was red before the change and green afterward.
+- `NANO_AE` now has its own finite 9e18 limit while ITEM and FLUID_DROPLET remain at 9e15. The focused meter tests
+  assert the energy transfer, its own overflow rejection, and the unchanged fluid bound. The canonical five-case
+  Task 31 verifier passed at `.omo/evidence/task-31-energy-observation/attempt-20260923T045856005Z`; its directional
+  receipt records `largeAccepted=1.00000025E9` and an equal provider debit. Task 35 packet/release verification also
+  passed at `.omo/evidence/task-35-energy-observation-regression/attempt-20260923T051914465Z`.

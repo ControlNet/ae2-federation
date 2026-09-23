@@ -171,7 +171,12 @@
     {"id":"release.no-test-content","backend":"release-audit","assertions":4},
     {"id":"release.optional-absent","backend":"release-audit","assertions":3},
     {"id":"packets.reject-malformed","backend":"packet-contract","assertions":4},
-    {"id":"packets.reject-out-of-context","backend":"packet-contract","assertions":5}
+    {"id":"packets.reject-out-of-context","backend":"packet-contract","assertions":5},
+    {"id":"compat.native-differential","backend":"compatibility-matrix","assertions":8},
+    {"id":"compat.provider-hooks","backend":"compatibility-matrix","assertions":5},
+    {"id":"compat.real-tech-line","backend":"compatibility-matrix","assertions":5},
+    {"id":"compat.optional-absent","backend":"compatibility-matrix","assertions":5},
+    {"id":"compat.reject-unsupported","backend":"compatibility-matrix","assertions":5}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8,"lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},

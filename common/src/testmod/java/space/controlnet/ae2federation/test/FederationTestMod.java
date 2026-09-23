@@ -62,6 +62,18 @@ public final class FederationTestMod {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {
         }
+        try {
+            testClasses.add(Class.forName("space.controlnet.ae2federation.test.FunctionalStorageCompatibilityGameTests"));
+        } catch (ClassNotFoundException ignored) {
+        }
+        try {
+            testClasses.add(Class.forName("space.controlnet.ae2federation.test.PrettyPipesCompatibilityGameTests"));
+        } catch (ClassNotFoundException ignored) {
+        }
+        try {
+            testClasses.add(Class.forName("space.controlnet.ae2federation.test.PrettyPipesFluidsCompatibilityGameTests"));
+        } catch (ClassNotFoundException ignored) {
+        }
         testClasses.stream()
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))

@@ -2,11 +2,14 @@ package space.controlnet.ae2federation.test;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.networking.IGrid;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyTypes;
 import appeng.api.storage.AEKeyFilter;
 import appeng.api.storage.StorageCells;
+import appeng.api.storage.IStorageProvider;
+import appeng.api.storage.MEStorage;
 import com.glodblock.github.appflux.common.AFSingletons;
 import com.glodblock.github.appflux.common.me.cell.FECellHandler;
 import com.glodblock.github.appflux.common.me.cell.FECellInventory;
@@ -14,6 +17,9 @@ import com.glodblock.github.appflux.common.me.key.FluxKey;
 import com.glodblock.github.appflux.common.me.key.type.EnergyType;
 import com.glodblock.github.appflux.common.me.key.type.FluxKeyType;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Map;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -22,6 +28,13 @@ import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.test.energy.NativeEnergyFixtures;
 import space.controlnet.ae2federation.test.resources.ResourceEvidence;
+import space.controlnet.ae2federation.ae2.storage.NativeStorageProvenance;
+import space.controlnet.ae2federation.policy.PolicyEdit;
+import space.controlnet.ae2federation.policy.PolicyRevision;
+import space.controlnet.ae2federation.policy.PolicyRule;
+import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 
 @PrefixGameTestTemplate(false)
 public final class AppliedFluxResourceGameTests {
@@ -105,5 +118,73 @@ public final class AppliedFluxResourceGameTests {
             ResourceEvidence.write("resourcesstoredfe", 21, facts);
             energy.close();
         });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void compatNativeDifferential(GameTestHelper helper) {
+        var fixtures = new PolicyBridgeFixtures(helper, new BlockPos(5, 3, 5));
+        fixtures.installStorageCells();
+        fixtures.providerChest().setCell(new ItemStack(AFSingletons.FE_CELL_256M));
+        var bridgePlaced = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (!bridgePlaced[0] && fixtures.networksSettled()) {
+                fixtures.placeFirstBridge();
+                bridgePlaced[0] = true;
+                helper.assertTrue(false, "Waiting for compatibility Fabric");
+            }
+            helper.assertTrue(fixtures.firstBridgeReady(), "Compatibility Fabric must be ready");
+            var policyKey = PolicyLifecycleGameTests.storageKey(fixtures);
+            PolicyService.get(helper.getLevel()).edit(
+                    new PolicyEdit(policyKey, PolicyRevision.NONE, PolicyRule.storageDefaults()));
+            var mounts = StorageMountService.get(helper.getLevel());
+            var projection = mounts.projection(policyKey);
+            helper.assertTrue(projection != null, "Federation projection must mount the Applied Flux backend");
+            var nativeStorage = nativeSource(fixtures.outerGrid());
+            helper.assertTrue(mounts.sourceDomain(policyKey).sources().stream()
+                            .anyMatch(source -> source.storage() == nativeStorage)
+                            && mounts.sourceDomain(policyKey).sourceNodes().stream()
+                            .anyMatch(node -> node.getOwner() == fixtures.providerChest()),
+                    "Federation must retain the exact native Applied Flux chest and cell delegate");
+            var key = FluxKey.of(EnergyType.FE);
+            var nativeInserted = nativeStorage.insert(key, 8192, Actionable.MODULATE, SOURCE);
+            var nativeExtracted = nativeStorage.extract(key, 2048, Actionable.MODULATE, SOURCE);
+            var nativeRemaining = nativeStorage.getAvailableStacks().get(key);
+            nativeStorage.extract(key, nativeRemaining, Actionable.MODULATE, SOURCE);
+            var federationInserted = projection.insert(key, 8192, Actionable.MODULATE, SOURCE);
+            var federationExtracted = projection.extract(key, 2048, Actionable.MODULATE, SOURCE);
+            var federationRemaining = nativeStorage.getAvailableStacks().get(key);
+            helper.assertValueEqual(federationInserted, nativeInserted, "Native and Federation insertions must match");
+            helper.assertValueEqual(federationExtracted, nativeExtracted, "Native and Federation extractions must match");
+            helper.assertValueEqual(federationRemaining, nativeRemaining, "Both layouts must leave identical backend state");
+            helper.assertValueEqual(key.getType(), FluxKeyType.TYPE, "The actual Applied Flux key type must be retained");
+            helper.assertTrue(nativeStorage == nativeSource(fixtures.outerGrid()),
+                    "Both layouts must retain the same native backend identity");
+            ResourceEvidence.write("compatnativedifferential", 8, Map.ofEntries(
+                    Map.entry("addon", "applied_flux_2.1.4"), Map.entry("backend", "FE_CELL_256M"),
+                    Map.entry("keyType", "appflux:flux"),
+                    Map.entry("nativeInserted", Long.toString(nativeInserted)),
+                    Map.entry("federationInserted", Long.toString(federationInserted)),
+                    Map.entry("nativeExtracted", Long.toString(nativeExtracted)),
+                    Map.entry("federationExtracted", Long.toString(federationExtracted)),
+                    Map.entry("nativeRemaining", Long.toString(nativeRemaining)),
+                    Map.entry("federationRemaining", Long.toString(federationRemaining)),
+                    Map.entry("sameBackend", "true"),
+                    Map.entry("nativeHook", "IStorageProvider.mountInventories")));
+            fixtures.close();
+        });
+    }
+
+    private static MEStorage nativeSource(IGrid grid) {
+        var provenance = new NativeStorageProvenance();
+        var providers = new ArrayList<IStorageProvider>();
+        for (var node : grid.getNodes()) {
+            var provider = node.getService(IStorageProvider.class);
+            if (provider != null) {
+                provenance.qualify(node);
+                providers.add(provider);
+            }
+        }
+        return provenance.sources(providers).getFirst().storage();
     }
 }

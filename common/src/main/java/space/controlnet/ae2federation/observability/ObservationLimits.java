@@ -13,6 +13,7 @@ public final class ObservationLimits {
     public static final int MAX_DELTA_EVENTS = 64;
     public static final int MAX_PAYLOAD_BYTES = 1_048_576;
     public static final long MAX_RESOURCE_AMOUNT = 9_000_000_000_000_000L;
+    public static final long MAX_NANO_AE_AMOUNT = 9_000_000_000_000_000_000L;
     public static final int MAX_SUBSCRIPTIONS_PER_PLAYER = 4;
 
     private ObservationLimits() {

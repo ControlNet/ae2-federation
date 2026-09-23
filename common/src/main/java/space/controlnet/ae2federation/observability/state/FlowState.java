@@ -13,7 +13,11 @@ public record FlowState(FabricReference scope, FlowId id, OperationEventId event
         Objects.requireNonNull(eventId);
         Objects.requireNonNull(unit);
         Objects.requireNonNull(attribution);
-        if (amount <= 0 || amount > ObservationLimits.MAX_RESOURCE_AMOUNT) {
+        long maximum = switch (unit) {
+            case ITEM, FLUID_DROPLET -> ObservationLimits.MAX_RESOURCE_AMOUNT;
+            case NANO_AE -> ObservationLimits.MAX_NANO_AE_AMOUNT;
+        };
+        if (amount <= 0 || amount > maximum) {
             throw new IllegalArgumentException("Observed flow amount is outside the supported range");
         }
         ObservationLimits.boundedString(resource, "Flow resource");

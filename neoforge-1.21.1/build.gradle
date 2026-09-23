@@ -44,6 +44,24 @@ def appfluxTest = sourceSets.create('appfluxTest') {
     runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
 }
 
+def functionalStorageTest = sourceSets.create('functionalStorageTest') {
+    java.srcDir(rootProject.file('common/src/functionalstoragetest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+def prettyPipesTest = sourceSets.create('prettyPipesTest') {
+    java.srcDir(rootProject.file('common/src/prettypipestest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+def gtceuTest = sourceSets.create('gtceuTest') {
+    java.srcDir(rootProject.file('common/src/gtceutest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
 repositories {
     mavenCentral()
     maven {
@@ -61,6 +79,17 @@ repositories {
         content {
             includeModule('maven.modrinth', 'appflux')
             includeModule('maven.modrinth', 'glodium')
+            includeModule('maven.modrinth', 'cO40ZIg3')
+            includeModule('maven.modrinth', '1Ro7m06l')
+            includeModule('maven.modrinth', 'XExdLWCQ')
+            includeModule('maven.modrinth', 'rZwE3agR')
+        }
+    }
+    maven {
+        name = 'GTCEu'
+        url = 'https://maven.gtceu.com'
+        content {
+            includeGroup('com.gregtechceu.gtceu')
         }
     }
 }
@@ -181,8 +210,45 @@ neoForge {
             sourceSet = appfluxTest
             systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
             systemProperty('ae2federation.testSelection', 'positive')
-            systemProperty('ae2federation.testId', 'resourcesstoredfe')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('resourcesstoredfe'))
             systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        functionalStorageGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-functional-storage-gametest')
+            sourceSet = functionalStorageTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatfunctionalstorage'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        prettyPipesGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-pretty-pipes-gametest')
+            sourceSet = prettyPipesTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatprettypipes'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        gtceuGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-gtceu-gametest')
+            sourceSet = gtceuTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatgtceu'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
         }
         uiTestClient {
@@ -251,6 +317,15 @@ neoForge {
             if (providers.gradleProperty('enableAppfluxCompatibility').getOrElse('false').toBoolean()) {
                 sourceSet(appfluxTest)
             }
+            if (providers.gradleProperty('enableFunctionalStorageCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(functionalStorageTest)
+            }
+            if (providers.gradleProperty('enablePrettyPipesCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(prettyPipesTest)
+            }
+            if (providers.gradleProperty('enableGtceuCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(gtceuTest)
+            }
         }
     }
     runs.releaseServer.loadedMods = [mods."${mod_id}"]
@@ -264,6 +339,24 @@ configurations {
         description = 'Isolated Task 25 Applied Flux compatibility runtime.'
     }
     appfluxTestImplementation.extendsFrom(appliedFluxCompatibility)
+    functionalStorageCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 Functional Storage compatibility runtime.'
+    }
+    functionalStorageTestImplementation.extendsFrom(functionalStorageCompatibility)
+    prettyPipesCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 Pretty Pipes item/fluid compatibility runtime.'
+    }
+    prettyPipesTestImplementation.extendsFrom(prettyPipesCompatibility)
+    gtceuCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 GTCEu production-line compatibility runtime.'
+    }
+    gtceuTestImplementation.extendsFrom(gtceuCompatibility)
 }
 
 dependencies {
@@ -275,6 +368,15 @@ dependencies {
     appliedFluxCompatibility('maven.modrinth:appflux:1.21-2.1.4-neoforge')
     appliedFluxCompatibility('org.appliedenergistics:guideme:21.1.1')
     appliedFluxCompatibility('maven.modrinth:glodium:1.21-2.2-neoforge')
+    functionalStorageCompatibility('maven.modrinth:cO40ZIg3:qyocTQUb')
+    functionalStorageCompatibility('maven.modrinth:1Ro7m06l:IeKDJ7R3')
+    prettyPipesCompatibility('maven.modrinth:XExdLWCQ:wboQrdtH')
+    prettyPipesCompatibility('maven.modrinth:rZwE3agR:ipO3SD1p')
+    prettyPipesTestCompileOnly('org.jgrapht:jgrapht-core:1.5.2') { transitive = false }
+    gtceuCompatibility('com.gregtechceu.gtceu:gtceu-1.21.1:7.0.2') {
+        // The published NeoForge distribution embeds Registrate, LDLib, and Configuration as JarJar dependencies.
+        transitive = false
+    }
 }
 
 tasks.named('test', Test).configure {
@@ -315,6 +417,16 @@ tasks.named('runAppfluxGameTestServer').configure {
     finalizedBy(cleanupAppfluxGameTest)
 }
 
+['FunctionalStorage', 'PrettyPipes', 'Gtceu'].each { profile ->
+    def directoryName = profile.replaceAll(/([a-z])([A-Z])/, '$1-$2').toLowerCase()
+    def cleanup = tasks.register("cleanup${profile}GameTest", Delete) {
+        delete(layout.projectDirectory.dir("run-${directoryName}-gametest"))
+    }
+    tasks.named("run${profile}GameTestServer").configure {
+        finalizedBy(cleanup)
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
@@ -341,7 +453,8 @@ def verifyReleaseArchive = { File archive, boolean sources ->
         zip.entries().findAll { !it.directory }.each { entry -> entries[entry.name] = zip.getInputStream(entry).bytes }
     }
     def forbiddenPaths = ['space/controlnet/ae2federation/test/', 'data/ae2federation_test/',
-            'assets/ae2federation_test/', 'com/glodblock/github/appflux/', 'ae2federation_test.mixins.json']
+            'assets/ae2federation_test/', 'com/glodblock/github/appflux/', 'com/buuz135/functionalstorage/',
+            'de/maxhenkel/pipez/', 'com/gregtechceu/gtceu/', 'ae2federation_test.mixins.json']
     def forbiddenSymbols = ['FederationTestMod', 'RegisterGameTestsEvent', 'LDLRegisterClient',
             'UIScenario', 'ae2federation.testId', 'ae2federation_test', 'RegisterCommandsEvent']
     def leaked = entries.findAll { name, bytes ->
