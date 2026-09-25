@@ -69,6 +69,9 @@ final class NativeProviderTargets {
 
     int targetItemCount() {
         var chest = targetChest();
+        if (chest == null) {
+            return 0;
+        }
         var total = 0;
         for (int slot = 0; slot < chest.getContainerSize(); slot++) {
             total += chest.getItem(slot).getCount();
@@ -78,6 +81,9 @@ final class NativeProviderTargets {
 
     int targetItemCount(Item item) {
         var chest = targetChest();
+        if (chest == null) {
+            return 0;
+        }
         var total = 0;
         for (int slot = 0; slot < chest.getContainerSize(); slot++) {
             if (chest.getItem(slot).is(item)) {
@@ -147,7 +153,7 @@ final class NativeProviderTargets {
     }
 
     private ChestBlockEntity targetChest() {
-        return (ChestBlockEntity) helper.getLevel().getBlockEntity(
-                helper.absolutePos(NativeProviderLaneFixtures.TARGET_POS));
+        return helper.getLevel().getBlockEntity(helper.absolutePos(NativeProviderLaneFixtures.TARGET_POS))
+                instanceof ChestBlockEntity chest ? chest : null;
     }
 }
