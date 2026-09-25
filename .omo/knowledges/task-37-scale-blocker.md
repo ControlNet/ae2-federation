@@ -1,5 +1,10 @@
 # Task 37 scale qualification blocker
 
+## 2026-09-25 opt-in Federation warmup stage measurement
+
+- A fresh 720-file source snapshot with manifest SHA-256 `143cb77b0f584ad5a873341fd6af55499e82a0b5baa5a10666efb8cf379478a4` produced one real failed 300-second Federation warmup: 27 distinct native UUIDs/Drive receipts and 432 accepted units in 301.750062433 seconds / 5,187 server ticks. Stage intervals: target input/context 124.964219562 seconds and machine/callback 176.521402569 seconds, versus planning/submission/readback 0.264440302 seconds combined. These are transition-to-transition wall intervals that include test fixture and native waiting, not isolated product CPU costs. The 256-job guard failed, nested Java/Gradle and outer Gradle exited nonzero, no sample/result exists, and finalizer removed the owned world/lock. Exact evidence and the preflight staging mistakes: `.omo/evidence/task-37-federation-stage-run/verification.md`.
+- The inherited transfer manifest included live `run-manual-client` and `run-server` trees. Its first abandoned, unrun task-owned snapshot contains copies of these files; do not reuse it or infer source parity. The successful diagnostic used a separate filtered source snapshot and did not touch local user worlds. The copied runtime files remain on the approved VM pending an explicit retention decision; no existing snapshot was deleted.
+
 ## 2026-09-24 remote current-source three-layout correctness
 
 - Exact sixteen-working-target direct/native-subnet/Federation replays completed serially on a fresh immutable 739-file snapshot. Each selected Gradle process exited zero, passed its one required GameTest, audited 256 physical jobs/UUIDs/Drive receipts and 4096 units, and left no world or task-owned Java process. Snapshot pre/post source digest matched. Live local source changed concurrently in verifier/docs files after capture, so final live-local-to-snapshot parity is not claimed. Full path, hashes and limits: `.omo/evidence/task-37-remote-current-three-layout/verification.md`. These are NON_COMPARABLE correctness runs, not timed resource-matched Task 37 profiles; Tasks 37/38/40/F1-F4 remain `[~]`.

@@ -9,6 +9,7 @@ import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.LongSupplier;
 import java.util.stream.IntStream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -63,14 +65,25 @@ public final class ScaleLargeFederation256Replay {
         private final long[] wallNanos = new long[JobStage.values().length];
         private final long[] serverTicks = new long[JobStage.values().length];
         private final long[] waits = new long[JobStage.values().length];
+        private final long[] cpuNanos = new long[JobStage.values().length];
+        private final LongSupplier cpuClock;
+        private final Thread owner;
         private JobStage current = JobStage.PLANNING;
         private long stageStartNanos;
         private long stageStartTick;
+        private long stageStartCpuNanos;
         private int completedJobs;
 
-        StageDiagnostics(long startedNanos, long startedTick) {
+        StageDiagnostics(long startedNanos, long startedTick, LongSupplier cpuClock) {
             stageStartNanos = startedNanos;
             stageStartTick = startedTick;
+            this.cpuClock = cpuClock;
+            owner = Thread.currentThread();
+            stageStartCpuNanos = cpuClock.getAsLong();
+        }
+
+        private long currentCpuNanos() {
+            return stageStartCpuNanos < 0 || Thread.currentThread() != owner ? -1 : cpuClock.getAsLong();
         }
 
         void waitFor(JobStage stage) {
@@ -78,11 +91,15 @@ public final class ScaleLargeFederation256Replay {
         }
 
         void transition(JobStage next, long nowNanos, long nowTick) {
+            long nowCpuNanos = currentCpuNanos();
+            if (nowCpuNanos < stageStartCpuNanos) stageStartCpuNanos = -1;
+            if (stageStartCpuNanos >= 0) cpuNanos[current.ordinal()] += nowCpuNanos - stageStartCpuNanos;
             wallNanos[current.ordinal()] += nowNanos - stageStartNanos;
             serverTicks[current.ordinal()] += nowTick - stageStartTick;
             current = next;
             stageStartNanos = nowNanos;
             stageStartTick = nowTick;
+            stageStartCpuNanos = stageStartCpuNanos < 0 ? -1 : nowCpuNanos;
         }
 
         void completedJob(long nowNanos, long nowTick) {
@@ -91,6 +108,8 @@ public final class ScaleLargeFederation256Replay {
         }
 
         String snapshot(String phase, String status, long nowNanos, long nowTick) {
+            long nowCpuNanos = currentCpuNanos();
+            if (nowCpuNanos < stageStartCpuNanos) stageStartCpuNanos = -1;
             var message = new StringBuilder("AE2F_SCALE_FEDERATION_STAGE phase=").append(phase)
                     .append(" status=").append(status).append(" completedJobs=").append(completedJobs);
             for (var stage : JobStage.values()) {
@@ -99,7 +118,10 @@ public final class ScaleLargeFederation256Replay {
                         .append(wallNanos[index] + (stage == current ? nowNanos - stageStartNanos : 0))
                         .append(' ').append(stage.name()).append(".serverTicks=")
                         .append(serverTicks[index] + (stage == current ? nowTick - stageStartTick : 0))
-                        .append(' ').append(stage.name()).append(".waits=").append(waits[index]);
+                        .append(' ').append(stage.name()).append(".waits=").append(waits[index])
+                        .append(' ').append(stage.name()).append(".serverThreadCpuNanos=")
+                        .append(stageStartCpuNanos < 0 ? "unavailable" : Long.toString(cpuNanos[index]
+                                + (stage == current ? nowCpuNanos - stageStartCpuNanos : 0)));
             }
             return message.toString();
         }
@@ -110,10 +132,12 @@ public final class ScaleLargeFederation256Replay {
                 wallNanos[index] = 0;
                 serverTicks[index] = 0;
                 waits[index] = 0;
+                cpuNanos[index] = 0;
             }
             completedJobs = 0;
             stageStartNanos = nowNanos;
             stageStartTick = nowTick;
+            stageStartCpuNanos = currentCpuNanos();
         }
     }
 
@@ -207,7 +231,12 @@ public final class ScaleLargeFederation256Replay {
                     long startedNanos = System.nanoTime();
                     long startedTick = helper.getLevel().getServer().getTickCount();
                     window = new ScaleTimedWindow(300, 600, JOB_COUNT, QUANTITY, startedNanos, startedTick);
-                    if (diagnoseStages) diagnostics = new StageDiagnostics(startedNanos, startedTick);
+                    if (diagnoseStages) {
+                        var bean = ManagementFactory.getThreadMXBean();
+                        LongSupplier cpuClock = bean.isCurrentThreadCpuTimeSupported() && bean.isThreadCpuTimeEnabled()
+                                ? bean::getCurrentThreadCpuTime : () -> -1;
+                        diagnostics = new StageDiagnostics(startedNanos, startedTick, cpuClock);
+                    }
                 }
                 stage = 3;
             }

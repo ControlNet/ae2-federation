@@ -1,5 +1,10 @@
 # Issues — ae2-federation-v04
 
+## 2026-09-25 Task 37 measured Federation warmup blocker
+
+- One opt-in, source-hashed selected GameTest reproduced the 27/256-job failed warmup with 432 real callback/Drive units in 301.750062433 seconds. Target-input/context and machine/callback stage intervals consume 124.964219562 and 176.521402569 seconds respectively; these include fixture and waiting costs, so no product-route bottleneck is established. Both nested and outer exits were 1, no sample/result exists, and finalizer cleanup and source pre/post hash matched. See `.omo/evidence/task-37-federation-stage-run/verification.md`.
+- The inherited remote manifest unintentionally copied live local manual-client and server runtime files into an abandoned task-owned remote snapshot before its unsafe inclusion was noticed. No workload used it and the local user world was not changed. It remains undeleted under the explicit snapshot-preservation constraint; retention requires a separate authorized decision. A clean filtered snapshot first lacked Git metadata and failed before GameTest, then the final separately created snapshot with approved sparse Git objects ran the sole actual GameTest.
+
 Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
