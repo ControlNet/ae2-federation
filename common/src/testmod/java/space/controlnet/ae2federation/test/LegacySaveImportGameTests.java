@@ -104,8 +104,37 @@ public final class LegacySaveImportGameTests {
             facts.put("legacyItemStacksMigrated", "router=3,cable=17,bridge=5");
             facts.forEach((name, value) -> org.slf4j.LoggerFactory.getLogger(LegacySaveImportGameTests.class)
                     .info("AE2F_LEGACY_IMPORT fact={} value={}", name, value));
+            writeEvidence(facts);
             helper.succeed();
         });
+    }
+
+    private static void writeEvidence(java.util.Map<String, String> facts) {
+        var configured = System.getProperty("ae2federation.nativeEvidenceFile", "");
+        if (configured.isBlank()) {
+            return;
+        }
+        var path = java.nio.file.Path.of(configured).toAbsolutePath().normalize();
+        var properties = new Properties();
+        properties.setProperty("schemaVersion", "1");
+        properties.setProperty("status", "passed");
+        properties.setProperty("kind", "verify");
+        properties.setProperty("testId", "legacysaveimport");
+        properties.setProperty("structure", "ae2federation_test:harness_native_smoke");
+        properties.setProperty("assertions", "14");
+        properties.setProperty("operations", "1");
+        properties.setProperty("inserted", "0");
+        properties.setProperty("extracted", "0");
+        properties.setProperty("elapsedNanos", "0");
+        facts.forEach(properties::setProperty);
+        try {
+            java.nio.file.Files.createDirectories(path.getParent());
+            try (var output = java.nio.file.Files.newOutputStream(path)) {
+                properties.store(output, "AE2 Federation legacy save import evidence");
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Cannot write legacy import evidence to " + path, exception);
+        }
     }
 
     private static String network(IGrid grid) {

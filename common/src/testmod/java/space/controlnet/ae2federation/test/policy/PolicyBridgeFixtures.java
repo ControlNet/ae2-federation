@@ -48,6 +48,15 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         }
     }
 
+    public String settlementDiagnostics() {
+        var main = mainGrid();
+        var outer = outerGrid();
+        return "main=" + (main == null ? "absent" : main.getService(
+                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement())
+                + " outer=" + (outer == null ? "absent" : outer.getService(
+                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement());
+    }
+
     public boolean networksSettled() {
         return FederationDomainRegistryAccess.confirmedNetworkId(mainGrid()).isPresent()
                 && FederationDomainRegistryAccess.confirmedNetworkId(outerGrid()).isPresent();

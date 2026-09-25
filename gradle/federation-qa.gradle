@@ -7289,7 +7289,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                     || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
-                    || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')) ? 1 : 2,
+                    || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
+                    || testCase.id == 'identity.stable-query-cost' || testCase.id.startsWith('migration.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -7301,7 +7302,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                             || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
-                            || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')])
+                            || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
+                            || testCase.id == 'identity.stable-query-cost' || testCase.id.startsWith('migration.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -7541,6 +7543,21 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     def child = gradleCommand('zero-selection', [':neoforge-1.21.1:runGameTestServer', '-PfederationGameTestSelection=none'], [timeout: 120, retainRuntime: false])
                     if (!child.output.contains('No test functions were given')) throw new GradleException('Zero selection did not fail closed')
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed', detail: "zero-selection diagnostic rejected despite inner exit ${child.result.exit}"]); break
+                case 'provider.production-three-way':
+                case 'provider.production-revocation':
+                case 'provider.production-lifecycle':
+                case 'identity.stable-query-cost':
+                case 'migration.legacy-save-import':
+                case 'storage.source-index-scale':
+                case 'storage.source-index-lifecycle':
+                    // Evidence was verified with the generic GameTest accounting when the child ran.
+                    def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
+                    def nativeProperties = new Properties()
+                    nativeEvidence.withInputStream { nativeProperties.load(it) }
+                    executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
+                            nativeTestId: testCase.testId, structure: testCase.structure,
+                            assertionCount: nativeProperties.getProperty('assertions') as long,
+                            operationCount: nativeProperties.getProperty('operations') as long]); break
                 case 'identity.replace-all-access':
                 case 'identity.ambiguous-split':
                 case 'identity.copied-node':

@@ -51,7 +51,8 @@ public final class StorageSourceIndexGameTests {
         var state = new int[1];
         helper.succeedWhen(() -> {
             if (state[0] == 0) {
-                helper.assertTrue(fixtures.networksSettled(), "Waiting for scale fixture identities");
+                helper.assertTrue(fixtures.networksSettled(),
+                        "Waiting for scale fixture identities " + fixtures.settlementDiagnostics());
                 fixtures.addOuterStorageProvider(provider);
                 fixtures.placeFirstBridge();
                 state[0] = 1;
@@ -125,7 +126,7 @@ public final class StorageSourceIndexGameTests {
         facts.put("listMountReplays", Long.toString(list.replays()));
         facts.put("listSourceValidations", Long.toString(list.validations()));
         facts.put("consumerListSourceValidations", Long.toString(consumer.validations()));
-        facts.put("operations", Integer.toString(OPERATIONS * 2));
+        facts.put("insertExtractOperations", Integer.toString(OPERATIONS * 2));
         facts.put("operationRebuilds", Long.toString(ops.rebuilds()));
         facts.put("operationScans", Long.toString(ops.scans()));
         facts.put("operationMountReplays", Long.toString(ops.replays()));

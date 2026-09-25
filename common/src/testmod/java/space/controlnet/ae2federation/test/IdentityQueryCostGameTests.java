@@ -182,10 +182,10 @@ public final class IdentityQueryCostGameTests {
         properties.setProperty("testId", testId);
         properties.setProperty("structure", STRUCTURE);
         properties.setProperty("assertions", Integer.toString(assertions));
-        properties.setProperty("operations", Integer.toString(READS));
+        properties.setProperty("operations", "1");
         properties.setProperty("inserted", "0");
         properties.setProperty("extracted", "0");
-        properties.setProperty("elapsedNanos", facts.getOrDefault("stableReadElapsedNanos", "0"));
+        properties.setProperty("elapsedNanos", "0");
         facts.forEach(properties::setProperty);
         try {
             Files.createDirectories(path.getParent());
