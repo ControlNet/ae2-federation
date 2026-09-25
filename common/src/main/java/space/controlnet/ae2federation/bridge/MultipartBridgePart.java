@@ -69,6 +69,7 @@ public final class MultipartBridgePart extends AEBasePart {
     private @Nullable FederationDomainSourceId federationDomainSource;
     private boolean mainNodeLoaded;
     private boolean onlyIfChanged;
+    private boolean refreshScheduled;
     private java.util.List<Object> lastPublished = java.util.List.of();
     private boolean outerNodeLoaded;
 
@@ -198,12 +199,29 @@ public final class MultipartBridgePart extends AEBasePart {
      * Domain topology revision and invalidate dependent snapshots, so these triggers publish only real changes.
      */
     private void refreshIfChanged() {
-        onlyIfChanged = true;
-        try {
-            refresh();
-        } finally {
-            onlyIfChanged = false;
+        // Node events also fire while neighboring chunks unload. Evaluating then could look up a block in a chunk that
+        // is being unloaded and load it again (which never lets the server's shutdown unload loop drain), so the
+        // refresh runs on the next server tick and never while the server is stopping.
+        if (refreshScheduled || !(getLevel() instanceof ServerLevel serverLevel)) {
+            return;
         }
+        var server = serverLevel.getServer();
+        if (!server.isRunning()) {
+            return;
+        }
+        refreshScheduled = true;
+        server.tell(new net.minecraft.server.TickTask(server.getTickCount() + 1, () -> {
+            refreshScheduled = false;
+            if (removed || !server.isRunning() || getBlockEntity() == null || getBlockEntity().isRemoved()) {
+                return;
+            }
+            onlyIfChanged = true;
+            try {
+                refresh();
+            } finally {
+                onlyIfChanged = false;
+            }
+        }));
     }
 
     private void refresh() {
@@ -227,6 +245,12 @@ public final class MultipartBridgePart extends AEBasePart {
             return;
         }
         var position = getBlockEntity().getBlockPos();
+        if (!getLevel().isLoaded(position.relative(getSide()))) {
+            // Never touch an unloaded (or unloading) neighbor: a block lookup there would load the chunk again,
+            // which keeps the server's shutdown unload loop from ever draining.
+            setStatus(BridgeStatus.invalid(BridgeOperationalReason.MISSING_OUTER_ATTACHMENT));
+            return;
+        }
         var outerAttachment = NativeAttachmentResolver.resolve(getLevel(), position, getSide(), outer).orElse(null);
         if (outerAttachment == null) {
             setStatus(BridgeStatus.invalid(getLevel().getBlockState(position.relative(getSide())).isAir()

@@ -1,5 +1,30 @@
 # Task 37 scale benchmark: INCOMPLETE
 
+## Small Federation after the identity and source-index fixes (2026-09-26)
+
+Local host (60 logical CPUs, shared, not quiesced), `taskset -c 2-9`, Java 21, the selected
+`federationBenchmark -Pprofile=small-federation` with `-Dae2federation.federationStageDiagnostics=true`, one run per
+revision. Every revision had the replay-fixture correction applied (configure each machine once; before, the second
+256-job cycle threw because no earlier run had completed a first cycle). Single runs under different background load are
+descriptive, not medians or a speedup claim.
+
+| Revision | Warmup (300 s) | Sample (600 s) | Notes |
+| --- | --- | --- | --- |
+| `4becaf3` baseline | failed at 24 jobs (~311 s, ~4,670 ticks) | none | server-thread CPU ≈ wall time; ~66 ms per tick |
+| `d89241d` storage source index only | failed at 24 jobs | none | the source-index change alone does not move the failure |
+| `c371346` identity cache only | 3,388 jobs | 6,520 jobs | passes |
+| `31e8533` all changes | 2,747 jobs / 547,697 ticks | 5,655 jobs / 90,480 units / 1,128,262 ticks | passes; persisted result consumed by `federationVerifyEvidence` |
+
+The stage diagnostics attribute the baseline's time to `TARGET_INPUT_CONTEXT` and `MACHINE_CALLBACK` with server-thread
+CPU equal to wall time. With the identity settlement cache the same stages cost about 0.6 ms of server-thread CPU per
+tick. The 256-job warmup failure was therefore caused by per-read identity settlement (each read copied all node
+lineages and compared them with every other Grid's lineages; see `identity.stable-query-cost`), not by the storage
+discovery path; that path's own cost is measured separately in `storage.source-index-scale`. The difference between the
+identity-only and all-changes sample counts comes from single runs under different load and is not attributed.
+Direct and native-subnet layouts were not re-run, so there is still no same-source three-layout comparison, late/ultra
+or soak. Task 37 remains incomplete.
+
+
 Started 2026-09-23 UTC. This is a chronological execution-status report, not a scale qualification. For the latest source-matched small snapshot, direct and native-subnet each have three complete 300-second warmup / 600-second sample repetitions. Federation failed the 256-job warmup after 27 jobs and has no accepted window or sample. Resource parity, late/ultra timing, full three-layout medians and Task 38 soak are absent. Earlier sections below describe historical checkpoints superseded by the [latest timed evidence](../../.omo/evidence/task-37-small-timed-first/verification.md). No performance budget was changed.
 
 ## Implementation progress
