@@ -6,7 +6,10 @@
   "mixins": [
     "PatternProviderLogicAccess",
     "PatternProviderLogicTargetBinding",
-    "StorageServiceNotificationMixin"
+    "StorageServiceNotificationMixin",
+    "compat.DelegatingMEInventoryAccessMixin",
+    "compat.StorageServiceMountLedgerMixin",
+    "compat.StorageServiceProviderStateMixin"
   ],
   "injectors": {
     "defaultRequire": 1

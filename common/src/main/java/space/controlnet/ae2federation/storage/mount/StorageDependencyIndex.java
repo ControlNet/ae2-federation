@@ -163,8 +163,19 @@ final class StorageDependencyIndex {
                 relationship.providerGrid(), BackendStatus.READY)) == PolicyActivationState.ACTIVE;
     }
 
+    /**
+     * O(source nodes) readiness. Global-provider sources have no node; their lifecycle is AE2's global provider
+     * registration, which the native mount ledger already stamps.
+     */
     private static boolean ready(NativeSourceDomain domain) {
-        return !domain.sourceNodes().isEmpty() && domain.sourceNodes().stream()
-                .allMatch(node -> node.isActive() && node.hasGridBooted() && node.getGrid() == domain.runtimeGrid());
+        if (domain.sources().isEmpty()) {
+            return false;
+        }
+        for (var node : domain.sourceNodes()) {
+            if (!node.isActive() || !node.hasGridBooted() || node.getGrid() != domain.runtimeGrid()) {
+                return false;
+            }
+        }
+        return true;
     }
 }

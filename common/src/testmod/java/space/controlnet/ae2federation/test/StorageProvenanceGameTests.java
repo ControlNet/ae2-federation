@@ -36,15 +36,19 @@ public final class StorageProvenanceGameTests {
         var registry = new NativeSourceDomainRegistry();
         var aliases = new ProvenanceCallbackProviders.MutableAliases();
         var phase = new int[1];
+        var providerNode = new appeng.api.networking.IManagedGridNode[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native source callback");
             if (phase[0] == 0) {
-                fixture.addProvider(aliases);
+                providerNode[0] = fixture.addProvider(aliases);
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for duplicate callback registration");
             }
             if (phase[0] == 1) {
+                helper.assertTrue(fixture.providerReady(providerNode[0]), "Waiting for alias provider node");
                 aliases.configureDuplicates(fixture.source());
+                // Native remount: the alias entries only exist once AE2 really mounted them.
+                appeng.api.storage.IStorageProvider.requestUpdate(providerNode[0]);
                 phase[0] = 2;
             }
             var domain = registry.discover(fixture.grid());
@@ -129,16 +133,20 @@ public final class StorageProvenanceGameTests {
         var aliases = new ProvenanceCallbackProviders.MutableAliases();
         var phase = new int[1];
         var initial = new space.controlnet.ae2federation.storage.provenance.NativeSourceDomain[1];
+        var providerNode = new appeng.api.networking.IManagedGridNode[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native source callback");
             if (phase[0] == 0) {
                 initial[0] = registry.discover(fixture.grid());
-                fixture.addProvider(aliases);
+                providerNode[0] = fixture.addProvider(aliases);
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for opaque callback registration");
             }
             if (phase[0] == 1) {
+                helper.assertTrue(fixture.providerReady(providerNode[0]), "Waiting for opaque provider node");
                 aliases.configureOpaque(fixture.source());
+                // Native remount: AE2 mounts both the native handle and the third-party opaque wrapper.
+                appeng.api.storage.IStorageProvider.requestUpdate(providerNode[0]);
                 phase[0] = 2;
             }
             ProvenanceException rejected = null;

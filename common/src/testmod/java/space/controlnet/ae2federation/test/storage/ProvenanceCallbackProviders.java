@@ -25,9 +25,14 @@ public final class ProvenanceCallbackProviders {
         private MEStorage second;
         private boolean opaque;
 
+        /**
+         * Mounts the chest's native handle (also mounted by the chest itself) plus an AE2 {@code DelegatingMEInventory}
+         * over it. AE2 refuses to mount one inventory twice per provider, so the provable aliases are: the same handle
+         * across providers, and AE2's own documented forwarding wrapper.
+         */
         public void configureDuplicates(MEStorage nativeSource) {
             source = nativeSource;
-            second = nativeSource;
+            second = new appeng.me.storage.DelegatingMEInventory(nativeSource);
             opaque = false;
         }
 
