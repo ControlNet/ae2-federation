@@ -3,7 +3,7 @@ package space.controlnet.ae2federation.observability.state;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.ObservationLimits;
 import space.controlnet.ae2federation.observability.id.ScopedObservationId;
 
@@ -11,22 +11,22 @@ final class ObservationStateSupport {
     private ObservationStateSupport() {
     }
 
-    static void validate(FabricReference scope, ScopedObservationId id, String status) {
+    static void validate(FederationDomainReference scope, ScopedObservationId id, String status) {
         Objects.requireNonNull(scope);
         Objects.requireNonNull(id);
-        if (!scope.fabricId().equals(id.fabricId())) {
-            throw new IllegalArgumentException("Observation state ID belongs to another Fabric");
+        if (!scope.federationDomainId().equals(id.federationDomainId())) {
+            throw new IllegalArgumentException("Observation state ID belongs to another Federation Domain");
         }
         ObservationLimits.boundedString(status, "Observation status");
     }
 
     static <T extends ObservationState> List<T> canonical(
-            FabricReference scope, List<T> states, int maximum, String field) {
+            FederationDomainReference scope, List<T> states, int maximum, String field) {
         Objects.requireNonNull(states);
         ObservationLimits.boundedCount(states.size(), maximum, field);
         states.forEach(state -> {
             if (!scope.equals(state.scope())) {
-                throw new IllegalArgumentException(field + " contains state from another Fabric generation");
+                throw new IllegalArgumentException(field + " contains state from another Federation Domain generation");
             }
         });
         var canonical = states.stream().sorted(Comparator.comparing(state -> state.id().value())).toList();

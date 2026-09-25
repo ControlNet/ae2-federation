@@ -63,14 +63,14 @@ public final class CraftingBindingGameTests {
             var source = replacement.providerSources().getFirst();
             var pattern = source.provider().getAvailablePatterns().getFirst();
             var cpuIdentities = identities(replacement.nativeCpus());
-            var fabricReferences = fabricReferences(replacement);
+            var federationDomainReferences = federationDomainReferences(replacement);
             var topologyBefore = fixture.topologyRevision();
             var withdrawalsBefore = fixture.bindings().withdrawalCount();
             var bindingIdentity = identity(replacement);
-            helper.assertValueEqual(fixture.commonFabricCount(), 1L,
-                    "Live binding must begin with exactly one common Fabric");
+            helper.assertValueEqual(fixture.commonFederationDomainCount(), 1L,
+                    "Live binding must begin with exactly one common Federation Domain");
             NativeCraftingAuthorityReceipt.captureCurrent(
-                    new NativeCraftingAuthorityReceipt.AuthorityLabel("craftingnativebinding", "fabric-live"),
+                    new NativeCraftingAuthorityReceipt.AuthorityLabel("craftingnativebinding", "domain-live"),
                     fixture.level(), replacement);
             fixture.removeBridges();
             fixture.bindings().reconcileAll();
@@ -78,13 +78,13 @@ public final class CraftingBindingGameTests {
                             && replacement.sourceGrid().isEmpty() && replacement.nativeProviders().isEmpty()
                             && replacement.providerSources().isEmpty() && replacement.nativeCpus().isEmpty()
                             && fixture.bindings().capability(fixture.key()).isEmpty(),
-                    "Last-common-Fabric removal must deny every retained binding accessor before later access");
-            helper.assertValueEqual(fixture.commonFabricCount(), 0L,
-                    "Real Bridge removal must eliminate the final common Fabric");
+                    "Last-common-Federation Domain removal must deny every retained binding accessor before later access");
+            helper.assertValueEqual(fixture.commonFederationDomainCount(), 0L,
+                    "Real Bridge removal must eliminate the final common Federation Domain");
             helper.assertValueEqual(fixture.bindings().withdrawalCount(), withdrawalsBefore + 1,
-                    "Fabric loss must produce one binding withdrawal");
+                    "Federation Domain loss must produce one binding withdrawal");
             NativeCraftingAuthorityReceipt.captureWithdrawal(
-                    new NativeCraftingAuthorityReceipt.AuthorityLabel("craftingnativebinding", "fabric-withdrawn"),
+                    new NativeCraftingAuthorityReceipt.AuthorityLabel("craftingnativebinding", "domain-withdrawn"),
                     new NativeCraftingAuthorityReceipt.WithdrawalObservation(fixture.level(), fixture.key(),
                             fixture.providerGrid(), replacement, fixture.bindings()));
             fixture.delete(reenabledRevision);
@@ -106,10 +106,10 @@ public final class CraftingBindingGameTests {
                     Map.entry("consumerGridIdentity", identity(fixture.consumerGrid())),
                     Map.entry("bindingIdentity", bindingIdentity),
                     Map.entry("providerGeneration", Long.toString(replacement.revision().providerGeneration().value())),
-                    Map.entry("fabricReferences", fabricReferences),
-                    Map.entry("fabricTopologyBefore", Long.toString(topologyBefore)),
-                    Map.entry("fabricTopologyAfter", Long.toString(fixture.topologyRevision())),
-                    Map.entry("fabricCommonBefore", "1"), Map.entry("fabricCommonAfter", "0"),
+                    Map.entry("federationDomainReferences", federationDomainReferences),
+                    Map.entry("federationDomainTopologyBefore", Long.toString(topologyBefore)),
+                    Map.entry("federationDomainTopologyAfter", Long.toString(fixture.topologyRevision())),
+                    Map.entry("federationDomainCommonBefore", "1"), Map.entry("federationDomainCommonAfter", "0"),
                     Map.entry("withdrawalsBefore", Integer.toString(withdrawalsBefore)),
                     Map.entry("withdrawalsAfter", Integer.toString(fixture.bindings().withdrawalCount())),
                     Map.entry("heldBindingWithdrawn", "true"), Map.entry("heldAccessDenied", "true"),
@@ -131,7 +131,7 @@ public final class CraftingBindingGameTests {
                 fixture.enable();
                 fixture.addDuplicateBridge();
                 initialized[0] = true;
-                helper.assertTrue(false, "Waiting for redundant Bridge Fabric");
+                helper.assertTrue(false, "Waiting for redundant Bridge Federation Domain");
             }
             helper.assertTrue(fixture.duplicateBridgeReady(), "Waiting for duplicate physical route");
             fixture.bindings().reconcileAll();
@@ -164,7 +164,7 @@ public final class CraftingBindingGameTests {
                     Map.entry("serviceIdentity", identity(fixture.sourceService())),
                     Map.entry("bindingIdentity", identity(binding)),
                     Map.entry("providerGeneration", Long.toString(binding.revision().providerGeneration().value())),
-                    Map.entry("fabricReferences", fabricReferences(binding)),
+                    Map.entry("federationDomainReferences", federationDomainReferences(binding)),
                     Map.entry("topologyRevision", Long.toString(binding.revision().topologyRevision())),
                     Map.entry("routeKeyed", "false")));
             fixture.close();
@@ -182,9 +182,9 @@ public final class CraftingBindingGameTests {
         return String.join(",", result);
     }
 
-    private static String fabricReferences(space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding binding) {
-        return binding.revision().fabrics().stream()
-                .map(reference -> reference.fabricId().value() + "@" + reference.generation())
+    private static String federationDomainReferences(space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding binding) {
+        return binding.revision().federationDomains().stream()
+                .map(reference -> reference.federationDomainId().value() + "@" + reference.generation())
                 .sorted().collect(java.util.stream.Collectors.joining(","));
     }
 }

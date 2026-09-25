@@ -39,7 +39,7 @@ public final class ProcessingOwnershipGameTests {
             if (!state.configured) {
                 helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
                         PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-                fixture.connectFabric();
+                fixture.connectFederationDomain();
                 fixture.leaveOneSharedTargetSlot();
                 state.targetBeforePush = fixture.targetAmount(AEItemKey.of(Items.COBBLESTONE));
                 ProcessingNativeObservation.recordTarget("push-head", fixture.providerLogic(),
@@ -65,7 +65,7 @@ public final class ProcessingOwnershipGameTests {
                     ((PatternProviderLogicReturnAccess) lane).ae2federation_test$getSendList());
             var returnsBefore = ProcessingNativeObservation.returnInventory(lane);
             var targetBefore = Long.toString(fixture.targetAmount(AEItemKey.of(Items.COBBLESTONE)));
-            fixture.disconnectFabric();
+            fixture.disconnectFederationDomain();
             ProcessingNativeObservation.recordLifecycle("endpoint-disconnect", lane);
             ProcessingNativeObservation.recordLogicState("dismantle-01-pre-first", lane, List.of());
             ProcessingNativeObservation.recordTarget("dismantle-01-pre-first", lane, targetBefore);
@@ -186,7 +186,7 @@ public final class ProcessingOwnershipGameTests {
         var fixture = state.federationFixture;
         helper.assertTrue(fixture.initialize(), "Waiting for Federation blocked-return context");
         if (!state.federationConfigured) {
-            fixture.connectFabric();
+            fixture.connectFederationDomain();
             state.federationConfigured = true;
         }
         var handler = fixture.endpointBinding().runtime().itemReturn(Direction.NORTH);

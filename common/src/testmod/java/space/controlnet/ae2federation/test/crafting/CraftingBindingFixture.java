@@ -77,8 +77,8 @@ public final class CraftingBindingFixture implements AutoCloseable {
             return false;
         }
         return nativeSource.initialReady(bridge.outerGrid())
-                && space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isPresent()
-                && space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent();
+                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isPresent()
+                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent();
     }
 
     public String readinessState() {
@@ -193,7 +193,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
     }
 
     public boolean replacementReady() {
-        if (space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(bridge.outerGrid())
+        if (space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid())
                 .filter(key().providerNetworkId()::equals).isEmpty()) {
             return false;
         }
@@ -213,14 +213,14 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return nativeSource.providerNode();
     }
 
-    public long commonFabricCount() {
-        var registry = space.controlnet.ae2federation.fabric.FabricRegistryAccess.get(helper.getLevel());
-        var providerFabrics = registry.fabricsFor(key().providerNetworkId());
-        return registry.fabricsFor(key().consumerNetworkId()).stream().filter(providerFabrics::contains).count();
+    public long commonFederationDomainCount() {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+        var providerFederationDomains = registry.federationdomainsFor(key().providerNetworkId());
+        return registry.federationdomainsFor(key().consumerNetworkId()).stream().filter(providerFederationDomains::contains).count();
     }
 
     public long topologyRevision() {
-        return space.controlnet.ae2federation.fabric.FabricRegistryAccess.get(helper.getLevel())
+        return space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel())
                 .snapshot().topologyRevision();
     }
 

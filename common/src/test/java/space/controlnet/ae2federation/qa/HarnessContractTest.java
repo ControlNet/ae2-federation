@@ -23,7 +23,7 @@ final class HarnessContractTest {
             assertTrue(java.util.regex.Pattern.compile("\"assertions\":[1-9][0-9]*").matcher(entries.group()).find());
             assertTrue(actual.add(entries.group(1)), "Task 8 cases must be unique");
         }
-        assertEquals(java.util.Set.of("storage-proof.native-projection", "storage-proof.four-fabric-diamond",
+        assertEquals(java.util.Set.of("storage-proof.native-projection", "storage-proof.four-domain-diamond",
                 "storage-proof.reject-loop", "storage-proof.opaque-alias"), actual);
     }
 
@@ -152,8 +152,8 @@ final class HarnessContractTest {
         var content = Files.readString(REPOSITORY_ROOT.resolve("tests/scenarios/manifest.json"));
 
         assertTrue(content.contains("ports.bridge-cable-device"));
-        assertTrue(content.contains("ports.hub-six-grids"));
-        assertTrue(content.contains("ports.hub-repeated-grid"));
+        assertTrue(content.contains("ports.router-six-grids"));
+        assertTrue(content.contains("ports.router-repeated-grid"));
         assertTrue(content.contains("ports.reject-floating-node"));
         assertTrue(content.contains("ports.reject-cross-grid-join"));
         assertTrue(content.contains("\"testId\":\"portsbridgecabledevice\""));

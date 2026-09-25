@@ -55,9 +55,9 @@ public final class StorageSourceIndexGameTests {
                 fixtures.addOuterStorageProvider(provider);
                 fixtures.placeFirstBridge();
                 state[0] = 1;
-                helper.assertTrue(false, "Waiting for scale Fabric");
+                helper.assertTrue(false, "Waiting for scale Federation Domain");
             }
-            helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for scale Fabric");
+            helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for scale Federation Domain");
             var key = PolicyLifecycleGameTests.storageKey(fixtures);
             var policies = PolicyService.get(helper.getLevel());
             if (policies.revision(key).equals(PolicyRevision.NONE)) {
@@ -210,11 +210,11 @@ public final class StorageSourceIndexGameTests {
             fixtures.outerGrid().getStorageService().addGlobalStorageProvider(globalProvider);
             fixtures.placeFirstBridge();
             phase = 1;
-            waitFor("Waiting for lifecycle Fabric");
+            waitFor("Waiting for lifecycle Federation Domain");
         }
 
         private void activate() {
-            helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for lifecycle Fabric");
+            helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for lifecycle Federation Domain");
             var policies = PolicyService.get(helper.getLevel());
             if (policies.revision(key()).equals(PolicyRevision.NONE)) {
                 policies.edit(new PolicyEdit(key(), PolicyRevision.NONE, PolicyRule.storageDefaults()));

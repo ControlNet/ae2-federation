@@ -8,7 +8,7 @@ Native owner: AE2 `Grid`, `GridNode`, managed-node host serialization, and `IGri
 
 Adaptation: one registered Federation Grid service writes namespaced lineage metadata through `saveNodeData`, restores it
 through `addNode`, and keeps a sparse world settlement registry. It does not add an anchor block, persist Grid handles,
-or derive identity from location, Bridge, Fabric, or Grid serial.
+or derive identity from location, Bridge, Federation Domain, or Grid serial.
 
 Runtime evidence requirement: the schema-v3 Task 4 attempt must contain successful native reports for all four manifest
 cases, separate `restart-prepare` and `restart-verify` child exits, native save/add traces with changed process-local object
@@ -33,14 +33,14 @@ exactly one face connection, the connected opposite node is still the node retur
 both endpoints have the same current native `IGrid`. A ready node with an allocated Grid but no face edge is invalid.
 Cable and block-device neighbors use the same native discovery path; no device-class whitelist is present.
 
-Hub proof: `HubBoundaryTopology` requires six distinct boundary node objects, one per direction. It never creates a
+Router proof: `RouterBoundaryTopology` requires six distinct boundary node objects, one per direction. It never creates a
 native connection between those nodes. Six distinct native neighbors therefore remain six `IGrid` objects. Multiple
 faces that reach one externally connected native Grid remain separate face records and are grouped only by `IGrid`
 object identity for membership deduplication.
 
 Fail-closed behavior: missing, unsupported, floating, replaced, or multi-edge ambiguous neighbors are rejected. The
 replacement fixture first proves a real native attachment, removes its exposed AE2 host, then proves the stale boundary
-resolves empty. A Hub
+resolves empty. A Router
 native join request is rejected without calling `GridHelper.createConnection`; AE2's connection implementation would
 merge the endpoint Grids and violate the product boundary.
 

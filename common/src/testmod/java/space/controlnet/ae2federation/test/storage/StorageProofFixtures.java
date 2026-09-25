@@ -79,6 +79,6 @@ public final class StorageProofFixtures {
     }
 
     public static List<String> diamondRoutes() {
-        return new ArrayList<>(List.of("fabric-1:A-B", "fabric-2:A-C", "fabric-3:B-D", "fabric-4:C-D"));
+        return new ArrayList<>(List.of("domain-1:A-B", "domain-2:A-C", "domain-3:B-D", "domain-4:C-D"));
     }
 }

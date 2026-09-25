@@ -22,12 +22,11 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
-import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Target;
@@ -35,7 +34,7 @@ import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Ta
 /**
  * Processing through the production ME Federation Pattern Provider block: native planner and CPU, real Processing
  * Pattern, remote Endpoints, a machine and the Endpoint return path. The test machine only stands in for the external
- * machine; the Provider, Endpoints, Hub and cables are the registered production blocks.
+ * machine; the Provider, Endpoints, Router and cables are the registered production blocks.
  */
 @PrefixGameTestTemplate(false)
 public final class ProductionProviderGameTests {
@@ -217,7 +216,7 @@ public final class ProductionProviderGameTests {
                     helper.assertTrue(state != ProviderTargetState.ACTIVE, "Disconnected Lane must not be active");
                     facts.put("disconnectedState", state.name());
                     facts.put("localChestReceived", "0");
-                    helper.setBlock(ProductionProviderScene.CABLE_NEAR, HubRegistration.FEDERATION_CABLE.get());
+                    helper.setBlock(ProductionProviderScene.CABLE_NEAR, RouterRegistration.FEDERATION_CABLE.get());
                     phase[0] = 4;
                     helper.fail("Restored the Federation Cable");
                 }
@@ -361,9 +360,12 @@ public final class ProductionProviderGameTests {
         helper.assertTrue("ready".equals(readiness), "Waiting for production topology: " + readiness);
     }
 
+    /** Resolves Lane 0 through the same authorization lookup native push uses, then reads its outcome. */
     private static ProviderTargetState laneState(ProductionProviderScene scene) {
-        return scene.provider().runtime().flatMap(runtime -> runtime.laneResolution(0))
-                .map(ProviderTargetResolution::state).orElse(ProviderTargetState.NATIVE_TARGET_UNAVAILABLE);
+        var provider = scene.provider();
+        space.controlnet.ae2federation.ae2.processing.FederationPatternProviderTargetCache.find(provider.lane(0));
+        return provider.runtime().map(runtime -> runtime.lastResolution().state())
+                .orElse(ProviderTargetState.NATIVE_TARGET_UNAVAILABLE);
     }
 
     private static void writeEvidence(String testId, int assertions, Map<String, String> facts) {

@@ -29,7 +29,7 @@ public final class EndpointAuthorizationGameTests {
         helper.assertTrue(fixture.initialize(), "Waiting for production Provider and Endpoint runtime");
         helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
                 "Federated mode requires Processing Policy");
-        fixture.connectFabric();
+        fixture.connectFederationDomain();
         helper.assertTrue(fixture.pushOnce(0), "The first native Lane must bind through production authorization");
         var oldContext = fixture.endpointBinding().runtime().itemReturnContext().orElseThrow();
         var oldMode = oldContext.owner().mode();

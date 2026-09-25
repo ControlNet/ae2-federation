@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyFilter;
@@ -26,7 +26,7 @@ public final class NativeTerminalAdapter {
         if (!level.getServer().isSameThread()) {
             throw new IllegalStateException("Native terminal discovery is server-thread owned");
         }
-        var consumerNetworkId = FabricRegistryAccess.confirmedNetworkId(consumerGrid);
+        var consumerNetworkId = FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid);
         if (consumerNetworkId.isEmpty()) {
             return Optional.empty();
         }

@@ -23,7 +23,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingRequester;
@@ -66,7 +66,7 @@ public final class ScaleSourceHosts {
             var storage = state.crafting.node();
             if (state.stage == 1) {
                 helper.assertTrue(storage != null && storage.hasGridBooted(), "Waiting for source storage node");
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(storage.getGrid());
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(storage.getGrid());
                 helper.assertTrue(sourceId.isPresent(), "Waiting for source identity");
                 helper.setBlock(POWER, AEBlocks.CREATIVE_ENERGY_CELL.block());
                 helper.<CreativeEnergyCellBlockEntity>getBlockEntity(POWER).getMainNode()
@@ -77,10 +77,10 @@ public final class ScaleSourceHosts {
             }
             if (state.stage == 2) {
                 helper.assertTrue(storage.isActive() && state.crafting.cpuNode().getGrid() == storage.getGrid()
-                        && FabricRegistryAccess.confirmedNetworkId(storage.getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(storage.getGrid()).isPresent(),
                         "Waiting for one powered source CPU Grid");
                 state.grid = storage.getGrid();
-                state.id = FabricRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
+                state.id = FederationDomainRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
                 state.retention = new ScaleDriveRetention(helper, state.crafting, state.id, driveCells, DRIVE);
                 state.requester = new NativeCraftingRequester(helper.getLevel(),
                         helper.absolutePos(ProcessingCraftingGrid.REQUESTER_POS), state.crafting.storage(), state.id,
@@ -191,7 +191,7 @@ public final class ScaleSourceHosts {
                     && node.getUsedChannels() > 0 && node.getInWorldConnections().containsKey(Direction.WEST)
                     && node.getInWorldConnections().get(Direction.WEST).getUsedChannels() > 0
                     && node.getInWorldConnections().get(Direction.WEST).getOtherSide(node).getGrid() == state.grid
-                    && FabricRegistryAccess.confirmedNetworkId(node.getGrid()).filter(state.id::equals).isPresent(),
+                    && FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).filter(state.id::equals).isPresent(),
                     "Provider requires independent BE, WEST edge, source ID and assigned active channel: " + position
                             + " node=" + node);
             details.add("(" + position.getX() + ";" + position.getY() + ";" + position.getZ() + "):"

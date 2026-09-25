@@ -10,7 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.bridge.BridgeFixtures;
 import space.controlnet.ae2federation.test.storage.InvalidSecondCallbackProvider;
@@ -49,8 +49,8 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     }
 
     public boolean networksSettled() {
-        return FabricRegistryAccess.confirmedNetworkId(mainGrid()).isPresent()
-                && FabricRegistryAccess.confirmedNetworkId(outerGrid()).isPresent();
+        return FederationDomainRegistryAccess.confirmedNetworkId(mainGrid()).isPresent()
+                && FederationDomainRegistryAccess.confirmedNetworkId(outerGrid()).isPresent();
     }
 
     public void installStorageCells() {
@@ -148,11 +148,11 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     }
 
     public NetworkId mainNetwork() {
-        return FabricRegistryAccess.confirmedNetworkId(mainGrid()).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(mainGrid()).orElseThrow();
     }
 
     public NetworkId outerNetwork() {
-        return FabricRegistryAccess.confirmedNetworkId(outerGrid()).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(outerGrid()).orElseThrow();
     }
 
     public int firstBridgeIdentity() {
@@ -175,9 +175,9 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         if (bridge == null || bridge.membershipCandidate().isEmpty()) {
             return false;
         }
-        var mainFabrics = FabricRegistryAccess.get(helper.getLevel()).fabricsFor(mainNetwork());
-        var outerFabrics = FabricRegistryAccess.get(helper.getLevel()).fabricsFor(outerNetwork());
-        return mainFabrics.stream().anyMatch(outerFabrics::contains);
+        var mainFederationDomains = FederationDomainRegistryAccess.get(helper.getLevel()).federationdomainsFor(mainNetwork());
+        var outerFederationDomains = FederationDomainRegistryAccess.get(helper.getLevel()).federationdomainsFor(outerNetwork());
+        return mainFederationDomains.stream().anyMatch(outerFederationDomains::contains);
     }
 
     @Override

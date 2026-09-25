@@ -3,11 +3,11 @@ package space.controlnet.ae2federation.observability.state;
 import java.util.Objects;
 import java.util.Optional;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 
 public final class ObservationClientState {
     private final ObservationSession session;
-    private @Nullable FabricStateSnapshot snapshot;
+    private @Nullable FederationDomainStateSnapshot snapshot;
     private boolean resnapshotRequired = true;
 
     public ObservationClientState(ObservationSession session) {
@@ -49,7 +49,7 @@ public final class ObservationClientState {
         return resnapshotRequired;
     }
 
-    public Optional<FabricStateSnapshot> snapshot() {
+    public Optional<FederationDomainStateSnapshot> snapshot() {
         return Optional.ofNullable(snapshot);
     }
 }

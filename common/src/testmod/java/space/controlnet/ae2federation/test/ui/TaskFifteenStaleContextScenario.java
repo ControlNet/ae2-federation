@@ -16,16 +16,16 @@ public final class TaskFifteenStaleContextScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.HUB)
-                .server("invalidate opened Fabric generation", TaskFifteenWorldFixture::invalidateHubContext)
-                .waitUntilServer("real Fabric generation invalidated", TaskFifteenWorldFixture::hubContextInvalidated)
+        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
+                .server("invalidate opened Federation Domain generation", TaskFifteenWorldFixture::invalidateRouterContext)
+                .waitUntilServer("real Federation Domain generation invalidated", TaskFifteenWorldFixture::routerContextInvalidated)
                 .click("#policy_toggle")
                 .waitUntilServer("stale generation rejected", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0)
-                .waitForText("#ack_status", "Rejected by server: Fabric topology changed; reopen this editor")
+                .waitForText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
                 .check("stale selector is inactive", context -> !context.el("#consumer_next").isActive())
                 .click("#consumer_next")
-                .checkText("#ack_status", "Rejected by server: Fabric topology changed; reopen this editor")
+                .checkText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
                 .check("stale submit remains inactive", context -> !context.el("#policy_toggle").isActive())
                 .checkServer("stale edit did not mutate policy", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0

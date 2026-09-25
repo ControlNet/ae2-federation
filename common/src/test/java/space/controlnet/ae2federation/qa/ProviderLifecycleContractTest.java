@@ -46,7 +46,9 @@ final class ProviderLifecycleContractTest {
         assertTrue(provider.contains("composition.refreshLanes"));
         assertTrue(composition.contains("refreshGlobalCraftingProvider"));
         assertTrue(composition.contains("new NativeProviderLaneTicker"));
-        assertTrue(lane.contains("currentPatterns.contains"));
+        // Lanes accept Patterns by equality through native pushPattern, as AE2's CPU shares one details instance
+        // across all mediums of a Pattern; an identity-only check would starve every Lane but one.
+        assertFalse(lane.contains("currentPatterns"));
         assertTrue(lane.contains("super.pushPattern"));
         assertFalse(provider.contains("new AppEngInternalInventory"));
         assertFalse(provider.contains("implements ICraftingProvider"));

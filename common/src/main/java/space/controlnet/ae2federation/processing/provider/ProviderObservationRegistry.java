@@ -9,7 +9,7 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FlowState;
@@ -113,12 +113,12 @@ public final class ProviderObservationRegistry {
         return result;
     }
 
-    private static List<space.controlnet.ae2federation.fabric.FabricReference> scopes(LaneEntry entry) {
-        var registry = FabricRegistryAccess.get(entry.level());
-        return FabricRegistryAccess.confirmedNetworkId(entry.provider().getGrid()).stream()
-                .flatMap(network -> registry.fabricsFor(network).stream())
-                .map(registry::fabric).flatMap(java.util.Optional::stream)
-                .map(space.controlnet.ae2federation.fabric.FabricSnapshot::reference).toList();
+    private static List<space.controlnet.ae2federation.domain.FederationDomainReference> scopes(LaneEntry entry) {
+        var registry = FederationDomainRegistryAccess.get(entry.level());
+        return FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid()).stream()
+                .flatMap(network -> registry.federationdomainsFor(network).stream())
+                .map(registry::federationDomain).flatMap(java.util.Optional::stream)
+                .map(space.controlnet.ae2federation.domain.FederationDomainSnapshot::reference).toList();
     }
 
     private static ResourceUnit unit(AEKey resource) {

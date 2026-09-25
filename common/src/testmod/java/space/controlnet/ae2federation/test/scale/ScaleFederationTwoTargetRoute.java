@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -76,7 +76,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         targets = List.of(first, second);
         ports = new NativePortFixtures(helper);
         sourceGrid = provider.managedNode().getGrid();
-        sourceId = FabricRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
+        sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetGrids = targets.stream().map(ScaleFederationIdentityTarget::grid).toList();
         targetIds = targets.stream().map(ScaleFederationIdentityTarget::anchorId).toList();
         policyKeys = targetIds.stream().map(id -> new PolicyKey(sourceId, id, PolicyCapability.PROCESSING)).toList();
@@ -86,8 +86,8 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         assertSeparated();
         if (stage == 0) {
             for (int lane = 0; lane < 2; lane++) {
-                helper.assertTrue(!commonFabric(lane) && PolicyService.get(helper.getLevel())
-                        .configured(policyKeys.get(lane)).isEmpty(), "Each route starts without Fabric or Policy");
+                helper.assertTrue(!commonFederationDomain(lane) && PolicyService.get(helper.getLevel())
+                        .configured(policyKeys.get(lane)).isEmpty(), "Each route starts without Federation Domain or Policy");
             }
             ports.placeCable(BRIDGES[0], AEColor.RED);
             stage++;
@@ -169,7 +169,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
                             && helper.getLevel().getCapability(EndpointTargetCapability.BLOCK,
                                     helper.absolutePos(targets.get(lane).endpointPosition()), Direction.WEST)
                                     == endpoint.binding(),
-                    "Each distinct physical Fabric, directional Policy and owned Endpoint must remain active: " + lane);
+                    "Each distinct physical Federation Domain, directional Policy and owned Endpoint must remain active: " + lane);
         }
     }
 
@@ -199,8 +199,8 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
     public String status() {
         return "stage=" + stage + " bridgeA=" + (bridges[0] == null ? "absent" : bridges[0].operationalReason())
                 + " bridgeB=" + (bridges[1] == null ? "absent" : bridges[1].operationalReason())
-                + " routeA=" + commonFabric(0) + "/" + policyActive(0)
-                + " routeB=" + commonFabric(1) + "/" + policyActive(1);
+                + " routeA=" + commonFederationDomain(0) + "/" + policyActive(0)
+                + " routeB=" + commonFederationDomain(1) + "/" + policyActive(1);
     }
 
     private void claim(int lane) {
@@ -216,7 +216,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
 
     private MultipartBridgePart placeBridge(int lane) {
         var bridge = PartHelper.setPart(helper.getLevel(), helper.absolutePos(BRIDGES[lane]), Direction.EAST,
-                null, BridgeRegistration.MULTIPART_BRIDGE.get());
+                null, BridgeRegistration.BRIDGE.get());
         helper.assertTrue(bridge != null, "Both physical Bridges must be placed");
         return bridge;
     }
@@ -230,7 +230,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         if (bridges[lane] == null) return false;
         var candidate = bridges[lane].membershipCandidate();
         return candidate.isPresent() && candidate.orElseThrow().mainGrid() == sourceGrid
-                && candidate.orElseThrow().outerGrid() == targetGrids.get(lane) && commonFabric(lane)
+                && candidate.orElseThrow().outerGrid() == targetGrids.get(lane) && commonFederationDomain(lane)
                 && bridges[lane].getMainNode().getNode().getConnections().stream().noneMatch(connection ->
                         connection.getOtherSide(bridges[lane].getMainNode().getNode())
                                 == bridges[lane].getExternalFacingNode());
@@ -247,12 +247,12 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
     private boolean cableReady(BlockPos position, IGrid grid, NetworkId id) {
         var node = GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(position), Direction.UP);
         return node != null && node.hasGridBooted() && node.isActive() && node.getGrid() == grid
-                && FabricRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent();
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent();
     }
 
-    private boolean commonFabric(int lane) {
-        var registry = FabricRegistryAccess.get(helper.getLevel());
-        return registry.fabricsFor(sourceId).stream().anyMatch(registry.fabricsFor(targetIds.get(lane))::contains);
+    private boolean commonFederationDomain(int lane) {
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        return registry.federationdomainsFor(sourceId).stream().anyMatch(registry.federationdomainsFor(targetIds.get(lane))::contains);
     }
 
     private boolean policyActive(int lane) {
@@ -267,10 +267,10 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
                         && targetGrids.get(0) != targetGrids.get(1)
                         && !sourceId.equals(targetIds.get(0)) && !sourceId.equals(targetIds.get(1))
                         && !targetIds.get(0).equals(targetIds.get(1))
-                        && FabricRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent()
-                        && FabricRegistryAccess.confirmedNetworkId(targetGrids.get(0))
+                        && FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent()
+                        && FederationDomainRegistryAccess.confirmedNetworkId(targetGrids.get(0))
                                 .filter(targetIds.get(0)::equals).isPresent()
-                        && FabricRegistryAccess.confirmedNetworkId(targetGrids.get(1))
+                        && FederationDomainRegistryAccess.confirmedNetworkId(targetGrids.get(1))
                                 .filter(targetIds.get(1)::equals).isPresent(),
                 "Three native Grids and confirmed NetworkIds must remain pairwise distinct");
     }

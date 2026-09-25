@@ -16,15 +16,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.HUB)
-                .checkBounds("#fabric_graph", bounds -> bounds.width() > 180 && bounds.height() > 150)
+        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
+                .checkBounds("#domain_graph", bounds -> bounds.width() > 180 && bounds.height() > 150)
                 .check("scale-3 policy labels stay inside buttons", context ->
                         TaskThirtyThreeScenarioSupport.buttonTextContained(context, "#consumer_next", "#provider_next",
                                 "#capability_next", "#policy_toggle"))
                 .click("#graph_zoom_in").click("#graph_zoom_out").click("#graph_fit")
                 .click("#physical_layer_toggle").click("#physical_layer_toggle")
                 .click("#capability_layer_toggle").click("#capability_layer_toggle")
-                .check("graph remains visible after controls", context -> context.el("#fabric_graph").isVisible())
+                .check("graph remains visible after controls", context -> context.el("#domain_graph").isVisible())
                 .serverGet("record current policy revision", "task33.policyBefore",
                         TaskFifteenWorldFixture::policyRevision)
                 .click("#policy_toggle")
@@ -40,12 +40,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.graph-controls");
                     context.attach("policyRevision", context.get("task33.policyRevision"));
                     context.attach("policyEnabled", context.get("task33.policyEnabled"));
-                    context.attach("worldCaptures", "hub-overview,bridge-north,provider-host,endpoint-faces");
+                    context.attach("worldCaptures", "router-overview,bridge-north,provider-host,endpoint-faces");
                 })
                 .screenshot("ui-graph-controls").closeScreen()
-                .server("position Hub overview camera", TaskThirtyThreeWorldFixture::positionHubOverviewCamera)
-                .serverTicks(2).frames(2).screenshot("world-hub-overview")
-                .server("position Multipart Bridge camera", TaskThirtyThreeWorldFixture::positionBridgeCamera)
+                .server("position Router overview camera", TaskThirtyThreeWorldFixture::positionRouterOverviewCamera)
+                .serverTicks(2).frames(2).screenshot("world-router-overview")
+                .server("position ME Federation Bridge camera", TaskThirtyThreeWorldFixture::positionBridgeCamera)
                 .serverTicks(2).frames(2).screenshot("world-multipart-bridge-north")
                 .server("position Provider host camera", TaskThirtyThreeWorldFixture::positionProviderCamera)
                 .serverTicks(2).frames(2).screenshot("world-provider-host")

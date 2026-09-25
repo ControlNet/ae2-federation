@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -41,7 +41,7 @@ public final class StorageDependencyCompiler {
                 if (!network.equals(source.origin().value()) && !state.authority().isEmpty()) {
                     var key = new EffectiveSourceRelationshipKey(network, source.origin(), PolicyCapability.STORAGE);
                     var revision = new CandidateRelationshipRevision(compilationRevision, topologyRevision,
-                            source.generation(), state.policyRevisions(), state.fabricReferences());
+                            source.generation(), state.policyRevisions(), state.federationDomainReferences());
                     relationships.put(key, new EffectiveSourceRelationship(key, state.authority(),
                             state.transitAuthority(), revision, state.minimumDepth()));
                 }
@@ -98,7 +98,7 @@ public final class StorageDependencyCompiler {
     }
 
     private record FrontierState(EffectiveStorageAuthority authority, EffectiveStorageAuthority transitAuthority,
-            Map<PolicyKey, PolicyRevision> policyRevisions, Set<FabricReference> fabricReferences, int minimumDepth) {
+            Map<PolicyKey, PolicyRevision> policyRevisions, Set<FederationDomainReference> federationDomainReferences, int minimumDepth) {
         static FrontierState origin() {
             return new FrontierState(EffectiveStorageAuthority.empty(), EffectiveStorageAuthority.unbounded(),
                     Map.of(), Set.of(), 0);
@@ -114,11 +114,11 @@ public final class StorageDependencyCompiler {
             var revisions = new HashMap<>(policyRevisions);
             revisions.putAll(provider.policyRevisions);
             revisions.put(dependency.key(), dependency.policyRevision());
-            var fabrics = new HashSet<>(fabricReferences);
-            fabrics.addAll(provider.fabricReferences);
-            fabrics.addAll(dependency.fabricReferences());
+            var federationDomains = new HashSet<>(federationDomainReferences);
+            federationDomains.addAll(provider.federationDomainReferences);
+            federationDomains.addAll(dependency.federationDomainReferences());
             var transit = reexport ? transitAuthority.union(candidate) : transitAuthority;
-            return new FrontierState(authority.union(candidate), transit, revisions, fabrics,
+            return new FrontierState(authority.union(candidate), transit, revisions, federationDomains,
                     Math.min(minimumDepth, provider.minimumDepth + 1));
         }
     }

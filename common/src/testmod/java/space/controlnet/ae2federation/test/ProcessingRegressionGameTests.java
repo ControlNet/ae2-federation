@@ -64,7 +64,7 @@ public final class ProcessingRegressionGameTests {
             if (!state.federationConfigured) {
                 helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
                         PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-                fixture.connectFabric();
+                fixture.connectFederationDomain();
                 fixture.installPattern(List.of(item(Items.COBBLESTONE, 1)),
                         List.of(item(Items.DIAMOND, 4), item(Items.GOLD_INGOT, 2)));
                 state.federationConfigured = true;
@@ -155,7 +155,7 @@ public final class ProcessingRegressionGameTests {
         if (!state.federationConfigured) {
             helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
                     PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-            fixture.connectFabric();
+            fixture.connectFederationDomain();
             helper.assertTrue(fixture.pushOnce(), "Federation must issue the authentic native return context");
             state.federationConfigured = true;
         }

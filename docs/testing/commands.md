@@ -85,7 +85,7 @@ Task 5 uses the exact five-case native attachment set:
 
 ```bash
 ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:federationVerify \
-  -Pcases=ports.bridge-cable-device,ports.hub-six-grids,ports.hub-repeated-grid,ports.reject-floating-node,ports.reject-cross-grid-join \
+  -Pcases=ports.bridge-cable-device,ports.router-six-grids,ports.router-repeated-grid,ports.reject-floating-node,ports.reject-cross-grid-join \
   -PevidenceDir=.omo/evidence/task-05
 ```
 
@@ -170,7 +170,7 @@ pgrep -af 'runUiTestClient|run-uitest|ae2federation.ui.runId|Xvfb.*1280x720x24'
 
 Expected result: the directory check exits 0 and the process search prints nothing.
 
-## Task 33 scoped Fabric workspace
+## Task 33 scoped Federation Domain workspace
 
 Run all six production LDLib2 scenarios in one actual client:
 
@@ -183,7 +183,7 @@ Run all six production LDLib2 scenarios in one actual client:
 
 Expected signal: the graph pan/zoom and layer controls remain interactive; a real mapped Provider accepts slot 0 to Lane
 0 with a server acknowledgment; a claimed production Endpoint reports Federation mode and Claim epoch; the real
-multipart Bridge entrance exposes the same Fabric; Simplified Chinese renders at GUI scale 4 with the large quantity;
+multipart Bridge entrance exposes the same Federation Domain; Simplified Chinese renders at GUI scale 4 with the large quantity;
 and a competing Claim is rejected as `OWNER_CONFLICT`. The persisted verifier also rejects rebound forged mapping and
 Claim-success reports.
 

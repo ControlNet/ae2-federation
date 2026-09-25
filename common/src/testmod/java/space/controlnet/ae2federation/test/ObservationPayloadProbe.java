@@ -3,8 +3,8 @@ package space.controlnet.ae2federation.test;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import space.controlnet.ae2federation.neoforge.network.FabricStateDeltaPayload;
-import space.controlnet.ae2federation.neoforge.network.FabricStateSnapshotPayload;
+import space.controlnet.ae2federation.neoforge.network.FederationDomainStateDeltaPayload;
+import space.controlnet.ae2federation.neoforge.network.FederationDomainStateSnapshotPayload;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
 
@@ -14,19 +14,19 @@ final class ObservationPayloadProbe {
 
     static ObservationSnapshotEnvelope roundTrip(ObservationSnapshotEnvelope envelope) {
         var buffer = buffer();
-        FabricStateSnapshotPayload.STREAM_CODEC.encode(buffer, new FabricStateSnapshotPayload(envelope));
-        return FabricStateSnapshotPayload.STREAM_CODEC.decode(buffer).envelope();
+        FederationDomainStateSnapshotPayload.STREAM_CODEC.encode(buffer, new FederationDomainStateSnapshotPayload(envelope));
+        return FederationDomainStateSnapshotPayload.STREAM_CODEC.decode(buffer).envelope();
     }
 
     static ObservationDeltaEnvelope roundTrip(ObservationDeltaEnvelope envelope) {
         var buffer = buffer();
-        FabricStateDeltaPayload.STREAM_CODEC.encode(buffer, new FabricStateDeltaPayload(envelope));
-        return FabricStateDeltaPayload.STREAM_CODEC.decode(buffer).envelope();
+        FederationDomainStateDeltaPayload.STREAM_CODEC.encode(buffer, new FederationDomainStateDeltaPayload(envelope));
+        return FederationDomainStateDeltaPayload.STREAM_CODEC.decode(buffer).envelope();
     }
 
     static byte[] encoded(ObservationSnapshotEnvelope envelope) {
         var buffer = buffer();
-        FabricStateSnapshotPayload.STREAM_CODEC.encode(buffer, new FabricStateSnapshotPayload(envelope));
+        FederationDomainStateSnapshotPayload.STREAM_CODEC.encode(buffer, new FederationDomainStateSnapshotPayload(envelope));
         var bytes = new byte[buffer.readableBytes()];
         buffer.getBytes(buffer.readerIndex(), bytes);
         return bytes;
@@ -34,10 +34,10 @@ final class ObservationPayloadProbe {
 
     static boolean rejectsTrailing(ObservationDeltaEnvelope envelope) {
         var buffer = buffer();
-        FabricStateDeltaPayload.STREAM_CODEC.encode(buffer, new FabricStateDeltaPayload(envelope));
+        FederationDomainStateDeltaPayload.STREAM_CODEC.encode(buffer, new FederationDomainStateDeltaPayload(envelope));
         buffer.writeByte(1);
         try {
-            FabricStateDeltaPayload.STREAM_CODEC.decode(buffer);
+            FederationDomainStateDeltaPayload.STREAM_CODEC.decode(buffer);
             return false;
         } catch (IllegalArgumentException expected) {
             return true;

@@ -7,18 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.fabric.FabricId;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.observability.state.FabricStateDelta;
-import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateDelta;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.observability.state.ProviderState;
 import space.controlnet.ae2federation.observability.id.ProviderId;
 import space.controlnet.ae2federation.observability.subscription.ObservationAuthority;
 import space.controlnet.ae2federation.observability.subscription.ObservationSubscriptionService;
 
 class ObservationSubscriptionServiceTest {
-    private static final FabricReference SCOPE = new FabricReference(new FabricId("physical:scope"), 7);
-    private static final FabricReference OTHER = new FabricReference(new FabricId("physical:other"), 7);
+    private static final FederationDomainReference SCOPE = new FederationDomainReference(new FederationDomainId("physical:scope"), 7);
+    private static final FederationDomainReference OTHER = new FederationDomainReference(new FederationDomainId("physical:other"), 7);
 
     @Test
     void authorizationIsExactAndSupersedingGenerationClosesOldSubscription() {
@@ -96,35 +96,35 @@ class ObservationSubscriptionServiceTest {
         assertTrue(authority.lastDelta.replacement().providers().isEmpty());
     }
 
-    private static FabricStateDelta delta(long baseRevision, long dataRevision) {
-        return new FabricStateDelta(new FabricStateSnapshot(SCOPE, 1, 0, dataRevision, java.util.List.of(),
+    private static FederationDomainStateDelta delta(long baseRevision, long dataRevision) {
+        return new FederationDomainStateDelta(new FederationDomainStateSnapshot(SCOPE, 1, 0, dataRevision, java.util.List.of(),
                 java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),
                 java.util.List.of()), baseRevision, false);
     }
 
-    private static FabricStateSnapshot snapshot(long dataRevision, java.util.List<ProviderState> providers) {
-        return new FabricStateSnapshot(SCOPE, 1, 0, dataRevision, java.util.List.of(), providers,
+    private static FederationDomainStateSnapshot snapshot(long dataRevision, java.util.List<ProviderState> providers) {
+        return new FederationDomainStateSnapshot(SCOPE, 1, 0, dataRevision, java.util.List.of(), providers,
                 java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of());
     }
 
     private static ProviderState provider(String value) {
-        return new ProviderState(SCOPE, ProviderId.of(SCOPE.fabricId(), value), "ready");
+        return new ProviderState(SCOPE, ProviderId.of(SCOPE.federationDomainId(), value), "ready");
     }
 
     private static final class MutableAuthority implements ObservationAuthority {
         private final UUID playerId;
         private final UUID sessionId;
-        private final FabricReference scope;
+        private final FederationDomainReference scope;
         private boolean current;
         private boolean snapshotDelivery;
         private boolean deltaDelivery;
         private int snapshotDeliveries;
         private int deltaDeliveries;
-        private FabricStateDelta lastDelta;
+        private FederationDomainStateDelta lastDelta;
         private int closeDeliveries;
         private space.controlnet.ae2federation.observability.state.ObservationSession lastClosedSession;
 
-        private MutableAuthority(UUID playerId, UUID sessionId, FabricReference scope, boolean current) {
+        private MutableAuthority(UUID playerId, UUID sessionId, FederationDomainReference scope, boolean current) {
             this.playerId = playerId;
             this.sessionId = sessionId;
             this.scope = scope;
@@ -142,7 +142,7 @@ class ObservationSubscriptionServiceTest {
         }
 
         @Override
-        public FabricReference scope() {
+        public FederationDomainReference scope() {
             return scope;
         }
 

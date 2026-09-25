@@ -87,14 +87,14 @@ def uiCurrentSourceIdentity = { File outputDir ->
 
 def uiTaskThreeScenarioNames = ['ui-harness.shared-resource', 'ui-harness.server-ack'] as Set
 def uiTaskThreeExpectedCases = ['ui-harness.shared-resource', 'ui-harness.server-ack', 'ui-harness.reject-stale'] as Set
-def uiTaskFifteenScenarioNames = ['ui.hub', 'ui.bridge', 'ui.shared-policy', 'ui.stale-context',
+def uiTaskFifteenScenarioNames = ['ui.router', 'ui.bridge', 'ui.shared-policy', 'ui.stale-context',
         'ui.close-unsubscribe'] as Set
 def uiTaskFifteenExpectedCases = uiTaskFifteenScenarioNames
 def uiTaskThirtyThreeScenarioNames = ['ui.graph-controls', 'ui.mapping', 'ui.endpoint',
         'ui.multipart-attachments', 'ui.chinese-scales', 'ui.reject-claim-conflict'] as Set
 def uiTaskThirtyThreeExpectedCases = uiTaskThirtyThreeScenarioNames
 def uiTaskThirtyFourExpectedCases = ['multiclient.shared-server', 'multiclient.conflicting-edit',
-        'multiclient.fabric-split', 'multiclient.disconnect-cleanup'] as Set
+        'multiclient.domain-split', 'multiclient.disconnect-cleanup'] as Set
 def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames + uiTaskThirtyThreeScenarioNames
 
 def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
@@ -105,9 +105,9 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     }
     if (outcomes.values().any { it.recordIdentity == null || it.recordIdentity.isBlank()
             || it.recordIdentity != it.bridgeRecordIdentity }) {
-        throw new GradleException('Task 15 Hub and Bridge entrances do not derive one real directional Policy identity')
+        throw new GradleException('Task 15 Router and Bridge entrances do not derive one real directional Policy identity')
     }
-    ['ui.hub', 'ui.bridge'].each { caseId ->
+    ['ui.router', 'ui.bridge'].each { caseId ->
         def outcome = outcomes[caseId]
         def revision = outcome.policyRevision as long
         def expectedStatus = "Server accepted revision ${revision} - acknowledgment policy-${revision}"
@@ -120,7 +120,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     if (shared.mutationStatus != 'SHARED' || shared.policyEnabled != 'true'
             || (shared.policyRevision as long) <= 0L
             || shared.visibleRule != "STORAGE: enabled (revision ${shared.policyRevision})") {
-        throw new GradleException('Task 15 Hub edit was not observed as the same Bridge policy record')
+        throw new GradleException('Task 15 Router edit was not observed as the same Bridge policy record')
     }
     if (!attachments.any { it.bridgeDiagnosticOnly == 'true' }) {
         throw new GradleException('Task 15 disabled Bridge did not remain diagnostic-only')
@@ -128,8 +128,8 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     def stale = outcomes['ui.stale-context']
     if (stale.mutationStatus != 'STALE_CONTEXT' || stale.staleContext != 'true'
             || (stale.policyRevision as long) != 0L || stale.policyEnabled != 'false'
-            || stale.visibleStatus != 'Rejected by server: Fabric topology changed; reopen this editor') {
-        throw new GradleException('Task 15 stale Fabric context was not visibly rejected without mutation')
+            || stale.visibleStatus != 'Rejected by server: Federation Domain topology changed; reopen this editor') {
+        throw new GradleException('Task 15 stale Federation Domain context was not visibly rejected without mutation')
     }
     def closed = outcomes['ui.close-unsubscribe']
     if (closed.menuClosedBeforeMutation != 'true' || closed.sharingContinues != 'true'
@@ -143,7 +143,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
 def verifyTaskThirtyThreeReport = { List attachments, List controls, List captures, String runId ->
     def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
     if (outcomes.keySet() as Set != uiTaskThirtyThreeScenarioNames || captures.size() < 10
-            || controls.find { it.selector == '#fabric_graph' } == null
+            || controls.find { it.selector == '#domain_graph' } == null
             || controls.find { it.selector == '#mapping_toggle' } == null
             || controls.find { it.selector == '#endpoint_detail' } == null) {
         throw new GradleException('Task 33 graph, mapping, Endpoint, screenshot, or outcome accounting is incomplete')
@@ -164,7 +164,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def multipart = outcomes['ui.multipart-attachments']
     if (multipart.multipartAttachment != 'north:bridge;cable-extension:5'
-            || multipart.visibleAttachment != 'Multipart Bridge - side north / type bridge / cable extension 5.0') {
+            || multipart.visibleAttachment != 'ME Federation Bridge - side north / type bridge / cable extension 5.0') {
         throw new GradleException('Task 33 multipart Bridge attachment evidence is invalid')
     }
     def chinese = outcomes['ui.chinese-scales']
@@ -181,8 +181,8 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     def controlsOutcome = outcomes['ui.graph-controls']
     if ((controlsOutcome.policyRevision as long) <= 0L || controlsOutcome.policyEnabled != 'true'
             || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
-            || controlsOutcome.worldCaptures != 'hub-overview,bridge-north,provider-host,endpoint-faces'
-            || !captures.any { it.path.contains('world-hub-overview') }
+            || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
+            || !captures.any { it.path.contains('world-router-overview') }
             || !captures.any { it.path.contains('world-multipart-bridge-north') }
             || !captures.any { it.path.contains('world-provider-host') }
             || !captures.any { it.path.contains('world-endpoint-faces') }) {
@@ -340,9 +340,9 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
         if (server.getProperty('status') != 'passed' || server.getProperty('dedicatedServer') != 'true'
                 || server.getProperty('connectedClients') != '2' || server.getProperty('authoritativeRevision') != '1'
                 || server.getProperty('staleRevisionRejected') != 'true'
-                || server.getProperty('fabricSplitInvalidated') != 'true'
+                || server.getProperty('federationDomainSplitInvalidated') != 'true'
                 || server.getProperty('scopeRefreshed') != 'true'
-                || server.getProperty('refreshedFabricMembers') != '2'
+                || server.getProperty('refreshedFederationDomainMembers') != '2'
                 || server.getProperty('refreshedReferenceCurrent') != 'true'
                 || server.getProperty('refreshedExpectedIdentities') != 'true'
                 || server.getProperty('activeSubscriptions') != '0'
@@ -353,10 +353,10 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 || clientA.getProperty('staleContext') != 'true'
                 || clientB.getProperty('staleRevisionRenderedText') != 'Rejected by server: policy revision is now 1'
                 || (clientB.getProperty('staleRevisionStableFrames') as int) < 3
-                || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Fabric topology changed; reopen this editor'
+                || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Federation Domain topology changed; reopen this editor'
                 || (clientA.getProperty('staleContextStableFrames') as int) < 3
                 || !report.screenshots.any { it.path == 'clients/client-b-stale-revision.png' }
-                || !report.screenshots.any { it.path == 'clients/client-a-fabric-split.png' }
+                || !report.screenshots.any { it.path == 'clients/client-a-domain-split.png' }
                 || clientA.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
                 || clientB.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
                 || clientA.getProperty('refreshedRenderedMembers') != '2 members'
@@ -534,10 +534,10 @@ def uiTaskFifteenUpstreamMutations = [
         'forged-task15-ack': { report, upstream ->
             def forgedId = 'locally-forged-task15-ack'
             def ldlibReport = new JsonSlurper().parse(upstream)
-            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.hub' }.steps
-                    .find { it.attachments?.caseId == 'ui.hub' }.attachments
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.router' }.steps
+                    .find { it.attachments?.caseId == 'ui.router' }.attachments
             upstreamOutcome.visibleStatus = upstreamOutcome.visibleStatus.replaceFirst(/policy-[0-9]+$/, forgedId)
-            report.controlAttachments.find { it.caseId == 'ui.hub' }.visibleStatus = upstreamOutcome.visibleStatus
+            report.controlAttachments.find { it.caseId == 'ui.router' }.visibleStatus = upstreamOutcome.visibleStatus
             upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
         },
         'stale-context-success': { report, upstream ->
@@ -573,7 +573,7 @@ def uiTaskThirtyThreeUpstreamMutations = [
             def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.multipart-attachments' }.steps
                     .find { it.attachments?.caseId == 'ui.multipart-attachments' }.attachments
             upstreamOutcome.multipartAttachment = 'north:bridge;cable-extension:8'
-            upstreamOutcome.visibleAttachment = 'Multipart Bridge - side north / type bridge / cable extension 8.0'
+            upstreamOutcome.visibleAttachment = 'ME Federation Bridge - side north / type bridge / cable extension 8.0'
             def outerOutcome = report.controlAttachments.find { it.caseId == 'ui.multipart-attachments' }
             outerOutcome.multipartAttachment = upstreamOutcome.multipartAttachment
             outerOutcome.visibleAttachment = upstreamOutcome.visibleAttachment
@@ -611,20 +611,20 @@ def uiTaskThirtyFourUpstreamMutations = [
             def properties = new Properties()
             file.withInputStream { properties.load(it) }
             properties['refreshedRenderedStatus'] = 'Pending current topology'
-            properties['refreshedRenderedMembers'] = 'No confirmed Fabric membership'
+            properties['refreshedRenderedMembers'] = 'No confirmed Federation Domain membership'
             file.withOutputStream { properties.store(it, 'Task 34 rebound premature refreshed render probe') }
             def attachment = report.controlAttachments.find { it.role == 'B' }
             attachment.refreshedRenderedStatus = 'Pending current topology'
-            attachment.refreshedRenderedMembers = 'No confirmed Fabric membership'
+            attachment.refreshedRenderedMembers = 'No confirmed Federation Domain membership'
         },
-        'fabricated-refreshed-fabric': { report, attempt ->
+        'fabricated-refreshed-domain': { report, attempt ->
             def file = new File(attempt, 'server.properties')
             def properties = new Properties()
             file.withInputStream { properties.load(it) }
-            properties['refreshedFabricMembers'] = '1'
+            properties['refreshedFederationDomainMembers'] = '1'
             properties['refreshedReferenceCurrent'] = 'false'
             properties['refreshedExpectedIdentities'] = 'false'
-            file.withOutputStream { properties.store(it, 'Task 34 rebound incomplete refreshed Fabric probe') }
+            file.withOutputStream { properties.store(it, 'Task 34 rebound incomplete refreshed Federation Domain probe') }
         },
         'fabricated-cleanup': { report, attempt ->
             def file = new File(attempt, 'server.properties')
@@ -677,7 +677,7 @@ tasks.register('federationUiTest') {
     doLast {
         def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
         def requestedSet = requested as Set
-        if (requested == ['final.native-workflow', 'final.hub-six-faces', 'final.bridge-invalid',
+        if (requested == ['final.native-workflow', 'final.router-six-faces', 'final.bridge-invalid',
                 'final.policy-reconnect', 'final.chinese-scales']) {
             throw new GradleException('F3 BLOCKED: the exact actual-client final workflow and benchmark spot-check are not implemented')
         }

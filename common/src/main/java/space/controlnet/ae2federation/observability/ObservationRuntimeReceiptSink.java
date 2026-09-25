@@ -3,7 +3,7 @@ package space.controlnet.ae2federation.observability;
 import java.util.Objects;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSession;
@@ -40,7 +40,7 @@ public final class ObservationRuntimeReceiptSink {
         }
     }
 
-    public static void flow(FabricReference scope, FlowState flow) {
+    public static void flow(FederationDomainReference scope, FlowState flow) {
         var current = listener;
         if (current != null) {
             current.flow(scope, flow);
@@ -63,7 +63,7 @@ public final class ObservationRuntimeReceiptSink {
         default void delta(ServerPlayer player, ObservationDeltaEnvelope delta) {
         }
 
-        default void flow(FabricReference scope, FlowState flow) {
+        default void flow(FederationDomainReference scope, FlowState flow) {
         }
     }
 }

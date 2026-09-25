@@ -3,7 +3,7 @@ package space.controlnet.ae2federation.energy;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.energy.IAEPowerStorage;
 import java.util.ArrayList;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 
 final class NativeEnergyBackendRegistry {
@@ -11,7 +11,7 @@ final class NativeEnergyBackendRegistry {
             new EnergyProviderGenerationLedger<>();
 
     NativeEnergyBackend discover(IGrid grid) {
-        var origin = FabricRegistryAccess.confirmedNetworkId(grid)
+        var origin = FederationDomainRegistryAccess.confirmedNetworkId(grid)
                 .orElseThrow(() -> new IllegalStateException("Native energy provider identity is unsettled"));
         var identity = grid.getService(NetworkIdentityService.class);
         var sources = new ArrayList<NativeEnergySource>();

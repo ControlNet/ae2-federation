@@ -27,7 +27,7 @@
     "TerminalCraftingResultEvidenceMixin",
     "TerminalPhysicalResultEvidenceMixin",
     "TerminalPolicyThreadGuardMixin",
-    "TerminalFabricThreadGuardMixin",
+    "TerminalFederationDomainThreadGuardMixin",
     "TerminalBackendThreadGuardMixin",
     "TerminalGameTestHelperThreadGuardMixin",
     "TerminalWorldThreadGuardMixin",

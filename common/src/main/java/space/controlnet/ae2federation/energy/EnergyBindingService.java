@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -26,7 +26,7 @@ public final class EnergyBindingService implements AutoCloseable {
     private static final Map<ServerLevel, EnergyBindingService> SERVICES = new WeakHashMap<>();
 
     private final ServerLevel level;
-    private final EnergyFabricObserver fabrics;
+    private final EnergyFederationDomainObserver federationDomains;
     private final NativeEnergyBackendRegistry backends = new NativeEnergyBackendRegistry();
     private final Map<PolicyKey, EnergyCapabilityBinding> bindings = new HashMap<>();
     private int publications;
@@ -35,7 +35,7 @@ public final class EnergyBindingService implements AutoCloseable {
 
     private EnergyBindingService(ServerLevel level) {
         this.level = level;
-        fabrics = new EnergyFabricObserver(level);
+        federationDomains = new EnergyFederationDomainObserver(level);
     }
 
     public static synchronized EnergyBindingService get(ServerLevel level) {
@@ -64,18 +64,18 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     public void observeConnectedGrids(IGrid first, IGrid second) {
-        fabrics.register(first);
-        fabrics.register(second);
+        federationDomains.register(first);
+        federationDomains.register(second);
         reconcileAll();
     }
 
-    public void observeFabricMembers(Iterable<IGrid> grids) {
-        fabrics.register(grids);
+    public void observeFederationDomainMembers(Iterable<IGrid> grids) {
+        federationDomains.register(grids);
         reconcileAll();
     }
 
     public void reconcileAll() {
-        var desired = fabrics.relationships();
+        var desired = federationDomains.relationships();
         var policies = PolicyService.get(level);
         List.copyOf(bindings.keySet()).stream().filter(key -> !eligible(policies, desired.get(key)))
                 .forEach(this::remove);
@@ -120,7 +120,7 @@ public final class EnergyBindingService implements AutoCloseable {
                 var accepted = binding.extract(amount - extracted, mode);
                 extracted += accepted;
                 if (outermost && mode == Actionable.MODULATE && accepted > 0) {
-                    LevelObservabilityService.get(level).recordAccepted(binding.revision().fabrics(),
+                    LevelObservabilityService.get(level).recordAccepted(binding.revision().federationDomains(),
                             space.controlnet.ae2federation.observability.meter.OperationEventId.create(), "ae2:energy",
                             nanoAe(accepted), ResourceUnit.NANO_AE,
                             space.controlnet.ae2federation.observability.state.FlowState.Attribution.EXACT_OPERATION);
@@ -147,7 +147,7 @@ public final class EnergyBindingService implements AutoCloseable {
         withdrawals += bindings.size();
         bindings.clear();
         backends.clear();
-        fabrics.clear();
+        federationDomains.clear();
     }
 
     private boolean eligible(PolicyService policies, @Nullable EnergyRelationship relationship) {
@@ -173,14 +173,14 @@ public final class EnergyBindingService implements AutoCloseable {
             remove(relationship.key());
             return;
         }
-        var references = fabrics.references(relationship);
+        var references = federationDomains.references(relationship);
         var source = selectSource(relationship.consumerGrid());
         if (references.isEmpty() || source == null) {
             remove(relationship.key());
             return;
         }
         var configured = policies.configured(relationship.key()).orElseThrow();
-        var revision = new EnergyBindingRevision(configured.revision(), fabrics.topologyRevision(), references,
+        var revision = new EnergyBindingRevision(configured.revision(), federationDomains.topologyRevision(), references,
                 backend.generation());
         var active = bindings.get(relationship.key());
         if (active != null && active.consumerGrid() == relationship.consumerGrid()
@@ -204,15 +204,15 @@ public final class EnergyBindingService implements AutoCloseable {
         if (binding == null || bindings.get(binding.key()) != binding) {
             return false;
         }
-        if (fabrics.topologyRevision() != binding.revision().topologyRevision()
+        if (federationDomains.topologyRevision() != binding.revision().topologyRevision()
                 || !binding.revision().providerGeneration().equals(backend.generation())
                 || !backends.isCurrent(backend)) {
             remove(binding.key());
             reconcileAll();
             return false;
         }
-        var registry = FabricRegistryAccess.get(level);
-        if (binding.revision().fabrics().stream().noneMatch(registry::isCurrent)) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        if (binding.revision().federationDomains().stream().noneMatch(registry::isCurrent)) {
             remove(binding.key());
             return false;
         }

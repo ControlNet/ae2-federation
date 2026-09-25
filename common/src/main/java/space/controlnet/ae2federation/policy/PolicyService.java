@@ -3,7 +3,7 @@ package space.controlnet.ae2federation.policy;
 import java.util.Optional;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.persistence.PolicySavedData;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
@@ -54,7 +54,7 @@ public final class PolicyService {
         var consumer = endpoints.consumerGrid().getService(NetworkIdentityService.class).settlement();
         var provider = endpoints.providerGrid().getService(NetworkIdentityService.class).settlement();
         return PolicyActivation.classify(new PolicyActivationRequest(data.configured(key), key, consumer, provider,
-                FabricRegistryAccess.get(level), endpoints.backendStatus()));
+                FederationDomainRegistryAccess.get(level), endpoints.backendStatus()));
     }
 
     public int configuredCount() {

@@ -15,7 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -94,7 +94,7 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
         this.target = target;
         this.sourceGrid = sourceGrid;
         targetGrid = target.grid();
-        sourceId = FabricRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
+        sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetId = target.anchorId();
         policyKey = new PolicyKey(sourceId, targetId, PolicyCapability.PROCESSING);
         ports = new NativePortFixtures(helper);
@@ -151,7 +151,7 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
         helper.assertTrue(h1.isActive() && h1.getGrid() == sourceGrid
                         && h1.getInWorldConnections().containsKey(Direction.WEST)
                         && h1.getInWorldConnections().get(Direction.WEST).getOtherSide(h1).getGrid() == sourceGrid
-                        && FabricRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent(),
                 "H1 must have a real WEST in-world edge on the exact source Grid");
         if (stage == 2) {
             remote.register();
@@ -177,7 +177,7 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
         }
         if (stage == 5 && cableReady(BLUE, targetGrid, targetId)) {
             bridge = PartHelper.setPart(helper.getLevel(), helper.absolutePos(RED), Direction.EAST,
-                    null, BridgeRegistration.MULTIPART_BRIDGE.get());
+                    null, BridgeRegistration.BRIDGE.get());
             helper.assertTrue(bridge != null, "Physical C Bridge must be placeable");
             stage = 6;
         }
@@ -238,7 +238,7 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
                         && endpoint.claimState().owner().filter(new EndpointOwnerIdentity(identity)::equals).isPresent()
                         && helper.getLevel().getCapability(EndpointTargetCapability.BLOCK,
                                 helper.absolutePos(target.endpointPosition()), Direction.WEST) == endpoint.binding(),
-                "Third physical Bridge/Fabric/Policy and H1-owned C Claim must remain active");
+                "Third physical Bridge/Federation Domain/Policy and H1-owned C Claim must remain active");
     }
 
     public void assertNativeJobLane(AuthorizedLaneIdentity owner) {
@@ -263,16 +263,16 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
     private boolean cableReady(BlockPos position, IGrid grid, NetworkId id) {
         var node = GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(position), Direction.UP);
         return node != null && node.hasGridBooted() && node.isActive() && node.getGrid() == grid
-                && FabricRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent();
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent();
     }
 
     private boolean bridgeReady() {
         if (bridge == null) return false;
         var candidate = bridge.membershipCandidate();
-        var registry = FabricRegistryAccess.get(helper.getLevel());
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
         return candidate.isPresent() && candidate.orElseThrow().mainGrid() == sourceGrid
                 && candidate.orElseThrow().outerGrid() == targetGrid
-                && registry.fabricsFor(sourceId).stream().anyMatch(registry.fabricsFor(targetId)::contains)
+                && registry.federationdomainsFor(sourceId).stream().anyMatch(registry.federationdomainsFor(targetId)::contains)
                 && bridge.getMainNode().getNode().getConnections().stream().noneMatch(connection ->
                         connection.getOtherSide(bridge.getMainNode().getNode()) == bridge.getExternalFacingNode());
     }

@@ -63,7 +63,7 @@ public final class StorageProofGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 200, required = true, manualOnly = true)
-    public static void storageProofFourFabricDiamond(GameTestHelper helper) {
+    public static void storageProofFourFederationDomainDiamond(GameTestHelper helper) {
         runFixture(helper, fixture -> {
             var provenance = new NativeStorageProvenance();
             var nativeSource = provenance.qualify(fixture.nativeNode()).getFirst().storage();
@@ -83,7 +83,7 @@ public final class StorageProofGameTests {
                 facts.put("provider." + route.substring(0, 8), identity(provider));
             }
             var sources = provenance.sources(providers);
-            helper.assertValueEqual(StorageProofFixtures.diamondRoutes().size(), 4, "Diamond must use four Fabrics");
+            helper.assertValueEqual(StorageProofFixtures.diamondRoutes().size(), 4, "Diamond must use four Federation Domains");
             helper.assertValueEqual(sources.size(), 1, "Diamond paths must list one physical source");
             helper.assertTrue(sources.getFirst().storage() == nativeSource, "Diamond must preserve native source identity");
             helper.assertValueEqual(sources.getFirst().priority(), 40, "Diamond must preserve highest native mount priority");
@@ -96,7 +96,7 @@ public final class StorageProofGameTests {
             facts.put("sourceIsNativeStore", "true");
             facts.put("selectedPriority", Integer.toString(sources.getFirst().priority()));
             facts.put("routePriorities", "40,30,20,10");
-            writeEvidence("storageprooffourfabricdiamond", 6, facts);
+            writeEvidence("storageprooffourfederationdomaindiamond", 6, facts);
         });
     }
 

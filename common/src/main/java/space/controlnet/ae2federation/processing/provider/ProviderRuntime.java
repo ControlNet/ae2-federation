@@ -16,7 +16,6 @@ public final class ProviderRuntime {
     private final MappedPatternProvider provider;
     private ProviderTargetResolution lastResolution = new ProviderTargetResolution.Paused(
             ProviderTargetState.ROTATION_PENDING);
-    private final java.util.Map<Integer, ProviderTargetResolution> laneResolutions = new java.util.HashMap<>();
 
     public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, MappedPatternProvider provider,
             ProviderIdentity identity, ProviderOrientation orientation, Supplier<ProviderTargetRequest> requestSupplier,
@@ -63,11 +62,6 @@ public final class ProviderRuntime {
         return lastResolution;
     }
 
-    /** Last authorization outcome observed for one Lane, if its target has been resolved. */
-    public java.util.Optional<ProviderTargetResolution> laneResolution(int laneIndex) {
-        return java.util.Optional.ofNullable(laneResolutions.get(laneIndex));
-    }
-
     public void settle() {
         wiring.settle();
     }
@@ -96,7 +90,6 @@ public final class ProviderRuntime {
                         new ProviderAuthorizationContext(level, nativeNode, current, domains, provenance));
             }
         }
-        laneResolutions.put(provenance.lane().laneIndex(), lastResolution);
         return lastResolution;
     }
 }

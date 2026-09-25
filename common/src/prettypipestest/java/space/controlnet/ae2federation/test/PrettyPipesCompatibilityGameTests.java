@@ -58,10 +58,10 @@ public final class PrettyPipesCompatibilityGameTests {
             if (!bridgePlaced[0] && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for logistics Fabric");
+                helper.assertTrue(false, "Waiting for logistics Federation Domain");
             }
             helper.assertTrue(fixtures.networksSettled() && fixtures.firstBridgeReady(),
-                    "Both native networks and the logistics Fabric must settle");
+                    "Both native networks and the logistics Federation Domain must settle");
             if (!networkPlaced[0]) {
                 var providerNetwork = fixtures.outerNetwork();
                 helper.setBlock(sink, Blocks.CHEST);

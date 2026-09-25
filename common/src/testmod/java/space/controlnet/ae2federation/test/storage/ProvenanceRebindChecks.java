@@ -19,7 +19,7 @@ import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
@@ -88,7 +88,7 @@ public final class ProvenanceRebindChecks {
 
         private void removeOriginalGrid() {
             helper.assertTrue(provenanceFixture.ready(), "Waiting for native identity before rebound");
-            helper.assertTrue(FabricRegistryAccess.confirmedNetworkId(provenanceFixture.grid()).isPresent(),
+            helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(provenanceFixture.grid()).isPresent(),
                     "Waiting for original Grid origin settlement");
             reboundBefore = registry.discover(provenanceFixture.grid());
             reboundGridBefore = System.identityHashCode(provenanceFixture.grid());
@@ -165,7 +165,7 @@ public final class ProvenanceRebindChecks {
             helper.assertTrue(provenanceFixture.providerReady(providerNode),
                     "Waiting for collision callback node settlement");
             var providerGrid = providerNode.getNode().getGrid();
-            var restoredOrigin = FabricRegistryAccess.confirmedNetworkId(providerGrid);
+            var restoredOrigin = FederationDomainRegistryAccess.confirmedNetworkId(providerGrid);
             helper.assertTrue(restoredOrigin.isPresent() && restoredOrigin.orElseThrow().equals(slotBefore.origin().value()),
                     "Waiting for restored callback Grid origin settlement");
             helper.assertTrue(System.identityHashCode(providerGrid) != slotGridBefore,
@@ -187,12 +187,12 @@ public final class ProvenanceRebindChecks {
             helper.assertTrue(mountFixture.networksSettled(), "Waiting for mount fixture identities");
             mountFixture.placeFirstBridge();
             phase = 6;
-            helper.assertTrue(false, "Waiting for confirmed mount Fabric");
+            helper.assertTrue(false, "Waiting for confirmed mount Federation Domain");
         }
 
         private void captureMountAndReplaceSource() {
             mountFixture.refreshFirstBridge();
-            helper.assertTrue(mountFixture.firstBridgeReady(), "Waiting for confirmed mount Fabric");
+            helper.assertTrue(mountFixture.firstBridgeReady(), "Waiting for confirmed mount Federation Domain");
             var mounts = StorageMountService.get(helper.getLevel());
             var key = mountKey();
             var policies = PolicyService.get(helper.getLevel());

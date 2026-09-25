@@ -96,7 +96,7 @@ public final class CraftingBindingFailureGameTests {
                     Map.entry("patternAIdentity", identity(patternA[0])),
                     Map.entry("bindingAIdentity", identity(bindingA[0])),
                     Map.entry("generationA", Long.toString(generationA[0])),
-                    Map.entry("fabricReferencesA", fabricReferences(bindingA[0])),
+                    Map.entry("federationDomainReferencesA", federationDomainReferences(bindingA[0])),
                     Map.entry("topologyA", Long.toString(bindingA[0].revision().topologyRevision())),
                     Map.entry("providerBNodeId", sourceB.registrationNodeId().toString()),
                     Map.entry("providerBNodeIdentity", identity(sourceB.node())),
@@ -104,7 +104,7 @@ public final class CraftingBindingFailureGameTests {
                     Map.entry("patternBIdentity", identity(patternB)),
                     Map.entry("bindingBIdentity", identity(bindingB)),
                     Map.entry("generationB", Long.toString(bindingB.revision().providerGeneration().value())),
-                    Map.entry("fabricReferencesB", fabricReferences(bindingB)),
+                    Map.entry("federationDomainReferencesB", federationDomainReferences(bindingB)),
                     Map.entry("topologyB", Long.toString(bindingB.revision().topologyRevision())),
                     Map.entry("serviceBIdentity", identity(bindingB.nativeService().orElseThrow())),
                     Map.entry("cpuBIdentities", identities(bindingB.nativeCpus())),
@@ -162,9 +162,9 @@ public final class CraftingBindingFailureGameTests {
         return String.join(",", result);
     }
 
-    private static String fabricReferences(space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding binding) {
-        return binding.revision().fabrics().stream()
-                .map(reference -> reference.fabricId().value() + "@" + reference.generation())
+    private static String federationDomainReferences(space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding binding) {
+        return binding.revision().federationDomains().stream()
+                .map(reference -> reference.federationDomainId().value() + "@" + reference.generation())
                 .sorted().collect(java.util.stream.Collectors.joining(","));
     }
 }

@@ -16,7 +16,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.HUB)
+        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .check("scale-2 policy labels stay inside buttons", context ->
                         TaskThirtyThreeScenarioSupport.buttonTextContained(context, "#consumer_next", "#provider_next",
                                 "#capability_next", "#policy_toggle"))

@@ -14,12 +14,12 @@ import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 import space.controlnet.ae2federation.client.policy.PolicyEditorSelection;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.hub.HubBlockEntity;
-import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.router.RouterBlockEntity;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -38,45 +38,45 @@ final class TaskFifteenWorldFixture {
                 .serverTicks(3)
                 .waitUntilServer("Bridge networks become operational and settled",
                         TaskFifteenWorldFixture::bridgeNetworksSettled)
-                .server("extend Bridge networks to the Hub", TaskFifteenWorldFixture::extendNetworksToHub)
+                .server("extend Bridge networks to the Router", TaskFifteenWorldFixture::extendNetworksToRouter)
                 .serverTicks(3)
                 .waitUntilServer("extended native identities remain settled", TaskFifteenWorldFixture::extensionsSettled)
-                .server("place real Federation Hub", TaskFifteenWorldFixture::placeHub)
+                .server("place real Federation Router", TaskFifteenWorldFixture::placeRouter)
                 .serverTicks(3)
-                .waitUntilServer("Hub and Bridge expose the same networks", TaskFifteenWorldFixture::entrancesReady)
+                .waitUntilServer("Router and Bridge expose the same networks", TaskFifteenWorldFixture::entrancesReady)
                 .teardownServer("remove Task 15 topology", TaskFifteenWorldFixture::cleanup);
     }
 
-    static void openHub(ServerContext context) {
+    static void openRouter(ServerContext context) {
         var world = world(context);
-        require(FabricPolicyMenu.openHub(context.player(), world.hub), "Production Hub policy menu must open");
+        require(FederationDomainPolicyMenu.openRouter(context.player(), world.router), "Production Router policy menu must open");
     }
 
     static void openBridge(ServerContext context) {
         var bridge = bridge(context);
-        require(FabricPolicyMenu.openBridge(context.player(), bridge.rightClickContext()),
+        require(FederationDomainPolicyMenu.openBridge(context.player(), bridge.rightClickContext()),
                 "Production Bridge policy menu must open");
     }
 
     static boolean policyConfigured(ServerContext context) {
-        return PolicyService.get(context.level()).configured(world(context).hubKey).isPresent();
+        return PolicyService.get(context.level()).configured(world(context).routerKey).isPresent();
     }
 
     static boolean policyEnabled(ServerContext context) {
-        return PolicyService.get(context.level()).configured(world(context).hubKey)
+        return PolicyService.get(context.level()).configured(world(context).routerKey)
                 .map(record -> record.rule().enabled()).orElse(false);
     }
 
     static long policyRevision(ServerContext context) {
-        return PolicyService.get(context.level()).revision(world(context).hubKey).value();
+        return PolicyService.get(context.level()).revision(world(context).routerKey).value();
     }
 
     static void observe(ServerContext context, String mutationStatus) {
         var world = world(context);
         var service = PolicyService.get(context.level());
-        var configured = service.configured(world.hubKey);
-        context.put(OBSERVATION, new Observation(identity(world.hubKey), identity(world.bridgeKey),
-                service.revision(world.hubKey).value(), configured.map(record -> record.rule().enabled()).orElse(false),
+        var configured = service.configured(world.routerKey);
+        context.put(OBSERVATION, new Observation(identity(world.routerKey), identity(world.bridgeKey),
+                service.revision(world.routerKey).value(), configured.map(record -> record.rule().enabled()).orElse(false),
                 mutationStatus, world.previousRevision));
     }
 
@@ -84,13 +84,13 @@ final class TaskFifteenWorldFixture {
         return context.get(OBSERVATION);
     }
 
-    static void invalidateHubContext(ServerContext context) {
-        context.level().setBlockAndUpdate(world(context).hub.north(), Blocks.AIR.defaultBlockState());
+    static void invalidateRouterContext(ServerContext context) {
+        context.level().setBlockAndUpdate(world(context).router.north(), Blocks.AIR.defaultBlockState());
     }
 
-    static boolean hubContextInvalidated(ServerContext context) {
-        var reference = world(context).hubReference;
-        return reference != null && !FabricRegistryAccess.get(context.level()).isCurrent(reference);
+    static boolean routerContextInvalidated(ServerContext context) {
+        var reference = world(context).routerReference;
+        return reference != null && !FederationDomainRegistryAccess.get(context.level()).isCurrent(reference);
     }
 
     static void disableBridge(ServerContext context) {
@@ -105,8 +105,8 @@ final class TaskFifteenWorldFixture {
         return context.menu() == context.player().inventoryMenu;
     }
 
-    static BlockPos hubPosition(ServerContext context) {
-        return world(context).hub;
+    static BlockPos routerPosition(ServerContext context) {
+        return world(context).router;
     }
 
     static BlockPos bridgePosition(ServerContext context) {
@@ -124,17 +124,17 @@ final class TaskFifteenWorldFixture {
     static void mutateAfterClose(ServerContext context) {
         var world = world(context);
         var service = PolicyService.get(context.level());
-        var current = service.configured(world.hubKey).orElseThrow();
+        var current = service.configured(world.routerKey).orElseThrow();
         world.previousRevision = current.revision().value();
-        var result = service.edit(new PolicyEdit(world.hubKey, current.revision(),
+        var result = service.edit(new PolicyEdit(world.routerKey, current.revision(),
                 current.rule().withEnabled(!current.rule().enabled())));
         require(result instanceof PolicyMutationResult.Accepted, "Post-close production policy edit must succeed");
     }
 
     private static void placeBridgeTopology(ServerContext context) {
         var bridge = context.player().blockPosition().above(3).east(2);
-        var hub = bridge.east(2);
-        var world = new WorldState(hub, bridge);
+        var router = bridge.east(2);
+        var world = new WorldState(router, bridge);
         context.put(WORLD, world);
         cleanupBlocks(context, world);
         context.level().setBlockAndUpdate(bridge.north(), AEBlocks.ME_CHEST.block().defaultBlockState());
@@ -151,68 +151,68 @@ final class TaskFifteenWorldFixture {
             return false;
         }
         var candidate = bridge.membershipCandidate().orElseThrow();
-        world.mainNetwork = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
-        world.outerNetwork = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+        world.mainNetwork = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+        world.outerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
         return world.mainNetwork != null && world.outerNetwork != null && !world.mainNetwork.equals(world.outerNetwork);
     }
 
-    private static void extendNetworksToHub(ServerContext context) {
+    private static void extendNetworksToRouter(ServerContext context) {
         var world = world(context);
         placeCable(context, world.bridge.east(), AEColor.RED);
         placeCable(context, world.bridge.north().east(), AEColor.BLUE);
-        placeCable(context, world.hub.north(), AEColor.BLUE);
+        placeCable(context, world.router.north(), AEColor.BLUE);
     }
 
     private static boolean extensionsSettled(ServerContext context) {
         var world = world(context);
         return world.mainNetwork.equals(confirmedNetwork(context, world.bridge.east()))
-                && world.outerNetwork.equals(confirmedNetwork(context, world.hub.north()));
+                && world.outerNetwork.equals(confirmedNetwork(context, world.router.north()));
     }
 
     private static void placeBridge(ServerContext context) {
         var world = world(context);
         var placed = PartHelper.setPart(context.level(), world.bridge, Direction.NORTH, null,
-                BridgeRegistration.MULTIPART_BRIDGE.get());
-        require(placed instanceof MultipartBridgePart, "Registered Multipart Bridge must be placed on the cable bus");
+                BridgeRegistration.BRIDGE.get());
+        require(placed instanceof MultipartBridgePart, "Registered ME Federation Bridge must be placed on the cable bus");
     }
 
-    private static void placeHub(ServerContext context) {
-        context.level().setBlockAndUpdate(world(context).hub, HubRegistration.HUB.get().defaultBlockState());
+    private static void placeRouter(ServerContext context) {
+        context.level().setBlockAndUpdate(world(context).router, RouterRegistration.ROUTER.get().defaultBlockState());
     }
 
     private static boolean entrancesReady(ServerContext context) {
         var world = world(context);
-        var hubEntity = context.blockEntityOrNull(world.hub, HubBlockEntity.class);
+        var routerEntity = context.blockEntityOrNull(world.router, RouterBlockEntity.class);
         var bridge = bridgeOrNull(context);
-        if (hubEntity == null || bridge == null || bridge.operationalReason() != BridgeOperationalReason.VALID) {
+        if (routerEntity == null || bridge == null || bridge.operationalReason() != BridgeOperationalReason.VALID) {
             return false;
         }
-        var nodeId = FabricRegistryAccess.nodeId(context.level(), world.hub);
-        var hubFabrics = FabricRegistryAccess.get(context.level()).snapshot().fabrics().values().stream()
+        var nodeId = FederationDomainRegistryAccess.nodeId(context.level(), world.router);
+        var routerFederationDomains = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains().values().stream()
                 .filter(snapshot -> snapshot.nodes().contains(nodeId))
                 .filter(snapshot -> snapshot.memberships().containsKey(world.mainNetwork)
                         && snapshot.memberships().containsKey(world.outerNetwork))
                 .toList();
         var bridgeContext = bridge.rightClickContext();
-        if (hubFabrics.size() != 1 || bridgeContext.mainGrid() == null || bridgeContext.outerGrid() == null) {
+        if (routerFederationDomains.size() != 1 || bridgeContext.mainGrid() == null || bridgeContext.outerGrid() == null) {
             return false;
         }
-        var bridgeMain = FabricRegistryAccess.confirmedNetworkId(bridgeContext.mainGrid()).orElse(null);
-        var bridgeOuter = FabricRegistryAccess.confirmedNetworkId(bridgeContext.outerGrid()).orElse(null);
+        var bridgeMain = FederationDomainRegistryAccess.confirmedNetworkId(bridgeContext.mainGrid()).orElse(null);
+        var bridgeOuter = FederationDomainRegistryAccess.confirmedNetworkId(bridgeContext.outerGrid()).orElse(null);
         if (!world.mainNetwork.equals(bridgeMain) || !world.outerNetwork.equals(bridgeOuter)) {
             return false;
         }
-        world.hubKey = PolicyEditorSelection.initial(List.of(world.mainNetwork, world.outerNetwork)).key();
+        world.routerKey = PolicyEditorSelection.initial(List.of(world.mainNetwork, world.outerNetwork)).key();
         world.bridgeKey = PolicyEditorSelection.initial(List.of(bridgeMain, bridgeOuter)).key();
-        world.hubReference = hubFabrics.getFirst().reference();
-        return world.hubKey.equals(world.bridgeKey);
+        world.routerReference = routerFederationDomains.getFirst().reference();
+        return world.routerKey.equals(world.bridgeKey);
     }
 
     private static NetworkId confirmedNetwork(ServerContext context, BlockPos position) {
         var node = GridHelper.getExposedNode(context.level(), position, Direction.UP);
         return node == null || node.getGrid() == null
                 ? null
-                : FabricRegistryAccess.confirmedNetworkId(node.getGrid()).orElse(null);
+                : FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).orElse(null);
     }
 
     private static void placeCable(ServerContext context, BlockPos position, AEColor color) {
@@ -223,7 +223,7 @@ final class TaskFifteenWorldFixture {
     private static MultipartBridgePart bridge(ServerContext context) {
         var bridge = bridgeOrNull(context);
         if (bridge == null) {
-            throw new IllegalStateException("Real Multipart Bridge is missing");
+            throw new IllegalStateException("Real ME Federation Bridge is missing");
         }
         return bridge;
     }
@@ -264,28 +264,28 @@ final class TaskFifteenWorldFixture {
         }
     }
 
-    record Observation(String hubRecordIdentity, String bridgeRecordIdentity, long policyRevision, boolean enabled,
+    record Observation(String routerRecordIdentity, String bridgeRecordIdentity, long policyRevision, boolean enabled,
             String mutationStatus, long previousRevision) {
     }
 
     private static final class WorldState {
-        private final BlockPos hub;
+        private final BlockPos router;
         private final BlockPos bridge;
         private NetworkId mainNetwork;
         private NetworkId outerNetwork;
-        private PolicyKey hubKey;
+        private PolicyKey routerKey;
         private PolicyKey bridgeKey;
-        private FabricReference hubReference;
+        private FederationDomainReference routerReference;
         private long previousRevision = -1;
 
-        private WorldState(BlockPos hub, BlockPos bridge) {
-            this.hub = hub;
+        private WorldState(BlockPos router, BlockPos bridge) {
+            this.router = router;
             this.bridge = bridge;
         }
 
         private List<BlockPos> positions() {
-            return List.of(hub, bridge, bridge.south(), bridge.south(2), bridge.north(), bridge.east(),
-                    bridge.north().east(), hub.north());
+            return List.of(router, bridge, bridge.south(), bridge.south(2), bridge.north(), bridge.east(),
+                    bridge.north().east(), router.north());
         }
     }
 }

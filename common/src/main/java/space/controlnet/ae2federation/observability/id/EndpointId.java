@@ -1,13 +1,13 @@
 package space.controlnet.ae2federation.observability.id;
 
-import space.controlnet.ae2federation.fabric.FabricId;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 
-public record EndpointId(FabricId fabricId, String value) implements ScopedObservationId {
+public record EndpointId(FederationDomainId federationDomainId, String value) implements ScopedObservationId {
     public EndpointId {
-        StableObservationId.validate(fabricId, "endpoint", value);
+        StableObservationId.validate(federationDomainId, "endpoint", value);
     }
 
-    public static EndpointId of(FabricId fabricId, String nativeKey) {
-        return new EndpointId(fabricId, StableObservationId.create(fabricId, "endpoint", nativeKey));
+    public static EndpointId of(FederationDomainId federationDomainId, String nativeKey) {
+        return new EndpointId(federationDomainId, StableObservationId.create(federationDomainId, "endpoint", nativeKey));
     }
 }

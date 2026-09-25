@@ -16,7 +16,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.HUB)
+        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .checkTextContains("#mapping_selection_value", "Pattern slot 0 / Lane 0")
                 .click("#mapping_toggle")
                 .waitUntilServer("real Provider mapping accepted", TaskThirtyThreeWorldFixture::mappingAccepted)

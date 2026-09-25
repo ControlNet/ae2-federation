@@ -43,7 +43,7 @@ public final class ProviderClaimGameTests {
             helper.assertValueEqual(fixture.bindingCount(), 3, "Production runtime must bind every native Lane");
             helper.assertTrue(fixture.enablePolicy(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
                     "Processing Policy must be configured");
-            fixture.connectFabric();
+            fixture.connectFederationDomain();
             helper.assertTrue(fixture.pushOnce(), "Authorized production binding must accept the native push");
             helper.assertValueEqual(fixture.state(), ProviderTargetState.ACTIVE,
                     "Authorized native target must be active");
@@ -128,7 +128,7 @@ public final class ProviderClaimGameTests {
         runFixture(helper, fixture -> {
             helper.assertTrue(fixture.enablePolicy(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
                     "Processing Policy must be configured before overlap");
-            fixture.connectFabric();
+            fixture.connectFederationDomain();
             fixture.overlapWith(EndpointIdentity.create());
             helper.assertTrue(!fixture.push(), "Overlapping Endpoint target domain must deny native dispatch");
             helper.assertValueEqual(fixture.state(), ProviderTargetState.OVERLAPPING_SUBNET,
@@ -190,9 +190,9 @@ public final class ProviderClaimGameTests {
                     "Missing SUPPLY must fail closed");
             helper.assertTrue(fixture.enablePolicy(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
                     "Complete Processing Policy must be configured");
-            helper.assertTrue(!fixture.push(), "Missing common Fabric must deny native dispatch");
-            helper.assertValueEqual(fixture.state(), ProviderTargetState.FABRIC_DISCONNECTED,
-                    "Disconnected Fabric must fail closed");
+            helper.assertTrue(!fixture.push(), "Missing common Federation Domain must deny native dispatch");
+            helper.assertValueEqual(fixture.state(), ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED,
+                    "Disconnected Federation Domain must fail closed");
             var capabilityLookups = fixture.capabilityLookupCount();
             fixture.useUnloadedTarget();
             helper.assertTrue(!fixture.push(), "Unloaded Endpoint position must deny native dispatch");
@@ -204,7 +204,7 @@ public final class ProviderClaimGameTests {
             fixture.joinSourceAndTargetGrids();
             helper.assertTrue(!fixture.push(), "Same native Grid must deny target activation");
             helper.assertValueEqual(fixture.state(), ProviderTargetState.SAME_SOURCE_GRID,
-                    "Same native Grid must fail before Policy/Fabric activation");
+                    "Same native Grid must fail before Policy/Federation Domain activation");
             helper.assertValueEqual(fixture.targetItemCount(), 0L, "Every denied route must leave target unchanged");
             helper.assertValueEqual(fixture.mixinLookupCount(), 5, "Every denial must enter the bound Mixin lookup");
             helper.assertValueEqual(fixture.nativeTargetLookupCount(), 0,
@@ -213,7 +213,7 @@ public final class ProviderClaimGameTests {
                     Map.entry("sameGridAccepted", "false"), Map.entry("separatedAccepted", "true"),
                     Map.entry("offlineRetargeted", "false"), Map.entry("targetMutation", "0"),
                     Map.entry("runtimeBinding", "true"), Map.entry("policyDeniedAttempts", "2"),
-                    Map.entry("fabricDeniedAttempts", "1"), Map.entry("unloadedDeniedAttempts", "1"),
+                    Map.entry("federationDomainDeniedAttempts", "1"), Map.entry("unloadedDeniedAttempts", "1"),
                     Map.entry("unloadedCapabilityLookupDelta", "0"), Map.entry("sameGridDeniedAttempts", "1"),
                     Map.entry("mixinLookups", "5"), Map.entry("nativeTargetLookups", "0")));
         });

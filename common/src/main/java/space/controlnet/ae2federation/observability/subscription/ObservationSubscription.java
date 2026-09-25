@@ -2,9 +2,9 @@ package space.controlnet.ae2federation.observability.subscription;
 
 import java.util.ArrayDeque;
 import java.util.List;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.id.SubscriptionId;
-import space.controlnet.ae2federation.observability.state.FabricStateDelta;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateDelta;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSession;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
@@ -12,11 +12,11 @@ import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnv
 public final class ObservationSubscription {
     private final SubscriptionId id;
     private final ObservationAuthority authority;
-    private final FabricReference scope;
+    private final FederationDomainReference scope;
     private final long generation;
     private final ObservationSession session;
     private final int queueLimit;
-    private final ArrayDeque<FabricStateDelta> pending = new ArrayDeque<>();
+    private final ArrayDeque<FederationDomainStateDelta> pending = new ArrayDeque<>();
     private boolean closed;
     private boolean resnapshotRequired;
 
@@ -50,7 +50,7 @@ public final class ObservationSubscription {
         return session;
     }
 
-    public List<FabricStateDelta> drain() {
+    public List<FederationDomainStateDelta> drain() {
         if (resnapshotRequired) {
             pending.clear();
             return List.of();
@@ -64,11 +64,11 @@ public final class ObservationSubscription {
         return authority;
     }
 
-    FabricReference scope() {
+    FederationDomainReference scope() {
         return scope;
     }
 
-    void publish(FabricStateDelta delta) {
+    void publish(FederationDomainStateDelta delta) {
         if (closed || resnapshotRequired) {
             return;
         }

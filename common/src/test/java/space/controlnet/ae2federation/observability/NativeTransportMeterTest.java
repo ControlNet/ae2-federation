@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.fabric.FabricId;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.id.FlowId;
 import space.controlnet.ae2federation.observability.meter.NativeTransportMeter;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
@@ -16,7 +16,7 @@ import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ResourceUnit;
 
 class NativeTransportMeterTest {
-    private static final FabricReference SCOPE = new FabricReference(new FabricId("physical:meter"), 4);
+    private static final FederationDomainReference SCOPE = new FederationDomainReference(new FederationDomainId("physical:meter"), 4);
 
     @Test
     void metersEachAcceptedOperationExactlyOnceWithoutCollapsingEqualOperations() {
@@ -59,7 +59,7 @@ class NativeTransportMeterTest {
     @Test
     void aggregateReturnsCannotClaimExactBatchCompletion() {
         assertThrows(IllegalArgumentException.class, () -> new FlowState(SCOPE,
-                FlowId.forEvent(SCOPE.fabricId(), UUID.randomUUID()), new OperationEventId(UUID.randomUUID()),
+                FlowId.forEvent(SCOPE.federationDomainId(), UUID.randomUUID()), new OperationEventId(UUID.randomUUID()),
                 "minecraft:diamond", 1, ResourceUnit.ITEM, FlowState.Attribution.AGGREGATE_LANE_RETURN, true));
     }
 

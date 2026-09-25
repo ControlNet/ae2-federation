@@ -16,7 +16,7 @@ public record ObservationSessionPayload(Operation operation, ObservationSession 
     private void encode(RegistryFriendlyByteBuf buffer) {
         var start = buffer.writerIndex();
         buffer.writeByte(operation.wireId);
-        FabricStateSnapshotCodec.encodeSession(buffer, session);
+        FederationDomainStateSnapshotCodec.encodeSession(buffer, session);
         if (buffer.writerIndex() - start > ObservationLimits.MAX_PAYLOAD_BYTES) {
             throw new IllegalArgumentException("Observation session payload is oversized");
         }
@@ -27,7 +27,7 @@ public record ObservationSessionPayload(Operation operation, ObservationSession 
             throw new IllegalArgumentException("Observation session payload is oversized");
         }
         var operation = Operation.fromWireId(buffer.readUnsignedByte());
-        var payload = new ObservationSessionPayload(operation, FabricStateSnapshotCodec.decodeSession(buffer));
+        var payload = new ObservationSessionPayload(operation, FederationDomainStateSnapshotCodec.decodeSession(buffer));
         if (buffer.isReadable()) {
             throw new IllegalArgumentException("Observation session payload has trailing data");
         }

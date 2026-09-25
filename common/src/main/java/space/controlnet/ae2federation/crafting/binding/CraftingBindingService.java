@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -25,7 +25,7 @@ public final class CraftingBindingService implements AutoCloseable {
     private static final Map<ServerLevel, CraftingBindingService> SERVICES = new WeakHashMap<>();
 
     private final ServerLevel level;
-    private final CraftingFabricObserver fabrics;
+    private final CraftingFederationDomainObserver federationDomains;
     private final NativeCraftingBackendRegistry backends = new NativeCraftingBackendRegistry();
     private final Map<PolicyKey, CraftingCapabilityBinding> bindings = new java.util.HashMap<>();
     private final NativeCraftingRequestRegistry nativeRequests = new NativeCraftingRequestRegistry();
@@ -34,7 +34,7 @@ public final class CraftingBindingService implements AutoCloseable {
 
     private CraftingBindingService(ServerLevel level) {
         this.level = level;
-        fabrics = new CraftingFabricObserver(level);
+        federationDomains = new CraftingFederationDomainObserver(level);
     }
 
     public static synchronized CraftingBindingService get(ServerLevel level) {
@@ -66,19 +66,19 @@ public final class CraftingBindingService implements AutoCloseable {
     }
 
     public void observeConnectedGrids(IGrid first, IGrid second) {
-        fabrics.register(first);
-        fabrics.register(second);
+        federationDomains.register(first);
+        federationDomains.register(second);
         reconcileAll();
     }
 
-    public void observeFabricMembers(Iterable<IGrid> grids) {
-        fabrics.register(grids);
+    public void observeFederationDomainMembers(Iterable<IGrid> grids) {
+        federationDomains.register(grids);
         reconcileAll();
     }
 
     public void reconcileAll() {
         nativeRequests.retireTerminal();
-        var desired = fabrics.relationships();
+        var desired = federationDomains.relationships();
         var policies = PolicyService.get(level);
         var eligible = new HashSet<PolicyKey>();
         for (var key : desired.keySet()) {
@@ -108,11 +108,11 @@ public final class CraftingBindingService implements AutoCloseable {
         if (bindings.get(binding.relationship().key()) != binding
                 || binding.relationship().providerGrid() != snapshot.sourceGrid()
                 || snapshot.sourceGrid().getCraftingService() != snapshot.service()
-                || fabrics.topologyRevision() != binding.revision().topologyRevision()) {
+                || federationDomains.topologyRevision() != binding.revision().topologyRevision()) {
             return false;
         }
-        var registry = FabricRegistryAccess.get(level);
-        if (binding.revision().fabrics().stream().noneMatch(registry::isCurrent)) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        if (binding.revision().federationDomains().stream().noneMatch(registry::isCurrent)) {
             return false;
         }
         var policies = PolicyService.get(level);
@@ -199,7 +199,7 @@ public final class CraftingBindingService implements AutoCloseable {
         bindings.clear();
         nativeRequests.close();
         backends.clear();
-        fabrics.clear();
+        federationDomains.clear();
     }
 
     private void reconcile(CraftingRelationship relationship) {
@@ -222,12 +222,12 @@ public final class CraftingBindingService implements AutoCloseable {
             remove(relationship.key());
             return;
         }
-        var references = fabrics.references(relationship);
+        var references = federationDomains.references(relationship);
         if (references.isEmpty()) {
             remove(relationship.key());
             return;
         }
-        var revision = new CraftingBindingRevision(configured.revision(), fabrics.topologyRevision(), references,
+        var revision = new CraftingBindingRevision(configured.revision(), federationDomains.topologyRevision(), references,
                 backend.generation());
         var active = bindings.get(relationship.key());
         if (active != null && active.relationship().consumerGrid() == relationship.consumerGrid()
@@ -246,13 +246,13 @@ public final class CraftingBindingService implements AutoCloseable {
 
     private boolean current(CraftingCapabilityBinding binding, NativeCraftingBackend backend) {
         if (binding == null || bindings.get(binding.relationship().key()) != binding
-                || fabrics.topologyRevision() != binding.revision().topologyRevision()
+                || federationDomains.topologyRevision() != binding.revision().topologyRevision()
                 || !binding.revision().providerGeneration().equals(backend.generation())
                 || !backends.isCurrent(backend)) {
             return false;
         }
-        var registry = FabricRegistryAccess.get(level);
-        if (binding.revision().fabrics().stream().noneMatch(registry::isCurrent)) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        if (binding.revision().federationDomains().stream().noneMatch(registry::isCurrent)) {
             return false;
         }
         var policies = PolicyService.get(level);

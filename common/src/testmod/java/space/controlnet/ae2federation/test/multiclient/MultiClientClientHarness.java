@@ -112,11 +112,11 @@ public final class MultiClientClientHarness {
             staleRevision |= status.hasClass("stale_revision");
         }
         if (ROLE.equals("A") && !splitClickSent && firstAccepted
-                && Files.isRegularFile(marker("fabric-split.ready"))
+                && Files.isRegularFile(marker("domain-split.ready"))
                 && element(screen, "policy_toggle").isActive()) {
             click(screen, "policy_toggle");
             splitClickSent = true;
-            consumeMarker("fabric-split.ready");
+            consumeMarker("domain-split.ready");
         }
         if (ROLE.equals("A") && splitClickSent) {
             staleContext |= status.hasClass("stale_context");
@@ -143,7 +143,7 @@ public final class MultiClientClientHarness {
         var status = element(screen, "ack_status");
         var renderedText = text(screen, "ack_status");
         if (ROLE.equals("B") && staleRevision && !staleRevisionCaptured) {
-            var expectedText = Component.translatable("ae2federation.ui.fabric.status.stale_revision", 1).getString();
+            var expectedText = Component.translatable("ae2federation.ui.domain.status.stale_revision", 1).getString();
             staleRevisionStableFrames = status.hasClass("stale_revision") && renderedText.equals(expectedText)
                     ? staleRevisionStableFrames + 1
                     : 0;
@@ -156,13 +156,13 @@ public final class MultiClientClientHarness {
             }
         }
         if (ROLE.equals("A") && staleContext && !staleContextCaptured) {
-            var expectedText = Component.translatable("ae2federation.ui.fabric.status.stale_context").getString();
+            var expectedText = Component.translatable("ae2federation.ui.domain.status.stale_context").getString();
             staleContextStableFrames = status.hasClass("stale_context") && renderedText.equals(expectedText)
                     ? staleContextStableFrames + 1
                     : 0;
             if (staleContextStableFrames >= 3) {
                 staleContextRenderedText = renderedText;
-                capture("client-a-fabric-split.png");
+                capture("client-a-domain-split.png");
                 staleContextCaptured = true;
             }
         }
@@ -175,9 +175,9 @@ public final class MultiClientClientHarness {
         var status = element(screen, "ack_status");
         var renderedStatus = text(screen, "ack_status");
         var renderedMembers = text(screen, "members_value");
-        var expectedStatus = Component.translatable("ae2federation.ui.fabric.status.ready").getString();
-        var expectedMembers = Component.translatable("ae2federation.ui.fabric.members", 2).getString();
-        var expectedEntrance = Component.translatable("ae2federation.ui.fabric.entrance.hub").getString();
+        var expectedStatus = Component.translatable("ae2federation.ui.domain.status.ready").getString();
+        var expectedMembers = Component.translatable("ae2federation.ui.domain.members", 2).getString();
+        var expectedEntrance = Component.translatable("ae2federation.ui.domain.entrance.router").getString();
         var memberLines = renderedMembers.lines().toList();
         var membersCurrent = memberLines.size() == 3 && memberLines.getFirst().equals(expectedMembers)
                 && memberLines.stream().skip(1).noneMatch(String::isBlank)

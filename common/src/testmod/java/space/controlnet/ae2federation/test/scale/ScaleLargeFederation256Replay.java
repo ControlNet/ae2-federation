@@ -30,7 +30,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryObservation;
 import space.controlnet.ae2federation.test.mixed.MixedMachineBlockEntity;
@@ -434,7 +434,7 @@ public final class ScaleLargeFederation256Replay {
                 var target = targets.get(index);
                 target.assertReady();
                 var grid = target.grid();
-                var id = FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
+                var id = FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow();
                 helper.assertTrue(uniqueGrids.add(grid) && uniqueIds.add(id) && grid != source.grid()
                                 && target.target().grid() == grid && target.target().anchorId().equals(id)
                                 && target.target().onlyAnchorClaim() && target.target().settled()

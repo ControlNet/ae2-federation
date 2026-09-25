@@ -21,7 +21,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingRequester;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryObservation;
 import space.controlnet.ae2federation.test.mixed.MixedMachineBlockEntity;
@@ -457,7 +457,7 @@ public final class ScaleNativeProcessingProbe implements AutoCloseable {
             }
         }
         installPattern.run();
-        var sourceId = FabricRegistryAccess.confirmedNetworkId(crafting.node().getGrid()).orElseThrow();
+        var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(crafting.node().getGrid()).orElseThrow();
         requester = new NativeCraftingRequester(helper.getLevel(),
                 helper.absolutePos(ProcessingCraftingGrid.REQUESTER_POS), crafting.storage(), sourceId, null);
         requester.connect(crafting.node());

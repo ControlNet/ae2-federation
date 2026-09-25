@@ -49,13 +49,13 @@ final class StorageSubscriptionContractTest {
     void fixtureCleanupIsFinallyBoundAndSharedDiscoveryIsBounded() throws IOException {
         var fixture = Files.readString(ROOT.resolve(
                 "common/src/testmod/java/space/controlnet/ae2federation/test/storage/DirectSubscriptionFixture.java"));
-        var hub = source("storage/subscription/NativeStorageNotificationHub.java");
+        var router = source("storage/subscription/NativeStorageNotificationHub.java");
         var cursor = source("storage/subscription/BoundedKeyCursor.java");
         assertTrue(fixture.contains("finally"));
         assertTrue(fixture.contains("hooks.close()"));
         assertTrue(fixture.contains("bridge.close()"));
-        assertTrue(hub.contains("SharedDiscoveryCatalog"));
-        assertTrue(hub.contains("removeCatalogWithoutListeners"));
+        assertTrue(router.contains("SharedDiscoveryCatalog"));
+        assertTrue(router.contains("removeCatalogWithoutListeners"));
         assertTrue(cursor.contains("throw new KeyRetentionOverflowException"));
     }
 

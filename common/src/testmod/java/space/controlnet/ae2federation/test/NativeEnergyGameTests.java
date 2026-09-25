@@ -92,7 +92,7 @@ public final class NativeEnergyGameTests {
             helper.assertTrue(!fixture.powered(1), "No-source consumer must remain unpowered");
             NativeEnergyEvidence.write("energyproofnosource", 2, Map.of(
                     "extracted", "0", "consumerPowered", "false", "generatedEnergy", "0",
-                    "fabricIdlePower", "0", "fabricInfiniteEnergy", "false"));
+                    "federationDomainIdlePower", "0", "federationDomainInfiniteEnergy", "false"));
         });
     }
 

@@ -38,14 +38,14 @@ import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
-import space.controlnet.ae2federation.fabric.FabricInvalidationReason;
-import space.controlnet.ae2federation.fabric.FabricNodeEvidence;
-import space.controlnet.ae2federation.fabric.FabricNodeId;
-import space.controlnet.ae2federation.fabric.FabricPortEvidence;
-import space.controlnet.ae2federation.fabric.FabricPortId;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.fabric.port.FederationPort;
-import space.controlnet.ae2federation.fabric.port.FederationPortCapability;
+import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
+import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeId;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainPortId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.port.FederationPort;
+import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
@@ -106,8 +106,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     private ProviderIdentity identity = ProviderIdentity.create();
     private @Nullable ProviderRuntime runtime;
     private @Nullable BlockCapabilityCache<FederationPort, Direction> federationCache;
-    private @Nullable FabricNodeId fabricNodeId;
-    private boolean fabricDirty = true;
+    private @Nullable FederationDomainNodeId federationDomainNodeId;
+    private boolean federationDomainDirty = true;
     private boolean unloading;
     private boolean pendingRotation;
     private boolean returnsBound;
@@ -150,7 +150,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             pendingRotation = true;
         }
         rebuildFederationCache();
-        invalidateFabricTopology();
+        invalidateFederationDomainTopology();
     }
 
     /** The Federation port capability exists only on the front face. */
@@ -176,9 +176,9 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (getMainNode().getGrid() != null && !provider.registered()) {
             provider.register();
         }
-        fabricNodeId = FabricRegistryAccess.nodeId(serverLevel, worldPosition);
+        federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         rebuildFederationCache();
-        invalidateFabricTopology();
+        invalidateFederationDomainTopology();
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state,
@@ -195,8 +195,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             runtime.settle();
             pendingRotation = false;
         }
-        if (fabricDirty) {
-            publishFabricTopology();
+        if (federationDomainDirty) {
+            publishFederationDomainTopology();
         }
         if (++maintenanceTicks >= MAINTENANCE_INTERVAL) {
             maintenanceTicks = 0;
@@ -212,14 +212,14 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (runtime != null && getMainNode().getGrid() != null && !provider.registered()) {
             provider.register();
         }
-        invalidateFabricTopology();
+        invalidateFederationDomainTopology();
     }
 
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         provider.onMainNodeStateChanged();
         if (reason == IGridNodeListener.State.GRID_BOOT) {
-            invalidateFabricTopology();
+            invalidateFederationDomainTopology();
         }
     }
 
@@ -253,12 +253,12 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             provider.close();
             runtime = null;
         }
-        if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.removeNodeIfPresent(serverLevel, fabricNodeId);
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
             reconcileServices(serverLevel);
         }
         federationCache = null;
-        fabricDirty = true;
+        federationDomainDirty = true;
     }
 
     // ---- PatternProviderLogicHost: the owner logic is the native face of the Provider
@@ -535,7 +535,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 ENDPOINT_ACCESS_SIDE, true);
     }
 
-    // ---- Domain (Fabric) port on the front face
+    // ---- Domain (Federation Domain) port on the front face
 
     private void rebuildFederationCache() {
         if (!(level instanceof ServerLevel serverLevel) || runtime == null) {
@@ -544,46 +544,46 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         var face = federationFace();
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel,
-                worldPosition.relative(face), face.getOpposite(), () -> !isRemoved(), this::invalidateFabricTopology);
+                worldPosition.relative(face), face.getOpposite(), () -> !isRemoved(), this::invalidateFederationDomainTopology);
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
         owner.updateRedstoneState();
         provider.updateRedstoneState();
         if (worldPosition.relative(federationFace()).equals(neighborPosition)) {
-            invalidateFabricTopology();
+            invalidateFederationDomainTopology();
         }
     }
 
-    private void invalidateFabricTopology() {
-        fabricDirty = true;
-        if (level instanceof ServerLevel serverLevel && fabricNodeId != null) {
-            FabricRegistryAccess.invalidateNodeIfPresent(serverLevel, fabricNodeId,
-                    FabricInvalidationReason.TOPOLOGY_CHANGED);
+    private void invalidateFederationDomainTopology() {
+        federationDomainDirty = true;
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
+            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
+                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
         }
     }
 
-    private void publishFabricTopology() {
-        if (!(level instanceof ServerLevel serverLevel) || fabricNodeId == null) {
+    private void publishFederationDomainTopology() {
+        if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
             return;
         }
-        fabricDirty = false;
-        var evidence = new java.util.TreeMap<String, FabricPortEvidence>();
+        federationDomainDirty = false;
+        var evidence = new java.util.TreeMap<String, FederationDomainPortEvidence>();
         var peer = federationPeer(serverLevel);
         var grid = getMainNode().getGrid();
         if (peer != null && grid != null) {
-            var remoteNode = FabricRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
             // Port ids are face names so the Cable's reciprocal evidence (which names this face) matches.
-            evidence.put(federationFace().getSerializedName(), new FabricPortEvidence.Federation(
-                    new FabricPortId(remoteNode, peer.outwardFace().getSerializedName())));
-            evidence.put(NATIVE_PORT, FabricRegistryAccess.nativeEvidence(grid, new FabricPortId(fabricNodeId,
+            evidence.put(federationFace().getSerializedName(), new FederationDomainPortEvidence.Federation(
+                    new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
+            evidence.put(NATIVE_PORT, FederationDomainRegistryAccess.nativeEvidence(grid, new FederationDomainPortId(federationDomainNodeId,
                     NATIVE_PORT)));
         }
-        FabricRegistryAccess.get(serverLevel).upsertNode(new FabricNodeEvidence(fabricNodeId, evidence));
+        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId, evidence));
         if (grid != null) {
-            StorageMountService.get(serverLevel).observeFabricMembers(List.of(grid));
-            CraftingBindingService.get(serverLevel).observeFabricMembers(List.of(grid));
-            EnergyBindingService.get(serverLevel).observeFabricMembers(List.of(grid));
+            StorageMountService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
+            CraftingBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
+            EnergyBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
         }
     }
 

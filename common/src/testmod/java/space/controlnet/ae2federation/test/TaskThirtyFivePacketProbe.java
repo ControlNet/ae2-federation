@@ -8,17 +8,17 @@ import java.util.Properties;
 import java.util.UUID;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import space.controlnet.ae2federation.client.menu.FabricPolicyAction;
-import space.controlnet.ae2federation.client.menu.FabricPolicyActionRequest;
-import space.controlnet.ae2federation.fabric.FabricId;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.neoforge.network.FabricPolicyActionPayload;
-import space.controlnet.ae2federation.neoforge.network.FabricStateSnapshotPayload;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionRequest;
+import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyActionPayload;
+import space.controlnet.ae2federation.neoforge.network.FederationDomainStateSnapshotPayload;
 import space.controlnet.ae2federation.observability.ObservationLimits;
 import space.controlnet.ae2federation.observability.meter.NativeTransportMeter;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
-import space.controlnet.ae2federation.observability.state.FabricStateDelta;
-import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateDelta;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ObservationClientStates;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
@@ -35,7 +35,7 @@ public final class TaskThirtyFivePacketProbe {
         if (arguments.length != 1) {
             throw new IllegalArgumentException("Expected one evidence path");
         }
-        var scope = new FabricReference(new FabricId("physical:task35"), 7);
+        var scope = new FederationDomainReference(new FederationDomainId("physical:task35"), 7);
         var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
         var initial = snapshot(scope, 4);
         var states = new ObservationClientStates();
@@ -43,7 +43,7 @@ public final class TaskThirtyFivePacketProbe {
             throw new IllegalStateException("Initial packet state was not accepted");
         }
 
-        var actionRequest = new FabricPolicyActionRequest(FabricPolicyAction.TOGGLE_POLICY, 3, UUID.randomUUID(), 0,
+        var actionRequest = new FederationDomainPolicyActionRequest(FederationDomainPolicyAction.TOGGLE_POLICY, 3, UUID.randomUUID(), 0,
                 scope, new PolicyRevision(0));
         var actionCodecRoundTrip = actionRequest.equals(roundTrip(actionRequest));
         var actionOversizedRejected = rejectsOversizedAction();
@@ -51,7 +51,7 @@ public final class TaskThirtyFivePacketProbe {
         var actionUnknownRejected = rejectsUnknownAction();
         var snapshotOversizedRejected = rejectsOversizedSnapshot();
         var deltaTrailingRejected = ObservationPayloadProbe.rejectsTrailing(new ObservationDeltaEnvelope(session,
-                new FabricStateDelta(snapshot(scope, 5), 4, false)));
+                new FederationDomainStateDelta(snapshot(scope, 5), 4, false)));
         var wrongSession = ObservationSession.create(session.playerId(), UUID.randomUUID(), scope, 1);
         var outOfContextRejected = !states.apply(new ObservationSnapshotEnvelope(wrongSession, snapshot(scope, 5)));
         var snapshotRegressionRejected = !states.apply(new ObservationSnapshotEnvelope(session, snapshot(scope, 3)))
@@ -87,21 +87,21 @@ public final class TaskThirtyFivePacketProbe {
         }
     }
 
-    private static FabricPolicyActionRequest roundTrip(FabricPolicyActionRequest request) {
+    private static FederationDomainPolicyActionRequest roundTrip(FederationDomainPolicyActionRequest request) {
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
-        FabricPolicyActionPayload.STREAM_CODEC.encode(buffer, new FabricPolicyActionPayload(request));
-        return FabricPolicyActionPayload.STREAM_CODEC.decode(buffer).request();
+        FederationDomainPolicyActionPayload.STREAM_CODEC.encode(buffer, new FederationDomainPolicyActionPayload(request));
+        return FederationDomainPolicyActionPayload.STREAM_CODEC.decode(buffer).request();
     }
 
     private static boolean rejectsOversizedAction() {
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
-        buffer.writeZero(FabricPolicyActionRequest.MAX_PAYLOAD_BYTES + 1);
+        buffer.writeZero(FederationDomainPolicyActionRequest.MAX_PAYLOAD_BYTES + 1);
         return rejectsAction(buffer);
     }
 
-    private static boolean rejectsTrailingAction(FabricPolicyActionRequest request) {
+    private static boolean rejectsTrailingAction(FederationDomainPolicyActionRequest request) {
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
-        FabricPolicyActionPayload.STREAM_CODEC.encode(buffer, new FabricPolicyActionPayload(request));
+        FederationDomainPolicyActionPayload.STREAM_CODEC.encode(buffer, new FederationDomainPolicyActionPayload(request));
         buffer.writeByte(0);
         return rejectsAction(buffer);
     }
@@ -114,7 +114,7 @@ public final class TaskThirtyFivePacketProbe {
 
     private static boolean rejectsAction(RegistryFriendlyByteBuf buffer) {
         try {
-            FabricPolicyActionPayload.STREAM_CODEC.decode(buffer);
+            FederationDomainPolicyActionPayload.STREAM_CODEC.decode(buffer);
             return false;
         } catch (IllegalArgumentException expected) {
             return true;
@@ -125,14 +125,14 @@ public final class TaskThirtyFivePacketProbe {
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         buffer.writeZero(ObservationLimits.MAX_PAYLOAD_BYTES + 1);
         try {
-            FabricStateSnapshotPayload.STREAM_CODEC.decode(buffer);
+            FederationDomainStateSnapshotPayload.STREAM_CODEC.decode(buffer);
             return false;
         } catch (IllegalArgumentException expected) {
             return true;
         }
     }
 
-    private static MeterFacts meterFacts(FabricReference scope) {
+    private static MeterFacts meterFacts(FederationDomainReference scope) {
         var meter = new NativeTransportMeter(4);
         var event = OperationEventId.create();
         var before = meter.window(scope);
@@ -155,8 +155,8 @@ public final class TaskThirtyFivePacketProbe {
         return new MeterFacts(oversizedRejected, unchangedAfterReject, maximumAcceptedExactlyOnce);
     }
 
-    private static FabricStateSnapshot snapshot(FabricReference scope, long dataRevision) {
-        return new FabricStateSnapshot(scope, 9, 2, dataRevision, List.of(), List.of(), List.of(), List.of(),
+    private static FederationDomainStateSnapshot snapshot(FederationDomainReference scope, long dataRevision) {
+        return new FederationDomainStateSnapshot(scope, 9, 2, dataRevision, List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of());
     }
 

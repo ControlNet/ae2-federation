@@ -47,7 +47,7 @@ public final class StorageSubscriptionDiamondGameTest {
             }
             helper.assertTrue(phase[0] >= 5, "Waiting for staged diamond topology");
             if (phase[0] == 5) {
-                helper.assertTrue(fixture.bridgesReady(), "Waiting for four-Fabric diamond");
+                helper.assertTrue(fixture.bridgesReady(), "Waiting for four-Federation Domain diamond");
             }
             var mounts = StorageMountService.get(helper.getLevel());
             if (phase[0] == 5) {

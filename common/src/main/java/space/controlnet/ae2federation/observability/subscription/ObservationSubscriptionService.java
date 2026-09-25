@@ -6,10 +6,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.id.SubscriptionId;
-import space.controlnet.ae2federation.observability.state.FabricStateDelta;
-import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateDelta;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.observability.state.ObservationSession;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
 import space.controlnet.ae2federation.observability.ObservationRuntimeReceiptSink;
@@ -18,7 +18,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
     private final int playerLimit;
     private final int queueLimit;
     private final Map<SubscriptionKey, ObservationSubscription> subscriptions = new HashMap<>();
-    private final Map<FabricReference, FabricStateSnapshot> projections = new HashMap<>();
+    private final Map<FederationDomainReference, FederationDomainStateSnapshot> projections = new HashMap<>();
     private long removalCount;
 
     public ObservationSubscriptionService(int playerLimit, int queueLimit) {
@@ -29,11 +29,11 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         this.queueLimit = queueLimit;
     }
 
-    public ObservationSubscription subscribe(ObservationAuthority authority, FabricReference scope) {
+    public ObservationSubscription subscribe(ObservationAuthority authority, FederationDomainReference scope) {
         Objects.requireNonNull(authority);
         Objects.requireNonNull(scope);
         if (!authority.current() || !scope.equals(authority.scope())) {
-            throw new IllegalArgumentException("Observation authority does not match the requested Fabric scope");
+            throw new IllegalArgumentException("Observation authority does not match the requested Federation Domain scope");
         }
         var key = new SubscriptionKey(authority.playerId(), authority.sessionId(), scope);
         var existing = subscriptions.get(key);
@@ -53,14 +53,14 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         return subscription;
     }
 
-    public void publish(FabricStateDelta delta) {
+    public void publish(FederationDomainStateDelta delta) {
         Objects.requireNonNull(delta);
         sweep();
         subscriptions.values().stream().filter(subscription -> subscription.scope().equals(delta.scope()))
                 .forEach(subscription -> subscription.publish(delta));
     }
 
-    public FabricStateSnapshot synchronizeProjection(FabricStateSnapshot observed, boolean resnapshotRequired) {
+    public FederationDomainStateSnapshot synchronizeProjection(FederationDomainStateSnapshot observed, boolean resnapshotRequired) {
         Objects.requireNonNull(observed);
         var previous = projections.get(observed.scope());
         if (previous == null) {
@@ -72,21 +72,21 @@ public final class ObservationSubscriptionService implements AutoCloseable {
             return previous;
         }
         var revision = Math.max(Math.incrementExact(previous.dataRevision()), observed.dataRevision());
-        var replacement = new FabricStateSnapshot(observed.scope(), observed.topologyRevision(),
+        var replacement = new FederationDomainStateSnapshot(observed.scope(), observed.topologyRevision(),
                 observed.policyRevision(), revision, observed.members(), observed.providers(), observed.endpoints(),
                 observed.policies(), observed.locks(), observed.tasks(), observed.flows());
         projections.put(observed.scope(), replacement);
-        publish(new FabricStateDelta(replacement, previous.dataRevision(), resnapshotRequired));
+        publish(new FederationDomainStateDelta(replacement, previous.dataRevision(), resnapshotRequired));
         return replacement;
     }
 
-    public java.util.Set<FabricReference> activeScopes() {
+    public java.util.Set<FederationDomainReference> activeScopes() {
         sweep();
         return subscriptions.values().stream().map(ObservationSubscription::scope)
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
-    public boolean recover(ObservationSubscription subscription, FabricStateSnapshot snapshot) {
+    public boolean recover(ObservationSubscription subscription, FederationDomainStateSnapshot snapshot) {
         Objects.requireNonNull(subscription);
         Objects.requireNonNull(snapshot);
         if (!subscriptions.containsValue(subscription)) {
@@ -109,10 +109,10 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         }
     }
 
-    public java.util.Set<FabricReference> recoverRequired(Function<FabricReference, FabricStateSnapshot> projector) {
+    public java.util.Set<FederationDomainReference> recoverRequired(Function<FederationDomainReference, FederationDomainStateSnapshot> projector) {
         Objects.requireNonNull(projector);
         sweep();
-        var recovered = new java.util.HashSet<FabricReference>();
+        var recovered = new java.util.HashSet<FederationDomainReference>();
         for (var subscription : new ArrayList<>(subscriptions.values())) {
             if (subscription.resnapshotRequired() && recover(subscription, projector.apply(subscription.scope()))) {
                 recovered.add(subscription.scope());
@@ -173,7 +173,7 @@ public final class ObservationSubscriptionService implements AutoCloseable {
         }
     }
 
-    private static boolean sameProjection(FabricStateSnapshot first, FabricStateSnapshot second) {
+    private static boolean sameProjection(FederationDomainStateSnapshot first, FederationDomainStateSnapshot second) {
         return first.scope().equals(second.scope())
                 && first.topologyRevision() == second.topologyRevision()
                 && first.policyRevision() == second.policyRevision()
@@ -186,6 +186,6 @@ public final class ObservationSubscriptionService implements AutoCloseable {
                 && first.flows().equals(second.flows());
     }
 
-    private record SubscriptionKey(UUID playerId, UUID sessionId, FabricReference scope) {
+    private record SubscriptionKey(UUID playerId, UUID sessionId, FederationDomainReference scope) {
     }
 }

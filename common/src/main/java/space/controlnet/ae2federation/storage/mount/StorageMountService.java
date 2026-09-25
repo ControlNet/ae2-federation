@@ -23,7 +23,7 @@ public final class StorageMountService implements AutoCloseable {
     private final Map<PolicyKey, MountedStorageRelationship> mounts = new HashMap<>();
     private final Map<PolicyKey, MountGeneration> mountGenerations = new HashMap<>();
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
-    private final StorageFabricObserver fabrics;
+    private final StorageFederationDomainObserver federationDomains;
     private final StorageDependencyIndex dependencies;
     private final StorageSubscriptionService subscriptions = new StorageSubscriptionService();
     private final StorageSubscriptionPlanner subscriptionPlanner;
@@ -32,8 +32,8 @@ public final class StorageMountService implements AutoCloseable {
     private long sourceValidations;
 
     private StorageMountService(ServerLevel level) {
-        fabrics = new StorageFabricObserver(level);
-        dependencies = new StorageDependencyIndex(level, fabrics, provenance);
+        federationDomains = new StorageFederationDomainObserver(level);
+        dependencies = new StorageDependencyIndex(level, federationDomains, provenance);
         subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
         observability = LevelObservabilityService.get(level);
     }
@@ -65,7 +65,7 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     private boolean observesStorageService(IStorageService service) {
-        for (var grid : fabrics.loadedGrids().values()) {
+        for (var grid : federationDomains.loadedGrids().values()) {
             if (grid.getStorageService() == service) {
                 return true;
             }
@@ -103,19 +103,19 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     public void observeConnectedGrids(IGrid first, IGrid second) {
-        fabrics.register(first);
-        fabrics.register(second);
+        federationDomains.register(first);
+        federationDomains.register(second);
         reconcileAll();
     }
 
-    public void observeFabricMembers(Iterable<IGrid> grids) {
-        fabrics.register(grids);
+    public void observeFederationDomainMembers(Iterable<IGrid> grids) {
+        federationDomains.register(grids);
         reconcileAll();
     }
 
     public StorageMountState observe(StorageRelationship relationship) {
-        fabrics.register(relationship.consumerGrid());
-        fabrics.register(relationship.providerGrid());
+        federationDomains.register(relationship.consumerGrid());
+        federationDomains.register(relationship.providerGrid());
         return reconcile(relationship);
     }
 
@@ -320,7 +320,7 @@ public final class StorageMountService implements AutoCloseable {
         mountGenerations.clear();
         dependencies.clear();
         provenance.clear();
-        fabrics.clear();
+        federationDomains.clear();
         return removed;
     }
 

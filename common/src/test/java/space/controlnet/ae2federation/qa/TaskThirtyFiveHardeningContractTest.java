@@ -37,14 +37,14 @@ final class TaskThirtyFiveHardeningContractTest {
     @Test
     void serverActionsUseOwnedPacketWithThreadMenuAndAuthorityValidation() throws IOException {
         var holder = Files.readString(ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/menu/FabricPolicyMenuHolder.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenuHolder.java"));
         var menu = Files.readString(ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/menu/FabricPolicyMenu.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenu.java"));
         var payload = Files.readString(ROOT.resolve(
-                "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FabricPolicyActionPayload.java"));
+                "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FederationDomainPolicyActionPayload.java"));
         var registration = Files.readString(ROOT.resolve(
-                "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FabricPolicyActionPayloads.java"));
-        assertTrue(holder.contains("setOnClick(event -> send(FabricPolicyAction.")
+                "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FederationDomainPolicyActionPayloads.java"));
+        assertTrue(holder.contains("setOnClick(event -> send(FederationDomainPolicyAction.")
                 && !holder.contains("setOnServerClick"));
         assertTrue(menu.contains("isSameThread()") && menu.contains("player.containerMenu"));
         assertTrue(holder.contains("request.containerId()") && holder.contains("request.menuNonce()")
@@ -52,7 +52,7 @@ final class TaskThirtyFiveHardeningContractTest {
                 && holder.contains("request.expectedRevision()"));
         assertTrue(payload.contains("MAX_PAYLOAD_BYTES") && payload.contains("buffer.isReadable()"));
         assertTrue(registration.contains("playToServer") && registration.contains("context.enqueueWork")
-                && registration.contains("FabricPolicyActionPayloads.handle"));
+                && registration.contains("FederationDomainPolicyActionPayloads.handle"));
     }
 
     @Test

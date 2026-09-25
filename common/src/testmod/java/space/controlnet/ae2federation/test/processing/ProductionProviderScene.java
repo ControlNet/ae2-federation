@@ -30,8 +30,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.Capabilities;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -48,8 +48,8 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
 
 /**
  * World built only from production blocks: a source Grid (creative energy, ME Chest, 1k crafting CPU and the
- * production ME Federation Pattern Provider facing east), Federation Cable to a Hub, and three Endpoint Subnets on the
- * Hub's north, east and south faces. A test machine consumes each Subnet's delivered input and returns the product
+ * production ME Federation Pattern Provider facing east), Federation Cable to a Router, and three Endpoint Subnets on the
+ * Router's north, east and south faces. A test machine consumes each Subnet's delivered input and returns the product
  * through the Endpoint's item return capability, exactly as an external machine would.
  */
 public final class ProductionProviderScene {
@@ -63,7 +63,7 @@ public final class ProductionProviderScene {
     public static final BlockPos PROVIDER = new BlockPos(4, 1, 3);
     public static final BlockPos CABLE_NEAR = new BlockPos(5, 1, 3);
     public static final BlockPos CABLE_FAR = new BlockPos(6, 1, 3);
-    public static final BlockPos HUB = new BlockPos(7, 1, 3);
+    public static final BlockPos ROUTER = new BlockPos(7, 1, 3);
     private static final Map<Target, BlockPos[]> SUBNETS = new EnumMap<>(Map.of(
             Target.A, new BlockPos[] { new BlockPos(7, 1, 4), new BlockPos(7, 1, 5), new BlockPos(7, 1, 6) },
             Target.B, new BlockPos[] { new BlockPos(8, 1, 3), new BlockPos(8, 2, 3), new BlockPos(8, 3, 3) },
@@ -79,7 +79,7 @@ public final class ProductionProviderScene {
     private final Map<Target, Long> consumed = new EnumMap<>(Target.class);
     private final Set<Target> stalled = java.util.EnumSet.noneOf(Target.class);
     private Future<ICraftingPlan> planFuture;
-    private boolean hubPlaced;
+    private boolean routerPlaced;
 
     public ProductionProviderScene(GameTestHelper helper) {
         this.helper = helper;
@@ -92,8 +92,8 @@ public final class ProductionProviderScene {
         helper.<MEChestBlockEntity>getBlockEntity(SOURCE_CHEST).setCell(AEItems.ITEM_CELL_1K.stack());
         placeNative(SOURCE_CPU, AEBlocks.CRAFTING_STORAGE_1K.block().defaultBlockState(), sourceNetwork);
         placeProvider(Direction.EAST);
-        helper.setBlock(CABLE_NEAR, HubRegistration.FEDERATION_CABLE.get());
-        helper.setBlock(CABLE_FAR, HubRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(CABLE_NEAR, RouterRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(CABLE_FAR, RouterRegistration.FEDERATION_CABLE.get());
         for (var target : Target.values()) {
             var positions = SUBNETS.get(target);
             placeNative(positions[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
@@ -120,7 +120,7 @@ public final class ProductionProviderScene {
                 federationFace));
     }
 
-    /** Waits for native nodes and identities, then places the Hub so its face ports adopt settled identities. */
+    /** Waits for native nodes and identities, then places the Router so its face ports adopt settled identities. */
     public String topologyReadiness() {
         var source = node(SOURCE_CHEST);
         var provider = node(PROVIDER);
@@ -130,7 +130,7 @@ public final class ProductionProviderScene {
         if (source.getGrid() != provider.getGrid()) {
             return "source-not-joined";
         }
-        if (FabricRegistryAccess.confirmedNetworkId(source.getGrid()).isEmpty()) {
+        if (FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).isEmpty()) {
             return "source-identity";
         }
         for (var target : Target.values()) {
@@ -139,25 +139,25 @@ public final class ProductionProviderScene {
             if (endpoint == null || chest == null || !endpoint.isActive() || endpoint.getGrid() != chest.getGrid()) {
                 return "target-" + target + "-inactive";
             }
-            if (FabricRegistryAccess.confirmedNetworkId(endpoint.getGrid()).isEmpty()) {
+            if (FederationDomainRegistryAccess.confirmedNetworkId(endpoint.getGrid()).isEmpty()) {
                 return "target-" + target + "-identity";
             }
             if (binding(target) == null) {
                 return "target-" + target + "-binding";
             }
         }
-        if (!hubPlaced) {
-            helper.setBlock(HUB, HubRegistration.HUB.get());
-            hubPlaced = true;
-            return "hub-placed";
+        if (!routerPlaced) {
+            helper.setBlock(ROUTER, RouterRegistration.ROUTER.get());
+            routerPlaced = true;
+            return "router-placed";
         }
         var networks = new ArrayList<NetworkId>();
-        networks.add(FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow());
+        networks.add(FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow());
         for (var target : Target.values()) {
-            networks.add(FabricRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow());
+            networks.add(FederationDomainRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow());
         }
-        var domain = FabricRegistryAccess.get(helper.getLevel()).snapshot().fabrics().values().stream()
-                .anyMatch(fabric -> fabric.memberships().keySet().containsAll(networks));
+        var domain = FederationDomainRegistryAccess.get(helper.getLevel()).snapshot().federationDomains().values().stream()
+                .anyMatch(federationDomain -> federationDomain.memberships().keySet().containsAll(networks));
         if (!domain) {
             return "domain-pending";
         }
@@ -177,8 +177,8 @@ public final class ProductionProviderScene {
     }
 
     private PolicyKey policyKey(Target target) {
-        return new PolicyKey(FabricRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
-                FabricRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow(),
+        return new PolicyKey(FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
+                FederationDomainRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow(),
                 PolicyCapability.PROCESSING);
     }
 
@@ -309,9 +309,7 @@ public final class ProductionProviderScene {
         var text = new StringBuilder("cpuBusy=" + cpuBusy() + ",sourceInput=" + sourceAmount(INPUT));
         for (int lane = 0; lane < provider.laneCount(); lane++) {
             var index = lane;
-            text.append(",lane").append(lane).append('=').append(provider.runtime()
-                    .flatMap(runtime -> runtime.laneResolution(index)).map(Object::toString).orElse("unresolved"))
-                    .append("/patterns=").append(provider.lane(lane).getAvailablePatterns().size())
+            text.append(",lane").append(index).append("/patterns=").append(provider.lane(lane).getAvailablePatterns().size())
                     .append("/send=").append(provider.lane(lane).hasPendingSend());
         }
         for (var target : Target.values()) {

@@ -11,7 +11,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.minecraft.world.item.Items;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.test.processing.ProcessingCraftingGrid;
 import space.controlnet.ae2federation.test.scale.ScaleFactoryProfile;
 import space.controlnet.ae2federation.test.scale.ScaleFederationIdentityTarget;
@@ -273,9 +273,9 @@ public final class ScaleFactoryGameTests {
             }
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                        && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for settled native source Provider Grid");
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid())
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid())
                         .orElseThrow();
                 state.crafting = new ProcessingCraftingGrid(helper, sourceId);
                 state.stage = 2;
@@ -293,7 +293,7 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.crafting.cpuCount(), 1, "One native source CPU");
             if (state.stage == 2) {
                 state.provider.register();
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow();
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow();
                 state.retention = new ScaleDriveRetention(helper, state.crafting, sourceId, catalogReplay ? 5 : 1,
                         new BlockPos(2, 2, 2));
                 state.east = new ScaleNativeSubnetTarget(helper, true, true, Direction.EAST);
@@ -305,9 +305,9 @@ public final class ScaleFactoryGameTests {
             helper.assertTrue(state.retention.ready(source)
                             && state.east.ready(source) && state.south.ready(source),
                     "Waiting for source Drive and both distinct physical subnet targets");
-            var sourceId = FabricRegistryAccess.confirmedNetworkId(source.getGrid());
-            var eastId = FabricRegistryAccess.confirmedNetworkId(state.east.grid());
-            var southId = FabricRegistryAccess.confirmedNetworkId(state.south.grid());
+            var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid());
+            var eastId = FederationDomainRegistryAccess.confirmedNetworkId(state.east.grid());
+            var southId = FederationDomainRegistryAccess.confirmedNetworkId(state.south.grid());
             helper.assertTrue(sourceId.isPresent() && eastId.isPresent() && southId.isPresent()
                             && source.getGrid() != state.east.grid() && source.getGrid() != state.south.grid()
                             && state.east.grid() != state.south.grid()
@@ -471,10 +471,10 @@ public final class ScaleFactoryGameTests {
                     "Four distinct native physical Lane faces are required");
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                                && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                                && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for confirmed four-face Provider Grid");
                 state.crafting = new ProcessingCraftingGrid(helper,
-                        FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
+                        FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
                 state.stage = 2;
                 helper.assertTrue(false, "Waiting for native CPU and source cell");
                 return;
@@ -490,7 +490,7 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.crafting.cpuCount(), 1, "One native source CPU");
             if (state.stage == 2) {
                 state.grid = source.getGrid();
-                state.id = FabricRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
+                state.id = FederationDomainRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
                 state.provider.register();
                 state.retention = new ScaleDriveRetention(helper, state.crafting, state.id, 1,
                         new BlockPos(2, 2, 2));
@@ -501,7 +501,7 @@ public final class ScaleFactoryGameTests {
                 return;
             }
             helper.assertTrue(state.grid == source.getGrid()
-                            && FabricRegistryAccess.confirmedNetworkId(state.grid).filter(state.id::equals).isPresent()
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.grid).filter(state.id::equals).isPresent()
                             && state.retention.ready(source)
                             && state.processing.requesterNode().getGrid() == state.grid
                             && state.crafting.cpuNode().getGrid() == state.grid,
@@ -621,10 +621,10 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.provider.laneCount(), 4, "Four native physical Lane faces");
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                                && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                                && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for settled catalog Provider Grid");
                 state.crafting = new ProcessingCraftingGrid(helper,
-                        FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
+                        FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
                 state.stage = 2;
                 helper.assertTrue(false, "Waiting for source CPU and cell");
                 return;
@@ -640,7 +640,7 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.crafting.cpuCount(), 1, "One source CPU");
             if (state.stage == 2) {
                 state.grid = source.getGrid();
-                state.id = FabricRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
+                state.id = FederationDomainRegistryAccess.confirmedNetworkId(state.grid).orElseThrow();
                 state.provider.register();
                 state.retention = new ScaleDriveRetention(helper, state.crafting, state.id, 5,
                         new BlockPos(2, 2, 2));
@@ -651,7 +651,7 @@ public final class ScaleFactoryGameTests {
                 return;
             }
             helper.assertTrue(state.grid == source.getGrid()
-                            && FabricRegistryAccess.confirmedNetworkId(state.grid).filter(state.id::equals).isPresent()
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.grid).filter(state.id::equals).isPresent()
                             && state.retention.ready(source)
                             && state.processing.requesterNode().getGrid() == state.grid
                             && state.crafting.cpuNode().getGrid() == state.grid,
@@ -777,10 +777,10 @@ public final class ScaleFactoryGameTests {
             }
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                        && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for settled direct native Provider Grid");
                 state.crafting = new ProcessingCraftingGrid(helper,
-                        FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
+                        FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
                 state.stage = 2;
                 helper.assertTrue(false, "Waiting for direct native CPU and source cell");
                 return;
@@ -796,10 +796,10 @@ public final class ScaleFactoryGameTests {
             helper.assertValueEqual(state.crafting.cpuCount(), 1, "One direct native source CPU");
             if (state.stage == 2) {
                 state.sourceGrid = source.getGrid();
-                state.sourceId = FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
+                state.sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
                 state.provider.register();
                 state.retention = new ScaleDriveRetention(helper, state.crafting,
-                        FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow(), catalogReplay ? 5 : 1,
+                        FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow(), catalogReplay ? 5 : 1,
                         new BlockPos(2, 2, 2));
                 state.processing = ScaleNativeProcessingProbe.oneGridTwoMachines(helper, state.provider, state.crafting,
                         catalogReplay);
@@ -812,7 +812,7 @@ public final class ScaleFactoryGameTests {
                             && state.processing.requesterNode().getGrid() == source.getGrid()
                             && state.crafting.cpuNode().getGrid() == source.getGrid()
                             && source.getGrid() == state.sourceGrid
-                            && FabricRegistryAccess.confirmedNetworkId(state.sourceGrid)
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid)
                                     .filter(state.sourceId::equals).isPresent(),
                     "One source Grid must own Provider, CPU, requester and mounted Drive");
             var completed = state.processing.completedJobCount();
@@ -1013,10 +1013,10 @@ public final class ScaleFactoryGameTests {
                             ScaleProcessingCatalog.SIZE, "Three-target replay needs 256 physical catalog slots on H0");
                 }
                 helper.assertTrue(state.provider.connectEnergy()
-                        && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for settled physical Federation source");
                 state.crafting = new ProcessingCraftingGrid(helper,
-                        FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
+                        FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
                 state.stage = 2;
                 helper.assertTrue(false, "Waiting for physical source CPU and cell");
                 return;
@@ -1033,7 +1033,7 @@ public final class ScaleFactoryGameTests {
             if (state.stage == 2) {
                 state.provider.register();
                 state.retention = new ScaleDriveRetention(helper, state.crafting,
-                        FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow(),
+                        FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow(),
                         catalogReplay ? 5 : 1,
                         new BlockPos(2, 2, 2));
                 state.first = new ScaleFederationIdentityTarget(helper, true);
@@ -1088,9 +1088,9 @@ public final class ScaleFactoryGameTests {
                 helper.assertTrue(state.second.connectExportBus() && state.second.exportBusReady()
                                 && state.second.busLineage() && state.second.onlyAnchorClaim() && state.second.settled(),
                         "Target B Export Bus must join only its settled anchor");
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(source.getGrid());
-                var firstId = FabricRegistryAccess.confirmedNetworkId(state.first.grid());
-                var secondId = FabricRegistryAccess.confirmedNetworkId(state.second.grid());
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid());
+                var firstId = FederationDomainRegistryAccess.confirmedNetworkId(state.first.grid());
+                var secondId = FederationDomainRegistryAccess.confirmedNetworkId(state.second.grid());
                 helper.assertTrue(sourceId.isPresent() && firstId.isPresent() && secondId.isPresent()
                                 && source.getGrid() != state.first.grid() && source.getGrid() != state.second.grid()
                                 && state.first.grid() != state.second.grid()
@@ -1111,7 +1111,7 @@ public final class ScaleFactoryGameTests {
                 state.route = new ScaleFederationTwoTargetRoute(helper, state.provider, storage,
                         state.first, state.second);
                 state.stage = 9;
-                helper.assertTrue(false, "Waiting for two physical Bridge/Fabric/Policy/Claim legs");
+                helper.assertTrue(false, "Waiting for two physical Bridge/Federation Domain/Policy/Claim legs");
                 return;
             }
             if (state.stage == 9) {
@@ -1170,7 +1170,7 @@ public final class ScaleFactoryGameTests {
                 state.thirdRoute = new ScaleFederationThirdRoute(helper, state.sourceGrid, state.third,
                          catalogReplay, fourTargetReplay);
                 state.stage = 13;
-                helper.assertTrue(false, "Waiting for real H1 WEST edge and C Bridge/Fabric/Policy/Claim");
+                helper.assertTrue(false, "Waiting for real H1 WEST edge and C Bridge/Federation Domain/Policy/Claim");
                 return;
             }
             if (threeTargets && state.stage == 13) {
@@ -1231,7 +1231,7 @@ public final class ScaleFactoryGameTests {
                 state.fourthRoute = new ScaleFederationFourthRoute(helper, state.sourceGrid, state.fourth,
                         fourTargetReplay);
                 state.stage = 18;
-                helper.assertTrue(false, "Fourth physical D Bridge/Fabric/Policy/Claim route is missing");
+                helper.assertTrue(false, "Fourth physical D Bridge/Federation Domain/Policy/Claim route is missing");
                 return;
             }
             if (fourTargets && state.stage == 18) {
@@ -1260,7 +1260,7 @@ public final class ScaleFactoryGameTests {
             if (threeTargets) {
                 state.thirdRoute.assertReady();
                 helper.assertTrue(state.third.grid() == state.thirdGrid
-                                && FabricRegistryAccess.confirmedNetworkId(state.thirdGrid)
+                                && FederationDomainRegistryAccess.confirmedNetworkId(state.thirdGrid)
                                         .filter(state.thirdId::equals).isPresent()
                                 && state.thirdGrid != state.sourceGrid && state.thirdGrid != state.firstGrid
                                 && state.thirdGrid != state.secondGrid
@@ -1272,7 +1272,7 @@ public final class ScaleFactoryGameTests {
             if (fourTargets) {
                 state.fourthRoute.assertReady();
                 helper.assertTrue(state.fourth.grid() == state.fourthGrid
-                                && FabricRegistryAccess.confirmedNetworkId(state.fourthGrid)
+                                && FederationDomainRegistryAccess.confirmedNetworkId(state.fourthGrid)
                                         .filter(state.fourthId::equals).isPresent()
                                 && state.fourthRoute.remote().managedNode().getGrid() == state.sourceGrid,
                         "D and H2 must retain separate target/source identities");
@@ -1281,11 +1281,11 @@ public final class ScaleFactoryGameTests {
                             && source.getGrid() == state.sourceGrid
                             && state.first.grid() == state.firstGrid
                             && state.second.grid() == state.secondGrid
-                            && FabricRegistryAccess.confirmedNetworkId(state.sourceGrid)
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid)
                                     .filter(state.sourceId::equals).isPresent()
-                            && FabricRegistryAccess.confirmedNetworkId(state.firstGrid)
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.firstGrid)
                                     .filter(state.firstId::equals).isPresent()
-                            && FabricRegistryAccess.confirmedNetworkId(state.secondGrid)
+                            && FederationDomainRegistryAccess.confirmedNetworkId(state.secondGrid)
                                     .filter(state.secondId::equals).isPresent()
                             && state.processing.requesterNode().getGrid() == source.getGrid()
                             && state.crafting.cpuNode().getGrid() == source.getGrid(),
@@ -1716,7 +1716,7 @@ public final class ScaleFactoryGameTests {
                 var source = state.provider.managedNode().getNode();
                 state.federation.snapshot("physical-route-ready", source, state.crafting.storage());
                 helper.assertTrue(source.getGrid() == state.sourceGrid
-                                && FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
+                                && FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
                                         .equals(state.sourceId)
                                 && state.federation.onlyAnchorClaim() && state.federation.settled(),
                         "Source and target identities must remain settled after the physical Bridge");
@@ -1776,7 +1776,7 @@ public final class ScaleFactoryGameTests {
                         "Waiting for separate settled physical target anchor");
                 state.federation.anchorId();
                 state.sourceGrid = source.getGrid();
-                state.sourceId = FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
+                state.sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
                 state.federation.snapshot("anchor-settled", source, state.crafting.storage());
                 state.federation.placeEndpoint();
                 state.stage = 9;
@@ -1792,7 +1792,7 @@ public final class ScaleFactoryGameTests {
                         "Endpoint separate-lineage predicate failed; competing target claims="
                                 + state.federation.targetClaims());
                 helper.assertTrue(source.getGrid() == state.sourceGrid
-                                && FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
+                                && FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
                                         .equals(state.sourceId), "Source native Grid identity changed");
                 state.federation.placeExportBus();
                 state.stage = 10;
@@ -1809,7 +1809,7 @@ public final class ScaleFactoryGameTests {
                         "Export Bus separate-lineage predicate failed; competing target claims="
                                 + state.federation.targetClaims());
                 helper.assertTrue(source.getGrid() == state.sourceGrid
-                                && FabricRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
+                                && FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow()
                                         .equals(state.sourceId), "Source native Grid identity changed after Export Bus");
                 if (!oneGrid) {
                     helper.assertTrue(state.fixture.ready(), "Waiting for 14 auxiliary Federation Grids");
@@ -1884,7 +1884,7 @@ public final class ScaleFactoryGameTests {
             }
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                        && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for confirmed Provider source identity");
                 if (!oneGrid) {
                     state.fixture.recordNodes("after-provider-settlement");
@@ -1896,7 +1896,7 @@ public final class ScaleFactoryGameTests {
                     helper.assertValueEqual(state.fixture.distinctActiveGridsIncluding(state.provider.managedNode().getGrid()),
                             profile.gridCount(), "Small scale Grids and source must survive Provider placement");
                 }
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid())
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid())
                         .orElseThrow();
                 state.crafting = new ProcessingCraftingGrid(helper, sourceId);
                 state.stage = 2;
@@ -1941,7 +1941,7 @@ public final class ScaleFactoryGameTests {
                 state.provider.register();
                 if (fullCatalogRun) {
                     state.retention = new ScaleDriveRetention(helper, state.crafting,
-                            FabricRegistryAccess.confirmedNetworkId(sourceNode.getGrid()).orElseThrow(),
+                            FederationDomainRegistryAccess.confirmedNetworkId(sourceNode.getGrid()).orElseThrow(),
                              catalog256 || subnetBatch || controlBatch || federationBatch ? 5 : 2,
                              subnetBatch || federationBatch ? new BlockPos(2, 2, 2) : new BlockPos(4, 2, 2));
                 }
@@ -1983,8 +1983,8 @@ public final class ScaleFactoryGameTests {
                                 && state.crafting.cpuNode().getGrid() == sourceNode.getGrid(),
                         "One working subnet must remain distinct from the source CPU/requester/Drive Grid");
                 if (subnetReplay) {
-                    var sourceId = FabricRegistryAccess.confirmedNetworkId(sourceNode.getGrid());
-                    var targetId = FabricRegistryAccess.confirmedNetworkId(state.subnet.grid());
+                    var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceNode.getGrid());
+                    var targetId = FederationDomainRegistryAccess.confirmedNetworkId(state.subnet.grid());
                     helper.assertTrue(sourceId.isPresent() && targetId.isPresent()
                                     && !sourceId.orElseThrow().equals(targetId.orElseThrow()),
                             "One working subnet target and source must have distinct settled identities");

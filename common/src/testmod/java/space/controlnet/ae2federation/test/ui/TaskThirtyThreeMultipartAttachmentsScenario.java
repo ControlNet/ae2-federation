@@ -17,7 +17,7 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.BRIDGE)
-                .checkText("#entrance_value", "Multipart Bridge - side north / type bridge / cable extension 5.0")
+                .checkText("#entrance_value", "ME Federation Bridge - side north / type bridge / cable extension 5.0")
                 .checkTextContains("#members_value", "2 members")
                 .server("record real multipart attachment", context ->
                         context.put("task33.multipart", TaskThirtyThreeWorldFixture.multipartAttachment(context)))

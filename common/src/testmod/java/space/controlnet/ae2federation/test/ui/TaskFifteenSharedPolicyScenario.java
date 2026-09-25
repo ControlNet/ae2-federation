@@ -17,14 +17,14 @@ public final class TaskFifteenSharedPolicyScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.HUB)
+        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
                 .click("#policy_toggle")
-                .waitUntilServer("Hub edit accepted", TaskFifteenWorldFixture::policyConfigured)
+                .waitUntilServer("Router edit accepted", TaskFifteenWorldFixture::policyConfigured)
                 .closeScreen()
                 .server("open the same policy from the real Bridge", TaskFifteenWorldFixture::openBridge)
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForText("#entrance_value", "Opened from Multipart Bridge")
+                .waitForText("#entrance_value", "Opened from ME Federation Bridge")
                 .waitForTextContains("#rule_value", "STORAGE: enabled (revision")
                 .checkServer("both entrances retain one directional record", context ->
                         TaskFifteenWorldFixture.policyEnabled(context))

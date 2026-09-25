@@ -18,7 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import space.controlnet.ae2federation.fabric.port.HubBoundaryTopology.BoundaryPort;
+import space.controlnet.ae2federation.domain.port.RouterBoundaryTopology.BoundaryPort;
 
 public final class NativePortFixtures implements AutoCloseable {
     private static final IGridNodeListener<NativePortFixtures> LISTENER = (owner, node) -> {

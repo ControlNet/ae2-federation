@@ -2,7 +2,7 @@ package space.controlnet.ae2federation.observability.state;
 
 import java.util.Objects;
 
-public record ObservationSnapshotEnvelope(ObservationSession session, FabricStateSnapshot snapshot) {
+public record ObservationSnapshotEnvelope(ObservationSession session, FederationDomainStateSnapshot snapshot) {
     public ObservationSnapshotEnvelope {
         Objects.requireNonNull(session);
         Objects.requireNonNull(snapshot);

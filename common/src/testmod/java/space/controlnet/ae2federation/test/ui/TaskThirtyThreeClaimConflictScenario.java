@@ -17,7 +17,7 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.HUB)
+        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .server("submit competing Endpoint Claim", context ->
                         context.put("task33.claimConflict", TaskThirtyThreeWorldFixture.claimConflict(context)))
                 .checkServer("competing Claim is rejected", context ->

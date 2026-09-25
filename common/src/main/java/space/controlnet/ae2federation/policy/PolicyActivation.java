@@ -19,9 +19,9 @@ final class PolicyActivation {
                 || !matches(request.providerIdentity(), request.key().providerNetworkId())) {
             return PolicyActivationState.DISCONNECTED;
         }
-        var consumerFabrics = request.fabricRegistry().fabricsFor(request.key().consumerNetworkId());
-        var providerFabrics = request.fabricRegistry().fabricsFor(request.key().providerNetworkId());
-        if (Collections.disjoint(consumerFabrics, providerFabrics)) {
+        var consumerFederationDomains = request.federationDomainRegistry().federationdomainsFor(request.key().consumerNetworkId());
+        var providerFederationDomains = request.federationDomainRegistry().federationdomainsFor(request.key().providerNetworkId());
+        if (Collections.disjoint(consumerFederationDomains, providerFederationDomains)) {
             return PolicyActivationState.DISCONNECTED;
         }
         return switch (request.backendStatus()) {

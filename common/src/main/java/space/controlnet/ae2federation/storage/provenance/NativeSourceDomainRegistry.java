@@ -20,7 +20,7 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.storage.NativeMountLedger;
 import space.controlnet.ae2federation.ae2.storage.NativeStorageAliasProbe;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 
 /**
@@ -44,7 +44,7 @@ public final class NativeSourceDomainRegistry {
     private long providerScans;
 
     public NativeSourceDomain discover(IGrid grid) {
-        var confirmed = FabricRegistryAccess.confirmedNetworkId(grid);
+        var confirmed = FederationDomainRegistryAccess.confirmedNetworkId(grid);
         if (confirmed.isEmpty()) {
             current.values().stream().filter(domain -> domain.runtimeGrid() == grid)
                     .map(NativeSourceDomain::origin).toList().forEach(this::invalidate);

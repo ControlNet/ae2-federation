@@ -1,12 +1,12 @@
 package space.controlnet.ae2federation.observability.state;
 
 import java.util.Objects;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.ObservationLimits;
 import space.controlnet.ae2federation.observability.id.FlowId;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 
-public record FlowState(FabricReference scope, FlowId id, OperationEventId eventId, String resource, long amount,
+public record FlowState(FederationDomainReference scope, FlowId id, OperationEventId eventId, String resource, long amount,
         ResourceUnit unit, Attribution attribution, boolean exactBatchCompletion) implements ObservationState {
     public FlowState {
         ObservationStateSupport.validate(scope, id, resource);

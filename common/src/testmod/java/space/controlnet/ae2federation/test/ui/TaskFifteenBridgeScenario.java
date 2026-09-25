@@ -17,7 +17,7 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.BRIDGE)
-                .checkText("#entrance_value", "Opened from Multipart Bridge")
+                .checkText("#entrance_value", "Opened from ME Federation Bridge")
                 .checkBounds("#policy_toggle", bounds -> bounds.width() > 40 && bounds.height() > 10)
                 .click("#policy_toggle")
                 .waitUntilServer("server policy acknowledgment", context ->

@@ -52,8 +52,8 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
     }
 
     @Override
-    public java.util.Set<space.controlnet.ae2federation.fabric.FabricReference> scopes() {
+    public java.util.Set<space.controlnet.ae2federation.domain.FederationDomainReference> scopes() {
         var candidate = relationship.get();
-        return candidate == null ? java.util.Set.of() : candidate.revision().fabricReferences();
+        return candidate == null ? java.util.Set.of() : candidate.revision().federationDomainReferences();
     }
 }

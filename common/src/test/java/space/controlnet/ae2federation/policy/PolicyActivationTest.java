@@ -6,9 +6,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.fabric.FabricRecomputeBudget;
-import space.controlnet.ae2federation.fabric.FabricRegistry;
-import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.domain.FederationDomainRecomputeBudget;
+import space.controlnet.ae2federation.domain.FederationDomainRegistry;
+import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.identity.IdentitySettlement;
 import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -22,7 +22,7 @@ final class PolicyActivationTest {
     void classifiesStatesWithDeterministicFailClosedPrecedence() {
         // Given
         var store = new PolicyStore();
-        var registry = new FabricRegistry(FabricRecomputeBudget.standard());
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
         var disconnected = request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY);
 
         // When / Then: absent configuration wins over every runtime condition.
@@ -41,7 +41,7 @@ final class PolicyActivationTest {
         assertEquals(PolicyActivationState.DISCONNECTED, PolicyActivation.classify(
                 request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY)));
 
-        registry.upsertDirectBridge(new FabricSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
+        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
         var unsettled = request(store, registry,
                 new IdentitySettlement(IdentityStatus.AMBIGUOUS_SPLIT, Optional.of(CONSUMER)),
                 settled(PROVIDER), BackendStatus.READY);
@@ -60,8 +60,8 @@ final class PolicyActivationTest {
         // Given
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
-        var registry = new FabricRegistry(FabricRecomputeBudget.standard());
-        registry.upsertDirectBridge(new FabricSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
 
         // When
         var state = PolicyActivation.classify(request(store, registry, settled(PROVIDER), settled(CONSUMER),
@@ -71,7 +71,7 @@ final class PolicyActivationTest {
         assertEquals(PolicyActivationState.DISCONNECTED, state);
     }
 
-    private static PolicyActivationRequest request(PolicyStore store, FabricRegistry registry,
+    private static PolicyActivationRequest request(PolicyStore store, FederationDomainRegistry registry,
             IdentitySettlement consumer, IdentitySettlement provider, BackendStatus backend) {
         return new PolicyActivationRequest(store.configured(KEY), KEY, consumer, provider, registry, backend);
     }

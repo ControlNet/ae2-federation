@@ -53,7 +53,7 @@ public final class GeneratedProcessingFactoryScene implements AutoCloseable {
             readiness = fixture.status();
             return false;
         }
-        var networkId = space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(fixture.sourceGrid());
+        var networkId = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(fixture.sourceGrid());
         if (networkId.isEmpty()) {
             readiness = "source-identity-pending";
             return false;

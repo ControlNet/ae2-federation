@@ -5,7 +5,7 @@ import java.util.List;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.ObservationRuntimeReceiptSink;
 import space.controlnet.ae2federation.observability.ObservationSnapshotSink;
 import space.controlnet.ae2federation.observability.ObservationDeltaSink;
@@ -56,7 +56,7 @@ public final class ObservationRuntimeEvidence {
             }
 
             @Override
-            public void flow(FabricReference scope, FlowState flow) {
+            public void flow(FederationDomainReference scope, FlowState flow) {
                 record(new Receipt("flow", "", "", scope, flow.eventId().value().toString(), flow.amount(), 0,
                         flow.resource(), flow.attribution().name(), flow.exactBatchCompletion()));
             }
@@ -129,7 +129,7 @@ public final class ObservationRuntimeEvidence {
                 receipt.value(), receipt.secondary(), receipt.resource(), receipt.attribution(), receipt.exactBatch());
     }
 
-    private static String counts(space.controlnet.ae2federation.observability.state.FabricStateSnapshot snapshot) {
+    private static String counts(space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot snapshot) {
         return "members=" + snapshot.members().size() + ",providers=" + snapshot.providers().size()
                 + ",endpoints=" + snapshot.endpoints().size() + ",policies=" + snapshot.policies().size()
                 + ",locks=" + snapshot.locks().size() + ",tasks=" + snapshot.tasks().size()
@@ -149,7 +149,7 @@ public final class ObservationRuntimeEvidence {
             boolean policyStable, boolean topologyStable) {
     }
 
-    public record Receipt(String type, String player, String menu, FabricReference scope, String event, long value,
+    public record Receipt(String type, String player, String menu, FederationDomainReference scope, String event, long value,
             long secondary, String resource, String attribution, boolean exactBatch) {
     }
 }

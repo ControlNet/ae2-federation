@@ -131,9 +131,9 @@ public final class AppliedFluxResourceGameTests {
             if (!bridgePlaced[0] && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for compatibility Fabric");
+                helper.assertTrue(false, "Waiting for compatibility Federation Domain");
             }
-            helper.assertTrue(fixtures.firstBridgeReady(), "Compatibility Fabric must be ready");
+            helper.assertTrue(fixtures.firstBridgeReady(), "Compatibility Federation Domain must be ready");
             var policyKey = PolicyLifecycleGameTests.storageKey(fixtures);
             PolicyService.get(helper.getLevel()).edit(
                     new PolicyEdit(policyKey, PolicyRevision.NONE, PolicyRule.storageDefaults()));

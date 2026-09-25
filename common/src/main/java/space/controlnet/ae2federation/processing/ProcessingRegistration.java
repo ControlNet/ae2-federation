@@ -20,7 +20,7 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointBlock;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapability;
-import space.controlnet.ae2federation.fabric.port.FederationPortCapability;
+import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 

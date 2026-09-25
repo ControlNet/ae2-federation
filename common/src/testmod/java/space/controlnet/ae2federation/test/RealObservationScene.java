@@ -9,8 +9,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
@@ -25,7 +25,7 @@ final class RealObservationScene implements AutoCloseable {
     private ServerPlayer firstPlayer;
     private ServerPlayer secondPlayer;
     private boolean placed;
-    private boolean fabricsReady;
+    private boolean federationdomainsReady;
     private boolean processingConnected;
     private String status = "created";
 
@@ -60,14 +60,14 @@ final class RealObservationScene implements AutoCloseable {
             status = "bridge-placement";
             return false;
         }
-        if (!fabricsReady) {
+        if (!federationdomainsReady) {
             first.refreshFirstBridge();
             second.refreshFirstBridge();
             if (!first.firstBridgeReady() || !second.firstBridgeReady()) {
-                status = "bridge-fabrics";
+                status = "bridge-domains";
                 return false;
             }
-            fabricsReady = true;
+            federationdomainsReady = true;
         }
         if (!withProcessing) {
             status = "ready";
@@ -114,7 +114,7 @@ final class RealObservationScene implements AutoCloseable {
         return processing.deletePolicy();
     }
 
-    FabricReference firstScope() {
+    FederationDomainReference firstScope() {
         return scope(first);
     }
 
@@ -134,7 +134,7 @@ final class RealObservationScene implements AutoCloseable {
         return processing.nativeProgressOwnerIdentity();
     }
 
-    FabricReference secondScope() {
+    FederationDomainReference secondScope() {
         return scope(second);
     }
 
@@ -175,16 +175,16 @@ final class RealObservationScene implements AutoCloseable {
         var player = helper.makeMockServerPlayerInLevel();
         player.setPos(Vec3.atCenterOf(fixture.firstBridgeContext().position()));
         ObservationGameTestPlayerTransport.install(player);
-        helper.assertTrue(FabricPolicyMenu.openBridge(player, fixture.firstBridgeContext()),
-                "Production Fabric policy menu must open");
+        helper.assertTrue(FederationDomainPolicyMenu.openBridge(player, fixture.firstBridgeContext()),
+                "Production Federation Domain policy menu must open");
         return player;
     }
 
-    private FabricReference scope(PolicyBridgeFixtures fixture) {
-        var registry = space.controlnet.ae2federation.fabric.FabricRegistryAccess.get(helper.getLevel());
-        return registry.fabricsFor(fixture.mainNetwork()).stream()
-                .filter(id -> registry.fabricsFor(fixture.outerNetwork()).contains(id)).findFirst()
-                .flatMap(registry::fabric).orElseThrow().reference();
+    private FederationDomainReference scope(PolicyBridgeFixtures fixture) {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+        return registry.federationdomainsFor(fixture.mainNetwork()).stream()
+                .filter(id -> registry.federationdomainsFor(fixture.outerNetwork()).contains(id)).findFirst()
+                .flatMap(registry::federationDomain).orElseThrow().reference();
     }
 
     @Override

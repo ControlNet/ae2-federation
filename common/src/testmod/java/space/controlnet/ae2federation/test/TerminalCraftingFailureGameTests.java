@@ -13,7 +13,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.crafting.terminal.NativeTerminalSubmission;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.crafting.TerminalCraftingEvidence;
 import space.controlnet.ae2federation.test.crafting.TerminalCraftingFixture;
@@ -140,7 +140,7 @@ public final class TerminalCraftingFailureGameTests {
                         expectRejected(() -> helper.getLevel());
                         expectRejected(() -> level.getBlockEntity(worldPosition));
                         expectRejected(() -> policy.configured(key));
-                        expectRejected(() -> FabricRegistryAccess.confirmedNetworkId(grid));
+                        expectRejected(() -> FederationDomainRegistryAccess.confirmedNetworkId(grid));
                         expectRejected(binding::isCurrent);
                         return node;
                     }
@@ -168,7 +168,7 @@ public final class TerminalCraftingFailureGameTests {
             }
             var observation = TerminalNativeObservation.snapshot();
             helper.assertValueEqual(observation.rejectedMutableAccess(), java.util.Set.of(
-                    "gametest-helper", "world-block", "policy", "fabric", "backend"),
+                    "gametest-helper", "world-block", "policy", "domain", "backend"),
                     "Every forbidden planner-thread boundary must reject");
             helper.assertTrue(observation.requesterNodeCalls() > 0,
                     "Valid planning must use the captured requester node");

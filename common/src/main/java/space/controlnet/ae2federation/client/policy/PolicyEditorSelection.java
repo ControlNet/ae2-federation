@@ -11,7 +11,7 @@ public record PolicyEditorSelection(List<NetworkId> members, int consumerIndex, 
     public PolicyEditorSelection {
         members = List.copyOf(members);
         if (members.size() < 2 || new HashSet<>(members).size() != members.size()) {
-            throw new IllegalArgumentException("Policy editor requires at least two distinct Fabric members");
+            throw new IllegalArgumentException("Policy editor requires at least two distinct Federation Domain members");
         }
         if (consumerIndex < 0 || consumerIndex >= members.size()
                 || providerIndex < 0 || providerIndex >= members.size() || consumerIndex == providerIndex) {

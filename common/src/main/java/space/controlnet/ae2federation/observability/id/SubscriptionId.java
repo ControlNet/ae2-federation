@@ -1,21 +1,21 @@
 package space.controlnet.ae2federation.observability.id;
 
 import java.util.UUID;
-import space.controlnet.ae2federation.fabric.FabricId;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 
-public record SubscriptionId(FabricId fabricId, String value) implements ScopedObservationId {
+public record SubscriptionId(FederationDomainId federationDomainId, String value) implements ScopedObservationId {
     public SubscriptionId {
-        StableObservationId.validate(fabricId, "subscription", value);
+        StableObservationId.validate(federationDomainId, "subscription", value);
     }
 
-    public static SubscriptionId create(FabricId fabricId, UUID playerId, UUID sessionId) {
-        return new SubscriptionId(fabricId,
-                StableObservationId.create(fabricId, "subscription", playerId + ":" + sessionId));
+    public static SubscriptionId create(FederationDomainId federationDomainId, UUID playerId, UUID sessionId) {
+        return new SubscriptionId(federationDomainId,
+                StableObservationId.create(federationDomainId, "subscription", playerId + ":" + sessionId));
     }
 
-    public static SubscriptionId create(FabricId fabricId, UUID playerId, UUID sessionId, long generation,
+    public static SubscriptionId create(FederationDomainId federationDomainId, UUID playerId, UUID sessionId, long generation,
             UUID nonce) {
-        return new SubscriptionId(fabricId, StableObservationId.create(fabricId, "subscription",
+        return new SubscriptionId(federationDomainId, StableObservationId.create(federationDomainId, "subscription",
                 playerId + ":" + sessionId + ":" + generation + ":" + nonce));
     }
 }

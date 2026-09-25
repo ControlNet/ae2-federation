@@ -1,13 +1,13 @@
 package space.controlnet.ae2federation.observability.id;
 
-import space.controlnet.ae2federation.fabric.FabricId;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 
-public record LockId(FabricId fabricId, String value) implements ScopedObservationId {
+public record LockId(FederationDomainId federationDomainId, String value) implements ScopedObservationId {
     public LockId {
-        StableObservationId.validate(fabricId, "lock", value);
+        StableObservationId.validate(federationDomainId, "lock", value);
     }
 
-    public static LockId of(FabricId fabricId, String nativeKey) {
-        return new LockId(fabricId, StableObservationId.create(fabricId, "lock", nativeKey));
+    public static LockId of(FederationDomainId federationDomainId, String nativeKey) {
+        return new LockId(federationDomainId, StableObservationId.create(federationDomainId, "lock", nativeKey));
     }
 }

@@ -17,9 +17,9 @@ public final class ObservationPayloads {
     public static void register(IEventBus modBus) {
         modBus.addListener(ObservationPayloads::registerPayloads);
         ObservationSnapshotSink.register((player, snapshot) ->
-                PacketDistributor.sendToPlayer(player, new FabricStateSnapshotPayload(snapshot)));
+                PacketDistributor.sendToPlayer(player, new FederationDomainStateSnapshotPayload(snapshot)));
         ObservationDeltaSink.register((player, delta) ->
-                PacketDistributor.sendToPlayer(player, new FabricStateDeltaPayload(delta)));
+                PacketDistributor.sendToPlayer(player, new FederationDomainStateDeltaPayload(delta)));
         ObservationSessionLifecycleSink.register(
                 (player, session) -> PacketDistributor.sendToPlayer(player,
                         new ObservationSessionPayload(ObservationSessionPayload.Operation.OPEN, session)),
@@ -40,11 +40,11 @@ public final class ObservationPayloads {
                         case CLOSE -> CLIENT_STATES.close(payload.session());
                     }
                 }));
-        event.registrar("1").playToClient(FabricStateSnapshotPayload.TYPE,
-                FabricStateSnapshotPayload.STREAM_CODEC,
+        event.registrar("1").playToClient(FederationDomainStateSnapshotPayload.TYPE,
+                FederationDomainStateSnapshotPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> CLIENT_STATES.apply(payload.envelope())));
-        event.registrar("1").playToClient(FabricStateDeltaPayload.TYPE,
-                FabricStateDeltaPayload.STREAM_CODEC,
+        event.registrar("1").playToClient(FederationDomainStateDeltaPayload.TYPE,
+                FederationDomainStateDeltaPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> CLIENT_STATES.apply(payload.envelope())));
     }
 }

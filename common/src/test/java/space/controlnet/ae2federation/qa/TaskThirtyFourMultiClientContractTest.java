@@ -21,7 +21,7 @@ final class TaskThirtyFourMultiClientContractTest {
         assertTrue(harness.contains("clientCommand('A')") && harness.contains("clientCommand('B')"));
         assertTrue(harness.contains("server.outputStream.withWriter") && harness.contains("serverExit"));
         for (var id : new String[] { "multiclient.shared-server", "multiclient.conflicting-edit",
-                "multiclient.fabric-split", "multiclient.disconnect-cleanup" }) {
+                "multiclient.domain-split", "multiclient.disconnect-cleanup" }) {
             assertTrue(manifest.contains("\"id\":\"" + id + "\",\"backend\":\"dedicated-multiclient\""));
         }
     }
@@ -34,7 +34,7 @@ final class TaskThirtyFourMultiClientContractTest {
                 "common/src/testmod/java/space/controlnet/ae2federation/test/multiclient/MultiClientClientHarness.java"));
         var verifier = Files.readString(ROOT.resolve("gradle/federation-ui.gradle"));
         assertTrue(server.contains("PolicyService.get(level).revision(policyKey)"));
-        assertTrue(server.contains("FabricRegistryAccess.get(level).isCurrent(originalReference)"));
+        assertTrue(server.contains("FederationDomainRegistryAccess.get(level).isCurrent(originalReference)"));
         assertTrue(server.contains("subscriptions.activeCount() == 0"));
         assertTrue(client.contains("getElementById(id)")
                 && client.contains("UIEvent.create(UIEvents.MOUSE_DOWN)")
@@ -47,8 +47,8 @@ final class TaskThirtyFourMultiClientContractTest {
                 && client.contains("staleRevisionRenderedText = renderedText"));
         assertTrue(client.contains("minecraft.gui.getChat().clearMessages(true)"));
         assertTrue(!client.contains("setText(status"));
-        assertTrue(client.contains("Component.translatable(\"ae2federation.ui.fabric.status.ready\").getString()")
-                && client.contains("Component.translatable(\"ae2federation.ui.fabric.members\", 2).getString()")
+        assertTrue(client.contains("Component.translatable(\"ae2federation.ui.domain.status.ready\").getString()")
+                && client.contains("Component.translatable(\"ae2federation.ui.domain.members\", 2).getString()")
                 && client.contains("status.hasClass(\"ready\") && renderedStatus.equals(expectedStatus)")
                 && client.contains("refreshedStableFrames >= 3")
                 && client.contains("refreshedRenderedStatus = renderedStatus")
@@ -59,23 +59,23 @@ final class TaskThirtyFourMultiClientContractTest {
     }
 
     @Test
-    void rejoinReconstructsHubAndRequiresExactCurrentTwoMemberFabric() throws IOException {
+    void rejoinReconstructsRouterAndRequiresExactCurrentTwoMemberFederationDomain() throws IOException {
         var server = Files.readString(ROOT.resolve(
                 "common/src/testmod/java/space/controlnet/ae2federation/test/multiclient/MultiClientServerHarness.java"));
         var verifier = Files.readString(ROOT.resolve("gradle/federation-ui.gradle"));
-        assertTrue(server.contains("settleRetiredHub(level)")
+        assertTrue(server.contains("settleRetiredRouter(level)")
                 && server.contains("settleRestoredExtension(level)")
-                && server.contains("settleCurrentFabric(level)"));
-        assertTrue(server.contains("level.setBlockAndUpdate(hub, Blocks.AIR.defaultBlockState())")
-                && server.contains("level.setBlockAndUpdate(hub, HubRegistration.HUB.get().defaultBlockState())")
-                && server.contains("hubEntity.neighborChanged(hub.north())"));
+                && server.contains("settleCurrentFederationDomain(level)"));
+        assertTrue(server.contains("level.setBlockAndUpdate(router, Blocks.AIR.defaultBlockState())")
+                && server.contains("level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState())")
+                && server.contains("routerEntity.neighborChanged(router.north())"));
         assertTrue(server.contains("clientFirstPhaseComplete(\"a\")")
                 && server.contains("clientFirstPhaseComplete(\"b\")"));
-        assertTrue(server.contains("fabric.memberships().size() != 2")
+        assertTrue(server.contains("federationDomain.memberships().size() != 2")
                 && server.contains("!registry.isCurrent(candidateReference)")
-                && server.contains("fabric.memberships().containsKey(mainNetwork)")
-                && server.contains("fabric.memberships().containsKey(outerNetwork)"));
-        assertTrue(verifier.contains("refreshedFabricMembers")
+                && server.contains("federationDomain.memberships().containsKey(mainNetwork)")
+                && server.contains("federationDomain.memberships().containsKey(outerNetwork)"));
+        assertTrue(verifier.contains("refreshedFederationDomainMembers")
                 && verifier.contains("refreshedReferenceCurrent")
                 && verifier.contains("refreshedExpectedIdentities"));
     }
@@ -91,7 +91,7 @@ final class TaskThirtyFourMultiClientContractTest {
         assertTrue(harness.contains("Task 34 production projection authority mismatch"));
         assertTrue(harness.contains("Task 34 closed-GUI native progress authority mismatch"));
         assertTrue(harness.contains("federationTaskThirtyFourBenchmarkEvidenceSelfTest"));
-        assertTrue(benchmark.contains("FabricGraphProjection.snapshot")
+        assertTrue(benchmark.contains("FederationDomainGraphProjection.snapshot")
                 && benchmark.contains("ProviderObservationRegistry.entries"));
         assertTrue(benchmark.contains("scene.closeFirstMenu()") && benchmark.contains("scene.closeSecondMenu()")
                 && benchmark.contains("scene.nativeTickerInvocations()"));

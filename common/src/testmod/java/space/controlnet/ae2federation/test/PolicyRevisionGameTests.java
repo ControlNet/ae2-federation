@@ -54,7 +54,7 @@ public final class PolicyRevisionGameTests {
             if (phase[0] == 0 && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 phase[0] = 1;
-                helper.assertTrue(false, "Waiting for deletion fixture Fabric");
+                helper.assertTrue(false, "Waiting for deletion fixture Federation Domain");
             }
             if (phase[0] == 1 && fixtures.firstBridgeReady()) {
                 var service = PolicyService.get(helper.getLevel());
@@ -70,7 +70,7 @@ public final class PolicyRevisionGameTests {
                 helper.assertTrue(false, "Waiting for reconnect after deletion");
             }
             if (phase[0] != 2 || !fixtures.secondBridgeReady()) {
-                helper.assertTrue(false, "Waiting for replacement Fabric after deletion");
+                helper.assertTrue(false, "Waiting for replacement Federation Domain after deletion");
             }
             var service = PolicyService.get(helper.getLevel());
             var key = PolicyLifecycleGameTests.storageKey(fixtures);
@@ -116,10 +116,10 @@ public final class PolicyRevisionGameTests {
             if (!bridgePlaced[0] && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for " + testId + " confirmed Fabric");
+                helper.assertTrue(false, "Waiting for " + testId + " confirmed Federation Domain");
             }
             if (!fixtures.firstBridgeReady()) {
-                helper.assertTrue(false, "Waiting for " + testId + " identities and Fabric");
+                helper.assertTrue(false, "Waiting for " + testId + " identities and Federation Domain");
             }
             assertion.verify(fixtures, PolicyService.get(helper.getLevel()), PolicyLifecycleGameTests.storageKey(fixtures));
             fixtures.close();

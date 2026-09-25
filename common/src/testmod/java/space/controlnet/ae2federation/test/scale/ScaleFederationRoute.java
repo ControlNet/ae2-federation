@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -80,17 +80,17 @@ public final class ScaleFederationRoute implements AutoCloseable {
         ports = new NativePortFixtures(helper);
         sourceGrid = provider.managedNode().getGrid();
         targetGrid = target.grid();
-        sourceId = FabricRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
+        sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetId = target.anchorId();
         policyKey = new PolicyKey(sourceId, targetId, PolicyCapability.PROCESSING);
     }
 
     public boolean tick() {
         if (stage == 0) {
-            helper.assertTrue(!commonFabric() && PolicyService.get(helper.getLevel()).configured(policyKey).isEmpty()
+            helper.assertTrue(!commonFederationDomain() && PolicyService.get(helper.getLevel()).configured(policyKey).isEmpty()
                     && target.endpoint().claimState() instanceof ClaimState.Unclaimed,
-                    "Route must start without Fabric, Processing Policy, or Endpoint Claim");
-            receipt("absent-fabric-policy-claim");
+                    "Route must start without Federation Domain, Processing Policy, or Endpoint Claim");
+            receipt("absent-domain-policy-claim");
             ports.placeCable(BRIDGE, AEColor.RED);
             stage = 1;
             return false;
@@ -106,19 +106,19 @@ public final class ScaleFederationRoute implements AutoCloseable {
             if (!cableReady(TARGET_START, targetGrid, targetId)) return false;
             receipt("native-boundaries-settled");
             bridge = PartHelper.setPart(helper.getLevel(), helper.absolutePos(BRIDGE), Direction.EAST, null,
-                    BridgeRegistration.MULTIPART_BRIDGE.get());
+                    BridgeRegistration.BRIDGE.get());
             helper.assertTrue(bridge != null, "Physical Bridge part must be placed on source cable");
             stage = 5;
             return false;
         }
         if (stage == 5) {
             bridge.onNeighborChanged(helper.getLevel(), helper.absolutePos(BRIDGE), helper.absolutePos(TARGET_START));
-            if (bridge.membershipCandidate().isEmpty() || !commonFabric()) return false;
+            if (bridge.membershipCandidate().isEmpty() || !commonFederationDomain()) return false;
             var candidate = bridge.membershipCandidate().orElseThrow();
             helper.assertTrue(candidate.mainGrid() == sourceGrid && candidate.outerGrid() == targetGrid,
-                    "Physical Bridge must join only source and target Fabric domains");
+                    "Physical Bridge must join only source and target Federation Domain domains");
             assertSeparated();
-            receipt("physical-fabric-active");
+            receipt("physical-domain-active");
             var policies = PolicyService.get(helper.getLevel());
             helper.assertTrue(policies.edit(new PolicyEdit(policyKey, policies.revision(policyKey),
                     PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))))
@@ -128,7 +128,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
             return false;
         }
         if (stage == 6) {
-            helper.assertTrue(policyActive(), "Directional Processing Policy must activate over the physical Fabric");
+            helper.assertTrue(policyActive(), "Directional Processing Policy must activate over the physical Federation Domain");
             receipt("processing-policy-active");
             var endpoint = target.endpoint();
             helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), ClaimEpoch.NONE,
@@ -170,8 +170,8 @@ public final class ScaleFederationRoute implements AutoCloseable {
         }
         if (stage == 8) {
             bridge.onNeighborChanged(helper.getLevel(), helper.absolutePos(BRIDGE), helper.absolutePos(TARGET_START));
-            if (!commonFabric() || !policyActive()) return false;
-            receipt("post-wiring-fabric-active");
+            if (!commonFederationDomain() || !policyActive()) return false;
+            receipt("post-wiring-domain-active");
             if (!directProbe) {
                 helper.assertValueEqual(target.targetCobble(), 0L,
                         "Planner route must start with an empty physical target cell");
@@ -192,7 +192,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
                     "One native push must enter the target physical ME cell without a fabricated output");
             assertSeparated();
             helper.assertTrue(target.onlyAnchorClaim() && target.settled(),
-                    "Target registry must retain one settled claim after physical Fabric publication");
+                    "Target registry must retain one settled claim after physical Federation Domain publication");
             receipt("selected-native-target");
         }
         if (stage == 10) {
@@ -205,7 +205,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
         return "stage=" + stage + " sourceGrid=" + identity(sourceGrid) + " targetGrid=" + identity(targetGrid)
                 + " sourceId=" + sourceId + " targetId=" + targetId
                 + " bridge=" + (bridge == null ? "absent" : bridge.operationalReason())
-                + " commonFabric=" + commonFabric()
+                + " commonFederationDomain=" + commonFederationDomain()
                 + " resolution=" + (runtime == null ? "absent" : runtime.lastResolution().state())
                 + " pushAccepted=" + pushAccepted + " targetClaims=" + target.targetClaims();
     }
@@ -217,14 +217,14 @@ public final class ScaleFederationRoute implements AutoCloseable {
                 "CPU-submitted native Provider must resolve the claimed physical Endpoint: "
                         + runtime.lastResolution().state());
         assertSeparated();
-        helper.assertTrue(commonFabric() && policyActive() && target.onlyAnchorClaim() && target.settled(),
+        helper.assertTrue(commonFederationDomain() && policyActive() && target.onlyAnchorClaim() && target.settled(),
                 "Completed native job must retain the authorized physical Federation route");
         receipt("planner-native-job-complete");
     }
 
     public void assertNativeJobRouteIfSubmitted(int completedJobs) {
         assertSeparated();
-        helper.assertTrue(commonFabric() && policyActive() && target.onlyAnchorClaim() && target.settled(),
+        helper.assertTrue(commonFederationDomain() && policyActive() && target.onlyAnchorClaim() && target.settled(),
                 "Physical Federation route must remain active throughout the native catalog replay");
         if (completedJobs > 0) {
             helper.assertTrue(!directProbe && runtime.lastResolution() instanceof ProviderTargetResolution.Authorized authorized
@@ -244,14 +244,14 @@ public final class ScaleFederationRoute implements AutoCloseable {
     private boolean cableReady(BlockPos position, IGrid grid, NetworkId id) {
         var node = GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(position), Direction.UP);
         return node != null && node.hasGridBooted() && node.isActive() && node.getGrid() == grid
-                && FabricRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent()
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(id::equals).isPresent()
                 && target.onlyAnchorClaim() && target.settled();
     }
 
-    private boolean commonFabric() {
-        var registry = FabricRegistryAccess.get(helper.getLevel());
-        var source = registry.fabricsFor(sourceId);
-        var destination = registry.fabricsFor(targetId);
+    private boolean commonFederationDomain() {
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        var source = registry.federationdomainsFor(sourceId);
+        var destination = registry.federationdomainsFor(targetId);
         return source.stream().anyMatch(destination::contains);
     }
 
@@ -263,8 +263,8 @@ public final class ScaleFederationRoute implements AutoCloseable {
     private void assertSeparated() {
         helper.assertTrue(provider.managedNode().getGrid() == sourceGrid && target.grid() == targetGrid
                         && sourceGrid != targetGrid
-                        && FabricRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent()
-                        && FabricRegistryAccess.confirmedNetworkId(targetGrid).filter(targetId::equals).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).filter(sourceId::equals).isPresent()
+                        && FederationDomainRegistryAccess.confirmedNetworkId(targetGrid).filter(targetId::equals).isPresent(),
                 "Physical Bridge must preserve both settled native Grid identities");
         helper.assertTrue(bridge.getMainNode().getNode().getConnections().stream().noneMatch(connection ->
                 connection.getOtherSide(bridge.getMainNode().getNode()) == bridge.getExternalFacingNode()),
@@ -272,7 +272,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
     }
 
     private void receipt(String phase) {
-        var registry = FabricRegistryAccess.get(helper.getLevel());
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
         var policies = PolicyService.get(helper.getLevel());
         var line = "AE2F_SCALE_ROUTE phase=" + phase + " sourceGrid=" + identity(sourceGrid)
                 + " sourceId=" + sourceId + " targetGrid=" + identity(targetGrid) + " targetId=" + targetId
@@ -281,8 +281,8 @@ public final class ScaleFederationRoute implements AutoCloseable {
                         : identity(bridge.getMainNode().getGrid()))
                 + " outerGrid=" + (bridge == null || bridge.getExternalFacingNode() == null ? "absent"
                         : identity(bridge.getExternalFacingNode().getGrid()))
-                + " sourceFabrics=" + registry.fabricsFor(sourceId)
-                + " targetFabrics=" + registry.fabricsFor(targetId)
+                + " sourceFederationDomains=" + registry.federationdomainsFor(sourceId)
+                + " targetFederationDomains=" + registry.federationdomainsFor(targetId)
                 + " policy=" + policies.configured(policyKey)
                 + " claim=" + target.endpoint().claimState()
                 + " binding=" + (target.endpoint().binding() != null)

@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.fabric.FabricId;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.observability.state.FabricStateDelta;
-import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateDelta;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.observability.state.ObservationClientState;
 import space.controlnet.ae2federation.observability.state.ObservationClientStates;
 import space.controlnet.ae2federation.observability.state.MemberState;
@@ -23,21 +23,21 @@ import space.controlnet.ae2federation.identity.NetworkId;
 class ObservationClientStateTest {
     @Test
     void rejectsStaleReplayAndOutOfOrderDeltaWithoutMutation() {
-        var scope = new FabricReference(new FabricId("physical:client"), 2);
+        var scope = new FederationDomainReference(new FederationDomainId("physical:client"), 2);
         var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
-        var member = new MemberState(scope, MemberId.forNetwork(scope.fabricId(), new NetworkId(UUID.randomUUID())),
+        var member = new MemberState(scope, MemberId.forNetwork(scope.federationDomainId(), new NetworkId(UUID.randomUUID())),
                 new NetworkId(UUID.randomUUID()), "online");
-        var initial = new FabricStateSnapshot(scope, 10, 4, 5, List.of(member), List.of(), List.of(), List.of(),
+        var initial = new FederationDomainStateSnapshot(scope, 10, 4, 5, List.of(member), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of());
         var state = new ObservationClientState(session);
         state.applySnapshot(new ObservationSnapshotEnvelope(session, initial));
 
-        var replacement = new FabricStateSnapshot(scope, 10, 4, 6, List.of(), List.of(), List.of(), List.of(),
+        var replacement = new FederationDomainStateSnapshot(scope, 10, 4, 6, List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of(), List.of());
         assertTrue(state.applyDelta(new ObservationDeltaEnvelope(session,
-                new FabricStateDelta(replacement, 5, false))));
+                new FederationDomainStateDelta(replacement, 5, false))));
         assertFalse(state.applyDelta(new ObservationDeltaEnvelope(session,
-                new FabricStateDelta(new FabricStateSnapshot(scope, 10, 4, 7, List.of(), List.of(), List.of(),
+                new FederationDomainStateDelta(new FederationDomainStateSnapshot(scope, 10, 4, 7, List.of(), List.of(), List.of(),
                         List.of(), List.of(), List.of(), List.of()), 5, false))));
         assertEquals(6, state.dataRevision());
         assertTrue(state.snapshot().orElseThrow().members().isEmpty());
@@ -46,37 +46,37 @@ class ObservationClientStateTest {
 
     @Test
     void rejectsPayloadFromAnotherObservationSessionWithoutMutation() {
-        var scope = new FabricReference(new FabricId("physical:client-session"), 3);
+        var scope = new FederationDomainReference(new FederationDomainId("physical:client-session"), 3);
         var first = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
         var second = ObservationSession.create(first.playerId(), UUID.randomUUID(), scope, 1);
-        var initial = new FabricStateSnapshot(scope, 1, 2, 3, List.of(), List.of(), List.of(), List.of(), List.of(),
+        var initial = new FederationDomainStateSnapshot(scope, 1, 2, 3, List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of());
         var state = new ObservationClientState(first);
         state.applySnapshot(new ObservationSnapshotEnvelope(first, initial));
 
         assertFalse(state.applyDelta(new ObservationDeltaEnvelope(second,
-                new FabricStateDelta(new FabricStateSnapshot(scope, 1, 2, 4, List.of(), List.of(), List.of(),
+                new FederationDomainStateDelta(new FederationDomainStateSnapshot(scope, 1, 2, 4, List.of(), List.of(), List.of(),
                         List.of(), List.of(), List.of(), List.of()), 3, false))));
         assertEquals(initial, state.snapshot().orElseThrow());
     }
 
     @Test
     void rejectsSameSessionRegressiveSnapshotWithoutMutation() {
-        var scope = new FabricReference(new FabricId("physical:client-regression"), 4);
+        var scope = new FederationDomainReference(new FederationDomainId("physical:client-regression"), 4);
         var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
-        var current = new FabricStateSnapshot(scope, 8, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+        var current = new FederationDomainStateSnapshot(scope, 8, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
                 List.of(), List.of());
         var state = new ObservationClientState(session);
         assertTrue(state.applySnapshot(new ObservationSnapshotEnvelope(session, current)));
 
         assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
-                new FabricStateSnapshot(scope, 7, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+                new FederationDomainStateSnapshot(scope, 7, 7, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
                         List.of(), List.of()))));
         assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
-                new FabricStateSnapshot(scope, 8, 6, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
+                new FederationDomainStateSnapshot(scope, 8, 6, 6, List.of(), List.of(), List.of(), List.of(), List.of(),
                         List.of(), List.of()))));
         assertFalse(state.applySnapshot(new ObservationSnapshotEnvelope(session,
-                new FabricStateSnapshot(scope, 8, 7, 5, List.of(), List.of(), List.of(), List.of(), List.of(),
+                new FederationDomainStateSnapshot(scope, 8, 7, 5, List.of(), List.of(), List.of(), List.of(), List.of(),
                         List.of(), List.of()))));
         assertEquals(current, state.snapshot().orElseThrow());
         assertFalse(state.resnapshotRequired());
@@ -84,10 +84,10 @@ class ObservationClientStateTest {
 
     @Test
     void closedSessionCannotBeRecreatedBySnapshotReplay() {
-        var scope = new FabricReference(new FabricId("physical:client-ownership"), 5);
+        var scope = new FederationDomainReference(new FederationDomainId("physical:client-ownership"), 5);
         var session = ObservationSession.create(UUID.randomUUID(), UUID.randomUUID(), scope, 1);
         var envelope = new ObservationSnapshotEnvelope(session,
-                new FabricStateSnapshot(scope, 1, 1, 1, List.of(), List.of(), List.of(), List.of(), List.of(),
+                new FederationDomainStateSnapshot(scope, 1, 1, 1, List.of(), List.of(), List.of(), List.of(), List.of(),
                         List.of(), List.of()));
         var states = new ObservationClientStates();
 

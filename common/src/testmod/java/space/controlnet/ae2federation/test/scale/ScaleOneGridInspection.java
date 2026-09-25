@@ -14,7 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.test.processing.ProcessingCraftingGrid;
 
 public final class ScaleOneGridInspection {
@@ -52,7 +52,7 @@ public final class ScaleOneGridInspection {
         }
         var receipt = "AE2F_SCALE_ONE_GRID completedJobs=" + completedJobs + " nodes=" + nodes.size()
                 + " distinctGrids=" + grids.size() + " sourceGrid=" + id(source)
-                + " settled=" + FabricRegistryAccess.confirmedNetworkId(source).isPresent()
+                + " settled=" + FederationDomainRegistryAccess.confirmedNetworkId(source).isPresent()
                 + " details=" + details;
         if (record) {
             LOGGER.info("{}", receipt);
@@ -67,7 +67,7 @@ public final class ScaleOneGridInspection {
                 }
             }
         }
-        helper.assertTrue(FabricRegistryAccess.confirmedNetworkId(source).isPresent(),
+        helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(source).isPresent(),
                 "One-Grid source identity must be settled");
         helper.assertValueEqual(grids.size(), 1, "Scene-owned active native Grids must be exactly one; " + receipt);
     }

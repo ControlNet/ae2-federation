@@ -21,8 +21,8 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
             context.mc().options.languageCode = "zh_cn";
             context.mc().reloadResourcePacks();
         });
-        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.HUB)
-                .waitForText("#fabric_title", "联邦关系图与加工诊断")
+        TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
+                .waitForText("#domain_title", "联邦关系图与加工诊断")
                 .check("scale-4 Chinese labels stay inside buttons", context ->
                         TaskThirtyThreeScenarioSupport.buttonTextContained(context, "#consumer_next", "#provider_next",
                                 "#capability_next", "#policy_toggle", "#mapping_provider_next",

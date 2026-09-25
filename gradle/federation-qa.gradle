@@ -379,11 +379,11 @@ def verifyTaskTenEvidence
 def taskElevenCases = ['bridge.valid', 'bridge.invalid', 'bridge.same-grid', 'bridge.reject-federation-cable',
         'bridge.reload-replace']
 def verifyTaskElevenEvidence
-def taskTwelveCases = ['hub.mixed-six-faces', 'hub.six-independent-me', 'hub.repeat-network',
-        'hub.port-replacement', 'hub.reject-unsupported']
+def taskTwelveCases = ['router.mixed-six-faces', 'router.six-independent-me', 'router.repeat-network',
+        'router.port-replacement', 'router.reject-unsupported']
 def verifyTaskTwelveEvidence
-def taskThirteenCases = ['fabric.bridge-diamond', 'fabric.hub-merge-split', 'fabric.redundant-membership',
-        'fabric.partial-unload', 'fabric.reject-stale-route']
+def taskThirteenCases = ['domain.bridge-diamond', 'domain.router-merge-split', 'domain.redundant-membership',
+        'domain.partial-unload', 'domain.reject-stale-route']
 def verifyTaskThirteenEvidence
 def taskFourteenCases = ['policy.lifecycle-matrix', 'policy.new-bridge-restore', 'policy.reject-stale-edit',
         'policy.delete-reconnect', 'policy.sparse-scale']
@@ -407,7 +407,7 @@ def verifyTaskTwentyOneEvidence
 def taskTwentyTwoCases = ['provenance.multi-entry', 'provenance.native-rebind', 'provenance.exclude-import',
         'provenance.opaque-boundary']
 def verifyTaskTwentyTwoEvidence
-def taskTwentyThreeCases = ['chain.four-fabric-diamond', 'chain.filter-union-intersection',
+def taskTwentyThreeCases = ['chain.four-domain-diamond', 'chain.filter-union-intersection',
         'chain.toggle-reexport', 'chain.reject-direct-activation', 'chain.reject-cycle']
 def verifyTaskTwentyThreeEvidence
 def taskTwentyFourCases = ['subscription.two-same-key-events', 'subscription.diamond-once',
@@ -436,7 +436,7 @@ def taskThirtyOneCases = ['energy.directional-policy', 'energy.cold-start', 'ene
         'energy.reject-reverse', 'energy.disconnect-no-source']
 def verifyTaskThirtyOneEvidence
 def taskThirtyTwoCases = ['observe.native-flow-once', 'observe.scoped-snapshot', 'observe.close-cleanup',
-        'observe.reject-stale-delta', 'observe.reject-cross-fabric-edit']
+        'observe.reject-stale-delta', 'observe.reject-cross-domain-edit']
 def verifyTaskThirtyTwoEvidence
 def taskThirtyFiveCases = ['release.server-side-load', 'release.no-test-content', 'release.optional-absent',
         'packets.reject-malformed', 'packets.reject-out-of-context']
@@ -453,7 +453,7 @@ def finalAuditCases = [
         ['audit.requirements', 'audit.reject-missing-gate'],
         ['audit.native-hooks', 'audit.reject-dual-authority'],
         ['audit.scope', 'audit.reject-prohibited-content']]
-def finalClientCases = ['final.native-workflow', 'final.hub-six-faces', 'final.bridge-invalid',
+def finalClientCases = ['final.native-workflow', 'final.router-six-faces', 'final.bridge-invalid',
         'final.policy-reconnect', 'final.chinese-scales']
 def taskFortyDocuments = ['README.md', 'docs/acceptance-matrix.md', 'docs/testing/commands.md',
         'docs/testing/manual-client.md', 'docs/benchmarks/task-37.md', 'docs/compatibility/matrix.md']
@@ -671,15 +671,15 @@ verifyTaskFourEvidence = { File attempt, List requested, List<String> declaredPa
     }
 }
 verifyTaskFiveEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
-    def taskFiveCases = ['ports.bridge-cable-device', 'ports.hub-six-grids', 'ports.hub-repeated-grid',
+    def taskFiveCases = ['ports.bridge-cable-device', 'ports.router-six-grids', 'ports.router-repeated-grid',
             'ports.reject-floating-node', 'ports.reject-cross-grid-join']
     if (!requested.any { it in taskFiveCases }) return
     if (requested != taskFiveCases) throw new GradleException('Task 5 evidence must select the exact canonical case set')
 
     def expected = [
             portsbridgecabledevice: 6,
-            portshubsixgrids: 8,
-            portshubrepeatedgrid: 7,
+            portsroutersixgrids: 8,
+            portsrouterrepeatedgrid: 7,
             portsrejectfloatingnode: 7,
             portsrejectcrossgridjoin: 6
     ]
@@ -760,21 +760,21 @@ verifyTaskFiveEvidence = { File attempt, List requested, List<String> declaredPa
             [(face): requireTracedIdentity(testId, properties, "face.${face}", file)]
         }
     }
-    def six = parsed.portshubsixgrids as Properties
-    def sixFile = new File(attempt, 'native-portshubsixgrids.properties')
+    def six = parsed.portsroutersixgrids as Properties
+    def sixFile = new File(attempt, 'native-portsroutersixgrids.properties')
     requireProperty(six, 'faceCount', '6', sixFile)
     requireProperty(six, 'distinctGridCount', '6', sixFile)
     requireProperty(six, 'deduplicated', 'false', sixFile)
-    if ((parseFaces('portshubsixgrids', six, sixFile).values() as Set).size() != 6) {
-        throw new GradleException('Task 5 six-face Hub Grid identities are not isolated')
+    if ((parseFaces('portsroutersixgrids', six, sixFile).values() as Set).size() != 6) {
+        throw new GradleException('Task 5 six-face Router Grid identities are not isolated')
     }
 
-    def repeated = parsed.portshubrepeatedgrid as Properties
-    def repeatedFile = new File(attempt, 'native-portshubrepeatedgrid.properties')
+    def repeated = parsed.portsrouterrepeatedgrid as Properties
+    def repeatedFile = new File(attempt, 'native-portsrouterrepeatedgrid.properties')
     requireProperty(repeated, 'faceCount', '6', repeatedFile)
     requireProperty(repeated, 'distinctGridCount', '5', repeatedFile)
     requireProperty(repeated, 'deduplicated', 'true', repeatedFile)
-    def repeatedFaces = parseFaces('portshubrepeatedgrid', repeated, repeatedFile)
+    def repeatedFaces = parseFaces('portsrouterrepeatedgrid', repeated, repeatedFile)
     if ((repeatedFaces.values() as Set).size() != 5 || repeatedFaces.north != repeatedFaces.south) {
         throw new GradleException('Task 5 repeated Grid identity or face ownership is invalid')
     }
@@ -1017,11 +1017,11 @@ verifyTaskSevenEvidence = { File attempt, List requested, List<String> declaredP
     }
 }
 verifyTaskEightEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
-    def taskEightCases = ['storage-proof.native-projection', 'storage-proof.four-fabric-diamond',
+    def taskEightCases = ['storage-proof.native-projection', 'storage-proof.four-domain-diamond',
             'storage-proof.reject-loop', 'storage-proof.opaque-alias']
     if (!requested.any { it in taskEightCases }) return
     if (requested != taskEightCases) throw new GradleException('Task 8 evidence must select the exact canonical case set')
-    def expected = [storageproofnativeprojection: 6, storageprooffourfabricdiamond: 6,
+    def expected = [storageproofnativeprojection: 6, storageprooffourfederationdomaindiamond: 6,
             storageproofrejectloop: 4, storageproofopaquealias: 4]
     expected.each { testId, assertionCount ->
         if (childExits["positive-${testId}"] != 0) {
@@ -1088,10 +1088,10 @@ verifyTaskEightEvidence = { File attempt, List requested, List<String> declaredP
             || !nativeDelegates.storageproofnativeprojection.contains(projection.getProperty('nativeSource'))) {
         throw new GradleException('Task 8 forged source identity or native projection separation')
     }
-    def diamond = parsed.storageprooffourfabricdiamond as Properties
-    def routeAliases = diamond.stringPropertyNames().findAll { it.startsWith('route.fabric-') }
+    def diamond = parsed.storageprooffourfederationdomaindiamond as Properties
+    def routeAliases = diamond.stringPropertyNames().findAll { it.startsWith('route.domain-') }
             .collect { diamond.getProperty(it) }
-    def routeProviders = diamond.stringPropertyNames().findAll { it.startsWith('provider.fabric-') }
+    def routeProviders = diamond.stringPropertyNames().findAll { it.startsWith('provider.domain-') }
             .collect { diamond.getProperty(it) }
     if (diamond.getProperty('routeCount') != '4' || routeAliases.size() != 4 || routeAliases.toSet().size() != 4
             || routeProviders.size() != 4 || routeProviders.toSet().size() != 4
@@ -1099,19 +1099,19 @@ verifyTaskEightEvidence = { File attempt, List requested, List<String> declaredP
             || diamond.getProperty('sourceIsNativeStore') != 'true'
             || diamond.getProperty('selectedPriority') != '40'
             || diamond.getProperty('routePriorities') != '40,30,20,10'
-            || nativeMounts.storageprooffourfabricdiamond.count {
+            || nativeMounts.storageprooffourfederationdomaindiamond.count {
                 it.aggregate == diamond.getProperty('destinationAggregate') && it.storage in routeAliases
             } != 4
-            || nativeMounts.storageprooffourfabricdiamond.findAll {
+            || nativeMounts.storageprooffourfederationdomaindiamond.findAll {
                 it.aggregate == diamond.getProperty('destinationAggregate') && it.storage in routeAliases
             }.collect { it.priority }.toSet() != ['40', '30', '20', '10'] as Set
-            || providerMounts.storageprooffourfabricdiamond.findAll {
+            || providerMounts.storageprooffourfederationdomaindiamond.findAll {
                 it.provider in routeProviders && it.storage in routeAliases
             }.collect { [it.provider, it.storage, it.priority] }.toSet().size() != 4
-            || providerMounts.storageprooffourfabricdiamond.findAll {
+            || providerMounts.storageprooffourfederationdomaindiamond.findAll {
                 it.provider in routeProviders && it.storage in routeAliases
             }.collect { it.priority }.toSet() != ['40', '30', '20', '10'] as Set
-            || !nativeDelegates.storageprooffourfabricdiamond.contains(diamond.getProperty('nativeSource'))) {
+            || !nativeDelegates.storageprooffourfederationdomaindiamond.contains(diamond.getProperty('nativeSource'))) {
         throw new GradleException('Task 8 diamond source identity or priority semantics are invalid')
     }
     def loop = parsed.storageproofrejectloop as Properties
@@ -1316,8 +1316,8 @@ verifyTaskTenEvidence = { File attempt, List requested, List<String> declaredPat
     }
     def noSource = parsed.energyproofnosource as Properties
     if (noSource.getProperty('extracted') != '0' || noSource.getProperty('consumerPowered') != 'false'
-            || noSource.getProperty('generatedEnergy') != '0' || noSource.getProperty('fabricIdlePower') != '0'
-            || noSource.getProperty('fabricInfiniteEnergy') != 'false') {
+            || noSource.getProperty('generatedEnergy') != '0' || noSource.getProperty('federationDomainIdlePower') != '0'
+            || noSource.getProperty('federationDomainInfiniteEnergy') != 'false') {
         throw new GradleException('Task 10 no-source semantics are incomplete')
     }
     def ring = parsed.energyproofring as Properties
@@ -1566,19 +1566,19 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
     def expected = [
             observenativeflowonce: [accepted: '8', exactNano: '8000000000', events: '1', simulationEvents: '0',
                     observationReads: '2', deduplicated: 'true', topologyStable: 'true'],
-            observescopedsnapshot: [members: '2', canonical: 'true', crossFabric: 'false', fabrics: '2',
+            observescopedsnapshot: [members: '2', canonical: 'true', crossFederationDomain: 'false', federationDomains: '2',
                     sessionBound: 'true', providers: '1', endpoints: '1', nonFlowDeltas: '2',
                     processingSend: '1', aggregateReturn: '1', topologyStable: 'true'],
             observeclosecleanup: [active: '0', removals: '1', idempotent: 'true', lateDelivery: 'false'],
             observerejectstaledelta: [revision: '6', rejected: 'true', resnapshot: 'true',
                     trailingRejected: 'true', wrongSessionRejected: 'true'],
-            observerejectcrossfabricedit: [rejected: 'true', serverIssued: 'true', encoded: 'true',
+            observerejectcrossfederationdomainedit: [rejected: 'true', serverIssued: 'true', encoded: 'true',
                     clientValueStable: 'true', clientBytesStable: 'true', serverAStable: 'true',
                     serverBStable: 'true', reboundStateAbsent: 'true', subscriptionsStable: 'true',
                     removalsStable: 'true', policyStable: 'true', topologyStable: 'true', activeBefore: '2',
-                    activeAfter: '2', activeClosed: '0', removalDelta: '2', fabrics: '2', authorityReceipts: '2']]
+                    activeAfter: '2', activeClosed: '0', removalDelta: '2', federationDomains: '2', authorityReceipts: '2']]
     def expectedAssertions = [observenativeflowonce: '7', observescopedsnapshot: '16', observeclosecleanup: '5',
-            observerejectstaledelta: '6', observerejectcrossfabricedit: '18']
+            observerejectstaledelta: '6', observerejectcrossfederationdomainedit: '18']
     def standardFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
             'inserted', 'extracted', 'elapsedNanos'] as Set
     expected.each { testId, facts ->
@@ -1637,16 +1637,16 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
             }
             def snapshotIdentity = identity(snapshots[0])
             if (deltas.any { identity(it) != snapshotIdentity }) {
-                throw new GradleException('Task 32 scoped runtime receipts changed player, menu, or Fabric scope')
+                throw new GradleException('Task 32 scoped runtime receipts changed player, menu, or Federation Domain scope')
             }
         }
-        if (testId == 'observerejectcrossfabricedit') {
+        if (testId == 'observerejectcrossfederationdomainedit') {
             def receiptLines = logText.readLines().findAll {
-                it.contains('AE2F_OBSERVATION_RECEIPT testId=observerejectcrossfabricedit')
+                it.contains('AE2F_OBSERVATION_RECEIPT testId=observerejectcrossfederationdomainedit')
             }
             def parseCrossReceipt = { String line ->
                 def match = line =~ / type=(\S+) player=(\S*) menu=(\S*) scope=(.*?) event=(\S+) value=(\d+) secondary=(\d+) resource=(\S*) attribution=(\S*) exactBatch=(true|false)$/
-                if (!match.find()) throw new GradleException('Task 32 malformed cross-Fabric runtime receipt')
+                if (!match.find()) throw new GradleException('Task 32 malformed cross-Federation Domain runtime receipt')
                 [type: match.group(1), player: match.group(2), menu: match.group(3), scope: match.group(4),
                         event: match.group(5), value: match.group(6), secondary: match.group(7),
                         resource: match.group(8), attribution: match.group(9), exactBatch: match.group(10)]
@@ -1659,7 +1659,7 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
             def snapshots = receipts.findAll { it.type == 'snapshot' }
             if (authorities.size() != 2 || rejection.size() != 1 || opened.size() != 2 || closed.size() != 2
                     || snapshots.size() != 2) {
-                throw new GradleException('Task 32 cross-Fabric production authority receipts are incomplete')
+                throw new GradleException('Task 32 cross-Federation Domain production authority receipts are incomplete')
             }
             def authorityA = authorities.find { it.attribution == 'A' }
             def authorityB = authorities.find { it.attribution == 'B' }
@@ -1667,7 +1667,7 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
                     || authorityA.player == authorityB.player || authorityA.menu == authorityB.menu
                     || authorities.any { it.value != '1' || it.secondary != '2' || it.event.isBlank()
                             || it.resource.isBlank() || it.exactBatch != 'false' }) {
-                throw new GradleException('Task 32 cross-Fabric production authority receipts are invalid')
+                throw new GradleException('Task 32 cross-Federation Domain production authority receipts are invalid')
             }
             def matchesAuthority = { Map receipt, Map authority ->
                 receipt.player == authority.player && receipt.menu == authority.menu && receipt.scope == authority.scope
@@ -1679,7 +1679,7 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
                                 && it.resource == authority.event && it.attribution == authority.resource }
                         && snapshots.any { matchesAuthority(it, authority) }
             }) {
-                throw new GradleException('Task 32 cross-Fabric authority is not backed by production subscription lifecycle')
+                throw new GradleException('Task 32 cross-Federation Domain authority is not backed by production subscription lifecycle')
             }
             def snapshotA = snapshots.find { matchesAuthority(it, authorityA) }
             def snapshotB = snapshots.find { matchesAuthority(it, authorityB) }
@@ -1692,7 +1692,7 @@ verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> decla
                     || rejection[0].value != '2' || rejection[0].secondary != '0'
                     || rejection[0].resource != expectedRejectionFacts
                     || rejection[0].attribution != authorityB.event || rejection[0].exactBatch != 'false') {
-                throw new GradleException('Task 32 cross-Fabric encoded rejection or zero-mutation receipt is invalid')
+                throw new GradleException('Task 32 cross-Federation Domain encoded rejection or zero-mutation receipt is invalid')
             }
         }
     }
@@ -1973,11 +1973,11 @@ verifyTaskElevenEvidence = { File attempt, List requested, List<String> declared
 verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
     if (!requested.any { it in taskTwelveCases }) return
     if (requested != taskTwelveCases) throw new GradleException('Task 12 evidence must select the exact canonical case set')
-    def expected = [hubmixedsixfaces: 9, hubsixindependentme: 10, hubrepeatnetwork: 8,
-            hubportreplacement: 8, hubrejectunsupported: 8]
+    def expected = [routermixedsixfaces: 9, routersixindependentme: 10, routerrepeatnetwork: 8,
+            routerportreplacement: 8, routerrejectunsupported: 8]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.findAll {
-        new File(it).name.startsWith('native-hub') && new File(it).name.endsWith('.properties')
+        new File(it).name.startsWith('native-router') && new File(it).name.endsWith('.properties')
     }
     if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
         throw new GradleException('Task 12 native artifact set is duplicated, missing, or substituted')
@@ -2008,7 +2008,7 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             throw new GradleException("Task 12 assertion/operation accounting mismatch in ${artifact}")
         }
         def traceFacts = [:]
-        (new File(attempt, log).text =~ /AE2F_HUB_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+        (new File(attempt, log).text =~ /AE2F_ROUTER_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
             if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
                 throw new GradleException("Task 12 duplicate runtime trace fact in ${log}: ${match[2]}")
             }
@@ -2022,16 +2022,16 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
         parsed[testId] = properties
     }
 
-    def mixed = parsed.hubmixedsixfaces as Properties
+    def mixed = parsed.routermixedsixfaces as Properties
     if (mixed.getProperty('faceCount') != '6' || mixed.getProperty('nativeCount') != '3'
             || mixed.getProperty('federationCount') != '3' || mixed.getProperty('disconnectedCount') != '0'
             || mixed.getProperty('nativeGridCount') != '3' || mixed.getProperty('nativeJoin') != 'false'
             || mixed.getProperty('federationCustomLinks') != '3'
-            || mixed.getProperty('fabricPowerRequired') != 'false'
+            || mixed.getProperty('federationDomainPowerRequired') != 'false'
             || mixed.getProperty('cableAndDeviceAccepted') != 'true') {
         throw new GradleException('Task 12 mixed six-face semantics are incomplete')
     }
-    def six = parsed.hubsixindependentme as Properties
+    def six = parsed.routersixindependentme as Properties
     def faceNames = ['down', 'up', 'north', 'south', 'west', 'east']
     def sixFaces = faceNames.collect { six.getProperty("face.${it}") }
     if (six.getProperty('faceCount') != '6' || six.getProperty('nativeCount') != '6'
@@ -2039,7 +2039,7 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             || sixFaces.any { it == null } || sixFaces.toSet().size() != 6) {
         throw new GradleException('Task 12 six independent ME face semantics are incomplete')
     }
-    def repeated = parsed.hubrepeatnetwork as Properties
+    def repeated = parsed.routerrepeatnetwork as Properties
     if (repeated.getProperty('faceCount') != '6' || repeated.getProperty('nativeCount') != '6'
             || repeated.getProperty('distinctGridCount') != '5' || repeated.getProperty('repeatedFacesOwned') != '2'
             || repeated.getProperty('repeatDeduplicated') != 'true' || repeated.getProperty('nativeJoin') != 'false'
@@ -2047,7 +2047,7 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             || repeated.getProperty('face.north') != repeated.getProperty('face.south')) {
         throw new GradleException('Task 12 repeated-network face ownership semantics are incomplete')
     }
-    def replacement = parsed.hubportreplacement as Properties
+    def replacement = parsed.routerportreplacement as Properties
     if (replacement.getProperty('initialNative') != 'true'
             || replacement.getProperty('invalidatedImmediately') != 'true'
             || replacement.getProperty('federationReplacement') != 'true'
@@ -2058,7 +2058,7 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             || replacement.getProperty('nativeJoin') != 'false') {
         throw new GradleException('Task 12 port replacement lifecycle semantics are incomplete')
     }
-    def unsupported = parsed.hubrejectunsupported as Properties
+    def unsupported = parsed.routerrejectunsupported as Properties
     if (unsupported.getProperty('allSixFederation') != 'true'
             || unsupported.getProperty('customFaceCount') != '6'
             || unsupported.getProperty('unsupportedAccepted') != 'false'
@@ -2066,18 +2066,18 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             || unsupported.getProperty('unsupportedNativeEdge') != 'false'
             || unsupported.getProperty('nativeJoin') != 'false'
             || unsupported.getProperty('loadedNeighborOnly') != 'true'
-            || unsupported.getProperty('fabricPowerRequired') != 'false') {
+            || unsupported.getProperty('federationDomainPowerRequired') != 'false') {
         throw new GradleException('Task 12 unsupported-neighbor or all-Federation semantics are incomplete')
     }
 }
 verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
     if (!requested.any { it in taskThirteenCases }) return
     if (requested != taskThirteenCases) throw new GradleException('Task 13 evidence must select the exact canonical case set')
-    def expected = [fabricbridgediamond: 8, fabrichubmergesplit: 8, fabricredundantmembership: 8,
-            fabricpartialunload: 8, fabricrejectstaleroute: 8]
+    def expected = [federationdomainbridgediamond: 8, federationdomainroutermergesplit: 8, federationdomainredundantmembership: 8,
+            federationdomainpartialunload: 8, federationdomainrejectstaleroute: 8]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.findAll {
-        new File(it).name.startsWith('native-fabric') && new File(it).name.endsWith('.properties')
+        new File(it).name.startsWith('native-domain') && new File(it).name.endsWith('.properties')
     }
     if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
         throw new GradleException('Task 13 native artifact set is duplicated, missing, or substituted')
@@ -2108,7 +2108,7 @@ verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declar
             throw new GradleException("Task 13 assertion/operation accounting mismatch in ${artifact}")
         }
         def traceFacts = [:]
-        (new File(attempt, log).text =~ /AE2F_FABRIC_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+        (new File(attempt, log).text =~ /AE2F_DOMAIN_NATIVE_TRACE testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
             if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
                 throw new GradleException("Task 13 duplicate runtime trace fact in ${log}: ${match[2]}")
             }
@@ -2121,37 +2121,37 @@ verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declar
         }
         parsed[testId] = properties
     }
-    def diamond = parsed.fabricbridgediamond as Properties
-    if (diamond.getProperty('directFabricCount') != '4' || diamond.getProperty('sharedNativeNetwork') != 'true'
-            || diamond.getProperty('sharedNetworkFabricCount') != '4'
+    def diamond = parsed.federationdomainbridgediamond as Properties
+    if (diamond.getProperty('directFederationDomainCount') != '4' || diamond.getProperty('sharedNativeNetwork') != 'true'
+            || diamond.getProperty('sharedNetworkFederationDomainCount') != '4'
             || diamond.getProperty('componentMergeFromSharedGrid') != 'false'
             || diamond.getProperty('nativeCrossGridJoin') != 'false'
             || diamond.getProperty('membershipConfirmed') != 'true'
             || diamond.getProperty('cycleConverged') != 'true' || diamond.getProperty('worldScan') != 'false') {
         throw new GradleException('Task 13 Bridge diamond membership semantics are incomplete')
     }
-    def split = parsed.fabrichubmergesplit as Properties
+    def split = parsed.federationdomainroutermergesplit as Properties
     if (split.getProperty('mergedComponentCount') != '1' || split.getProperty('splitComponentCount') != '2'
             || split.getProperty('incremental') != 'true' || split.getProperty('mergedReferenceInvalidated') != 'true'
             || split.getProperty('loadedReciprocalEdgesOnly') != 'true' || split.getProperty('nativeGridMerge') != 'false'
             || split.getProperty('generationAdvanced') != 'true' || split.getProperty('worldScan') != 'false') {
-        throw new GradleException('Task 13 Hub merge/split semantics are incomplete')
+        throw new GradleException('Task 13 Router merge/split semantics are incomplete')
     }
-    def redundant = parsed.fabricredundantmembership as Properties
+    def redundant = parsed.federationdomainredundantmembership as Properties
     if (redundant.getProperty('nativeNetworkCount') != '1' || redundant.getProperty('attachmentSourceCount') != '2'
-            || redundant.getProperty('indexedFabricCount') != '1' || redundant.getProperty('deduplicated') != 'true'
+            || redundant.getProperty('indexedFederationDomainCount') != '1' || redundant.getProperty('deduplicated') != 'true'
             || redundant.getProperty('faceOwnershipRetained') != 'true' || redundant.getProperty('identitySettled') != 'true'
-            || redundant.getProperty('nativeJoinByFabric') != 'false' || redundant.getProperty('worldScan') != 'false') {
+            || redundant.getProperty('nativeJoinByFederationDomain') != 'false' || redundant.getProperty('worldScan') != 'false') {
         throw new GradleException('Task 13 redundant membership semantics are incomplete')
     }
-    def unload = parsed.fabricpartialunload as Properties
+    def unload = parsed.federationdomainpartialunload as Properties
     if (unload.getProperty('initiallyMerged') != 'true' || unload.getProperty('unloadLifecycleInvoked') != 'true'
             || unload.getProperty('staleMembershipAccepted') != 'false' || unload.getProperty('forcedChunkLoads') != '0'
             || unload.getProperty('loadedEvidenceOnly') != 'true' || unload.getProperty('affectedComponentsOnly') != 'true'
             || unload.getProperty('membershipInvalidated') != 'true' || unload.getProperty('worldScan') != 'false') {
         throw new GradleException('Task 13 partial unload semantics are incomplete')
     }
-    def stale = parsed.fabricrejectstaleroute as Properties
+    def stale = parsed.federationdomainrejectstaleroute as Properties
     if (stale.getProperty('referenceInitiallyCurrent') != 'true'
             || stale.getProperty('referenceCurrentAfterChange') != 'false'
             || stale.getProperty('staleRouteAccepted') != 'false'
@@ -2241,7 +2241,7 @@ verifyTaskFourteenEvidence = { File attempt, List requested, List<String> declar
             || replacement.getProperty('newBridgeObject') != 'true' || replacement.getProperty('restoredState') != 'ACTIVE'
             || replacement.getProperty('revisionPreserved') != 'true'
             || replacement.getProperty('keyedByNetworkIds') != 'true'
-            || replacement.getProperty('fabricIdPersisted') != 'false'
+            || replacement.getProperty('federationDomainIdPersisted') != 'false'
             || replacement.getProperty('reexportDefault') != 'false'
             || replacement.getProperty('nativeGridJoin') != 'false') {
         throw new GradleException('Task 14 new-Bridge restoration semantics are incomplete')
@@ -2462,7 +2462,7 @@ verifyTaskSeventeenEvidence = { File attempt, List requested, List<String> decla
             || sameGrid.getProperty('offlineRetargeted') != 'false' || sameGrid.getProperty('targetMutation') != '0'
             || sameGrid.getProperty('runtimeBinding') != 'true'
             || sameGrid.getProperty('policyDeniedAttempts') != '2'
-            || sameGrid.getProperty('fabricDeniedAttempts') != '1'
+            || sameGrid.getProperty('federationDomainDeniedAttempts') != '1'
             || sameGrid.getProperty('unloadedDeniedAttempts') != '1'
             || sameGrid.getProperty('unloadedCapabilityLookupDelta') != '0'
             || sameGrid.getProperty('sameGridDeniedAttempts') != '1'
@@ -2553,7 +2553,7 @@ verifyTaskEighteenEvidence = { File attempt, List requested, List<String> declar
     }
     def local = parsed.endpointlocal as Properties
     if (local.getProperty('mode') != 'LOCAL' || local.getProperty('verifiedUpstreams') != '1'
-            || local.getProperty('hubRequired') != 'false' || local.getProperty('fabricRequired') != 'false'
+            || local.getProperty('routerRequired') != 'false' || local.getProperty('federationDomainRequired') != 'false'
             || local.getProperty('sourceGridSeparated') != 'true' || local.getProperty('nativeInputAccepted') != 'true'
             || local.getProperty('nativeReturnOwner') != 'true' || local.getProperty('endpointBuffer') != 'false'
             || local.getProperty('typedGeneration') != 'true') {
@@ -3274,7 +3274,7 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
             || access.getProperty('nativeConsumerAggregate') != 'true'
             || access.getProperty('nativeProviderSource') != 'true'
             || access.getProperty('direction') != 'consumer-to-provider'
-            || access.getProperty('customInventory') != 'false' || access.getProperty('twoHubFabric') != 'true'
+            || access.getProperty('customInventory') != 'false' || access.getProperty('twoRouterFederationDomain') != 'true'
             || access.getProperty('nativeCaller') != 'player-source') {
         throw new GradleException('Task 21 native relationship access semantics are incomplete')
     }
@@ -3574,7 +3574,7 @@ verifyTaskTwentyThreeEvidence = { File attempt, List requested, List<String> dec
     if (requested != taskTwentyThreeCases) {
         throw new GradleException('Task 23 evidence must select the exact canonical case set')
     }
-    def expected = [chainfourfabricdiamond: 12, chainfilterunionintersection: 11, chaintogglereexport: 8,
+    def expected = [chainfourfederationdomaindiamond: 12, chainfilterunionintersection: 11, chaintogglereexport: 8,
             chainrejectdirectactivation: 8, chainrejectcycle: 9]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
@@ -3625,10 +3625,10 @@ verifyTaskTwentyThreeEvidence = { File attempt, List requested, List<String> dec
         }
         parsed[testId] = properties
     }
-    def diamond = parsed.chainfourfabricdiamond as Properties
+    def diamond = parsed.chainfourfederationdomaindiamond as Properties
     def capacity = parsePositiveInteger(diamond.getProperty('consumerCapacity'), 'Task 23 consumer capacity')
     def expectedCapacity = parsePositiveInteger(diamond.getProperty('expectedCapacity'), 'Task 23 expected capacity')
-    if (diamond.getProperty('fabricCount') != '4' || diamond.getProperty('alternativeChains') != '2'
+    if (diamond.getProperty('federationDomainCount') != '4' || diamond.getProperty('alternativeChains') != '2'
             || diamond.getProperty('effectiveRelationships') != '5' || diamond.getProperty('originQuantity') != '13'
             || diamond.getProperty('consumerVisibleQuantity') != '13' || capacity != expectedCapacity
             || diamond.getProperty('originConsumerRelationships') != '1' || diamond.getProperty('minimumDepth') != '2'
@@ -3656,7 +3656,7 @@ verifyTaskTwentyThreeEvidence = { File attempt, List requested, List<String> dec
     if (direct.getProperty('configuredDirectRule') != 'true' || direct.getProperty('directActivation') != 'DISCONNECTED'
             || direct.getProperty('derivedEffectivePermission') != 'true' || direct.getProperty('visibleQuantity') != '5'
             || direct.getProperty('directRuleSynthesized') != 'false' || direct.getProperty('directRuleMutated') != 'false'
-            || direct.getProperty('commonDirectFabric') != 'false') {
+            || direct.getProperty('commonDirectFederationDomain') != 'false') {
         throw new GradleException('Task 23 direct activation separation semantics are incomplete')
     }
     def cycle = parsed.chainrejectcycle as Properties
@@ -4034,11 +4034,11 @@ verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> decla
     if (requested != taskTwentySixCases) throw new GradleException('Task 26 evidence must select the exact canonical case set')
     def expected = [craftingnativebinding: 18, craftingdeduplicatecapability: 8,
             craftingnativestateowner: 18, craftingrejectunavailable: 5]
-    def expectedAuthorityPhases = [craftingnativebinding: ['fabric-live', 'fabric-withdrawn'],
+    def expectedAuthorityPhases = [craftingnativebinding: ['domain-live', 'domain-withdrawn'],
             craftingdeduplicatecapability: ['deduplicated'],
             craftingnativestateowner: ['provider-a', 'provider-b'], craftingrejectunavailable: ['no-cpu']]
     def authorityFields = ['testId', 'selected', 'phase', 'networkId', 'grid', 'service', 'nodeId', 'node',
-            'provider', 'cpus', 'pattern', 'binding', 'generation', 'fabrics', 'topology', 'commonFabrics',
+            'provider', 'cpus', 'pattern', 'binding', 'generation', 'domains', 'topology', 'commonFederationDomains',
             'withdrawals', 'access', 'capability'] as Set
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
@@ -4121,31 +4121,31 @@ verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> decla
             || binding.getProperty('nativeOwnership') != 'true'
             || binding.getProperty('heldBindingWithdrawn') != 'true'
             || binding.getProperty('heldAccessDenied') != 'true'
-            || binding.getProperty('fabricCommonBefore') != '1'
-            || binding.getProperty('fabricCommonAfter') != '0'
-            || parseNonnegativeInteger(binding.getProperty('fabricTopologyAfter'), 'Task 26 Fabric topology after')
-                    <= parseNonnegativeInteger(binding.getProperty('fabricTopologyBefore'), 'Task 26 Fabric topology before')
+            || binding.getProperty('federationDomainCommonBefore') != '1'
+            || binding.getProperty('federationDomainCommonAfter') != '0'
+            || parseNonnegativeInteger(binding.getProperty('federationDomainTopologyAfter'), 'Task 26 Federation Domain topology after')
+                    <= parseNonnegativeInteger(binding.getProperty('federationDomainTopologyBefore'), 'Task 26 Federation Domain topology before')
             || parseNonnegativeInteger(binding.getProperty('withdrawalsAfter'), 'Task 26 withdrawals after')
                     != parseNonnegativeInteger(binding.getProperty('withdrawalsBefore'), 'Task 26 withdrawals before') + 1) {
         throw new GradleException('Task 26 native binding semantics are incomplete')
     }
-    def live = authorities.craftingnativebinding['fabric-live'] as Map
+    def live = authorities.craftingnativebinding['domain-live'] as Map
     correlate(binding, live, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid', serviceIdentity: 'service',
             providerNodeId: 'nodeId', providerNodeIdentity: 'node', providerIdentity: 'provider',
             cpuIdentities: 'cpus', patternIdentity: 'pattern', bindingIdentity: 'binding',
-            providerGeneration: 'generation', fabricReferences: 'fabrics', fabricTopologyBefore: 'topology',
-            fabricCommonBefore: 'commonFabrics', withdrawalsBefore: 'withdrawals'], 'fabric-live')
+            providerGeneration: 'generation', federationDomainReferences: 'domains', federationDomainTopologyBefore: 'topology',
+            federationDomainCommonBefore: 'commonFederationDomains', withdrawalsBefore: 'withdrawals'], 'domain-live')
     if (live.access != 'current' || live.capability != 'true') {
-        throw new GradleException('Task 26 native authority mismatch: fabric-live.access')
+        throw new GradleException('Task 26 native authority mismatch: domain-live.access')
     }
-    def withdrawn = authorities.craftingnativebinding['fabric-withdrawn'] as Map
+    def withdrawn = authorities.craftingnativebinding['domain-withdrawn'] as Map
     correlate(binding, withdrawn, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid', serviceIdentity: 'service',
-            bindingIdentity: 'binding', providerGeneration: 'generation', fabricReferences: 'fabrics',
-            fabricTopologyAfter: 'topology', fabricCommonAfter: 'commonFabrics', withdrawalsAfter: 'withdrawals'],
-            'fabric-withdrawn')
+            bindingIdentity: 'binding', providerGeneration: 'generation', federationDomainReferences: 'domains',
+            federationDomainTopologyAfter: 'topology', federationDomainCommonAfter: 'commonFederationDomains', withdrawalsAfter: 'withdrawals'],
+            'domain-withdrawn')
     if (withdrawn.access != 'withdrawn' || withdrawn.capability != 'false'
             || withdrawn.nodeId != 'withdrawn' || withdrawn.provider != 'withdrawn') {
-        throw new GradleException('Task 26 native authority mismatch: fabric-withdrawn.access')
+        throw new GradleException('Task 26 native authority mismatch: domain-withdrawn.access')
     }
     def duplicate = parsed.craftingdeduplicatecapability as Properties
     if (duplicate.getProperty('physicalRoutes') != '2' || duplicate.getProperty('relationshipBindings') != '1'
@@ -4158,10 +4158,10 @@ verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> decla
     correlate(duplicate, deduplicated, [sourceNetworkId: 'networkId', sourceGridIdentity: 'grid',
             serviceIdentity: 'service', providerNodeId: 'nodeId', providerNodeIdentity: 'node',
             providerIdentity: 'provider', cpuIdentities: 'cpus', patternIdentity: 'pattern',
-            bindingIdentity: 'binding', providerGeneration: 'generation', fabricReferences: 'fabrics',
+            bindingIdentity: 'binding', providerGeneration: 'generation', federationDomainReferences: 'domains',
             topologyRevision: 'topology'], 'deduplicated')
     if (deduplicated.access != 'current' || deduplicated.capability != 'true'
-            || deduplicated.commonFabrics != '2') {
+            || deduplicated.commonFederationDomains != '2') {
         throw new GradleException('Task 26 native authority mismatch: deduplicated.access')
     }
     def owner = parsed.craftingnativestateowner as Properties
@@ -4182,12 +4182,12 @@ verifyTaskTwentySixEvidence = { File attempt, List requested, List<String> decla
     correlate(owner, providerA, [sourceNetworkId: 'networkId', sourceGridAIdentity: 'grid', serviceAIdentity: 'service',
             providerANodeId: 'nodeId', providerANodeIdentity: 'node', providerAIdentity: 'provider',
             cpuAIdentities: 'cpus', patternAIdentity: 'pattern', bindingAIdentity: 'binding',
-            generationA: 'generation', fabricReferencesA: 'fabrics', topologyA: 'topology'], 'provider-a')
+            generationA: 'generation', federationDomainReferencesA: 'domains', topologyA: 'topology'], 'provider-a')
     def providerB = authorities.craftingnativestateowner['provider-b'] as Map
     correlate(owner, providerB, [sourceNetworkId: 'networkId', sourceGridBIdentity: 'grid', serviceBIdentity: 'service',
             providerBNodeId: 'nodeId', providerBNodeIdentity: 'node', providerBIdentity: 'provider',
             cpuBIdentities: 'cpus', patternBIdentity: 'pattern', bindingBIdentity: 'binding',
-            generationB: 'generation', fabricReferencesB: 'fabrics', topologyB: 'topology'], 'provider-b')
+            generationB: 'generation', federationDomainReferencesB: 'domains', topologyB: 'topology'], 'provider-b')
     if (providerA.access != 'current' || providerB.access != 'current'
             || providerA.capability != 'true' || providerB.capability != 'true') {
         throw new GradleException('Task 26 native authority mismatch: provider-replacement.access')
@@ -4232,7 +4232,7 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
     def plannerFields = ['testId', 'selected', 'phase', 'thread', 'actionCalls', 'nodeCalls',
             'rejectedMutableAccess'] as Set
     def authorityFields = ['testId', 'selected', 'phase', 'networkId', 'grid', 'service', 'nodeId', 'node',
-            'provider', 'cpus', 'pattern', 'binding', 'generation', 'fabrics', 'topology', 'commonFabrics',
+            'provider', 'cpus', 'pattern', 'binding', 'generation', 'domains', 'topology', 'commonFederationDomains',
             'withdrawals', 'access', 'capability'] as Set
     def discoveryAuthorityFields = ['testId', 'selected', 'phase', 'provider', 'providerPatterns', 'allowedPattern',
             'forbiddenPattern', 'sourceKeys', 'sourceCount', 'consumerKeys', 'consumerCount', 'discoveredKeys',
@@ -4540,9 +4540,9 @@ verifyTaskTwentySevenEvidence = { File attempt, List requested, List<String> dec
             || async.getProperty('jobCardinality') != '0' || async.getProperty('materialBefore') != '2'
             || async.getProperty('materialAfter') != '2' || asyncNative.submitCalls != '0'
             || asyncNative.jobs != 'none'
-            || async.getProperty('rejectedMutableAccess') != 'backend,fabric,gametest-helper,policy,world-block'
+            || async.getProperty('rejectedMutableAccess') != 'backend,domain,gametest-helper,policy,world-block'
             || asyncPlanner.rejectedMutableAccess != async.getProperty('rejectedMutableAccess')
-            || rejectedRuntime != ['backend', 'fabric', 'gametest-helper', 'policy', 'world-block'] as Set) {
+            || rejectedRuntime != ['backend', 'domain', 'gametest-helper', 'policy', 'world-block'] as Set) {
         throw new GradleException('Task 27 planner thread touched mutable server authority')
     }
 }
@@ -7282,8 +7282,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                     || testCase.id.startsWith('energy.')
-                    || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                    || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
+                    || testCase.id.startsWith('bridge.') || testCase.id.startsWith('router.')
+                    || testCase.id.startsWith('domain.') || testCase.id.startsWith('policy.')
                     || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
@@ -7294,8 +7294,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
                             || testCase.id.startsWith('energy.')
-                            || testCase.id.startsWith('bridge.') || testCase.id.startsWith('hub.')
-                            || testCase.id.startsWith('fabric.') || testCase.id.startsWith('policy.')
+                            || testCase.id.startsWith('bridge.') || testCase.id.startsWith('router.')
+                            || testCase.id.startsWith('domain.') || testCase.id.startsWith('policy.')
                             || testCase.id.startsWith('provider.') || testCase.id.startsWith('claim.')
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
@@ -7552,8 +7552,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
                 case 'ports.bridge-cable-device':
-                case 'ports.hub-six-grids':
-                case 'ports.hub-repeated-grid':
+                case 'ports.router-six-grids':
+                case 'ports.router-repeated-grid':
                 case 'ports.reject-floating-node':
                 case 'ports.reject-cross-grid-join':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
@@ -7599,7 +7599,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions]); break
                 case 'storage-proof.native-projection':
-                case 'storage-proof.four-fabric-diamond':
+                case 'storage-proof.four-domain-diamond':
                 case 'storage-proof.reject-loop':
                 case 'storage-proof.opaque-alias':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
@@ -7654,7 +7654,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'observe.scoped-snapshot':
                 case 'observe.close-cleanup':
                 case 'observe.reject-stale-delta':
-                case 'observe.reject-cross-fabric-edit':
+                case 'observe.reject-cross-domain-edit':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def energyOperations = testCase.testId == 'energydirectionalpolicy' ? 2 : 1
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
@@ -7675,11 +7675,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
-                case 'hub.mixed-six-faces':
-                case 'hub.six-independent-me':
-                case 'hub.repeat-network':
-                case 'hub.port-replacement':
-                case 'hub.reject-unsupported':
+                case 'router.mixed-six-faces':
+                case 'router.six-independent-me':
+                case 'router.repeat-network':
+                case 'router.port-replacement':
+                case 'router.reject-unsupported':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -7687,11 +7687,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                              assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
-                case 'fabric.bridge-diamond':
-                case 'fabric.hub-merge-split':
-                case 'fabric.redundant-membership':
-                case 'fabric.partial-unload':
-                case 'fabric.reject-stale-route':
+                case 'domain.bridge-diamond':
+                case 'domain.router-merge-split':
+                case 'domain.redundant-membership':
+                case 'domain.partial-unload':
+                case 'domain.reject-stale-route':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -7723,7 +7723,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     executed.add(caseId); assertions.add([caseId: caseId, status: 'passed',
                             nativeTestId: testCase.testId, structure: testCase.structure,
                             assertionCount: nativeResult.assertions, operationCount: nativeResult.operations]); break
-                case 'chain.four-fabric-diamond':
+                case 'chain.four-domain-diamond':
                 case 'chain.filter-union-intersection':
                 case 'chain.toggle-reexport':
                 case 'chain.reject-direct-activation':
@@ -8316,7 +8316,7 @@ tasks.register('federationTaskElevenEvidenceSelfTest') {
 
 tasks.register('federationTaskTwelveEvidenceSelfTest') {
     group = 'verification'
-    description = 'Proves Task 12 Hub evidence rejects fabricated, rebound, and incomplete attempts.'
+    description = 'Proves Task 12 Router evidence rejects fabricated, rebound, and incomplete attempts.'
     dependsOn(tasks.named('jar'))
     notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 12 evidence for semantic probes.')
     doLast {
@@ -8324,25 +8324,25 @@ tasks.register('federationTaskTwelveEvidenceSelfTest') {
         if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
         def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
         def fabricatedSuccess = taskFiveEvidenceProbeRejects(sourceResult, 'task12-fabricated-success') { attempt, report ->
-            def file = new File(attempt, 'native-hubrejectunsupported.properties')
+            def file = new File(attempt, 'native-routerrejectunsupported.properties')
             def properties = loadProperties(file)
             properties.setProperty('unsupportedAccepted', 'true')
             file.withOutputStream { properties.store(it, 'Task 12 fabricated unsupported success') }
-            def log = new File(attempt, 'positive-hubrejectunsupported.log')
+            def log = new File(attempt, 'positive-routerrejectunsupported.log')
             log.text = log.text.replace('fact=unsupportedAccepted value=false', 'fact=unsupportedAccepted value=true')
         }
         def reboundIdentity = taskFiveEvidenceProbeRejects(sourceResult, 'task12-rebound-identity') { attempt, report ->
-            def file = new File(attempt, 'native-hubmixedsixfaces.properties')
+            def file = new File(attempt, 'native-routermixedsixfaces.properties')
             def properties = loadProperties(file)
-            properties.setProperty('testId', 'hubsixindependentme')
+            properties.setProperty('testId', 'routersixindependentme')
             file.withOutputStream { properties.store(it, 'Task 12 rebound case identity') }
         }
         def incompleteTrace = taskFiveEvidenceProbeRejects(sourceResult, 'task12-incomplete-trace') { attempt, report ->
-            def log = new File(attempt, 'positive-hubportreplacement.log')
+            def log = new File(attempt, 'positive-routerportreplacement.log')
             log.text = log.readLines().findAll { !it.contains('fact=initialNative ') }.join('\n') + '\n'
         }
         def incompleteAttempt = taskFiveEvidenceProbeRejects(sourceResult, 'task12-incomplete-attempt') { attempt, report ->
-            new File(attempt, 'native-hubrepeatnetwork.properties').delete()
+            new File(attempt, 'native-routerrepeatnetwork.properties').delete()
         }
         if (!(fabricatedSuccess instanceof String)
                 || !fabricatedSuccess.contains('Task 12 unsupported-neighbor or all-Federation semantics are incomplete')
@@ -8358,7 +8358,7 @@ tasks.register('federationTaskTwelveEvidenceSelfTest') {
 
 tasks.register('federationTaskThirteenEvidenceSelfTest') {
     group = 'verification'
-    description = 'Proves Task 13 Fabric evidence rejects fabricated, rebound, incomplete, and stale-route attempts.'
+    description = 'Proves Task 13 Federation Domain evidence rejects fabricated, rebound, incomplete, and stale-route attempts.'
     dependsOn(tasks.named('jar'))
     notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 13 evidence for semantic probes.')
     doLast {
@@ -8366,32 +8366,32 @@ tasks.register('federationTaskThirteenEvidenceSelfTest') {
         if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
         def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
         def fabricatedMembership = taskFiveEvidenceProbeRejects(sourceResult, 'task13-fabricated-membership') { attempt, report ->
-            def file = new File(attempt, 'native-fabricredundantmembership.properties')
+            def file = new File(attempt, 'native-federationdomainredundantmembership.properties')
             def properties = loadProperties(file)
-            properties.setProperty('indexedFabricCount', '2')
+            properties.setProperty('indexedFederationDomainCount', '2')
             file.withOutputStream { properties.store(it, 'Task 13 fabricated membership') }
-            def log = new File(attempt, 'positive-fabricredundantmembership.log')
-            log.text = log.text.replace('fact=indexedFabricCount value=1', 'fact=indexedFabricCount value=2')
+            def log = new File(attempt, 'positive-federationdomainredundantmembership.log')
+            log.text = log.text.replace('fact=indexedFederationDomainCount value=1', 'fact=indexedFederationDomainCount value=2')
         }
         def reboundIdentity = taskFiveEvidenceProbeRejects(sourceResult, 'task13-rebound-identity') { attempt, report ->
-            def file = new File(attempt, 'native-fabricbridgediamond.properties')
+            def file = new File(attempt, 'native-federationdomainbridgediamond.properties')
             def properties = loadProperties(file)
-            properties.setProperty('testId', 'fabrichubmergesplit')
+            properties.setProperty('testId', 'federationdomainroutermergesplit')
             file.withOutputStream { properties.store(it, 'Task 13 rebound case identity') }
         }
         def incompleteTrace = taskFiveEvidenceProbeRejects(sourceResult, 'task13-incomplete-trace') { attempt, report ->
-            def log = new File(attempt, 'positive-fabrichubmergesplit.log')
+            def log = new File(attempt, 'positive-federationdomainroutermergesplit.log')
             log.text = log.readLines().findAll { !it.contains('fact=incremental ') }.join('\n') + '\n'
         }
         def incompleteAttempt = taskFiveEvidenceProbeRejects(sourceResult, 'task13-incomplete-attempt') { attempt, report ->
-            new File(attempt, 'native-fabricpartialunload.properties').delete()
+            new File(attempt, 'native-federationdomainpartialunload.properties').delete()
         }
         def staleAccepted = taskFiveEvidenceProbeRejects(sourceResult, 'task13-stale-route') { attempt, report ->
-            def file = new File(attempt, 'native-fabricrejectstaleroute.properties')
+            def file = new File(attempt, 'native-federationdomainrejectstaleroute.properties')
             def properties = loadProperties(file)
             properties.setProperty('staleRouteAccepted', 'true')
             file.withOutputStream { properties.store(it, 'Task 13 stale route acceptance') }
-            def log = new File(attempt, 'positive-fabricrejectstaleroute.log')
+            def log = new File(attempt, 'positive-federationdomainrejectstaleroute.log')
             log.text = log.text.replace('fact=staleRouteAccepted value=false', 'fact=staleRouteAccepted value=true')
         }
         if (!(fabricatedMembership instanceof String)
@@ -8501,29 +8501,29 @@ tasks.register('federationTaskFiveEvidenceSelfTest') {
         def sourceResult = strictCanonicalPath(rootProject.file(resultPath))
         def probes = [
                 taskFiveEvidenceProbeRejects(sourceResult, 'missing-artifact') { attempt, report ->
-                    new File(attempt, 'native-portshubsixgrids.properties').delete()
+                    new File(attempt, 'native-portsroutersixgrids.properties').delete()
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'duplicate-artifact') { attempt, report ->
-                    def duplicate = new File(attempt, 'duplicate/native-portshubsixgrids.properties')
+                    def duplicate = new File(attempt, 'duplicate/native-portsroutersixgrids.properties')
                     duplicate.parentFile.mkdirs()
-                    duplicate.bytes = new File(attempt, 'native-portshubsixgrids.properties').bytes
-                    report.artifacts.add([path: 'duplicate/native-portshubsixgrids.properties', sha256: 'rebound'])
+                    duplicate.bytes = new File(attempt, 'native-portsroutersixgrids.properties').bytes
+                    report.artifacts.add([path: 'duplicate/native-portsroutersixgrids.properties', sha256: 'rebound'])
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'substituted-artifact') { attempt, report ->
-                    def artifact = report.artifacts.find { it.path == 'native-portshubsixgrids.properties' }
-                    artifact.path = 'native-portshubrepeatedgrid.properties'
+                    def artifact = report.artifacts.find { it.path == 'native-portsroutersixgrids.properties' }
+                    artifact.path = 'native-portsrouterrepeatedgrid.properties'
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'malformed-artifact') { attempt, report ->
-                    new File(attempt, 'native-portshubsixgrids.properties').text = '\\u-not-hex'
+                    new File(attempt, 'native-portsroutersixgrids.properties').text = '\\u-not-hex'
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'forged-grid-identity') { attempt, report ->
-                    def file = new File(attempt, 'native-portshubrepeatedgrid.properties')
+                    def file = new File(attempt, 'native-portsrouterrepeatedgrid.properties')
                     def properties = loadProperties(file)
                     properties.setProperty('face.south', properties.getProperty('face.east'))
                     file.withOutputStream { properties.store(it, 'Task 5 forged Grid identity probe') }
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'distinct-grid-substitution') { attempt, report ->
-                    def file = new File(attempt, 'native-portshubsixgrids.properties')
+                    def file = new File(attempt, 'native-portsroutersixgrids.properties')
                     def properties = loadProperties(file)
                     def existing = ['down', 'up', 'north', 'south', 'west', 'east']
                             .collect { properties.getProperty("face.${it}") } as Set
@@ -9065,19 +9065,19 @@ tasks.register('federationTaskEightEvidenceSelfTest') {
                             '\$14294967295')
                 },
                 rebound('task08-duplicate-diamond-source', 'Task 8 diamond source identity or priority semantics are invalid') { attempt, report ->
-                    def file = new File(attempt, 'native-storageprooffourfabricdiamond.properties')
+                    def file = new File(attempt, 'native-storageprooffourfederationdomaindiamond.properties')
                     def properties = loadProperties(file)
                     properties.setProperty('sourceCount', '2')
                     file.withOutputStream { properties.store(it, 'Task 8 duplicate diamond source') }
-                    def log = new File(attempt, 'positive-storageprooffourfabricdiamond.log')
+                    def log = new File(attempt, 'positive-storageprooffourfederationdomaindiamond.log')
                     log.text = log.text.replace('fact=sourceCount value=1', 'fact=sourceCount value=2')
                 },
                 rebound('task08-forged-diamond-priority', 'Task 8 diamond source identity or priority semantics are invalid') { attempt, report ->
-                    def file = new File(attempt, 'native-storageprooffourfabricdiamond.properties')
+                    def file = new File(attempt, 'native-storageprooffourfederationdomaindiamond.properties')
                     def properties = loadProperties(file)
                     properties.setProperty('selectedPriority', '30')
                     file.withOutputStream { properties.store(it, 'Task 8 forged selected priority') }
-                    def log = new File(attempt, 'positive-storageprooffourfabricdiamond.log')
+                    def log = new File(attempt, 'positive-storageprooffourfederationdomaindiamond.log')
                     log.text = log.text.replace('fact=selectedPriority value=40', 'fact=selectedPriority value=30')
                 },
                 rebound('task08-loop-accepted', 'Task 8 accepted aggregate storage loop') { attempt, report ->
@@ -9800,7 +9800,7 @@ tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
         def probes = [
                 customInventory: mutateFact('storagenativeaccess', 'customInventory', 'true',
                         'Task 21 native relationship access semantics are incomplete'),
-                twoHubFabric: mutateFact('storagenativeaccess', 'twoHubFabric', 'false',
+                twoRouterFederationDomain: mutateFact('storagenativeaccess', 'twoRouterFederationDomain', 'false',
                         'Task 21 native relationship access semantics are incomplete'),
                 mountedPriority: mutateFact('storagepriority', 'mountedPriority', '2147483647',
                         'Task 21 native priority or logical mount semantics are incomplete'),
@@ -10025,17 +10025,17 @@ tasks.register('federationTaskTwentyThreeEvidenceSelfTest') {
             }
         }
         def probes = [
-                duplicateOriginQuantity: mutateFact('chainfourfabricdiamond', 'consumerVisibleQuantity', '26',
+                duplicateOriginQuantity: mutateFact('chainfourfederationdomaindiamond', 'consumerVisibleQuantity', '26',
                         'Task 23 duplicate origin quantity/capacity semantics are incomplete'),
                 duplicateOriginCapacity: taskSevenEvidenceProbeRejects(sourceResult, 'task23-duplicate-capacity',
                         'Task 23 duplicate origin quantity/capacity semantics are incomplete') { File attempt, Map report ->
-                    def file = new File(attempt, 'native-chainfourfabricdiamond.properties')
+                    def file = new File(attempt, 'native-chainfourfederationdomaindiamond.properties')
                     def properties = loadProperties(file)
                     def oldValue = properties.getProperty('consumerCapacity')
                     def value = (oldValue.toLong() * 2).toString()
                     properties.setProperty('consumerCapacity', value)
                     file.withOutputStream { properties.store(it, 'Task 23 duplicate capacity probe') }
-                    def log = new File(attempt, 'positive-chainfourfabricdiamond.log')
+                    def log = new File(attempt, 'positive-chainfourfederationdomaindiamond.log')
                     log.text = log.text.replace("fact=consumerCapacity value=${oldValue}",
                             "fact=consumerCapacity value=${value}")
                 },
@@ -10386,22 +10386,22 @@ tasks.register('federationTaskTwentySixEvidenceSelfTest') {
         mutateFact('revocation', 'craftingnativebinding', 'disabledWithdrawn', 'false',
                 'Task 26 native binding semantics are incomplete')
         mutateFact('stale-source-grid', 'craftingnativebinding', 'sourceGridIdentity', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.grid')
+                'Task 26 native authority mismatch: domain-live.grid')
         mutateFact('stale-source-network', 'craftingnativebinding', 'sourceNetworkId',
                 'ae2federation:network:v1:ffffffff-ffff-4fff-8fff-ffffffffffff',
-                'Task 26 native authority mismatch: fabric-live.networkId')
+                'Task 26 native authority mismatch: domain-live.networkId')
         mutateFact('fabricated-service', 'craftingnativebinding', 'serviceIdentity', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.service')
+                'Task 26 native authority mismatch: domain-live.service')
         mutateFact('fabricated-node-id', 'craftingnativebinding', 'providerNodeId',
-                'ffffffff-ffff-4fff-8fff-ffffffffffff', 'Task 26 native authority mismatch: fabric-live.nodeId')
+                'ffffffff-ffff-4fff-8fff-ffffffffffff', 'Task 26 native authority mismatch: domain-live.nodeId')
         mutateFact('fabricated-node-object', 'craftingnativebinding', 'providerNodeIdentity', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.node')
+                'Task 26 native authority mismatch: domain-live.node')
         mutateFact('fabricated-provider', 'craftingnativebinding', 'providerIdentity', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.provider')
+                'Task 26 native authority mismatch: domain-live.provider')
         mutateFact('fabricated-cpu', 'craftingnativebinding', 'cpuIdentities', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.cpus')
+                'Task 26 native authority mismatch: domain-live.cpus')
         mutateFact('fabricated-pattern', 'craftingnativebinding', 'patternIdentity', '4294967295',
-                'Task 26 native authority mismatch: fabric-live.pattern')
+                'Task 26 native authority mismatch: domain-live.pattern')
         mutateFact('substituted-provider-a', 'craftingnativestateowner', 'providerAIdentity',
                 '4294967295', 'Task 26 native authority mismatch: provider-a.provider')
         mutateFact('substituted-pattern-a', 'craftingnativestateowner', 'patternAIdentity',
@@ -10418,23 +10418,23 @@ tasks.register('federationTaskTwentySixEvidenceSelfTest') {
             log.text = log.text.replace("fact=withdrawalsBefore value=${oldBefore}",
                     'fact=withdrawalsBefore value=100').replace("fact=withdrawalsAfter value=${oldAfter}",
                     'fact=withdrawalsAfter value=101')
-        }, 'Task 26 native authority mismatch: fabric-live.withdrawals')
+        }, 'Task 26 native authority mismatch: domain-live.withdrawals')
         mutateAuthority('missing-authority', 'craftingnativebinding', { String text ->
             text.readLines().findAll { !it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
-                    || !it.contains('phase=fabric-live') }.join('\n') + '\n'
+                    || !it.contains('phase=domain-live') }.join('\n') + '\n'
         }, 'Task 26 native authority receipt set is missing, extra, or substituted')
         mutateAuthority('duplicate-authority', 'craftingnativebinding', { String text ->
             def line = text.readLines().find { it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
-                    && it.contains('phase=fabric-live') }
+                    && it.contains('phase=domain-live') }
             text + line + '\n'
         }, 'Task 26 duplicate native authority receipt phase')
         mutateAuthority('substituted-authority-child', 'craftingnativebinding', { String text ->
-            text.replace('selected=craftingnativebinding phase=fabric-live',
-                    'selected=craftingdeduplicatecapability phase=fabric-live')
+            text.replace('selected=craftingnativebinding phase=domain-live',
+                    'selected=craftingdeduplicatecapability phase=domain-live')
         }, 'Task 26 native authority receipt child identity is invalid')
         mutateAuthority('conflicting-authority', 'craftingnativebinding', { String text ->
             def line = text.readLines().find { it.contains('AE2F_CRAFT_AUTHORITY testId=craftingnativebinding')
-                    && it.contains('phase=fabric-live') }
+                    && it.contains('phase=domain-live') }
             text + line.replaceFirst(/service=[^\s]+/, 'service=4294967295') + '\n'
         }, 'Task 26 duplicate native authority receipt phase')
         logger.lifecycle('Task 26 adversarial native Crafting evidence probes were rejected for intended reasons')
@@ -11002,8 +11002,8 @@ tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
                 ['subscriber-multiplication', 'observenativeflowonce', 'observationReads', '3'],
                 ['inexact-energy', 'observenativeflowonce', 'exactNano', '9223372036854775807'],
                 ['topology-churn', 'observenativeflowonce', 'topologyStable', 'false'],
-                ['scope-leak', 'observescopedsnapshot', 'crossFabric', 'true'],
-                ['wrong-fabric-count', 'observescopedsnapshot', 'fabrics', '1'],
+                ['scope-leak', 'observescopedsnapshot', 'crossFederationDomain', 'true'],
+                ['wrong-domain-count', 'observescopedsnapshot', 'domains', '1'],
                 ['wrong-session', 'observescopedsnapshot', 'sessionBound', 'false'],
                 ['listener-leak', 'observeclosecleanup', 'active', '1'],
                 ['late-delivery', 'observeclosecleanup', 'lateDelivery', 'true'],
@@ -11012,8 +11012,8 @@ tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
                 ['trailing-accepted', 'observerejectstaledelta', 'trailingRejected', 'false'],
                 ['wrong-session-accepted', 'observerejectstaledelta', 'wrongSessionRejected', 'false'],
                 ['skipped-revision', 'observerejectstaledelta', 'revision', '7'],
-                ['cross-owner', 'observerejectcrossfabricedit', 'active', '1'],
-                ['cross-edit', 'observerejectcrossfabricedit', 'mutated', 'true']]
+                ['cross-owner', 'observerejectcrossfederationdomainedit', 'active', '1'],
+                ['cross-edit', 'observerejectcrossfederationdomainedit', 'mutated', 'true']]
         def rejected = mutations.collect { mutation ->
             taskFiveEvidenceProbeRejects(sourceResult, "task32-${mutation[0]}") { File attempt, Map ignored ->
                 def file = new File(attempt, "native-${mutation[1]}.properties")
@@ -11039,9 +11039,9 @@ tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
             file.withOutputStream { properties.store(it, 'Task 32 missing fact probe') }
         }
         def fabricatedSessionRejected = taskSevenEvidenceProbeRejects(sourceResult,
-                'task32-cross-fabricated-session', 'Task 32 cross-Fabric authority is not backed by production subscription lifecycle') {
+                'task32-cross-fabricated-session', 'Task 32 cross-Federation Domain authority is not backed by production subscription lifecycle') {
             File attempt, Map ignored ->
-                def log = new File(attempt, 'positive-observerejectcrossfabricedit.log')
+                def log = new File(attempt, 'positive-observerejectcrossfederationdomainedit.log')
                 def lines = log.readLines()
                 def authority = lines.find { it.contains(' type=authority ') && it.contains(' attribution=A ') }
                 log.text = lines.collect { line ->
@@ -11050,9 +11050,9 @@ tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
                 }.join('\n') + '\n'
         }
         def missingAuthorityRejected = taskSevenEvidenceProbeRejects(sourceResult,
-                'task32-cross-missing-authority', 'Task 32 cross-Fabric production authority receipts are incomplete') {
+                'task32-cross-missing-authority', 'Task 32 cross-Federation Domain production authority receipts are incomplete') {
             File attempt, Map ignored ->
-                def log = new File(attempt, 'positive-observerejectcrossfabricedit.log')
+                def log = new File(attempt, 'positive-observerejectcrossfederationdomainedit.log')
                 log.text = log.readLines().findAll {
                     !(it.contains(' type=authority ') && it.contains(' attribution=A '))
                 }.join('\n') + '\n'

@@ -86,9 +86,9 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
         return lifecycle.enablePolicy(operations);
     }
 
-    public void connectFabric() { lifecycle.connectFabric(); }
+    public void connectFederationDomain() { lifecycle.connectFederationDomain(); }
 
-    public void disconnectFabric() { lifecycle.disconnectFabric(); }
+    public void disconnectFederationDomain() { lifecycle.disconnectFederationDomain(); }
 
     public void connectSourceTo(IGridNode node) {
         provider.connectTo(node);
@@ -108,8 +108,8 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
     public boolean deletePolicy() {
         var service = PolicyService.get(provider.helper().getLevel());
         var key = new space.controlnet.ae2federation.policy.PolicyKey(
-                space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
-                space.controlnet.ae2federation.fabric.FabricRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow(),
+                space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
+                space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow(),
                 space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
         return service.delete(new PolicyDelete(key, service.revision(key))) instanceof PolicyMutationResult.Accepted;
     }

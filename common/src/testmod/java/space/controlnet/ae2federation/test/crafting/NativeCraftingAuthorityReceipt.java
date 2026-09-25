@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
@@ -30,15 +30,15 @@ public final class NativeCraftingAuthorityReceipt {
                 || !sameIdentity(binding.nativeCpus(), observation.cpus())) {
             throw new IllegalStateException("Crafting binding does not expose the directly observed native authority");
         }
-        var registry = FabricRegistryAccess.get(level);
+        var registry = FederationDomainRegistryAccess.get(level);
         LOGGER.info("AE2F_CRAFT_AUTHORITY testId={} selected={} phase={} networkId={} grid={} service={} "
-                        + "nodeId={} node={} provider={} cpus={} pattern={} binding={} generation={} fabrics={} "
-                        + "topology={} commonFabrics={} withdrawals={} access=current capability=true",
+                        + "nodeId={} node={} provider={} cpus={} pattern={} binding={} generation={} domains={} "
+                        + "topology={} commonFederationDomains={} withdrawals={} access=current capability=true",
                 label.testId(), selectedTest(), label.phase(), observation.networkId(), identity(grid),
                 identity(observation.service()), observation.nodeId(), identity(observation.node()),
                 identity(observation.provider()), observation.cpuIdentities(), identity(observation.pattern()),
-                identity(binding), binding.revision().providerGeneration().value(), fabricReferences(binding),
-                registry.snapshot().topologyRevision(), commonFabricCount(registry, binding.relationship().key()),
+                identity(binding), binding.revision().providerGeneration().value(), federationDomainReferences(binding),
+                registry.snapshot().topologyRevision(), commonFederationDomainCount(registry, binding.relationship().key()),
                 CraftingBindingService.get(level).withdrawalCount());
     }
 
@@ -49,12 +49,12 @@ public final class NativeCraftingAuthorityReceipt {
             throw new IllegalStateException("Unavailable authority receipt requires zero native CPUs");
         }
         LOGGER.info("AE2F_CRAFT_AUTHORITY testId={} selected={} phase={} networkId={} grid={} service={} "
-                        + "nodeId={} node={} provider={} cpus={} pattern={} binding=none generation=none fabrics=none "
-                        + "topology={} commonFabrics=0 withdrawals={} access=unavailable capability=false",
+                        + "nodeId={} node={} provider={} cpus={} pattern={} binding=none generation=none domains=none "
+                        + "topology={} commonFederationDomains=0 withdrawals={} access=unavailable capability=false",
                 label.testId(), selectedTest(), label.phase(), observation.networkId(), identity(grid),
                 identity(observation.service()), observation.nodeId(), identity(observation.node()),
                 identity(observation.provider()), observation.cpuIdentities(), identity(observation.pattern()),
-                FabricRegistryAccess.get(level).snapshot().topologyRevision(),
+                FederationDomainRegistryAccess.get(level).snapshot().topologyRevision(),
                 CraftingBindingService.get(level).withdrawalCount());
     }
 
@@ -62,17 +62,17 @@ public final class NativeCraftingAuthorityReceipt {
         requireSelected(label);
         var binding = withdrawal.binding();
         var service = withdrawal.service();
-        var registry = FabricRegistryAccess.get(withdrawal.level());
+        var registry = FederationDomainRegistryAccess.get(withdrawal.level());
         var denied = !binding.isCurrent() && binding.nativeService().isEmpty() && binding.sourceGrid().isEmpty()
                 && binding.nativeProviders().isEmpty() && binding.providerSources().isEmpty()
                 && binding.nativeCpus().isEmpty() && service.capability(withdrawal.key()).isEmpty();
         LOGGER.info("AE2F_CRAFT_AUTHORITY testId={} selected={} phase={} networkId={} grid={} service={} "
                         + "nodeId=withdrawn node=withdrawn provider=withdrawn cpus=none pattern=withdrawn binding={} "
-                        + "generation={} fabrics={} topology={} commonFabrics={} withdrawals={} access={} capability=false",
+                        + "generation={} domains={} topology={} commonFederationDomains={} withdrawals={} access={} capability=false",
                 label.testId(), selectedTest(), label.phase(), withdrawal.key().providerNetworkId(),
                 identity(withdrawal.sourceGrid()), identity(withdrawal.sourceGrid().getCraftingService()), identity(binding),
-                binding.revision().providerGeneration().value(), fabricReferences(binding),
-                registry.snapshot().topologyRevision(), commonFabricCount(registry, withdrawal.key()),
+                binding.revision().providerGeneration().value(), federationDomainReferences(binding),
+                registry.snapshot().topologyRevision(), commonFederationDomainCount(registry, withdrawal.key()),
                 service.withdrawalCount(), denied ? "withdrawn" : "exposed");
     }
 
@@ -95,7 +95,7 @@ public final class NativeCraftingAuthorityReceipt {
         }
         patterns.sort(Comparator.comparing(pattern -> pattern.getPrimaryOutput().what().getId().toString()));
         var identityService = grid.getService(NetworkIdentityService.class);
-        var networkId = FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
+        var networkId = FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow();
         var service = grid.getCraftingService();
         return new NativeObservation(networkId.toString(), service, node,
                 identityService.lineage(node).nodeId(), provider, java.util.List.copyOf(service.getCpus()),
@@ -114,15 +114,15 @@ public final class NativeCraftingAuthorityReceipt {
         return identities.isEmpty() ? "none" : String.join(",", identities);
     }
 
-    private static String fabricReferences(CraftingCapabilityBinding binding) {
-        return binding.revision().fabrics().stream()
-                .map(reference -> reference.fabricId().value() + "@" + reference.generation())
+    private static String federationDomainReferences(CraftingCapabilityBinding binding) {
+        return binding.revision().federationDomains().stream()
+                .map(reference -> reference.federationDomainId().value() + "@" + reference.generation())
                 .sorted().collect(java.util.stream.Collectors.joining(","));
     }
 
-    private static long commonFabricCount(space.controlnet.ae2federation.fabric.FabricRegistry registry, PolicyKey key) {
-        var provider = registry.fabricsFor(key.providerNetworkId());
-        return registry.fabricsFor(key.consumerNetworkId()).stream().filter(provider::contains).count();
+    private static long commonFederationDomainCount(space.controlnet.ae2federation.domain.FederationDomainRegistry registry, PolicyKey key) {
+        var provider = registry.federationdomainsFor(key.providerNetworkId());
+        return registry.federationdomainsFor(key.consumerNetworkId()).stream().filter(provider::contains).count();
     }
 
     private static void requireSelected(AuthorityLabel label) {

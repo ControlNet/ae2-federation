@@ -3,7 +3,7 @@
 ## Contract
 
 `NetworkId` is a globally unique, versioned logical identity formatted as
-`ae2federation:network:v1:<uuid>`. It is independent of Bridge identity, block position, Fabric identity,
+`ae2federation:network:v1:<uuid>`. It is independent of Bridge identity, block position, Federation Domain identity,
 AE2 Grid serial, and transient Java object identity.
 
 Every native AE2 Grid receives one `NetworkIdentityGridService` through `GridServices.register`. The service stores

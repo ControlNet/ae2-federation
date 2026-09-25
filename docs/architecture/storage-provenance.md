@@ -74,7 +74,7 @@ storage aggregation mechanism.
 ## Runtime proof
 
 The exact four cases prove: projection exclusion while retaining a real native store handle; four distinct provider-owned
-Fabric-route mounts with priorities `40,30,20,10` converging on one source selected at priority `40`; mutual aggregate
+Federation Domain-route mounts with priorities `40,30,20,10` converging on one source selected at priority `40`; mutual aggregate
 mounting diagnosed without recursion; and an unregistered opaque alias rejected without partial results. Persisted
 evidence correlates properties with the ordinary test trace, independently injected AE2 mount/delegate traces, and
 provider-callback mount traces. Fully rebound forgeries of source identity, diamond source count or priority, loop

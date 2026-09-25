@@ -21,12 +21,12 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 import space.controlnet.ae2federation.client.policy.PolicyEditorSelection;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.hub.HubBlockEntity;
-import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.router.RouterBlockEntity;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -61,15 +61,15 @@ public final class MultiClientServerHarness {
 
     private static final class State {
         private final BlockPos bridge;
-        private final BlockPos hub;
+        private final BlockPos router;
         private int stage;
         private int stageTicks;
         private NetworkId mainNetwork;
         private NetworkId outerNetwork;
         private PolicyKey policyKey;
-        private FabricReference originalReference;
-        private FabricReference refreshedReference;
-        private int refreshedFabricMembers;
+        private FederationDomainReference originalReference;
+        private FederationDomainReference refreshedReference;
+        private int refreshedFederationDomainMembers;
         private boolean refreshedReferenceCurrent;
         private boolean refreshedExpectedIdentities;
         private long authoritativeRevision;
@@ -82,7 +82,7 @@ public final class MultiClientServerHarness {
 
         private State(BlockPos bridge) {
             this.bridge = bridge;
-            hub = bridge.east(2);
+            router = bridge.east(2);
         }
 
         private void tick(ServerLevel level, List<ServerPlayer> players) {
@@ -90,11 +90,11 @@ public final class MultiClientServerHarness {
             switch (stage) {
                 case 0 -> settleBridge(level);
                 case 1 -> settleExtensions(level);
-                case 2 -> settleHub(level, players);
+                case 2 -> settleRouter(level, players);
                 case 3 -> exerciseConflicts(level);
-                case 4 -> settleRetiredHub(level);
+                case 4 -> settleRetiredRouter(level);
                 case 5 -> settleRestoredExtension(level);
-                case 6 -> settleCurrentFabric(level);
+                case 6 -> settleCurrentFederationDomain(level);
                 case 7 -> finish(level, players);
                 default -> {
                 }
@@ -108,8 +108,8 @@ public final class MultiClientServerHarness {
             placeCable(level, bridge.south(), AEColor.TRANSPARENT);
             placeCable(level, bridge, AEColor.TRANSPARENT);
             require(PartHelper.setPart(level, bridge, Direction.NORTH, null,
-                    BridgeRegistration.MULTIPART_BRIDGE.get()) instanceof MultipartBridgePart,
-                    "Task 34 Multipart Bridge could not be placed");
+                    BridgeRegistration.BRIDGE.get()) instanceof MultipartBridgePart,
+                    "Task 34 ME Federation Bridge could not be placed");
         }
 
         private void settleBridge(ServerLevel level) {
@@ -118,60 +118,60 @@ public final class MultiClientServerHarness {
                 return;
             }
             var candidate = part.membershipCandidate().orElseThrow();
-            mainNetwork = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
-            outerNetwork = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+            mainNetwork = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+            outerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
             if (mainNetwork == null || outerNetwork == null || mainNetwork.equals(outerNetwork)) {
                 return;
             }
             placeCable(level, bridge.east(), AEColor.RED);
             placeCable(level, bridge.north().east(), AEColor.BLUE);
-            placeCable(level, hub.north(), AEColor.BLUE);
+            placeCable(level, router.north(), AEColor.BLUE);
             advance();
         }
 
         private void settleExtensions(ServerLevel level) {
             var extendedMain = confirmed(level, bridge.east());
-            var extendedOuter = confirmed(level, hub.north());
+            var extendedOuter = confirmed(level, router.north());
             if (extendedMain == null || extendedOuter == null || extendedMain.equals(extendedOuter)) {
                 return;
             }
             mainNetwork = extendedMain;
             outerNetwork = extendedOuter;
-            level.setBlockAndUpdate(hub, HubRegistration.HUB.get().defaultBlockState());
+            level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState());
             advance();
         }
 
-        private void settleHub(ServerLevel level, List<ServerPlayer> players) {
+        private void settleRouter(ServerLevel level, List<ServerPlayer> players) {
             var part = bridge(level);
-            if (!(level.getBlockEntity(hub) instanceof HubBlockEntity) || part == null) {
+            if (!(level.getBlockEntity(router) instanceof RouterBlockEntity) || part == null) {
                 return;
             }
             var candidate = part.membershipCandidate().orElse(null);
             if (candidate == null) {
                 return;
             }
-            var settledMain = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
-            var settledOuter = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+            var settledMain = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+            var settledOuter = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
             if (settledMain == null || settledOuter == null || settledMain.equals(settledOuter)) {
                 return;
             }
-            var nodeId = FabricRegistryAccess.nodeId(level, hub);
-            var fabrics = FabricRegistryAccess.get(level).snapshot().fabrics().values().stream()
-                    .filter(fabric -> fabric.nodes().contains(nodeId))
-                    .filter(fabric -> fabric.memberships().containsKey(settledMain)
-                            && fabric.memberships().containsKey(settledOuter)).toList();
-            if (fabrics.size() != 1) {
+            var nodeId = FederationDomainRegistryAccess.nodeId(level, router);
+            var federationDomains = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                    .filter(federationDomain -> federationDomain.nodes().contains(nodeId))
+                    .filter(federationDomain -> federationDomain.memberships().containsKey(settledMain)
+                            && federationDomain.memberships().containsKey(settledOuter)).toList();
+            if (federationDomains.size() != 1) {
                 return;
             }
             mainNetwork = settledMain;
             outerNetwork = settledOuter;
             policyKey = PolicyEditorSelection.initial(List.of(mainNetwork, outerNetwork)).key();
-            originalReference = fabrics.getFirst().reference();
-            level.setBlockAndUpdate(hub.south().below(), Blocks.STONE.defaultBlockState());
+            originalReference = federationDomains.getFirst().reference();
+            level.setBlockAndUpdate(router.south().below(), Blocks.STONE.defaultBlockState());
             players.forEach(player -> {
-                player.connection.teleport(hub.getX() + 0.5, hub.getY(), hub.getZ() + 1.5,
+                player.connection.teleport(router.getX() + 0.5, router.getY(), router.getZ() + 1.5,
                         player.getYRot(), player.getXRot());
-                require(FabricPolicyMenu.openHub(player, hub), "Task 34 production menu did not open");
+                require(FederationDomainPolicyMenu.openRouter(player, router), "Task 34 production menu did not open");
             });
             advance();
         }
@@ -186,76 +186,76 @@ public final class MultiClientServerHarness {
                     && Files.isRegularFile(clientMarker("stale-revision.ready"));
             if (staleRevisionRejected && !splitStarted) {
                 consumeMarker("stale-revision.ready");
-                level.setBlockAndUpdate(hub.north(), Blocks.AIR.defaultBlockState());
-                var hubEntity = level.getBlockEntity(hub) instanceof HubBlockEntity found ? found : null;
-                require(hubEntity != null, "Task 34 Hub disappeared before split invalidation");
-                hubEntity.neighborChanged(hub.north());
+                level.setBlockAndUpdate(router.north(), Blocks.AIR.defaultBlockState());
+                var routerEntity = level.getBlockEntity(router) instanceof RouterBlockEntity found ? found : null;
+                require(routerEntity != null, "Task 34 Router disappeared before split invalidation");
+                routerEntity.neighborChanged(router.north());
                 splitStarted = true;
             }
             if (splitStarted) {
-                splitInvalidated = !FabricRegistryAccess.get(level).isCurrent(originalReference);
+                splitInvalidated = !FederationDomainRegistryAccess.get(level).isCurrent(originalReference);
             }
             if (splitInvalidated && !splitSignaled) {
-                signal("fabric-split.ready");
+                signal("domain-split.ready");
                 splitSignaled = true;
             }
             var subscriptions = LevelObservabilityService.get(level).subscriptions();
             if (staleRevisionRejected && splitInvalidated && clientFirstPhaseComplete("a")
                     && clientFirstPhaseComplete("b") && subscriptions.activeCount() == 0) {
-                level.setBlockAndUpdate(hub, Blocks.AIR.defaultBlockState());
+                level.setBlockAndUpdate(router, Blocks.AIR.defaultBlockState());
                 advance();
             }
         }
 
-        private void settleRetiredHub(ServerLevel level) {
-            if (!level.getBlockState(hub).isAir() || level.getBlockEntity(hub) != null
+        private void settleRetiredRouter(ServerLevel level) {
+            if (!level.getBlockState(router).isAir() || level.getBlockEntity(router) != null
                     || !mainNetwork.equals(confirmed(level, bridge.east()))
                     || !outerNetwork.equals(confirmed(level, bridge.north().east()))) {
                 return;
             }
-            placeCable(level, hub.north(), AEColor.BLUE);
+            placeCable(level, router.north(), AEColor.BLUE);
             advance();
         }
 
         private void settleRestoredExtension(ServerLevel level) {
             if (!mainNetwork.equals(confirmed(level, bridge.east()))
-                    || !outerNetwork.equals(confirmed(level, hub.north()))) {
+                    || !outerNetwork.equals(confirmed(level, router.north()))) {
                 return;
             }
-            level.setBlockAndUpdate(hub, HubRegistration.HUB.get().defaultBlockState());
+            level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState());
             advance();
         }
 
-        private void settleCurrentFabric(ServerLevel level) {
+        private void settleCurrentFederationDomain(ServerLevel level) {
             var part = bridge(level);
-            if (!(level.getBlockEntity(hub) instanceof HubBlockEntity) || part == null
+            if (!(level.getBlockEntity(router) instanceof RouterBlockEntity) || part == null
                     || part.operationalReason() != BridgeOperationalReason.VALID) {
                 return;
             }
-            var nodeId = FabricRegistryAccess.nodeId(level, hub);
-            var registry = FabricRegistryAccess.get(level);
-            var hubFabrics = registry.snapshot().fabrics().values().stream()
-                    .filter(fabric -> fabric.nodes().contains(nodeId)).toList();
-            if (hubFabrics.size() != 1) {
+            var nodeId = FederationDomainRegistryAccess.nodeId(level, router);
+            var registry = FederationDomainRegistryAccess.get(level);
+            var routerFederationDomains = registry.snapshot().federationDomains().values().stream()
+                    .filter(federationDomain -> federationDomain.nodes().contains(nodeId)).toList();
+            if (routerFederationDomains.size() != 1) {
                 return;
             }
-            var fabric = hubFabrics.getFirst();
-            if (fabric.memberships().size() != 2
-                    || !fabric.memberships().containsKey(mainNetwork)
-                    || !fabric.memberships().containsKey(outerNetwork)) {
+            var federationDomain = routerFederationDomains.getFirst();
+            if (federationDomain.memberships().size() != 2
+                    || !federationDomain.memberships().containsKey(mainNetwork)
+                    || !federationDomain.memberships().containsKey(outerNetwork)) {
                 return;
             }
-            var candidateReference = fabric.reference();
+            var candidateReference = federationDomain.reference();
             if (candidateReference.equals(originalReference) || !registry.isCurrent(candidateReference)) {
                 return;
             }
             refreshedReference = candidateReference;
-            refreshedFabricMembers = fabric.memberships().size();
+            refreshedFederationDomainMembers = federationDomain.memberships().size();
             refreshedReferenceCurrent = true;
             refreshedExpectedIdentities = true;
             level.players().stream().filter(ServerPlayer.class::isInstance).map(ServerPlayer.class::cast)
                     .filter(player -> player.getGameProfile().getName().startsWith("Client"))
-                    .forEach(player -> require(FabricPolicyMenu.openHub(player, hub),
+                    .forEach(player -> require(FederationDomainPolicyMenu.openRouter(player, router),
                             "Task 34 refreshed production menu did not open"));
             advance();
         }
@@ -267,7 +267,7 @@ public final class MultiClientServerHarness {
                         .filter(player -> !clientFinal(player.getGameProfile().getName()))
                         .forEach(player -> {
                             player.closeContainer();
-                            require(FabricPolicyMenu.openHub(player, hub),
+                            require(FederationDomainPolicyMenu.openRouter(player, router),
                                     "Task 34 refreshed production menu retry did not open");
                         });
             }
@@ -290,11 +290,11 @@ public final class MultiClientServerHarness {
             properties.setProperty("connectedClients", "2");
             properties.setProperty("authoritativeRevision", Long.toString(authoritativeRevision));
             properties.setProperty("staleRevisionRejected", Boolean.toString(staleRevisionRejected));
-            properties.setProperty("fabricSplitInvalidated", Boolean.toString(splitInvalidated));
+            properties.setProperty("federationDomainSplitInvalidated", Boolean.toString(splitInvalidated));
             properties.setProperty("scopeRefreshed", Boolean.toString(refreshedReference != null));
-            properties.setProperty("refreshedFabricMembers", Integer.toString(refreshedFabricMembers));
+            properties.setProperty("refreshedFederationDomainMembers", Integer.toString(refreshedFederationDomainMembers));
             properties.setProperty("refreshedReferenceCurrent", Boolean.toString(refreshedReferenceCurrent
-                    && FabricRegistryAccess.get(level).isCurrent(refreshedReference)));
+                    && FederationDomainRegistryAccess.get(level).isCurrent(refreshedReference)));
             properties.setProperty("refreshedExpectedIdentities", Boolean.toString(refreshedExpectedIdentities));
             properties.setProperty("activeSubscriptions", Integer.toString(
                     LevelObservabilityService.get(level).subscriptions().activeCount()));
@@ -309,8 +309,8 @@ public final class MultiClientServerHarness {
         }
 
         private List<BlockPos> positions() {
-            return List.of(hub, bridge, bridge.south(), bridge.south(2), bridge.north(), bridge.east(),
-                    bridge.north().east(), hub.north(), hub.south().below());
+            return List.of(router, bridge, bridge.south(), bridge.south(2), bridge.north(), bridge.east(),
+                    bridge.north().east(), router.north(), router.south().below());
         }
     }
 
@@ -322,7 +322,7 @@ public final class MultiClientServerHarness {
     private static NetworkId confirmed(ServerLevel level, BlockPos position) {
         var node = GridHelper.getExposedNode(level, position, Direction.UP);
         return node == null || node.getGrid() == null ? null
-                : FabricRegistryAccess.confirmedNetworkId(node.getGrid()).orElse(null);
+                : FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).orElse(null);
     }
 
     private static void placeCable(ServerLevel level, BlockPos position, AEColor color) {

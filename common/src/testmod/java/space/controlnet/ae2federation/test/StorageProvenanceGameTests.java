@@ -10,7 +10,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.storage.mount.RelationshipStorageProvider;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;

@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.world.phys.Vec3;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
@@ -50,12 +50,12 @@ final class TaskThirtyThreeWorldFixture {
         return TaskFifteenWorldFixture.arrange(scenario)
                 .server("place production Provider and Endpoint diagnostics", TaskThirtyThreeWorldFixture::place)
                 .serverTicks(4)
-                .waitUntilServer("Provider and Endpoint join the scoped Fabric", TaskThirtyThreeWorldFixture::ready)
+                .waitUntilServer("Provider and Endpoint join the scoped Federation Domain", TaskThirtyThreeWorldFixture::ready)
                 .teardownServer("remove Task 33 processing fixtures", TaskThirtyThreeWorldFixture::cleanup);
     }
 
-    static void openHub(ServerContext context) {
-        TaskFifteenWorldFixture.openHub(context);
+    static void openRouter(ServerContext context) {
+        TaskFifteenWorldFixture.openRouter(context);
     }
 
     static void openBridge(ServerContext context) {
@@ -71,9 +71,9 @@ final class TaskThirtyThreeWorldFixture {
         return state(context).provider.lanesForSlot(0).toString();
     }
 
-    static void positionHubOverviewCamera(ServerContext context) {
-        var hub = TaskFifteenWorldFixture.hubPosition(context);
-        positionCamera(context, hub.south(4).west(2).above(2), hub);
+    static void positionRouterOverviewCamera(ServerContext context) {
+        var router = TaskFifteenWorldFixture.routerPosition(context);
+        positionCamera(context, router.south(4).west(2).above(2), router);
     }
 
     static void positionBridgeCamera(ServerContext context) {
@@ -116,14 +116,14 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     private static void place(ServerContext context) {
-        var hostPosition = TaskFifteenWorldFixture.hubPosition(context).south(2);
+        var hostPosition = TaskFifteenWorldFixture.routerPosition(context).south(2);
         var endpointPosition = hostPosition.south();
         context.level().setBlockAndUpdate(hostPosition, Blocks.CHEST.defaultBlockState());
         context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
         var existing = GridHelper.getExposedNode(context.level(),
                 TaskFifteenWorldFixture.mainNetworkCablePosition(context), Direction.UP);
         require(existing != null, "Task 33 Provider requires the settled main network cable");
-        var networkId = FabricRegistryAccess.confirmedNetworkId(existing.getGrid()).orElseThrow(
+        var networkId = FederationDomainRegistryAccess.confirmedNetworkId(existing.getGrid()).orElseThrow(
                 () -> new IllegalStateException("Task 33 Provider requires confirmed main network identity"));
         var endpoint = context.level().getBlockEntity(endpointPosition) instanceof EndpointBlockEntity value
                 ? value
@@ -169,16 +169,16 @@ final class TaskThirtyThreeWorldFixture {
         if (binding == null) {
             return false;
         }
-        var providerNetwork = FabricRegistryAccess.confirmedNetworkId(state.node.getGrid()).orElse(null);
-        var endpointNetwork = FabricRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null);
-        var hubNode = FabricRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.hubPosition(context));
-        var fabrics = FabricRegistryAccess.get(context.level()).snapshot().fabrics().values();
+        var providerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(state.node.getGrid()).orElse(null);
+        var endpointNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null);
+        var routerNode = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
+        var federationDomains = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains().values();
         if (providerNetwork == null || !providerNetwork.equals(endpointNetwork)) {
             return false;
         }
-        return !state.provider.patternInventory().getStackInSlot(0).isEmpty() && fabrics.stream()
-                .anyMatch(fabric -> fabric.nodes().contains(hubNode)
-                        && fabric.memberships().containsKey(providerNetwork));
+        return !state.provider.patternInventory().getStackInSlot(0).isEmpty() && federationDomains.stream()
+                .anyMatch(federationDomain -> federationDomain.nodes().contains(routerNode)
+                        && federationDomain.memberships().containsKey(providerNetwork));
     }
 
     private static EndpointBlockEntity endpoint(ServerContext context) {

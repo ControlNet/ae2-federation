@@ -4,7 +4,7 @@ import appeng.api.stacks.AEKey;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import java.util.Set;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 
 interface StorageProjectionAuthorization {
     boolean permits(PolicyOperation operation, AEKey key);
@@ -21,7 +21,7 @@ interface StorageProjectionAuthorization {
      */
     @Nullable ResourceAuthorization readyAuthorization();
 
-    Set<FabricReference> scopes();
+    Set<FederationDomainReference> scopes();
 
     @FunctionalInterface
     interface ResourceAuthorization {

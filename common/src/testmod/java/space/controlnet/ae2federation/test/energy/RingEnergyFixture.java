@@ -11,8 +11,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.fabric.port.HubPortBinding;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -20,54 +20,54 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
-import space.controlnet.ae2federation.test.hub.HubFixtures;
+import space.controlnet.ae2federation.test.router.RouterFixtures;
 
 public final class RingEnergyFixture implements AutoCloseable {
     private static final BlockPos CENTER = new BlockPos(6, 5, 6);
     private static final List<Direction> FACES = List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST);
 
     private final GameTestHelper helper;
-    private final HubFixtures hubs;
-    private boolean hubPlaced;
+    private final RouterFixtures routers;
+    private boolean routerPlaced;
 
     public RingEnergyFixture(GameTestHelper helper) {
         this.helper = helper;
-        hubs = new HubFixtures(helper);
+        routers = new RouterFixtures(helper);
         for (var face : FACES) {
-            hubs.placeNativeDevice(CENTER, face);
+            routers.placeNativeDevice(CENTER, face);
             helper.setBlock(CENTER.relative(face).below(), AEBlocks.ENERGY_CELL.block());
         }
     }
 
     public boolean ready() {
-        if (grids().stream().anyMatch(grid -> FabricRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
+        if (grids().stream().anyMatch(grid -> FederationDomainRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
             return false;
         }
-        if (!hubPlaced) {
-            hubs.placeHub(CENTER);
-            hubPlaced = true;
+        if (!routerPlaced) {
+            routers.placeRouter(CENTER);
+            routerPlaced = true;
             return false;
         }
-        var hub = hubs.hub(CENTER);
-        if (FACES.stream().anyMatch(face -> !(hub.binding(face) instanceof HubPortBinding.Native))) {
+        var router = routers.router(CENTER);
+        if (FACES.stream().anyMatch(face -> !(router.binding(face) instanceof RouterPortBinding.Native))) {
             return false;
         }
         var grids = grids();
         if (Set.copyOf(grids).size() != 3) {
             return false;
         }
-        var registry = FabricRegistryAccess.get(helper.getLevel());
-        var common = registry.fabricsFor(network(grids.getFirst()));
-        if (grids.stream().skip(1).anyMatch(grid -> registry.fabricsFor(network(grid)).stream()
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        var common = registry.federationdomainsFor(network(grids.getFirst()));
+        if (grids.stream().skip(1).anyMatch(grid -> registry.federationdomainsFor(network(grid)).stream()
                 .noneMatch(common::contains))) {
             return false;
         }
-        EnergyBindingService.get(helper.getLevel()).observeFabricMembers(grids);
+        EnergyBindingService.get(helper.getLevel()).observeFederationDomainMembers(grids);
         return true;
     }
 
     public List<IGrid> grids() {
-        return FACES.stream().map(face -> hubs.nativeDeviceNode(CENTER, face).getGrid()).toList();
+        return FACES.stream().map(face -> routers.nativeDeviceNode(CENTER, face).getGrid()).toList();
     }
 
     public List<PolicyKey> keys() {
@@ -84,7 +84,7 @@ public final class RingEnergyFixture implements AutoCloseable {
             helper.assertTrue(result instanceof PolicyMutationResult.Accepted,
                     "Every directed ring edge must accept its ME power Policy");
         }
-        EnergyBindingService.get(helper.getLevel()).observeFabricMembers(grids());
+        EnergyBindingService.get(helper.getLevel()).observeFederationDomainMembers(grids());
     }
 
     public void chargeSecond(double amount) {
@@ -118,11 +118,11 @@ public final class RingEnergyFixture implements AutoCloseable {
     }
 
     private static space.controlnet.ae2federation.identity.NetworkId network(IGrid grid) {
-        return FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow();
     }
 
     @Override
     public void close() {
-        hubs.close();
+        routers.close();
     }
 }

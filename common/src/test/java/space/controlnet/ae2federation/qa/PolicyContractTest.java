@@ -42,7 +42,7 @@ final class PolicyContractTest {
         assertTrue(codec.contains("deleted"));
         assertTrue(savedData.contains("getServer().overworld().getDataStorage().computeIfAbsent"));
         assertFalse(codec.contains("IGrid"));
-        assertFalse(codec.contains("FabricId"));
+        assertFalse(codec.contains("FederationDomainId"));
     }
 
     @Test
@@ -53,7 +53,7 @@ final class PolicyContractTest {
                 "common/src/main/java/space/controlnet/ae2federation/policy/PolicyActivation.java"));
         var script = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
         assertTrue(service.contains("NetworkIdentityService.class"));
-        assertTrue(service.contains("FabricRegistryAccess.get(level)"));
+        assertTrue(service.contains("FederationDomainRegistryAccess.get(level)"));
         assertTrue(activation.contains("Collections.disjoint"));
         assertFalse(activation.contains("getGrid() =="));
         assertTrue(script.contains("verifyTaskFourteenEvidence"));

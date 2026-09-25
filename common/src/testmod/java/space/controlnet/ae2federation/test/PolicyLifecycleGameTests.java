@@ -46,7 +46,7 @@ public final class PolicyLifecycleGameTests {
             if (phase[0] == 0 && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 phase[0] = 1;
-                helper.assertTrue(false, "Waiting for first confirmed direct Fabric");
+                helper.assertTrue(false, "Waiting for first confirmed direct Federation Domain");
             }
             if (phase[0] == 1 && fixtures.firstBridgeReady()) {
                 var key = storageKey(fixtures);
@@ -58,7 +58,7 @@ public final class PolicyLifecycleGameTests {
                         "Removing the old Bridge must disconnect without deleting Policy");
                 fixtures.placeSecondBridge();
                 phase[0] = 2;
-                helper.assertTrue(false, "Waiting for replacement Bridge Fabric");
+                helper.assertTrue(false, "Waiting for replacement Bridge Federation Domain");
             }
             if (phase[0] != 2 || !fixtures.secondBridgeReady()) {
                 helper.assertTrue(false, "Waiting for replacement Bridge identities to settle");
@@ -66,12 +66,12 @@ public final class PolicyLifecycleGameTests {
             var key = storageKey(fixtures);
             helper.assertTrue(firstIdentity[0] != fixtures.secondBridgeIdentity(), "Replacement must be a new Bridge object");
             helper.assertValueEqual(activation(helper, fixtures, key), PolicyActivationState.ACTIVE,
-                    "Identity-keyed Policy must activate through a new confirmed Fabric");
+                    "Identity-keyed Policy must activate through a new confirmed Federation Domain");
             helper.assertValueEqual(PolicyService.get(helper.getLevel()).revision(key), revision[0],
-                    "Fabric replacement must not rewrite Policy revision");
+                    "Federation Domain replacement must not rewrite Policy revision");
             PolicyEvidence.write("policynewbridgerestore", 8, Map.of("disconnectedAfterRemoval", "true",
                     "newBridgeObject", "true", "restoredState", "ACTIVE", "revisionPreserved", "true",
-                    "keyedByNetworkIds", "true", "fabricIdPersisted", "false", "reexportDefault", "false",
+                    "keyedByNetworkIds", "true", "federationDomainIdPersisted", "false", "reexportDefault", "false",
                     "nativeGridJoin", "false"));
             fixtures.close();
         });
@@ -84,10 +84,10 @@ public final class PolicyLifecycleGameTests {
             if (!bridgePlaced[0] && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for restart preparation Fabric");
+                helper.assertTrue(false, "Waiting for restart preparation Federation Domain");
             }
             if (!fixtures.firstBridgeReady()) {
-                helper.assertTrue(false, "Waiting for confirmed restart preparation Fabric");
+                helper.assertTrue(false, "Waiting for confirmed restart preparation Federation Domain");
             }
             var key = storageKey(fixtures);
             var revision = accepted(PolicyService.get(helper.getLevel()).edit(
@@ -108,10 +108,10 @@ public final class PolicyLifecycleGameTests {
             if (phase[0] == 0 && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
                 phase[0] = 1;
-                helper.assertTrue(false, "Waiting for lifecycle matrix Fabric");
+                helper.assertTrue(false, "Waiting for lifecycle matrix Federation Domain");
             }
             if (phase[0] != 1 || !fixtures.firstBridgeReady()) {
-                helper.assertTrue(false, "Waiting for confirmed lifecycle matrix Fabric");
+                helper.assertTrue(false, "Waiting for confirmed lifecycle matrix Federation Domain");
             }
             var service = PolicyService.get(helper.getLevel());
             var key = storageKey(fixtures);
@@ -125,10 +125,10 @@ public final class PolicyLifecycleGameTests {
             helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.UNREADY)),
                     PolicyActivationState.BACKEND_UNREADY, "Confirmed topology cannot hide backend unavailability");
             helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
-                    PolicyActivationState.ACTIVE, "Settled identities and confirmed common Fabric must activate");
+                    PolicyActivationState.ACTIVE, "Settled identities and confirmed common Federation Domain must activate");
             fixtures.removeFirstBridge();
             helper.assertValueEqual(service.activation(key, endpoints(fixtures, BackendStatus.READY)),
-                    PolicyActivationState.DISCONNECTED, "Fabric removal must disconnect immediately");
+                    PolicyActivationState.DISCONNECTED, "Federation Domain removal must disconnect immediately");
             var verifyProcessId = ProcessHandle.current().pid();
             helper.assertTrue(verifyProcessId != restart.prepareProcessId(), "Restart phases must use distinct JVM processes");
             helper.assertValueEqual(restored.revision(), restart.revision(), "Policy revision must survive restart");

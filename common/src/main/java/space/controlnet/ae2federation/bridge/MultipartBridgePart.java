@@ -24,10 +24,10 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachment;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.fabric.FabricNodeId;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.client.menu.FabricPolicyMenu;
-import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.domain.FederationDomainNodeId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
+import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
@@ -37,9 +37,24 @@ import space.controlnet.ae2federation.energy.EnergyBindingService;
 public final class MultipartBridgePart extends AEBasePart {
     @PartModels
     public static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath(
-            "ae2federation", "part/multipart_bridge");
+            "ae2federation", "part/bridge");
     private static final IPartModel MODELS = new PartModel(MODEL);
-    private static final IGridNodeListener<MultipartBridgePart> NODE_LISTENER = (owner, node) -> owner.refresh();
+    private static final IGridNodeListener<MultipartBridgePart> NODE_LISTENER = new IGridNodeListener<>() {
+        @Override
+        public void onSaveChanges(MultipartBridgePart owner, IGridNode node) {
+            owner.refresh();
+        }
+
+        @Override
+        public void onStateChanged(MultipartBridgePart owner, IGridNode node, State state) {
+            owner.refresh();
+        }
+
+        @Override
+        public void onGridChanged(MultipartBridgePart owner, IGridNode node) {
+            owner.refresh();
+        }
+    };
 
     private final DirectionalEnergySource mainEnergySource = new DirectionalEnergySource();
     private final DirectionalEnergySource outerEnergySource = new DirectionalEnergySource();
@@ -51,7 +66,7 @@ public final class MultipartBridgePart extends AEBasePart {
             .addService(appeng.api.networking.energy.IAEPowerStorage.class, outerEnergySource);
     private BridgeStatus status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
     private boolean removed;
-    private @Nullable FabricSourceId fabricSource;
+    private @Nullable FederationDomainSourceId federationDomainSource;
     private boolean mainNodeLoaded;
     private boolean outerNodeLoaded;
 
@@ -76,8 +91,8 @@ public final class MultipartBridgePart extends AEBasePart {
         super.addToWorld();
         outerNode.create(getLevel(), getBlockEntity().getBlockPos());
         if (getLevel() instanceof ServerLevel serverLevel) {
-            var nodeId = FabricRegistryAccess.nodeId(serverLevel, getBlockEntity().getBlockPos());
-            fabricSource = new FabricSourceId("bridge:" + nodeId + ":" + getSide().getSerializedName());
+            var nodeId = FederationDomainRegistryAccess.nodeId(serverLevel, getBlockEntity().getBlockPos());
+            federationDomainSource = new FederationDomainSourceId("bridge:" + nodeId + ":" + getSide().getSerializedName());
         }
         refresh();
     }
@@ -91,6 +106,16 @@ public final class MultipartBridgePart extends AEBasePart {
         setStatus(BridgeStatus.invalid(BridgeOperationalReason.REMOVED));
         outerNode.destroy();
         super.removeFromWorld();
+    }
+
+    /**
+     * AE2 forms the main node's cable-bus connections after addToWorld, so a loaded Bridge must re-evaluate once the
+     * native node reports its Grid state; otherwise it stays invalid until an unrelated neighbor update.
+     */
+    @Override
+    protected void onMainNodeStateChanged(IGridNodeListener.State reason) {
+        super.onMainNodeStateChanged(reason);
+        refresh();
     }
 
     @Override
@@ -146,7 +171,7 @@ public final class MultipartBridgePart extends AEBasePart {
             return false;
         }
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-            return FabricPolicyMenu.openBridge(serverPlayer, rightClickContext());
+            return FederationDomainPolicyMenu.openBridge(serverPlayer, rightClickContext());
         }
         return true;
     }
@@ -203,7 +228,7 @@ public final class MultipartBridgePart extends AEBasePart {
         }
         var center = getHost().getPart(null);
         if (!mainNodeLoaded && center != null && center.getGridNode() != null) {
-            FabricRegistryAccess.confirmedNetworkId(center.getGridNode().getGrid()).ifPresent(networkId ->
+            FederationDomainRegistryAccess.confirmedNetworkId(center.getGridNode().getGrid()).ifPresent(networkId ->
                     getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("gn", networkId)));
         }
         var outerPosition = getBlockEntity().getBlockPos().relative(getSide());
@@ -211,34 +236,34 @@ public final class MultipartBridgePart extends AEBasePart {
                 ? GridHelper.getExposedNode(serverLevel, outerPosition, getSide().getOpposite())
                 : null;
         if (!outerNodeLoaded && neighbor != null) {
-            FabricRegistryAccess.confirmedNetworkId(neighbor.getGrid()).ifPresent(networkId ->
+            FederationDomainRegistryAccess.confirmedNetworkId(neighbor.getGrid()).ifPresent(networkId ->
                     outerNode.loadFromNBT(NetworkIdentityNodeSeed.managedNode("outer", networkId)));
         }
     }
 
     private void setStatus(BridgeStatus nextStatus) {
         status = nextStatus;
-        if (!(getLevel() instanceof ServerLevel serverLevel) || fabricSource == null) {
+        if (!(getLevel() instanceof ServerLevel serverLevel) || federationDomainSource == null) {
             return;
         }
         var candidate = nextStatus.membershipCandidate().orElse(null);
         if (candidate == null) {
-            FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
+            FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
             EnergyBindingService.reconcileIfPresent(serverLevel);
             return;
         }
-        var mainId = FabricRegistryAccess.confirmedNetworkId(candidate.mainGrid());
-        var outerId = FabricRegistryAccess.confirmedNetworkId(candidate.outerGrid());
+        var mainId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid());
+        var outerId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid());
         if (mainId.isEmpty() || outerId.isEmpty()) {
-            FabricRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, fabricSource);
+            FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
             EnergyBindingService.reconcileIfPresent(serverLevel);
             return;
         }
-        FabricRegistryAccess.get(serverLevel).upsertDirectBridge(fabricSource, mainId.get(), outerId.get());
+        FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         EnergyBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());

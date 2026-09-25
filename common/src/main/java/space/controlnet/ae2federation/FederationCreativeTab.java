@@ -7,7 +7,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
-import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
 public final class FederationCreativeTab {
@@ -17,13 +17,13 @@ public final class FederationCreativeTab {
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MAIN = TABS.register("main",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.ae2federation.main"))
-                    .icon(() -> HubRegistration.HUB_ITEM.get().getDefaultInstance())
+                    .icon(() -> RouterRegistration.ROUTER_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
-                        output.accept(HubRegistration.HUB_ITEM.get());
-                        output.accept(HubRegistration.FEDERATION_CABLE_ITEM.get());
+                        output.accept(RouterRegistration.ROUTER_ITEM.get());
+                        output.accept(RouterRegistration.FEDERATION_CABLE_ITEM.get());
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
-                        output.accept(BridgeRegistration.MULTIPART_BRIDGE.get());
+                        output.accept(BridgeRegistration.BRIDGE.get());
                     })
                     .build());
 

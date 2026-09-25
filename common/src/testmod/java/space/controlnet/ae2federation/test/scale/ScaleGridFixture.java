@@ -21,7 +21,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 
 public final class ScaleGridFixture implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScaleGridFixture.class);
@@ -62,7 +62,7 @@ public final class ScaleGridFixture implements AutoCloseable {
             if (!(entity instanceof MEChestBlockEntity chest)) return false;
             var node = chest.getMainNode().getNode();
             return node != null && node.hasGridBooted() && node.isActive()
-                    && FabricRegistryAccess.confirmedNetworkId(node.getGrid()).isPresent();
+                    && FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).isPresent();
         });
     }
 
@@ -90,7 +90,7 @@ public final class ScaleGridFixture implements AutoCloseable {
                 + " booted=" + (node != null && node.hasGridBooted())
                 + " active=" + (node != null && node.isActive())
                 + " grid=" + (grid == null ? "absent" : Integer.toUnsignedString(System.identityHashCode(grid)))
-                + " networkId=" + (grid == null ? "unconfirmed" : FabricRegistryAccess.confirmedNetworkId(grid)
+                + " networkId=" + (grid == null ? "unconfirmed" : FederationDomainRegistryAccess.confirmedNetworkId(grid)
                         .map(id -> id.value().toString()).orElse("unconfirmed"));
         LOGGER.info("{}", receipt);
         var configured = System.getProperty("ae2federation.nativeEvidenceFile", "");

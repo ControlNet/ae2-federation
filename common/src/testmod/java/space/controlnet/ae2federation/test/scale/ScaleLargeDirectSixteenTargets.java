@@ -26,7 +26,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryObservation;
 import space.controlnet.ae2federation.test.mixed.MixedMachineBlockEntity;
 import space.controlnet.ae2federation.test.mixed.MixedMachineRegistration;
@@ -184,7 +184,7 @@ public final class ScaleLargeDirectSixteenTargets {
                 var published = source.grid().getCraftingService().getCraftingFor(selection.output());
                 helper.assertTrue(node.getGrid() == source.grid() && node.isActive() && node.meetsChannelRequirements()
                                 && node.getUsedChannels() > 0 && node.getInWorldConnections().containsKey(Direction.WEST)
-                                && FabricRegistryAccess.confirmedNetworkId(node.getGrid()).filter(source.id()::equals).isPresent()
+                                && FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).filter(source.id()::equals).isPresent()
                                 && decoded != null && inventory.size() == 1 && decoded.getInputs().length == 1
                                 && decoded.getInputs()[0].getPossibleInputs().length == 1
                                 && decoded.getInputs()[0].getPossibleInputs()[0].what().equals(selection.input())

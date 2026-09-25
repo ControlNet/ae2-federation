@@ -36,7 +36,7 @@ public final class StorageChainGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 500, required = true, manualOnly = true)
-    public static void chainFourFabricDiamond(GameTestHelper helper) {
+    public static void chainFourFederationDomainDiamond(GameTestHelper helper) {
         run(helper, (fixture, policies, mounts) -> {
             configure(policies, fixture.aToB(), full(true));
             configure(policies, fixture.aToC(), full(true));
@@ -60,8 +60,8 @@ public final class StorageChainGameTests {
             helper.assertValueEqual(capacity, expectedCapacity, "D capacity must contain every native origin exactly once");
             helper.assertTrue(effective != null && effective.minimumDepth() == 2,
                     "Diamond must compile one two-edge A-to-D source relationship");
-            PolicyEvidence.write("chainfourfabricdiamond", 12, Map.ofEntries(
-                    Map.entry("fabricCount", "4"), Map.entry("alternativeChains", "2"),
+            PolicyEvidence.write("chainfourfederationdomaindiamond", 12, Map.ofEntries(
+                    Map.entry("federationDomainCount", "4"), Map.entry("alternativeChains", "2"),
                     Map.entry("effectiveRelationships", Integer.toString(mounts.mountedRelationshipCount())),
                     Map.entry("originQuantity", "13"), Map.entry("consumerVisibleQuantity", Long.toString(visible)),
                     Map.entry("consumerCapacity", Long.toString(capacity)),
@@ -144,13 +144,13 @@ public final class StorageChainGameTests {
                     fixture.dGrid(), fixture.aGrid(), BackendStatus.READY));
             var visible = fixture.dGrid().getStorageService().getInventory().getAvailableStacks().get(IRON);
             helper.assertValueEqual(activation, PolicyActivationState.DISCONNECTED,
-                    "Derived chain permission must not activate a direct rule without common Fabric");
+                    "Derived chain permission must not activate a direct rule without common Federation Domain");
             helper.assertValueEqual(visible, 5L, "The separately derived effective relationship must remain usable");
             PolicyEvidence.write("chainrejectdirectactivation", 8, Map.of(
                     "configuredDirectRule", "true", "directActivation", activation.name(),
                     "derivedEffectivePermission", "true", "visibleQuantity", Long.toString(visible),
                     "directRuleSynthesized", "false", "directRuleMutated", "false",
-                    "commonDirectFabric", "false", "nativeAuthority", "true"));
+                    "commonDirectFederationDomain", "false", "nativeAuthority", "true"));
         });
     }
 
@@ -200,7 +200,7 @@ public final class StorageChainGameTests {
                 helper.assertTrue(false, "Waiting for next Bridge attachment");
             }
             helper.assertTrue(phase[0] == 5 && fixture.bridgesReady(),
-                    "Four Bridge Fabrics and native endpoint identities must be ready: " + fixture.readiness());
+                    "Four Bridge Federation Domains and native endpoint identities must be ready: " + fixture.readiness());
             try {
                 assertion.verify(fixture, PolicyService.get(helper.getLevel()), StorageMountService.get(helper.getLevel()));
                 fixture.close();

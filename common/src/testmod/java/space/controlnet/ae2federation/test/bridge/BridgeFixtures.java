@@ -30,7 +30,7 @@ public final class BridgeFixtures implements AutoCloseable {
 
     public MultipartBridgePart placeBridge(BlockPos bridgePosition, Direction side) {
         var bridge = PartHelper.setPart(helper.getLevel(), helper.absolutePos(bridgePosition), side, null,
-                BridgeRegistration.MULTIPART_BRIDGE.get());
+                BridgeRegistration.BRIDGE.get());
         helper.assertTrue(bridge != null, "Registered Bridge part must be placeable on an AE2 cable bus");
         return bridge;
     }

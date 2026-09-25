@@ -37,7 +37,7 @@ public final class FederationTestMod {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
         var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
-					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class,
+					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, LegacySaveImportGameTests.class,
 					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
@@ -53,8 +53,8 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 DirectionalEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, HubGameTests.class, FabricGameTests.class,
-					   FabricBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, FederationDomainGameTests.class,
+					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,

@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.meter.NativeTransportMeter;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FlowState;
@@ -12,8 +12,8 @@ import space.controlnet.ae2federation.observability.state.ResourceUnit;
 import space.controlnet.ae2federation.observability.id.FlowId;
 import space.controlnet.ae2federation.observability.subscription.ObservationSubscriptionService;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
-import space.controlnet.ae2federation.observability.state.FabricStateProjector;
-import space.controlnet.ae2federation.observability.state.FabricStateSnapshot;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateProjector;
+import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.storage.mount.AcceptedStorageOperation;
 
 public final class LevelObservabilityService implements AutoCloseable {
@@ -62,11 +62,11 @@ public final class LevelObservabilityService implements AutoCloseable {
         recovered.forEach(transportMeter::acknowledgeSnapshot);
     }
 
-    public FabricStateSnapshot snapshot(FabricReference scope) {
-        return subscriptions.synchronizeProjection(new FabricStateProjector(level).snapshot(scope), false);
+    public FederationDomainStateSnapshot snapshot(FederationDomainReference scope) {
+        return subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope), false);
     }
 
-    public void recordAccepted(Iterable<FabricReference> scopes, OperationEventId eventId, String resource, long amount,
+    public void recordAccepted(Iterable<FederationDomainReference> scopes, OperationEventId eventId, String resource, long amount,
             ResourceUnit unit, FlowState.Attribution attribution) {
         if (amount <= 0) {
             return;
@@ -76,12 +76,12 @@ public final class LevelObservabilityService implements AutoCloseable {
                 continue;
             }
             var window = transportMeter.window(scope);
-            subscriptions.synchronizeProjection(new FabricStateProjector(level).snapshot(scope),
+            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
                     window.resnapshotRequired());
         }
     }
 
-    public void recordAcceptedStorage(Iterable<FabricReference> scopes, AcceptedStorageOperation operation) {
+    public void recordAcceptedStorage(Iterable<FederationDomainReference> scopes, AcceptedStorageOperation operation) {
         var key = operation.resource();
         var typePath = key.getType().getId().getPath();
         var unit = typePath.contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;

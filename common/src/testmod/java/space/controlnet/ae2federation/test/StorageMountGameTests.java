@@ -29,7 +29,7 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
-import space.controlnet.ae2federation.test.storage.HubStorageMountFixture;
+import space.controlnet.ae2federation.test.storage.RouterStorageMountFixture;
 import space.controlnet.ae2federation.test.storage.StorageRevocationChecks;
 
 @PrefixGameTestTemplate(false)
@@ -41,22 +41,22 @@ public final class StorageMountGameTests {
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
     public static void storageNativeAccess(GameTestHelper helper) {
-        var fixtures = new HubStorageMountFixture(helper);
+        var fixtures = new RouterStorageMountFixture(helper);
         var connected = new boolean[1];
         helper.succeedWhen(() -> {
             if (!connected[0] && fixtures.networksSettled()) {
-                fixtures.connectHubs();
+                fixtures.connectRouters();
                 connected[0] = true;
-                helper.assertTrue(false, "Waiting for two-Hub Federation component");
+                helper.assertTrue(false, "Waiting for two-Router Federation component");
             }
-            helper.assertTrue(connected[0] && fixtures.connected(), "Cable-connected Hubs must confirm one Fabric");
+            helper.assertTrue(connected[0] && fixtures.connected(), "Cable-connected Routers must confirm one Federation Domain");
             var key = fixtures.key();
             var policies = PolicyService.get(helper.getLevel());
             if (policies.revision(key).equals(PolicyRevision.NONE)) {
                 policies.edit(new PolicyEdit(key, PolicyRevision.NONE, PolicyRule.storageDefaults()));
             }
             var projection = StorageMountService.get(helper.getLevel()).projection(key);
-            helper.assertTrue(projection != null, "Cross-Hub relationship must mount one projection");
+            helper.assertTrue(projection != null, "Cross-Router relationship must mount one projection");
             var provider = nativeSource(fixtures.providerGrid());
             var terminalSource = new PlayerSource(helper.makeMockPlayer(GameType.CREATIVE));
             helper.assertValueEqual(projection.insert(IRON, 9, Actionable.MODULATE, terminalSource), 9L,
@@ -82,13 +82,13 @@ public final class StorageMountGameTests {
                     "Level teardown must remove the exact mounted service entry and provider");
             helper.assertTrue(cleanup.registryPresentBefore() && cleanup.registryRemoved()
                             && cleanup.registryAbsentAfter(),
-                    "Level teardown must remove the exact Fabric registry entry");
+                    "Level teardown must remove the exact Federation Domain registry entry");
             PolicyEvidence.write("storagenativeaccess", 20, Map.ofEntries(
                     Map.entry("mountedRelationships", "1"), Map.entry("insertAccepted", "9"),
                     Map.entry("consumerExtracted", "4"), Map.entry("providerRemaining", "5"),
                     Map.entry("nativeConsumerAggregate", "true"), Map.entry("nativeProviderSource", "true"),
                     Map.entry("direction", "consumer-to-provider"), Map.entry("customInventory", "false"),
-                    Map.entry("twoHubFabric", "true"), Map.entry("nativeCaller", "player-source"),
+                    Map.entry("twoRouterFederationDomain", "true"), Map.entry("nativeCaller", "player-source"),
                     Map.entry("cleanupConsumerBefore", Long.toString(cleanupConsumerBefore)),
                     Map.entry("cleanupConsumerAfter", Long.toString(cleanupConsumerAfter)),
                     Map.entry("cleanupServicePresentBefore", Boolean.toString(cleanup.servicePresentBefore())),
@@ -232,10 +232,10 @@ public final class StorageMountGameTests {
                     fixtures.placeSecondBridge();
                 }
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for " + testId + " confirmed Fabric");
+                helper.assertTrue(false, "Waiting for " + testId + " confirmed Federation Domain");
             }
             if (!fixtures.firstBridgeReady() || (redundant && !fixtures.secondBridgeReady())) {
-                helper.assertTrue(false, "Waiting for " + testId + " identities and Fabric");
+                helper.assertTrue(false, "Waiting for " + testId + " identities and Federation Domain");
             }
             var key = PolicyLifecycleGameTests.storageKey(fixtures);
             PolicyService.get(helper.getLevel()).edit(new PolicyEdit(key, PolicyRevision.NONE, rule));

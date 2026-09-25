@@ -8,9 +8,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.fabric.FabricId;
-import space.controlnet.ae2federation.fabric.FabricReference;
-import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.domain.FederationDomainId;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
+import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyFilter;
@@ -106,9 +106,9 @@ final class StorageDependencyCompilerTest {
     }
 
     private static DirectStorageDependency edge(NetworkId consumer, NetworkId provider, long revision, PolicyRule rule) {
-        var source = new FabricSourceId("task23:fabric-" + revision);
+        var source = new FederationDomainSourceId("task23:domain-" + revision);
         return new DirectStorageDependency(new PolicyKey(consumer, provider, PolicyCapability.STORAGE),
-                new PolicyRevision(revision), rule, Set.of(new FabricReference(FabricId.direct(source), revision)));
+                new PolicyRevision(revision), rule, Set.of(new FederationDomainReference(FederationDomainId.direct(source), revision)));
     }
 
     private static EffectiveSourceRelationshipKey key(NetworkId consumer, NetworkId origin) {

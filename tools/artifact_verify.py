@@ -59,7 +59,7 @@ def inspect_archive(jar: Path, sources: Path, pins: ArtifactPins) -> ArchiveInsp
     binary = archive_entries(jar)
     source = archive_entries(sources)
     required = {"space/controlnet/ae2federation/CommonStartup.class",
-                "assets/ae2federation/lang/en_us.json", "assets/ae2federation/ui/fabric.xml",
+                "assets/ae2federation/lang/en_us.json", "assets/ae2federation/ui/domain.xml",
                 "META-INF/neoforge.mods.toml", "ae2federation.mixins.json", "META-INF/LICENSE"}
     if not required.issubset(binary) or "META-INF/LICENSE" not in source:
         raise ValueError("Missing production resource or license")

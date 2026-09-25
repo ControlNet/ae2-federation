@@ -30,7 +30,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
@@ -80,7 +80,7 @@ public final class ScaleFederationIdentityTarget implements AutoCloseable {
     public boolean anchorReady(IGrid source) {
         var node = anchor().getMainNode().getNode();
         return node != null && node.hasGridBooted() && node.isActive() && node.getGrid() != source
-                && FabricRegistryAccess.confirmedNetworkId(node.getGrid()).isPresent();
+                && FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).isPresent();
     }
 
     public void placeEndpoint() {
@@ -154,7 +154,7 @@ public final class ScaleFederationIdentityTarget implements AutoCloseable {
     }
 
     public NetworkId anchorId() {
-        if (anchoredId == null) anchoredId = FabricRegistryAccess.confirmedNetworkId(grid()).orElseThrow();
+        if (anchoredId == null) anchoredId = FederationDomainRegistryAccess.confirmedNetworkId(grid()).orElseThrow();
         return anchoredId;
     }
 
@@ -177,7 +177,7 @@ public final class ScaleFederationIdentityTarget implements AutoCloseable {
     public boolean settled() {
         return grid().getService(NetworkIdentityService.class).settlement().status()
                 == space.controlnet.ae2federation.identity.IdentityStatus.SETTLED
-                && FabricRegistryAccess.confirmedNetworkId(grid()).orElseThrow().equals(anchorId());
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid()).orElseThrow().equals(anchorId());
     }
 
     public void snapshot(String stage, IGridNode source, MEStorage sourceStorage) {

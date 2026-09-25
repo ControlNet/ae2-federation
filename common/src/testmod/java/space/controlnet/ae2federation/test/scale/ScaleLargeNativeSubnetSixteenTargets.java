@@ -30,7 +30,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryObservation;
 import space.controlnet.ae2federation.test.mixed.MixedMachineBlockEntity;
@@ -222,7 +222,7 @@ public final class ScaleLargeNativeSubnetSixteenTargets {
                 var machine = target.machine();
                 var lane = source.hosts().get(index).lane(0);
                 var grid = target.grid();
-                var id = FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
+                var id = FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow();
                 var handler = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK,
                         helper.absolutePos(host.east(3).north()), Direction.WEST);
                 helper.assertTrue(uniqueGrids.add(grid) && uniqueIds.add(id)

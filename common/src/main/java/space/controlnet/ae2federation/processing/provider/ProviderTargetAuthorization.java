@@ -3,7 +3,7 @@ package space.controlnet.ae2federation.processing.provider;
 import appeng.api.AECapabilities;
 import appeng.api.networking.GridHelper;
 import java.util.Set;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -59,8 +59,8 @@ public final class ProviderTargetAuthorization {
         if (separated != ProviderTargetState.ACTIVE) {
             return paused(separated);
         }
-        var sourceId = FabricRegistryAccess.confirmedNetworkId(sourceGrid);
-        var targetId = FabricRegistryAccess.confirmedNetworkId(targetGrid);
+        var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid);
+        var targetId = FederationDomainRegistryAccess.confirmedNetworkId(targetGrid);
         if (sourceId.isEmpty() || targetId.isEmpty()) {
             return paused(ProviderTargetState.IDENTITY_UNSETTLED);
         }
@@ -79,7 +79,7 @@ public final class ProviderTargetAuthorization {
             return paused(ProviderTargetState.POLICY_DENIED);
         }
         if (activation != PolicyActivationState.ACTIVE) {
-            return paused(ProviderTargetState.FABRIC_DISCONNECTED);
+            return paused(ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED);
         }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,
                 request.endpointSide(), mode.orElseThrow(), context.provenance()));

@@ -1,7 +1,7 @@
 package space.controlnet.ae2federation.observability.subscription;
 
 import java.util.UUID;
-import space.controlnet.ae2federation.fabric.FabricReference;
+import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.state.ObservationDeltaEnvelope;
 import space.controlnet.ae2federation.observability.state.ObservationSession;
 import space.controlnet.ae2federation.observability.state.ObservationSnapshotEnvelope;
@@ -11,7 +11,7 @@ public interface ObservationAuthority {
 
     UUID sessionId();
 
-    FabricReference scope();
+    FederationDomainReference scope();
 
     boolean current();
 

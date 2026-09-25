@@ -18,8 +18,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
-import space.controlnet.ae2federation.fabric.port.HubBoundaryTopology;
-import space.controlnet.ae2federation.fabric.port.HubBoundaryTopology.BoundaryPort;
+import space.controlnet.ae2federation.domain.port.RouterBoundaryTopology;
+import space.controlnet.ae2federation.domain.port.RouterBoundaryTopology.BoundaryPort;
 import space.controlnet.ae2federation.test.port.NativePortFixtures;
 
 @PrefixGameTestTemplate(false)
@@ -69,17 +69,17 @@ public final class PortGameTests {
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 200, required = true, manualOnly = true)
-    public static void portsHubSixGrids(GameTestHelper helper) {
-        hubCase(helper, false);
+    public static void portsRouterSixGrids(GameTestHelper helper) {
+        routerCase(helper, false);
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 200, required = true, manualOnly = true)
-    public static void portsHubRepeatedGrid(GameTestHelper helper) {
-        hubCase(helper, true);
+    public static void portsRouterRepeatedGrid(GameTestHelper helper) {
+        routerCase(helper, true);
     }
 
-    private static void hubCase(GameTestHelper helper, boolean repeatFirstGrid) {
+    private static void routerCase(GameTestHelper helper, boolean repeatFirstGrid) {
         var fixtures = new NativePortFixtures(helper);
         var center = new BlockPos(6, 6, 6);
         for (var face : Direction.values()) {
@@ -104,14 +104,14 @@ public final class PortGameTests {
                             fixtures.createBoundary(face, boundaryPosition)));
                 }
             }
-            var topology = HubBoundaryTopology.resolve(helper.getLevel(), ports).orElseThrow();
+            var topology = RouterBoundaryTopology.resolve(helper.getLevel(), ports).orElseThrow();
             var distinctGrids = topology.facesByGrid().size();
-            helper.assertValueEqual(topology.attachments().size(), 6, "Hub must retain six independent face records");
+            helper.assertValueEqual(topology.attachments().size(), 6, "Router must retain six independent face records");
             helper.assertValueEqual(distinctGrids, repeatFirstGrid ? 5 : 6,
-                    "Hub native Grid identities must be deduplicatable without collapsing face ownership");
+                    "Router native Grid identities must be deduplicatable without collapsing face ownership");
             helper.assertTrue(topology.attachments().values().stream()
                     .allMatch(attachment -> attachment.boundaryNode().getConnections().size() == 1),
-                    "Every Hub boundary node must own exactly one external native edge");
+                    "Every Router boundary node must own exactly one external native edge");
             var facts = new java.util.LinkedHashMap<String, String>();
             facts.put("faceCount", "6");
             facts.put("distinctGridCount", Integer.toString(distinctGrids));
@@ -119,7 +119,7 @@ public final class PortGameTests {
             for (var face : Direction.values()) {
                 facts.put("face." + face.getSerializedName(), identity(topology.attachments().get(face).grid()));
             }
-            writeEvidence(repeatFirstGrid ? "portshubrepeatedgrid" : "portshubsixgrids",
+            writeEvidence(repeatFirstGrid ? "portsrouterrepeatedgrid" : "portsroutersixgrids",
                     repeatFirstGrid ? 7 : 8, facts);
             fixtures.close();
         });
@@ -203,14 +203,14 @@ public final class PortGameTests {
                             fixtures.createBoundary(face, boundaryPosition)));
                 }
             }
-            var resolved = HubBoundaryTopology.resolve(helper.getLevel(), ports);
-            helper.assertTrue(resolved.isPresent(), "Hub boundary topology must finish native attachment discovery");
+            var resolved = RouterBoundaryTopology.resolve(helper.getLevel(), ports);
+            helper.assertTrue(resolved.isPresent(), "Router boundary topology must finish native attachment discovery");
             var topology = resolved.orElseThrow();
             var northGrid = topology.attachments().get(Direction.NORTH).grid();
             var southGrid = topology.attachments().get(Direction.SOUTH).grid();
             helper.assertTrue(northGrid != southGrid, "Cross-grid fixture must begin with distinct native Grids");
             helper.assertTrue(!topology.permitsNativeJoin(Direction.NORTH, Direction.SOUTH),
-                    "Hub must reject a requested native join between boundary faces");
+                    "Router must reject a requested native join between boundary faces");
             helper.assertTrue(topology.attachments().get(Direction.NORTH).boundaryNode().getGrid() != topology
                     .attachments().get(Direction.SOUTH).boundaryNode().getGrid(),
                     "Rejected join must leave native Grid identities distinct");

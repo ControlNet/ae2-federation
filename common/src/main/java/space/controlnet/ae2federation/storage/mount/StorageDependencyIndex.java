@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.ae2.storage.StorageProvenanceException;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
@@ -31,7 +31,7 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 
 final class StorageDependencyIndex {
     private final ServerLevel level;
-    private final StorageFabricObserver fabrics;
+    private final StorageFederationDomainObserver federationDomains;
     private final NativeSourceDomainRegistry provenance;
     private final StorageDependencyCompiler compiler = new StorageDependencyCompiler(DependencyCompileBudget.standard());
     private Map<PolicyKey, StorageRelationship> directRelationships = Map.of();
@@ -41,18 +41,18 @@ final class StorageDependencyIndex {
     private long compilationRevision;
     private long refreshCount;
 
-    StorageDependencyIndex(ServerLevel level, StorageFabricObserver fabrics, NativeSourceDomainRegistry provenance) {
+    StorageDependencyIndex(ServerLevel level, StorageFederationDomainObserver federationDomains, NativeSourceDomainRegistry provenance) {
         this.level = level;
-        this.fabrics = fabrics;
+        this.federationDomains = federationDomains;
         this.provenance = provenance;
     }
 
     void refresh() {
         refreshCount = Math.incrementExact(refreshCount);
-        directRelationships = fabrics.relationships();
+        directRelationships = federationDomains.relationships();
         var nextDomains = new HashMap<OriginNetworkId, NativeSourceDomain>();
         var nextDiagnostics = new HashMap<PolicyKey, ProvenanceDiagnostic>();
-        for (var entry : fabrics.loadedGrids().entrySet()) {
+        for (var entry : federationDomains.loadedGrids().entrySet()) {
             try {
                 var domain = provenance.discover(entry.getValue());
                 if (!domain.sources().isEmpty() && ready(domain)) {
@@ -71,7 +71,7 @@ final class StorageDependencyIndex {
         var dependencies = new HashSet<DirectStorageDependency>();
         for (var relationship : directRelationships.values()) {
             var configured = policies.configured(relationship.key()).orElse(null);
-            var references = fabrics.references(relationship);
+            var references = federationDomains.references(relationship);
             if (configured != null && configured.rule().enabled() && !references.isEmpty()
                     && directActive(policies, relationship)) {
                 dependencies.add(new DirectStorageDependency(relationship.key(), configured.revision(),
@@ -82,7 +82,7 @@ final class StorageDependencyIndex {
                 .map(domain -> new NativeSourceCandidate(domain.origin(), domain.generation()))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
         try {
-            compilation = compiler.compile(sources, dependencies, fabrics.topologyRevision(), ++compilationRevision);
+            compilation = compiler.compile(sources, dependencies, federationDomains.topologyRevision(), ++compilationRevision);
         } catch (DependencyCompileException exception) {
             compilation = new DependencyCompilation(Map.of(), 0, 0);
         }
@@ -118,7 +118,7 @@ final class StorageDependencyIndex {
     }
 
     IGrid grid(NetworkId networkId) {
-        return fabrics.loadedGrids().get(networkId);
+        return federationDomains.loadedGrids().get(networkId);
     }
 
     ProvenanceDiagnostic diagnostic(PolicyKey key) {
@@ -128,9 +128,9 @@ final class StorageDependencyIndex {
     boolean current(EffectiveSourceRelationship relationship, NativeSourceDomain domain) {
         if (compilation.relationships().get(relationship.key()) != relationship
                 || domains.get(domain.origin()) != domain
-                || !relationship.revision().isCurrent(fabrics.topologyRevision(), domain.generation(),
+                || !relationship.revision().isCurrent(federationDomains.topologyRevision(), domain.generation(),
                         key -> PolicyService.get(level).revision(key),
-                        reference -> FabricRegistryAccess.get(level).isCurrent(reference))) {
+                        reference -> FederationDomainRegistryAccess.get(level).isCurrent(reference))) {
             return false;
         }
         var policies = PolicyService.get(level);

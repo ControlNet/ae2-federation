@@ -8,7 +8,7 @@ import org.lwjgl.opengl.GL11;
 
 final class TaskThirtyThreeScenarioSupport {
     enum Entrance {
-        HUB,
+        ROUTER,
         BRIDGE
     }
 
@@ -18,17 +18,17 @@ final class TaskThirtyThreeScenarioSupport {
     static ScenarioBuilder open(ScenarioBuilder scenario, Entrance entrance) {
         return TaskThirtyThreeWorldFixture.arrange(scenario)
                 .server("open Task 33 production workspace", context -> {
-                    if (entrance == Entrance.HUB) {
-                        TaskThirtyThreeWorldFixture.openHub(context);
+                    if (entrance == Entrance.ROUTER) {
+                        TaskThirtyThreeWorldFixture.openRouter(context);
                     } else {
                         TaskThirtyThreeWorldFixture.openBridge(context);
                     }
                 })
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .awaitElement("#fabric_graph")
+                .awaitElement("#domain_graph")
                 .click("#graph_fit")
-                .hover("#fabric_graph");
+                .hover("#domain_graph");
     }
 
     static void configure(com.lowdragmc.lowdraglib2.uitest.ScenarioOptions options, int guiScale) {
@@ -41,7 +41,7 @@ final class TaskThirtyThreeScenarioSupport {
         context.attach("mappingAck", context.el("#mapping_status").text());
         context.attach("endpointDetail", context.el("#endpoint_detail").text());
         context.attach("visibleStatus", context.el("#ack_status").text());
-        context.attach("graphVisible", Boolean.toString(context.el("#fabric_graph").isVisible()));
+        context.attach("graphVisible", Boolean.toString(context.el("#domain_graph").isVisible()));
         context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));

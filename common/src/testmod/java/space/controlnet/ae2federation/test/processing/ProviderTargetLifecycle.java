@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -43,11 +43,11 @@ final class ProviderTargetLifecycle implements AutoCloseable {
     private final boolean productionEndpoint;
     private final NativeTargetDomainRegistry domains = new NativeTargetDomainRegistry();
     private final AtomicReference<ProviderTargetRequest> request;
-    private final FabricSourceId fabricSource;
+    private final FederationDomainSourceId federationDomainSource;
     private EndpointTargetBinding endpointBinding;
     private ProviderRuntime runtime;
     private boolean registered;
-    private boolean fabricConnected;
+    private boolean federationDomainConnected;
     private String status = "created";
 
     ProviderTargetLifecycle(GameTestHelper helper, NativeProviderLaneFixtures provider, boolean productionEndpoint,
@@ -72,7 +72,7 @@ final class ProviderTargetLifecycle implements AutoCloseable {
         }
         request = new AtomicReference<>(new ProviderTargetRequest(providerIdentity, endpointIdentity,
                 claimState().epoch(), provider.endpointTargetPosition(), ENDPOINT_SIDE, true));
-        fabricSource = new FabricSourceId("task17:" + endpointIdentity.id().value());
+        federationDomainSource = new FederationDomainSourceId("task17:" + endpointIdentity.id().value());
     }
 
     boolean initialize() {
@@ -85,11 +85,11 @@ final class ProviderTargetLifecycle implements AutoCloseable {
             status = "target-not-active";
             return false;
         }
-        if (FabricRegistryAccess.confirmedNetworkId(sourceGrid()).isEmpty()) {
+        if (FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).isEmpty()) {
             status = "source-identity-pending";
             return false;
         }
-        if (FabricRegistryAccess.confirmedNetworkId(targetGrid()).isEmpty()) {
+        if (FederationDomainRegistryAccess.confirmedNetworkId(targetGrid()).isEmpty()) {
             status = "target-identity-unsettled";
             return false;
         }
@@ -129,14 +129,14 @@ final class ProviderTargetLifecycle implements AutoCloseable {
                 instanceof PolicyMutationResult.Accepted;
     }
 
-    void connectFabric() {
-        FabricRegistryAccess.get(helper.getLevel()).upsertDirectBridge(fabricSource, sourceNetwork(), targetNetwork());
-        fabricConnected = true;
+    void connectFederationDomain() {
+        FederationDomainRegistryAccess.get(helper.getLevel()).upsertDirectBridge(federationDomainSource, sourceNetwork(), targetNetwork());
+        federationDomainConnected = true;
     }
 
-    void disconnectFabric() {
-        FabricRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(fabricSource);
-        fabricConnected = false;
+    void disconnectFederationDomain() {
+        FederationDomainRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(federationDomainSource);
+        federationDomainConnected = false;
     }
 
     ProviderRuntime runtime() { return runtime; }
@@ -224,11 +224,11 @@ final class ProviderTargetLifecycle implements AutoCloseable {
     private appeng.api.networking.IGrid targetGrid() { return provider.endpointTargetNode().getGrid(); }
 
     private space.controlnet.ae2federation.identity.NetworkId sourceNetwork() {
-        return FabricRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
     }
 
     private space.controlnet.ae2federation.identity.NetworkId targetNetwork() {
-        return FabricRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow();
     }
 
     @Override
@@ -239,8 +239,8 @@ final class ProviderTargetLifecycle implements AutoCloseable {
         if (endpointBinding != null && !productionEndpoint) {
             endpointBinding.close();
         }
-        if (fabricConnected) {
-            disconnectFabric();
+        if (federationDomainConnected) {
+            disconnectFederationDomain();
         }
         EndpointPersistenceObservation.clear();
     }

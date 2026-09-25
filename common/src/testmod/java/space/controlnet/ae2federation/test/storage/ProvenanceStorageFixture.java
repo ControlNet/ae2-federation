@@ -14,7 +14,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.ae2.storage.NativeStorageProvenance;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.test.port.NativePortFixtures;
 
 public final class ProvenanceStorageFixture implements AutoCloseable {
@@ -37,7 +37,7 @@ public final class ProvenanceStorageFixture implements AutoCloseable {
     public boolean ready() {
         var node = chest().getMainNode().getNode();
         return node != null && node.isActive() && node.hasGridBooted()
-                && FabricRegistryAccess.confirmedNetworkId(grid()).isPresent();
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid()).isPresent();
     }
 
     public MEChestBlockEntity chest() {

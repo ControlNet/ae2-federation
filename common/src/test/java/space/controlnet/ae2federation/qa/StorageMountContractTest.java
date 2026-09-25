@@ -28,7 +28,7 @@ final class StorageMountContractTest {
     @Test
     void relationshipRegistryDeduplicatesAndUsesQualifiedNodeCallbacks() throws IOException {
         var mounts = source("storage/mount/StorageMountService.java");
-        var fabrics = source("storage/mount/StorageFabricObserver.java");
+        var federationDomains = source("storage/mount/StorageFederationDomainObserver.java");
         var provenance = source("storage/provenance/NativeSourceDomainRegistry.java");
         // Discovery reads AE2's real mount table (node and global providers) instead of scanning Grid nodes and
         // replaying provider callbacks.
@@ -45,20 +45,20 @@ final class StorageMountContractTest {
         var dependencies = source("storage/mount/StorageDependencyIndex.java");
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
         assertTrue(dependencies.contains("PolicyService.get(level).revision"));
-        assertTrue(dependencies.contains("FabricRegistryAccess.get(level).isCurrent"));
+        assertTrue(dependencies.contains("FederationDomainRegistryAccess.get(level).isCurrent"));
         assertTrue(mounts.contains("sourceCurrent(holder[0])"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
-        assertTrue(fabrics.contains("snapshot().fabrics().values()"));
-        assertTrue(fabrics.contains("fabric.memberships().keySet()"));
+        assertTrue(federationDomains.contains("snapshot().federationDomains().values()"));
+        assertTrue(federationDomains.contains("federationDomain.memberships().keySet()"));
     }
 
     @Test
     void topologyAndLevelLifecycleDriveReconciliationAndCleanup() throws IOException {
-        var cable = source("hub/FederationCableBlockEntity.java");
+        var cable = source("router/FederationCableBlockEntity.java");
         var mounts = source("storage/mount/StorageMountService.java");
         var lifecycle = source("storage/mount/StorageLevelLifecycle.java");
-        var registries = source("fabric/FabricRegistryAccess.java");
+        var registries = source("domain/FederationDomainRegistryAccess.java");
         var entrypoint = Files.readString(ROOT.resolve(
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint.java"));
         assertTrue(cable.contains("StorageMountService.topologyChangedIfPresent"));
@@ -66,7 +66,7 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("mountedProvidersRemoved"));
         assertTrue(registries.contains("removedRegisteredInstance"));
         assertTrue(lifecycle.contains("StorageMountService.closeLevel(level)"));
-        assertTrue(lifecycle.contains("FabricRegistryAccess.closeLevel(level)"));
+        assertTrue(lifecycle.contains("FederationDomainRegistryAccess.closeLevel(level)"));
         assertTrue(entrypoint.contains("LevelEvent.Unload"));
         assertTrue(entrypoint.contains("StorageLevelLifecycle.close(level)"));
     }

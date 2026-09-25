@@ -15,7 +15,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import space.controlnet.ae2federation.ae2.storage.NativeStorageProvenance;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -54,7 +54,7 @@ public final class ChainStorageFixture implements AutoCloseable {
         IGrid[] grids = { aGrid(), bGrid(), cGrid(), dGrid() };
         var distinctGrids = new HashSet<IGrid>();
         for (var grid : grids) {
-            if (grid == null || !distinctGrids.add(grid) || FabricRegistryAccess.confirmedNetworkId(grid).isEmpty()) {
+            if (grid == null || !distinctGrids.add(grid) || FederationDomainRegistryAccess.confirmedNetworkId(grid).isEmpty()) {
                 return false;
             }
         }
@@ -91,13 +91,13 @@ public final class ChainStorageFixture implements AutoCloseable {
             return false;
         }
         if (List.of(aGrid(), bGrid(), cGrid(), dGrid()).stream()
-                .anyMatch(grid -> FabricRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
+                .anyMatch(grid -> FederationDomainRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
             return false;
         }
-        var registry = FabricRegistryAccess.get(helper.getLevel());
-        return registry.fabricsFor(a()).size() == 2 && registry.fabricsFor(b()).size() == 2
-                && registry.fabricsFor(c()).size() == 2 && registry.fabricsFor(d()).size() == 2
-                && registry.snapshot().fabrics().size() >= 4;
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        return registry.federationdomainsFor(a()).size() == 2 && registry.federationdomainsFor(b()).size() == 2
+                && registry.federationdomainsFor(c()).size() == 2 && registry.federationdomainsFor(d()).size() == 2
+                && registry.snapshot().federationDomains().size() >= 4;
     }
 
     public String readiness() {
@@ -111,14 +111,14 @@ public final class ChainStorageFixture implements AutoCloseable {
             return "bridgeReasons=" + reasons + ", identityStatuses=" + statuses;
         }
         var identities = grids.stream()
-                .map(FabricRegistryAccess::confirmedNetworkId).toList();
+                .map(FederationDomainRegistryAccess::confirmedNetworkId).toList();
         if (identities.stream().anyMatch(java.util.Optional::isEmpty)) {
             return "bridgeReasons=" + reasons + ", identityStatuses=" + statuses;
         }
-        var registry = FabricRegistryAccess.get(helper.getLevel());
-        return "bridgeReasons=" + reasons + ", fabricCounts=" + identities.stream()
-                .map(identity -> registry.fabricsFor(identity.orElseThrow()).size()).toList()
-                + ", totalFabrics=" + registry.snapshot().fabrics().size();
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        return "bridgeReasons=" + reasons + ", federationDomainCounts=" + identities.stream()
+                .map(identity -> registry.federationdomainsFor(identity.orElseThrow()).size()).toList()
+                + ", totalFederationDomains=" + registry.snapshot().federationDomains().size();
     }
 
     public PolicyKey aToB() { return key(b(), a()); }
@@ -176,7 +176,7 @@ public final class ChainStorageFixture implements AutoCloseable {
     }
 
     private NetworkId network(IGrid grid) {
-        return FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow();
+        return FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow();
     }
 
     private static PolicyKey key(NetworkId consumer, NetworkId provider) {

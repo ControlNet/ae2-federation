@@ -67,7 +67,7 @@ public final class EndpointModeGameTests {
                     "Restored Local mode must expose current native capabilities");
             EndpointModeEvidence.write("endpointlocal", 10, Map.ofEntries(
                     Map.entry("mode", "LOCAL"), Map.entry("verifiedUpstreams", "1"),
-                    Map.entry("hubRequired", "false"), Map.entry("fabricRequired", "false"),
+                    Map.entry("routerRequired", "false"), Map.entry("federationDomainRequired", "false"),
                     Map.entry("sourceGridSeparated", "true"), Map.entry("nativeInputAccepted", "true"),
                     Map.entry("nativeReturnOwner", "true"), Map.entry("endpointBuffer", "false"),
                     Map.entry("typedGeneration", "true"), Map.entry("productionLifecycle", "true"),
@@ -88,7 +88,7 @@ public final class EndpointModeGameTests {
             if (saved[0] == null) {
                 helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
                         "Federated mode requires Processing Policy");
-                fixture.connectFabric();
+                fixture.connectFederationDomain();
                 helper.assertTrue(fixture.pushOnce(), "Authorized Claim must accept federated native input");
                 helper.assertValueEqual(fixture.state(), ProviderTargetState.ACTIVE, "Federated target must be active");
                 helper.assertTrue(fixture.endpointBinding().runtime().mode().orElseThrow()

@@ -14,8 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
-import space.controlnet.ae2federation.fabric.FabricSourceId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -43,7 +43,7 @@ final class GeneratedFederationTargets implements AutoCloseable {
     private final NativeTargetDomainRegistry domains = new NativeTargetDomainRegistry();
     private final List<BlockPos> positions;
     private final List<ProviderTargetRequest> requests = new ArrayList<>();
-    private final List<FabricSourceId> fabricSources = new ArrayList<>();
+    private final List<FederationDomainSourceId> federationDomainSources = new ArrayList<>();
     private ProviderRuntime runtime;
     private boolean registered;
     private boolean relationshipsActive;
@@ -62,13 +62,13 @@ final class GeneratedFederationTargets implements AutoCloseable {
             status = "source-not-active";
             return false;
         }
-        if (FabricRegistryAccess.confirmedNetworkId(sourceGrid()).isEmpty()) {
+        if (FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).isEmpty()) {
             status = "source-identity-pending";
             return false;
         }
         for (var position : positions) {
             var node = provider.endpointTargetNode(position);
-            if (node == null || !node.isActive() || FabricRegistryAccess.confirmedNetworkId(node.getGrid()).isEmpty()) {
+            if (node == null || !node.isActive() || FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).isEmpty()) {
                 status = "target-identity-pending";
                 return false;
             }
@@ -194,19 +194,19 @@ final class GeneratedFederationTargets implements AutoCloseable {
     }
 
     private void activateRelationships() {
-        var sourceNetwork = FabricRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
+        var sourceNetwork = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
         var policies = PolicyService.get(helper.getLevel());
         for (int laneIndex = 0; laneIndex < positions.size(); laneIndex++) {
-            var targetNetwork = FabricRegistryAccess.confirmedNetworkId(targetGrids().get(laneIndex)).orElseThrow();
+            var targetNetwork = FederationDomainRegistryAccess.confirmedNetworkId(targetGrids().get(laneIndex)).orElseThrow();
             var key = new PolicyKey(sourceNetwork, targetNetwork, PolicyCapability.PROCESSING);
             var result = policies.edit(new PolicyEdit(key, policies.revision(key),
                     PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))));
             if (!(result instanceof PolicyMutationResult.Accepted)) {
                 throw new IllegalStateException("Generated target Policy did not activate");
             }
-            var source = new FabricSourceId("task20:" + endpoint(positions.get(laneIndex)).endpointIdentity().id().value());
-            FabricRegistryAccess.get(helper.getLevel()).upsertDirectBridge(source, sourceNetwork, targetNetwork);
-            fabricSources.add(source);
+            var source = new FederationDomainSourceId("task20:" + endpoint(positions.get(laneIndex)).endpointIdentity().id().value());
+            FederationDomainRegistryAccess.get(helper.getLevel()).upsertDirectBridge(source, sourceNetwork, targetNetwork);
+            federationDomainSources.add(source);
         }
     }
 
@@ -216,7 +216,7 @@ final class GeneratedFederationTargets implements AutoCloseable {
 
     @Override
     public void close() {
-        fabricSources.forEach(source -> FabricRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(source));
+        federationDomainSources.forEach(source -> FederationDomainRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(source));
         provider.close();
         positions.forEach(position -> {
             helper.setBlock(position, Blocks.AIR);

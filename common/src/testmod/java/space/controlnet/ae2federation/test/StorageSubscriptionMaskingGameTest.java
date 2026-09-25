@@ -143,10 +143,10 @@ public final class StorageSubscriptionMaskingGameTest {
         state.removalDelta = NativeStorageNotificationHub.removalCount() - removalsBefore;
         state.activeAfterOverflow = NativeStorageNotificationHub.activeCount(fixture.providerGrid().getStorageService());
         helper.assertValueEqual(state.overflowDelta, 1L, "Key 65 must emit one overflow diagnostic");
-        helper.assertValueEqual(state.removalDelta, 2, "Hub overflow must close both exact registrations");
-        helper.assertValueEqual(state.activeAfterOverflow, 0, "Hub overflow must leave no service listeners");
+        helper.assertValueEqual(state.removalDelta, 2, "Router overflow must close both exact registrations");
+        helper.assertValueEqual(state.activeAfterOverflow, 0, "Router overflow must leave no service listeners");
         helper.assertValueEqual(NativeStorageNotificationHub.catalogSize(fixture.providerGrid().getStorageService()), 0,
-                "Hub overflow must remove its service catalog after retirement");
+                "Router overflow must remove its service catalog after retirement");
         var staleEvents = mounts.sourceEventCount();
         var staleDeliveries = mounts.consumerDeliveryCount(fixture.key());
         var staleAuthority = aggregate(fixture);

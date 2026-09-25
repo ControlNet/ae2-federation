@@ -75,7 +75,7 @@ public final class DirectionalEnergyFixture implements AutoCloseable {
 
     public EnergyCapabilityBinding binding() {
         return bindings().capability(key()).orElseThrow(() -> new IllegalStateException(
-                "No directional binding: key=" + key() + ", commonFabrics=" + commonFabricCount()
+                "No directional binding: key=" + key() + ", commonFederationDomains=" + commonFederationDomainCount()
                         + ", relationships=" + bindings().relationshipCount()
                         + ", publications=" + bindings().publicationCount()
                         + ", withdrawals=" + bindings().withdrawalCount()
@@ -167,10 +167,10 @@ public final class DirectionalEnergyFixture implements AutoCloseable {
         return true;
     }
 
-    public long commonFabricCount() {
-        var registry = space.controlnet.ae2federation.fabric.FabricRegistryAccess.get(helper.getLevel());
-        var provider = registry.fabricsFor(key().providerNetworkId());
-        return registry.fabricsFor(key().consumerNetworkId()).stream().filter(provider::contains).count();
+    public long commonFederationDomainCount() {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+        var provider = registry.federationdomainsFor(key().providerNetworkId());
+        return registry.federationdomainsFor(key().consumerNetworkId()).stream().filter(provider::contains).count();
     }
 
     public void disconnect() {

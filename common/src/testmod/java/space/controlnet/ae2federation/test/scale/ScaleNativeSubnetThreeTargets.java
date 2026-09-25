@@ -20,7 +20,7 @@ import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
 import appeng.api.networking.IGridNode;
 import net.minecraft.nbt.CompoundTag;
 import space.controlnet.ae2federation.test.processing.ProcessingRegressionFixtures;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
 import space.controlnet.ae2federation.test.processing.ProcessingCraftingGrid;
@@ -84,10 +84,10 @@ public final class ScaleNativeSubnetThreeTargets {
             }
             if (state.stage == 1) {
                 helper.assertTrue(state.provider.connectEnergy()
-                        && FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
+                        && FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).isPresent(),
                         "Waiting for settled source Provider Grid");
                 state.crafting = new ProcessingCraftingGrid(helper,
-                        FabricRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
+                        FederationDomainRegistryAccess.confirmedNetworkId(state.provider.managedNode().getGrid()).orElseThrow());
                 state.stage = 2;
                 helper.assertTrue(false, "Waiting for source CPU Grid");
                 return;
@@ -103,7 +103,7 @@ public final class ScaleNativeSubnetThreeTargets {
             if (state.stage == 2) {
                 state.sourceGrid = source.getGrid();
                 state.provider.register();
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
                 state.retention = new ScaleDriveRetention(helper, state.crafting, sourceId, catalogReplay ? 5 : 1,
                         new BlockPos(2, 2, 2));
                 state.east = new ScaleNativeSubnetTarget(helper, true, true, Direction.EAST);
@@ -165,7 +165,7 @@ public final class ScaleNativeSubnetThreeTargets {
                         "Every candidate cable segment must join the exact source Grid: " + position);
             }
             if (state.stage == 3) {
-                var sourceId = FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
+                var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
                 state.sourcePower = helper.getBlockEntity(NativeProviderLaneFixtures.HOST_POS.west());
                 state.sourcePowerNode = state.sourcePower.getMainNode().getNode();
                 state.sourcePowerState = new CompoundTag();
@@ -198,8 +198,8 @@ public final class ScaleNativeSubnetThreeTargets {
                                     == state.sourceGrid
                             && h1Node.getGrid() == state.sourceGrid,
                     "H1 requires a live physical WEST cable edge on the exact source Grid");
-            helper.assertTrue(FabricRegistryAccess.confirmedNetworkId(h1Node.getGrid())
-                            .filter(FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow()::equals)
+            helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(h1Node.getGrid())
+                            .filter(FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow()::equals)
                             .isPresent(),
                     "H1 physical Provider node must retain the source identity");
             if (state.stage == 4) {
@@ -212,7 +212,7 @@ public final class ScaleNativeSubnetThreeTargets {
             helper.assertTrue(state.third.ready(source), "Third physical subnet must boot and remain active");
             if (fourthTarget) {
                 if (state.stage == 5) {
-                    var sourceId = FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
+                    var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow();
                     state.fourthHost = new NativeProviderLaneFixtures(helper,
                             List.of(slot -> catalogReplay ? slot % 4 == 3 : slot == 0), false,
                             catalogReplay ? ScaleProcessingCatalog.SIZE : 1, sourceId, List.of(Direction.EAST), H2);
@@ -235,8 +235,8 @@ public final class ScaleNativeSubnetThreeTargets {
                                 && node.getInWorldConnections().get(Direction.WEST).getOtherSide(node).getGrid()
                                         == state.sourceGrid && node.getGrid() == state.sourceGrid,
                         "D requires a physical Provider BE and WEST edge on the exact source Grid");
-                helper.assertTrue(FabricRegistryAccess.confirmedNetworkId(node.getGrid())
-                                .filter(FabricRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow()::equals)
+                helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid())
+                                .filter(FederationDomainRegistryAccess.confirmedNetworkId(state.sourceGrid).orElseThrow()::equals)
                                 .isPresent(), "D must have the confirmed source identity");
                 if (state.stage == 7) {
                     state.fourthHost.register();
@@ -254,7 +254,7 @@ public final class ScaleNativeSubnetThreeTargets {
             var observedGrids = targets.stream().map(ScaleNativeSubnetTarget::grid)
                     .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
             observedGrids.add(0, state.sourceGrid);
-            var observedIds = observedGrids.stream().map(grid -> FabricRegistryAccess.confirmedNetworkId(grid)
+            var observedIds = observedGrids.stream().map(grid -> FederationDomainRegistryAccess.confirmedNetworkId(grid)
                     .orElseThrow()).toList();
             var uniqueGrids = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<IGrid, Boolean>());
             uniqueGrids.addAll(observedGrids);

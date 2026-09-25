@@ -6,7 +6,7 @@ import appeng.api.networking.crafting.ICraftingService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 
@@ -16,7 +16,7 @@ final class NativeCraftingBackendRegistry {
     private final Map<NetworkId, NativeCraftingBackend> current = new HashMap<>();
 
     NativeCraftingBackend discover(IGrid grid) {
-        var origin = FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow(() ->
+        var origin = FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow(() ->
                 new CraftingBackendUnavailableException("Native crafting source identity is unsettled"));
         var identity = grid.getService(NetworkIdentityService.class);
         var providers = new ArrayList<NativeCraftingProviderSource>();

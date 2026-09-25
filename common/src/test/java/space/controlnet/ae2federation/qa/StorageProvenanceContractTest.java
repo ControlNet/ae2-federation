@@ -60,7 +60,7 @@ final class StorageProvenanceContractTest {
     void nativeFixtureReadinessIncludesSettledDiscoveryOrigin() throws IOException {
         var fixture = Files.readString(ROOT.resolve(
                 "common/src/testmod/java/space/controlnet/ae2federation/test/storage/ProvenanceStorageFixture.java"));
-        assertTrue(fixture.contains("FabricRegistryAccess.confirmedNetworkId(grid()).isPresent()"),
+        assertTrue(fixture.contains("FederationDomainRegistryAccess.confirmedNetworkId(grid()).isPresent()"),
                 "Native fixture readiness must include the exact settled-origin precondition used by discovery");
     }
 

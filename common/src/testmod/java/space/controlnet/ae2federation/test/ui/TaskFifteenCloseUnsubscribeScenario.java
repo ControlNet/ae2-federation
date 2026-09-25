@@ -17,7 +17,7 @@ public final class TaskFifteenCloseUnsubscribeScenario implements UIScenario {
 
     @Override
     public void define(ScenarioBuilder scenario) {
-        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.HUB)
+        TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
                 .click("#policy_toggle")
                 .waitUntilServer("initial edit accepted", TaskFifteenWorldFixture::policyConfigured)
                 .closeScreen()

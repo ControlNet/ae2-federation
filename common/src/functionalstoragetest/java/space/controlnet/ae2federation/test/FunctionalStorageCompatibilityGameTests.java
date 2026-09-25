@@ -49,12 +49,12 @@ public final class FunctionalStorageCompatibilityGameTests {
             if (!bridgePlaced[0] && fixture.networksSettled()) {
                 bridge[0] = fixture.placeFirstBridge();
                 bridgePlaced[0] = true;
-                helper.assertTrue(false, "Waiting for storage Fabric");
+                helper.assertTrue(false, "Waiting for storage Federation Domain");
             }
             helper.assertTrue(fixture.networksSettled(), "Native networks must settle with their attached Storage Bus: "
                     + fixture.mainGrid().getService(NetworkIdentityService.class).settlement().status() + "/"
                     + fixture.outerGrid().getService(NetworkIdentityService.class).settlement().status());
-            helper.assertTrue(fixture.firstBridgeReady(), "Storage Fabric must settle: "
+            helper.assertTrue(fixture.firstBridgeReady(), "Storage Federation Domain must settle: "
                     + (bridge[0] == null ? "native networks unsettled"
                     : bridge[0].operationalReason() + " bus=" + fixture.outerGrid()));
             if (!drawerPlaced[0]) {

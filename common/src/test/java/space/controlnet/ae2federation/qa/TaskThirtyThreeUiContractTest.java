@@ -17,13 +17,13 @@ final class TaskThirtyThreeUiContractTest {
     @Test
     void productionResourcesExposeTheScopedThreeRegionWorkspace() throws IOException {
         var xml = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/resources/assets/ae2federation/ui/fabric.xml"));
+                "common/src/main/resources/assets/ae2federation/ui/domain.xml"));
         var lss = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/resources/assets/ae2federation/lss/fabric.lss"));
+                "common/src/main/resources/assets/ae2federation/lss/domain.lss"));
         var holder = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/menu/FabricPolicyMenuHolder.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenuHolder.java"));
 
-        for (var id : new String[] { "fabric_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
+        for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
                 "physical_layer_toggle", "capability_layer_toggle", "member_list", "pattern_search",
                 "pattern_list", "mapping_provider_next", "mapping_slot_next", "mapping_lane_next",
                 "mapping_toggle", "mapping_status", "endpoint_next", "endpoint_detail", "entrance_value",
@@ -38,21 +38,21 @@ final class TaskThirtyThreeUiContractTest {
                 "The production workspace must fit a 400x240 logical scale-4 viewport");
         assertTrue(xml.contains("class=\"policy-actions\"") && lss.contains(".policy-actions"),
                 "Long policy actions must stack instead of sharing a cramped row");
-        assertTrue(lss.contains(".fabric-left .__button_text__") && lss.contains("adaptive-width: false")
+        assertTrue(lss.contains(".domain-left .__button_text__") && lss.contains("adaptive-width: false")
                         && lss.contains("text-wrap: wrap"),
                 "Long localized policy actions must wrap inside their button bounds");
         assertTrue(lss.contains(".compact-actions button { width: 49%; height: 14; font-size: 3.5; }"),
                 "Paired mapping controls must fit without overflowing or clipping Chinese labels");
-        assertTrue(lss.contains(".fabric-right { width: 126;") && lss.contains(".fabric-center { width: 182;"),
+        assertTrue(lss.contains(".domain-right { width: 126;") && lss.contains(".domain-center { width: 182;"),
                 "The diagnostics column must be wide enough for paired labels without collapsing the graph");
-        assertTrue(holder.contains("FabricGraphLayoutCache") && holder.contains("stringS2C"),
+        assertTrue(holder.contains("FederationDomainGraphLayoutCache") && holder.contains("stringS2C"),
                 "The rendered graph must consume a server-owned scoped projection with cached topology layout");
     }
 
     @Test
     void authoritativeMappingAndEndpointDiagnosticsUseProductionOwners() throws IOException {
         var session = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/policy/FabricPolicySession.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/policy/FederationDomainPolicySession.java"));
         assertTrue(session.contains("PatternSlotHandle"), "Mapping mutations must carry the slot generation");
         assertTrue(session.contains("replaceMapping"), "Mapping mutations must reach the real MappedPatternProvider");
         assertTrue(session.contains("ProviderTargetState"), "Unavailable Policy and Claim reasons must be surfaced");
@@ -61,10 +61,10 @@ final class TaskThirtyThreeUiContractTest {
                 "Endpoint detail must expose the production Claim result through the session binding");
 
         var projection = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/policy/FabricGraphProjection.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/policy/FederationDomainGraphProjection.java"));
         assertTrue(projection.contains("PatternDetailsHelper.decodePattern") && projection.contains("amount()"),
                 "Pattern rows must project native input quantities from decoded production patterns");
-        assertTrue(projection.contains("FabricPatternRow.format(slot, name, quantities, provider.lanesForSlot(slot))")
+        assertTrue(projection.contains("FederationDomainPatternRow.format(slot, name, quantities, provider.lanesForSlot(slot))")
                         && !projection.contains("rows.add(slot + \"\\t\""),
                 "Displayed Pattern rows must use a visible separator rather than tab control characters");
 
@@ -82,7 +82,7 @@ final class TaskThirtyThreeUiContractTest {
                 "Quantity evidence must be read from the rendered Pattern row");
 
         var entrance = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/policy/FabricPolicyEntrance.java"));
+                "common/src/main/java/space/controlnet/ae2federation/client/policy/FederationDomainPolicyEntrance.java"));
         assertTrue(entrance.contains("label(ServerLevel level)")
                         && entrance.contains("getCableConnectionLength(AECableType.GLASS)"),
                 "Visible multipart diagnostics must be derived from the live server-side part");

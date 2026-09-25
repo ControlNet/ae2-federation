@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL11;
 
 final class TaskFifteenScenarioSupport {
     enum Entrance {
-        HUB,
+        ROUTER,
         BRIDGE
     }
 
@@ -16,9 +16,9 @@ final class TaskFifteenScenarioSupport {
 
     static ScenarioBuilder open(ScenarioBuilder scenario, Entrance entrance) {
         return TaskFifteenWorldFixture.arrange(scenario)
-                .server("open production Fabric policy menu", context -> {
-                    if (entrance == Entrance.HUB) {
-                        TaskFifteenWorldFixture.openHub(context);
+                .server("open production Federation Domain policy menu", context -> {
+                    if (entrance == Entrance.ROUTER) {
+                        TaskFifteenWorldFixture.openRouter(context);
                     } else {
                         TaskFifteenWorldFixture.openBridge(context);
                     }
@@ -31,7 +31,7 @@ final class TaskFifteenScenarioSupport {
     static void attachPolicy(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
         context.attach("caseId", caseId);
         var observation = TaskFifteenWorldFixture.observation(context);
-        context.attach("recordIdentity", observation.hubRecordIdentity());
+        context.attach("recordIdentity", observation.routerRecordIdentity());
         context.attach("bridgeRecordIdentity", observation.bridgeRecordIdentity());
         context.attach("policyRevision", Long.toString(observation.policyRevision()));
         context.attach("policyEnabled", Boolean.toString(observation.enabled()));

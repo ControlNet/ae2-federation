@@ -2,7 +2,7 @@ package space.controlnet.ae2federation.observability.state;
 
 import java.util.Objects;
 
-public record ObservationDeltaEnvelope(ObservationSession session, FabricStateDelta delta) {
+public record ObservationDeltaEnvelope(ObservationSession session, FederationDomainStateDelta delta) {
     public ObservationDeltaEnvelope {
         Objects.requireNonNull(session);
         Objects.requireNonNull(delta);

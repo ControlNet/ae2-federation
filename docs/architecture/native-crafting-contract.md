@@ -21,7 +21,7 @@ Task 26 binds that native lifecycle across an authorized Federation relationship
 physical Bridge routes connect the networks. The capability exposes the provider Grid's exact native crafting service,
 providers, provider nodes, and CPUs; Federation does not copy patterns or own planning, execution, task, or result state.
 
-The binding fails closed when Policy is disabled or deleted, a held revision becomes stale, Fabric connectivity is lost,
+The binding fails closed when Policy is disabled or deleted, a held revision becomes stale, Federation Domain connectivity is lost,
 the provider generation changes, source identity is no longer settled, or native provider/CPU readiness disappears.
 Reconciliation withdraws the old binding before a subsequent capability access can use it.
 
@@ -75,7 +75,7 @@ through a second reload.
 - Replacing provider A with a separately constructed Pattern Provider B on the same settled source `NetworkId` advances the
   provider generation. B has a different registration node UUID/node object, provider object, pattern object, and binding;
   every accessor on retained binding A remains empty after B becomes current.
-- Removing the final real Bridge Fabric from a live binding advances topology, increments the withdrawal counter, empties
+- Removing the final real Bridge Federation Domain from a live binding advances topology, increments the withdrawal counter, empties
   every retained accessor, and publishes no replacement capability. This is separate from the no-CPU rejection proof.
 - Two physical Bridge routes for the same directional relationship retain one provider, pattern set, and CPU capacity.
 
@@ -111,8 +111,8 @@ RESULT_FILE=$(ls -td .omo/evidence/task-26/attempt-*/result.json | sed -n '1p')
 
 `AE2F_CRAFT_NATIVE_ENTRY` remains the semantic evidence channel. A separate `AE2F_CRAFT_AUTHORITY` observer scans the live
 AE2 Grid and node services directly, without reading that semantic Map, and receipts the settled NetworkId, Grid/service,
-registration node UUID/node object, provider object, CPU set, exact pattern object, binding/generation, Fabric references,
-topology revision, common-Fabric count, withdrawal count, and access state. The consumer requires the exact phase set for
+registration node UUID/node object, provider object, CPU set, exact pattern object, binding/generation, Federation Domain references,
+topology revision, common-Federation Domain count, withdrawal count, and access state. The consumer requires the exact phase set for
 each child and cross-correlates both channels. Missing, duplicate, substituted, conflicting, or fully rebound fabricated
 authority is rejected for Task 26-specific semantic reasons.
 
@@ -127,7 +127,7 @@ RESULT_FILE=$(ls -td .omo/evidence/task-27/attempt-*/result.json | sed -n '1p')
 
 Terminal discovery captures the authorized provider service, native provider node, CPU set, action source, and filtered
 craftables on the server thread. AE2's calculator receives only the immutable captured requester. Submission rechecks the
-Policy/Fabric/provider authority snapshot before calling native `submitJob`; native AE2 remains responsible for executable,
+Policy/Federation Domain/provider authority snapshot before calling native `submitJob`; native AE2 remains responsible for executable,
 missing-material, and no-CPU outcomes. Result evidence correlates the native job, CPU logic callback, provider push, and
 physical cell insertion rather than accepting a public aggregate quantity increase.
 

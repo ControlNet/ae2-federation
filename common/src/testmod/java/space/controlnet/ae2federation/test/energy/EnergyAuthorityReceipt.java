@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.energy.EnergyCapabilityBinding;
-import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
 public final class EnergyAuthorityReceipt {
@@ -51,7 +51,7 @@ public final class EnergyAuthorityReceipt {
     }
 
     private static String network(IGrid grid) {
-        return FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow().toString();
+        return FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow().toString();
     }
 
     private static String selectedTest() {

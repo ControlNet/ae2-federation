@@ -35,7 +35,7 @@ final class NativeTerminalFlowContractTest {
         assertTrue(requester.contains("return gridNode;"));
         assertFalse(requester.contains("ServerLevel"));
         assertFalse(requester.contains("PolicyService"));
-        assertFalse(requester.contains("FabricRegistry"));
+        assertFalse(requester.contains("FederationDomainRegistry"));
     }
 
     @Test

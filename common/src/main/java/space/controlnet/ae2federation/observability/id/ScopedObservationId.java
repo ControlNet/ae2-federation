@@ -1,9 +1,9 @@
 package space.controlnet.ae2federation.observability.id;
 
-import space.controlnet.ae2federation.fabric.FabricId;
+import space.controlnet.ae2federation.domain.FederationDomainId;
 
 public interface ScopedObservationId extends Comparable<ScopedObservationId> {
-    FabricId fabricId();
+    FederationDomainId federationDomainId();
 
     String value();
 
@@ -13,7 +13,7 @@ public interface ScopedObservationId extends Comparable<ScopedObservationId> {
         if (kind != 0) {
             return kind;
         }
-        var fabric = fabricId().toString().compareTo(other.fabricId().toString());
-        return fabric != 0 ? fabric : value().compareTo(other.value());
+        var federationDomain = federationDomainId().toString().compareTo(other.federationDomainId().toString());
+        return federationDomain != 0 ? federationDomain : value().compareTo(other.value());
     }
 }
