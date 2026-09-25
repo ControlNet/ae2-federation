@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.test;
 
 import appeng.api.networking.IGridNode;
+import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import java.io.IOException;
@@ -91,17 +92,30 @@ public final class IdentityGameTests {
         var left = new BlockPos(1, 1, 1);
         var middle = new BlockPos(2, 1, 1);
         var right = new BlockPos(3, 1, 1);
-        helper.setBlock(left, AEBlocks.ME_CHEST.block());
+        // The middle node must be ready before either chest. If both chests became ready first, each would start its
+        // own Grid with its own NetworkId and the middle node would merge them (AMBIGUOUS_MERGE), not split one.
         helper.setBlock(middle, AEBlocks.CREATIVE_ENERGY_CELL.block());
-        helper.setBlock(right, AEBlocks.ME_CHEST.block());
+        var chestsPlaced = new boolean[1];
         var originalIds = new String[1];
         helper.succeedWhen(() -> {
+            if (!chestsPlaced[0]) {
+                var middleHost = helper.getBlockEntity(middle);
+                helper.assertTrue(middleHost instanceof AENetworkedBlockEntity networked
+                        && networked.getMainNode().isReady(), "Middle node must be ready first");
+                helper.setBlock(left, AEBlocks.ME_CHEST.block());
+                helper.setBlock(right, AEBlocks.ME_CHEST.block());
+                chestsPlaced[0] = true;
+            }
             var leftNode = relativeNode(helper, left);
             var rightNode = relativeNode(helper, right);
             if (originalIds[0] == null) {
-                // Phase 1: wait for one joined Grid, then remove the middle node exactly once.
+                // Phase 1: wait for one joined, settled Grid, then remove the middle node exactly once.
                 helper.assertTrue(leftNode.getGrid() == rightNode.getGrid(),
                         "Fixture nodes must begin in one native Grid");
+                helper.assertValueEqual(service(leftNode).settlement().status(), IdentityStatus.SETTLED,
+                        "Joined fixture Grid must carry one settled NetworkId before the split");
+                helper.assertValueEqual(service(rightNode).lineage(rightNode).networkId(),
+                        service(leftNode).lineage(leftNode).networkId(), "Both chests must share the joined NetworkId");
                 originalIds[0] = service(leftNode).lineage(leftNode).networkId().toString();
                 helper.setBlock(middle, Blocks.AIR);
             }
