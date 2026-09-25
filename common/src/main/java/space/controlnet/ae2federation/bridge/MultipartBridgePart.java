@@ -47,12 +47,12 @@ public final class MultipartBridgePart extends AEBasePart {
 
         @Override
         public void onStateChanged(MultipartBridgePart owner, IGridNode node, State state) {
-            owner.refresh();
+            owner.refreshIfChanged();
         }
 
         @Override
         public void onGridChanged(MultipartBridgePart owner, IGridNode node) {
-            owner.refresh();
+            owner.refreshIfChanged();
         }
     };
 
@@ -68,6 +68,8 @@ public final class MultipartBridgePart extends AEBasePart {
     private boolean removed;
     private @Nullable FederationDomainSourceId federationDomainSource;
     private boolean mainNodeLoaded;
+    private boolean onlyIfChanged;
+    private java.util.List<Object> lastPublished = java.util.List.of();
     private boolean outerNodeLoaded;
 
     public MultipartBridgePart(IPartItem<?> partItem) {
@@ -115,7 +117,7 @@ public final class MultipartBridgePart extends AEBasePart {
     @Override
     protected void onMainNodeStateChanged(IGridNodeListener.State reason) {
         super.onMainNodeStateChanged(reason);
-        refresh();
+        refreshIfChanged();
     }
 
     @Override
@@ -191,6 +193,19 @@ public final class MultipartBridgePart extends AEBasePart {
                 status.membershipCandidate().map(BridgeMembershipCandidate::outerGrid).orElse(null));
     }
 
+    /**
+     * Native state notifications are frequent (power, channels, boot); republishing an unchanged Bridge would bump the
+     * Domain topology revision and invalidate dependent snapshots, so these triggers publish only real changes.
+     */
+    private void refreshIfChanged() {
+        onlyIfChanged = true;
+        try {
+            refresh();
+        } finally {
+            onlyIfChanged = false;
+        }
+    }
+
     private void refresh() {
         if (removed || getBlockEntity() == null || getLevel() == null || getSide() == null) {
             setStatus(BridgeStatus.invalid(removed ? BridgeOperationalReason.REMOVED
@@ -242,11 +257,20 @@ public final class MultipartBridgePart extends AEBasePart {
     }
 
     private void setStatus(BridgeStatus nextStatus) {
+        var previous = status;
         status = nextStatus;
         if (!(getLevel() instanceof ServerLevel serverLevel) || federationDomainSource == null) {
             return;
         }
         var candidate = nextStatus.membershipCandidate().orElse(null);
+        var published = java.util.List.of(nextStatus, candidate == null ? java.util.Optional.empty()
+                : FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()),
+                candidate == null ? java.util.Optional.empty()
+                        : FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()));
+        if (onlyIfChanged && previous.equals(nextStatus) && published.equals(lastPublished)) {
+            return;
+        }
+        lastPublished = published;
         if (candidate == null) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
