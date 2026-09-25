@@ -14,12 +14,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 final class NativeProviderLaneHost implements PatternProviderLogicHost {
     private final GameTestHelper helper;
     private final BlockPos position;
+    private final Direction target;
     private PatternProviderLogic logic;
     private int saveCalls;
 
-    NativeProviderLaneHost(GameTestHelper helper, BlockPos position) {
+    NativeProviderLaneHost(GameTestHelper helper, BlockPos position, Direction target) {
         this.helper = helper;
         this.position = position;
+        this.target = target;
     }
 
     void setLogic(PatternProviderLogic logic) {
@@ -42,7 +44,7 @@ final class NativeProviderLaneHost implements PatternProviderLogicHost {
 
     @Override
     public EnumSet<Direction> getTargets() {
-        return EnumSet.of(Direction.EAST);
+        return EnumSet.of(target);
     }
 
     @Override

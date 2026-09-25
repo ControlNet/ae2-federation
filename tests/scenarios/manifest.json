@@ -165,6 +165,8 @@
     {"id":"processing.reject-false-replay","backend":"gametest","testId":"processingrejectfalsereplay","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"benchmark.reject-empty-work","backend":"self-test","assertions":1},
     {"id":"benchmark.resource-accounting","backend":"self-test","assertions":1},
+    {"id":"perf.resource-integrity","backend":"task37-resource-preflight","assertions":1},
+    {"id":"perf.reject-incomparable-speedup","backend":"task37-resource-preflight","assertions":1},
     {"id":"mixed.reject-empty-orders","backend":"gametest","testId":"mixedrejectemptyorders","structure":"ae2federation_test:harness_native_smoke","assertions":16},
     {"id":"mixed.overload-backpressure","backend":"gametest","testId":"mixedoverloadbackpressure","structure":"ae2federation_test:harness_native_smoke","assertions":25},
     {"id":"release.server-side-load","backend":"release-audit","assertions":4},
@@ -176,12 +178,35 @@
     {"id":"compat.provider-hooks","backend":"compatibility-matrix","assertions":5},
     {"id":"compat.real-tech-line","backend":"compatibility-matrix","assertions":5},
     {"id":"compat.optional-absent","backend":"compatibility-matrix","assertions":5},
-    {"id":"compat.reject-unsupported","backend":"compatibility-matrix","assertions":5}
+    {"id":"compat.reject-unsupported","backend":"compatibility-matrix","assertions":5},
+    {"id":"artifact.clean-build","backend":"artifact-audit","assertions":4},
+    {"id":"artifact.same-jar-client-server","backend":"artifact-runtime","assertions":5},
+    {"id":"artifact.license-manifest","backend":"artifact-audit","assertions":4},
+    {"id":"artifact.reject-wrong-tuple","backend":"artifact-audit","assertions":3},
+    {"id":"artifact.no-extra-target","backend":"artifact-audit","assertions":3},
+    {"id":"docs.coverage","backend":"documentation-audit","assertions":1},
+    {"id":"docs.commands","backend":"documentation-audit","assertions":1},
+    {"id":"docs.reject-unsupported-claims","backend":"documentation-audit","assertions":1},
+    {"id":"docs.reject-stale-evidence","backend":"documentation-audit","assertions":1},
+    {"id":"audit.requirements","backend":"final-audit","assertions":1},
+    {"id":"audit.reject-missing-gate","backend":"final-audit","assertions":1},
+    {"id":"audit.native-hooks","backend":"final-audit","assertions":1},
+    {"id":"audit.reject-dual-authority","backend":"final-audit","assertions":1},
+    {"id":"audit.scope","backend":"final-audit","assertions":1},
+    {"id":"audit.reject-prohibited-content","backend":"final-audit","assertions":1},
+    {"id":"final.native-workflow","backend":"final-client-blocked","assertions":1},
+    {"id":"final.hub-six-faces","backend":"final-client-blocked","assertions":1},
+    {"id":"final.bridge-invalid","backend":"final-client-blocked","assertions":1},
+    {"id":"final.policy-reconnect","backend":"final-client-blocked","assertions":1},
+    {"id":"final.chinese-scales","backend":"final-client-blocked","assertions":1}
   ],
   "profiles": [
     {"id":"harness-native-smoke","testId":"harnessbenchmarksmoke","structure":"ae2federation_test:harness_native_smoke","operations":1000,"assertions":8,"lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},
 {"id":"processing-small","testId":"processingbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":514,"assertions":40,"profileVersion":"processing-small-v3","seed":20019006,"config":"tests/benchmarks/processing/processing-small.json","baseline":"tests/benchmarks/processing/baseline.json","budgets":"tests/benchmarks/processing/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}},
     {"id":"mixed-small","testId":"mixedbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":54,"assertions":48,"profileVersion":"mixed-small-v1","seed":30028029,"config":"tests/benchmarks/mixed/mixed-small.json","baseline":"tests/benchmarks/mixed/baseline.json","budgets":"tests/benchmarks/mixed/budgets.json","lifecycle":{"executionTimeoutSeconds":300,"shutdownGraceSeconds":10}},
-    {"id":"ui-small","testId":"uigraphbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":34,"assertions":14,"profileVersion":"ui-small-v1","seed":340034,"config":"tests/benchmarks/ui/ui-small.json","baseline":"tests/benchmarks/ui/baseline.json","budgets":"tests/benchmarks/ui/budgets.json","lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}}
+    {"id":"ui-small","testId":"uigraphbenchmarksmall","structure":"ae2federation_test:harness_native_smoke","operations":34,"assertions":14,"profileVersion":"ui-small-v1","seed":340034,"config":"tests/benchmarks/ui/ui-small.json","baseline":"tests/benchmarks/ui/baseline.json","budgets":"tests/benchmarks/ui/budgets.json","lifecycle":{"executionTimeoutSeconds":180,"shutdownGraceSeconds":10}},
+    {"id":"small-native-big-grid","testId":"scalesmallnativebiggridtimed","structure":"ae2federation_test:scale_36_empty","operations":256,"assertions":8,"lifecycle":{"executionTimeoutSeconds":1800,"shutdownGraceSeconds":20}},
+    {"id":"small-native-subnet","testId":"scalesmallnativesubnettimed","structure":"ae2federation_test:scale_36_empty","operations":256,"assertions":8,"lifecycle":{"executionTimeoutSeconds":1800,"shutdownGraceSeconds":20}},
+    {"id":"small-federation","testId":"scalesmallfederationtimed","structure":"ae2federation_test:scale_36_empty","operations":256,"assertions":8,"lifecycle":{"executionTimeoutSeconds":1800,"shutdownGraceSeconds":20}}
   ]
 }

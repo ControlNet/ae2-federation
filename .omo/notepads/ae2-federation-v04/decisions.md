@@ -674,3 +674,20 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   assert actual destination contents and identical per-layout tick budgets before recording extraction evidence.
 - Represent GTCEu as a separately hash-bound BLOCKED startup receipt tied to its resolved artifact and exact
   NeoForge/AE2/GT tuple. Require the FML exception and reject any GameTest-success log for that child.
+
+## 2026-09-24 Task 37/38 reserved-VM timing override
+
+- Supersede only the strict host gate: unreadable KVM governors, no exclusive cpuset and runnable count above 2 no longer block best-effort reserved-VM Task 37 measurements or Task 38's two-hour soak. Record `wakatime-cli`, `videnoa`, `herdr` and other competing processes as caveats, with JVM/CPU/load observations per repeated sample; reservation does not prove zero interference.
+- Keep work conservation, resource accounts, declared 300/600-second Task 37 windows and three repetitions. Label resulting timing as indicative order-of-magnitude reference. Material resource mismatches remain non-comparable for strict speedup, though caveated observed elapsed ratios can be reported. No run, controlled threshold or task completion is inferred.
+
+## 2026-09-24 Task 37 direct-only timing classification
+
+- Count completed 300/600-second windows only when the live native GameTest and source-bound Gradle attempt exit zero with nonzero, per-key physical work and separate phase tick/wall records. The failed 300000-tick warmup-only attempt is not a sample. Three repetitions from the intermediate snapshot are descriptive raw direct timing, not three final-source repetitions after its Drive-summary/schema corrections. The final source has only one complete direct repetition; absent other layout samples and finite resource parity bar any speedup or Task 37 qualification. Keep all existing checkboxes unchanged.
+
+## 2026-09-24 fail-closed Federation timing decision
+
+- Keep the 256-native-job minimum per 300s warmup and 600s sample; do not recast a 27-job/432-unit warmup attempt as valid merely because it ran for 300 seconds. The Federation attempt on `089cd6f5...` exited 1 before sample, so it supplies a reproducible work-rate blocker, not a comparable timing result. Subnet 1/3 is genuine, but neither a same-source three-layout median nor finite-resource parity exists. Further tuning would need an explicit workload/route design and fresh source-bound repetition; do not silently stretch declared windows or relax the work guard.
+
+## 2026-09-24 two-layout descriptive reference boundary
+
+- Six same-source direct/subnet repetitions now satisfy their individual wall/work and consumer contracts. Report their raw median sample throughputs and optionally the **1.199x descriptive two-layout rate ratio** with explicit unequal-resource and missing-Federation caveats. Do not freeze that into a strict speedup, regression threshold, or Task 37 completion; Federation 0/3 and unmeasured live resource parity take precedence. Preserve every failed attempt and leave all task/F-wave checkboxes unchanged.

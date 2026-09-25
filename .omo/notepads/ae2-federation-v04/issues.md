@@ -4,6 +4,65 @@ Problems and gotchas encountered during work on this plan.
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-25 Task 40 revised docs gate dependency
+
+- The independent code-side validator now rejects the expanded matrix at its stale F3 registration statement. README and the commands guide also retain the old Task 40 blocked state and omit the exact docs QA command. Those paths belong to the parallel documentation writer, so no source-bound docs PASS or rebound self-test was manufactured. F3 exact IDs reject with BLOCKED on both generic and actual-client entrypoints; F1/F2/F4 remain blocked, strict build passes. `.omo/evidence/task-40-qa/verification.md` records exact exits and hashes.
+
+## 2026-09-25 Task 40 manual launcher boundary
+
+- No physical graphical desktop display was exported, but a private Xvfb graphical session rendered the first-run accessibility prompt over the title screen. Smoke stopped externally, not via an in-game Quit click; orderly user menu-exit and hands-on gameplay remain unverified. Groovy has no configured LSP; Gradle task registration, dry-run and strict build exercised the changed DSL. `docs/testing/manual-client.md` and README retain the previous blocker wording by explicit scope constraint.
+
+## 2026-09-25 Task 40 code-side qualification boundary
+
+- The registered documentation and F1/F2/F4 audit suites intentionally exit 1 with `BLOCKED`: Tasks 37/38/40 are incomplete; the present matrix is a provisional index rather than a complete current-source requirement verdict. The docs negative probes pass individually inside the blocked result, but docs coverage/commands and audit positive checks have not been proven. F2/F4 fixture checks are not independent code/JAR audits and remain blocked. See `.omo/evidence/task-40-qa/verification.md`.
+- F3 remains unregistered: the actual LDLib2 runner has no planned five-case `final.*` workflow, and registering aliases for existing UI scenarios would falsely imply a real Policy/reconnect/client/benchmark walkthrough. No client or GameTest was launched in this slice.
+
+## 2026-09-24 Federation-256 resource and qualification boundary
+
+- The completed Federation 256-job replay is serial correctness, not a speedup. Compared with direct-256 it adds sixteen physical Bridges/active Policies/Claims/Endpoints, target Grids/cells/creative power and Export Buses. Selected pod preflight found six loaded chunk keys, while independent subnet-256 reported nine target-pod keys in a distinct world; neither is a whole-world loaded-chunk or energy-demand comparison. The old Federation-16 control has only one mapped Pattern per Provider and one source Drive cell. No matched resource budget, concurrent load, repeated timed tier windows or reference medians exist. The long selected run's detached launcher shell exit was not recorded even though its Gradle transcript says `BUILD SUCCESSFUL` and the GameTest passed; do not transmute that into a numeric throughput result. Tasks 37/38/40/F1-F4 remain `[~]`. See `.omo/evidence/task-37-large-federation-256-development/verification.md`.
+
+## 2026-09-24 Task 37 resource verification remains blocked
+
+- Both registered perf cases recognize the selected replay inputs but the current in-process resource snapshots and independent finite energy, whole-world chunk/ticket and capacity observations remain absent. The exact real attempt is `BLOCKED`, `NON_COMPARABLE`, parent/validator exit 1; persisted acceptance also rejects it. Missing log and stale digest fail at input selection. No measured profile or speedup was added. Full receipts: `.omo/evidence/task-37-perf-verify-wiring/verification.md`.
+
+## 2026-09-24 sixteen-subnet 256 qualification boundary
+
+- The 256-job native-subnet correctness replay passed, but is not resource-matched to direct-256: sixteen additional physical target Grids/cells/creative power sources and Export Buses exist. Only nine selected target-pod chunk keys were observed in that process; no total loaded chunks, finite energy debit, peak demands, repeated timing windows or concurrent speedup were measured. The old subnet-16 control has fewer physical Patterns and only one source Drive cell. Do not promote any of these serial development runs to Task 37 qualification; Tasks 37/38/40/F1-F4 remain `[~]`. See `.omo/evidence/task-37-large-subnet-256-development/verification.md`.
+
+## 2026-09-24 Task 37 large-subnet qualification boundary
+
+- Resolved for serial correctness: the first sixteen-subnet green attempt's short callback wait misclassified real Export Bus transit as a missing machine result. The final bounded wait allowed all sixteen physical jobs to finish and retain 256 units; selected and three controls passed. Do not infer timing, concurrent throughput or energy/chunk parity from this development run. Its sixteen target cells and creative energy sources differ materially from direct-16, and the 256-job three-layout comparison, late/ultra windows and reference medians remain open. See `.omo/evidence/task-37-large-subnet-sixteen-target-development/verification.md`.
+
+## 2026-09-24 Task 37 H1 power reseed resolved
+
+- The earlier three-target green did not detect H1's side effect on H0's existing creative energy cell: remote host setup skipped placement but still reseeded the cell because it had a source ID and non-isolated power. A failing-first repeating node-NBT snapshot confirmed the same block and node but changed persisted state. The local-only seed guard, selected three-target GameTest, both 256-job controls, focused JUnit and strict build passed serially. The earlier green is superseded for this repair; Task 37 remains open.
+
+## 2026-09-23 Task 39 rejected nested wrapper
+
+- The authorized `attempt-20260923T124941507Z` is rejected: its server log prints a post-join daemon disappearance and `FAILURE: Build failed with an exception`, even though the outer process returned zero. The earlier EULA-unapproved attempt is invalid independently.
+- The former Python runner accepted before waiting for nested wrapper exits; the repair rejects post-join exit 1, build-failure text, timeout and forced descendant cleanup. Twelve stdlib tests and offline Gradle configuration pass. No new real server/client or full five-case run was executed; Task 39 remains open pending a source-bound real rerun and persisted check after the model-asset edit.
+
+## 2026-09-23 Task 39 actual runtime resolution
+
+- The first post-repair actual attempt `attempt-20260923T131257916Z` remained rejected after valid joins: the server daemon disappeared and its wrapper returned 1. The old cleanup still signaled a live Gradle descendant first, so fail-closed receipt logic alone did not create a passing shutdown.
+- After the opt-in native client stop/server halt and bounded wrapper waits, `attempt-20260923T132715867Z` has both nested exits 0, no failure text, no surviving descendants, and an accepting same-attempt persisted consumer. No missing Bridge model warning was observed. Thirteen Python tests, strict build/archive, source diagnostics and diff check passed. The Task 39 checkbox remains for independent Atlas adjudication; `docs/compatibility/artifact.md` still contains an older pre-consent BLOCKED paragraph outside this scoped lifecycle edit.
+
+## 2026-09-23 Task 37 third-job boundary
+
+- The previously deliberate small Processing failure after two native jobs is resolved for the selected one-job development fixture: all three layouts now pass, with a CPU-submitted Federation job returning through the physical Endpoint item capability. The route-only selector still uses a separate direct-push probe; it is not the Processing job. Exact final receipts: `.omo/evidence/task-37-third-job-final-receipts/scale-small-processing.log` and `scale-small-route.log`.
+- Task 37 remains `[~]`: these one-unit probes do not supply the declared 256-Pattern/1,000-10,000-unit small replay, late/ultra scenes, matched resource/timing windows, repetitions or pinned reference medians. GameTest fixture cleanup occurs on success; an assertion/timeout before the final stage relies on Gradle's task-owned world/process finalizer rather than fixture-level `finally` cleanup.
+
+## 2026-09-23 Task 37 unsafe ultra topology repair
+
+- The earlier 512-Grid native pass depended on `ServerLevel.setChunkForced` outside the 16x16 GameTest footprint, contrary to plan prohibitions. A failing-first JUnit source contract detected the calls. After removing them, the selected ultra GameTest failed before placement with `Scale tier exceeds bounded physical Grid fixture capacity`; its log is under `.omo/evidence/task-37-safety-ultra/`.
+- Three small planner/catalog attempts failed at `Waiting for small native Grids` before reaching planner assertions. Their receipts are under `.omo/evidence/task-37-small-planner-{attempt,staged,forced}/`; the experimental planner code was removed, not promoted as a benchmark.
+- A bounded small topology test passed under `.omo/evidence/task-37-safety-small/`. This test neither runs Processing nor validates the three scale layouts; Task 37 remains blocked. The native GameTest runner took roughly two minutes saving the world after each test; no concurrent Task 39 server was running.
+
+## 2026-09-23 Task 39 EULA preflight blocker
+
+- The Task 39 runner previously wrote `eula=true` without approval. The old five-case result is historical forensic evidence, not accepted qualification. No dedicated-server/client relaunch is permitted pending explicit user approval; keep Task 39 open.
+- The original quick CI selected only `harnessnativesmoke` and its positive-count grep mislabeled one test as the full suite. The new manifest-based CI runner covers all distinct direct GameTest IDs, but has not been exercised in CI yet.
+
 ## 2026-09-22 Task 35 resolution
 
 - A nested Gradle server run does not reliably forward `stop` through its JavaExec child. The smoke first requests graceful
@@ -680,6 +739,19 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 - The handler now preserves replay no-mutation checks while transitioning only an otherwise current menu session to the
   authoritative stale-context or stale-revision state. Exact Task 33, Task 34, and Task 35 runs pass.
 - Final Task 35 evidence is `.omo/evidence/task-35-final-current/attempt-20260922T015644119Z/result.json`.
+
+## 2026-09-23 Task 37 blocked scale execution
+
+- The exact Task 37 `-Pprofile=small,late,ultra` benchmark failed at `gradle/federation-qa.gradle:6516` as an unknown single profile. The exact three `perf.*` verifier cases failed at line 6514 as unknown cases. Both failed before native launch; no Task 37 attempt/run ID, samples, or resource accounts exist.
+- Strict `check build` passed, but the scale benchmark is not implemented or qualified. The minimum serial measurement windows would consume 405 minutes for three tiers, three layouts, and three repetitions. No timing median was frozen on this shared/unpinned host.
+- Both commands ran the GameTest cleanup finalizer. A process search found no owned native child. The status and missing adversarial coverage are recorded in `docs/benchmarks/task-37.md`; Task 37 remains BLOCKED, not PASS.
+
+## 2026-09-23 Task 37 incremental implementation
+
+- Baseline `ProcessingBenchmarkContractTest` and `MixedFactoryBenchmarkContractTest` passed unchanged. New scale declaration tests failed first on absent tier/budget files, then passed after three fixed target declarations and a no-timing-median resource budget were added.
+- Benchmark argument dispatch now splits comma lists and prevalidates exact, distinct manifest IDs, preserving one existing schema-v3 attempt per selected registered profile. The exact Task 37 command still fails closed on the three unregistered native tiers; registering a borrowed Task 20 or Task 30 GameTest as scale proof would be false.
+- One actual `processing-small` development native child passed at `.omo/evidence/task-37-development/attempt-20260923T082743302Z`, but the outer producer rejected it because the frozen Task 20 baseline dependency hash does not match the current verification metadata. No accepted result was emitted and the baseline was not silently rewritten.
+- Correction to the earlier BLOCKED characterization: Task 37 is incomplete implementation work, not an external feasibility gate. Its scale-native scenes and three semantic perf cases are still missing; long full-window execution alone does not justify a BLOCKED classification.
 ## 2026-09-22 Task 36 compatibility boundaries
 
 - Recursive AE2 Pattern Provider 1.0.8 is BLOCKED: published source metadata is All Rights Reserved, so no artifact was
@@ -746,3 +818,171 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   `.omo/evidence/task-36/attempt-20260923T070721501Z/result.json`. The knowledge summary now reflects the qualified
   pinned Applied Flux, Functional Storage, and near-origin Pretty Pipes item/fluid scenes; GTCEu startup and Recursive AE2
   Pattern Provider licensing remain blocked.
+
+## 2026-09-23 Task 37 remaining Processing blocker
+
+- Staged target identity now settles, but the selected GameTest exercises no physical Bridge/Fabric and no Federation Processing job. The old simultaneous-placement `AMBIGUOUS_MERGE`/`AMBIGUOUS_SPLIT` logs did not name a competing Grid; their causal mechanism remains unknown. Do not promote the identity-only success or two native one-job jobs to a three-layout comparison.
+- A quiesced pinned baseline machine, authentic full profile replay and serial repeated 300/600-second timing windows remain prerequisites for Task 37 qualification. The manual `scalesmallprocessingdevelopment` remains deliberately red at its explicit unqualified-layout gate.
+
+## 2026-09-23 Task 37 route checkpoint
+
+- The duplicate source edge and post-handoff `FABRIC_DISCONNECTED` rejections are resolved in the selected route fixture; `.omo/evidence/task-37-physical-route-east/scale-small-route.log` ends with `resolution=ACTIVE pushAccepted=true targetCobble=1` on distinct settled source/target Grids. The manual-only GameTest passes, but its push is not an AE2 planner/CPU/Endpoint/return job. The original small Processing gate remains intentionally red and no tier or speedup is qualified.
+
+## 2026-09-23 Task 39 consent preparation boundary
+
+- The earlier no-approval blocker is resolved only for the scoped Task 39 input by the user's explicit statement `Task39:同意EULA授权`. The historical unapproved five-case attempt is still invalid. No fresh runtime or artifact acceptance occurred; source-bound server/client execution and persisted verification remain pending after Task 37 source edits stabilize.
+
+## 2026-09-23 Task 37 independent development boundary
+
+- CONFIRMED only the three fresh, distinct one-job small Processing paths. The source checks physical return-owner identity, cell quantities, and native CPU idle state, but no full profile replay, late/ultra scene, timed repetition or median was produced. The direct selected GameTest writes sibling receipts rather than a schema-v3 `benchmark-native.properties` artifact. Preserve Task 37 `[~]`; see `.omo/evidence/task-37-independent-three-job/verification.md`.
+- Success closes fixture owners and the Gradle finalizer removed the owned world and lock; a failure before the final stage does not run fixture-local `finally` cleanup and instead depends on the runner's world/process cleanup. No failure occurred in this rerun.
+
+## 2026-09-23 Task 39 fresh qualification caveats
+
+- Fresh authorized `attempt-20260923T124941507Z` passed all five cases and current-source persisted verification; the earlier unapproved attempt remains invalid. The nested server Gradle wrapper reported daemon disappearance and a shutdown-hook exception only after the real loopback join was observed. Outer lifecycle receipts have three zero exits and no surviving descendants, but nested graceful shutdown is not proven.
+- The actual client emitted a missing multipart Bridge item-model warning. This did not prevent binary load or join and was not changed under Task 39. The plan checkbox remains untouched pending Atlas adjudication; subsequent source edits would stale this attempt.
+
+## 2026-09-23 Task 39 item-model follow-up boundary
+
+- Added `assets/ae2federation/models/item/multipart_bridge.json` after the above client warning; the former authorized five-case result is now historical and cannot qualify the changed product JAR. Archive inspection resolves its parent and dependent textures, but no actual client was launched during the separate lifecycle worker's changes. Atlas must rerun the same-JAR client and check for missing model/texture warnings with fresh source-bound evidence before treating this as runtime-resolved.
+
+## 2026-09-23 Task 39 independent gate review
+
+- Current `attempt-20260923T132715867Z` passes source/lock/JAR identity, exact five-case persisted consumption, isolated rebuild, installed hashes, two-sided join, nested zero exits, saved-world shutdown and cleanup. Old `124941507Z` and `095329159Z` reject. Thirteen Python tests including post-join nested failure rejection and strict build/archive pass. Full findings: `.omo/evidence/task-39-independent-review/report.md`.
+- REJECT production boundary: `ae2federation.artifactProof` can cause any production server to halt after an `ArtifactProbe` logout and any production client to stop after login if enabled. These task-controlled gameplay paths ship inside the distributable JAR. Move shutdown to a dev-only or external task-owned mechanism, retain fail-closed nested exits, regenerate current-source evidence and leave Task 39 open.
+
+## 2026-09-24 Task 37 remote transfer preflight blocker
+
+- Read-only remote preflight confirmed Java 21, the consent file and an absent `ae2f/snapshots` parent. A local manifest captured 659 allowed source paths, including 8 modified tracked and 22 untracked files, with no deletions; secret guard found no tracked/overlay content secret. No remote write or runtime launch occurred.
+- A filtered exact-HEAD Git pack omitted all `.omo` blob bytes, but three disposable local restore variants failed on Git's need to read excluded committed `.omo` objects during checkout. A full bundle could make checkout work but would transfer committed `.omo/**` objects, contrary to the transfer exclusion. Escalate this contract choice before remote staging; details in `.omo/evidence/task-37-remote-transfer/verification.md`.
+
+## 2026-09-24 Task 37 Federation catalog topology diagnostic
+
+- Reusing the one-Grid control's adjacent creative cell in the physical Federation fixture made `ProviderRuntime.settle()` recreate an already existing west Provider-energy edge and crash before the workload. This was topology setup, not the intended red. Federation-only isolated power restored the existing north source-storage handoff; the next selected run failed at the meaningful old one-Pattern machine/catalog mismatch. Both red boundaries and the repaired green process remain in `.omo/evidence/task-37-federation-batch16-development/verification.md`.
+
+## 2026-09-24 Task 37 Federation replay timeout boundary
+
+- The first full 256-slot Federation attempt completed and retained 149 native 16-unit jobs (2,384 units) before GameTest's 23,000-tick bound rejected `Waiting for authentic native Processing job`. This is neither a physical cell-capacity failure nor a Federation route rejection. The new selector's 46,000-tick bounded rerun completed all 256; previous selectors' timeout budgets are untouched. Exact partial and green process receipts: `.omo/evidence/task-37-federation-256-replay-development/verification.md`.
+
+## 2026-09-24 Task 37 native-subnet replay setup corrections
+
+- After the intended three-job count red, the first 256-selection run failed a stricter source/target settlement assertion before work. Replay-only pre-boot lineage seeds on the physical target Interface, ME Chest and Export Bus made that assertion pass. A following run crashed before work when an added auxiliary-Grid assertion dereferenced the null fixture for this `oneGrid=true` selector; removing that invalid assertion restored the actual two-Grid source/target topology. Neither intermediate failure is counted as a completed replay. Final 256-job process and all three serial controls pass; exact failed/green transcripts and cleanup are in `.omo/evidence/task-37-subnet-256-replay-development/verification.md`.
+
+## 2026-09-24 Task 37 two-target native routing resolution
+
+- Initial compilation failed on package-private `HOST_POS` and was corrected before the meaningful red. The selected east/east routing red completed target A's 16-unit job, then crashed with `Native target B missing work: opposite physical target received 1 units of minecraft:dirt`; its Gradle child exited nonzero and the GameTest finalizer cleaned the owned world. The east/south toggle passed both jobs with distinct source/target settled identities and separate return owners; no production bug or target-cell test insertion was used. Prior three-job and 256-job subnet selectors still pass serially. See `.omo/evidence/task-37-native-two-target-development/verification.md`.
+- Task 37 remains `[~]`: only two **serial** native-subnet targets were exercised, without a two-target Federation slice, 16-target workload, late/ultra layouts, matched timing windows or reference medians.
+
+## 2026-09-24 Task 37 two-target Federation boundary
+
+- The initial compile accessor visibility and inactive south-source-cable attempts were setup failures, not evidence of a production routing defect. The meaningful wrong-binding process failed only after the first native job, at Lane 1 resolving Endpoint A instead of B; restoring indexed requests gave a successful two-target run without production routing edits. No unresolved correctness defect was observed in the selected two-target scene.
+- The selected success covers two serial 16-output Federation jobs, not simultaneous target throughput, 16-target topology, matched timed tiers, or a Task 37 benchmark qualification. The previous three-job/256-job single-target Federation and two-target native-subnet controls passed separately; exact commands are in `.omo/evidence/task-37-federation-two-target-development/verification.md`. Task 37 remains `[~]`.
+- The earlier native-slice statement "without a two-target Federation slice" was true then and is superseded by this later successful two-target Federation slice.
+
+## 2026-09-24 Task 37 direct two-machine boundary
+
+- The first EAST/EAST watchdog threw `IllegalStateException` from the GameTest tick after authentic A work, crashing the server rather than producing a required-test failure. Changing only the assertion mechanism to `GameTestHelper.assertTrue` gave the intended one-required-test red at B's missing physical machine work; the final SOUTH toggle passed. The initial crash is not counted as the targeted red. Exact process evidence: `.omo/evidence/task-37-one-grid-two-machines-development/verification.md`.
+- Direct two-machine work is now demonstrated only for two serial 16-output jobs; 256 jobs on two machines, 16 simultaneously working targets, timed small/late/ultra comparisons and a quiesced 405+ minute reference still lack evidence. Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 two-target subnet replay budget and boundary
+
+- The new 256 selector's intentional EAST/EAST red completed authentic A slot 0 work and Drive retention, then failed when B's slot 1 input physically reached A. After SOUTH correction, a 46,000-tick run completed 176 native jobs and had slot 176 input in A before timing out on the selected execution budget, not on a wrong destination or full cell. The observed rate justified 70,000 ticks for this selector alone; the final process completed 256. Its older two-job and one-target 256-job controls passed serially. No production defect was inferred from the budget boundary. Evidence: `.omo/evidence/task-37-native-two-target-256-development/verification.md`.
+- Task 37 remains `[~]`: no simultaneous two-target throughput, 16-target physical layout, late/ultra measured runs, matched repetition windows or pinned reference medians were produced.
+
+## 2026-09-24 Task 37 two-target Federation replay boundary
+
+- The deliberate Lane 1-to-A binding failed after the first genuine 16-output A job. An initial 70,000-tick red reached the correct B-resolution assertion but its wrapper timed out before Gradle exit; a temporary 1,200-tick red produced the same one-required-test failure with exit 1 and cleanup. After restoring routing, both first jobs passed but slot 2 exposed a test-fixture-only repeat-configuration error. Configuring each machine once with its 128 parity recipes fixed it, and the final selected 70,000-tick-bound process passed all 256 jobs without reaching the bound. Neither diagnostic failure indicates a production route defect. See `.omo/evidence/task-37-federation-two-target-256-development/verification.md`.
+- This still has only two serially participating Federation targets and no concurrent, 16-target, late/ultra, measured-window or comparable reference timing proof. Task 37 remains `[~]`.
+- Final review found the fixture's `bridgeReady()` was refreshing the physical Bridges on every steady-state assertion. Restricting neighbor refresh to topology setup retained both independently active legs without per-tick route mutation; the final 256-job process and both serial controls passed. The prior green is superseded only for final source binding. No remaining selected correctness blocker; timing and wider tier limitations remain.
+
+## 2026-09-24 Task 37 three-target native geometry resolution
+
+- The selected missing-host red reached the repeating H1 physical WEST source-edge assertion. The first cable guard rejected the BE-free template barrier at `(3,3,2)`, not a CPU/Drive/pod; allowing only air/barrier with no BlockEntity restored safe staging. A 1200-tick run reached C and return injection but timed out before its completed-job receipt; the new selector alone uses 2400 ticks.
+- An H1-to-A Lane host misbinding routed the first third-job acacia boat to A and failed with `Native target C missing work: opposite physical target received 1 units of minecraft:acacia_boat`. Restored H1-local routing passed three serial jobs and two separate 256-job controls. No production routing defect or selected geometry blocker remained. Task 37 is still open for unmatched layouts, 16-target topology and timed tiers. Evidence: `.omo/evidence/task-37-native-three-target-development/verification.md`.
+
+## 2026-09-24 Task 37 three-target Federation replay boundary
+
+- The new selector's first source-bound red found only one H1 physical slot against the required 256. A 70,000-tick trial completed 95 authentic jobs, then hit only the GameTest budget; the explicit new-selector-only 210,000-tick bound was derived from that rate and passed all 256. A deliberately wrong modulo-3 B assignment failed when the real B cell received 16 inputs while A was selected; restoring the selector passed. No AE2 cell limit or production route failure was observed. The one required test and both serial controls pass; no 16-target, simultaneous-work, timing or matching-reference claim follows. Full evidence: `.omo/evidence/task-37-federation-three-target-256-development/verification.md`.
+
+## 2026-09-24 Task 37 high-slot authority review repair
+
+- The earlier three-target 256 green was not final-source acceptance: `selectHighPattern()` added a B HandlerAuthority for global slot 255 even though physical modulo-three A owns the decoded recipe. A one-time assertion after selection initially caused a retry/guard crash; a repeating owner-invariant assertion instead failed the selected GameTest with the intended high-slot A-owner message. Correcting only the three-target high branch to A passed the same 256 selector, the original three-job and two-target 256 controls, plus direct four-machine 256; the audit again found 4096 real Drive units. No B high-slot authorization call remains. Process hashes, red/green and cleanup: `.omo/evidence/task-37-federation-three-target-256-development/verification.md`. Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 fourth native-subnet boundary
+
+- The new selector's first red failed on D's absent physical WEST Provider edge; after staging its preflighted cable and pod, its second red failed only at four completed jobs versus three after real A/B/C work. Wiring D's fourth native Lane/return owner passed a separate final process with 16 physical inputs, 16 machine transitions/callback units and 64 total Drive units on five distinct confirmed Grids. Three-target subnet, direct-four 256, Federation-three and two-target subnet 256 controls passed serially; no geometry/channel/load blocker was observed in this bounded scene. This does not resolve 16 physical targets, concurrent throughput, late/ultra profiles, comparable resources or timing medians. Task 37 stays `[~]`; full receipts are in `.omo/evidence/task-37-native-four-target-development/verification.md`.
+
+## 2026-09-24 Task 37 enlarged GameTest template feasibility
+
+- Read-only pinned NeoForge 21.1.250/Minecraft 1.21.1 source inspection found `StructureUtils.prepareTestStructure` calls `forceLoadChunks(boundingbox)`, which invokes `ServerLevel.setChunkForced(..., true)` for every intersecting chunk. `GameTestInfo.tick` waits for entity-ticking chunks; `GameTestRunner` unforces them at batch end. Thus a separate 36x8x36 template cannot demonstrate loading without forced tickets, even if fixture code makes no explicit force call. The 36-wide span intersects 3 or 4 chunks per axis depending on world alignment; actual placement is untested. Under a literal no-forced-ticket rule this is a framework-level blocker, not a failed 16-target test.
+- The existing `harness_native_smoke.nbt` was read as compressed NBT `size=[3,3,3]`. A separately named structure resource and exact manual-only selector could test bounded loaded, air-or-BE-free-barrier, no-BE preconditions before any target mutation, with an occupied-BE negative control. Do not infer safety from old x/z coordinates through 15 or reuse topology/Processing receipts as 16-target evidence. No GameTest was launched because another slice owns the shared world lock.
+
+## 2026-09-24 Task 37 fourth Federation boundary
+
+- No blocker remains for the bounded four-target serial correctness fixture, but this does not establish sixteen Federation targets, four-target 256-job replay, concurrent work, small/late/ultra measured parity or a reference median. The two selected red processes and final green are separate log/exit-bound runs, not benchmark samples. Task 37 remains `[~]`; no production routing or frozen resource budget was modified. See `.omo/evidence/task-37-federation-four-target-development/verification.md`.
+
+## 2026-09-24 Task 37 four-target 256 replay boundary
+
+- The former one-slot D host was the selected failing-first boundary; the final source passes the 256-slot catalog replay. An initial shell timeout stopped a noisy startup before the red assertion, so only the separate completed `red-complete` process counts as a red. The final 256-job process and three serial preserved controls pass, with independent process-local UUID, routing, owner and five-cell audit. No blocker was observed at four serial targets. This supersedes only the prior statement that four-target 256 replay was not executed; it does not resolve sixteen targets, concurrency, timing, resource parity or reference medians. Task 37 remains `[~]`; `.omo/evidence/task-37-federation-four-target-256-development/verification.md`.
+
+## 2026-09-24 Task 37 four-subnet replay intermediate
+
+- The intended failing-first process observed D's real physical topology but one-slot catalog capacity. An intermediate run failed because the probe tried to reconfigure already-configured A/B machines; the final fixture configures each machine only once and independently passed the selected 256-job replay and three serial controls. Task 37 remains `[~]`; see `.omo/evidence/task-37-native-four-target-256-development/verification.md`.
+
+## 2026-09-24 Task 37 read-only four-target resource parity audit
+
+- Selected direct-four 256, native-subnet-four 256 and Federation-four 256 are three separate manual correctness processes, not timing windows. Their process-bound verifications are `.omo/evidence/task-37-one-grid-four-machines-256-development/verification.md`, `.omo/evidence/task-37-native-four-target-256-development/verification.md`, and `.omo/evidence/task-37-federation-four-target-256-development/verification.md`. All have 256 serial 16-output jobs, 64 per physical machine, distinct native links and five mounted source Drive cells holding 4096 units. Direct is one source Grid with four adjacent machine blocks, not four destination Grids. Each routed fixture is one source plus four distinct working target Grids (five total). The separate `ScaleGridFixture` topology lattice makes isolated powered 1k-cell chest Grids but is not instantiated by these three selectors; its 16 Grid objects must not be described as 16 working targets.
+- Resource parity is not established: direct has one local Provider host/four faces and one creative source energy cell, while subnet and Federation each use three Provider hosts (H0 two faces, H1/H2 one each), four target ME Chest 1k cells with four additional creative cells, and four registered machines. All three explicitly assert one native 1k crafting-storage CPU and use one source 16k chest cell plus five source Drive 16k cells. Subnet/Federation allocate three 256-slot Provider inventories but occupy only 256 slots total; direct allocates and occupies one 256-slot inventory. There is no energy-debit meter, aggregate Grid power account, loaded-chunk cardinality or timing sample in these selectors; loaded-position guards and creative power are not such measurements. Direct provider-to-storage and routed target bus-to-anchor `GridHelper.createConnection` edges are fixture/API connections and should be disclosed, not called product defects. H1/H2 source WEST edges are physical.
+- Before any four-target comparison, record per-layout source/target Grid and node inventory, allocated/occupied Pattern slots and host counts, CPU block/count/capacity, every energy source and observed native Grid-level power consumption, exact loaded chunk set/structure footprint and fixture-created connection edges, and the same per-slot input/callback/Drive replay. Then equalize adjustable CPU/energy/chunk/resource budgets and run source-bound schema-v3 measured warmup/sample/repetitions on quiesced pinned hardware. Keep native one-Grid adjacency versus four separate target Grids, Federation Bridges/Policies/Claims, and subnet Interfaces/Export Buses as labeled inexpressible topology distinctions; do not pad idle Grids into target counts or report cross-topology speedup. The 16/128/512-target profile contract remains separate and unqualified; Task 37 stays `[~]`.
+- Precision correction: `ProcessingCraftingGrid` constructs one 1k CPU block for each selector, and direct/Federation explicitly check `cpuCount()==1`; the selected four-subnet selector checks the CPU node shares the source Grid and is idle at completion, but does not assert its `getCpus().size()==1`. Count parity is supported by construction, not equally instrumented runtime observation.
+
+## 2026-09-24 Task 37 large-structure preflight correction
+
+- The first occupied-selector launch rejected a malformed NBT size list: its count was accidentally changed from 3 to 36, yielding `EOFException` before test execution. The corrected resource changes only the three size values. A second run found the pinned structure block is one Y below `GameTestHelper.getBounds()`; the origin assertion now accounts for actual placement. Neither setup failure is a collision negative.
+- The independent old-template selected process failed on actual 3x3x3 bounds; the corrected occupied selected process failed on the real chest BlockEntity at candidate `(6,2,5)`; the final empty-template selected process passed 482 checks and recorded full placed and candidate chunk sets. All runs were serial and cleaned by the Gradle finalizer. Framework-owned forced chunks still apply; no fixture-authored ticket was introduced. Task 37 remains `[~]`. See `.omo/evidence/task-37-large-structure-preflight/verification.md`.
+
+## 2026-09-24 Task 37 staged source topology resolution
+
+- First selected run checked an outgoing cable edge before placing its next segment; the corrected predecessor check observes the already settled upstream edge. The next run registered a real Provider composition in the same tick as block placement and crashed at `Physical node must be ready`; registration now waits for boot and WEST edge. After those fixes the selected 15-host run failed exactly at the missing sixteenth host assertion, then the complete 16-host run passed with native channel evidence. Both exploratory failures remain in `.omo/evidence/task-37-sixteen-source-host-development/`, not counted as failure-first channel proof. No unresolved source-topology blocker remains; target routing and measured scale qualification remain separate.
+
+## 2026-09-24 Task 37 large-source direct target boundary
+
+- The missing host-0 EAST machine red failed after all 16 Provider channels were active, then machine placement exposed an overly strict native craft-service result collection equality check. Requiring decoded membership alongside exact sole craftable, sole host-0 provider and empty other-15 Lanes passed without weakening routing ownership. The final process completed exactly one 16-output direct native job with actual source Drive retention. An optional benchmark-properties argument generated no properties artifact for this manual selector; the selected server log and one-line Drive receipt are its evidence. No 16-target, concurrency, resource parity or timed-profile blocker was resolved. Task 37 remains `[~]`; see `.omo/evidence/task-37-large-direct-one-target-development/verification.md`.
+
+## 2026-09-24 Task 37 direct two-target boundary
+
+- An initial red placed A and then failed on missing B inside a retried `succeedWhen` branch; the next retry reported an A-site collision instead of the intended missing-B failure. A guarded one-time A placement made the selected red fail specifically on absent host 1 EAST machine after all 16 Provider channels settled. The final source preflights both sites before placing either machine; two serial 16-output native jobs passed with distinct machine/return owners and UUIDs, callbacks and one Drive aggregate of 32. No new chunk ticket, production route, benchmark profile or remote source changed. The remaining blocker is still sixteen working direct targets plus resource-matched, quiesced measured three-layout tiers; Task 37 remains `[~]`. Evidence: `.omo/evidence/task-37-large-direct-two-target-development/verification.md`.
+
+## 2026-09-24 Task 37 sixteen-direct correctness boundary
+
+- The previous missing-sixteen-direct-machines blocker is resolved **only for the direct one-Grid serial scene**: selected red failed on missing host 15 after all 16 channelled Providers settled; selected green executed exactly 16 distinct native links, 16 typed machine/return owners with 16 one-item transitions/callback units each and one mounted Drive cell retaining 16 types/256 units. All four old controls, strict build, diagnostics and cleanup passed. No cell/catalog capacity failure occurred at 16 types; the existing Drive retention checks every previous key and the final exact cell key-set. This does not resolve sixteen working separate native-subnet or Federation targets, simultaneous routing, resource-matched layouts, pinned quiesced timing, 405-minute measured windows or stable reference medians. Task 37 and Final Wave remain `[~]`; evidence: `.omo/evidence/task-37-large-direct-sixteen-target-development/verification.md`.
+
+## 2026-09-24 Task 37 sixteen-Federation qualification boundary
+
+- Resolved for the separate serial correctness scene: the fifteen-target red deliberately threw `Missing sixteenth actual physical Federation destination after all source channels settled: 15` and crashed its GameTest process. The corrected sixteen-target scene passes all sixteen authentic native jobs and one source Drive retention of 256 units. An intermediate fixture-stage input-validity check after processing began was moved before export activation; no machine or production semantic was weakened. Exact red/green and independent control process hashes are in `.omo/evidence/task-37-large-federation-sixteen-target-development/verification.md`.
+- The Federation scene adds physical Bridge/Fabric/Policy/Claim/Endpoint routes and sixteen target Grids/cells/creative energy sources/Export Buses, with different placed chunk coordinates from independently run direct/subnet controls. No matched loaded-chunk, energy, peak-resource or throughput measurements, 256-job/4096-unit comparable three-layout replay, late/ultra timed repetitions, or stable reference medians exist. Task 37/38/40 and F1-F4 stay `[~]`; the correctness result is not a performance qualification.
+
+## 2026-09-24 Task 37 large direct replay qualification boundary
+
+- The first failing run checked native publication immediately after installing 255 Patterns and failed prematurely at slot 0. Waiting until 255 native craftables were actually published made the deliberate absent-256th red meaningful. The full replay and both independent controls passed after restoring slot 255. This is serial correctness only: five Drive cells versus the old direct selector's one, no numeric energy demand or whole-world loaded-chunk measurements, and no matched timed three-layout evidence. Task 37/38/40/F1-F4 remain `[~]`; see `.omo/evidence/task-37-large-direct-256-development/verification.md`.
+
+## 2026-09-24 Task 37 host-preflight eligibility boundary
+
+- `NOT_YET_ELIGIBLE`: the first five of seven 10-second-spaced samples reported 3 runnable tasks, exceeding the beforehand maximum of 2. Persistent competing process names above 5% lifetime CPU existed at both endpoints; per-process interval CPU use was not measured. The VM exposes no readable per-CPU `scaling_governor`, no exclusive pinned CPU set or identified pinned Task 37 server JVM. Aggregate CPU busy stayed 1.300%-2.424% but cannot substitute for dedicated-set isolation. The nine-hour reservation does not fix these measured gaps; 405 serial measurement minutes leave at most 135 minutes overhead if the reservation began at preflight, but its actual end time is unknown. No benchmarks ran, no medians frozen, and Task 37/38/40/F1-F4 remain `[~]`. See `.omo/evidence/task-37-host-preflight/verification.md`.
+
+## 2026-09-24 Task 37 resource comparison boundary
+
+- The three complete 256-job correctness replays have matching ordered work and source CPU/Drive assertions, but no persisted post-replay live capacity/finite-energy/whole-world chunk-and-ticket observation. Direct has one source Grid and no target cells; subnet/Federation have sixteen target Grids, cells and creative power sources each, with different Interface versus Bridge/Endpoint routes. The validator discloses those intrinsic dimensions instead of forcing Grid equality and rejects any speedup eligibility until controllable measurements are present. No profile or `perf.*` case was registered; Task 37/38/40 and F1-F4 stay `[~]`. See `.omo/evidence/task-37-resource-integrity-preflight/verification.md`.
+
+## 2026-09-24 Task 37 timed continuation remains partial
+
+- The final current-source VM snapshot has one **complete** native-big-grid `small` repetition: its sample delivers 151616 real units in 602.340710402 wall seconds and 634973 ticks, or 251.711 units/wall second and 0.238776 units/tick. The three earlier direct repetitions (254.679-260.714 sample units/wall second) belong to a preceding source snapshot whose final Drive summary was corrected afterward. Do not combine them into a current-source 3/3 median or call the old summary exact retention. Native-subnet and Federation still have 0/3 measured windows each; late and ultra are absent. Creative energy and topology-intrinsic target Grids/cells differ and no finite energy, whole-world loaded chunks/tickets or peak demand were measured, so strict cross-layout speedup is `NON_COMPARABLE` and no cross-layout elapsed ratio exists. Task 37/38/40/F1-F4 remain `[~]`. Full source/attempt/exit hashes and negative tests: `.omo/evidence/task-37-small-timed-first/verification.md`.
+- The local full JUnit suite still has one unrelated pre-existing `NativeEnergyBindingContractTest` failure at line 80 because a Task 10 Gradle completion-label literal changed. Focused scale timing/profile tests, the eight Python preflight tests and strict build excluding that unrelated test passed. No unrelated Task 10 source/test was changed.
+
+## 2026-09-24 three-layout small timing blocker
+
+- Subsequent final 742-file snapshot has only **one passing subnet** repetition (sample 132208 physical units/603.215400760s, 219.172 units/wall second). Its Federation timed attempt failed closed after 27 real jobs/432 units at the 300-second warmup boundary because each phase requires >=256 jobs; no Federation sample/result exists. The latest source has **0/3 direct, 1/3 subnet, 0/3 Federation** repetitions. Older direct runs used different source digests and cannot form a same-source median. No finite-energy, full loaded-chunk/ticket/capacity or peak-demand reconciliation exists, so strict cross-layout speedup and Task 37/38/40/F1-F4 completion remain blocked. See `.omo/evidence/task-37-small-timed-first/verification.md`.
+
+## 2026-09-24 updated three-layout status after serial repetitions
+
+- The prior `0/3 direct, 1/3 subnet` line was an intermediate checkpoint. Final source-matched `089cd6f5...` status is **3/3 direct, 3/3 subnet, 0/3 Federation** after five more independently consumed successful processes. Federation's 27-job failed warmup has no sample/result and remains the work-rate blocker. The two-layout raw median rate ratio of 1.199x is explicitly **not** strict speedup because topology, finite energy, total capacity, whole-world chunk/ticket counts and peak demand are unpaired. No three-layout reference median, threshold, Task 37/38/40/F1-F4 completion, or late/ultra claim. See `.omo/evidence/task-37-small-timed-first/verification.md`.

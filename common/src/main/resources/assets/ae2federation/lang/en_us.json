@@ -1,5 +1,7 @@
 {
   "mod.ae2federation.name": "AE2 Federation",
+  "itemGroup.ae2federation.main": "AE2 Federation",
+  "item.ae2federation.multipart_bridge": "Multipart Bridge",
   "block.ae2federation.hub": "Federation Hub",
   "block.ae2federation.federation_cable": "Federation Cable",
   "ae2federation.fabric_policy": "Fabric Policy",

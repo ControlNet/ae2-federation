@@ -77,7 +77,12 @@ final class NativeEnergyBindingContractTest {
         assertTrue(script.contains("verifyTaskTenEvidence"));
         assertTrue(script.contains("AE2F_ENERGY_NATIVE_ENTRY"));
         assertTrue(script.contains("shared EnergyOverlayGrid has no caller/edge direction, route identity, or authorization boundary"));
-        assertTrue(script.contains("taskTenBlocked ? 'BLOCKED' : 'complete'"));
+        assertTrue(script.contains("def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases"));
+        assertTrue(script.contains("def reportBlocked = taskTenBlocked || taskThirtySevenBlocked"));
+        assertTrue(script.contains("def reportStatus = reportBlocked ? 'BLOCKED' : 'complete'"));
+        assertTrue(script.contains("status: reportStatus"));
+        assertTrue(script.contains("parentExit: reportBlocked ? 1 : 0"));
+        assertTrue(script.contains("report.status != 'complete' || report.parentExit != 0"));
         assertTrue(script.contains("report.reason = 'native-energy-directionality-unavailable'"));
         assertTrue(script.contains("federationTaskTenEvidenceSelfTest"));
         assertTrue(script.contains("federationTaskTenBlockedConsumerSelfTest"));

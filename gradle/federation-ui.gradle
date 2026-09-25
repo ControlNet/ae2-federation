@@ -677,6 +677,10 @@ tasks.register('federationUiTest') {
     doLast {
         def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
         def requestedSet = requested as Set
+        if (requested == ['final.native-workflow', 'final.hub-six-faces', 'final.bridge-invalid',
+                'final.policy-reconnect', 'final.chinese-scales']) {
+            throw new GradleException('F3 BLOCKED: the exact actual-client final workflow and benchmark spot-check are not implemented')
+        }
         def taskThirtyFour = requestedSet == uiTaskThirtyFourExpectedCases
         def selectedScenarioNames = requestedSet == uiTaskThreeExpectedCases ? uiTaskThreeScenarioNames
                 : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames

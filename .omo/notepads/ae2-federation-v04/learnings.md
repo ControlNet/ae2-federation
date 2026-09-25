@@ -4,6 +4,109 @@ Conventions, patterns, and successful approaches discovered during work on this 
 
 _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
 
+## 2026-09-25 Task 40 docs can qualify before scale and soak
+
+- A truthful Task 40 docs suite must not depend on Tasks 37/38 checkboxes. The expanded `T-*` matrix can be checked against the exact DESIGN ID set and manifest IDs, links, command entrypoints, and documented blocked scale/soak boundaries. Keep the separate F1-F4 final-wave reports blocked. The current code-side suite is waiting on writer-owned stale prose before a positive source-bound run; exact attempts and source hashes are in `.omo/evidence/task-40-qa/verification.md`.
+- Groovy regex `Matcher.collect { it[0] }` without a capture group returns the first character of a matched String, not the entire match. Capture the identifier explicitly before comparing set coverage.
+
+## 2026-09-25 Task 40 manual launcher
+
+- ModDevGradle 2.0.146 registered `runManualClient` from `manualClient { client(); gameDirectory = project.file('run-manual-client'); sourceSet = sourceSets.main }`. Explicit `runs.manualClient.loadedMods = [mods."${mod_id}"]` excludes the registered `ae2federation_test` mod. The isolated ignored directory is persistent, not cleaned with `build/` or automated run finalizers.
+- The strict dry-run was red before registration and green afterward. Offline strict test/check/build passed; an Xvfb smoke reached Minecraft's first-run title accessibility prompt, and its mod list contained Federation, AE2, LDLib2 and GuideME without testmod. No user world or manual walkthrough was performed. Details: `.omo/evidence/task-40-manual-client/verification.md`.
+
+## 2026-09-25 Task 40 code-side blocked suite dispatch
+
+- Register the docs and F1/F2/F4 suite IDs without treating manifest presence as execution approval. The schema-v3 result retains exact requested/executed IDs, source/product hashes and hash-bound matrix/negative receipts while `BLOCKED` and parent exit 1 ensure persisted consumption rejects it. A separate existing self-test control still passes. Receipts and commands are under `.omo/evidence/task-40-qa/verification.md`.
+- The current acceptance matrix explicitly distinguishes direct/subnet small timing from failed Federation warmup and Task 38 absence. Rejecting stale source/missing artifact can reuse the canonical persisted verifier; an unsupported-scale row is checked against incomplete Task 37 and exercised with a deliberately marked test-only fixture.
+
+## 2026-09-25 Task 40 documentation handoff
+
+- The latest Task 37 timed record must be read from its final same-source continuation, not the first paragraph: direct/subnet 3/3, Federation failed 27/256 warmup, resources non-comparable. Task 38 and F1-F4 remain open.
+- Gradle's actual task list has no `runClient`; `runUiTestClient` and `runArtifactClient` are scripted. A human manual-client walkthrough must identify this launch blocker, use registered case IDs only as comparisons, and make no claim that a human session or final F3 took place. Keep evidence paths distinct from source-current acceptance.
+
+## 2026-09-24 current-source remote sixteen-target three-layout replay
+
+- A fresh source-matched 739-file snapshot under remote `~/ae2f/snapshots/task37-current-20260924T102858Z-d09fc1c4` ran direct, native-subnet and Federation 256-job selectors serially. All three explicit Gradle child exits and process-local audit exits were zero; each passed one required GameTest with 256 distinct native UUIDs, sixteen exclusive working machine/return-owner groups, 256 Drive receipts and 4096 actual units. Java descendants were observed on CPUs 2-9, each finalizer removed the world, and remote source pre/post digest was unchanged. Full receipts and hashes: `.omo/evidence/task-37-remote-current-three-layout/verification.md`.
+- Concurrent unrelated local verifier/docs changes after the snapshot mean final live-local-to-snapshot parity is false even though snapshot source parity is stable. The runs are source-bound to the preflight digest and explicitly NON_COMPARABLE; no measured profile, speedup or Task 37/38/40/F1-F4 completion follows.
+
+## 2026-09-24 Task 37 sixteen-target physical Federation 256 replay
+
+- A new manual-only selector reuses the sixteen physical Bridge/Fabric/active Policy/Claim/Endpoint paths while its sixteen Providers each own sixteen fixture-mapped encoded Patterns, covering the same host-major catalog as direct/subnet-256. The missing global slot-255 red failed only after 255 native craftables were published. After repair, the detached long-lived GameTest process reported one required pass and 256 real native links, sixteen target Grid/return-owner groups, 4096 exact typed machine/callback units and actual five-cell Drive readback. Old source, Federation-16, direct-256 and native-subnet-256 controls plus strict build passed serially. Exact commands, caveat about the detached launcher exit, transcript/source hashes and resource differences: `.omo/evidence/task-37-large-federation-256-development/verification.md`.
+- Configure each Federation target machine once with sixteen typed recipes after the first real routed input establishes its claimed Endpoint return context, then test `isItemValid` before Export Bus activation. Subsequent slots reuse the same owner/capability, and every job checks that its Endpoint resolves the selected native Lane. The new replay opts out of repeated expensive source-fixture inspection after the full first physical inspection, checks all target identities at publication and each host boundary, and checks selected route authority per job. This is correctness fixture cadence, not benchmark timing evidence.
+
+## 2026-09-24 Task 37 sixteen native-subnet 256 replay
+
+- The separate manual `scalelargenativesubnet256replaydevelopment` selector passed after a settled 255-craftable missing-last-Pattern red. Sixteen physical Providers with sixteen fixture-mapped encoded slots each advertise the same host-major 256 disjoint catalog as direct-256; sixteen independently confirmed native target Grids each receive through their Interface/cell/Export Bus/machine route. Its 256 serial sixteen-unit planner/CPU jobs emitted 256 distinct native link IDs, 4096 typed machine/callback units and 4096 actual units in five mounted source Drive cells. Independent old direct-256 and subnet-16 selectors, strict build, diagnostics and diff check passed. Full process-bound receipt: `.omo/evidence/task-37-large-subnet-256-development/verification.md`.
+- A preliminary slow run's server-thread dump located repeated `NetworkIdentityRegistry.settle` inside the shared source fixture's every-tick `inspect`. The new selector uses the fixture's one-time full source verification, while old selectors retain every-tick inspection; the new selector checks its sixteen target identities at publication and each host boundary. This is a development fixture cost observation, not a timed benchmark or throughput claim.
+
+## 2026-09-24 Task 37 sixteen native-subnet destinations
+
+- The settled 16-Provider large source accepts sixteen separate physical native-subnet pods, each with an Interface, cell Chest, Export Bus and capability machine on its own confirmed target Grid. A missing-sixteenth red failed only after all source channels settled. The final selected process completed sixteen serial native 16-unit planner/CPU/requester jobs with disjoint keys, distinct Grid IDs and link UUIDs, exact per-machine transitions and per-key callback, and 256 units physically retained in the one-cell source Drive. Independent source-only, direct-16 and earlier four-subnet selectors passed. Commands, transcript hashes and row boundaries: `.omo/evidence/task-37-large-subnet-sixteen-target-development/verification.md`.
+- The native Export Bus may take many ticks to drain a complete 16-unit target cell after filter activation; an early 120-tick completion wait was too short. The final bounded 2000-tick per-job wait and 40000-tick test timeout are development guards, not measurements. A passing target topology plus Drive conservation does not equal a matched benchmark: sixteen extra target Grids, cells and creative energy sources have no direct-16 resource parity, and loaded-chunk/energy/peak-usage metrics were not measured. Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 physical Federation C route
+
+- Keep the proven H0 two-Bridge route unchanged and stage C separately after H0's source-edge handoff. A second source-only red cable path from the source chest to H1's WEST face and a red extension south of B can coexist on the exact source Grid without merging the target Grids. Settle C anchor, seeded Endpoint and seeded bus separately; only then add red/blue Bridge legs and H1-owned Claim/Policy/Runtime. Read-only per-job readiness preserves Fabric publication. With C Policy removed, H1's actual native push yields `POLICY_DENIED` and zero C input; restore it before three serial planner/CPU jobs. Final process, 256 replay control and exact source hashes: `.omo/evidence/task-37-federation-three-target-development/verification.md`.
+
+## 2026-09-24 Task 37 remote H1 power-node side effect
+
+- A remote Provider fixture can share a source energy position without placing a new creative cell. Its node seeding condition must be local-only, or `loadFromNBT` silently changes an already-live H0 power node. Snapshot the managed node NBT around H1 placement on the repeating GameTest path and assert the same block, same node and same saved state; red was `true/true/false`, green after excluding `remoteHost`. H1 still joins the source through its real WEST cable edge. Serial selected/control and build receipts: `.omo/evidence/task-37-native-three-target-development/verification.md`.
+
+## 2026-09-24 Task 37 batch-16 one-Grid probe
+
+- A 16-output AE2 Processing request can be proven through the native plan's `finalOutput`, three serial tracker links, per-key callback and physical cell quantities, and 16 one-item capability machine transitions per typed recipe. The non-stackable high-slot item reached the old machine singly in an exploratory run, but the new selector explicitly opts into one-item-per-tick processing so all three recipes share the same bounded transition shape. Bind append-only sibling log rows to the exact selected process. Full receipts and commands: `.omo/evidence/task-37-batch16-development/verification.md`.
+
+## 2026-09-23 UTC Task 37 remote environment smoke
+
+- The immutable `364173f` snapshot passed a confined Java 21 strict `test check build` and exactly one manual-only `scalenativebiggridtwopatternsdevelopment` run. The direct selector wrote two typed sibling Processing receipts, not the configured `benchmark-native.properties` filename: cobblestone/diamond then dirt/gold ingot with distinct native UUIDs, one required GameTest, and six ordered push/return observations. The live Minecraft listener was `[::ffff:127.0.0.1]:45611`; the finalizer removed the task-owned world/config/lock and no owned GameTest Java remained. Source identity was unchanged. Exact commands and copied allowlisted logs are in `.omo/evidence/task-37-remote-smoke/verification.md`.
+- The approved remote EULA file was copied byte-for-byte into only `run-gametest` after regular-file/mode/content checks. The source verifier excludes generated build and runtime trees, so it can be repeated after Gradle without promoting those outputs into immutable source identity. The 60-vCPU VM appeared idle at preflight but was not pinned/reserved or proven quiesced; the run is not a timing baseline or Task 37 qualification.
+
+## 2026-09-24 Task 37 independent two-Pattern rerun
+
+- A fresh serial selector gives two typed native-link rows and six ordered native push/return observations, while the unchanged three-layout selector gives three more rows. With one evidence directory, the direct selectors append to the same sibling `scale-small-processing.log`; bind each row to its selected process transcript rather than mistaking the five-row file for one run. Source guards prove first diamond retention, opposite-key zero, idle return/CPU and distinct UUIDs; the receipt alone does not serialize those guards. Independent commands, UUIDs and cleanup are recorded in `.omo/evidence/task-37-two-pattern-independent/verification.md`.
+
+## 2026-09-24 Task 37 two-Pattern native probe
+
+- A `succeedWhen` assertion in a one-time setup branch can be skipped on the next tick after mutating stage; catalog assertions belong on the repeating path. Two encoded physical slots must be decoded and correlated with the native Lane's advertised Patterns, not inferred from a fixture-authored count.
+- The same native requester/CPU can submit two serial typed jobs after the first link retires. Correlate per-key physical cell quantities, exact machine transition keys and callback amounts at each completion; retain the first physical output through the second job and require distinct native UUIDs. The selected probe and original three-layout regression both passed; exact commands and receipts are in `.omo/knowledges/task-37-scale-blocker.md`.
+
+## 2026-09-23 Task 39 nested wrapper lifecycle
+
+- Join and JAR-load observations are not proof that the nested Gradle `JavaExec` wrapper completed cleanly. The runtime report must be written only after both nested wrapper exits and descendant cleanup are checked; the persisted consumer must require those exit receipts and reject logged build failure.
+- A synthetic `Popen` harness can reproduce valid hash/load/joins followed by a post-join failed `wait()` without opening a real socket or launching Minecraft. It failed before the fix and passes after it; the real source-bound five-case attempt remains pending.
+
+## 2026-09-23 Task 39 actual orderly proof
+
+- A Gradle `RunGameTask` extends `JavaExec`; signaling its descendant tree before game shutdown interrupts the daemon and fails the nested build. The proof-only client now stops after authentic join and the server halts after that player's logout; the Python owner waits boundedly for both nested wrappers before emergency cleanup. The actual logs show `Stopping!`, `Stopping server`, and two `BUILD SUCCESSFUL` lines with genuine zero wrapper exits.
+- Fresh current-source attempt `attempt-20260923T132715867Z` passes exact five-case producer and same-attempt persisted consumer. The client reload has no missing multipart Bridge item-model or texture warning. Keep prior daemon-disappearance attempts rejected; do not infer rendered visual quality from a log-only smoke.
+
+## 2026-09-23 Task 37 third Processing job
+
+- The Endpoint's east face is reserved for Federation and does not expose item return; place a registered machine against its south logistics face and the target Export Bus east of that machine facing west. The bus joins the target Grid through the existing seeded native connection, while its item capability feeds the machine from the target physical cell.
+- The federated return context is bound by actual authorized native Provider resolution on CPU-driven input push, not by Claim activation alone. Configure the machine's recipe only after the physical target cell contains the pushed cobblestone and the south-sided Endpoint item capability is the context's exact return handler; assert that its owner is the original Provider logic and return inventory.
+- The selected small development test now has three independently completed one-job receipts and 16 distinct active Grids through the Federation result. The route receipt retains `resolution=ACTIVE` and `pushAccepted=false` for the planner-driven job. This does not qualify the JSON tier's replay, timings or late/ultra profiles. Exact commands and evidence are in `.omo/knowledges/task-37-scale-blocker.md`.
+
+## 2026-09-23 Task 37 fixture safety
+
+- The 16x16 x/z GameTest footprint with five y layers and two-block x/z separation offers only 320 fixture slots. The 512-Grid exploratory tier cannot use the existing layout without unsupported extra chunk loading. A GameTest failure before block placement is the truthful result until a bounded topology and real workload exist.
+- `succeedWhen` repeats its body until success: only read-only Grid readiness/count checks belong in the polling phase. A one-shot test-authored iron insert/extract does not establish native planner/CPU/Provider/return Processing or scale qualification.
+
+## 2026-09-23 Task 37 small Processing diagnosis
+
+- Per-node before/after Grid receipts isolated the previous `Waiting for small native Grids`: Task20's isolated energy at `(1,2,3)` and Provider host at `(3,2,3)` replaced live scale ME chests. Reserving the six nearby lattice positions preserves 16 auxiliary Grids through seeded CPU placement. The reserved 16x16 lattice has 314 positions; ultra remains unqualified.
+- Source identity must be confirmed before Task20's `ProcessingCraftingGrid` seeds the physical storage/CPU. The temporary CPU/storage Grid may briefly report unconfirmed before its native join; after connection the Provider, chest and CPU share the source's confirmed Grid identity. Stage diagnostics and exact per-node receipts live at `.omo/evidence/task-37-small-development/scale-small-nodes.log`.
+- One real development job completed through AE2 planner/CPU/Provider, Task30's registered capability-backed machine, native return and physical ME cell. Handler transition, callback and destination independently agreed on one diamond from one cobblestone. The exact GameTest remains intentionally failing because 16 auxiliary Grids plus the source are not a comparable small layout and neither native-subnet nor Federation Processing run exists. JUnit and strict check/build pass; GameTest world cleanup and zero owned Java processes were observed. Exact commands and failure text are in `.omo/knowledges/task-37-scale-blocker.md`.
+
+## 2026-09-23 Task 37 physical route
+
+- Replacing a fixture-created non-in-world Provider/storage edge with production five-face Provider wiring can invalidate an already published Bridge Fabric even when its native Grid identities remain stable. Refreshing the physical Bridge after that handoff restores the common Fabric and Policy activation before target resolution; the rejected pre-refresh push was `FABRIC_DISCONNECTED`.
+- An east-facing Bridge at `(4,2,1)` with the blue target cable at `(5,2,1)` stays within the bounded structure and preserves 16 distinct active Grids. Exact Claim ownership plus active Policy led to `ProviderRuntime` `ACTIVE`, one accepted native push, and one cobblestone in the physical target cell. This is input-route readiness, not a Federation Processing job or a measured scale profile. The selected run and evidence are recorded in `.omo/knowledges/task-37-scale-blocker.md`.
+
+## 2026-09-23 Task 39 safety boundary
+
+- Explicitly passing a user-authored EULA file is a preflight input; a preexisting unrelated runtime `eula.txt` is not consent. Validate before creating runtime paths, binding a socket, or starting a child; copy approved bytes rather than generating acceptance.
+- A native `All 1 required tests passed` banner is only one selected registration. Explicitly enumerate the manifest's direct GameTest IDs and fail when any selected run has zero or more than one native required success.
+
 ## 2026-09-22 Task 35 release and packet hardening
 
 - An LDLib2 server callback still needs project-owned authority checks: server thread, current menu, exact holder, live
@@ -976,3 +1079,229 @@ _Auto-scaffolded by /start-work. Append new entries below - never overwrite._
   block-entity ticker, addon routing, source extraction, physical destination and AE2 Storage Bus callback owner.
 - Check the nested GT child log for the FML invalid-dist exception and absence of GameTest completion; Gradle's exit
   code alone is insufficient to classify a mod-construction failure.
+
+## 2026-09-23 Task 39 artifact preflight (shared QA conflict)
+
+- The unchanged strict `check build verifySharedJarContent` passes with `--no-configuration-cache`. With configuration
+  cache enabled, the existing `verifyReleaseArchive(File, boolean)` closure fails deserialization on primitive `boolean`.
+- The baseline binary JAR SHA-256 was `b3eda0e8863a7818472c75ffcf2020e303effcc9c6669830e753f0cf559ccb7c`;
+  sources JAR was `803c3bea3bb04c8c58f40472022dc21b519ccdfd66f7930fdd54e1e14a0d713d` and dependency verification
+  metadata was `2677d763489033fdd42a50b0c523cf1bb7d12b158fe71752a394b8d14b382b1b`. These characterize the
+  existing incremental build only, not a clean rebuild or runtime-loaded artifact.
+- The exact five-case Task 39 command fails at `gradle/federation-qa.gradle:6514`: all `artifact.*` IDs are unknown.
+  Manifest registration alone is insufficient because the shared script owns child dispatch and persisted semantics.
+  No shared file edit or GameTest/client launch was made while Task 37 is active.
+- Cleanup receipt: no disposable checkout/cache, server/client process, world, port or Task 39 evidence attempt was
+  created. The baseline used the existing workspace and Gradle cache; no task-owned external state needs removal.
+
+## 2026-09-23 Task 39 independent artifact implementation
+
+- Negative tests failed first on missing `artifact_verify` and now reject altered MC metadata, corrupted real JAR copies,
+  split server/client bytes, stale rebuild hashes and an added target. Six tests pass against the built production archive.
+- Both production archives now carry the exact AGPL project `LICENSE`. The machine-readable artifact pin checks exact
+  loader/AE2/LDLib2/MC ranges, manifest fields, required shared resources and no testmod/addon content.
+- An isolated first checkout/cache run failed on NeoForged's Mojang Meta 502, then a fresh attempt built successfully but
+  sources JAR bytes differed only in metadata for three empty `appeng/` directories. `sourcesJar.includeEmptyDirs=false`
+  removed those non-source entries. The subsequent fresh checkout/cache strict build matched both local JAR hashes.
+- The independent source-bound receipt is `.omo/evidence/task-39-independent/clean-build.json`: revision
+  `364173f51241fda172a4ff23b1fc3bc0105a214d`, source digest
+  `0b48e11552cd6cd876dc3fcf8bdb931f54991f5036d6e0eedac963e79ef2ed21`, binary SHA-256
+  `e6a284dd1cd8b5a9227f1121417d218903003ab9e2387a5134c9459cbaf7085e` and sources SHA-256
+  `bd3457ed20c2fa170ca85a0764f52be7f2f581accf17381fd56b4968d8359760`. It was current at the last check.
+  This is not a schema-v3 Task 39 five-case result and does not prove a running client/server loaded the binary.
+- Cleanup receipt: the disposable Git worktree and isolated Gradle home were removed by the checker, and `git worktree
+  list` shows only the user's original checkout. Task-created Python bytecode directories were removed. No native/client
+  process or listening port was started; the GameTest CI command is deferred until Task 37 stops using the run directory.
+
+## 2026-09-23 Task 37 staged target identity
+
+- Establishing a physical target ME Chest/Grid before Endpoint creation, then seeding the Endpoint and AE2 Export Bus from its confirmed ID before their first tick, produced distinct node lineages on one settled target Grid. The source Grid remained distinct and the fixture retained 16 active Grids.
+- A prior staged unseeded Endpoint also joined the settled anchor without an ambiguous split; therefore its separate-lineage hypothesis was false for that construction. Do not attribute earlier simultaneous-placement ambiguities to a specific competing Grid without a receipt from those runs.
+- Native big-grid and subnet one-job Processing outputs can be removed before identity-only target observations. Their successful receipts do not supply a physical Federation Processing job or measured scale qualification. Final identity-only receipts are in `.omo/evidence/task-37-staged-identity-final/scale-small-identity.log`.
+
+## 2026-09-23 Task 39 explicit approval input
+
+- Python `require_approved_eula` and the Gradle direct artifact task prerequisite both require a nonsymlink regular file containing exactly the 10 ASCII bytes `eula=true\n`; the task-owned file and dated, scoped consent receipt are under `.omo/evidence/task-39/`. The approved input is preparation, not a runtime or artifact acceptance receipt. The exact deferred command and five case IDs are in `.omo/knowledges/task-39-artifact.md`.
+
+## 2026-09-23 Task 37 independent three-job verification
+
+- A fresh strict serial `scalesmallprocessingdevelopment` run independently passed one required GameTest with three distinct native-link UUIDs and three accepted push/return-injection cycles. The three physical target arrangements and their owner assertions were inspected, not inferred from layout labels; evidence and exact commands are in `.omo/evidence/task-37-independent-three-job/verification.md`.
+- A configured `benchmark-native.properties` path in this direct GameTest selects sibling scale receipt output but is not itself a generated properties artifact. The native transcript and sibling receipts are the development proof. The focused profile contract, module `test check build`, Java diagnostics, world/lock and process cleanup checks passed; Task 37 remains `[~]`.
+
+## 2026-09-23 Task 39 authorized artifact runtime
+
+- The consent-supplied file and fresh isolated clean build produced `.omo/evidence/task-39/attempt-20260923T124941507Z`: exact five-case schema-v3 result, equal binary/source rebuild hashes, independent server/client NeoForge load paths and SHA-256, loopback two-sided join, and current-source persisted consumption. Nine Python tests and strict check/build/archive gates passed. Exact identities, commands and caveats are appended to `.omo/knowledges/task-39-artifact.md`.
+- Distinguish the outer `artifact-runtime` child exit 0 and zero survivors from the nested server Gradle wrapper, which reported daemon disappearance on deliberate shutdown after the authenticated join. Do not describe the nested wrapper as a graceful zero exit.
+
+## 2026-09-23 Task 39 multipart Bridge item asset
+
+- `BridgeRegistration.MULTIPART_BRIDGE` registers `multipart_bridge` as a `PartItem`; the actual client requests `ae2federation:item/multipart_bridge` independently of `MultipartBridgePart.MODEL` (`part/multipart_bridge`). The old client log at `.omo/evidence/task-39/attempt-20260923T124941507Z/artifact-client.log:67` and the pre-edit JAR show the missing item resource.
+- The new item JSON inherits the already-packaged provisional part geometry, which uses AE2 19.2.17's `assets/ae2/textures/part/quartz_fiber.png` and Minecraft 1.21.1's `assets/minecraft/textures/block/cyan_concrete.png`. No new texture, gameplay registration or art variant is needed. A local strict check/build/archive gate and ZIP model-chain inspection pass; a new rendered/client observation remains pending.
+
+## 2026-09-24 Task 37 remote EULA consent preflight
+
+- The user's explicit `我现在给予全局的EULA授权！` supersedes the earlier Task39-only consent scope for Task37. This preflight records consent but does not qualify a benchmark or launch a server.
+- Batch-mode, strict-host-key SSH to `<user>@<benchmark-host>` first entered `~/ae2f` and verified physical cwd `~/ae2f`; `ls -ld . evidence` and `ls -la evidence` showed the real, empty parent. `evidence/task-37-remote-preflight` and its EULA input were absent before creation. Inspection exited 0.
+- Created only `~/ae2f/evidence/task-37-remote-preflight/` (mode 700) and its nonsymlink regular `eula.txt` (mode 600). The input is exactly 10 ASCII bytes `eula=true\n`, written without overwrite. Creation/first byte comparison and a separate SSH readback (`realpath`, `stat`, `cmp`, `ls`) each exited 0; readback confirmed exact path, content, modes, and that the directory contains only `eula.txt`. No SSH credential bytes or fingerprint were captured.
+- Remote `java -version` and `javac -version` still report 21.0.12.1 (creation command exit 0). Future task-owned GameTest runner must explicitly consume this path and retain all HOME/Gradle/temp/cache/game/evidence paths beneath `~/ae2f`, with loopback-only binding. Source transfer, Gradle, Minecraft/GameTest, process launch, listening ports, and timed Task37 qualification were not performed here; Task37 remains `[~]`.
+
+## 2026-09-23 UTC Task 37 isolated source transfer
+
+- A sparse checkout from an exact-HEAD object pack requires all current HEAD blobs even for excluded `.omo` paths. Packing current blobs plus commit/tree objects, but no historical blobs, allowed a clean Git sparse checkout with `.omo` absent from the working tree. The 44 committed `.omo` payloads were screened and are retained remotely only in the fresh snapshot's `.git` object store.
+- An explicit 30-file overlay preserved eight modified tracked and 22 untracked source paths. A manifest over all 659 allowed regular paths plus matching scoped porcelain status, scoped binary diff, and Gradle-equivalent status-derived dirty identity proved local/remote parity without launching Gradle. The exact snapshot and proof are appended in `.omo/evidence/task-37-remote-transfer/verification.md`.
+
+## 2026-09-24 Task 37 one-source-Grid development
+
+- Omitting auxiliary `ScaleGridFixture` alone is insufficient: the original isolated creative power cell owns its own live native Grid. The one-Grid variant must physically join its AE2 power cell to the source and pre-tick seed both nodes with the same source `NetworkId` so identity settles without merging independent lineages.
+- Enumerate scene AE2 block entities independently of fixture lists and expand discovered Grid membership with native `getNodes()`. Distinct active nodes are not distinct Grids: the final five nodes shared the same exact `IGrid` before and after both typed jobs. Keep the one-Grid assertion on the repeating `succeedWhen` path; bind output receipts to the selected process because direct selectors append to one sibling Processing log. Exact red/green and regression proof: `.omo/evidence/task-37-one-grid-development/verification.md`.
+
+## 2026-09-24 Task 37 native physical catalog
+
+- The mapped Provider's `AppEngInternalInventory` is sized by the testmod fixture and the registered machine's recipe list is independent of its 16 physical item-handler slots. A deterministic 256-entry one-item Processing catalog can therefore live on one Provider/Lane and share a single registered machine for serial work. Assert physical occupied slots, decoded distinct input/output keys, Lane details and native `ICraftingService.getCraftables` together; a fixture-owned count alone cannot establish advertisement. The selected red/green and limited two-job proof are in `.omo/evidence/task-37-256-catalog-development/verification.md`.
+- The 256-Pattern one-Grid catalog selector can execute its highest physical slot after the two original jobs by decoding stack 255 on the repeating GameTest path and feeding its exact typed pair to the native planner. Its registered machine capability accepted and transitioned `command_block_minecart` to `golden_pickaxe`, and the third distinct link returned one output to the physical source cell while diamond and gold stayed there. Bind the three rows to the final selected process, not the shared append-only sibling log; red/green, serial regressions and cleanup are in `.omo/evidence/task-37-high-slot-development/verification.md`. This is three one-unit jobs, not catalog-wide replay.
+
+## 2026-09-24 Task 37 64-type Drive retention
+
+- A no-Drive 16-output job sequence reached exactly 63 completed distinct physical outputs before the original chest rejected the input for decoded slot 255. The first 2400-tick attempt had only timed out at 35, so distinguish execution budget from cell capacity by a measured, bounded selector-specific timeout. Pinned AE2 19.2.17 Drive exposes per-slot `getCellInventory`, populated through its real internal inventory; the source chest remains the direct callback storage. Retain output only after the native job retires, check exact chest extraction and cell insertion/readback, all previous typed outputs and the native mounted service view. The final 64-job selector has 64 distinct links and 1024 retained units; evidence: `.omo/evidence/task-37-64-type-development/verification.md`.
+
+## 2026-09-24 Task 37 256 distinct-pattern one-Grid replay
+
+- For a 256-key native replay, preserve one decoded physical Pattern slot per job rather than repeating a 64-key subset. Two real 16k Drive cells fail at job127 only after authentic callback placed 16 in the direct chest and both occupied cells simulated zero insertion. Five physical mounted cells, each capped at 63 distinct item types, retain all 256 keys after post-callback extraction: actual `getAvailableStacks` sets and quantities read back as 63/63/63/63/4 types, 4096 units. Per-key machine, callback, chest, Drive and mounted Grid accounts remain independent; bind append-only sibling rows to the selected process. Full red/green/serial regression details: `.omo/evidence/task-37-256-replay-development/verification.md`. No comparable layouts or timing qualification claimed.
+
+## 2026-09-24 bounded native-subnet batch-16 continuation
+
+- A source Drive at `(4,2,2)` touches the adjacent subnet Interface and merges their native Grids, so place the subnet selector's five-cell Drive at `(2,2,2)` on the source side. The corrected selected red failed at one occupied Pattern against 256; then a separately configured 256-recipe subnet probe passed decoded slots 0/1/255, each with actual target-cell arrival 16 before enabling the Export Bus, 16 typed capability transitions, exact Provider return/callback and post-callback five-cell retention. Its matched one-Grid three-job/five-cell control and serial 256/64/3x16/small regressions passed. Exact process-bound evidence and commands: `.omo/evidence/task-37-subnet-batch16-development/verification.md`. This is one untimed working subnet, not Task37 qualification.
+
+## 2026-09-24 Task 37 physical Federation catalog batch-16
+
+- A separate target ME Chest can hold all 16 native-routed inputs before enabling its filtered Export Bus. For each decoded slot 0/1/255, correlate the current Endpoint item capability and its exact Provider return inventory and authorized Lane with the production route, then configure the registered machine from that handler (not a test-authored return). The original source CPU/requester and five Drive cells remain on one settled Grid; the target stays separate. The final process passed three 16-output jobs and five-cell `3,0,0,0,0` / `48,0,0,0,0` distribution. Exact commands and UUIDs are in `.omo/evidence/task-37-federation-batch16-development/verification.md`.
+
+## 2026-09-24 Task 37 one-target Federation 256-job replay
+
+- Reusing the same physical Federation target, real catalog and five-cell Drive with decoded slots 0..255 yields 256 distinct native links, 256 target-cell pre-export arrivals of 16, 256 typed machine/callback/drain accounts and final actual cell distribution `63,63,63,63,4` / `1008,1008,1008,1008,64`. The original direct ME Chest remains the callback destination before every Drive drain. Keep per-tick route authority assertions but not a redundant full receipt each tick; the 23,000-tick one-Grid bound reached only 149 jobs in the first Federation attempt, so this selector alone uses 46,000 ticks. Full process-bound evidence: `.omo/evidence/task-37-federation-256-replay-development/verification.md`.
+
+## 2026-09-24 Task 37 one-target native-subnet 256-job replay
+
+- The prior subnet three-job path first fails the new selector's 256-job work assertion after authentic slots 0/1/255. Decoding all physical slots 0..255 into the existing planner/requester/CPU probe completes 256 distinct 16-unit jobs, each with 16 actual target-cell inputs before Export Bus activation, exact per-key machine/return/callback accounts and post-callback chest-to-five-cell retention. Final native cells hold 256 distinct output keys and 4,096 units in the same `63,63,63,63,4` distribution. Seed the replay target's real Interface/Chest/Bus nodes with one target lineage before boot and verify separate confirmed source/target identities; the old subnet constructor is unchanged. This selector has no auxiliary fixture or additional target. Process-bound evidence and serial controls: `.omo/evidence/task-37-subnet-256-replay-development/verification.md`. It is untimed and not scale qualification.
+
+## 2026-09-24 Task 37 two working native-subnet targets
+
+- Disjoint physical Pattern slots 0/1 can publish exactly one native Lane each on one Provider; `CraftingService.getProviders(pattern)` proves exact AE2 publication while the per-Lane host's EAST/SOUTH target faces determine actual input destination. With both hosts EAST, Lane 1's native dirt push reached target A rather than satisfying B's 16-unit pre-export gate. Changing only that Lane face to SOUTH made the same two serial CPU/requester jobs reach separate settled physical target Grids.
+- A south pod at Interface `(3,2,4)`, Chest `(3,2,5)`, bus `(2,2,5)` facing its machine `(2,2,6)` does not overlap the original east pod or source Drive `(2,2,2)` and power `(2,2,3)`. Each target's own physical cell reaches 16 before its Export Bus filter is enabled; machine/return owners, 16 one-item transitions, callbacks and a typed physical Drive readback close each account, totaling 32. Full process-bound red/green and serial three-job/256-job controls: `.omo/evidence/task-37-native-two-target-development/verification.md`. No concurrency or timing claim follows.
+
+## 2026-09-24 Task 37 physical Federation two-target route
+
+- A second Bridge's red source leg must be staged as an actually connected source-Grid cable path; placing the low south cable alone can leave it on an inactive, isolated Grid. An elevated red extension inside the GameTest footprint gives both Bridges separate active Fabrics to two settled target Grids without joining either target to the source native Grid.
+- A single `ProviderRuntime` can resolve two separately claimed physical Endpoints by native Lane index while sharing Provider identity, CPU, requester, Drive and encoded Pattern inventory. An intentional Lane 1-to-A request binding completed Lane 0's authentic job first, then failed at the actual authorized target resolution with B's cell empty. Exact indexed binding passed two serial 16-output jobs, each with 16 machine transitions, exact return owner, callback and physical retention. Process-bound commands and limitations are in `.omo/evidence/task-37-federation-two-target-development/verification.md`.
+
+## 2026-09-24 Task 37 direct native two-machine development
+
+- Two testmod capability machines can sit directly EAST and SOUTH of one shared Provider at `(3,2,3)` without adding a second native Grid: six active source nodes, including the Provider/CPU/requester/Drive, share one exact settled `IGrid`. Disjoint encoded Pattern slots publish through AE2 `CraftingService.getProviders(decoded)` to separate native Lanes whose host faces choose their distinct adjacent machines.
+- With both hosts EAST, the first genuine 16-output job completed but Lane 1's native push repeatedly rejected dirt at machine A, while machine B remained empty. Switching Lane 1 SOUTH yielded two separate physical machine and return-inventory identities, 16 one-item transitions and callbacks per typed job, and 32 retained units in one actual source Drive cell. Process-bound red/green and serial controls: `.omo/evidence/task-37-one-grid-two-machines-development/verification.md`. This is untimed, serial correctness only.
+
+## 2026-09-24 Task 37 direct two-machine 256-Pattern replay
+
+- Alternating physical catalog slots by parity across the existing two native Lanes requires dispatching the selected machine **and** Provider return owner by decoded slot, not by the second-job index. Configure disjoint 128-recipe capability machines before native work; the existing per-key transition filter and direct callback chest-to-five-cell drain then prove 128 genuine 16-unit jobs on each machine. A deliberate EAST/EAST face failed at the B destination after A had completed a native job, while SOUTH routed odd slots successfully. The final process has 256 distinct native UUIDs, 256 retained types and 4096 units on one stable six-node Grid. Process-bound red/green, two serial controls and limitations: `.omo/evidence/task-37-one-grid-two-machines-256-development/verification.md`.
+
+## 2026-09-24 Task 37 two-target native-subnet 256 replay
+
+- Multi-job subnet target selection must follow the decoded physical slot parity, not `jobIndex == 1`. The shared Provider has 256 unique one-in-one-out physical Patterns split 128/128 between EAST and SOUTH native Lanes; their separate target Interface/Chest/Export Bus/machine pods avoid the five-cell source Drive at `(2,2,2)`. Each original target cell receives 16 through native push before its own bus activates, with zero selected input in the opposite target. Per-tick exact Grid object and settled NetworkId checks keep source/CPU/requester/Drive and both target Grids distinct through all 256 serial jobs. A process-bound audit verifies 256 distinct native UUIDs, exclusive machine and return owners and 4,096 physical Drive units. Full red/green and controls: `.omo/evidence/task-37-native-two-target-256-development/verification.md`. This is correctness only, not timed scale qualification.
+
+## 2026-09-24 Task 37 two-target Federation 256 replay
+
+- The two-Endpoint `ProviderRuntime` can keep both real Bridge/Fabric/Policy/Claim legs active while a 256-slot shared physical catalog publishes 128 exclusive native Patterns per Lane. Dispatch the selected physical Endpoint, machine, Lane and native return owner by decoded slot parity throughout the replay. Each capability machine must receive its complete parity-specific 128-recipe catalog only once, after the first native arrival establishes its exact Endpoint return handler; later jobs verify handler identity rather than reconfigure it. The selected route's original target cell receives all 16 native inputs before its own Export Bus activates, and the opposite cell stays empty for that key.
+- A wrong Lane 1-to-A binding failed after authentic A work; the final single process completed 256 distinct native UUIDs, 128 jobs each on nonshared machines and return owners, and 4,096 units in five mounted source Drive cells. Exact serial commands, process-bound audit, controls and limitations: `.omo/evidence/task-37-federation-two-target-256-development/verification.md`. This is untimed two-target correctness only; Task 37 remains `[~]`.
+- Readiness inspection must not call the physical Bridge neighbor-change hook on every job polling tick. Refresh the two legs only during staged topology establishment, then use read-only membership/Policy/Claim/identity checks during the 256-job replay. The final source-bound selector and both serial controls passed after this correction; the earlier green process is an intermediate, not the final SHA-bound process.
+
+## 2026-09-24 Task 37 direct four-machine one-Grid development
+
+- EAST `(4,2,3)`, SOUTH `(3,2,4)`, UP `(3,3,3)` and DOWN `(3,1,3)` are four viable adjacent capability-machine positions around the existing Provider `(3,2,3)` without colliding with its WEST power cell. Four exclusive decoded physical Patterns, native Lane publications, unique BE/handler/return identities and one stable six-node confirmed Grid were checked repeatedly. Four serial 16-unit native planner/tracker/CPU jobs each changed only its selected physical machine's transition count and produced its own typed callback and Drive output. The two-machine 256 replay and older one-Grid controls still pass. Exact red/green process binding and limitations: `.omo/evidence/task-37-one-grid-four-machines-development/verification.md`. This is neither 16-target feasibility nor timing evidence; Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 direct four-machine 256-Pattern replay
+
+- The four-job fixture's real inventory has four slots, so the new manual selector's 256-slot repeating assertion failed first with `was 4`. With 256 physical Pattern slots mapped `slot % 4`, each of the four adjacent registered machines receives exactly 64 disjoint recipes and executes 64 serial native planner/CPU/requester jobs of 16 units. Direct machine and return-owner selection must follow decoded physical slot modulo four; the four-job transition-count rule needs a replay-specific cumulative per-machine expected count on the fifth and later jobs. Process-local audit found 256 strictly growing unique native UUIDs, 256 typed 16-transition/callback/Drive accounts, and five real Drive cells holding `63,63,63,63,4` types / 4096 units on one stable six-node Grid. The original four-job and two-machine 256 controls passed independently in serial processes. Commands and receipt boundaries: `.omo/evidence/task-37-one-grid-four-machines-256-development/verification.md`. No concurrent, 16-target or timing claim follows; Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 third native-subnet target gate
+
+- The elevated source trunk works as ten staged physical cable segments. Its `(3,3,2)` start is a BE-free GameTest template barrier, not the logical requester's in-world host. Accept only air/barrier at loaded, BE-free positions; prove the previous cable's actual in-world edge and exact source `IGrid` before the next placement. H1 uses an AE2 Pattern Provider block at `(9,2,3)` facing EAST: its WEST in-world edge joins the source after pre-tick source-ID seeding without a second WEST power cell or synthetic H1 connection. H1's one-slot mapped Lane and H0's two-slot/two-Lane inventory exclusively publish three typed Patterns.
+- C's Interface `(10,2,3)`, Chest `(11,2,3)`, energy `(11,1,3)`, Export Bus `(11,2,2)` and registered machine `(12,2,2)` form a fourth distinct settled Grid. A temporary H1 Lane host aimed at H0's EAST block caused C's native job to send its first input to A and fail before C's Export Bus activation. Restored H1-local routing completed three serial 16-output jobs and 48 physically retained Drive units; two-target subnet and four-machine direct 256-job controls passed separately. Evidence: `.omo/evidence/task-37-native-three-target-development/verification.md`. Task 37 stays `[~]`.
+
+## 2026-09-24 Task 37 three-target Federation 256 replay
+
+- Two physical Provider inventories can publish one global 256-Pattern catalog without duplicate encoded slots: H0 stores only modulo-3 A/B slots (171) and H1 stores only C slots (85) at the same global indexes. Native craftables remain exactly 256; target machines receive only 86/85/85 disjoint recipes after their first native arrival reveals each Endpoint's exact immutable return handler. The selected process completed 256 serial 16-unit jobs and retained all 4096 outputs in five mounted Drive cells. Process-bound audit, red, wrong-owner negative, controls and source hashes are in `.omo/evidence/task-37-federation-three-target-256-development/verification.md`. This is not timed or concurrent qualification; Task 37 remains `[~]`.
+
+## 2026-09-24 Task 37 fourth native-subnet target
+
+- Extending the proven source trunk from `(8,2,3)` along `(8,2,4..7)` can attach a second remote Pattern Provider at `(9,2,7)` through its real WEST cable edge without merging C or any target Grid. Preflight every candidate for loaded BE-free air/barrier before staging, then prove each predecessor's in-world edge one tick at a time. D's Interface/Chest/power/Export Bus/machine at `(10,2,7)`/`(11,2,7)`/`(11,1,7)`/`(11,2,6)`/`(12,2,6)` forms a fifth distinct Grid with confirmed identity. After separate missing-host and missing-job reds, four decoded exclusive physical Patterns completed serial 16-output native jobs and the source Drive retained 64 units. Evidence and exact process hashes: `.omo/evidence/task-37-native-four-target-development/verification.md`; no 16-target or timing claim.
+
+## 2026-09-24 Task 37 fourth physical Federation target
+
+- The already-proven H1 source trunk can be extended south along `(8,2,4..7)` without changing the three-target selector. A separate H2 at `(9,2,7)` joins the exact source Grid through a real WEST edge; red Bridge cable `(9,2,6)` and blue target cable `(10,2,6)` reach D's own seeded anchor/Endpoint/Export Bus without merging native Grids. Preflight loaded, replaceable, BE-free positions before construction and compare the H0 power node's saved NBT before/after H2 placement. The new route checks exact main/outer Bridge Grids, Fabric, EXECUTE/SUPPLY Policy, Claim, WEST binding and selected native Lane/return owner.
+- The selected missing-D topology red failed before work; a separate missing-D-job red completed three authentic A/B/C 16-unit jobs first. Final run completed D's own fourth planner/CPU/requester job and retained 64 units in the physical source Drive. Older three-target, four-subnet and Federation three-target 256-job controls passed serially. Exact selected process hashes, commands and limitations: `.omo/evidence/task-37-federation-four-target-development/verification.md`.
+
+## 2026-09-24 Task 37 four-target Federation 256 replay
+
+- The separate exact manual-only selector first failed at the repeating D physical inventory assertion (one slot, expected 256). H0, H1 and H2 then installed the same global physical catalog indexes exclusively by `slot % 4`: H0 A/B, H1 C, H2 D. The native service advertised precisely 256 disjoint outputs, each of four Lanes published 64 decoded Patterns, and high slot 255 authorized only D's registered machine and return owner. Four distinct physical target Grids and one source Grid remained separate with settled IDs and real Bridge/Policy/Claim/Endpoint authority.
+- The selected native process passed 256 serial planner/CPU/requester jobs with 256 distinct growing link UUIDs, 16 typed one-item machine transitions and callbacks per job, exact pre-export target cell input and owner-specific Endpoint return, zero final input, and five mounted Drive cells retaining 256 typed outputs / 4096 units. Original four-job Federation, three-target 256 Federation and four-target subnet controls passed independently. Process-local audit, commands, hashes and limitations: `.omo/evidence/task-37-federation-four-target-256-development/verification.md`. This does not qualify 16 targets, concurrency or measured timing; Task 37 remains `[~]`.
+
+## 2026-09-24 Task 37 four physical native-subnet 256 replay
+
+- H0 holds the modulo-four A/B physical catalog (128 occupied slots), H1 holds C (64) and H2 holds D (64), all in 256-slot inventories. The existing staged WEST source edges and four separate seeded target pods support 256 serial 16-unit native jobs without a synthetic source edge. The machine fixture allows recipes to be configured once, so H0 A/B must receive modulo-four recipes during construction while C/D are configured when added. Process-local red/green/control hashes and five-cell readback: `.omo/evidence/task-37-native-four-target-256-development/verification.md`.
+
+## 2026-09-24 Task 37 empty 36x8x36 structure preflight
+
+- A valid compressed structure can preserve the old empty palette/zero-block/zero-entity schema while changing only the three `size` integers, never its NBT list length. Pinned GameTest bounds start one Y above `helper.absolutePos(BlockPos.ZERO)` and span exact 36x8x36 dimensions. A candidate guard checks every intended absolute position for actual bounds, load status, no BlockEntity and air or BE-free barrier; derive the complete placed-chunk set from bounds separately from candidate chunks. Old-size and real-chest negatives and clean positive ran serially. The framework temporarily forces structure chunks; the fixture adds no tickets. Full hashes/commands: `.omo/evidence/task-37-large-structure-preflight/verification.md`.
+
+## 2026-09-24 Task 37 sixteen source hosts
+
+- The 36x8x36 template can hold a separately staged one-controller source with 154 dense/ordinary cable parts and 16 real Provider BEs at y=6. Check all 176 actual planned positions before placement, then settle each predecessor's *upstream* edge before extending; a newly placed Provider must boot and gain its physical WEST edge before its Lane composition can register. AE2's controller node itself reports zero carried channels, but its dense root edge carried 16 and the Grid pathing service reported 19 total under DEFAULT mode. Each Provider had one assigned channel, distinct BE/node/Lane and one confirmed source `IGrid`. Failure-first 15-host and final 16-host process receipts, exact commands, hashes and cleanup: `.omo/evidence/task-37-sixteen-source-host-development/verification.md`. This is not sixteen target routes or Task 37 completion.
+
+## 2026-09-24 Task 37 large-source direct one-target job
+
+- Keep the verified source-only selector independent: pass its settled source scene into a separate target helper, check the 16 original channels on each target tick, and close the original requester/hosts/Drive/CPU after the target finishes. Host 0 `(7,6,5)` has a bounded BE-free EAST position `(8,6,5)` with only its WEST Provider BE neighbor. One decoded physical slot published only through its original Lane, one registered machine, a native 16-output planner/requester UUID, 16 exact machine/return-owner one-item transitions and a real 16-unit source Drive readback all passed. The selected red omitted just the machine after 16 source channels; independent source-only and direct-four controls remained green. The direct selector logs the actual process and Drive receipt, not a schema-v3 properties artifact. Commands and hashes: `.omo/evidence/task-37-large-direct-one-target-development/verification.md`. It does not prove 16 working destinations, timings or Task 37 qualification.
+
+## 2026-09-24 Task 37 large-source direct two-machine continuation
+
+- Host 1 `(15,6,5)` has its own bounded, loaded BE-free EAST machine site `(16,6,5)` with only the exact WEST Provider BE adjacent, separate from host 0's machine. One physical slot 0 on each different Provider encodes a disjoint typed Pattern; native craftables include exactly diamond and gold ingot, each advertised only by its own active Lane. The one original source CPU/requester runs cobblestone->diamond and dirt->gold ingot serially as two distinct UUIDs. Exact per-machine/native-return transitions and callbacks are 16 each; the existing physical Drive retains both keys and 32 actual units after separate chest drains. Original source-only and one-target selectors remained green; commands, receipts, hashes and scope: `.omo/evidence/task-37-large-direct-two-target-development/verification.md`. This remains untimed direct correctness, not sixteen target routes or Task 37 completion.
+
+## 2026-09-24 Task 37 sixteen working direct destinations
+
+- The verified 16-host source supports distinct actual registered capability machines on every Provider EAST face within `scale_36_empty`; preflight all sixteen bounded/loaded/BE-free sites and non-WEST neighbors before placing any. Give each physical host its own slot 0 with disjoint `ScaleProcessingCatalog` recipe index 0..15 (do not interpret repeated physical-slot zero as a duplicate publication). Require each native service craftable/provider to resolve only its own Lane, confirmed source ID and active WEST channel. An after-settlement missing-machine-15 red failed exactly at host 15; the complete selector then passed 16 serial native 16-output planner/CPU/requester jobs with distinct UUIDs, typed exclusive machine/return transitions and callbacks. The original one-cell Drive read back all 16 distinct outputs and 256 actual units. Original source-only, one-/two-target and direct-four controls passed separately. Exact process-bound receipts and limitations: `.omo/evidence/task-37-large-direct-sixteen-target-development/verification.md`. This does not qualify sixteen distinct target Grids, concurrency or timing.
+
+## 2026-09-24 Task 37 sixteen physical Federation destinations
+
+- The sixteen-Provider source supports sixteen separate physical red/blue Bridge paths to sixteen independently identified target Grids in `scale_36_empty` without merging either side. Stage each anchor/Endpoint/bus and Bridge/Policy/Claim before starting the next pod; preflight all 144 distinct loaded, bounded and BE-free route positions. The exact after-settlement fifteen-target red failed, and the corrected selected process completed sixteen serial native 16-output planner/CPU/Provider/Endpoint/machine/return jobs with distinct links and target IDs, exact per-machine typed transitions/callbacks and all 256 units in the one-cell source Drive. Source-only, direct-16, subnet-16 and previous Federation-four controls passed serially, as did strict `test check build`. Exact transcript/source hashes and boundaries: `.omo/evidence/task-37-large-federation-sixteen-target-development/verification.md`.
+- The selected machine's `isItemValid` check must occur immediately after recipe configuration, before the Export Bus begins feeding it: after processing starts, the handler can legitimately reject an additional stack while occupied. This is a test-stage ordering issue, not a production input-path fallback. These serial correctness receipts are not concurrency or speed measurements; Task 37 remains `[~]`.
+
+## 2026-09-24 Task 37 sixteen-host direct full replay
+
+- The sixteen physical source hosts each support a fixture-owned mapped sixteen-slot Pattern inventory when explicitly constructed at that capacity; the preserved one-slot selectors still run unchanged. A publication-settled red rejected missing slot 255 with 255 native craftables, and the repaired selector executed 256 distinct native 16-output planner/CPU/requester jobs on sixteen adjacent machines. Exactly 256 native UUIDs, 4096 typed one-item transitions/callbacks and five-cell physical Drive readback passed; source/direct controls and strict build passed serially. Resource differences and bound logs are in `.omo/evidence/task-37-large-direct-256-development/verification.md`.
+
+## 2026-09-24 Task 37 reserved-local-host preflight
+
+- Predeclared eligibility thresholds before a read-only 60-second `/proc` load sample, distinct from the user's approximately nine-hour reservation. This KVM host reports 60 online Icelake vCPUs and Java 21.0.12.1, but all observed affinities span 0-59, no designated exclusive benchmark/server CPU set was measured, and CPU governor data is absent. The seven load samples and six aggregate busy intervals, redacted competing process list, exact commands/exits and source/executable hashes are in `.omo/evidence/task-37-host-preflight/verification.md`. Whole-host low utilization alone is not pinned JVM or quiescence proof; no median was frozen.
+
+## 2026-09-24 Task 37 resource-integrity preflight
+
+- Parse only complete selected process transcripts: direct `green-attempt.log`, subnet `task37-large-subnet-256-green.log`, and Federation `task37-large-federation-256-green-complete.log`. Their ordered input/output catalog and input replay digests match across all 256 host-major jobs; every process has 256 distinct native UUIDs, sixteen typed transitions/callbacks per job, 4096 retained units and exact five-cell final distribution. The direct and subnet/federation source rows each report 19 Grid channels; the source CPU and Drive count are verified from layout/assertion plus physical readback, not inferred from a tier declaration.
+- A process-local loaded device/pod chunk-key set (6/9/6 respectively) is not a whole-world loaded-chunk/ticket census. Powered creative cells are not finite energy debit. Keep those fields unavailable rather than copying fixture literals into a comparable resource ledger. The independent preflight emits `NON_COMPARABLE`, exit 1; in-memory negative comparator tests reject changed capacity/CPU/input and missing energy/chunks. Full commands and hashes: `.omo/evidence/task-37-resource-integrity-preflight/verification.md`.
+
+## 2026-09-24 Task 37 perf-case wiring
+
+- Two manifest `perf.*` IDs now use a dedicated backend over explicitly path- and SHA-bound selected process transcripts; it copies the three logs into one source/attempt-bound report and reuses the single existing Python parser. A missing measured observation is an explicit `BLOCKED`/`NON_COMPARABLE` report and nonzero Gradle exit, not an assertion pass. The negative case runs one marked test-only fully bound fixture with deliberately different CPU capacity and confirms comparison rejection. Future positive persisted consumption reruns the parser on the hash-bound attempt-local inputs. Exact command, hashes and result: `.omo/evidence/task-37-perf-verify-wiring/verification.md`.
+
+## 2026-09-24 Task 37 first authentic small direct timing
+
+- `small-native-big-grid` now runs the physical sixteen-Provider/256-Pattern/one-CPU/five-Drive-cell scene through `federationBenchmark` and its real `runGameTestServer` child. It repeats native planner/CPU/machine/return/callback/Drive work across separate wall/tick windows instead of sleeping after a replay. One 256-job cycle retains and verifies 4096 physical units, then accounts for their exact Drive drain before reusing the catalog. The first actual attempt reached a 303.431567194-second warmup with 4468 jobs but failed at a 300000-tick GameTest bound; the accelerated server had advanced nearly 300000 ticks in five wall minutes. It was not counted as a sample. Raising only this selected timed selector to 2000000 ticks allowed a full sample. See `.omo/evidence/task-37-small-timed-first/verification.md`.
+- Three serial direct repetitions on an immutable 741-file intermediate source snapshot each passed full 300s+600s windows, with sample work of 155328, 156432 and 152816 units, respectively. The source's completion summary mislabeled cumulative drained work as retained Drive units; its raw per-job/cycle receipts remain real but it is not the final source. A later immutable final-source snapshot `be10d7f4422cce510824bbd9f678a0b25dd337aa00d3bb39d15426dc6e610a42` independently completed one warmup 300.016450434s/342614 ticks/5111 jobs/81776 units and sample 602.340710402s/634973 ticks/9476 jobs/151616 units. Its 14587 unique native UUIDs and Drive receipts reconcile 229376 drained plus 4016 final retained to 233392 callbacks. Both Gradle producer and independent persisted consumer exited zero; all owned worlds/Java descendants were gone. This is 1/3 **final-source direct** repetitions only, not a three-layout measurement.
+- The strict scale tier loader rejects unrecognized JSON fields. Adding a generic lifecycle field to `small.json` initially broke that contract; a failing-first JUnit assertion caught it. The final source leaves the tier schema unchanged, keeps the timed lifecycle in the manifest entry, and binds a copy of `small.json` into its attempt. Follow-on layout/profile work must preserve this separation.
+
+## 2026-09-24 Task 37 small subnet/Federation timed selectors
+
+- Reusing the physical correctness replays with a cycle-boundary Drive drain, distinct global native UUIDs, and `ScaleTimedWindow` allowed a real timed subnet repetition on immutable 742-file source digest `089cd6f5cbaa0e0b041fdd184f0ac95c0a4925a9c22f351a0684ae0b9ff5e0ec`: warmup 302.338772894s/773758 ticks/3883 jobs/62128 units and sample 603.215400760s/1650201 ticks/8263 jobs/132208 units. The 12146 native links/callbacks reconcile 192512 drained plus 1824 final retained Drive units to 194336. Both producer and independent persisted consumer exited zero; owned world and descendants cleared. Earlier subnet snapshot `496209a5...` passed a true warmup but hit the 2000000 GameTest-tick ceiling before sample; only the two new selectors now have a 5000000-tick ceiling, while the 300/600 wall/work requirement remains unchanged. All hashes and receipts: `.omo/evidence/task-37-small-timed-first/verification.md`.
+- The same final source's Federation selector routed 27 distinct native jobs/432 real Drive/callback units in its first ~300 wall seconds, then correctly refused to label that an accepted warmup because it had not completed the 256-Pattern catalog. It had no sample or result JSON; outer exit 1 and cleanup succeeded. The nominal 300-second warmup needs at least 256 jobs, versus the observed 27 (~0.09 jobs/s), so raising only GameTest ticks cannot make this declared work/window qualification pass. This is a measured work-rate blocker, not evidence of a speedup ratio.
+
+## 2026-09-24 source-matched direct/subnet repetitions
+
+- On the immutable `089cd6f5...` 742-file source, a strictly serial task-owned batch finished three direct and the remaining two subnet repetitions, each with its own 300s+ warmup, 600s+ sample, native UUID/physical Drive receipt count, pre/post manifest, process/consumer exit 0, ten-second host samples, and world cleanup. This joins the existing subnet repetition on that **same** source: direct 3/3 sample units 153280/161472/161056 and subnet 3/3 132208/134576/138800. Independent audits counted 14589/14858/15104 direct and 12146/12200/12799 subnet job UUIDs, exactly the same numbers of physical Drive receipts. Every callback total equals all drained plus final retained Drive units. Raw rates and result/log hashes are in `.omo/evidence/task-37-small-timed-first/verification.md`.
+- Descriptive median sample units/wall-second are direct **268.419** and subnet **223.831** on this snapshot, giving a **1.199x raw two-layout rate ratio only**. A ~600s fixed-duration sample is not a same-resource elapsed comparison: direct has no sixteen target Grids/cells/creative power sources, and live energy, whole-world chunk/ticket, matched capacity and peak demand remain unavailable. No strict speedup or three-layout reference is supported; Federation still has no accepted warmup/sample on this source.

@@ -3,12 +3,14 @@ package space.controlnet.ae2federation.neoforge;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.hub.HubRegistration;
@@ -19,6 +21,8 @@ import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
 import space.controlnet.ae2federation.neoforge.network.FabricPolicyActionPayloads;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import java.nio.file.Files;
+import java.security.MessageDigest;
 
 @Mod(NeoForgeEntrypoint.MOD_ID)
 public final class NeoForgeEntrypoint {
@@ -26,16 +30,31 @@ public final class NeoForgeEntrypoint {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public NeoForgeEntrypoint(IEventBus modBus) {
+        if (Boolean.getBoolean("ae2federation.artifactProof")) {
+            try {
+                var path = ModList.get().getModFileById(MOD_ID).getFile().getFilePath().toRealPath();
+                var digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path));
+                LOGGER.info("AE2F_ARTIFACT_LOAD path={} sha256={}", path, java.util.HexFormat.of().formatHex(digest));
+            } catch (Exception exception) {
+                throw new IllegalStateException("Production JAR origin cannot be verified", exception);
+            }
+            NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onArtifactPlayerJoin);
+        }
         CommonStartup.start(LOGGER);
         BridgeRegistration.register(modBus);
         HubRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
+        FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
         FabricPolicyActionPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
+    }
+
+    private static void onArtifactPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
+        LOGGER.info("AE2F_ARTIFACT_SERVER_JOIN player={}", event.getEntity().getGameProfile().getName());
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {

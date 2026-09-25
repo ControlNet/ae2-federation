@@ -2,6 +2,7 @@
 
 This matrix is limited to Minecraft 1.21.1 on NeoForge. A pinned artifact is not a support claim: only an actual isolated
 runtime scene can qualify a row. No optional mod is bundled with AE2 Federation.
+The capability-backed machines in internal GameTests are test-only fixtures, not third-party compatibility. Prototype block and part visuals are provisional; neither a model in the JAR nor a synthetic client screenshot qualifies an external addon.
 
 | Combination | Artifact SHA-256 | Source/license checked | Native capability path | Result |
 |---|---|---|---|---|

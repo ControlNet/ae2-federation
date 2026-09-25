@@ -29,10 +29,11 @@ import space.controlnet.ae2federation.processing.provider.MappedPatternProviderH
 import space.controlnet.ae2federation.identity.NetworkId;
 
 public final class NativeProviderLaneFixtures implements MappedPatternProviderHost, AutoCloseable {
-    static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
+    public static final BlockPos HOST_POS = new BlockPos(3, 2, 3);
     private static final BlockPos ENERGY_POS = HOST_POS.west();
     public static final BlockPos TARGET_POS = HOST_POS.east();
     private final GameTestHelper helper;
+    private final BlockPos hostPosition;
     private final IManagedGridNode node;
     private final MappedPatternProvider composition;
     private final List<NativeProviderLaneHost> hosts;
@@ -58,9 +59,22 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
 
     public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
             int patternSlots, NetworkId networkId) {
+        this(helper, assignments, isolatedPower, patternSlots, networkId,
+                java.util.Collections.nCopies(assignments.size(), Direction.EAST));
+    }
+
+    public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
+            int patternSlots, NetworkId networkId, List<Direction> laneTargets) {
+        this(helper, assignments, isolatedPower, patternSlots, networkId, laneTargets, HOST_POS);
+    }
+
+    public NativeProviderLaneFixtures(GameTestHelper helper, List<IntPredicate> assignments, boolean isolatedPower,
+            int patternSlots, NetworkId networkId, List<Direction> laneTargets, BlockPos hostPosition) {
         this.helper = helper;
+        this.hostPosition = hostPosition;
         targets = new NativeProviderTargets(helper);
-        var setup = NativeProviderSetup.create(helper, this, assignments, isolatedPower, patternSlots, networkId);
+        var setup = NativeProviderSetup.create(helper, this, assignments, isolatedPower, patternSlots, networkId,
+                laneTargets, hostPosition);
         node = setup.node();
         composition = setup.composition();
         hosts = setup.hosts();
@@ -204,7 +218,7 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
 
     public long endpointTargetItemCount() { return targets.endpointTargetItemCount(); }
 
-    public BlockEntity hostBlockEntity() { return helper.getBlockEntity(HOST_POS); }
+    public BlockEntity hostBlockEntity() { return helper.getBlockEntity(hostPosition); }
 
     @Override
     public BlockEntity getBlockEntity() { return hostBlockEntity(); }
@@ -244,7 +258,7 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
     public void close() {
         composition.close();
         node.destroy();
-        helper.setBlock(energyPosition, Blocks.AIR);
+        if (energyPosition != null) helper.setBlock(energyPosition, Blocks.AIR);
     }
 
 }

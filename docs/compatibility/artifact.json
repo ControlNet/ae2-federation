@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "target": "neoforge-1.21.1",
+  "minecraft": "1.21.1",
+  "java": "21",
+  "gradle": "9.2.1",
+  "modDevGradle": "2.0.146",
+  "modRanges": {
+    "minecraft": "[1.21.1]",
+    "neoforge": "[21.1.250]",
+    "ae2": "[19.2.17]",
+    "ldlib2": "[2.2.34]"
+  },
+  "manifest": {
+    "Implementation-Version": "0.1.0-dev",
+    "Built-For-Minecraft": "1.21.1",
+    "Built-For-NeoForge": "21.1.250",
+    "Applied-Energistics-Version": "19.2.17",
+    "LDLib2-Version": "2.2.34"
+  },
+  "licenseSha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+  "dependencyVerification": "gradle/verification-metadata.xml",
+  "qualifiedRuntime": ["minecraft:1.21.1", "neoforge:21.1.250", "ae2:19.2.17", "ldlib2:2.2.34"],
+  "additionalTargets": []
+}

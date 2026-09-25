@@ -38,6 +38,9 @@ def testmod = sourceSets.create('testmod') {
     runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath
 }
 
+sourceSets.test.compileClasspath += testmod.output
+sourceSets.test.runtimeClasspath += testmod.output
+
 def appfluxTest = sourceSets.create('appfluxTest') {
     java.srcDir(rootProject.file('common/src/appfluxtest/java'))
     compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
@@ -126,7 +129,6 @@ def prepareReleaseServer = tasks.register('prepareReleaseServer') {
         new File(directory, 'server.properties').withOutputStream {
             properties.store(it, 'Task 35 production-only dedicated server')
         }
-        new File(directory, 'eula.txt').text = 'eula=true\n'
     }
 }
 
@@ -158,9 +160,22 @@ def prepareMultiClientRuntime = tasks.register('prepareMultiClientRuntime') {
             new File(directory, 'server.properties').withOutputStream {
                 properties.store(it, 'Task 34 isolated loopback dedicated server')
             }
-            new File(directory, 'eula.txt').text = 'eula=true\n'
         } else {
             new File(directory, 'options.txt').setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+        }
+    }
+}
+
+def requireArtifactEulaApproval = tasks.register('requireArtifactEulaApproval') {
+    doLast {
+        def approvedPath = providers.gradleProperty('federationApprovedEulaFile').orNull
+        if (approvedPath == null || approvedPath.isBlank()) {
+            throw new GradleException('Task 39 BLOCKED: supply a user-approved EULA file with -PfederationApprovedEulaFile')
+        }
+        def approvedFile = project.file(approvedPath)
+        if (!approvedFile.isFile() || java.nio.file.Files.isSymbolicLink(approvedFile.toPath())
+                || !java.util.Arrays.equals(approvedFile.bytes, 'eula=true\n'.getBytes(StandardCharsets.UTF_8))) {
+            throw new GradleException('Task 39 BLOCKED: approved EULA file must contain exactly eula=true followed by a newline')
         }
     }
 }
@@ -184,6 +199,32 @@ neoForge {
             programArgument('--nogui')
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareReleaseServer)
+        }
+        artifactServer {
+            server()
+            gameDirectory = providers.gradleProperty('federationArtifactGameDir').map { project.file(it) }
+                    .getOrElse(layout.buildDirectory.dir('artifact-server').get().asFile)
+            programArgument('--nogui')
+            systemProperty('ae2federation.artifactProof', 'true')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(requireArtifactEulaApproval)
+        }
+        artifactClient {
+            client()
+            gameDirectory = providers.gradleProperty('federationArtifactGameDir').map { project.file(it) }
+                    .getOrElse(layout.buildDirectory.dir('artifact-client').get().asFile)
+            programArguments.addAll('--quickPlayMultiplayer',
+                    "127.0.0.1:${providers.gradleProperty('federationArtifactPort').getOrElse('25565')}",
+                    '--username', 'ArtifactProbe')
+            systemProperty('ae2federation.artifactProof', 'true')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(requireArtifactEulaApproval)
+        }
+        manualClient {
+            client()
+            gameDirectory = project.file('run-manual-client')
+            sourceSet = sourceSets.main
+            logLevel = org.slf4j.event.Level.INFO
         }
         gameTestServer {
             type = 'gameTestServer'
@@ -329,6 +370,9 @@ neoForge {
         }
     }
     runs.releaseServer.loadedMods = [mods."${mod_id}"]
+    runs.artifactServer.loadedMods = []
+    runs.artifactClient.loadedMods = []
+    runs.manualClient.loadedMods = [mods."${mod_id}"]
 }
 
 configurations {
@@ -433,6 +477,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.named('jar', Jar).configure {
+    from(rootProject.file('LICENSE')) {
+        into('META-INF')
+    }
     manifest {
         attributes(
                 'Implementation-Title': mod_name,
@@ -442,6 +489,13 @@ tasks.named('jar', Jar).configure {
                 'Applied-Energistics-Version': ae2_version,
                 'LDLib2-Version': ldlib2_version
         )
+    }
+}
+
+tasks.named('sourcesJar', Jar).configure {
+    includeEmptyDirs = false
+    from(rootProject.file('LICENSE')) {
+        into('META-INF')
     }
 }
 

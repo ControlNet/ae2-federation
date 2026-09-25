@@ -1,5 +1,7 @@
 {
   "mod.ae2federation.name": "AE2 联邦",
+  "itemGroup.ae2federation.main": "AE2 联邦",
+  "item.ae2federation.multipart_bridge": "多部件桥接器",
   "block.ae2federation.hub": "联邦枢纽",
   "block.ae2federation.federation_cable": "联邦线缆",
   "block.ae2federation.processing_endpoint": "联邦加工端点",

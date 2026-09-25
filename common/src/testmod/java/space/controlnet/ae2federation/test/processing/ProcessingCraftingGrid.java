@@ -13,13 +13,13 @@ import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 
-final class ProcessingCraftingGrid implements AutoCloseable {
+public final class ProcessingCraftingGrid implements AutoCloseable {
     private static final BlockPos STORAGE_POS = NativeProviderLaneFixtures.HOST_POS.north();
     private static final BlockPos CPU_POS = STORAGE_POS.north();
-    static final BlockPos REQUESTER_POS = STORAGE_POS.above();
+    public static final BlockPos REQUESTER_POS = STORAGE_POS.above();
     private final GameTestHelper helper;
 
-    ProcessingCraftingGrid(GameTestHelper helper, NetworkId networkId) {
+    public ProcessingCraftingGrid(GameTestHelper helper, NetworkId networkId) {
         this.helper = helper;
         helper.setBlock(STORAGE_POS, AEBlocks.ME_CHEST.block());
         helper.setBlock(CPU_POS, AEBlocks.CRAFTING_STORAGE_1K.block());
@@ -32,15 +32,19 @@ final class ProcessingCraftingGrid implements AutoCloseable {
         chest().setCell(cell);
     }
 
-    IGridNode node() {
+    public IGridNode node() {
         return chest().getMainNode().getNode();
     }
 
-    MEStorage storage() {
+    public IGridNode cpuNode() {
+        return ((AENetworkedBlockEntity) helper.getBlockEntity(CPU_POS)).getMainNode().getNode();
+    }
+
+    public MEStorage storage() {
         return chest().getInventory();
     }
 
-    int cpuCount() {
+    public int cpuCount() {
         return node().getGrid().getCraftingService().getCpus().size();
     }
 

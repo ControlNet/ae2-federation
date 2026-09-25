@@ -444,6 +444,64 @@ def verifyTaskThirtyFiveEvidence
 def taskThirtySixCases = ['compat.native-differential', 'compat.provider-hooks', 'compat.real-tech-line',
         'compat.optional-absent', 'compat.reject-unsupported']
 def verifyTaskThirtySixEvidence
+def taskThirtyNineCases = ['artifact.clean-build', 'artifact.same-jar-client-server',
+        'artifact.license-manifest', 'artifact.reject-wrong-tuple', 'artifact.no-extra-target']
+def taskThirtySevenPerfCases = ['perf.resource-integrity', 'perf.reject-incomparable-speedup']
+def taskFortyCases = ['docs.coverage', 'docs.commands', 'docs.reject-unsupported-claims',
+        'docs.reject-stale-evidence']
+def finalAuditCases = [
+        ['audit.requirements', 'audit.reject-missing-gate'],
+        ['audit.native-hooks', 'audit.reject-dual-authority'],
+        ['audit.scope', 'audit.reject-prohibited-content']]
+def finalClientCases = ['final.native-workflow', 'final.hub-six-faces', 'final.bridge-invalid',
+        'final.policy-reconnect', 'final.chinese-scales']
+def taskFortyDocuments = ['README.md', 'docs/acceptance-matrix.md', 'docs/testing/commands.md',
+        'docs/testing/manual-client.md', 'docs/benchmarks/task-37.md', 'docs/compatibility/matrix.md']
+def taskThirtySevenInputs = [
+        'native-big-grid': 'task37NativeBigGrid', 'native-subnet': 'task37NativeSubnet',
+        'federation': 'task37Federation', 'observations': 'task37Observations']
+def verifyTaskThirtyNineEvidence
+verifyTaskThirtyNineEvidence = { File attempt, List requested, List<String> paths, Map exits ->
+    if (requested != taskThirtyNineCases) return
+    ['clean-build.json', 'clean-build.log', 'runtime.json', 'artifact-server.log',
+            'artifact-client.log', 'artifact-negatives.log', 'artifact-installed-server.jar',
+            'artifact-installed-client.jar'].each { name ->
+        if (paths.count { it == name } != 1) throw new GradleException("Task 39 artifact missing: ${name}")
+    }
+    if (['artifact-clean', 'artifact-runtime', 'artifact-negatives'].any { exits[it] != 0 }) {
+        throw new GradleException('Task 39 subprocess exit mismatch')
+    }
+    def clean = new JsonSlurper().parse(new File(attempt, 'clean-build.json'))
+    def runtime = new JsonSlurper().parse(new File(attempt, 'runtime.json'))
+    def jar = productJar.get().asFile
+    if (clean.cleanCache != true || clean.buildExit != 0 || clean.referenceSha256 != clean.artifact.sha256
+            || clean.referenceSourcesSha256 != clean.artifact.sourcesSha256
+            || clean.artifact.sha256 != sha256(jar.bytes) || runtime.sha256 != clean.artifact.sha256
+            || runtime.serverJoined != true || runtime.clientJoined != true
+            || runtime.serverWrapperExit != 0 || runtime.clientWrapperExit != 0
+            || runtime.eulaApprovalSha256 != sha256('eula=true\n'.getBytes(StandardCharsets.UTF_8))
+            || !new File(attempt, 'clean-build.log').text.contains('BUILD SUCCESSFUL')
+             || !new File(attempt, 'artifact-negatives.log').text.contains('Ran 15 tests')
+            || !new File(attempt, 'artifact-negatives.log').text.contains('OK')) {
+        throw new GradleException('Task 39 clean build, runtime, or adversarial facts invalid')
+    }
+    def server = new File(attempt, 'artifact-server.log').text
+    def client = new File(attempt, 'artifact-client.log').text
+    def expected = clean.artifact.sha256
+    if (['server', 'client'].any { sha256(new File(attempt, "artifact-installed-${it}.jar").bytes) != expected }) {
+        throw new GradleException('Task 39 captured installed JAR differs from built binary')
+    }
+    if (runtime.serverLoadedPath != new File(attempt, 'artifact-server-runtime/mods/ae2federation-0.1.0-dev.jar').canonicalPath
+            || runtime.clientLoadedPath != new File(attempt, 'artifact-client-runtime/mods/ae2federation-0.1.0-dev.jar').canonicalPath
+            || server.count("AE2F_ARTIFACT_LOAD path=${runtime.serverLoadedPath} sha256=${expected}") != 1
+            || client.count("AE2F_ARTIFACT_LOAD path=${runtime.clientLoadedPath} sha256=${expected}") != 1
+            || !server.contains('Done (') || !server.contains('AE2F_ARTIFACT_SERVER_JOIN player=ArtifactProbe')
+            || !client.contains('AE2F_ARTIFACT_JOIN player=ArtifactProbe')
+            || [server, client].any { it.contains('LoadingFailedException') || it.contains('Failed to create mod instance')
+                    || it.contains('FAILURE: Build failed with an exception.') }) {
+        throw new GradleException('Task 39 installed JAR load path or network acknowledgment invalid')
+    }
+}
 def taskTwentyCases = ['benchmark.reject-empty-work', 'benchmark.resource-accounting',
         'benchmark.evidence-identity', 'benchmark.execution-timeout', 'benchmark.shutdown-timeout']
 def verifyTaskTwentyBenchmarkEvidence
@@ -5877,6 +5935,181 @@ verifyTaskThirtyFourBenchmarkEvidence = { File attempt, Map report, List<String>
     }
     projection
 }
+def taskThirtySevenPreflightCommand = { File attempt, Map inputs ->
+    def command = ['python3', '-B', rootProject.file('tools/task37_resource_preflight.py').absolutePath]
+    ['native-big-grid', 'native-subnet', 'federation'].each { layout ->
+        command.addAll(["--${layout}", new File(attempt, inputs[layout].artifact as String).absolutePath])
+    }
+    if (inputs.observations != null) {
+        command.addAll(['--observations', new File(attempt, inputs.observations.artifact as String).absolutePath])
+    }
+    command
+}
+def verifyTaskThirtySevenPerfEvidence = { File attempt, Map report, List<String> paths ->
+    if (!(report.requested as List).any { it in taskThirtySevenPerfCases }) return
+    if (!(report.requested as List).every { it in taskThirtySevenPerfCases }) {
+        throw new GradleException('Task 37 perf cases cannot be combined with unrelated cases')
+    }
+    if (paths.count { it == 'task37-selected-inputs.json' } != 1
+            || paths.count { it == 'task37-preflight.json' } != 1) {
+        throw new GradleException('Task 37 selected input binding or preflight verdict is missing')
+    }
+    def inputs = new JsonSlurper().parse(new File(attempt, 'task37-selected-inputs.json')) as Map
+    if (inputs.keySet() != taskThirtySevenInputs.keySet()) {
+        throw new GradleException('Task 37 input selection is incomplete')
+    }
+    taskThirtySevenInputs.keySet().each { layout ->
+        def selected = inputs[layout]
+        if (layout == 'observations' && selected == null) return
+        def expectedArtifact = layout == 'observations' ? 'resource-observations.json' : "resource-${layout}.log"
+        if (!(selected instanceof Map) || selected.keySet() != ['sourcePath', 'sha256', 'artifact'] as Set
+                || !(selected.sourcePath instanceof String) || !(selected.sha256 ==~ /[0-9a-f]{64}/)
+                || selected.artifact != expectedArtifact || paths.count { it == expectedArtifact } != 1
+                || sha256(new File(attempt, expectedArtifact).bytes) != selected.sha256) {
+            throw new GradleException("Task 37 ${layout} selection/hash mismatch")
+        }
+        strictCanonicalPath(new File(selected.sourcePath as String))
+    }
+    def recorded = new JsonSlurper().parse(new File(attempt, 'task37-preflight.json')) as Map
+    def replay = File.createTempFile('task37-replay-', '.json')
+    try {
+        def outcome = runProcess(taskThirtySevenPreflightCommand(attempt, inputs), repositoryDir.asFile, replay, 60)
+        if (outcome.exit != 0 || recorded != new JsonSlurper().parse(replay)
+                || recorded.decision != 'COMPARABLE' || recorded.speedupEligible != true
+                || recorded.reasons != [] || report.resourceDecision != 'COMPARABLE') {
+            throw new GradleException('Task 37 replay resource integrity is non-comparable or preflight verdict was rebound')
+        }
+    } finally {
+        replay.delete()
+    }
+    if (report.requested.contains('perf.reject-incomparable-speedup')) {
+        if (paths.count { it == 'task37-negative-fixture.log' } != 1
+                || report.childExits['task37-negative-fixture'] != 0
+                || !new File(attempt, 'task37-negative-fixture.log').text.contains(
+                        'test_reject_incomparable_speedup_when_deliberately_mismatched_test_only_fixture')
+                || !new File(attempt, 'task37-negative-fixture.log').text.contains('Ran 1 test')
+                || !new File(attempt, 'task37-negative-fixture.log').text.contains('OK')) {
+            throw new GradleException('Task 37 deliberately incomparable test-only fixture was not rejected')
+        }
+    }
+    if (report.childExits['task37-resource-preflight'] != 0
+            || report.assertions.any { it.assertionCount != 1 || it.resourceDecision != 'COMPARABLE' }) {
+        throw new GradleException('Task 37 perf assertion or validator child exit mismatch')
+    }
+}
+def validateTaskFortyDocuments = { Map<String, String> documents, Map manifest ->
+    def matrix = documents['docs/acceptance-matrix.md']
+    def rows = matrix.readLines().findAll { it.startsWith('| T-') }
+    def caseIds = (manifest.cases as List).collect { it.id } as Set
+    def profileIds = (manifest.profiles as List).collect { it.id } as Set
+    def covered = [] as Set
+    rows.each { row ->
+        def cells = row.split('\\|', -1)
+        if (cells.size() != 5 || cells[2].isBlank() || cells[3].isBlank()) {
+            throw new GradleException('Task 40 matrix coverage row is malformed')
+        }
+        def requirement = ~/T-([A-Z])(\d{2})(?:\.\.(\d{2}))?/
+        def rangeCount = 0
+        (cells[1] =~ requirement).each { match ->
+            rangeCount++
+            int start = match[2] as int
+            int end = match[3] ? match[3] as int : start
+            if (end < start) throw new GradleException('Task 40 matrix requirement range is reversed')
+            (start..end).each { number ->
+                def id = String.format('T-%s%02d', match[1], number)
+                if (!covered.add(id)) throw new GradleException("Task 40 duplicate requirement: ${id}")
+            }
+        }
+        if (rangeCount == 0) throw new GradleException('Task 40 matrix row lacks a requirement ID')
+        def selected = (cells[2] =~ /`([a-z][a-z0-9-]*(?:\.[a-z0-9.-]+)?)`/).collect { it[1] }
+        if (selected.isEmpty() && !cells[1].contains('T-V03..04')) {
+            throw new GradleException('Task 40 matrix row lacks registered scenarios')
+        }
+        selected.each { id ->
+            if (!(id in caseIds || id in profileIds)) {
+                throw new GradleException("Task 40 unregistered matrix ID: ${id}")
+            }
+        }
+    }
+    def designIds = (rootProject.file('DESIGN.md').text =~ /(T-[A-Z]\d{2})/).collect { it[1] } as Set
+    if (covered != designIds) throw new GradleException("Task 40 matrix DESIGN coverage mismatch: missing=${designIds - covered}, extra=${covered - designIds}")
+    def links = (matrix =~ /(?<!!)\[[^\]]+\]\(([^)#]+)(?:#[^)]*)?\)/).collect { it[1] }
+    if (links.isEmpty() || links.any { link ->
+        def target = new File(rootProject.file('docs'), link).canonicalFile
+        !target.toPath().startsWith(repositoryDir.asFile.canonicalFile.toPath()) || !target.exists()
+    }) throw new GradleException('Task 40 matrix evidence/document link is missing or outside the repository')
+    def scale = rows.find { it.startsWith('| T-S04..09 |') }
+    if (scale == null || !(scale =~ /(?i)direct.{0,60}3\/3/).find()
+            || !(scale =~ /(?i)subnet.{0,60}3\/3/).find()
+            || !(scale =~ /(?i)Federation.{0,100}27\/256.{0,80}0\/3/).find()
+            || !scale.contains('NON_COMPARABLE') || !scale.contains('Task 37')
+            || !(scale =~ /(?i)Task 38.{0,100}absent two-hour/).find()) {
+        throw new GradleException('Task 40 unsupported scale or soak claim')
+    }
+    def coverage = matrix.toLowerCase(java.util.Locale.ROOT)
+    if (!coverage.contains('exact d case mapping unverified')
+            || !coverage.contains('not applicable to this single-target prototype')
+            || !coverage.contains('no final-wave approval')
+            || !coverage.contains('provisional')) {
+        throw new GradleException('Task 40 unsupported requirement or final approval claim')
+    }
+    if (matrix.contains('F3 `final.native-workflow`') && matrix.contains('are **not registered**')) {
+        throw new GradleException('Task 40 matrix F3 registration claim is stale')
+    }
+    def readme = documents['README.md']
+    def benchmark = documents['docs/benchmarks/task-37.md']
+    def compatibility = documents['docs/compatibility/matrix.md']
+    def manual = documents['docs/testing/manual-client.md']
+    if (!readme.contains('3/3') || !readme.contains('27 jobs') || !readme.contains('two-hour soak is absent')
+            || !benchmark.contains('3/3') || !benchmark.contains('0/3') || !benchmark.contains('NON_COMPARABLE')
+            || !compatibility.contains('test-only fixtures') || !compatibility.contains('BLOCKED')
+            || !manual.contains('F3') || !manual.contains('not the automated')
+            || !readme.contains('Prototype visuals are provisional')) {
+        throw new GradleException('Task 40 unsupported documentation boundary claim')
+    }
+    def falseApproval = ~/(?i)\b(?:Task\s*40|F[1-4](?:-F4)?)\s+(?:gates?\s+)?(?:(?:has|have|is|are)\s+)?(?:passed|approved)\b/
+    if ([readme, matrix].any { (it =~ falseApproval).find() }) {
+        throw new GradleException('Task 40 documentation claims an unsupported current approval')
+    }
+    def commands = documents['docs/testing/commands.md']
+    def blocks = (commands =~ /(?s)```bash\s*(.*?)\s*```/).collect { it[1].replace('\\\n', ' ') }
+    if (blocks.isEmpty() || !blocks.any { it.contains('./gradlew') && it.contains(':neoforge-1.21.1:federationVerify') }
+            || !blocks.any { it.contains(':neoforge-1.21.1:federationVerifyEvidence') }
+            || !blocks.any { it.contains(':neoforge-1.21.1:check') && it.contains(':neoforge-1.21.1:build')
+                    && it.contains('--dependency-verification=strict') }
+            || !blocks.any { it.contains('-Pcases=docs.coverage,docs.commands,docs.reject-unsupported-claims,docs.reject-stale-evidence') }
+            || !commands.contains(':neoforge-1.21.1:runManualClient')
+            || tasks.findByName('runManualClient') == null) {
+        throw new GradleException('Task 40 reproducible verification commands are missing')
+    }
+    blocks.each { block ->
+        (block =~ /-Pcases=([a-z0-9.,-]+)/).each { match ->
+            match[1].split(',').each { id ->
+                if (!(id in caseIds)) throw new GradleException("Task 40 command selects unregistered case: ${id}")
+            }
+        }
+    }
+    [requirements: covered.size(), rows: rows.size(), links: links.size(), commandBlocks: blocks.size()]
+}
+def verifyTaskFortyDocuments = { File attempt, Map report, List<String> paths ->
+    if (report.requested != taskFortyCases) return
+    def documents = [:]
+    taskFortyDocuments.each { path ->
+        def name = "docs-source/${path}"
+        if (paths.count { it == name } != 1) throw new GradleException("Task 40 missing bound document: ${name}")
+        documents[path] = new File(attempt, name).getText(StandardCharsets.UTF_8.name())
+    }
+    def manifest = new JsonSlurper().parse(manifestFile.asFile) as Map
+    def facts = validateTaskFortyDocuments(documents, manifest)
+    if (report.docsFacts != facts || report.assertions.any {
+        it.assertionCount != 1 || it.status != 'passed' || it.outcome != 'DOCUMENTATION_VERIFIED'
+    }) throw new GradleException('Task 40 documentation assertion projection mismatch')
+    taskFortyDocuments.each { path ->
+        if (documents[path] != rootProject.file(path).getText(StandardCharsets.UTF_8.name())) {
+            throw new GradleException("Task 40 stale document source: ${path}")
+        }
+    }
+}
 verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     strictCanonicalPath(resultFile)
     if (!resultFile.isFile()) throw new GradleException("Result report does not exist: ${resultFile}")
@@ -5931,6 +6164,12 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 'benchmark.shutdown-timeout': ['task20-shutdown-timeout']]
         def expectedChildLabels = report.kind == 'benchmark' ? ['benchmark-gametest'] : []
         report.requested.each { expectedChildLabels.addAll(taskTwentyLifecycleLabels[it] ?: []) }
+        if (report.requested.any { it in taskThirtySevenPerfCases }) {
+            expectedChildLabels.add('task37-resource-preflight')
+            if (report.requested.contains('perf.reject-incomparable-speedup')) {
+                expectedChildLabels.add('task37-negative-fixture')
+            }
+        }
         def expectedExecutionTimeout = report.requested.contains('benchmark.execution-timeout')
                 ? ['task20-execution-timeout'] : []
         def expectedShutdownTimeout = report.requested.contains('benchmark.shutdown-timeout')
@@ -5939,10 +6178,14 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 'task20-accounting': benchmarkOuterTimeoutSeconds(processingLifecycle),
                 'task20-adversarial': benchmarkOuterTimeoutSeconds(processingLifecycle),
                 'task20-execution-timeout': 1L, 'task20-shutdown-timeout': 5L]
+        expectedExecutionDeadlines['task37-resource-preflight'] = 60L
+        expectedExecutionDeadlines['task37-negative-fixture'] = 60L
         def expectedShutdownGrace = ['task20-empty-work': processingLifecycle.shutdownGraceSeconds,
                 'task20-accounting': processingLifecycle.shutdownGraceSeconds,
                 'task20-adversarial': processingLifecycle.shutdownGraceSeconds,
                 'task20-execution-timeout': 1L, 'task20-shutdown-timeout': 1L]
+        expectedShutdownGrace['task37-resource-preflight'] = 10L
+        expectedShutdownGrace['task37-negative-fixture'] = 10L
         if (report.kind == 'benchmark') {
             expectedExecutionDeadlines['benchmark-gametest'] = selectedBenchmarkLifecycle.executionTimeoutSeconds
             expectedShutdownGrace['benchmark-gametest'] = selectedBenchmarkLifecycle.shutdownGraceSeconds
@@ -6005,6 +6248,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             throw new GradleException("Artifact is missing, outside the attempt, or hash-mismatched: ${artifact.path}")
         }
     }
+    verifyTaskFortyDocuments(attempt, report as Map, report.artifacts.collect { it.path as String })
+    verifyTaskThirtySevenPerfEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     verifyTaskFourEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
     verifyTaskFiveEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
@@ -6063,6 +6308,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
     verifyTaskThirtyFiveEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtySixEvidence(attempt, report.requested as List,
+            report.artifacts.collect { it.path as String }, report.childExits as Map)
+    verifyTaskThirtyNineEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
     verifyTaskThirtyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     verifyTaskThirtyFourBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
@@ -6345,6 +6592,80 @@ def taskSevenEvidenceProbeRejects = { File sourceResult, String name, String exp
     rejection instanceof String && rejection.contains(expectedMessage)
 }
 
+tasks.register('federationTaskFortyDocsSelfTest') {
+    group = 'verification'
+    description = 'Rebinds copied Task 40 reports and rejects unsupported, missing, and stale documentation evidence.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and mutates a real Task 40 attempt.')
+    doLast {
+        def selected = providers.gradleProperty('resultFile').orNull
+        if (selected == null || selected.isBlank()) throw new GradleException('Missing -PresultFile')
+        def source = strictCanonicalPath(rootProject.file(selected))
+        verifyPersistedReport(source, true)
+        def probes = [
+                unsupported: ['Task 40 unsupported scale or soak claim', { File attempt, Map report ->
+                    def matrix = new File(attempt, 'docs-source/docs/acceptance-matrix.md')
+                    matrix.text = matrix.text.replace('0/3', '3/3')
+                }],
+                unregistered: ['Task 40 unregistered matrix ID', { File attempt, Map report ->
+                    def matrix = new File(attempt, 'docs-source/docs/acceptance-matrix.md')
+                    matrix.text = matrix.text.replace('`processing.native-differential`', '`missing.unregistered-case`')
+                }],
+                missingEvidence: ['Task 40 matrix evidence/document link is missing', { File attempt, Map report ->
+                    def matrix = new File(attempt, 'docs-source/docs/acceptance-matrix.md')
+                    matrix.text = matrix.text.replace('../.omo/evidence/task-19/',
+                            '../.omo/evidence/nonexistent-task-40-fixture/')
+                }],
+                staleDocument: ['Task 40 stale document source', { File attempt, Map report ->
+                    new File(attempt, 'docs-source/README.md').append('\n')
+                }],
+                forgedProjection: ['Task 40 documentation assertion projection mismatch', { File attempt, Map report ->
+                    report.docsFacts.rows = 0
+                }]]
+        probes.each { name, entry ->
+            if (!taskSevenEvidenceProbeRejects(source, "task40-${name}", entry[0] as String, entry[1] as Closure)) {
+                throw new GradleException("Task 40 fully rebound ${name} probe was accepted or rejected for the wrong reason")
+            }
+        }
+        logger.lifecycle('Task 40 five fully rebound documentation probes rejected for intended reasons')
+    }
+}
+
+tasks.register('federationTaskFortyDocsNegativeContract') {
+    group = 'verification'
+    description = 'Exercises the real matrix parser against three deliberate test-only invalid document inputs.'
+    doLast {
+        def documents = taskFortyDocuments.collectEntries { path ->
+            [(path): rootProject.file(path).getText(StandardCharsets.UTF_8.name())]
+        }
+        def manifest = new JsonSlurper().parse(manifestFile.asFile) as Map
+        def cases = [
+                unsupported: ['Task 40 unsupported scale or soak claim',
+                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'].replace('0/3', '3/3')],
+                unregistered: ['Task 40 unregistered matrix ID',
+                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'].replace('`processing.native-differential`',
+                                '`missing.unregistered-case`')],
+                missingEvidence: ['Task 40 matrix evidence/document link is missing',
+                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'].replace('../.omo/evidence/task-19/',
+                                '../.omo/evidence/nonexistent-task-40-fixture/')],
+                falseDocsApproval: ['Task 40 documentation claims an unsupported current approval',
+                        'README.md', documents['README.md'] + '\nTask 40 has passed.\n'],
+                falseFinalApproval: ['Task 40 documentation claims an unsupported current approval',
+                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'] + '\nF1-F4 gates are approved.\n']]
+        cases.each { name, testCase ->
+            def selected = new LinkedHashMap(documents)
+            selected[testCase[1]] = testCase[2]
+            def rejection = null
+            try { validateTaskFortyDocuments(selected, manifest) }
+            catch (GradleException exception) { rejection = exception.message }
+            if (rejection == null || !rejection.contains(testCase[0] as String)) {
+                throw new GradleException("Task 40 ${name} test-only fixture rejected for wrong reason: ${rejection}")
+            }
+        }
+        logger.lifecycle('Task 40 five test-only invalid document inputs rejected at intended boundaries')
+    }
+}
+
 def taskNineteenFactProbeRejects = { File sourceResult, String name, String artifactId, String fact,
         String newValue, String expectedMessage ->
     taskSevenEvidenceProbeRejects(sourceResult, name, expectedMessage) { File attempt, Map report ->
@@ -6528,6 +6849,12 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     def childExits = [:]
     def childLifecycles = [:]
     def childArtifacts = sourceIdentity.files as List<File>
+    def taskThirtySevenBlocked = false
+    def taskThirtySevenDecision = null
+    def taskThirtySevenReasons = []
+    def finalGateBlocked = false
+    def finalGateReasons = []
+    def taskFortyFacts = null
 
     def gradleCommand = { String label, List<String> args, Map options ->
         def log = new File(attempt, "${label}.log")
@@ -6589,6 +6916,28 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'benchmark', testId: benchmarkProfile.testId,
                 structure: benchmarkProfile.structure, assertions: benchmarkProfile.assertions,
                 operations: benchmarkProfile.operations, allowZeroWork: profile == 'ui-small'])
+        if (profile in ['small-native-big-grid', 'small-native-subnet', 'small-federation']) {
+            def declaration = new File(attempt, 'small-tier-declaration.json')
+            declaration.bytes = rootProject.file('tests/benchmarks/scale/small.json').bytes
+            childArtifacts.add(declaration)
+            def windows = loadProperties(nativeEvidence)
+            def warmupNanos = parsePositiveInteger(windows.getProperty('warmupNanos'), 'small warmup nanos')
+            def sampleNanos = parsePositiveInteger(windows.getProperty('elapsedNanos'), 'small sample nanos')
+            def warmupTicks = parsePositiveInteger(windows.getProperty('warmupTicks'), 'small warmup ticks')
+            def sampleTicks = parsePositiveInteger(windows.getProperty('sampleTicks'), 'small sample ticks')
+            def warmupJobs = parsePositiveInteger(windows.getProperty('warmupJobs'), 'small warmup jobs')
+            def sampleJobs = parsePositiveInteger(windows.getProperty('sampleJobs'), 'small sample jobs')
+            def callbackUnits = parsePositiveInteger(windows.getProperty('callbackUnits'), 'small callback units')
+            def drainedDriveUnits = parseNonnegativeInteger(windows.getProperty('drainedDriveUnits'), 'small drained Drive units')
+            def finalDriveUnits = parsePositiveInteger(windows.getProperty('finalDriveUnits'), 'small final Drive units')
+            if (warmupNanos < 300_000_000_000L || sampleNanos < 600_000_000_000L
+                    || warmupJobs < 256 || sampleJobs < 256 || nativeResult.inserted != sampleJobs * 16L
+                    || warmupTicks < warmupJobs || sampleTicks < sampleJobs
+                    || callbackUnits != (warmupJobs + sampleJobs) * 16L
+                    || drainedDriveUnits + finalDriveUnits != callbackUnits) {
+                throw new GradleException('Small timed profile requires complete native work in both windows')
+            }
+        }
         childArtifacts.add(nativeEvidence)
         if (profile == 'mixed-small') {
             def runtimeEvidence = new File(attempt, 'benchmark-runtime.receipts')
@@ -6629,6 +6978,180 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         }
         assertions.add(assertion)
     } else {
+        if (requestedCases.any { it in taskFortyCases || it in finalClientCases
+                || finalAuditCases.any { suite -> it in suite } }) {
+            if (requestedCases != taskFortyCases && requestedCases != finalClientCases
+                    && !finalAuditCases.contains(requestedCases)) {
+                throw new GradleException('Documentation and final audits require an exact planned suite')
+            }
+            if (requestedCases == taskFortyCases) {
+                def documents = [:]
+                taskFortyDocuments.each { path ->
+                    def source = strictCanonicalPath(rootProject.file(path))
+                    if (!source.isFile()) throw new GradleException("Task 40 required document is missing: ${path}")
+                    def copy = new File(attempt, "docs-source/${path}")
+                    copy.parentFile.mkdirs()
+                    copy.bytes = source.bytes
+                    childArtifacts.add(copy)
+                    documents[path] = copy.getText(StandardCharsets.UTF_8.name())
+                }
+                def facts = validateTaskFortyDocuments(documents, manifest as Map)
+                def fixture = new LinkedHashMap(documents)
+                fixture['docs/acceptance-matrix.md'] = documents['docs/acceptance-matrix.md']
+                        .replace('0/3', '3/3')
+                def unsupported = false
+                try { validateTaskFortyDocuments(fixture, manifest as Map) }
+                catch (GradleException exception) { unsupported = exception.message.contains('unsupported scale or soak claim') }
+                if (!unsupported) throw new GradleException('Task 40 deliberate unsupported-scale matrix was accepted')
+                fixture['docs/acceptance-matrix.md'] = documents['docs/acceptance-matrix.md']
+                        .replace('`processing.native-differential`', '`missing.unregistered-case`')
+                def missingCase = false
+                try { validateTaskFortyDocuments(fixture, manifest as Map) }
+                catch (GradleException exception) { missingCase = exception.message.contains('unregistered matrix ID') }
+                if (!missingCase) throw new GradleException('Task 40 deliberate missing-case matrix was accepted')
+                def stale = reportVerifierRejects(attempt, 'stale-source') { report, artifact ->
+                    report.sourceRevision = 'stale-source-identity'
+                }
+                def missing = reportVerifierRejects(attempt, 'missing') { report, artifact -> artifact.delete() }
+                if (!stale?.contains('Result source, dependency, or product identity is stale')
+                        || !missing?.contains('Artifact is missing')) {
+                    throw new GradleException('Documentation stale/missing evidence probes did not reject at the intended boundary')
+                }
+                def negativeReceipt = new File(attempt, 'qa-negative-rejections.json')
+                negativeReceipt.text = JsonOutput.toJson([staleSource: stale, missingArtifact: missing,
+                        unsupportedMatrix: 'rejected', unregisteredCase: 'rejected']) + '\n'
+                childArtifacts.add(negativeReceipt)
+                requestedCases.each { caseId ->
+                    executed.add(caseId)
+                    assertions.add([caseId: caseId, status: 'passed', assertionCount: 1,
+                            outcome: 'DOCUMENTATION_VERIFIED'])
+                }
+                taskFortyFacts = facts
+            } else {
+                def plan = rootProject.file('.omo/plans/ae2-federation-v04.md').text
+                def incomplete = ['37', '38', '40'].findAll { number ->
+                    !(plan =~ /(?m)^\s*- \[x\] ${number}\./).find()
+                }
+                finalGateReasons = incomplete.collect { "Task ${it} is not complete" }
+                finalGateReasons.add(requestedCases == finalClientCases
+                        ? 'Actual LDLib2 final client workflow and benchmark spot-check have not run'
+                        : 'Independent requirement/code/scope review is not approved')
+                finalGateBlocked = true
+                requestedCases.each { caseId ->
+                    executed.add(caseId)
+                    assertions.add([caseId: caseId, status: 'blocked', assertionCount: 1, outcome: 'BLOCKED'])
+                }
+            }
+        }
+        if (requestedCases.any { it in taskThirtySevenPerfCases }) {
+            if (!requestedCases.every { it in taskThirtySevenPerfCases }) {
+                throw new GradleException('Task 37 perf cases cannot be combined with unrelated cases')
+            }
+            def selectedInputs = [:]
+            taskThirtySevenInputs.each { layout, propertyPrefix ->
+                def path = providers.gradleProperty("${propertyPrefix}Log").orNull
+                if (layout == 'observations') path = providers.gradleProperty(propertyPrefix).orNull
+                def expectedHash = providers.gradleProperty("${propertyPrefix}Sha256").orNull
+                if (layout == 'observations' && path == null && expectedHash == null) {
+                    selectedInputs[layout] = null
+                } else {
+                    if (path == null || path.isBlank() || !(expectedHash ==~ /[0-9a-f]{64}/)) {
+                        throw new GradleException("Task 37 ${layout} requires an explicit path and SHA-256")
+                    }
+                    def source = strictCanonicalPath(rootProject.file(path))
+                    if (!source.isFile() || sha256(source.bytes) != expectedHash) {
+                        throw new GradleException("Task 37 ${layout} selected input is missing or hash-mismatched: ${source}")
+                    }
+                    def artifact = layout == 'observations' ? 'resource-observations.json' : "resource-${layout}.log"
+                    def copy = new File(attempt, artifact)
+                    Files.copy(source.toPath(), copy.toPath())
+                    if (sha256(copy.bytes) != expectedHash) {
+                        throw new GradleException("Task 37 ${layout} changed while copying selected input")
+                    }
+                    selectedInputs[layout] = [sourcePath: source.canonicalPath, sha256: expectedHash, artifact: artifact]
+                    childArtifacts.add(copy)
+                }
+            }
+            def selection = new File(attempt, 'task37-selected-inputs.json')
+            selection.text = JsonOutput.prettyPrint(JsonOutput.toJson(selectedInputs)) + '\n'
+            childArtifacts.add(selection)
+            def preflight = new File(attempt, 'task37-preflight.json')
+            def outcome = runProcessLifecycle(taskThirtySevenPreflightCommand(attempt, selectedInputs),
+                    repositoryDir.asFile, preflight, 60L, 10L)
+            childExits['task37-resource-preflight'] = outcome.exit
+            childLifecycles['task37-resource-preflight'] = [executionTimedOut: outcome.executionTimedOut,
+                    shutdownTimedOut: outcome.shutdownTimedOut, mainExit: outcome.mainExit,
+                    survivingDescendants: outcome.survivingDescendants,
+                    executionTimeoutSeconds: outcome.executionTimeoutSeconds,
+                    shutdownGraceSeconds: outcome.shutdownGraceSeconds]
+            childArtifacts.add(preflight)
+            def verdict = new JsonSlurper().parse(preflight) as Map
+            taskThirtySevenDecision = verdict.decision
+            taskThirtySevenReasons = verdict.reasons instanceof List ? verdict.reasons : []
+            if (!(verdict.decision in ['COMPARABLE', 'NON_COMPARABLE'])
+                    || verdict.speedupEligible != (outcome.exit == 0)
+                    || (outcome.exit != 0 && outcome.exit != 1)
+                    || verdict.ledgers?.any { layout, ledger ->
+                        ledger.receipt.sha256 != selectedInputs[layout]?.sha256
+                    }
+                    || verdict.tierDeclarationNotMeasurement?.sha256 !=
+                            sha256(rootProject.file('tests/benchmarks/scale/small.json').bytes)) {
+                throw new GradleException('Task 37 validator output or selected transcript binding is invalid')
+            }
+            if (requestedCases.contains('perf.reject-incomparable-speedup')) {
+                def fixtureLog = new File(attempt, 'task37-negative-fixture.log')
+                def fixture = runProcessLifecycle(['python3', '-B', '-m', 'unittest', '-v',
+                        'tests.test_task37_resource_preflight.ResourcePreflightTest.test_reject_incomparable_speedup_when_deliberately_mismatched_test_only_fixture'],
+                        repositoryDir.asFile, fixtureLog, 60L, 10L)
+                childExits['task37-negative-fixture'] = fixture.exit
+                childLifecycles['task37-negative-fixture'] = [executionTimedOut: fixture.executionTimedOut,
+                        shutdownTimedOut: fixture.shutdownTimedOut, mainExit: fixture.mainExit,
+                        survivingDescendants: fixture.survivingDescendants,
+                        executionTimeoutSeconds: fixture.executionTimeoutSeconds,
+                        shutdownGraceSeconds: fixture.shutdownGraceSeconds]
+                childArtifacts.add(fixtureLog)
+                if (fixture.exit != 0 || !fixtureLog.text.contains('Ran 1 test') || !fixtureLog.text.contains('OK')) {
+                    throw new GradleException('Task 37 deliberately incomparable test-only fixture failed')
+                }
+            }
+            taskThirtySevenBlocked = verdict.decision != 'COMPARABLE'
+            requestedCases.each { caseId ->
+                executed.add(caseId)
+                assertions.add([caseId: caseId, status: taskThirtySevenBlocked ? 'blocked' : 'passed',
+                        assertionCount: 1, resourceDecision: verdict.decision])
+            }
+        }
+        if (requestedCases == taskThirtyNineCases) {
+            def approvedEula = providers.gradleProperty('federationApprovedEulaFile').orNull
+            if (approvedEula == null || approvedEula.isBlank()) {
+                throw new GradleException('Task 39 BLOCKED: supply a user-approved EULA file with -PfederationApprovedEulaFile')
+            }
+            def script = rootProject.file('tools/artifact_verify.py').absolutePath
+            def commands = [
+                    'artifact-clean': ['python3', '-B', script, 'clean-build', '--report', new File(attempt, 'clean-build.json').absolutePath],
+                    'artifact-runtime': ['python3', '-B', script, 'runtime', '--report', new File(attempt, 'runtime.json').absolutePath,
+                            '--approved-eula-file', rootProject.file(approvedEula).absolutePath],
+                    'artifact-negatives': ['python3', '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_artifact_verify.py', '-v']]
+            commands.each { label, command ->
+                def log = new File(attempt, "${label}.log")
+                def timeout = label == 'artifact-clean' ? 1200L : label == 'artifact-runtime' ? 600L : 60L
+                def result = runProcessLifecycle(command, repositoryDir.asFile, log, timeout, 20L)
+                childExits[label] = result.exit
+                childLifecycles[label] = [executionTimedOut: result.executionTimedOut,
+                        shutdownTimedOut: result.shutdownTimedOut, mainExit: result.mainExit,
+                        survivingDescendants: result.survivingDescendants,
+                        executionTimeoutSeconds: result.executionTimeoutSeconds,
+                        shutdownGraceSeconds: result.shutdownGraceSeconds]
+                childArtifacts.add(log)
+                if (result.exit != 0) throw new GradleException("Task 39 ${label} failed: ${log}; lifecycle=${childLifecycles[label]}")
+            }
+            ['clean-build.json', 'clean-build.log', 'runtime.json', 'artifact-server.log',
+                    'artifact-client.log', 'artifact-installed-server.jar', 'artifact-installed-client.jar'].each {
+                childArtifacts.add(new File(attempt, it))
+            }
+            verifyTaskThirtyNineEvidence(attempt, requestedCases,
+                    childArtifacts.collect { attempt.toPath().relativize(it.toPath()).toString() }, childExits)
+        }
         if (requestedCases == taskThirtyFiveCases) {
             def releaseEvidence = new File(attempt, 'release-runtime.properties')
             def release = gradleCommand('release-server', [':neoforge-1.21.1:federationReleaseServerSmoke',
@@ -6816,6 +7339,14 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         requestedCases.each { caseId ->
             def testCase = knownCases[caseId] as Map
             switch (caseId) {
+                case 'artifact.clean-build':
+                case 'artifact.same-jar-client-server':
+                case 'artifact.license-manifest':
+                case 'artifact.reject-wrong-tuple':
+                case 'artifact.no-extra-target':
+                    executed.add(caseId)
+                    assertions.add([caseId: caseId, status: 'passed', assertionCount: testCase.assertions as int])
+                    break
                 case 'release.server-side-load':
                 case 'release.no-test-content':
                 case 'release.optional-absent':
@@ -7272,7 +7803,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         throw new GradleException("Executed set mismatch or zero assertions: requested=${requestedCases ?: profile}, executed=${executed}")
     }
     def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
-    cleanupReceipt.text = kind == 'benchmark' && profile == 'processing-small'
+    cleanupReceipt.text = requestedCases.any { it in taskThirtySevenPerfCases }
+            ? 'Task 37: persisted process transcripts were inspected offline; no GameTest runtime was launched.\n'
+            : kind == 'benchmark' && profile == 'processing-small'
             ? 'Task 20: generated native and Federation scenes completed serially; runtime data and session.lock were removed.\n'
             : kind == 'benchmark' && profile == 'mixed-small'
             ? 'Task 30: native mixed factory completed; runtime data and session.lock were removed.\n'
@@ -7336,8 +7869,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskThirtySixEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
     def taskTenBlocked = kind == 'verify' && requestedCases == taskTenCases
-    def reportBlocked = taskTenBlocked
-    def reportStatus = taskTenBlocked ? 'BLOCKED' : 'complete'
+    def reportBlocked = taskTenBlocked || taskThirtySevenBlocked || finalGateBlocked
+    def reportStatus = reportBlocked ? 'BLOCKED' : 'complete'
     def report = [schemaVersion: 3, status: reportStatus, runId: runId, kind: kind,
             evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
             pathIdentitySha256: sha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
@@ -7348,6 +7881,12 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             parentExit: reportBlocked ? 1 : 0, childExits: childExits,
             childLifecycles: childLifecycles, artifacts: artifacts]
     if (kind == 'benchmark') report.profileLifecycle = assertions[0].lifecycle
+    if (requestedCases.any { it in taskThirtySevenPerfCases }) {
+        report.resourceDecision = taskThirtySevenDecision
+        report.reason = taskThirtySevenReasons
+    }
+    if (finalGateBlocked) report.reason = finalGateReasons
+    if (requestedCases == taskFortyCases) report.docsFacts = taskFortyFacts
     if (kind == 'benchmark' && profile == 'processing-small') report.profile = assertions[0].profile
     if (kind == 'benchmark' && profile == 'ui-small') report.profile = assertions[0].profile
     verifyTaskTwentyBenchmarkEvidence(attempt, report, artifacts.collect { it.path as String })
@@ -7361,6 +7900,13 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     }
     def resultFile = new File(attempt, 'result.json')
     resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    if (finalGateBlocked) {
+        throw new GradleException("Documentation/final audit BLOCKED: ${finalGateReasons}; result=${resultFile}")
+    }
+    if (taskThirtySevenBlocked) {
+        logger.lifecycle("Task 37 NON_COMPARABLE evidence: ${attempt}")
+        throw new GradleException("Task 37 NON_COMPARABLE: ${taskThirtySevenReasons}; result=${resultFile}")
+    }
     if (taskTenBlocked) {
         logger.lifecycle("Federation verify evidence BLOCKED: ${attempt}")
         throw new GradleException("Task 10 BLOCKED: ${report.missingHooks.first()}; result=${resultFile}")
@@ -7441,7 +7987,14 @@ tasks.register('federationBenchmark') {
         def evidence = evidenceDirProperty.orNull
         if (profile == null || profile.isBlank()) throw new GradleException('Missing -Pprofile')
         if (evidence == null || evidence.isBlank()) throw new GradleException('Missing -PevidenceDir')
-        executeHarness('benchmark', [], profile, rootProject.file(evidence))
+        def selected = profile.split(',', -1).collect { it.trim() }
+        if (selected.any { it.isEmpty() } || selected.size() != selected.toSet().size()) {
+            throw new GradleException('Benchmark profiles must be nonempty and distinct')
+        }
+        def registered = (new JsonSlurper().parse(manifestFile.asFile).profiles as List).collect { it.id }
+        def unknown = selected.findAll { !(it in registered) }
+        if (!unknown.isEmpty()) throw new GradleException("Unknown benchmark profiles: ${unknown}")
+        selected.each { executeHarness('benchmark', [], it, rootProject.file(evidence)) }
     }
 }
 

@@ -97,6 +97,15 @@ public final class MixedFactoryObservation {
                 List.copyOf(state().stockingReceipts), List.copyOf(processing), automation);
     }
 
+    public static synchronized List<HandlerReceipt> machineTransitions() {
+        return List.copyOf(state().handlerReceipts);
+    }
+
+    public static synchronized void clearCompletedReplay() {
+        state().acceptedReceipts.clear();
+        state().handlerReceipts.clear();
+    }
+
     public static synchronized void close() {
         active = null;
     }

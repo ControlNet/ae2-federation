@@ -4,6 +4,7 @@ build/
 **/run-server/
 **/run-gametest/
 **/run-uitest/
+**/run-manual-client/
 .omo/evidence/
 .omo/boulder.json
 .omo/drafts/

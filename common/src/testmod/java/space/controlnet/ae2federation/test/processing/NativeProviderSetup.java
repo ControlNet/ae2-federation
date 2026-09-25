@@ -5,6 +5,9 @@ import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
 import appeng.api.networking.energy.IAEPowerStorage;
 import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
+import appeng.blockentity.crafting.PatternProviderBlockEntity;
+import appeng.block.crafting.PatternProviderBlock;
+import appeng.block.crafting.PushDirection;
 import appeng.core.definitions.AEBlocks;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -28,15 +31,23 @@ final class NativeProviderSetup {
     }
 
     static State create(GameTestHelper helper, NativeProviderLaneFixtures owner, List<IntPredicate> assignments,
-            boolean isolatedPower, int patternSlots, NetworkId networkId) {
-        helper.setBlock(NativeProviderLaneFixtures.HOST_POS, Blocks.CHEST);
-        helper.setBlock(NativeProviderLaneFixtures.TARGET_POS, Blocks.CHEST);
+            boolean isolatedPower, int patternSlots, NetworkId networkId, List<Direction> targets,
+            BlockPos hostPosition) {
+        boolean remoteHost = !hostPosition.equals(NativeProviderLaneFixtures.HOST_POS);
+        helper.setBlock(hostPosition, remoteHost ? AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
+                .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.EAST) : Blocks.CHEST.defaultBlockState());
+        if (!remoteHost) helper.setBlock(NativeProviderLaneFixtures.TARGET_POS, Blocks.CHEST);
         var energyPosition = isolatedPower ? ISOLATED_ENERGY_POS : ENERGY_POS;
-        if (isolatedPower) {
+        if (isolatedPower && !remoteHost) {
             helper.setBlock(ENERGY_POS, Blocks.AIR);
         }
-        helper.setBlock(energyPosition, AEBlocks.CREATIVE_ENERGY_CELL.block());
-        var node = GridHelper.createManagedNode(owner, LISTENER)
+        if (!remoteHost) helper.setBlock(energyPosition, AEBlocks.CREATIVE_ENERGY_CELL.block());
+        if (networkId != null && !isolatedPower && !remoteHost) {
+            helper.<CreativeEnergyCellBlockEntity>getBlockEntity(energyPosition).getMainNode()
+                    .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
+        }
+        var node = remoteHost ? helper.<PatternProviderBlockEntity>getBlockEntity(hostPosition).getMainNode()
+                : GridHelper.createManagedNode(owner, LISTENER)
                 .setTagName("provider")
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0)
@@ -44,13 +55,13 @@ final class NativeProviderSetup {
         if (networkId != null) {
             node.loadFromNBT(NetworkIdentityNodeSeed.managedNode("provider", networkId));
         }
-        if (isolatedPower) {
+        if (isolatedPower && !remoteHost) {
             node.addService(IAEPowerStorage.class,
                     helper.<CreativeEnergyCellBlockEntity>getBlockEntity(energyPosition));
         }
         var mutableHosts = new ArrayList<NativeProviderLaneHost>(assignments.size());
         for (int index = 0; index < assignments.size(); index++) {
-            mutableHosts.add(new NativeProviderLaneHost(helper, NativeProviderLaneFixtures.HOST_POS));
+            mutableHosts.add(new NativeProviderLaneHost(helper, hostPosition, targets.get(index)));
         }
         var hosts = List.copyOf(mutableHosts);
         var composition = new MappedPatternProvider(node, owner, hosts, patternSlots);
@@ -66,8 +77,9 @@ final class NativeProviderSetup {
             }
             composition.replaceMapping(composition.mappingHandle(slot), assignedLanes);
         }
-        node.create(helper.getLevel(), helper.absolutePos(NativeProviderLaneFixtures.HOST_POS));
-        return new State(node, composition, hosts, energyPosition, !isolatedPower);
+        if (!remoteHost) node.create(helper.getLevel(), helper.absolutePos(hostPosition));
+        return new State(node, composition, hosts, remoteHost ? null : energyPosition,
+                !isolatedPower && !remoteHost);
     }
 
     record State(IManagedGridNode node, MappedPatternProvider composition, List<NativeProviderLaneHost> hosts,

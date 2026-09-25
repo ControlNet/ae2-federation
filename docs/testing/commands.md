@@ -1,5 +1,7 @@
 # Test Commands
 
+For a human-operated client session on a graphical Java 21 desktop, run `./gradlew :neoforge-1.21.1:runManualClient --dependency-verification=strict --no-configuration-cache` from the repository root, then use the [manual real-client walkthrough](manual-client.md). Its world persists in ignored `neoforge-1.21.1/run-manual-client/`; no automated cleanup or F3 approval is implied. See the [acceptance matrix](../acceptance-matrix.md) for registered cases versus missing Task 37/38 and final gates.
+
 Run all commands from the repository root. The GameTest server loads the production mod and the dev-only
 `ae2federation_test` mod, enables only the `ae2federation_test` GameTest namespace, and uses a disposable flat world
 under `neoforge-1.21.1/run-gametest`.
@@ -26,6 +28,25 @@ The bounded fixture places an AE2 creative energy cell and ME chest, waits for t
 modulates a real ME storage insert and extraction.
 
 ## Evidence verification
+
+Task 40 documentation QA selects exactly four registered IDs. Run this from the repository root against the current
+documentation, not a historical BLOCKED receipt:
+
+```bash
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=docs.coverage,docs.commands,docs.reject-unsupported-claims,docs.reject-stale-evidence -PevidenceDir=.omo/evidence/task-40 --dependency-verification=strict --no-configuration-cache
+```
+
+Only after this actual attempt succeeds, consume its freshly written `result.json` using the real attempt directory
+printed by the command (replace `<run-id>` with that attempt's run ID):
+
+```bash
+./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile=.omo/evidence/task-40/attempt-<run-id>/result.json -PevidenceDir=.omo/evidence/task-40 --dependency-verification=strict --no-configuration-cache
+```
+
+The earlier [Task 40 QA receipt](../../.omo/evidence/task-40-qa/verification.md) is historical and BLOCKED, not a
+passing docs result or F1-F4 approval. F3's five `final.*` IDs have a BLOCKED backend; `federationUiTest` rejects them
+before client launch. Registration supplies no final-client screenshots or benchmark spot-check. Task 37 still has
+direct/subnet small 3/3 each and Federation 0/3, Task 38's soak is absent, and F1-F4 remain unapproved.
 
 ```bash
 ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:federationVerify \

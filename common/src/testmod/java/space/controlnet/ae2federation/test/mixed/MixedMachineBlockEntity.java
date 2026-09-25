@@ -22,6 +22,7 @@ public final class MixedMachineBlockEntity extends BlockEntity {
     private final List<ConfiguredRecipe> recipes = new ArrayList<>();
     private final Map<Object, IItemHandler> returnHandlers = new IdentityHashMap<>();
     private boolean blockedReleased;
+    private boolean singleItemProcessing;
 
     public MixedMachineBlockEntity(BlockPos position, BlockState state) {
         super(MixedMachineRegistration.BLOCK_ENTITY.get(), position, state);
@@ -59,8 +60,16 @@ public final class MixedMachineBlockEntity extends BlockEntity {
         }
     }
 
+    public int recipeCount() {
+        return recipes.size();
+    }
+
     public void releaseBlockedRecipes() {
         blockedReleased = true;
+    }
+
+    public void processSingleItemPerTick() {
+        singleItemProcessing = true;
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, MixedMachineBlockEntity machine) {
@@ -78,7 +87,7 @@ public final class MixedMachineBlockEntity extends BlockEntity {
             if (configured == null) {
                 continue;
             }
-            var amount = input.getCount();
+            var amount = singleItemProcessing ? 1 : input.getCount();
             var consumed = inputs.extractItem(slot, amount, false);
             var produced = new ItemStack(configured.recipe.output(), consumed.getCount());
             var outputSlot = firstOutputSlot(produced);
