@@ -308,7 +308,8 @@ public final class ScaleLargeFederation256Replay {
                             "Unselected Federation machine must not receive selected input: " + other);
                 }
                 var machine = machines.get(hostIndex());
-                if (localSlot() == 0) configureMachine(machine, owner.inventory(), handler);
+                // Machines are configured once; later 256-job cycles reuse the same recipe table.
+                if (localSlot() == 0 && machine.recipeCount() == 0) configureMachine(machine, owner.inventory(), handler);
                 helper.assertTrue(machine.inputHandler().isItemValid(0, new ItemStack(selection.input().getItem()))
                                 && machine.recipeCount() == SLOTS_PER_HOST,
                         "Selected physical machine must accept this typed input before Export Bus activation");
