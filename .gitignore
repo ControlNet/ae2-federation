@@ -10,6 +10,9 @@ build/
 .omo/drafts/
 .omo/run-continuation/
 .omo/start-work/
+.omo/ulw-execute/
+__pycache__/
+*.pyc
 .project
 .settings/
 **/.project
