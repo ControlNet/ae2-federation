@@ -7,8 +7,8 @@ import appeng.api.networking.IGridServiceProvider;
 import appeng.me.GridNode;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
-import java.util.HashSet;
 import net.minecraft.nbt.CompoundTag;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,6 +19,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     private final IGrid grid;
     private final NetworkId newGridId = NetworkId.create();
     private final Map<IGridNode, NodeLineage> nodes = new IdentityHashMap<>();
+    private final Map<NodeLineage, Integer> lineageCounts = new HashMap<>();
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
     private @Nullable NetworkIdentityRegistry registry;
 
@@ -34,18 +35,26 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             lineage = new NodeLineage(existingId, UUID.randomUUID(), 1);
             ((GridNode) gridNode).callListener(IGridNodeListener::onSaveChanges);
         }
-        nodes.put(gridNode, lineage);
-        refresh(gridNode);
+        var previous = nodes.put(gridNode, lineage);
+        registry = NetworkIdentityRegistry.get(gridNode.getLevel());
+        if (previous != null) {
+            release(previous);
+        }
+        if (lineageCounts.merge(lineage, 1, Integer::sum) == 1) {
+            registry.add(grid, lineage);
+        }
     }
 
     @Override
     public void removeNode(IGridNode gridNode) {
-        nodes.remove(gridNode);
+        var lineage = nodes.remove(gridNode);
+        registry = NetworkIdentityRegistry.get(gridNode.getLevel());
         if (nodes.isEmpty()) {
-            NetworkIdentityRegistry.get(gridNode.getLevel()).release(grid);
+            lineageCounts.clear();
+            registry.release(grid);
             settlement = IdentityReconciler.reconcile(nodes.values(), false, false, true);
-        } else {
-            refresh(gridNode);
+        } else if (lineage != null) {
+            release(lineage);
         }
     }
 
@@ -66,7 +75,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     @Override
     public IdentitySettlement settlement() {
         if (registry != null && !nodes.isEmpty()) {
-            settlement = registry.settle(grid, new HashSet<>(nodes.values()));
+            settlement = registry.settle(grid);
         }
         return settlement;
     }
@@ -89,10 +98,10 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         return new NodeLineage(new NetworkId(data.getUUID("network")), data.getUUID("node"), data.getLong("revision"));
     }
 
-    private void refresh(IGridNode node) {
-        registry = NetworkIdentityRegistry.get(node.getLevel());
-        var lineages = new HashSet<>(nodes.values());
-        registry.observe(grid, lineages);
-        settlement = registry.settle(grid, lineages);
+    private void release(NodeLineage lineage) {
+        if (lineageCounts.merge(lineage, -1, Integer::sum) == 0) {
+            lineageCounts.remove(lineage);
+            registry.remove(grid, lineage);
+        }
     }
 }

@@ -14,7 +14,6 @@ import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
-import java.lang.reflect.Field;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,16 +45,6 @@ import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures
 public final class ScaleFederationIdentityTarget implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScaleFederationIdentityTarget.class);
     private static final BlockPos ENDPOINT = NativeProviderLaneFixtures.TARGET_POS.east();
-    private static final Field LIVE_CLAIMS;
-
-    static {
-        try {
-            LIVE_CLAIMS = NetworkIdentityRegistry.class.getDeclaredField("liveClaims");
-            LIVE_CLAIMS.setAccessible(true);
-        } catch (ReflectiveOperationException exception) {
-            throw new ExceptionInInitializerError(exception);
-        }
-    }
 
     private final GameTestHelper helper;
     private final boolean batch16;
@@ -250,13 +239,8 @@ public final class ScaleFederationIdentityTarget implements AutoCloseable {
         return Integer.toUnsignedString(System.identityHashCode(grid));
     }
 
-    @SuppressWarnings("unchecked")
     private Map<IGrid, Set<NodeLineage>> claims() {
-        try {
-            return (Map<IGrid, Set<NodeLineage>>) LIVE_CLAIMS.get(NetworkIdentityRegistry.get(helper.getLevel()));
-        } catch (IllegalAccessException exception) {
-            throw new IllegalStateException("Cannot inspect live native identity claims", exception);
-        }
+        return NetworkIdentityRegistry.get(helper.getLevel()).liveClaims();
     }
 
     private MEChestBlockEntity anchor() {

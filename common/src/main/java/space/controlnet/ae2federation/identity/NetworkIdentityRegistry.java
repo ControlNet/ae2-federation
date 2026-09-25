@@ -2,10 +2,8 @@ package space.controlnet.ae2federation.identity;
 
 import appeng.api.networking.IGrid;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -13,41 +11,50 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
+/**
+ * Level-wide identity registry. Live claims are held in an {@link IdentityClaimIndex}, updated incrementally by each
+ * Grid's identity service as nodes join and leave. Only the settled status per network is persisted, and the data is
+ * marked dirty only when that status changes.
+ */
 public final class NetworkIdentityRegistry extends SavedData {
     private static final String DATA_NAME = "ae2federation_network_identities";
     private static final Factory<NetworkIdentityRegistry> FACTORY =
             new Factory<>(NetworkIdentityRegistry::new, NetworkIdentityRegistry::load);
 
     private final Map<NetworkId, IdentityStatus> settlements = new HashMap<>();
-    private final Map<IGrid, Set<NodeLineage>> liveClaims = new IdentityHashMap<>();
+    private final IdentityClaimIndex<IGrid> claims = new IdentityClaimIndex<>();
 
     public static NetworkIdentityRegistry get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
     }
 
-    public void observe(IGrid grid, Set<NodeLineage> lineages) {
-        liveClaims.put(grid, Set.copyOf(lineages));
+    public void add(IGrid grid, NodeLineage lineage) {
+        claims.add(grid, lineage);
+    }
+
+    public void remove(IGrid grid, NodeLineage lineage) {
+        claims.remove(grid, lineage);
     }
 
     public void release(IGrid grid) {
-        liveClaims.remove(grid);
+        claims.release(grid);
     }
 
-    public IdentitySettlement settle(IGrid grid, Set<NodeLineage> lineages) {
-        var copied = liveClaims.entrySet().stream()
-                .filter(entry -> entry.getKey() != grid)
-                .flatMap(entry -> entry.getValue().stream())
-                .anyMatch(other -> lineages.stream().anyMatch(current -> current.nodeId().equals(other.nodeId())));
-        var split = liveClaims.entrySet().stream()
-                .filter(entry -> entry.getKey() != grid)
-                .flatMap(entry -> entry.getValue().stream())
-                .anyMatch(other -> lineages.stream().anyMatch(current -> current.networkId().equals(other.networkId())));
-        var result = IdentityReconciler.reconcile(lineages, copied, split, true);
-        result.networkId().ifPresent(networkId -> settlements.put(networkId, result.status()));
-        if (result.networkId().isPresent()) {
-            setDirty();
-        }
-        return result;
+    public IdentitySettlement settle(IGrid grid) {
+        return claims.settle(grid, result -> result.networkId().ifPresent(networkId -> {
+            if (settlements.put(networkId, result.status()) != result.status()) {
+                setDirty();
+            }
+        }));
+    }
+
+    /** Read-only view of each live Grid's published lineages, for diagnostics. */
+    public Map<IGrid, Set<NodeLineage>> liveClaims() {
+        return claims.liveClaims();
+    }
+
+    public IdentityClaimIndex<IGrid> claimIndex() {
+        return claims;
     }
 
     @Override
