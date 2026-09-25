@@ -7546,6 +7546,10 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'provider.production-three-way':
                 case 'provider.production-revocation':
                 case 'provider.production-lifecycle':
+                case 'provider.production-unmap-retains-locked':
+                case 'provider.production-unmap-retains-unlocked':
+                case 'provider.production-endpoint-reload-returns':
+                case 'provider.production-return-rebind-authorization':
                 case 'identity.stable-query-cost':
                 case 'migration.legacy-save-import':
                 case 'storage.source-index-scale':

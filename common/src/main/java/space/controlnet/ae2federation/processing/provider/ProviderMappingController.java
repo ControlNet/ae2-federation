@@ -19,4 +19,17 @@ public interface ProviderMappingController {
     Set<EndpointIdentity> endpointsForSlot(int slot);
 
     Optional<EndpointIdentity> laneEndpoint(int laneIndex);
+
+    /**
+     * True when {@code endpoint} has no mapped Pattern left but its Claim and return path are retained, because native
+     * work already sent to the machine may still return to its Lane.
+     */
+    boolean retained(EndpointIdentity endpoint);
+
+    /**
+     * Explicitly releases a retained Endpoint: the Claim is released and the return path of its Lane is closed, so
+     * products of work still inside the machine no longer return to this Provider and the native crafting job waiting
+     * for them does not complete until it is cancelled. Returns {@code released-<lane>} or {@code rejected-<reason>}.
+     */
+    String releaseEndpoint(EndpointIdentity endpoint);
 }

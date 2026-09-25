@@ -64,6 +64,9 @@ public final class NativeProviderLane extends PatternProviderLogic {
         if (pushed) {
             ProviderObservationRegistry.recordSend(this, inputHolder, before,
                     java.util.List.copyOf(access.ae2federation$getSendList()));
+            if (laneHost instanceof NativeLaneDispatchListener listener) {
+                listener.onLaneDispatched();
+            }
         }
         return pushed;
     }

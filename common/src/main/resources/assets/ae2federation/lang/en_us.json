@@ -50,5 +50,8 @@
   "block.ae2federation.pattern_provider": "ME Federation Pattern Provider",
   "ae2federation.ui.domain.mapping.selection_endpoint": "Pattern slot %s / Endpoint %s (%s)",
   "ae2federation.ui.domain.mapping.mapped": "mapped",
-  "ae2federation.ui.domain.mapping.unmapped": "not mapped"
+  "ae2federation.ui.domain.mapping.unmapped": "not mapped",
+  "ae2federation.ui.domain.mapping.retained": "retained, work may still return",
+  "ae2federation.ui.domain.mapping.release": "Release retained",
+  "ae2federation.ui.domain.mapping.confirm_release": "Press again to release. Products still inside the machine will no longer return to this Provider; cancel the crafting job waiting for them."
 }

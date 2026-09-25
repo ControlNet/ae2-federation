@@ -83,6 +83,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 .setOnClick(event -> send(FederationDomainPolicyAction.NEXT_MAPPING_LANE));
         element(ui, "mapping_toggle", Button.class)
                 .setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_MAPPING));
+        element(ui, "mapping_release", Button.class)
+                .setOnClick(event -> send(FederationDomainPolicyAction.RELEASE_ENDPOINT));
         element(ui, "endpoint_next", Button.class)
                 .setOnClick(event -> send(FederationDomainPolicyAction.NEXT_ENDPOINT));
 
@@ -165,6 +167,9 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             session.rejectStaleRevision();
             return FederationDomainPolicyActionResult.STALE_REVISION;
         }
+        if (request.action() != FederationDomainPolicyAction.RELEASE_ENDPOINT) {
+            session.clearPendingRelease();
+        }
         switch (request.action()) {
             case NEXT_CONSUMER -> session.nextConsumer();
             case NEXT_PROVIDER -> session.nextProvider();
@@ -175,6 +180,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             case NEXT_MAPPING_LANE -> session.nextMappingLane();
             case TOGGLE_MAPPING -> session.toggleMapping();
             case NEXT_ENDPOINT -> session.nextEndpoint();
+            case RELEASE_ENDPOINT -> session.releaseEndpoint();
         }
         menuSequence = Math.incrementExact(menuSequence);
         return FederationDomainPolicyActionResult.ACCEPTED;

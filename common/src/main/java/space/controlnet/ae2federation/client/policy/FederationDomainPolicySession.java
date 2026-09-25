@@ -50,6 +50,7 @@ public final class FederationDomainPolicySession {
     private int mappingLaneIndex;
     private int endpointIndex;
     private String mappingAcknowledgment = "ready";
+    private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.claim.EndpointIdentity pendingRelease;
 
     private FederationDomainPolicySession(ServerPlayer player, FederationDomainPolicyEntrance entrance, Optional<FederationDomainSnapshot> federationDomain,
             PolicyEditorSessionState.Status emptyState) {
@@ -249,6 +250,39 @@ public final class FederationDomainPolicySession {
         }
     }
 
+    /**
+     * Explicitly releases the selected retained Endpoint. The first press only asks for confirmation and explains the
+     * consequence; a second press on the same selection releases it.
+     */
+    public void releaseEndpoint() {
+        if (!authorizeAction()) {
+            mappingAcknowledgment = "rejected-session";
+            return;
+        }
+        var controller = selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller).orElse(null);
+        var endpoints = currentEndpoints();
+        if (controller == null || endpoints.isEmpty()) {
+            pendingRelease = null;
+            mappingAcknowledgment = controller == null ? "rejected-no-provider" : "rejected-no-endpoint";
+            return;
+        }
+        var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size())).endpointIdentity();
+        if (!controller.retained(endpoint)) {
+            pendingRelease = null;
+            mappingAcknowledgment = "rejected-not-retained";
+        } else if (!endpoint.equals(pendingRelease)) {
+            pendingRelease = endpoint;
+            mappingAcknowledgment = "confirm-release";
+        } else {
+            pendingRelease = null;
+            mappingAcknowledgment = controller.releaseEndpoint(endpoint);
+        }
+    }
+
+    public void clearPendingRelease() {
+        pendingRelease = null;
+    }
+
     public void nextEndpoint() {
         if (!authorizeAction()) {
             return;
@@ -277,15 +311,20 @@ public final class FederationDomainPolicySession {
             var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
             var mapped = controller.orElseThrow().endpointsForSlot(mappingSlotIndex)
                     .contains(endpoint.endpointIdentity());
+            var state = mapped ? "ae2federation.ui.domain.mapping.mapped"
+                    : controller.orElseThrow().retained(endpoint.endpointIdentity())
+                            ? "ae2federation.ui.domain.mapping.retained" : "ae2federation.ui.domain.mapping.unmapped";
             return Component.translatable("ae2federation.ui.domain.mapping.selection_endpoint", mappingSlotIndex,
                     shortId(FederationDomainGraphProjection.endpointId(context, endpoint)),
-                    Component.translatable(mapped ? "ae2federation.ui.domain.mapping.mapped"
-                            : "ae2federation.ui.domain.mapping.unmapped"));
+                    Component.translatable(state));
         }
         return Component.translatable("ae2federation.ui.domain.mapping.selection", mappingSlotIndex, mappingLaneIndex);
     }
 
     public Component mappingStatusText() {
+        if ("confirm-release".equals(mappingAcknowledgment)) {
+            return Component.translatable("ae2federation.ui.domain.mapping.confirm_release");
+        }
         return Component.translatable("ae2federation.ui.domain.mapping.status", mappingAcknowledgment);
     }
 

@@ -9,7 +9,8 @@ public enum FederationDomainPolicyAction {
     NEXT_MAPPING_SLOT(5),
     NEXT_MAPPING_LANE(6),
     TOGGLE_MAPPING(7),
-    NEXT_ENDPOINT(8);
+    NEXT_ENDPOINT(8),
+    RELEASE_ENDPOINT(9);
 
     private final int wireId;
 

@@ -28,6 +28,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -64,6 +66,8 @@ public final class ProductionProviderScene {
     public static final BlockPos CABLE_NEAR = new BlockPos(5, 1, 3);
     public static final BlockPos CABLE_FAR = new BlockPos(6, 1, 3);
     public static final BlockPos ROUTER = new BlockPos(7, 1, 3);
+    /** Isolated position for a second production Provider that competes for an Endpoint Claim. */
+    public static final BlockPos SECOND_PROVIDER = new BlockPos(2, 1, 6);
     private static final Map<Target, BlockPos[]> SUBNETS = new EnumMap<>(Map.of(
             Target.A, new BlockPos[] { new BlockPos(7, 1, 4), new BlockPos(7, 1, 5), new BlockPos(7, 1, 6) },
             Target.B, new BlockPos[] { new BlockPos(8, 1, 3), new BlockPos(8, 2, 3), new BlockPos(8, 3, 3) },
@@ -78,6 +82,7 @@ public final class ProductionProviderScene {
     private final Map<Target, NetworkId> targetNetworks = new EnumMap<>(Target.class);
     private final Map<Target, Long> consumed = new EnumMap<>(Target.class);
     private final Set<Target> stalled = java.util.EnumSet.noneOf(Target.class);
+    private final Map<Target, Long> held = new EnumMap<>(Target.class);
     private Future<ICraftingPlan> planFuture;
     private boolean routerPlaced;
 
@@ -86,6 +91,7 @@ public final class ProductionProviderScene {
         for (var target : Target.values()) {
             targetNetworks.put(target, NetworkId.create());
             consumed.put(target, 0L);
+            held.put(target, 0L);
         }
         placeNative(SOURCE_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(), sourceNetwork);
         placeNative(SOURCE_CHEST, AEBlocks.ME_CHEST.block().defaultBlockState(), sourceNetwork);
@@ -183,15 +189,22 @@ public final class ProductionProviderScene {
     }
 
     public void installPattern(int slot) {
+        installPattern(slot, OUTPUT);
+    }
+
+    public void installPattern(int slot, AEItemKey output) {
         var pattern = PatternDetailsHelper.encodeProcessingPattern(List.of(new GenericStack(INPUT, 1)),
-                List.of(new GenericStack(OUTPUT, 1)));
+                List.of(new GenericStack(output, 1)));
         // Pattern Access Terminal and the native menu insert into this same native inventory.
         var remainder = provider().getTerminalPatternInventory().insertItem(slot, pattern, false);
         helper.assertTrue(remainder.isEmpty(), "Production Provider must accept an encoded Processing Pattern");
     }
 
     public String map(int slot, Target target) {
-        var provider = provider();
+        return map(provider(), slot, target);
+    }
+
+    public String map(FederationPatternProviderBlockEntity provider, int slot, Target target) {
         return provider.toggleEndpoint(provider.mappedProvider().mappingHandle(slot), binding(target));
     }
 
@@ -292,6 +305,94 @@ public final class ProductionProviderScene {
             helper.assertTrue(remainder.isEmpty(), "Endpoint return must accept the machine product");
             consumed.merge(target, extracted, Long::sum);
         }
+    }
+
+    /**
+     * Moves the input delivered to {@code target} into the stand-in machine, which holds it as in-progress work: the
+     * native send list and return buffer are then empty although the product has not been returned yet.
+     */
+    public long absorb(Target target) {
+        var storage = targetGrid(target).getStorageService().getInventory();
+        var extracted = storage.extract(INPUT, Long.MAX_VALUE, Actionable.MODULATE, IActionSource.empty());
+        held.merge(target, extracted, Long::sum);
+        consumed.merge(target, extracted, Long::sum);
+        return extracted;
+    }
+
+    public long held(Target target) {
+        return held.get(target);
+    }
+
+    /** True while the Endpoint exposes a return path on the machine side. */
+    public boolean returnAvailable(Target target) {
+        return returnHandler(target) != null;
+    }
+
+    /** Outputs the held products through the Endpoint return path, as a machine would; returns how many it accepted. */
+    public long finishHeld(Target target) {
+        var handler = returnHandler(target);
+        long pending = held.get(target);
+        if (handler == null || pending <= 0) {
+            return 0;
+        }
+        var remainder = new ItemStack(Items.DIAMOND, (int) pending);
+        for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
+            remainder = handler.insertItem(slot, remainder, false);
+        }
+        var accepted = pending - remainder.getCount();
+        held.put(target, (long) remainder.getCount());
+        return accepted;
+    }
+
+    private net.neoforged.neoforge.items.IItemHandler returnHandler(Target target) {
+        return helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK,
+                helper.absolutePos(SUBNETS.get(target)[0]), RETURN_SIDE.get(target));
+    }
+
+    // ---- emulated chunk unload and reload: real NBT round trip into a new block entity instance
+
+    public CompoundTag unloadEndpoint(Target target) {
+        var endpoint = endpoint(target);
+        endpoint.onChunkUnloaded();
+        var tag = endpoint.saveWithFullMetadata(helper.getLevel().registryAccess());
+        helper.setBlock(SUBNETS.get(target)[0], Blocks.AIR);
+        return tag;
+    }
+
+    public void reloadEndpoint(Target target, CompoundTag tag) {
+        helper.setBlock(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        endpoint(target).loadWithComponents(tag, helper.getLevel().registryAccess());
+    }
+
+    /** Removes the Endpoint and places a brand-new one, with a new Endpoint identity, in the same Subnet. */
+    public void replaceEndpoint(Target target) {
+        helper.setBlock(SUBNETS.get(target)[0], Blocks.AIR);
+        placeNative(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
+                targetNetworks.get(target));
+    }
+
+    public CompoundTag unloadProvider() {
+        var provider = provider();
+        provider.onChunkUnloaded();
+        var tag = provider.saveWithFullMetadata(helper.getLevel().registryAccess());
+        provider.clearContent();
+        helper.setBlock(PROVIDER, Blocks.AIR);
+        return tag;
+    }
+
+    public void reloadProvider(CompoundTag tag) {
+        helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.EAST));
+        provider().loadWithComponents(tag, helper.getLevel().registryAccess());
+    }
+
+    public FederationPatternProviderBlockEntity placeSecondProvider() {
+        helper.setBlock(SECOND_PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState());
+        return secondProvider();
+    }
+
+    public FederationPatternProviderBlockEntity secondProvider() {
+        return helper.getBlockEntity(SECOND_PROVIDER);
     }
 
     public long consumed(Target target) {

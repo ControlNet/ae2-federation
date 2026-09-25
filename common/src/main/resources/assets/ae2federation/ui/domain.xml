@@ -43,7 +43,10 @@
                     <button id="mapping_slot_next" text="ae2federation.ui.domain.mapping.next_slot"/>
                     <button id="mapping_lane_next" text="ae2federation.ui.domain.mapping.next_lane"/>
                 </element>
-                <button id="mapping_toggle" text="ae2federation.ui.domain.mapping.toggle"/>
+                <element class="compact-actions">
+                    <button id="mapping_toggle" text="ae2federation.ui.domain.mapping.toggle"/>
+                    <button id="mapping_release" text="ae2federation.ui.domain.mapping.release"/>
+                </element>
                 <label id="mapping_status" class="mapping-status"><lang key="ae2federation.ui.domain.mapping.status"><style color="#ffffffff">ready</style></lang></label>
                 <text-field id="pattern_search" mode="string" value="" class="pattern-search"/>
                 <virtual-scroller-view id="pattern_list" class="pattern-list"/>

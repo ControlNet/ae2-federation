@@ -70,7 +70,7 @@
 .domain-status { width: 182; height: 31; padding-all: 2; font-size: 4; text-wrap: wrap; background: border(1, #ff263942); text-color: #fff0c66a; }
 .domain-status.accepted { text-color: #ff67d38a; }
 .domain-status.stale_context, .domain-status.stale_revision, .domain-status.disabled { text-color: #ffe36b64; }
-.mapping-status { width: 120; height: 14; padding-all: 2; font-size: 4; text-wrap: wrap; background: border(1, #ff263942); text-color: #fff0c66a; }
+.mapping-status { width: 120; height: 26; padding-all: 2; font-size: 4; text-wrap: wrap; background: border(1, #ff263942); text-color: #fff0c66a; }
 .mapping-status.rejected { text-color: #ffe36b64; }
 .endpoint-detail { width: 120; height: 36; padding-all: 2; font-size: 4; text-wrap: wrap; background: border(1, #ff263942); text-color: #ffb8c8ce; }
 .state-sync { width: 0; height: 0; }

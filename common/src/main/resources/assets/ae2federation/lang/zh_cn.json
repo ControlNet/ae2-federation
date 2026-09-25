@@ -50,5 +50,8 @@
   "block.ae2federation.pattern_provider": "ME联邦样板供应器",
   "ae2federation.ui.domain.mapping.selection_endpoint": "样板槽位 %s / 端点 %s（%s）",
   "ae2federation.ui.domain.mapping.mapped": "已映射",
-  "ae2federation.ui.domain.mapping.unmapped": "未映射"
+  "ae2federation.ui.domain.mapping.unmapped": "未映射",
+  "ae2federation.ui.domain.mapping.retained": "已保留，可能仍有产物返回",
+  "ae2federation.ui.domain.mapping.release": "释放保留",
+  "ae2federation.ui.domain.mapping.confirm_release": "再按一次确认释放。机器内尚未返回的产物将不再返回此样板供应器，等待这些产物的合成任务需要手动取消。"
 }

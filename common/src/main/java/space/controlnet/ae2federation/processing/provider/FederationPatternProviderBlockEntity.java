@@ -34,6 +34,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.ae2.processing.NativeLaneDispatchListener;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
@@ -110,7 +111,6 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     private boolean federationDomainDirty = true;
     private boolean unloading;
     private boolean pendingRotation;
-    private boolean returnsBound;
     private int maintenanceTicks;
 
     public FederationPatternProviderBlockEntity(BlockPos position, BlockState state) {
@@ -201,7 +201,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (++maintenanceTicks >= MAINTENANCE_INTERVAL) {
             maintenanceTicks = 0;
             releaseDrainedLanes();
-            if (!returnsBound && level instanceof ServerLevel serverLevel) {
+            if (level instanceof ServerLevel serverLevel) {
                 bindReturns(serverLevel);
             }
         }
@@ -396,6 +396,44 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 : Optional.ofNullable(lanes.get(laneIndex).endpoint);
     }
 
+    @Override
+    public boolean retained(EndpointIdentity endpoint) {
+        return laneFor(endpoint).filter(index -> lanes.get(index).releasePending).isPresent();
+    }
+
+    @Override
+    public String releaseEndpoint(EndpointIdentity endpoint) {
+        if (!(level instanceof ServerLevel serverLevel) || runtime == null) {
+            return "rejected-provider-offline";
+        }
+        var laneIndex = laneFor(endpoint);
+        if (laneIndex.isEmpty()) {
+            return "rejected-not-retained";
+        }
+        var index = laneIndex.get();
+        var binding = lanes.get(index);
+        if (!binding.releasePending || !provider.slotsForLane(index).isEmpty()) {
+            return "rejected-still-mapped";
+        }
+        var lane = provider.nativeLane(index);
+        if (lane.hasPendingSend()) {
+            // Native send remainder is only delivered to this Endpoint; releasing now would strand it in the Lane.
+            return "rejected-pending-send";
+        }
+        if (!serverLevel.isLoaded(binding.position)
+                || !(serverLevel.getBlockEntity(binding.position) instanceof EndpointBlockEntity entity)
+                || !entity.endpointIdentity().equals(binding.endpoint)) {
+            return "rejected-endpoint-unavailable";
+        }
+        entity.releaseClaim(new EndpointOwnerIdentity(identity), binding.epoch);
+        // The result can no longer return to this Lane, so its native lock is reset as on a Lock mode change.
+        lane.resetCraftingLock();
+        binding.retire();
+        runtime.bindLane(index, binding.revision);
+        saveChanges();
+        return "released-" + index;
+    }
+
     private Optional<ClaimEpoch> claim(ServerLevel serverLevel, EndpointTargetBinding endpoint) {
         var position = endpoint.runtime().position();
         if (!(serverLevel.getBlockEntity(position) instanceof EndpointBlockEntity entity)
@@ -438,9 +476,10 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     }
 
     /**
-     * Releases the Claim of each unmapped Lane once its native send list and return buffer are empty. Until then the
-     * Lane keeps its authorized target so native sendStacksOut can finish delivering, exactly as a native Provider
-     * keeps sending after its Pattern is removed.
+     * Releases the Claim of an unmapped Lane only when it provably has no work in the machine: it never sent a Pattern
+     * under its current binding and its native send list and return buffer are empty. Empty native buffers do not prove
+     * that the machine finished work already sent, and no native state does, so a Lane that sent work keeps its Claim
+     * and return path after unmapping until it is mapped again, explicitly released or its Provider is removed.
      */
     private void releaseDrainedLanes() {
         if (!(level instanceof ServerLevel serverLevel) || runtime == null) {
@@ -448,7 +487,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         for (int index = 0; index < lanes.size(); index++) {
             var binding = lanes.get(index);
-            if (!binding.releasePending || binding.endpoint == null || !laneIdle(index)
+            if (!binding.releasePending || binding.endpoint == null || binding.dispatched || !laneIdle(index)
                     || !provider.slotsForLane(index).isEmpty()) {
                 continue;
             }
@@ -476,15 +515,16 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 endpoint.runtime().detachReturn(provider.nativeLane(index));
             }
         }
-        returnsBound = false;
     }
 
     /**
-     * Rebinds each mapped Endpoint's return path to this Provider's current Lane object after load or reload, through
-     * the same authorization as a native push. Unauthorized Lanes stay detached and are retried by maintenance.
+     * Restores the return path of each bound Lane whose loaded Endpoint does not return to it, through the same
+     * authorization as a native push (Provider, Endpoint identity, Claim epoch, Lane identity and Policy). This covers
+     * a reloaded Provider (new Lane objects) and a reloaded Endpoint (new runtime without return context) even while
+     * the native lock prevents the push that would otherwise rebind it. Lanes whose Endpoint is unloaded, replaced or
+     * unauthorized stay detached and are retried here; the check reads only this Provider's own Lanes.
      */
     private void bindReturns(ServerLevel serverLevel) {
-        var complete = true;
         for (int index = 0; index < lanes.size(); index++) {
             var binding = lanes.get(index);
             if (binding.endpoint == null) {
@@ -492,15 +532,11 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             }
             var endpoint = EndpointTargetBinding.findEndpoint(serverLevel, binding.position);
             var lane = provider.nativeLane(index);
-            if (endpoint == null || !endpoint.endpointIdentity().equals(binding.endpoint)) {
-                complete = false;
-            } else if (!endpoint.runtime().returnOwnedBy(lane)
-                    && space.controlnet.ae2federation.ae2.processing.FederationPatternProviderTargetCache.find(lane)
-                            .target() == null) {
-                complete = false;
+            if (endpoint != null && endpoint.endpointIdentity().equals(binding.endpoint)
+                    && !endpoint.runtime().returnOwnedBy(lane)) {
+                space.controlnet.ae2federation.ae2.processing.FederationPatternProviderTargetCache.find(lane);
             }
         }
-        returnsBound = complete;
     }
 
     private void releaseAllClaims(ServerLevel serverLevel) {
@@ -666,7 +702,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     // ---- nested types
 
     /** Native host of one Lane: same block entity, Federation face as its only target side. */
-    private final class LaneHost implements PatternProviderLogicHost {
+    private final class LaneHost implements PatternProviderLogicHost, NativeLaneDispatchListener {
         private final int laneIndex;
 
         private LaneHost(int laneIndex) {
@@ -676,6 +712,15 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         @Override
         public PatternProviderLogic getLogic() {
             return provider.nativeLane(laneIndex);
+        }
+
+        @Override
+        public void onLaneDispatched() {
+            var binding = lanes.get(laneIndex);
+            if (binding.endpoint != null && !binding.dispatched) {
+                binding.dispatched = true;
+                FederationPatternProviderBlockEntity.this.saveChanges();
+            }
         }
 
         @Override
@@ -710,6 +755,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         private ClaimEpoch epoch = ClaimEpoch.NONE;
         private long revision;
         private boolean releasePending;
+        /** Set once the Lane sent a Pattern under this binding; work may then be inside the machine. */
+        private boolean dispatched;
 
         private void bind(EndpointIdentity endpoint, BlockPos position, ClaimEpoch epoch) {
             this.endpoint = endpoint;
@@ -717,6 +764,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             this.epoch = epoch;
             revision = Math.incrementExact(revision);
             releasePending = false;
+            dispatched = false;
         }
 
         private void retire() {
@@ -724,12 +772,14 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             epoch = ClaimEpoch.NONE;
             revision = Math.incrementExact(revision);
             releasePending = false;
+            dispatched = false;
         }
 
         private CompoundTag save() {
             var tag = new CompoundTag();
             tag.putLong("revision", revision);
             tag.putBoolean("releasePending", releasePending);
+            tag.putBoolean("dispatched", dispatched);
             if (endpoint != null) {
                 tag.putUUID("endpoint", endpoint.id().value());
                 tag.putLong("endpointEpoch", endpoint.instanceEpoch().value());
@@ -748,6 +798,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                         new EndpointInstanceEpoch(tag.getLong("endpointEpoch")));
                 binding.position = NbtUtils.readBlockPos(tag, "position").orElse(BlockPos.ZERO);
                 binding.epoch = new ClaimEpoch(tag.getLong("claimEpoch"));
+                // Saves from before this flag existed cannot prove the Lane never sent work, so they keep the Claim.
+                binding.dispatched = !tag.contains("dispatched") || tag.getBoolean("dispatched");
             }
             return binding;
         }
