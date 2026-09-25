@@ -17,9 +17,11 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>Two kinds of evidence exist and they are deliberately treated differently:
  * <ul>
- * <li><b>Provable</b>: AE2's own {@code DelegatingMEInventory} is specified to forward every call to its delegate, so
- * its chain can be followed ({@link #chain}). A mounted handle whose chain reaches another mounted handle is an alias
- * of that handle and may be deduplicated.</li>
+ * <li><b>Provable</b>: AE2's {@code DelegatingMEInventory} chain can be followed ({@link #chain}) to find which mounted
+ * handles share one source identity. Sharing an identity does not make the handles interchangeable: subclasses such
+ * as AE2's own {@code MEInventoryHandler} (Storage Bus, Drive and Chest cells) filter, restrict access and change
+ * preferred-storage answers. Only an exact {@code DelegatingMEInventory}, which forwards every call unchanged, is
+ * {@link #transparent} and may be executed through the handle it forwards to.</li>
  * <li><b>Suspected</b>: a third-party (non-AE2) handle that directly holds a reference to another mounted handle (or
  * to an element of its AE2 delegate chain) may be an opaque wrapper over the same inventory. Federation cannot prove
  * whether it forwards, filters or composes, so it never deduplicates on this evidence; callers raise an explicit
@@ -93,6 +95,15 @@ public final class NativeStorageAliasProbe {
             current = delegate;
         }
         return List.copyOf(result);
+    }
+
+    /**
+     * True only for AE2's plain {@code DelegatingMEInventory}, whose insert, extract, listing and preferred-storage
+     * calls all forward unchanged to the current delegate. Any subclass may override them (filters, access limits,
+     * link status) and is not transparent, whatever it actually does.
+     */
+    public static boolean transparent(MEStorage storage) {
+        return storage.getClass() == appeng.me.storage.DelegatingMEInventory.class;
     }
 
     /**

@@ -131,6 +131,7 @@
 {"id":"identity.stable-query-cost","backend":"gametest","testId":"identitystablequerycost","structure":"ae2federation_test:harness_native_smoke","assertions":6},
 {"id":"migration.legacy-save-import","backend":"gametest","testId":"legacysaveimport","structure":"ae2federation_test:harness_native_smoke","assertions":14},
 {"id":"storage.source-index-lifecycle","backend":"gametest","testId":"storagesourceindexlifecycle","structure":"ae2federation_test:harness_native_smoke","assertions":30},
+{"id":"storage.alias-wrapper-semantics","backend":"gametest","testId":"storagealiaswrappersemantics","structure":"ae2federation_test:harness_native_smoke","assertions":35},
     {"id":"provenance.multi-entry","backend":"gametest","testId":"provenancemultientry","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"provenance.native-rebind","backend":"gametest","testId":"provenancenativerebind","structure":"ae2federation_test:harness_native_smoke","assertions":32},
     {"id":"provenance.exclude-import","backend":"gametest","testId":"provenanceexcludeimport","structure":"ae2federation_test:harness_native_smoke","assertions":8},

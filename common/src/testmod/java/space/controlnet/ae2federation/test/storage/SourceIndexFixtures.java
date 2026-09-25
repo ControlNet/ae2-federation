@@ -130,6 +130,44 @@ public final class SourceIndexFixtures {
         }
     }
 
+    /**
+     * Native provider mounting each inventory at its own priority, like several storage buses and drives on one node.
+     * Changes take effect only after AE2 remounts (the caller uses {@code IStorageProvider.requestUpdate}).
+     */
+    public static final class PriorityMountProvider implements IStorageProvider {
+        private final Map<MEStorage, Integer> handles = new LinkedHashMap<>();
+
+        public PriorityMountProvider put(MEStorage storage, int priority) {
+            handles.put(storage, priority);
+            return this;
+        }
+
+        public void remove(MEStorage storage) {
+            handles.remove(storage);
+        }
+
+        public void clear() {
+            handles.clear();
+        }
+
+        @Override
+        public void mountInventories(IStorageMounts storageMounts) {
+            handles.forEach(storageMounts::mount);
+        }
+    }
+
+    /** Changes the forwarding target of an AE2 wrapper, as a Storage Bus does when its target block changes. */
+    public static void setDelegate(appeng.me.storage.DelegatingMEInventory wrapper, MEStorage delegate) {
+        try {
+            var method = appeng.me.storage.DelegatingMEInventory.class.getDeclaredMethod("setDelegate",
+                    MEStorage.class);
+            method.setAccessible(true);
+            method.invoke(wrapper, delegate);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Cannot change the native delegate", exception);
+        }
+    }
+
     /** Opaque third-party wrapper: forwards everything but is not AE2's DelegatingMEInventory. */
     public record OpaqueWrapper(MEStorage delegate) implements MEStorage {
         @Override

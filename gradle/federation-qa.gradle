@@ -7554,6 +7554,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'migration.legacy-save-import':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
+                case 'storage.alias-wrapper-semantics':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeProperties = new Properties()

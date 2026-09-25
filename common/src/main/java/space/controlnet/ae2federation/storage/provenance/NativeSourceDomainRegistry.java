@@ -212,12 +212,16 @@ public final class NativeSourceDomainRegistry {
     }
 
     /**
-     * Groups mounted handles into export sources. Identical handles (the same inventory mounted by several providers)
-     * and AE2 {@code DelegatingMEInventory} chains that reach another mounted handle are provable aliases and share
-     * one source. Distinct handles of one provider (e.g. several cells in a drive) are independent sources, which is
-     * AE2's own contract: a ProviderState refuses to mount the same inventory twice. Handles that provably share an
-     * unmounted inner inventory, or third-party handles that reference another mounted handle, cannot be safely
-     * deduplicated and reject the domain with an explicit diagnostic instead of risking double counting.
+     * Groups mounted handles into export sources, separating source identity from execution. Identical handles (the
+     * same inventory mounted by several providers) are one source. A mounted handle whose AE2 delegate chain reaches
+     * another mounted handle shares that handle's identity; it is executed through that handle only when every wrapper
+     * on the way is {@linkplain NativeStorageAliasProbe#transparent transparent}. Otherwise one identity would need two
+     * different behaviours (e.g. a filtering Storage Bus handler over an inventory that is also mounted directly), so
+     * the domain is rejected with {@link ProvenanceDiagnostic#NON_TRANSPARENT_ALIAS} rather than double counting or
+     * bypassing the wrapper. Distinct handles of one provider (e.g. several cells in a drive) are independent sources,
+     * which is AE2's own contract: a ProviderState refuses to mount the same inventory twice. Handles that provably
+     * share an unmounted inner inventory, or third-party handles that reference another mounted handle, cannot be
+     * safely deduplicated either and reject the domain with an explicit diagnostic.
      */
     private static List<SourceDraft> buildSources(List<Registration> registrations,
             List<NativeStorageAliasProbe.DelegateLink> links) {
@@ -230,11 +234,21 @@ public final class NativeSourceDomainRegistry {
         }
         var canonical = new IdentityHashMap<MEStorage, MEStorage>();
         for (var entry : chains.entrySet()) {
+            var chain = entry.getValue();
             MEStorage root = entry.getKey();
-            for (var element : entry.getValue()) {
+            // Whether every chain element before the current one forwards unchanged.
+            var transparentSoFar = NativeStorageAliasProbe.transparent(root);
+            for (var index = 1; index < chain.size(); index++) {
+                var element = chain.get(index);
                 if (mounted.contains(element)) {
+                    if (!transparentSoFar) {
+                        throw new ProvenanceException(ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS,
+                                "A mounted wrapper that is not provably transparent forwards to another mounted "
+                                        + "handle; one source identity cannot carry both behaviours");
+                    }
                     root = element;
                 }
+                transparentSoFar &= NativeStorageAliasProbe.transparent(element);
             }
             canonical.put(entry.getKey(), root);
         }
