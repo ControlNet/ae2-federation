@@ -35,6 +35,36 @@ public final class MappedPatternProvider implements PatternContainer, AutoClosea
         composition = new NativeProviderLaneComposition(physicalNode, ownerHost, laneHosts, patternSlots, assignments);
     }
 
+    /**
+     * Creates a Provider with no Lanes whose physical Pattern slots are {@code patternInventory}. Lanes are appended
+     * with {@link #addLane} as Endpoints are mapped, so the Lane count is set by configuration, not by construction.
+     */
+    public MappedPatternProvider(IManagedGridNode physicalNode, PatternProviderLogicHost ownerHost,
+            InternalInventory patternInventory) {
+        this.physicalNode = physicalNode;
+        mapping = new PatternLaneMapping(patternInventory.size(), 0);
+        composition = new NativeProviderLaneComposition(physicalNode, ownerHost, patternInventory,
+                patternInventory.size());
+    }
+
+    public int addLane(PatternProviderLogicHost laneHost) {
+        var laneIndex = mapping.addLane();
+        composition.addLane(laneHost, slot -> mapping.isAssigned(laneIndex, slot));
+        return laneIndex;
+    }
+
+    public void rebindGrid() {
+        composition.rebindGrid();
+    }
+
+    public boolean registered() {
+        return composition.registered();
+    }
+
+    public void refreshPatternSlot(int slot) {
+        composition.refreshPatternSlot(slot);
+    }
+
     public void register() {
         composition.register();
     }
@@ -83,7 +113,7 @@ public final class MappedPatternProvider implements PatternContainer, AutoClosea
     }
 
     public int priority() {
-        return composition.lanes().getFirst().getPriority();
+        return composition.lanes().isEmpty() ? 0 : composition.lanes().getFirst().getPriority();
     }
 
     public void setPriority(int priority) {

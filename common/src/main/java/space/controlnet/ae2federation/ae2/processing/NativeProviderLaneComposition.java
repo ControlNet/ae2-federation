@@ -23,37 +23,95 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     private static final String PATTERNS_TAG = "patterns";
     private final IManagedGridNode physicalNode;
     private final PatternProviderLogicHost ownerHost;
-    private final AppEngInternalInventory patternInventory;
-    private final List<NativeProviderLane> lanes;
-    private final List<NativeProviderLaneServices> services;
+    private final InternalInventory patternInventory;
+    private final boolean ownsPatternInventory;
+    private final List<NativeProviderLane> lanes = new ArrayList<>();
+    private final List<NativeProviderLaneServices> services = new ArrayList<>();
     private final NativeProviderLaneTicker physicalTicker;
     private ICraftingService craftingService;
 
     public NativeProviderLaneComposition(IManagedGridNode physicalNode, PatternProviderLogicHost ownerHost,
             List<? extends PatternProviderLogicHost> laneHosts, int patternSlots,
             List<IntPredicate> laneAssignments) {
+        this(physicalNode, ownerHost, null, patternSlots);
         if (laneHosts.size() != laneAssignments.size() || laneHosts.isEmpty()) {
             throw new IllegalArgumentException("Every native lane requires one host and one Pattern assignment");
         }
+        for (int index = 0; index < laneHosts.size(); index++) {
+            addLane(laneHosts.get(index), laneAssignments.get(index));
+        }
+    }
+
+    /**
+     * Creates a composition whose Pattern slots live in {@code externalPatterns} (for example the native
+     * PatternProviderLogic inventory that the production block exposes through AE2's own menu), or in a new inventory
+     * owned by this composition when {@code externalPatterns} is null. Lanes may be added later with
+     * {@link #addLane}; the physical ticker and crafting-provider registrations follow them.
+     */
+    public NativeProviderLaneComposition(IManagedGridNode physicalNode, PatternProviderLogicHost ownerHost,
+            InternalInventory externalPatterns, int patternSlots) {
         this.physicalNode = physicalNode;
         this.ownerHost = ownerHost;
-        this.patternInventory = new AppEngInternalInventory(this, patternSlots, 1);
-        var mutableServices = new ArrayList<NativeProviderLaneServices>();
-        var mutableLanes = new ArrayList<NativeProviderLane>();
-        for (int index = 0; index < laneHosts.size(); index++) {
-            var captured = new NativeProviderLaneServices();
-            mutableServices.add(captured);
-            var lane = new NativeProviderLane(new CapturedManagedGridNode(physicalNode, captured),
-                    laneHosts.get(index), patternInventory, laneAssignments.get(index));
-            if (captured.provider() != lane) {
-                throw new IllegalStateException("PatternProviderLogic installed an unexpected crafting provider");
-            }
-            mutableLanes.add(lane);
+        this.ownsPatternInventory = externalPatterns == null;
+        this.patternInventory = externalPatterns == null ? new AppEngInternalInventory(this, patternSlots, 1)
+                : externalPatterns;
+        if (patternInventory.size() != patternSlots) {
+            throw new IllegalArgumentException("External Pattern inventory size does not match the composition");
         }
-        lanes = List.copyOf(mutableLanes);
-        services = List.copyOf(mutableServices);
         physicalTicker = new NativeProviderLaneTicker(services);
         physicalNode.addService(IGridTickable.class, physicalTicker);
+    }
+
+    /**
+     * Adds one native execution Lane. Its PatternProviderLogic installs its ticker and crafting provider into a
+     * captured facade, so the physical node keeps one ticker and each Lane is published as its own global provider.
+     */
+    public NativeProviderLane addLane(PatternProviderLogicHost laneHost, IntPredicate assignment) {
+        var captured = new NativeProviderLaneServices();
+        var lane = new NativeProviderLane(new CapturedManagedGridNode(physicalNode, captured), laneHost,
+                patternInventory, assignment);
+        if (captured.provider() != lane) {
+            throw new IllegalStateException("PatternProviderLogic installed an unexpected crafting provider");
+        }
+        captured.ticker();
+        services.add(captured);
+        lanes.add(lane);
+        lane.updatePatterns();
+        if (craftingService != null) {
+            craftingService.addGlobalCraftingProvider(lane);
+        }
+        physicalNode.ifPresent((grid, node) -> grid.getTickManager().alertDevice(node));
+        return lane;
+    }
+
+    /**
+     * Moves the Lanes' global crafting-provider registrations to the physical node's current Grid. AE2 tracks node
+     * services across Grid merges and splits by itself, but global providers are registered on one Grid's crafting
+     * service and must follow the node explicitly.
+     */
+    public void rebindGrid() {
+        if (craftingService == null) {
+            return;
+        }
+        var grid = physicalNode.getGrid();
+        var current = grid == null ? null : grid.getCraftingService();
+        if (current == craftingService) {
+            return;
+        }
+        for (var lane : lanes) {
+            craftingService.removeGlobalCraftingProvider(lane);
+        }
+        craftingService = current;
+        if (current != null) {
+            for (var lane : lanes) {
+                current.addGlobalCraftingProvider(lane);
+            }
+            refreshPatterns();
+        }
+    }
+
+    public boolean registered() {
+        return craftingService != null;
     }
 
     public InternalInventory patternInventory() {
@@ -61,7 +119,7 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     }
 
     public List<NativeProviderLane> lanes() {
-        return lanes;
+        return java.util.Collections.unmodifiableList(lanes);
     }
 
     public void bindTarget(int laneIndex, ProviderLogicProvenance provenance,
@@ -143,7 +201,9 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     }
 
     public void writeToNBT(CompoundTag tag, HolderLookup.Provider registries) {
-        patternInventory.writeToNBT(tag, PATTERNS_TAG, registries);
+        if (ownsPatternInventory) {
+            ((AppEngInternalInventory) patternInventory).writeToNBT(tag, PATTERNS_TAG, registries);
+        }
         for (int index = 0; index < lanes.size(); index++) {
             var laneTag = new CompoundTag();
             lanes.get(index).writeToNBT(laneTag, registries);
@@ -152,7 +212,9 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     }
 
     public void readFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
-        patternInventory.readFromNBT(tag, PATTERNS_TAG, registries);
+        if (ownsPatternInventory) {
+            ((AppEngInternalInventory) patternInventory).readFromNBT(tag, PATTERNS_TAG, registries);
+        }
         for (int index = 0; index < lanes.size(); index++) {
             lanes.get(index).readFromNBT(tag.getCompound("lane" + index), registries);
         }
@@ -160,7 +222,9 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     }
 
     public void addDrops(List<ItemStack> drops) {
-        patternInventory.forEach(stack -> drops.add(stack.copy()));
+        if (ownsPatternInventory) {
+            patternInventory.forEach(stack -> drops.add(stack.copy()));
+        }
         lanes.forEach(lane -> lane.addDrops(drops));
     }
 

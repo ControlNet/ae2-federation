@@ -92,6 +92,20 @@ public final class EndpointRuntime {
         return true;
     }
 
+    /**
+     * Closes Federated input and return after the Claim was released. The return owner still references the released
+     * Lane, so it is cleared: later machine output stays in the Subnet instead of entering a Lane that no longer owns
+     * this Endpoint.
+     */
+    public void closeFederated() {
+        if (composition.mode() == EndpointMode.FEDERATED) {
+            composition.resetFederated();
+        }
+        clearCurrentReturns();
+        mode = null;
+        invalidateCapabilities();
+    }
+
     public Optional<EndpointModeGeneration.Federated> federatedMode(ProviderIdentity provider, ClaimEpoch claimEpoch) {
         if (mode instanceof EndpointModeGeneration.Federated federated
                 && federated.endpoint().equals(claims.endpoint())
@@ -117,13 +131,37 @@ public final class EndpointRuntime {
         }
         var lane = target.laneIdentity();
         if (itemReturn != null) {
-            return itemReturn.owner().lane().filter(lane::equals).isPresent()
-                    && itemReturn.owner().logic() == logic
+            var sameLane = itemReturn.owner().lane().filter(lane::equals).isPresent()
                     && itemReturn.owner().mode().equals(federated);
+            if (sameLane && itemReturn.owner().logic() != logic) {
+                // Same authorized Lane identity, new native object: the Provider was reloaded.
+                installReturnOwner(new EndpointReturnOwner(federated, logic, logic.getReturnInv(), Optional.of(lane)));
+                invalidateCapabilities();
+                return true;
+            }
+            return sameLane;
         }
         installReturnOwner(new EndpointReturnOwner(federated, logic, logic.getReturnInv(), Optional.of(lane)));
         invalidateCapabilities();
         return true;
+    }
+
+    /**
+     * Detaches the return path owned by {@code logic}, used when that Lane's Provider unloads or is removed. Machine
+     * output then stays in the machine or Subnet instead of entering a Lane object that no longer persists; the
+     * reloaded Lane binds the return path again through {@link #bindFederatedReturn}.
+     */
+    public boolean detachReturn(PatternProviderLogic logic) {
+        if (itemReturn == null || itemReturn.owner().logic() != logic) {
+            return false;
+        }
+        clearCurrentReturns();
+        invalidateCapabilities();
+        return true;
+    }
+
+    public boolean returnOwnedBy(PatternProviderLogic logic) {
+        return itemReturn != null && itemReturn.owner().logic() == logic;
     }
 
     public Optional<MEStorage> inputStorage(Direction face) {
@@ -178,6 +216,10 @@ public final class EndpointRuntime {
 
     public Direction federationFace() {
         return federationFace;
+    }
+
+    public BlockPos position() {
+        return position;
     }
 
     private void installReturnOwner(EndpointReturnOwner owner) {

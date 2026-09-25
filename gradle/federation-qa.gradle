@@ -2340,7 +2340,7 @@ verifyTaskSixteenEvidence = { File attempt, List requested, List<String> declare
         throw new GradleException('Task 16 single Pattern inventory ownership semantics are incomplete')
     }
     def stale = parsed.providerrejectstalepattern as Properties
-    if (stale.getProperty('equalStaleRejected') != 'true' || stale.getProperty('removedStaleRejected') != 'true'
+    if (stale.getProperty('equalHandleAccepted') != 'true' || stale.getProperty('removedStaleRejected') != 'true'
             || stale.getProperty('reloadStaleRejected') != 'true' || stale.getProperty('staleMappingRejected') != 'true'
             || stale.getProperty('restoredMapping') != '0,1' || stale.getProperty('restoredLaneEntries') != '1,1,0') {
         throw new GradleException('Task 16 stale Pattern or mapping acceptance semantics are incomplete')
@@ -9125,11 +9125,11 @@ tasks.register('federationTaskSixteenEvidenceSelfTest') {
                         'Task 16 stale Pattern or mapping acceptance semantics are incomplete') { attempt, report ->
                     def file = new File(attempt, 'native-providerrejectstalepattern.properties')
                     def properties = loadProperties(file)
-                    properties.setProperty('equalStaleRejected', 'false')
+                    properties.setProperty('removedStaleRejected', 'false')
                     file.withOutputStream { properties.store(it, 'Task 16 stale Pattern acceptance') }
                     def log = new File(attempt, 'positive-providerrejectstalepattern.log')
-                    log.text = log.text.replace('fact=equalStaleRejected value=true',
-                            'fact=equalStaleRejected value=false')
+                    log.text = log.text.replace('fact=removedStaleRejected value=true',
+                            'fact=removedStaleRejected value=false')
                 },
                 taskSevenEvidenceProbeRejects(sourceResult, 'task16-duplicate-inventory-owner',
                         'Task 16 single Pattern inventory ownership semantics are incomplete') { attempt, report ->

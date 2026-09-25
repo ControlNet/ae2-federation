@@ -46,5 +46,9 @@
   "ae2federation.ui.fabric.endpoint.heading": "加工端点诊断",
   "ae2federation.ui.fabric.endpoint.next": "下一个加工端点",
   "ae2federation.ui.fabric.endpoint.none": "此联邦内没有在线的加工端点",
-  "ae2federation.ui.fabric.endpoint.detail": "标识 %s\n模式 %s / 世代 %s\n归属世代 %s\n上游所有者 %s\n归属结果 %s"
+  "ae2federation.ui.fabric.endpoint.detail": "标识 %s\n模式 %s / 世代 %s\n归属世代 %s\n上游所有者 %s\n归属结果 %s",
+  "block.ae2federation.pattern_provider": "ME联邦样板供应器",
+  "ae2federation.ui.fabric.mapping.selection_endpoint": "样板槽位 %s / 端点 %s（%s）",
+  "ae2federation.ui.fabric.mapping.mapped": "已映射",
+  "ae2federation.ui.fabric.mapping.unmapped": "未映射"
 }

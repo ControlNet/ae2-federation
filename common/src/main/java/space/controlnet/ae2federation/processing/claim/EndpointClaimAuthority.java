@@ -40,6 +40,21 @@ public final class EndpointClaimAuthority {
         return result;
     }
 
+    /**
+     * Releases a Claim held by {@code owner} at {@code expectedEpoch}. The epoch advances, so requests and returns
+     * authorized under the released Claim no longer match. Any other owner or epoch is rejected unchanged.
+     */
+    public synchronized boolean release(EndpointOwnerIdentity owner, ClaimEpoch expectedEpoch) {
+        if (!(state instanceof ClaimState.Owned owned) || !owned.ownerIdentity().equals(owner)
+                || !owned.epoch().equals(expectedEpoch)) {
+            lastResultCode = "RELEASE_REJECTED";
+            return false;
+        }
+        state = new ClaimState.Unclaimed(state.key(), state.epoch().next());
+        lastResultCode = "RELEASED";
+        return true;
+    }
+
     public synchronized ClaimState state() {
         return state;
     }

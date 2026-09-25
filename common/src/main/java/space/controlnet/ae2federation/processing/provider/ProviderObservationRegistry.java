@@ -25,10 +25,24 @@ public final class ProviderObservationRegistry {
     static synchronized void register(ServerLevel level, MappedPatternProvider provider, ProviderIdentity identity,
             ProviderRuntime runtime) {
         ENTRIES.computeIfAbsent(level, ignored -> new IdentityHashMap<>())
-                .put(provider, new Entry(provider, identity, runtime));
+                .put(provider, new Entry(provider, identity, runtime, java.util.Optional.empty()));
         for (var laneIndex = 0; laneIndex < provider.nativeLanes().size(); laneIndex++) {
             LANES.put(provider.nativeLane(laneIndex), new LaneEntry(level, provider, identity, laneIndex));
         }
+    }
+
+    /** Attaches the production mapping controller to an already registered Provider. */
+    public static synchronized void attachController(MappedPatternProvider provider,
+            ProviderMappingController controller) {
+        for (var entries : ENTRIES.values()) {
+            entries.computeIfPresent(provider, (ignored, entry) -> new Entry(entry.provider(), entry.identity(),
+                    entry.runtime(), java.util.Optional.of(controller)));
+        }
+    }
+
+    static synchronized void registerLane(ServerLevel level, MappedPatternProvider provider, ProviderIdentity identity,
+            int laneIndex) {
+        LANES.put(provider.nativeLane(laneIndex), new LaneEntry(level, provider, identity, laneIndex));
     }
 
     static synchronized void unregister(MappedPatternProvider provider) {
@@ -111,7 +125,8 @@ public final class ProviderObservationRegistry {
         return resource.getType().getId().getPath().contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
     }
 
-    public record Entry(MappedPatternProvider provider, ProviderIdentity identity, ProviderRuntime runtime) {
+    public record Entry(MappedPatternProvider provider, ProviderIdentity identity, ProviderRuntime runtime,
+            java.util.Optional<ProviderMappingController> controller) {
     }
 
     private record LaneEntry(ServerLevel level, MappedPatternProvider provider, ProviderIdentity identity,

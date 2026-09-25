@@ -10,12 +10,15 @@ final class NativeProviderLaneTicker implements IGridTickable {
     private final List<NativeProviderLaneServices> delegates;
 
     NativeProviderLaneTicker(List<NativeProviderLaneServices> delegates) {
-        this.delegates = List.copyOf(delegates);
+        this.delegates = delegates;
     }
 
     @Override
     public TickingRequest getTickingRequest(IGridNode node) {
         var requests = delegates.stream().map(delegate -> delegate.ticker().getTickingRequest(node)).toList();
+        if (requests.isEmpty()) {
+            return new TickingRequest(appeng.core.settings.TickRates.Interface, true);
+        }
         var min = requests.stream().mapToInt(TickingRequest::minTickRate).min().orElseThrow();
         var max = requests.stream().mapToInt(TickingRequest::maxTickRate).min().orElseThrow();
         var sleeping = requests.stream().allMatch(TickingRequest::isSleeping);

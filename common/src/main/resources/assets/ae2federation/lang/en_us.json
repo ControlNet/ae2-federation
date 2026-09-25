@@ -46,5 +46,9 @@
   "ae2federation.ui.fabric.endpoint.heading": "Endpoint diagnostics",
   "ae2federation.ui.fabric.endpoint.next": "Next Endpoint",
   "ae2federation.ui.fabric.endpoint.none": "No live Endpoint in this Fabric",
-  "ae2federation.ui.fabric.endpoint.detail": "ID %s\nMode %s / generation %s\nClaim epoch %s\nOwner %s\nClaim result %s"
+  "ae2federation.ui.fabric.endpoint.detail": "ID %s\nMode %s / generation %s\nClaim epoch %s\nOwner %s\nClaim result %s",
+  "block.ae2federation.pattern_provider": "ME Federation Pattern Provider",
+  "ae2federation.ui.fabric.mapping.selection_endpoint": "Pattern slot %s / Endpoint %s (%s)",
+  "ae2federation.ui.fabric.mapping.mapped": "mapped",
+  "ae2federation.ui.fabric.mapping.unmapped": "not mapped"
 }

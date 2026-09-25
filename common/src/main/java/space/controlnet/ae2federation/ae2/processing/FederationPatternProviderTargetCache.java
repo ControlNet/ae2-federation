@@ -31,6 +31,10 @@ public final class FederationPatternProviderTargetCache {
         BINDINGS.remove(logic);
     }
 
+    public static synchronized boolean isBound(PatternProviderLogic logic) {
+        return BINDINGS.containsKey(logic);
+    }
+
     public static synchronized Lookup find(PatternProviderLogic logic) {
         var binding = BINDINGS.get(logic);
         if (binding == null) {

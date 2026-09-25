@@ -21,6 +21,7 @@ public final class FederationCreativeTab {
                     .displayItems((parameters, output) -> {
                         output.accept(HubRegistration.HUB_ITEM.get());
                         output.accept(HubRegistration.FEDERATION_CABLE_ITEM.get());
+                        output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
                         output.accept(BridgeRegistration.MULTIPART_BRIDGE.get());
                     })

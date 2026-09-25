@@ -75,6 +75,9 @@ public final class ProviderTargetAuthorization {
             return paused(ProviderTargetState.POLICY_DENIED);
         }
         var activation = service.activation(key, new PolicyRuntimeEndpoints(sourceGrid, targetGrid, BackendStatus.READY));
+        if (activation == PolicyActivationState.OFF || activation == PolicyActivationState.UNCONFIGURED) {
+            return paused(ProviderTargetState.POLICY_DENIED);
+        }
         if (activation != PolicyActivationState.ACTIVE) {
             return paused(ProviderTargetState.FABRIC_DISCONNECTED);
         }

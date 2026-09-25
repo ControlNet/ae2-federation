@@ -147,7 +147,8 @@ public final class ProviderLifecycleGameTests {
             var replacement = pattern(fixture, 0, 0);
             helper.assertTrue(stalePattern.equals(replacement), "Replacement details must be semantically equal");
             helper.assertTrue(stalePattern != replacement, "Replacement must create a new decoded native handle");
-            helper.assertTrue(!pushDetails(fixture, 0, stalePattern), "Equal stale Pattern handle must be rejected");
+            helper.assertTrue(pushDetails(fixture, 0, stalePattern),
+                    "An equal Pattern handle executes, as native PatternProviderLogic compares Patterns by equality");
             helper.assertTrue(pushDetails(fixture, 0, replacement), "Current replacement handle must execute natively");
             var staleMapping = mappingHandle(fixture, 0);
             helper.assertTrue(replaceMapping(fixture, staleMapping, Set.of(0, 1)), "Current mapping must apply");
@@ -159,14 +160,17 @@ public final class ProviderLifecycleGameTests {
             var tag = new CompoundTag();
             fixture.composition().writeToNBT(tag, helper.getLevel().registryAccess());
             setPattern(fixture, 0, Items.SAND, Items.GOLD_INGOT);
+            var overwritten = pattern(fixture, 0, 0);
             fixture.composition().readFromNBT(tag, helper.getLevel().registryAccess());
-            helper.assertTrue(!pushDetails(fixture, 0, beforeLoad), "Pre-load Pattern handle must be rejected after rebuild");
+            helper.assertTrue(!pushDetails(fixture, 0, overwritten),
+                    "A Pattern absent after rebuild must be rejected");
+            helper.assertTrue(pushDetails(fixture, 0, beforeLoad), "The restored persisted Pattern executes natively");
             helper.assertValueEqual(fixture.composition().lanesForSlot(0), Set.of(0, 1),
                     "Reload must restore authoritative mapping ownership");
             helper.assertValueEqual(patternSizes(fixture), List.of(1, 1, 0),
                     "Reload must rebuild only persisted Lane ownership");
-            ProviderLifecycleEvidence.write("providerrejectstalepattern", 10, Map.of(
-                    "equalStaleRejected", "true", "removedStaleRejected", "true", "reloadStaleRejected", "true",
+            ProviderLifecycleEvidence.write("providerrejectstalepattern", 11, Map.of(
+                    "equalHandleAccepted", "true", "removedStaleRejected", "true", "reloadStaleRejected", "true",
                     "staleMappingRejected", "true", "restoredMapping", "0,1", "restoredLaneEntries", "1,1,0"));
         });
     }

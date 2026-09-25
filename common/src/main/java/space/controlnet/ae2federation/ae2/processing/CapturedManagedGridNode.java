@@ -32,7 +32,17 @@ final class CapturedManagedGridNode implements IManagedGridNode {
 
     @Override
     public IManagedGridNode setFlags(GridFlags... flags) {
-        physicalNode.setFlags(flags);
+        var created = physicalNode.getNode();
+        if (created == null) {
+            physicalNode.setFlags(flags);
+        } else {
+            // A Lane added after the physical node exists cannot change its flags; the owner configures them first.
+            for (var flag : flags) {
+                if (!created.hasFlag(flag)) {
+                    throw new IllegalStateException("Physical Provider node lacks native flag " + flag);
+                }
+            }
+        }
         return this;
     }
 

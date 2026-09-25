@@ -197,7 +197,10 @@ public final class FabricPolicySession {
             return;
         }
         selectedProvider().ifPresentOrElse(entry -> {
-            mappingLaneIndex = nextIndex(mappingLaneIndex, entry.provider().nativeLanes().size());
+            // A production Provider is mapped by Endpoint; its Lanes are allocated per mapped Endpoint.
+            var choices = entry.controller().isPresent() ? currentEndpoints().size()
+                    : entry.provider().nativeLanes().size();
+            mappingLaneIndex = nextIndex(mappingLaneIndex, choices);
             mappingAcknowledgment = "ready";
         }, () -> mappingAcknowledgment = "rejected-no-provider");
     }
@@ -210,6 +213,21 @@ public final class FabricPolicySession {
         var entry = selectedProvider().orElse(null);
         if (entry == null) {
             mappingAcknowledgment = "rejected-no-provider";
+            return;
+        }
+        if (entry.controller().isPresent()) {
+            var endpoints = currentEndpoints();
+            if (endpoints.isEmpty()) {
+                mappingAcknowledgment = "rejected-no-endpoint";
+                return;
+            }
+            try {
+                var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
+                mappingAcknowledgment = entry.controller().orElseThrow()
+                        .toggleEndpoint(entry.provider().mappingHandle(mappingSlotIndex), endpoint);
+            } catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+                mappingAcknowledgment = "rejected-invalid-selection";
+            }
             return;
         }
         ProviderTargetState targetState = entry.runtime().lastResolution().state();
@@ -249,6 +267,21 @@ public final class FabricPolicySession {
     }
 
     public Component mappingSelectionText() {
+        var controller = selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller);
+        if (controller.isPresent()) {
+            var endpoints = currentEndpoints();
+            if (endpoints.isEmpty()) {
+                return Component.translatable("ae2federation.ui.fabric.mapping.selection_endpoint", mappingSlotIndex,
+                        "-", "-");
+            }
+            var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
+            var mapped = controller.orElseThrow().endpointsForSlot(mappingSlotIndex)
+                    .contains(endpoint.endpointIdentity());
+            return Component.translatable("ae2federation.ui.fabric.mapping.selection_endpoint", mappingSlotIndex,
+                    shortId(FabricGraphProjection.endpointId(context, endpoint)),
+                    Component.translatable(mapped ? "ae2federation.ui.fabric.mapping.mapped"
+                            : "ae2federation.ui.fabric.mapping.unmapped"));
+        }
         return Component.translatable("ae2federation.ui.fabric.mapping.selection", mappingSlotIndex, mappingLaneIndex);
     }
 

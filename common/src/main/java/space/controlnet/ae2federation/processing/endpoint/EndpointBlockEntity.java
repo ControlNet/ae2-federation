@@ -13,7 +13,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
+import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
+import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.ClaimResult;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.claim.ClaimStateCodec;
@@ -51,6 +53,11 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             return;
         }
         claims.withOnline(true);
+        if (claims.state() instanceof ClaimState.Owned owned && space.controlnet.ae2federation.processing.provider
+                .RetiredProviderRegistry.get(serverLevel).isRetired(owned.ownerIdentity().provider().id())) {
+            // The owning Provider was removed while this Endpoint was unloaded.
+            claims.release(owned.ownerIdentity(), owned.epoch());
+        }
         binding = new EndpointTargetBinding(serverLevel, worldPosition, FEDERATION_FACE, claims, node, configuredMode,
                 generation);
         snapshotRuntime();
@@ -96,6 +103,19 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             setChanged();
         }
         return result;
+    }
+
+    /** Releases this Endpoint's Claim if {@code owner} still holds it at {@code epoch}; closes Federated input. */
+    public boolean releaseClaim(EndpointOwnerIdentity owner, ClaimEpoch epoch) {
+        if (!claims.release(owner, epoch)) {
+            return false;
+        }
+        if (binding != null) {
+            binding.runtime().closeFederated();
+        }
+        snapshotRuntime();
+        setChanged();
+        return true;
     }
 
     public boolean activateFederated() {

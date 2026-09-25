@@ -9,12 +9,12 @@ import java.util.TreeSet;
 
 public final class PatternLaneMapping {
     private final int patternSlots;
-    private final int laneCount;
+    private int laneCount;
     private final List<Set<Integer>> lanesBySlot;
     private final long[] generations;
 
     public PatternLaneMapping(int patternSlots, int laneCount) {
-        if (patternSlots < 1 || laneCount < 1) {
+        if (patternSlots < 1 || laneCount < 0) {
             throw new IllegalArgumentException("Pattern slot and Lane counts must be positive");
         }
         this.patternSlots = patternSlots;
@@ -24,6 +24,11 @@ public final class PatternLaneMapping {
             lanesBySlot.add(Set.of());
         }
         generations = new long[patternSlots];
+    }
+
+    /** Appends one Lane index; existing assignments and slot generations are unchanged. */
+    public int addLane() {
+        return laneCount++;
     }
 
     public PatternSlotHandle handle(int slot) {
