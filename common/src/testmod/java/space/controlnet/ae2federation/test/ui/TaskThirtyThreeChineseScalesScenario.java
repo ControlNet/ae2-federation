@@ -22,7 +22,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
             context.mc().reloadResourcePacks();
         });
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
-                .waitForText("#domain_title", "联邦关系图与加工诊断")
+                .waitForText("#domain_title", "ME联邦域管理")
                 .check("scale-4 Chinese labels stay inside buttons", context ->
                         TaskThirtyThreeScenarioSupport.buttonTextContained(context, "#consumer_next", "#provider_next",
                                 "#capability_next", "#policy_toggle", "#mapping_provider_next",

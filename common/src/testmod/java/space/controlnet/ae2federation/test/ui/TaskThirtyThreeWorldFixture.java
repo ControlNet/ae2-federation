@@ -32,7 +32,7 @@ import space.controlnet.ae2federation.processing.claim.EndpointIdentity;
 import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
-import space.controlnet.ae2federation.processing.provider.MappedPatternProvider;
+import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.processing.provider.MappedPatternProviderHost;
 import space.controlnet.ae2federation.processing.provider.ProviderFace;
 import space.controlnet.ae2federation.processing.provider.ProviderIdentity;
@@ -63,12 +63,12 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     static boolean mappingAccepted(ServerContext context) {
-        var state = state(context);
-        return state.provider != null && state.provider.lanesForSlot(0).equals(Set.of(0));
+        var provider = provider(context);
+        return provider != null && provider.mappedProvider().lanesForSlot(0).equals(Set.of(0));
     }
 
     static String mappingLanes(ServerContext context) {
-        return state(context).provider.lanesForSlot(0).toString();
+        return provider(context).mappedProvider().lanesForSlot(0).toString();
     }
 
     static void positionRouterOverviewCamera(ServerContext context) {
@@ -83,16 +83,16 @@ final class TaskThirtyThreeWorldFixture {
 
     static void positionProviderCamera(ServerContext context) {
         var fixture = state(context);
-        positionCamera(context, fixture.hostPosition.east(3).above(2), fixture.hostPosition);
+        positionCamera(context, fixture.hostPosition().east(3).above(2), fixture.hostPosition());
     }
 
     static void positionEndpointCamera(ServerContext context) {
         var fixture = state(context);
-        positionCamera(context, fixture.endpointPosition.east(2).south(3).above(2), fixture.endpointPosition);
+        positionCamera(context, fixture.endpointPosition().east(2).south(3).above(2), fixture.endpointPosition());
     }
 
     static String providerId(ServerContext context) {
-        return state(context).identity.id().value().toString();
+        return provider(context).providerIdentity().id().value().toString();
     }
 
     static String endpointId(ServerContext context) {
@@ -118,73 +118,81 @@ final class TaskThirtyThreeWorldFixture {
     private static void place(ServerContext context) {
         var hostPosition = TaskFifteenWorldFixture.routerPosition(context).south(2);
         var endpointPosition = hostPosition.south();
-        context.level().setBlockAndUpdate(hostPosition, Blocks.CHEST.defaultBlockState());
-        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
         var existing = GridHelper.getExposedNode(context.level(),
                 TaskFifteenWorldFixture.mainNetworkCablePosition(context), Direction.UP);
         require(existing != null, "Task 33 Provider requires the settled main network cable");
         var networkId = FederationDomainRegistryAccess.confirmedNetworkId(existing.getGrid()).orElseThrow(
                 () -> new IllegalStateException("Task 33 Provider requires confirmed main network identity"));
+        // The production ME Federation Pattern Provider block; its Federation face points away from the Endpoint.
+        context.level().setBlockAndUpdate(hostPosition, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
+        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
         var endpoint = context.level().getBlockEntity(endpointPosition) instanceof EndpointBlockEntity value
                 ? value
                 : null;
         require(endpoint != null, "Task 33 Endpoint must be placed before identity seeding");
         endpoint.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
-        var host = new ProviderHost(context, hostPosition);
-        var node = GridHelper.createManagedNode(host, (IGridNodeListener<ProviderHost>) (owner, gridNode) -> {
-        }).setTagName("task33-provider").setInWorldNode(true).setIdlePowerUsage(0)
-                .setExposedOnSides(EnumSet.allOf(Direction.class));
-        node.loadFromNBT(NetworkIdentityNodeSeed.managedNode("task33-provider", networkId));
-        var provider = new MappedPatternProvider(node, host, List.of(host, host), 6);
-        host.provider = provider;
-        node.create(context.level(), hostPosition);
-        GridHelper.createConnection(node.getNode(), existing);
-        context.put(STATE, new State(hostPosition, endpointPosition, host, node, provider, ProviderIdentity.create()));
+        var provider = (FederationPatternProviderBlockEntity) context.level().getBlockEntity(hostPosition);
+        provider.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
+        context.put(STATE, new State(hostPosition, endpointPosition, existing));
     }
 
     private static boolean ready(ServerContext context) {
         var state = state(context);
         var endpoint = endpoint(context);
-        if (endpoint == null || endpoint.getMainNode().getNode() == null || state.node.getGrid() == null) {
+        var provider = provider(context);
+        if (endpoint == null || provider == null || endpoint.getMainNode().getNode() == null
+                || provider.getMainNode().getNode() == null || provider.runtime().isEmpty()) {
             return false;
         }
-        if (state.runtime == null) {
-            var claim = endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), ClaimEpoch.NONE,
-                    new EndpointOwnerIdentity(state.identity)));
-            require(!(claim instanceof space.controlnet.ae2federation.processing.claim.ClaimResult.Rejected),
-                    "Task 33 Endpoint Claim must be acquired");
-            require(endpoint.activateFederated(), "Task 33 Endpoint must enter Federation mode");
-            var request = new AtomicReference<>(new ProviderTargetRequest(state.identity, endpoint.endpointIdentity(),
-                    endpoint.claimState().epoch(), state.endpointPosition, Direction.WEST, true));
-            state.runtime = new ProviderRuntime(context.level(), state.node, state.provider, state.identity,
-                    new ProviderOrientation(ProviderFace.EAST), request::get, new NativeTargetDomainRegistry());
-            state.runtime.settle();
-            state.provider.register();
-            state.provider.patternInventory().setItemDirect(0, PatternDetailsHelper.encodeProcessingPattern(
-                    List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 4_000_000_000L)),
-                    List.of(new GenericStack(AEItemKey.of(Items.DIAMOND), 1))));
-            state.provider.refreshPatterns();
+        if (provider.getMainNode().getGrid() != state.existing.getGrid()) {
+            GridHelper.createConnection(provider.getMainNode().getNode(), state.existing);
+            return false;
         }
         var binding = endpoint.binding();
         if (binding == null) {
             return false;
         }
-        var providerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(state.node.getGrid()).orElse(null);
-        var endpointNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null);
-        var routerNode = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
-        var federationDomains = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains().values();
-        if (providerNetwork == null || !providerNetwork.equals(endpointNetwork)) {
+        if (provider.getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+            // Inserted through the Provider's native Pattern inventory, as AE2's menu or Pattern Access Terminal do.
+            provider.getTerminalPatternInventory().insertItem(0, PatternDetailsHelper.encodeProcessingPattern(
+                    List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 4_000_000_000L)),
+                    List.of(new GenericStack(AEItemKey.of(Items.DIAMOND), 1))), false);
+            provider.getTerminalPatternInventory().insertItem(1, PatternDetailsHelper.encodeProcessingPattern(
+                    List.of(new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1)),
+                    List.of(new GenericStack(AEItemKey.of(Items.GOLD_INGOT), 1))), false);
+        }
+        var providerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(provider.getMainNode().getGrid())
+                .orElse(null);
+        var endpointNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
+                .orElse(null);
+        var routerNode = FederationDomainRegistryAccess.nodeId(context.level(),
+                TaskFifteenWorldFixture.routerPosition(context));
+        var federationDomains = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains()
+                .values();
+        if (providerNetwork == null || !providerNetwork.equals(endpointNetwork) || !federationDomains.stream()
+                .anyMatch(domain -> domain.nodes().contains(routerNode)
+                        && domain.memberships().containsKey(providerNetwork))) {
             return false;
         }
-        return !state.provider.patternInventory().getStackInSlot(0).isEmpty() && federationDomains.stream()
-                .anyMatch(federationDomain -> federationDomain.nodes().contains(routerNode)
-                        && federationDomain.memberships().containsKey(providerNetwork));
+        if (!(endpoint.claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned)) {
+            // Pattern slot 1 maps the Endpoint through the production controller, which claims it (epoch 1).
+            var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(1), binding);
+            require(status.startsWith("accepted-"), "Task 33 Endpoint mapping must be accepted: " + status);
+        }
+        return true;
     }
 
     private static EndpointBlockEntity endpoint(ServerContext context) {
         var state = state(context);
-        return context.level().getBlockEntity(state.endpointPosition) instanceof EndpointBlockEntity endpoint
+        return context.level().getBlockEntity(state.endpointPosition()) instanceof EndpointBlockEntity endpoint
                 ? endpoint : null;
+    }
+
+    private static FederationPatternProviderBlockEntity provider(ServerContext context) {
+        var state = state(context);
+        return context.level().getBlockEntity(state.hostPosition()) instanceof FederationPatternProviderBlockEntity provider
+                ? provider : null;
     }
 
     private static State state(ServerContext context) {
@@ -200,10 +208,8 @@ final class TaskThirtyThreeWorldFixture {
         if (state == null) {
             return;
         }
-        state.provider.close();
-        state.node.destroy();
-        context.level().setBlockAndUpdate(state.endpointPosition, Blocks.AIR.defaultBlockState());
-        context.level().setBlockAndUpdate(state.hostPosition, Blocks.AIR.defaultBlockState());
+        context.level().setBlockAndUpdate(state.endpointPosition(), Blocks.AIR.defaultBlockState());
+        context.level().setBlockAndUpdate(state.hostPosition(), Blocks.AIR.defaultBlockState());
     }
 
     private static void require(boolean value, String message) {
@@ -219,64 +225,7 @@ final class TaskThirtyThreeWorldFixture {
         player.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(target));
     }
 
-    private static final class State {
-        private final BlockPos hostPosition;
-        private final BlockPos endpointPosition;
-        private final ProviderHost host;
-        private final IManagedGridNode node;
-        private final MappedPatternProvider provider;
-        private final ProviderIdentity identity;
-        private ProviderRuntime runtime;
-
-        private State(BlockPos hostPosition, BlockPos endpointPosition, ProviderHost host, IManagedGridNode node,
-                MappedPatternProvider provider, ProviderIdentity identity) {
-            this.hostPosition = hostPosition;
-            this.endpointPosition = endpointPosition;
-            this.host = host;
-            this.node = node;
-            this.provider = provider;
-            this.identity = identity;
-        }
-    }
-
-    private static final class ProviderHost implements MappedPatternProviderHost, PatternProviderLogicHost {
-        private final ServerContext context;
-        private final BlockPos position;
-        private MappedPatternProvider provider;
-
-        private ProviderHost(ServerContext context, BlockPos position) {
-            this.context = context;
-            this.position = position;
-        }
-
-        @Override
-        public MappedPatternProvider mappedPatternProvider() {
-            return provider;
-        }
-
-        @Override
-        public BlockEntity getBlockEntity() {
-            return context.level().getBlockEntity(position);
-        }
-
-        @Override
-        public EnumSet<Direction> getTargets() {
-            return EnumSet.of(Direction.EAST);
-        }
-
-        @Override
-        public void saveChanges() {
-            getBlockEntity().setChanged();
-        }
-
-        @Override
-        public AEItemKey getTerminalIcon() {
-            return AEItemKey.of(AEItems.PROCESSING_PATTERN.asItem());
-        }
-
-        @Override
-        public ItemStack getMainMenuIcon() {
-            return AEItems.PROCESSING_PATTERN.stack();
-        }
+    private record State(BlockPos hostPosition, BlockPos endpointPosition,
+            appeng.api.networking.IGridNode existing) {
     }
 }

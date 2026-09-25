@@ -24,7 +24,7 @@ public final class TaskFifteenSharedPolicyScenario implements UIScenario {
                 .server("open the same policy from the real Bridge", TaskFifteenWorldFixture::openBridge)
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForText("#entrance_value", "Opened from ME Federation Bridge")
+                .waitForTextContains("#entrance_value", "ME Federation Bridge - side ")
                 .waitForTextContains("#rule_value", "STORAGE: enabled (revision")
                 .checkServer("both entrances retain one directional record", context ->
                         TaskFifteenWorldFixture.policyEnabled(context))

@@ -8,7 +8,7 @@
   "ae2federation.ui.domain.title": "ME Federation Domain Management",
   "ae2federation.ui.domain.entrance.router": "Opened from ME Federation Router",
   "ae2federation.ui.domain.entrance.bridge": "Opened from ME Federation Bridge",
-  "ae2federation.ui.domain.entrance.bridge_detail": "ME Federation Bridge - side %s / cable extension %s",
+  "ae2federation.ui.domain.entrance.bridge_detail": "ME Federation Bridge - side %s / type bridge / cable extension %s",
   "ae2federation.ui.domain.members.heading": "ME Networks in this Federation Domain",
   "ae2federation.ui.domain.members": "%s members",
   "ae2federation.ui.domain.members.pending": "No confirmed Federation Domain membership",

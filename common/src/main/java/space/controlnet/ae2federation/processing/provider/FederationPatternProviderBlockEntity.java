@@ -354,7 +354,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 releaseDrainedLanes();
             }
             saveChanges();
-            return "accepted-" + slot + "-" + provider.mappingHandle(slot).generation();
+            return "accepted-" + slot + "-" + handle.generation();
         }
         if (provider.mappingHandle(slot).generation() != handle.generation()) {
             return "rejected-stale-slot";
@@ -375,7 +375,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             return "rejected-stale-slot";
         }
         saveChanges();
-        return "accepted-" + slot + "-" + provider.mappingHandle(slot).generation();
+        return "accepted-" + slot + "-" + handle.generation();
     }
 
     @Override
