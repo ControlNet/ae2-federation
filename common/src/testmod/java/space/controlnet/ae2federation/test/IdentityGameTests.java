@@ -94,18 +94,25 @@ public final class IdentityGameTests {
         helper.setBlock(left, AEBlocks.ME_CHEST.block());
         helper.setBlock(middle, AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(right, AEBlocks.ME_CHEST.block());
+        var originalIds = new String[1];
         helper.succeedWhen(() -> {
             var leftNode = relativeNode(helper, left);
             var rightNode = relativeNode(helper, right);
-            helper.assertTrue(leftNode.getGrid() == rightNode.getGrid(), "Fixture nodes must begin in one native Grid");
-            var originalId = service(leftNode).lineage(leftNode).networkId();
-            helper.setBlock(middle, Blocks.AIR);
+            if (originalIds[0] == null) {
+                // Phase 1: wait for one joined Grid, then remove the middle node exactly once.
+                helper.assertTrue(leftNode.getGrid() == rightNode.getGrid(),
+                        "Fixture nodes must begin in one native Grid");
+                originalIds[0] = service(leftNode).lineage(leftNode).networkId().toString();
+                helper.setBlock(middle, Blocks.AIR);
+            }
+            var originalId = originalIds[0];
+            // Phase 2: the split and both settlements may complete on a later tick; retry without re-mutating.
             helper.assertTrue(leftNode.getGrid() != rightNode.getGrid(), "Removing the native middle node must split the Grid");
             helper.assertTrue(!service(leftNode).settlement().canInheritPolicy(),
                     "First ambiguous child must not inherit Policy");
             helper.assertTrue(!service(rightNode).settlement().canInheritPolicy(),
                     "Second ambiguous child must not inherit Policy");
-            writeEvidence("identityambiguoussplit", 6, originalId.toString(), "ambiguous-split", Map.of(
+            writeEvidence("identityambiguoussplit", 6, originalId, "ambiguous-split", Map.of(
                     "leftGrid", Integer.toUnsignedString(System.identityHashCode(leftNode.getGrid())),
                     "rightGrid", Integer.toUnsignedString(System.identityHashCode(rightNode.getGrid())),
                     "leftCanInherit", "false",
