@@ -2,25 +2,40 @@
 
 ## Qualified boundary
 
-Task 8 qualifies source identification only. AE2 `StorageService` continues to own provider registration, listener
-lifecycle, cache invalidation, priority ordering, preferred-storage selection, filters and every insert/extract/list
-operation. Federation captures actual mounts by invoking the active native `IStorageProvider.mountInventories` callback
-and returns the mounted `MEStorage` objects themselves. Observational Mixins record native mount/delegate identities for
-independent evidence; they do not define provenance or replace the aggregate. No counters are copied and the complete
-network aggregate is never exposed as a source.
+AE2 `StorageService` continues to own provider registration, mount lifecycle, listener notification, cache
+invalidation, priority ordering, preferred-storage selection, filters and every insert/extract/list operation. Federation
+does not replay `IStorageProvider.mountInventories` to discover sources. It observes the mount table AE2 actually built:
 
-Only a callback resolved internally from an actual native `IGridNode` service can qualify native source identities. Federation providers
-cannot qualify sources; they can only create owner-bound projection or route views over a previously qualified native
-handle. Projection views are excluded. Route views resolve to their qualified native handle and deduplicate by Java object
-identity while preserving the highest callback priority. A mounted `NetworkStorage`, an unqualified provider mount, or an
-opaque third-party wrapper fails with a typed diagnostic before any partial source list is returned. Tests do not register
-the opaque wrapper or tell the classifier what it represents.
+- A narrow compatibility layer (`mixin/compat`) watches `StorageService$ProviderState.mount(MEStorage,int)` and
+  `unmount()` and records, per `StorageService`, each provider's mounted handles and priorities in AE2 order plus a mount
+  generation that advances on every real mount or unmount. The internal hook exists because `IStorageService` exposes
+  neither a mount-table query nor a mount listener. Ledger state lives on AE2's own service objects, so it disappears with
+  the Grid (split, merge, destroy, level unload); nothing global must be cleared.
+- `NativeSourceDomainRegistry` is the single source index. It rebuilds a Grid's source domain from that ledger only when
+  its stamp changes: Grid and storage-service identity, ledger generation, provider-node activation and AE2 delegate
+  links. It never scans all Grid nodes and never replays a provider callback. It holds identities, delegates and
+  generations, never quantities.
+- Both node providers and native **global** providers (`IStorageService.addGlobalStorageProvider`) are sources, so
+  third-party inventories registered through either native path need no Federation registration. Federation's own
+  projection and route providers, AE2's crafting-service storage, and complete `NetworkStorage` aggregates are excluded.
+- One provider mounting several independent handles (for example a drive with several cells) yields one source per
+  handle. The same handle mounted by several providers, or an AE2 `DelegatingMEInventory` chain reaching another mounted
+  handle, is deduplicated because that aliasing is provable from native objects. Wrappers sharing an unmounted inner
+  inventory (`AMBIGUOUS_SHARED_DELEGATE`) and third-party handles referencing another mounted handle
+  (`OPAQUE_EXTERNAL_ALIAS`) fail closed with a diagnostic; they are never guessed into one source.
+- A listing evaluates source validity and relationship currency once and then applies the Policy resource filter per
+  key. Insert and extract validate per call against cheap revision stamps (ledger generation, Policy revision, Domain
+  topology, identity), so disconnect, revocation or a remount stops real operations on the next call.
+
+Measured with 2,500 distinct keys (`storage.source-index-scale`): five listings previously caused 12,505 discovery
+rebuilds, 75,030 node scans and 50,020 `mountInventories` replays; they now cause 0, 0 and 0 with 5 source validations.
 
 Compatibility is pinned to AE2 `19.2.17` / commit
 [`79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a`](https://github.com/AppliedEnergistics/Applied-Energistics-2/tree/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a),
-specifically `IGridNode.getService(IStorageProvider.class)` and `IStorageProvider.mountInventories`. If node providers no
-longer expose the real delegates and priorities through that callback, this gate becomes `BLOCKED` until an equivalent
-native hook is proven.
+specifically `StorageService$ProviderState` and `DelegatingMEInventory.getDelegate()`. If those change, this gate becomes
+`BLOCKED` until an equivalent native hook is proven. Opaque-alias detection inspects one level of instance fields of
+non-AE2 handles; deeper or indirect sharing is not detectable and is treated as independent, as AE2's own
+`NetworkStorage` does. No third-party mod is qualified by these tests.
 
 ## CELLS lessons
 

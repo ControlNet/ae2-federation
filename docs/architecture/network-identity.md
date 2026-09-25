@@ -50,6 +50,15 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
 - One loaded Grid containing multiple prior `NetworkId` values is merge ambiguity. It inherits neither Policy set.
 - No timeout, location, load order, randomness, or newest-wins rule resolves ambiguity.
 
+## Settlement cache
+
+Each Grid's identity service publishes lineage additions and removals incrementally into `IdentityClaimIndex`, which
+indexes live lineages by node id and network id and caches one settlement per Grid. A settlement only looks up the
+Grid's own lineages. A claim change dirties the changed Grid and every other Grid sharing that node or network id, so
+copies and splits observed through another Grid invalidate the unchanged Grid too. Stable reads return the cached value
+without copying or scanning, and `SavedData` is marked dirty only when a persisted status changes. On a 256-node Grid
+beside 32 Grids of 32 nodes (`identity.stable-query-cost`), a stable read went from 11.7 ms to about 0.5 µs.
+
 ## Partial loading
 
 The implementation never scans the world and never force-loads chunks. A binding may be used only from currently loaded,

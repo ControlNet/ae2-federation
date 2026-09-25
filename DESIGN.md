@@ -587,6 +587,8 @@ flowchart TD
 - 处理映射更新、能力失效和持久化恢复。
 - 在目标不可接受时报告本次不能推送，让原生 Crafting Service 继续等待或使用其他可用实例。
 
+**当前实现（ME Federation Pattern Provider，`ae2federation:pattern_provider`）：** 方块朝向（AE2 facing 策略，可用扳手旋转）即 Federation 面，放置时贴向所点击的方块；另外五个面暴露同一个原生 ME 节点。9 个物理 Pattern 槽位由一个不执行的原生 `PatternProviderLogic` 持有，因此 AE2 自己的样板供应器界面、样板访问终端、内存卡与掉落规则直接作用于它；Blocking、Lock Crafting、优先级等设置逐一写入每条 Lane 自己的原生配置。在联邦域管理界面把某个槽位映射到某个 Endpoint 时，服务端为该 Provider 获取 Endpoint Claim，并为每个 Endpoint 分配一条原生 Lane（Lane 数量随映射而定，不是固定上限）；每条 Lane 作为独立的原生 crafting provider 发布，由 AE2 规划器与 CPU 选择。取消映射后，Lane 在其原生 send/return 状态清空前保留 Claim；拆除方块时 Pattern 只掉落一次、Lane 的待发送/返回资源按原生 `addDrops` 掉落并释放 Claim（若 Endpoint 未加载，则在其加载时释放）。已绑定 Lane 不会把输入交给相邻的 `ICraftingMachine` 或本地库存。
+
 本模组的第一加工目标是 **Processing Pattern**。Molecular Assembler 等普通 Crafting Pattern 的完整语义不自动由此获得支持；是否让专用 Provider 同时具有普通 Provider 功能，列为后续兼容性决定。
 
 ### 9.3 Processing Endpoint
