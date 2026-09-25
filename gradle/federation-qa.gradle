@@ -6071,6 +6071,10 @@ def validateTaskFortyDocuments = { Map<String, String> documents, Map manifest -
     if ([readme, matrix].any { (it =~ falseApproval).find() }) {
         throw new GradleException('Task 40 documentation claims an unsupported current approval')
     }
+    def falseQualification = ~/(?i)\b(?:Federation\s+(?:timed\s+)?(?:has|achieved|completed|passed)\s+(?:its\s+)?3\/3|Task\s*38\s+soak\s+(?:is|has)\s+(?:now\s+)?(?:complete|passed|qualified))\b/
+    if ([readme, matrix, benchmark].any { (it =~ falseQualification).find() }) {
+        throw new GradleException('Task 40 documentation claims an unsupported scale or soak qualification')
+    }
     def commands = documents['docs/testing/commands.md']
     def blocks = (commands =~ /(?s)```bash\s*(.*?)\s*```/).collect { it[1].replace('\\\n', ' ') }
     if (blocks.isEmpty() || !blocks.any { it.contains('./gradlew') && it.contains(':neoforge-1.21.1:federationVerify') }
@@ -6651,7 +6655,11 @@ tasks.register('federationTaskFortyDocsNegativeContract') {
                 falseDocsApproval: ['Task 40 documentation claims an unsupported current approval',
                         'README.md', documents['README.md'] + '\nTask 40 has passed.\n'],
                 falseFinalApproval: ['Task 40 documentation claims an unsupported current approval',
-                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'] + '\nF1-F4 gates are approved.\n']]
+                        'docs/acceptance-matrix.md', documents['docs/acceptance-matrix.md'] + '\nF1-F4 gates are approved.\n'],
+                falseFederationQualification: ['Task 40 documentation claims an unsupported scale or soak qualification',
+                        'README.md', documents['README.md'] + '\nFederation has 3/3 completed timed windows.\n'],
+                falseSoakQualification: ['Task 40 documentation claims an unsupported scale or soak qualification',
+                        'docs/benchmarks/task-37.md', documents['docs/benchmarks/task-37.md'] + '\nTask 38 soak is complete.\n']]
         cases.each { name, testCase ->
             def selected = new LinkedHashMap(documents)
             selected[testCase[1]] = testCase[2]
@@ -6662,7 +6670,7 @@ tasks.register('federationTaskFortyDocsNegativeContract') {
                 throw new GradleException("Task 40 ${name} test-only fixture rejected for wrong reason: ${rejection}")
             }
         }
-        logger.lifecycle('Task 40 five test-only invalid document inputs rejected at intended boundaries')
+        logger.lifecycle('Task 40 seven test-only invalid document inputs rejected at intended boundaries')
     }
 }
 

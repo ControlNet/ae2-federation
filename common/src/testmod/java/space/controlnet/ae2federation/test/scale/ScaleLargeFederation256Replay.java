@@ -51,8 +51,70 @@ public final class ScaleLargeFederation256Replay {
     }
 
     public static void runTimed(GameTestHelper helper) {
-        var replay = new Replay(helper, true);
+        var replay = new Replay(helper, true, Boolean.getBoolean("ae2federation.federationStageDiagnostics"));
         ScaleSourceHosts.run(helper, replay::tick, SLOTS_PER_HOST, 5, false);
+    }
+
+    enum JobStage {
+        PLANNING, NATIVE_SUBMISSION, TARGET_INPUT_CONTEXT, MACHINE_CALLBACK, RECEIPT_READBACK
+    }
+
+    static final class StageDiagnostics {
+        private final long[] wallNanos = new long[JobStage.values().length];
+        private final long[] serverTicks = new long[JobStage.values().length];
+        private final long[] waits = new long[JobStage.values().length];
+        private JobStage current = JobStage.PLANNING;
+        private long stageStartNanos;
+        private long stageStartTick;
+        private int completedJobs;
+
+        StageDiagnostics(long startedNanos, long startedTick) {
+            stageStartNanos = startedNanos;
+            stageStartTick = startedTick;
+        }
+
+        void waitFor(JobStage stage) {
+            waits[stage.ordinal()]++;
+        }
+
+        void transition(JobStage next, long nowNanos, long nowTick) {
+            wallNanos[current.ordinal()] += nowNanos - stageStartNanos;
+            serverTicks[current.ordinal()] += nowTick - stageStartTick;
+            current = next;
+            stageStartNanos = nowNanos;
+            stageStartTick = nowTick;
+        }
+
+        void completedJob(long nowNanos, long nowTick) {
+            transition(JobStage.PLANNING, nowNanos, nowTick);
+            completedJobs++;
+        }
+
+        String snapshot(String phase, String status, long nowNanos, long nowTick) {
+            var message = new StringBuilder("AE2F_SCALE_FEDERATION_STAGE phase=").append(phase)
+                    .append(" status=").append(status).append(" completedJobs=").append(completedJobs);
+            for (var stage : JobStage.values()) {
+                int index = stage.ordinal();
+                message.append(' ').append(stage.name()).append(".wallNanos=")
+                        .append(wallNanos[index] + (stage == current ? nowNanos - stageStartNanos : 0))
+                        .append(' ').append(stage.name()).append(".serverTicks=")
+                        .append(serverTicks[index] + (stage == current ? nowTick - stageStartTick : 0))
+                        .append(' ').append(stage.name()).append(".waits=").append(waits[index]);
+            }
+            return message.toString();
+        }
+
+        void reset(long nowNanos, long nowTick) {
+            for (var stage : JobStage.values()) {
+                int index = stage.ordinal();
+                wallNanos[index] = 0;
+                serverTicks[index] = 0;
+                waits[index] = 0;
+            }
+            completedJobs = 0;
+            stageStartNanos = nowNanos;
+            stageStartTick = nowTick;
+        }
     }
 
     private static final class Replay {
@@ -65,7 +127,9 @@ public final class ScaleLargeFederation256Replay {
         private final Set<String> jobIds = new LinkedHashSet<>();
         private final Set<ChunkPos> podChunks = new HashSet<>();
         private final boolean timed;
+        private final boolean diagnoseStages;
         private ScaleTimedWindow window;
+        private StageDiagnostics diagnostics;
         private int cycle;
         private int totalJobs;
         private boolean warmupReported;
@@ -76,8 +140,22 @@ public final class ScaleLargeFederation256Replay {
         private int waitTicks;
 
         private Replay(GameTestHelper helper, boolean timed) {
+            this(helper, timed, false);
+        }
+
+        private Replay(GameTestHelper helper, boolean timed, boolean diagnoseStages) {
             this.helper = helper;
             this.timed = timed;
+            this.diagnoseStages = diagnoseStages;
+        }
+
+        private void transition(JobStage next) {
+            if (diagnostics != null) diagnostics.transition(next, System.nanoTime(),
+                    helper.getLevel().getServer().getTickCount());
+        }
+
+        private void waiting(JobStage stage) {
+            if (diagnostics != null) diagnostics.waitFor(stage);
         }
 
         private int hostIndex() {
@@ -125,8 +203,12 @@ public final class ScaleLargeFederation256Replay {
                         "Missing 256th distinct physical Federation Pattern after native publication settled");
                 assertLayout(source, false);
                 assertCatalog(source);
-                if (timed) window = new ScaleTimedWindow(300, 600, JOB_COUNT, QUANTITY,
-                        System.nanoTime(), helper.getLevel().getServer().getTickCount());
+                if (timed) {
+                    long startedNanos = System.nanoTime();
+                    long startedTick = helper.getLevel().getServer().getTickCount();
+                    window = new ScaleTimedWindow(300, 600, JOB_COUNT, QUANTITY, startedNanos, startedTick);
+                    if (diagnoseStages) diagnostics = new StageDiagnostics(startedNanos, startedTick);
+                }
                 stage = 3;
             }
             if (stage == 3) {
@@ -135,7 +217,10 @@ public final class ScaleLargeFederation256Replay {
             }
             var selection = jobs.get(jobIndex);
             if (stage == 4) {
-                if (!plan.isDone()) return false;
+                if (!plan.isDone()) {
+                    waiting(JobStage.PLANNING);
+                    return false;
+                }
                 try {
                     var result = plan.get();
                     helper.assertTrue(!result.simulation() && result.finalOutput().what().equals(selection.output())
@@ -148,14 +233,19 @@ public final class ScaleLargeFederation256Replay {
                     throw new IllegalStateException("Federation catalog planner failed", exception);
                 }
                 stage = 5;
+                transition(JobStage.NATIVE_SUBMISSION);
             }
             if (stage == 5) {
                 if (!source.requester().handleCrafting(selection.output(), QUANTITY, helper.getLevel(),
-                        source.grid().getCraftingService())) return false;
+                        source.grid().getCraftingService())) {
+                    waiting(JobStage.NATIVE_SUBMISSION);
+                    return false;
+                }
                 var link = source.requester().submittedLink();
                 helper.assertTrue(link != null && !link.isCanceled() && jobIds.add(link.getCraftingID().toString()),
                         "Each physical Federation Pattern needs a distinct native CPU link: " + jobIndex);
                 stage = 6;
+                transition(JobStage.TARGET_INPUT_CONTEXT);
                 return false;
             }
             if (stage == 6) {
@@ -171,6 +261,7 @@ public final class ScaleLargeFederation256Replay {
                     if (++waitTicks > 2000) helper.fail("Host " + hostIndex() + " slot " + localSlot()
                             + " missing routed target input/Endpoint context; source=" + amount(source, selection.input())
                             + " target=" + endpoint.inputAmount(selection.input()) + " context=" + context.isPresent());
+                    waiting(JobStage.TARGET_INPUT_CONTEXT);
                     return false;
                 }
                 var owner = context.orElseThrow().owner();
@@ -194,6 +285,7 @@ public final class ScaleLargeFederation256Replay {
                         "Selected physical machine must accept this typed input before Export Bus activation");
                 endpoint.export(selection.input());
                 stage = 7;
+                transition(JobStage.MACHINE_CALLBACK);
                 waitTicks = 0;
                 return false;
             }
@@ -204,17 +296,35 @@ public final class ScaleLargeFederation256Replay {
                         + targets.get(hostIndex()).target().inputAmount(selection.input()) + " machineInput="
                         + machines.get(hostIndex()).inputCount(selection.input().getItem()) + " callback="
                         + source.requester().acceptedAmount(selection.output()));
+                waiting(JobStage.MACHINE_CALLBACK);
                 return false;
             }
+            transition(JobStage.RECEIPT_READBACK);
             finishJob(source);
             totalJobs++;
-            boolean complete = timed && window.completedJob(System.nanoTime(),
-                    helper.getLevel().getServer().getTickCount());
+            long finishedNanos = timed ? System.nanoTime() : 0;
+            long finishedTick = timed ? helper.getLevel().getServer().getTickCount() : 0;
+            if (diagnostics != null) diagnostics.completedJob(finishedNanos, finishedTick);
+            boolean complete;
+            try {
+                complete = timed && window.completedJob(finishedNanos, finishedTick);
+            } catch (IllegalStateException exception) {
+                if (diagnostics != null) LOGGER.info(diagnostics.snapshot(
+                        window.warmup() == null ? "warmup" : "sample", "failed", finishedNanos, finishedTick));
+                throw exception;
+            }
             if (timed && !warmupReported && window.warmup() != null) {
+                if (diagnostics != null) {
+                    LOGGER.info(diagnostics.snapshot("warmup", "complete", finishedNanos, finishedTick));
+                    diagnostics.reset(finishedNanos, finishedTick);
+                }
                 ScaleTimedNativeEvidence.report(LOGGER, "federation", "warmup", window.warmup());
                 warmupReported = true;
             }
-            if (timed && complete) ScaleTimedNativeEvidence.report(LOGGER, "federation", "sample", window.sample());
+            if (timed && complete) {
+                if (diagnostics != null) LOGGER.info(diagnostics.snapshot("sample", "complete", finishedNanos, finishedTick));
+                ScaleTimedNativeEvidence.report(LOGGER, "federation", "sample", window.sample());
+            }
             if (++jobIndex < JOB_COUNT && !complete) {
                 stage = 3;
                 plan = null;
