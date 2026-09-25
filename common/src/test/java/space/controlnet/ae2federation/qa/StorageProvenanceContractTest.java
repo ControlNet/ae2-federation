@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.qa;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -16,10 +17,26 @@ final class StorageProvenanceContractTest {
         var nativeBoundary = source("ae2/storage/NativeStorageProvenance.java");
         var source = source("storage/provenance/ExportSource.java");
         var alias = source("storage/provenance/SourceAlias.java");
+        var ledger = source("ae2/storage/NativeMountLedger.java");
+        var probe = source("ae2/storage/NativeStorageAliasProbe.java");
+        var providerState = source("mixin/compat/StorageServiceProviderStateMixin.java");
+        var serviceLedger = source("mixin/compat/StorageServiceMountLedgerMixin.java");
         assertTrue(provenance.contains("NetworkIdentityService.class"));
-        assertTrue(provenance.contains("NativeStorageProvenance"));
+        assertTrue(provenance.contains("NativeMountLedger"));
         assertTrue(nativeBoundary.contains("provider.mountInventories"));
         assertTrue(provenance.contains("OPAQUE_EXTERNAL_ALIAS"));
+        assertTrue(provenance.contains("AMBIGUOUS_SHARED_DELEGATE"));
+        assertTrue(provenance.contains("FederationManagedStorageProvider"));
+        assertTrue(provenance.contains("CraftingServiceStorage"));
+        assertTrue(probe.contains("NativeMountLedger.delegateOf"));
+        // The mount ledger observes AE2's real ProviderState mount table rather than replaying callbacks.
+        assertTrue(providerState.contains("appeng.me.service.StorageService$ProviderState"));
+        assertTrue(providerState.contains("mount(Lappeng/api/storage/MEStorage;I)V"));
+        assertTrue(providerState.contains("unmount()V"));
+        assertTrue(serviceLedger.contains("globalProviders"));
+        assertTrue(serviceLedger.contains("nodeProviders"));
+        assertTrue(ledger.contains("markMountChanged"));
+        assertFalse(ledger.contains("mountInventories("));
         assertTrue(provenance.contains("new CallbackEntry(callbackIndex, entry)"));
         assertTrue(provenance.contains("entry.callbackIndex()"));
         assertTrue(source.contains("ExportSourceId"));

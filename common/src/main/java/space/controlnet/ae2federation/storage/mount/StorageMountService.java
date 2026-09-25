@@ -29,6 +29,7 @@ public final class StorageMountService implements AutoCloseable {
     private final StorageSubscriptionPlanner subscriptionPlanner;
     private final LevelObservabilityService observability;
     private int removedProviderCount;
+    private long sourceValidations;
 
     private StorageMountService(ServerLevel level) {
         fabrics = new StorageFabricObserver(level);
@@ -48,6 +49,48 @@ public final class StorageMountService implements AutoCloseable {
 
     public static synchronized void topologyChangedIfPresent(ServerLevel level) {
         reconcileIfPresent(level);
+    }
+
+    /**
+     * Called at most once per tick per AE2 StorageService whose real mount table changed (drive/chest cell swap,
+     * priority change, node join/leave, global provider add/remove). Held projections are already fail-closed by the
+     * per-operation stamp check; this re-establishes relationships against the new native mounts without polling.
+     */
+    public static synchronized void nativeMountsChanged(IStorageService service) {
+        for (var entry : List.copyOf(SERVICES.values())) {
+            if (entry.observesStorageService(service)) {
+                entry.reconcileAll();
+            }
+        }
+    }
+
+    private boolean observesStorageService(IStorageService service) {
+        for (var grid : fabrics.loadedGrids().values()) {
+            if (grid.getStorageService() == service) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Full source-domain rebuilds performed by this level's source index. Diagnostic counter only. */
+    public long sourceDiscoveryRebuilds() {
+        return provenance.discoveryRebuilds();
+    }
+
+    /** Discoveries answered by the stamp-validated source index cache. Diagnostic counter only. */
+    public long sourceDiscoveryCacheHits() {
+        return provenance.cachedDiscoveries();
+    }
+
+    /** Provider mount-table entries visited by rebuilds (Federation never scans Grid nodes). Diagnostic only. */
+    public long sourceProviderScans() {
+        return provenance.providerScans();
+    }
+
+    /** Per-operation/per-enumeration source validity evaluations of held projections. Diagnostic counter only. */
+    public long sourceValidationCount() {
+        return sourceValidations;
     }
 
     static synchronized StorageMountLevelCloseResult closeLevel(ServerLevel level) {
@@ -257,6 +300,7 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     private boolean sourceCurrent(MountedStorageRelationship mounted) {
+        sourceValidations++;
         if (mounts.get(mounted.relationship().key()) != mounted
                 || !mounted.generation().equals(mountGenerations.get(mounted.relationship().key()))
                 || !mounted.sourceReady() || !dependencies.sourceCurrent(mounted.domain())) {

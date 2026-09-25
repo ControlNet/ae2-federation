@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.qa;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -29,8 +30,15 @@ final class StorageMountContractTest {
         var mounts = source("storage/mount/StorageMountService.java");
         var fabrics = source("storage/mount/StorageFabricObserver.java");
         var provenance = source("storage/provenance/NativeSourceDomainRegistry.java");
-        assertTrue(provenance.contains("grid.getNodes()"));
-        assertTrue(provenance.contains("provenance.qualify(node)"));
+        // Discovery reads AE2's real mount table (node and global providers) instead of scanning Grid nodes and
+        // replaying provider callbacks.
+        assertTrue(provenance.contains("NativeMountLedger.snapshot(service)"));
+        assertTrue(provenance.contains("snapshot.nodeProviders()"));
+        assertTrue(provenance.contains("snapshot.globalProviders()"));
+        assertTrue(provenance.contains("cached.stamp().matches(grid, service)"));
+        assertFalse(provenance.contains("grid.getNodes()"));
+        assertFalse(provenance.contains(".qualify("));
+        assertFalse(provenance.contains("mountInventories("));
         assertTrue(mounts.contains("addGlobalStorageProvider"));
         assertTrue(mounts.contains("removeGlobalStorageProvider"));
         assertTrue(mounts.contains("Map<PolicyKey, MountedStorageRelationship>"));

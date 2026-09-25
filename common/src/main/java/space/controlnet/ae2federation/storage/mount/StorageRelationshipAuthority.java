@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyResource;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
@@ -23,12 +24,8 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
 
     @Override
     public boolean permits(PolicyOperation operation, AEKey key) {
-        if (!ready()) {
-            return false;
-        }
-        var candidate = relationship.get();
-        return candidate != null && candidate.authority().permits(operation,
-                new PolicyResource(key.getType().getId(), key.getId()));
+        var ready = readyAuthorization();
+        return ready != null && ready.permits(operation, key);
     }
 
     @Override
@@ -38,8 +35,20 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
 
     @Override
     public boolean ready() {
+        return readyAuthorization() != null;
+    }
+
+    @Override
+    public @Nullable ResourceAuthorization readyAuthorization() {
+        if (!sourceReady.getAsBoolean()) {
+            return null;
+        }
         var candidate = relationship.get();
-        return sourceReady.getAsBoolean() && candidate != null && relationshipCurrent.test(candidate);
+        if (candidate == null || !relationshipCurrent.test(candidate)) {
+            return null;
+        }
+        var authority = candidate.authority();
+        return (operation, key) -> authority.permits(operation, new PolicyResource(key.getType().getId(), key.getId()));
     }
 
     @Override

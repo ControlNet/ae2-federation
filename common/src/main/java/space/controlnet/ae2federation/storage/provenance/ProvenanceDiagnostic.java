@@ -5,5 +5,9 @@ public enum ProvenanceDiagnostic {
     CALLBACK_CHANGED,
     COMPLETE_AGGREGATE,
     OPAQUE_EXTERNAL_ALIAS,
-    UNPROVEN_GRID_REBOUND
+    UNPROVEN_GRID_REBOUND,
+    /** Several mounted AE2 delegating wrappers provably forward to one unmounted inner inventory. */
+    AMBIGUOUS_SHARED_DELEGATE,
+    /** The Grid's storage service is not AE2's StorageService, so its real mount table cannot be observed. */
+    NATIVE_MOUNT_TABLE_UNAVAILABLE
 }

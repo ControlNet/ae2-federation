@@ -126,6 +126,11 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         return helper.getBlockEntity(secondPosition.north(2));
     }
 
+    /** Adds a native node storage provider to the provider (outer) Grid, west of its first cable. */
+    public appeng.api.networking.IManagedGridNode addOuterStorageProvider(appeng.api.storage.IStorageProvider provider) {
+        return bridges.nativePorts().createStorageProvider(Direction.EAST, firstPosition.north().west(), provider);
+    }
+
     public InvalidSecondCallbackProvider callbackProbe() {
         return callbackProbe;
     }

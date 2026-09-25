@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 public final class NativeStorageProvenance {
+    private static final java.util.concurrent.atomic.AtomicLong MOUNT_REPLAYS = new java.util.concurrent.atomic.AtomicLong();
     private final Map<IStorageProvider, Set<MEStorage>> qualifiedMounts = new IdentityHashMap<>();
     private final Set<MEStorage> nativeSources = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<MEStorage> managedProjections = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -97,7 +98,13 @@ public final class NativeStorageProvenance {
         sources.merge(mounted, priority, Math::max);
     }
 
+    /** Total {@code mountInventories} replays performed by this class. Diagnostic counter only. */
+    public static long mountReplayCount() {
+        return MOUNT_REPLAYS.get();
+    }
+
     private List<NativeStorageSource> capture(IStorageProvider provider) {
+        MOUNT_REPLAYS.incrementAndGet();
         var mounts = new ArrayList<NativeStorageSource>();
         provider.mountInventories((storage, priority) -> mounts.add(new NativeStorageSource(storage, priority)));
         return List.copyOf(mounts);
