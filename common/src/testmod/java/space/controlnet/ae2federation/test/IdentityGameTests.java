@@ -1,9 +1,13 @@
 package space.controlnet.ae2federation.test;
 
+import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGridNode;
+import appeng.api.parts.PartHelper;
+import appeng.api.util.AEColor;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
+import appeng.core.definitions.AEParts;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +15,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.Properties;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
@@ -169,6 +174,75 @@ public final class IdentityGameTests {
                     "copyNode", Integer.toUnsignedString(System.identityHashCode(copyNode)),
                     "sourceCanInherit", "false",
                     "copyCanInherit", "false"));
+        });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityPartOnSettledCable(GameTestHelper helper) {
+        var cell = new BlockPos(1, 1, 1);
+        var chest = new BlockPos(2, 1, 1);
+        var cable = new BlockPos(3, 1, 1);
+        var link = new BlockPos(4, 1, 1);
+        var otherCell = new BlockPos(5, 1, 1);
+        var otherChest = new BlockPos(6, 1, 1);
+        helper.setBlock(cell, AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(chest, AEBlocks.ME_CHEST.block());
+        helper.setBlock(otherCell, AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(otherChest, AEBlocks.ME_CHEST.block());
+        var phase = new int[] { 0 };
+        var ids = new String[2];
+        helper.succeedWhen(() -> {
+            var chestNode = relativeNode(helper, chest);
+            if (phase[0] == 0) {
+                helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.SETTLED,
+                        "Fixture Grid must settle first");
+                PartHelper.setPart(helper.getLevel(), helper.absolutePos(cable), null, null,
+                        AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+                phase[0] = 1;
+            }
+            var cableNode = GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(cable), Direction.WEST);
+            if (phase[0] == 1) {
+                helper.assertTrue(cableNode != null && cableNode.getGrid() == chestNode.getGrid(),
+                        "Cable must join the settled Grid");
+                helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.SETTLED,
+                        "A cable added to a settled Grid keeps it settled");
+                ids[0] = service(chestNode).lineage(chestNode).networkId().toString();
+                // AE2 readies the part node in its own one-node Grid before connecting it to the cable.
+                PartHelper.setPart(helper.getLevel(), helper.absolutePos(cable), Direction.DOWN, null,
+                        AEParts.EXPORT_BUS.asItem());
+                phase[0] = 2;
+            }
+            var bus = PartHelper.getPart(helper.getLevel(), helper.absolutePos(cable), Direction.DOWN);
+            if (phase[0] == 2) {
+                helper.assertTrue(bus != null && bus.getGridNode() != null
+                        && bus.getGridNode().getGrid() == chestNode.getGrid(), "Export Bus must join the Grid");
+                helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.SETTLED,
+                        "A part added to a settled cable must not make the Grid ambiguous");
+                helper.assertValueEqual(service(chestNode).lineage(chestNode).networkId().toString(), ids[0],
+                        "The Grid keeps its NetworkId");
+                helper.assertValueEqual(service(chestNode).lineage(bus.getGridNode()).networkId().toString(), ids[0],
+                        "The part adopts the Grid's NetworkId");
+                var otherNode = relativeNode(helper, otherChest);
+                helper.assertValueEqual(service(otherNode).settlement().status(), IdentityStatus.SETTLED,
+                        "The second established Grid must settle on its own");
+                ids[1] = service(otherNode).lineage(otherNode).networkId().toString();
+                helper.assertTrue(!ids[0].equals(ids[1]), "Established Grids carry distinct NetworkIds");
+                PartHelper.setPart(helper.getLevel(), helper.absolutePos(link), null, null,
+                        AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+                phase[0] = 3;
+            }
+            // Joining two established multi-node Grids is still a real merge and fails closed.
+            var otherNode = relativeNode(helper, otherChest);
+            helper.assertTrue(otherNode.getGrid() == chestNode.getGrid(), "Link cable must merge both Grids");
+            helper.assertValueEqual(service(chestNode).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
+                    "Merging two established Grids must stay ambiguous");
+            helper.assertTrue(!service(chestNode).settlement().canInheritPolicy(),
+                    "An ambiguous merge must not inherit Policy");
+            writeEvidence("identitypartonsettledcable", 12, ids[0], "part-adopts-grid", Map.of(
+                    "otherNetworkId", ids[1],
+                    "mergedStatus", IdentityStatus.AMBIGUOUS_MERGE.name(),
+                    "mergedCanInherit", "false"));
         });
     }
 

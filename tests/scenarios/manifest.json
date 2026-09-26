@@ -37,6 +37,7 @@
     {"id":"identity.restart","backend":"gametest-restart","testId":"identityrestart","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"identity.ambiguous-split","backend":"gametest","testId":"identityambiguoussplit","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"identity.copied-node","backend":"gametest","testId":"identitycopiednode","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"identity.part-on-settled-cable","backend":"gametest","testId":"identitypartonsettledcable","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"ports.bridge-cable-device","backend":"gametest","testId":"portsbridgecabledevice","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"ports.router-six-grids","backend":"gametest","testId":"portsroutersixgrids","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"ports.router-repeated-grid","backend":"gametest","testId":"portsrouterrepeatedgrid","structure":"ae2federation_test:harness_native_smoke","assertions":7},

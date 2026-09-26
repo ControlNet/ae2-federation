@@ -50,6 +50,26 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
 - One loaded Grid containing multiple prior `NetworkId` values is merge ambiguity. It inherits neither Policy set.
 - No timeout, location, load order, randomness, or newest-wins rule resolves ambiguity.
 
+### Provisional lineage of a lone node
+
+AE2 readies a new part on an existing cable before connecting it: `ManagedGridNode.markReady` builds a one-node Grid
+(`GridNode.getInternalGrid`), and only then does `CableBusContainer.addPart` call `GridHelper.createConnection`, which
+merges that Grid into the cable's. The same applies to any node whose own Grid forms before its first connection. A
+NetworkId minted for such a one-node Grid is not a prior identity, so the service marks it provisional (in memory and as
+a `provisional` flag in the node data, which `GridNode.setGrid` carries across the move):
+
+- A provisional lineage that arrives in a Grid that already has nodes is discarded; the node gets a new lineage with
+  that Grid's NetworkId.
+- When a provisional node's one-node Grid absorbs other nodes, the provisional lineages adopt the NetworkId of a durable
+  one.
+- As soon as a Grid holds two or more nodes, all its lineages are durable. Splits and copies of durable lineages keep
+  the rules above.
+
+The rule depends on Grid membership, not on time or order. Two fresh nodes that meet each other before they meet an
+established Grid form a durable Grid of their own; if that Grid later joins an established one, the result is still
+merge ambiguity (fail-closed). A saved single-node network (for example one lone ME chest) also stays provisional, so
+connecting it to an established Grid adopts that Grid's identity instead of reporting a merge.
+
 ## Settlement cache
 
 Each Grid's identity service publishes lineage additions and removals incrementally into `IdentityClaimIndex`, which
@@ -77,3 +97,6 @@ Task cases:
 - `identity.restart`: two actual server processes recover the same `NetworkId` from the unchanged native network.
 - `identity.ambiguous-split`: removal of a real native middle node produces two Grids that both fail closed.
 - `identity.copied-node`: native block-entity NBT copied into a second live disconnected chest is rejected for both.
+- `identity.part-on-settled-cable`: a cable and then an Export Bus added to a settled Grid keep it `SETTLED` with its
+  NetworkId, and linking it to a second established Grid still reports `AMBIGUOUS_MERGE`. Before the provisional rule
+  the Export Bus alone made the Grid `AMBIGUOUS_MERGE`.

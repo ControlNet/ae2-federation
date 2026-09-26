@@ -7566,6 +7566,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.replace-all-access':
                 case 'identity.ambiguous-split':
                 case 'identity.copied-node':
+                case 'identity.part-on-settled-cable':
                 case 'identity.restart':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
