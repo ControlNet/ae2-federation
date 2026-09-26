@@ -1,5 +1,7 @@
 {
   "variants": {
-    "": { "model": "ae2federation:block/router" }
+    "": {
+      "model": "ae2federation:block/router"
+    }
   }
 }

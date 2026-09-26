@@ -18,9 +18,39 @@ public final class FederationCableBlock extends BaseEntityBlock {
         super(properties);
     }
 
+    private static final net.minecraft.world.phys.shapes.VoxelShape[] SHAPES = new net.minecraft.world.phys.shapes.VoxelShape[64];
+    static {
+        for (int mask = 0; mask < 64; mask++) {
+            var shape = Block.box(5, 5, 5, 11, 11, 11);
+            for (int bit = 0; bit < 6; bit++) {
+                if ((mask & (1 << bit)) == 0) continue;
+                var direction = CableVisualConnections.DIRECTIONS[bit];
+                double[] lo = {4, 4, 4};
+                double[] hi = {12, 12, 12};
+                int axis = direction.getAxis().ordinal();
+                lo[axis] = direction.getAxisDirection() == net.minecraft.core.Direction.AxisDirection.POSITIVE ? 8 : 0;
+                hi[axis] = direction.getAxisDirection() == net.minecraft.core.Direction.AxisDirection.POSITIVE ? 16 : 8;
+                shape = net.minecraft.world.phys.shapes.Shapes.or(shape, Block.box(lo[0], lo[1], lo[2], hi[0], hi[1], hi[2]));
+            }
+            SHAPES[mask] = shape.optimize();
+        }
+    }
+
+    @Override
+    protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,
+            net.minecraft.world.level.BlockGetter level, BlockPos position,
+            net.minecraft.world.phys.shapes.CollisionContext context) {
+        return SHAPES[CableVisualConnections.mask(level, position)];
+    }
+
     @Override
     protected MapCodec<? extends BaseEntityBlock> codec() {
         return CODEC;
+    }
+
+    @Override
+    protected net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state) {
+        return net.minecraft.world.level.block.RenderShape.MODEL;
     }
 
     @Nullable

@@ -1,12 +1,84 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "render_type": "minecraft:solid",
   "textures": {
-    "particle": "minecraft:block/deepslate_tiles",
-    "down": "minecraft:block/deepslate_tiles",
-    "up": "minecraft:block/deepslate_tiles",
-    "north": "minecraft:block/orange_concrete",
-    "south": "minecraft:block/lime_concrete",
-    "west": "minecraft:block/lime_concrete",
-    "east": "minecraft:block/cyan_concrete"
-  }
+    "me_port": "ae2federation:block/me_port",
+    "me_side_down": "ae2federation:block/me_side_down",
+    "me_side_east": "ae2federation:block/me_side_east",
+    "me_side_up": "ae2federation:block/me_side_up",
+    "me_side_west": "ae2federation:block/me_side_west",
+    "processing_endpoint": "ae2federation:block/processing_endpoint",
+    "particle": "ae2federation:block/armor"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#me_side_east"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#me_side_west"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#me_side_up"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#me_side_down"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#processing_endpoint"
+        },
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#me_port"
+        }
+      }
+    }
+  ]
 }

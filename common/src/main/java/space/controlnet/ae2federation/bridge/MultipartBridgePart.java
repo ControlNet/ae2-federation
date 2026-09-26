@@ -160,7 +160,9 @@ public final class MultipartBridgePart extends AEBasePart {
 
     @Override
     public void getBoxes(IPartCollisionHelper helper) {
-        helper.addBox(6, 6, 8, 10, 10, 16);
+        helper.addBox(5, 5, 10, 11, 11, 11);
+        helper.addBox(4, 4, 11, 12, 12, 15);
+        helper.addBox(5, 5, 15, 11, 11, 16);
     }
 
     @Override

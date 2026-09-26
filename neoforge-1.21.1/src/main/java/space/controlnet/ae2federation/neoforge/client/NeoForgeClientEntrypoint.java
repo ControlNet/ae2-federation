@@ -13,7 +13,9 @@ import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
 public final class NeoForgeClientEntrypoint {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public NeoForgeClientEntrypoint() {
+    public NeoForgeClientEntrypoint(net.neoforged.bus.api.IEventBus modBus) {
+        modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::register);
+        modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::bake);
         ClientStartup.start(LOGGER);
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onArtifactJoin);

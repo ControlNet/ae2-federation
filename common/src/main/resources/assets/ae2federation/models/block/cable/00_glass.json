@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "particle": "ae2federation:block/armor"
+  },
+  "elements": []
+}

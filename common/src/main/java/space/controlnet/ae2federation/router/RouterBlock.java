@@ -28,6 +28,11 @@ public final class RouterBlock extends BaseEntityBlock {
         return CODEC;
     }
 
+    @Override
+    protected net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state) {
+        return net.minecraft.world.level.block.RenderShape.MODEL;
+    }
+
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos position, BlockState state) {

@@ -27,7 +27,7 @@ public final class RouterRegistration {
             BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
     public static final DeferredBlock<FederationCableBlock> FEDERATION_CABLE = BLOCKS.registerBlock(
             "cable", FederationCableBlock::new,
-            BlockBehaviour.Properties.of().strength(1.5F).sound(SoundType.GLASS));
+            BlockBehaviour.Properties.of().strength(1.5F).sound(SoundType.GLASS).noOcclusion());
     public static final DeferredItem<BlockItem> ROUTER_ITEM = ITEMS.registerSimpleBlockItem(ROUTER, new Item.Properties());
     public static final DeferredItem<BlockItem> FEDERATION_CABLE_ITEM = ITEMS.registerSimpleBlockItem(
             FEDERATION_CABLE, new Item.Properties());

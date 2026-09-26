@@ -1,0 +1,18 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "neoforge:composite",
+  "textures": {
+    "particle": "ae2federation:block/armor"
+  },
+  "children": {
+    "solid": {
+      "parent": "ae2federation:block/cable/36_solid"
+    },
+    "glass": {
+      "parent": "ae2federation:block/cable/36_glass"
+    },
+    "stream": {
+      "parent": "ae2federation:block/cable/36_stream"
+    }
+  }
+}

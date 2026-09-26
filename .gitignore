@@ -20,3 +20,7 @@ __pycache__/
 **/.eclipse/
 **/.classpath
 **/bin/
+
+# Local development environments
+.pixi/
+.env.local

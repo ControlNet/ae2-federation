@@ -1,5 +1,8 @@
 {
   "variants": {
-    "": {"model": "ae2federation:block/processing_endpoint"}
+    "": {
+      "model": "ae2federation:block/processing_endpoint",
+      "y": 270
+    }
   }
 }

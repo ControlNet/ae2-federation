@@ -1,5 +1,7 @@
 {
   "variants": {
-    "": { "model": "ae2federation:block/cable" }
+    "": {
+      "model": "ae2federation:block/cable"
+    }
   }
 }
