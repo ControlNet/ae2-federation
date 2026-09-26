@@ -174,6 +174,10 @@ final class FederationWorkspace {
             element("return_provider", Button.class).setDisplay(root.has("returnProvider") && root.get("returnProvider").getAsBoolean());
             entranceApplied = true;
         }
+        boolean bridgeUnavailable = root.has("bridgeUnavailable") && root.get("bridgeUnavailable").getAsBoolean();
+        element("bridge_unavailable", UIElement.class).setDisplay(bridgeUnavailable);
+        element("workspace_tabs", UIElement.class).setDisplay(!bridgeUnavailable);
+        if (bridgeUnavailable) show("unavailable");
         var selected = root.getAsJsonObject("selected");
         boolean hasDomain = selected.has("consumer");
         boolean localEndpoint = !hasDomain && root.has("localEndpointPosition");

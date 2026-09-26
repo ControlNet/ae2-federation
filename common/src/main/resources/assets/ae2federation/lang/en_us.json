@@ -268,5 +268,7 @@
   "ae2federation.ui.domain.runtime.backend.domain_reference_missing": "No valid shared domain reference.",
   "ae2federation.ui.domain.runtime.backend.consumer_energy_interface_missing": "No directional energy interface on the consuming network.",
   "ae2federation.ui.workspace.local_endpoint": "Local endpoint • %s",
-  "ae2federation.ui.workspace.local_diagnostics_help": "Read-only details of this device. Open a Router or Bridge to select a domain."
+  "ae2federation.ui.workspace.local_diagnostics_help": "Read-only details of this device. Open a Router or Bridge to select a domain.",
+  "ae2federation.ui.workspace.bridge_unavailable": "Bridge connection unavailable",
+  "ae2federation.ui.workspace.bridge_reopen": "Restore the connection described below, then reopen this Bridge to inspect its domain."
 }
