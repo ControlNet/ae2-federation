@@ -29,6 +29,7 @@ jobs:
         id: version
         run: |
           python3 -m unittest discover -s tests -p test_release_metadata.py -v
+          python3 -m unittest discover -s tests -p test_required_gametests.py -v
           python3 tools/release_metadata.py
       - uses: actions/setup-java@v4
         with:
@@ -41,8 +42,6 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_artifact_verify.py -v
           python3 tools/artifact_verify.py inspect
-      - name: Every required manifest GameTest
-        run: python3 -B tools/required_gametests.py
       - name: Package release assets
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
@@ -84,8 +83,35 @@ jobs:
             neoforge-1.21.1/build/reports/tests/
           if-no-files-found: ignore
 
-  publish:
+  gametests:
     needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run every GameTest assigned to this shard
+        env:
+          SHARD_INDEX: ${{ matrix.shard }}
+        run: python3 -B tools/required_gametests.py --shard-index "$SHARD_INDEX" --shard-count 8
+      - name: Retain GameTest diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gametests-${{ matrix.shard }}
+          path: gametest.log
+          if-no-files-found: error
+
+  publish:
+    needs: [build, gametests]
     if: needs.build.outputs.should_release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
