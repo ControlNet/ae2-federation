@@ -269,6 +269,6 @@
   "ae2federation.ui.domain.runtime.backend.consumer_energy_interface_missing": "使用能量的网络没有定向能源接口。",
   "ae2federation.ui.workspace.local_endpoint": "本地端点 · %s",
   "ae2federation.ui.workspace.local_diagnostics_help": "此设备的只读详情。请从路由器或桥接器打开目标联邦域。",
-  "ae2federation.ui.workspace.bridge_unavailable": "桥接连接不可用",
-  "ae2federation.ui.workspace.bridge_reopen": "请先按下方提示恢复连接，再重新打开桥接器查看联邦域。"
+  "ae2federation.ui.workspace.bridge_unavailable": "桥接器联邦域不可用",
+  "ae2federation.ui.workspace.bridge_reopen": "请先处理下方提示的问题，再重新打开桥接器查看联邦域。"
 }

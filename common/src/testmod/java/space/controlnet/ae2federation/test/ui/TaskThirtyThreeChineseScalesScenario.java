@@ -178,6 +178,25 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .check("compact Chinese local label replaces the selector", context ->
                         context.el("#endpoint_local").isVisible() && !context.el("#endpoint_next").isVisible())
                 .screenshot("ui-chinese-narrow-local-endpoint")
+                .closeScreen()
+                .server("disconnect real Bridge in Chinese viewport", TaskThirtyThreeWorldFixture::disconnectBridgeOuterSide)
+                .waitUntilServer("Chinese fixture loses outer attachment", TaskThirtyThreeWorldFixture::bridgeOuterSideMissing)
+                .server("open compact Chinese Bridge diagnostics", TaskThirtyThreeWorldFixture::openBridge)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().frames(5)
+                .waitForTextContains("#ack_status", "桥接器外侧")
+                .checkText("#bridge_diagnostic_title", "桥接器联邦域不可用")
+                .checkTextContains("#entrance_value", "侧面 北")
+                .check("Chinese Bridge diagnostics retain readable text", context ->
+                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#bridge_diagnostic_title",
+                                "#bridge_diagnostic_help", "#ack_status", "#entrance_value"))
+                .check("Chinese unavailable Bridge has no empty editor", context ->
+                        !context.el("#workspace_tabs").isVisible() && context.el("#bridge_unavailable").isVisible()
+                                && !context.el("#page_policy").isVisible())
+                .check("Chinese diagnostic contents fit the small workspace", context ->
+                        TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#bridge_diagnostic_title",
+                                "#bridge_diagnostic_help", "#ack_status"))
+                .screenshot("ui-chinese-narrow-bridge-unavailable")
                 .step("restore normal viewport", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
                 .waitUntil("normal viewport restored", context -> context.mc().getWindow().getGuiScaledWidth() == 400)
