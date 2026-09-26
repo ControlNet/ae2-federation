@@ -6,6 +6,7 @@ import json
 import argparse
 import hashlib
 import shutil
+from cable_flow_texture import write_texture
 REPO = Path(__file__).resolve().parents[2]
 APPROVED = REPO / 'tools/blockbench/versions/v07-isolated-cable'
 ROOT = REPO / 'common/src/main/resources'
@@ -18,6 +19,7 @@ MODELS = BASE / 'models/block'
 TEX = BASE / 'textures/block'
 MODELS.mkdir(parents=True, exist_ok=True)
 TEX.mkdir(parents=True, exist_ok=True)
+write_texture(BASE / 'textures/entity/cable_flow.png')
 # The approved native Blockbench snapshot is the texture authority. Geometry
 # remains generated here to retain all masks, layer routing and AE2 Part axes.
 manifest = json.loads((APPROVED / 'manifest.json').read_text())

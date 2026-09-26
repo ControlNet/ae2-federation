@@ -29,3 +29,11 @@ __pycache__/
 # Maintained assets and frozen reviews live in tools/blockbench/ instead.
 /design/visual/ae2-federation-web/
 /design/visual/ae2-federation-web*.zip
+
+# Local cable-flow prototype captures and runtime evidence.
+# Keep source code, production textures, and the prototype README tracked.
+/docs/art/cable-flow-prototype/*.png
+/docs/art/cable-flow-prototype/*.gif
+/docs/art/cable-flow-prototype/*.mp4
+/docs/art/cable-flow-prototype/artifact.json
+/docs/art/cable-flow-prototype/profiles.json
