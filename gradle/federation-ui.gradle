@@ -168,7 +168,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def multipart = outcomes['ui.multipart-attachments']
     if (multipart.multipartAttachment != 'north:bridge;cable-extension:5'
-            || multipart.visibleAttachment != 'ME Federation Bridge - side north / type bridge / cable extension 5.0') {
+            || multipart.visibleAttachment != 'ME Federation Bridge - side North / type bridge / cable extension 5.0') {
         throw new GradleException('Task 33 multipart Bridge attachment evidence is invalid')
     }
     def chinese = outcomes['ui.chinese-scales']
@@ -579,7 +579,7 @@ def uiTaskThirtyThreeUpstreamMutations = [
             def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.multipart-attachments' }.steps
                     .find { it.attachments?.caseId == 'ui.multipart-attachments' }.attachments
             upstreamOutcome.multipartAttachment = 'north:bridge;cable-extension:8'
-            upstreamOutcome.visibleAttachment = 'ME Federation Bridge - side north / type bridge / cable extension 8.0'
+            upstreamOutcome.visibleAttachment = 'ME Federation Bridge - side North / type bridge / cable extension 8.0'
             def outerOutcome = report.controlAttachments.find { it.caseId == 'ui.multipart-attachments' }
             outerOutcome.multipartAttachment = upstreamOutcome.multipartAttachment
             outerOutcome.visibleAttachment = upstreamOutcome.visibleAttachment

@@ -27,7 +27,7 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                     return label.collectHoverTooltips().tooltipTexts().stream().anyMatch(line ->
                             line.getString().replace("\n", "").equals(context.<String>get("bridge.focus")));
                 })
-                .checkText("#entrance_value", "ME Federation Bridge - side north / type bridge / cable extension 5.0")
+                .checkText("#entrance_value", "ME Federation Bridge - side North / type bridge / cable extension 5.0")
                 .checkTextContains("#members_value", "2 members")
                 .server("record real multipart attachment", context ->
                         context.put("task33.multipart", TaskThirtyThreeWorldFixture.multipartAttachment(context)))

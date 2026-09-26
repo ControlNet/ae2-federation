@@ -67,7 +67,8 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
         var host = PartHelper.getPartHost(level, position);
         if (host != null && host.getPart(side) instanceof MultipartBridgePart bridge) {
             return Component.translatable("ae2federation.ui.domain.entrance.bridge_detail",
-                    side.getSerializedName(), bridge.getCableConnectionLength(AECableType.GLASS));
+                    Component.translatable("ae2federation.ui.workspace.face." + side.getSerializedName()),
+                    bridge.getCableConnectionLength(AECableType.GLASS));
         }
         return Component.translatable("ae2federation.ui.domain.entrance.bridge");
     }

@@ -15,8 +15,8 @@
             <button id="tab_diagnostics" text="ae2federation.ui.workspace.diagnostics"/>
         </element>
         <element id="bridge_unavailable" class="bridge-unavailable">
-            <label class="domain-heading"><lang key="ae2federation.ui.workspace.bridge_unavailable"/></label>
-            <label class="page-description"><lang key="ae2federation.ui.workspace.bridge_reopen"/></label>
+            <label id="bridge_diagnostic_title" class="domain-heading"><lang key="ae2federation.ui.workspace.bridge_unavailable"/></label>
+            <label id="bridge_diagnostic_help" class="page-description"><lang key="ae2federation.ui.workspace.bridge_reopen"/></label>
         </element>
         <element id="page_overview" class="workspace-page">
             <element class="graph-toolbar">
