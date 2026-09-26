@@ -21,3 +21,16 @@
 - The initial serial release run was canceled before publication to partition the 152 required GameTests across eight runners. `select_shard` tests verify complete, unique, nonempty coverage; the no-argument command still runs the entire suite. Publication depends on all eight groups.
 
 - First parallel CI exposed intermittent `provenanceopaqueboundary` setup failure: the cable initialized as an independent grid before the chest/power-cell grid, leaving durable conflicting network identities after the grids joined. The failure log had three initial native nodes and no alias-provider node, so it preceded the provenance assertion. A standalone local replay passed. `ProvenanceStorageFixture.ready()` now places its cable only after the chest grid is active, booted, and settled; the native provenance assertions are unchanged.
+
+## Published v0.0.1
+
+- Release: https://github.com/ControlNet/ae2-federation/releases/tag/v0.0.1
+- Successful CI: https://github.com/ControlNet/ae2-federation/actions/runs/36254274818
+- Tag and master commit: `03f55ead0a86470f478a00a4f17316c3081e5c8b`.
+- All eight GameTest groups passed. The downloaded CI log contains exactly 152 unique passing IDs, matching the complete manifest. The build, 253 JUnit tests, 24 Python tests, archive checks, checksums, and publication passed.
+- The four provenance GameTests also passed locally after staging fixture cable placement. The existing source-contract test requires the explicit `confirmedNetworkId(grid()).isPresent()` expression; it is retained in the staged readiness predicate.
+- Downloaded public assets are byte-identical to the final CI artifacts; mod metadata reports `0.0.1`. Local delivery folder: ignored `build/releases/v0.0.1/`.
+- Binary: `ae2federation-neoforge-1.21.1-0.0.1.jar`, 1,016,669 bytes; SHA-256 `ca8eb3e26ca3e0e701ff168031e2b0288363d814969e1cbda7f7da7055616737`.
+- Sources SHA-256: `746bffdcb93a71391edf219dece52b0287cff7095a0efe709f932ea2163b2414`.
+- User-facing release notes describe dependencies, installation, no survival recipes, and the optional cable preview. No Modrinth or CurseForge project was created; the owner will create those pages and upload the binary.
+- Release changes were merged back into `dev`; the published tag remains fixed.
