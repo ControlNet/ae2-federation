@@ -49,8 +49,9 @@ public final class FederationDomainPolicySession {
     private int mappingSlotIndex;
     private int mappingLaneIndex;
     private int endpointIndex;
+    private space.controlnet.ae2federation.processing.claim.EndpointIdentity mappingEndpointSelection;
     private String mappingAcknowledgment = "ready";
-    private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.claim.EndpointIdentity pendingRelease;
+    private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
 
     private FederationDomainPolicySession(ServerPlayer player, FederationDomainPolicyEntrance entrance, Optional<FederationDomainSnapshot> federationDomain,
             PolicyEditorSessionState.Status emptyState) {
@@ -199,9 +200,15 @@ public final class FederationDomainPolicySession {
         }
         selectedProvider().ifPresentOrElse(entry -> {
             // A production Provider is mapped by Endpoint; its Lanes are allocated per mapped Endpoint.
-            var choices = entry.controller().isPresent() ? currentEndpoints().size()
+            var choices = entry.controller().isPresent() ? mappingEndpoints().size()
                     : entry.provider().nativeLanes().size();
-            mappingLaneIndex = nextIndex(mappingLaneIndex, choices);
+            if (entry.controller().isPresent()) {
+                var endpoints = mappingEndpoints();
+                mappingLaneIndex = nextIndex(mappingEndpointSelection == null ? mappingLaneIndex : endpoints.indexOf(mappingEndpointSelection), choices);
+                mappingEndpointSelection = endpoints.isEmpty() ? null : endpoints.get(mappingLaneIndex);
+            } else {
+                mappingLaneIndex = nextIndex(mappingLaneIndex, choices);
+            }
             mappingAcknowledgment = "ready";
         }, () -> mappingAcknowledgment = "rejected-no-provider");
     }
@@ -217,16 +224,17 @@ public final class FederationDomainPolicySession {
             return;
         }
         if (entry.controller().isPresent()) {
-            var endpoints = currentEndpoints();
+            var endpoints = mappingEndpoints();
             if (endpoints.isEmpty()) {
                 mappingAcknowledgment = "rejected-no-endpoint";
                 return;
             }
             try {
-                var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
+                var endpoint = selectedMappingEndpoint(endpoints);
                 mappingAcknowledgment = entry.controller().orElseThrow()
-                        .toggleEndpoint(entry.provider().mappingHandle(mappingSlotIndex), endpoint);
-            } catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+                        .toggleEndpoint(entry.provider().mappingHandle(mappingSlotIndex), currentEndpoints().stream()
+                                .filter(binding -> binding.endpointIdentity().equals(endpoint)).findFirst().orElseThrow());
+            } catch (IllegalArgumentException | IndexOutOfBoundsException | java.util.NoSuchElementException exception) {
                 mappingAcknowledgment = "rejected-invalid-selection";
             }
             return;
@@ -245,7 +253,7 @@ public final class FederationDomainPolicySession {
             mappingAcknowledgment = entry.provider().replaceMapping(handle, replacement)
                     ? "accepted-" + handle.slot() + "-" + handle.generation()
                     : "rejected-stale-slot";
-        } catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+        } catch (IllegalArgumentException | IndexOutOfBoundsException | java.util.NoSuchElementException exception) {
             mappingAcknowledgment = "rejected-invalid-selection";
         }
     }
@@ -260,18 +268,18 @@ public final class FederationDomainPolicySession {
             return;
         }
         var controller = selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller).orElse(null);
-        var endpoints = currentEndpoints();
+        var endpoints = mappingEndpoints();
         if (controller == null || endpoints.isEmpty()) {
             pendingRelease = null;
             mappingAcknowledgment = controller == null ? "rejected-no-provider" : "rejected-no-endpoint";
             return;
         }
-        var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size())).endpointIdentity();
+        var endpoint = selectedMappingEndpoint(endpoints);
         if (!controller.retained(endpoint)) {
             pendingRelease = null;
             mappingAcknowledgment = "rejected-not-retained";
-        } else if (!endpoint.equals(pendingRelease)) {
-            pendingRelease = endpoint;
+        } else if (!controller.releaseConfirmation(endpoint).filter(value -> value.equals(pendingRelease)).isPresent()) {
+            pendingRelease = controller.releaseConfirmation(endpoint).orElse(null);
             mappingAcknowledgment = "confirm-release";
         } else {
             pendingRelease = null;
@@ -303,19 +311,19 @@ public final class FederationDomainPolicySession {
     public Component mappingSelectionText() {
         var controller = selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller);
         if (controller.isPresent()) {
-            var endpoints = currentEndpoints();
+            var endpoints = mappingEndpoints();
             if (endpoints.isEmpty()) {
                 return Component.translatable("ae2federation.ui.domain.mapping.selection_endpoint", mappingSlotIndex,
                         "-", "-");
             }
-            var endpoint = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
+            var endpoint = selectedMappingEndpoint(endpoints);
             var mapped = controller.orElseThrow().endpointsForSlot(mappingSlotIndex)
-                    .contains(endpoint.endpointIdentity());
+                    .contains(endpoint);
             var state = mapped ? "ae2federation.ui.domain.mapping.mapped"
-                    : controller.orElseThrow().retained(endpoint.endpointIdentity())
+                    : controller.orElseThrow().retained(endpoint)
                             ? "ae2federation.ui.domain.mapping.retained" : "ae2federation.ui.domain.mapping.unmapped";
             return Component.translatable("ae2federation.ui.domain.mapping.selection_endpoint", mappingSlotIndex,
-                    shortId(FederationDomainGraphProjection.endpointId(context, endpoint)),
+                    shortId(endpoint.id().value().toString()),
                     Component.translatable(state));
         }
         return Component.translatable("ae2federation.ui.domain.mapping.selection", mappingSlotIndex, mappingLaneIndex);
@@ -409,6 +417,22 @@ public final class FederationDomainPolicySession {
         var providers = currentProviders();
         return providers.isEmpty() ? Optional.empty()
                 : Optional.of(providers.get(Math.floorMod(mappingProviderIndex, providers.size())));
+    }
+
+    private space.controlnet.ae2federation.processing.claim.EndpointIdentity selectedMappingEndpoint(
+            List<space.controlnet.ae2federation.processing.claim.EndpointIdentity> endpoints) {
+        if (mappingEndpointSelection == null || !endpoints.contains(mappingEndpointSelection)) {
+            mappingEndpointSelection = endpoints.get(Math.floorMod(mappingLaneIndex, endpoints.size()));
+        }
+        return mappingEndpointSelection;
+    }
+
+    private List<space.controlnet.ae2federation.processing.claim.EndpointIdentity> mappingEndpoints() {
+        var choices = new java.util.LinkedHashSet<space.controlnet.ae2federation.processing.claim.EndpointIdentity>();
+        currentEndpoints().forEach(binding -> choices.add(binding.endpointIdentity()));
+        selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller)
+                .ifPresent(controller -> choices.addAll(controller.retainedEndpoints()));
+        return List.copyOf(choices);
     }
 
     private List<EndpointTargetBinding> currentEndpoints() {

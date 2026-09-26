@@ -26,6 +26,17 @@ public interface ProviderMappingController {
      */
     boolean retained(EndpointIdentity endpoint);
 
+    Set<EndpointIdentity> retainedEndpoints();
+
+    /** Captures the local binding and the currently observed remote Claim for two-step UI confirmation. */
+    Optional<ReleaseConfirmation> releaseConfirmation(EndpointIdentity endpoint);
+
+    record ReleaseConfirmation(ProviderMappingController provider, int lane, long revision, long mappingRevision,
+            EndpointIdentity endpoint, space.controlnet.ae2federation.processing.claim.ClaimEpoch epoch,
+            Object endpointInstance, String observation) {
+    }
+
+
     /**
      * Explicitly releases a retained Endpoint: the Claim is released and the return path of its Lane is closed, so
      * products of work still inside the machine no longer return to this Provider and the native crafting job waiting

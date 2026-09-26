@@ -7290,7 +7290,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                     || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
                     || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
-                    || testCase.id == 'identity.stable-query-cost' || testCase.id.startsWith('migration.')) ? 1 : 2,
+                    || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -7303,7 +7303,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                             || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
                             || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
-                            || testCase.id == 'identity.stable-query-cost' || testCase.id.startsWith('migration.')])
+                            || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -7546,10 +7546,17 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'provider.production-three-way':
                 case 'provider.production-revocation':
                 case 'provider.production-lifecycle':
+                case 'provider.production-release-cas-failure':
+                case 'provider.production-cleanup-buffers':
+                case 'provider.production-stale-cleanup':
+                case 'provider.production-replaced-cleanup':
+                case 'provider.production-claim-changed-cleanup':
                 case 'provider.production-unmap-retains-locked':
                 case 'provider.production-unmap-retains-unlocked':
                 case 'provider.production-endpoint-reload-returns':
                 case 'provider.production-return-rebind-authorization':
+                case 'identity.part-policy-activation':
+                case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
                 case 'migration.legacy-save-import':
                 case 'storage.source-index-scale':
@@ -7566,6 +7573,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.replace-all-access':
                 case 'identity.ambiguous-split':
                 case 'identity.copied-node':
+                case 'identity.legacy-provisional':
+                case 'identity.single-established-merge':
                 case 'identity.part-on-settled-cable':
                 case 'identity.restart':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")

@@ -349,6 +349,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             if (!provider.replaceMapping(handle, assigned)) {
                 return "rejected-stale-slot";
             }
+            lanes.get(existing.get()).mappingRevision++;
             if (provider.slotsForLane(existing.get()).isEmpty()) {
                 lanes.get(existing.get()).releasePending = true;
                 releaseDrainedLanes();
@@ -374,6 +375,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (!provider.replaceMapping(handle, assigned)) {
             return "rejected-stale-slot";
         }
+        lanes.get(laneIndex).mappingRevision++;
         saveChanges();
         return "accepted-" + slot + "-" + handle.generation();
     }
@@ -402,6 +404,33 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     }
 
     @Override
+    public Set<EndpointIdentity> retainedEndpoints() {
+        var result = new java.util.LinkedHashSet<EndpointIdentity>();
+        for (var binding : lanes) {
+            if (binding.endpoint != null && binding.releasePending) {
+                result.add(binding.endpoint);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Optional<ReleaseConfirmation> releaseConfirmation(EndpointIdentity endpoint) {
+        return laneFor(endpoint).filter(index -> lanes.get(index).releasePending).map(index -> {
+            var binding = lanes.get(index);
+            String observation = "unloaded";
+            Object endpointInstance = null;
+            if (level instanceof ServerLevel serverLevel && serverLevel.isLoaded(binding.position)) {
+                endpointInstance = serverLevel.getBlockEntity(binding.position);
+                observation = endpointInstance instanceof EndpointBlockEntity entity
+                        ? entity.endpointIdentity() + ":" + entity.claimState() : "absent";
+            }
+            return new ReleaseConfirmation(this, index, binding.revision, binding.mappingRevision,
+                    endpoint, binding.epoch, endpointInstance, observation);
+        });
+    }
+
+    @Override
     public String releaseEndpoint(EndpointIdentity endpoint) {
         if (!(level instanceof ServerLevel serverLevel) || runtime == null) {
             return "rejected-provider-offline";
@@ -420,18 +449,30 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             // Native send remainder is only delivered to this Endpoint; releasing now would strand it in the Lane.
             return "rejected-pending-send";
         }
-        if (!serverLevel.isLoaded(binding.position)
-                || !(serverLevel.getBlockEntity(binding.position) instanceof EndpointBlockEntity entity)
-                || !entity.endpointIdentity().equals(binding.endpoint)) {
-            return "rejected-endpoint-unavailable";
+        if (!lane.getReturnInv().isEmpty()) {
+            return "rejected-pending-return";
         }
-        entity.releaseClaim(new EndpointOwnerIdentity(identity), binding.epoch);
+        if (!serverLevel.isLoaded(binding.position)) {
+            return "rejected-endpoint-unloaded";
+        }
+        var released = false;
+        if (serverLevel.getBlockEntity(binding.position) instanceof EndpointBlockEntity entity
+                && entity.endpointIdentity().equals(binding.endpoint)) {
+            var ownerIdentity = new EndpointOwnerIdentity(identity);
+            var state = entity.claimState();
+            if (state.epoch().equals(binding.epoch) && state.owner().filter(ownerIdentity::equals).isPresent()) {
+                if (!entity.releaseClaim(ownerIdentity, binding.epoch)) {
+                    return "rejected-claim-changed";
+                }
+                released = true;
+            }
+        }
         // The result can no longer return to this Lane, so its native lock is reset as on a Lock mode change.
         lane.resetCraftingLock();
         binding.retire();
         runtime.bindLane(index, binding.revision);
         saveChanges();
-        return "released-" + index;
+        return (released ? "released-" : "cleared-stale-") + index;
     }
 
     private Optional<ClaimEpoch> claim(ServerLevel serverLevel, EndpointTargetBinding endpoint) {
@@ -496,7 +537,12 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             }
             if (serverLevel.getBlockEntity(binding.position) instanceof EndpointBlockEntity entity
                     && entity.endpointIdentity().equals(binding.endpoint)) {
-                entity.releaseClaim(new EndpointOwnerIdentity(identity), binding.epoch);
+                if (!entity.releaseClaim(new EndpointOwnerIdentity(identity), binding.epoch)) {
+                    continue;
+                }
+            } else {
+                // Missing or replaced Endpoints require explicit local cleanup, never automatic retirement.
+                continue;
             }
             binding.retire();
             runtime.bindLane(index, binding.revision);
@@ -754,6 +800,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         private BlockPos position = BlockPos.ZERO;
         private ClaimEpoch epoch = ClaimEpoch.NONE;
         private long revision;
+        private long mappingRevision;
         private boolean releasePending;
         /** Set once the Lane sent a Pattern under this binding; work may then be inside the machine. */
         private boolean dispatched;

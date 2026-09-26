@@ -50,25 +50,35 @@ Only `SETTLED` may inherit existing Policy. `PARTIAL_LOAD`, `COPIED_LIVE_IDENTIT
 - One loaded Grid containing multiple prior `NetworkId` values is merge ambiguity. It inherits neither Policy set.
 - No timeout, location, load order, randomness, or newest-wins rule resolves ambiguity.
 
-### Provisional lineage of a lone node
+### Initialization and established lineage
 
-AE2 readies a new part on an existing cable before connecting it: `ManagedGridNode.markReady` builds a one-node Grid
-(`GridNode.getInternalGrid`), and only then does `CableBusContainer.addPart` call `GridHelper.createConnection`, which
-merges that Grid into the cable's. The same applies to any node whose own Grid forms before its first connection. A
-NetworkId minted for such a one-node Grid is not a prior identity, so the service marks it provisional (in memory and as
-a `provisional` flag in the node data, which `GridNode.setGrid` carries across the move):
+Identity establishment is a native lifecycle boundary, never a node-count or read-count heuristic.
+`CableBusIdentityInitializationMixin` wraps the pinned AE2 `CableBusContainer.addPart` and `addToWorld` calls with
+`NativeIdentityInitialization` (including nested calls and try-with-resources cleanup). AE2 creates a part's temporary
+Grid before connecting the part to its cable. Only a new live node with no saved identity, minted inside that call,
+is eligible to adopt the unique established lineage of the Grid it joins. Its persistent node UUID is preserved.
+If the assembled Grid contains only new nodes, they share a newly minted identity. Multiple established lineages
+remain ambiguous. Reads during this assembly report `PARTIAL_LOAD` and cannot publish a Policy-bearing identity.
 
-- A provisional lineage that arrives in a Grid that already has nodes is discarded; the node gets a new lineage with
-  that Grid's NetworkId.
-- When a provisional node's one-node Grid absorbs other nodes, the provisional lineages adopt the NetworkId of a durable
-  one.
-- As soon as a Grid holds two or more nodes, all its lineages are durable. Splits and copies of durable lineages keep
-  the rules above.
+When the outer native call returns, all new nodes are established, including a single node. Other native
+nodes establish their identity when added: AE2 `GridNode.updateState` finds world connections before making a Grid.
+A subsequent connection between independent established single-node networks is therefore a real merge. Adding a
+part to an existing cable is one initialization history; placing an independent network, finishing initialization,
+and later connecting it is a different history. Reading identity or opening a GUI does not alter either result.
 
-The rule depends on Grid membership, not on time or order. Two fresh nodes that meet each other before they meet an
-established Grid form a durable Grid of their own; if that Grid later joins an established one, the result is still
-merge ambiguity (fail-closed). A saved single-node network (for example one lone ME chest) also stays provisional, so
-connecting it to an established Grid adopts that Grid's identity instead of reporting a merge.
+The initialization scope is process-local and keyed by the original `IGridNode` object. It is not encoded in NBT.
+Grid transfers preserve the node UUID; a different node loaded from copied NBT cannot inherit initialization authority.
+Two identical lineages within one Grid are also rejected, without losing multiplicity in the distinct-lineage index.
+
+**Legacy compatibility:** every valid schema-1 lineage loaded from disk is established, even when it contains the old
+`provisional: true` flag. Keep its NetworkId, node UUID and revision; omit the obsolete flag on the next save. This
+conservative rule is necessary because previous versions allowed a lone provisional Grid to become `SETTLED`, enter
+Domain membership via `FederationDomainRegistryAccess.nativeEvidence` / `confirmedNetworkId`, and receive persistent
+Policy keyed by that identity. No saved identity can safely be assumed unused. No automatic NetworkId regeneration
+or Policy migration is performed.
+
+The integration is deliberately pinned to AE2 19.2.17. If AE2 changes multipart construction ordering, these two
+wrappers and the native part/copy/merge tests must be reviewed before changing the supported version.
 
 ## Settlement cache
 
@@ -88,7 +98,7 @@ native `addNode` events reconcile the affected loaded Grid; no per-tick world sc
 ## Runtime proof
 
 The baseline characterization runs two actual GameTest server JVMs against one disposable world. Process one places a
-native powered ME chest in the naturally loaded spawn chunk, assigns provider data, and shuts down through Minecraft's
+native standalone ME chest in the naturally loaded spawn chunk, assigns provider data, and shuts down through Minecraft's
 real world save. Process two constructs different Grid/service/node objects and logs `restored=true` from `addNode`.
 
 Task cases:
@@ -100,3 +110,11 @@ Task cases:
 - `identity.part-on-settled-cable`: a cable and then an Export Bus added to a settled Grid keep it `SETTLED` with its
   NetworkId, and linking it to a second established Grid still reports `AMBIGUOUS_MERGE`. Before the provisional rule
   the Export Bus alone made the Grid `AMBIGUOUS_MERGE`.
+
+- `identity.single-established-merge`: a standalone node has persisted Policy, reloads legacy provisional NBT without
+  losing lineage, and retains but cannot inherit that Policy after a real merge.
+- `identity.legacy-provisional`: copied legacy NBT remains detectable both alone and after joining a larger Grid.
+- `identity.initialization-order`: new-first and established-first assembly, repeated reads, and reverse saved-node
+  loading all converge to the same established identity.
+- `identity.part-policy-activation`: a real Export Bus added to existing cable preserves both Policy endpoint IDs,
+  revision and ACTIVE state through the real Domain/Policy services.

@@ -22,12 +22,9 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     private final NetworkId newGridId = NetworkId.create();
     private final Map<IGridNode, NodeLineage> nodes = new IdentityHashMap<>();
     private final Map<NodeLineage, Integer> lineageCounts = new HashMap<>();
-    /**
-     * Nodes whose lineage was minted while they were alone in this Grid. Such a lineage is not a prior identity: AE2
-     * readies a part on an existing cable in its own one-node Grid before connecting it, so the minted id must not
-     * compete with the Grid the node joins. It becomes durable as soon as the node shares a Grid with another node.
-     */
+    // Only nodes minted in the current native multipart initialization call may adopt another lineage.
     private final Set<IGridNode> provisional = Collections.newSetFromMap(new IdentityHashMap<>());
+    private int duplicateLineages;
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
     private @Nullable NetworkIdentityRegistry registry;
 
@@ -38,41 +35,46 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     @Override
     public void addNode(IGridNode gridNode, @Nullable CompoundTag savedData) {
         var lineage = read(savedData);
-        var provisionalData = lineage != null && provisional(savedData);
-        if (provisionalData && !nodes.isEmpty()) {
-            // A lone node's minted id is no evidence against the Grid it joins; it adopts that Grid's id below.
-            lineage = null;
-        }
-        var minted = lineage == null;
-        if (minted) {
+        var transientNode = NativeIdentityInitialization.contains(gridNode);
+        if (lineage == null) {
             var existingId = nodes.values().stream().findFirst().map(NodeLineage::networkId).orElse(newGridId);
             lineage = new NodeLineage(existingId, UUID.randomUUID(), 1);
+            transientNode = NativeIdentityInitialization.register(gridNode);
             ((GridNode) gridNode).callListener(IGridNodeListener::onSaveChanges);
         }
+        // Saved provisional flags are legacy durable evidence. Only the original live node in this call scope
+        // is transient; copied NBT never carries this authority, and node UUIDs are never regenerated on transfer.
         registry = NetworkIdentityRegistry.get(gridNode.getLevel());
         put(gridNode, lineage);
-        if (nodes.size() == 1 && (minted || provisionalData)) {
+        if (transientNode) {
             provisional.add(gridNode);
-        } else if (nodes.size() > 1 && !provisional.isEmpty()) {
-            settleProvisional();
         }
+        adoptEstablishedLineage();
     }
 
-    /**
-     * The Grid now has several nodes: provisional lineages adopt the id of a durable lineage when one is present (a
-     * lone node's Grid absorbed an established one) and all lineages are durable from now on.
-     */
-    private void settleProvisional() {
+    private void adoptEstablishedLineage() {
+        if (provisional.isEmpty()) {
+            return;
+        }
         var durable = nodes.entrySet().stream().filter(entry -> !provisional.contains(entry.getKey()))
-                .map(entry -> entry.getValue().networkId()).findFirst();
+                .map(entry -> entry.getValue().networkId()).distinct().toList();
+        if (durable.size() > 1) {
+            return;
+        }
+        var networkId = durable.isEmpty() ? newGridId : durable.getFirst();
         for (var node : provisional) {
             var current = nodes.get(node);
-            if (durable.isPresent() && !durable.get().equals(current.networkId())) {
-                put(node, new NodeLineage(durable.get(), current.nodeId(), current.revision()));
+            if (!networkId.equals(current.networkId())) {
+                put(node, new NodeLineage(networkId, current.nodeId(), current.revision()));
                 ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
             }
         }
-        provisional.clear();
+    }
+
+    void finishInitialization(IGridNode node) {
+        if (provisional.remove(node)) {
+            ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
+        }
     }
 
     private void put(IGridNode gridNode, NodeLineage lineage) {
@@ -82,6 +84,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         }
         if (lineageCounts.merge(lineage, 1, Integer::sum) == 1) {
             registry.add(grid, lineage);
+        } else {
+            duplicateLineages++;
         }
     }
 
@@ -92,6 +96,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         registry = NetworkIdentityRegistry.get(gridNode.getLevel());
         if (nodes.isEmpty()) {
             lineageCounts.clear();
+            duplicateLineages = 0;
             registry.release(grid);
             settlement = IdentityReconciler.reconcile(nodes.values(), false, false, true);
         } else if (lineage != null) {
@@ -110,14 +115,17 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         data.putUUID("network", lineage.networkId().value());
         data.putUUID("node", lineage.nodeId());
         data.putLong("revision", lineage.revision());
-        if (provisional.contains(gridNode)) {
-            data.putBoolean("provisional", true);
-        }
         savedData.put(DATA_KEY, data);
     }
 
     @Override
     public IdentitySettlement settlement() {
+        if (!provisional.isEmpty()) {
+            return new IdentitySettlement(IdentityStatus.PARTIAL_LOAD, java.util.Optional.empty());
+        }
+        if (duplicateLineages > 0) {
+            return new IdentitySettlement(IdentityStatus.CONFLICTING_NODE_DATA, java.util.Optional.empty());
+        }
         if (registry != null && !nodes.isEmpty()) {
             settlement = registry.settle(grid);
         }
@@ -142,15 +150,12 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         return new NodeLineage(new NetworkId(data.getUUID("network")), data.getUUID("node"), data.getLong("revision"));
     }
 
-    private static boolean provisional(@Nullable CompoundTag savedData) {
-        return savedData != null && savedData.get(DATA_KEY) instanceof CompoundTag data
-                && data.getBoolean("provisional");
-    }
-
     private void release(NodeLineage lineage) {
         if (lineageCounts.merge(lineage, -1, Integer::sum) == 0) {
             lineageCounts.remove(lineage);
             registry.remove(grid, lineage);
+        } else {
+            duplicateLineages--;
         }
     }
 }

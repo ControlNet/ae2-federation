@@ -3,7 +3,7 @@
 This checks the built mod JAR in a real NeoForge installation, outside `runClient` and `runGameTestServer`, with no
 testmod. All files stay under the Git-ignored `build/`.
 
-## Inputs
+## Previous task-41 inputs
 
 | File | Version | SHA-256 (2026-09-26 run) |
 |---|---|---|
@@ -63,3 +63,71 @@ the Provider for AE2's Pattern Provider screen and a Router for the Federation D
   an unmapped Endpoint returned `rejected-not-retained` from the server. The client log had no ERROR lines.
 - Not covered: a multi-hour session, a real player's crafting order from a terminal (the run used an Export Bus with a
   Crafting Card), and other mods.
+
+
+## Task 42: terminal request, real furnace, unload and restart (2026-09-26)
+
+This supersedes only the previous terminal/unload coverage gap. It does not claim a soak, Late/Ultra performance,
+multiplayer authorization, or third-party compatibility acceptance.
+
+Source base: `2a3f40db8cdf910568cc4ae658dac8554be1b755`, with the identity initialization and retained-binding patch in
+this working tree. The tested production JAR SHA-256 is
+`f4b5b7d88faf96b7bf99f2918f039880b60cfb482ba6440c14e397e533d2b562`.
+The exact checksum is also stored in `.omo/evidence/task-42-production/jar-sha256.txt`; dependencies remain AE2
+19.2.17, NeoForge 21.1.250, GuideME 21.1.1 and LDLib2 2.2.34, with the hashes in the previous inputs table.
+Java is 21.0.12.1. The independent server is `build/ae2f-work/task42-production`; the production client is
+`build/ae2f-work/prod-client`. Both load the production JAR and the three dependencies, without testmod.
+The existing exported topology/Policy data supplies the fixture, not the crafting requests.
+
+All timestamps below are Australia/Melbourne. XTEST drives a real client window on display `:77`, through the
+existing pixi environment `/home/zhixi/.claude/jobs/cc05ae5f/tmp/clientenv/pixi.toml`. Mapping, order confirmation,
+unmapping and release use the visible menus and their normal server packets. Console commands only position the
+player, prepare/observe the fixture, control chunk loading, and save/stop. No internal crafting request or Export Bus
+Crafting Card submits these two requests.
+
+| Time | Actual action and observation |
+|---|---|
+| 16:36 | First terminal order: select craftable iron, quantity 8, Next, Start. The real furnace begins processing. Remove the last mapping through the Router menu while raw iron is still inside. CPU eventually finishes; terminal shows 8 iron. Explicit menu release returns `released-0`. |
+| Before 16:44 | Move the remote fixture farther away using a filtered copy of the exported native structure; preserve the source chest and its 8 iron. Add 8 raw iron through the terminal. Create the new slot-0 → Endpoint-A mapping through the Router menu. |
+| 16:45:47 | Second terminal order for 8 iron starts. Furnace `CookTime:72`, raw iron present; native CPU job has `remainingItemCount:8`, `startedWork:8`, final output 8 and player ID 0. See `34-second-plan.png`. |
+| 16:45:53 | Remove the final mapping through the actual menu (`accepted-0-7`). The furnace still has raw iron and `CookTime:195`. Slot 0 has no lanes; binding revision 5 remains dispatched/release-pending. See `35-second-unmap-inflight.png`. |
+| 16:46:07 | Remove remote force-load tickets and move the player away. Vanilla `execute unless loaded` reports `TASK42_ENDPOINT_UNLOADED`; independent `if loaded` checks report Provider and CPU loaded. CPU still waits for 8 items. |
+| 16:46:25–16:47:14 | Return the player to the remote chunk, without remapping or requesting again. `TASK42_ENDPOINT_RELOADED`; binding revision 5 and Claim epoch 1 remain. Furnace reports 5 smelts and 3 raw iron; original CPU waits for 3 items. |
+| 16:48:20 | Furnace reports exactly 8 smelts for this cycle, with no input/output iron left. CPU `job` is absent. |
+| 16:48:45 | Two menu presses explicitly release the retained binding: `released-0`. Lane revision becomes 6, Endpoint is unclaimed at epoch 2, mappings empty, native send/return buffers empty and lock NONE. See `37-final-released.png`. |
+| 16:49:08 | Source ME chest cell contains exactly 16 iron, CPU inventory empty and no job. Terminal screenshot `38-final-count.png` independently shows 16 iron (8 from each order). |
+| 16:49:16 | `save-all flush`, `stop`; server exits 0. |
+| 16:50–16:55 | Restart same server/world/JAR; source cell still has 16 iron, CPU job absent, Lane revision 6 unbound. Client reconnects using IPv4 and opens terminal: `45-restarted-count.png`, 16 iron. Save/stop again exits 0 at 16:55:23; client closes normally with exit 0. |
+
+Final qualifying topology: source ME chest `(11,-59,3)`, CPU `(12,-59,3)`, Provider `(13,-59,3)` in chunk `(0,0)`;
+Router `(80,-59,3)`, Endpoint A `(80,-59,4)` and real furnace `(80,-57,4)` in chunk `(5,0)`, linked by Federation
+cable. The source chunk alone stays force-loaded during the unload test. Reproduce the load observations with:
+
+```text
+execute unless loaded 80 -59 4 run say TASK42_ENDPOINT_UNLOADED
+execute if loaded 13 -59 3 run say TASK42_PROVIDER_LOADED
+execute if loaded 12 -59 3 run say TASK42_CPU_LOADED
+execute if loaded 80 -59 4 run say TASK42_ENDPOINT_RELOADED
+data get block 11 -59 3
+data get block 12 -59 3 job
+data get block 13 -59 3
+data get block 80 -59 4 endpointClaim
+data get block 80 -57 4
+save-all flush
+stop
+```
+
+Evidence is kept under `.omo/evidence/task-42-production/`: `server-run.log`, `server-restart.log`, client logs,
+seven screenshots, source HEAD/status/diff and production-source hashes, JAR hashes, process exits, XTEST input driver
+and the standard-library-only template filter. These ignored files remain available in this workspace. At production verification time the source
+patch was uncommitted; the production-source hash list also covers newly added files that `git diff` alone omits.
+The user subsequently authorized committing and pushing the repair patch, excluding concurrent visual work.
+
+Important failed setup attempts are retained, not counted as passes: the first attempted server start omitted the
+product JAR and was terminated before fixture validation; an adjacent Endpoint chunk remained loaded because of the
+source ticket, so that attempt does not prove unloading; a vanilla clone command failed and its partial remote fixture
+was replaced before the qualifying cycle. Relocated exported Lane positions initially pointed to the old coordinates:
+the loaded-but-absent old binding was explicitly cleared through the menu, then remapped. A UI input/teleport race
+broke a source cable during setup; only that cable was restored from the fixture, preserving the chest contents.
+LAN discovery attempted unsupported IPv6 on reconnect; Direct Connect to `127.0.0.1` succeeded. None of these failures
+is substituted for the completed terminal/furnace/unload sequence above.

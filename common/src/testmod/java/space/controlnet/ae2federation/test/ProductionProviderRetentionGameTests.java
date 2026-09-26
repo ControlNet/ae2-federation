@@ -49,11 +49,43 @@ public final class ProductionProviderRetentionGameTests {
         unmapRetains(helper, LockCraftingMode.NONE, "productionproviderunmapretainsunlocked");
     }
 
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void productionProviderStaleCleanup(GameTestHelper helper) {
+        unmapRetains(helper, LockCraftingMode.NONE, "productionproviderstalecleanup");
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void productionProviderReplacedCleanup(GameTestHelper helper) {
+        unmapRetains(helper, LockCraftingMode.NONE, "productionproviderreplacedcleanup");
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void productionProviderClaimChangedCleanup(GameTestHelper helper) {
+        unmapRetains(helper, LockCraftingMode.NONE, "productionproviderclaimchangedcleanup");
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void productionProviderCleanupBuffers(GameTestHelper helper) {
+        unmapRetains(helper, LockCraftingMode.NONE, "productionprovidercleanupbuffers");
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void productionProviderReleaseCasFailure(GameTestHelper helper) {
+        unmapRetains(helper, LockCraftingMode.NONE, "productionproviderreleasecasfailure");
+    }
+
     private static void unmapRetains(GameTestHelper helper, LockCraftingMode lockMode, String testId) {
         var scene = new ProductionProviderScene(helper);
         var phase = new int[] { 0 };
         var waited = new int[] { 0 };
         var facts = new LinkedHashMap<String, String>();
+        var staleIdentity = new space.controlnet.ae2federation.processing.claim.EndpointIdentity[1];
+        var protectedRemoteClaim = new ClaimState[1];
         helper.succeedWhen(() -> {
             switch (phase[0]) {
                 case 0 -> {
@@ -165,6 +197,101 @@ public final class ProductionProviderRetentionGameTests {
                     helper.assertValueEqual(scene.consumed(Target.A), 1L, "Exactly one machine operation");
                     requireOwned(helper, scene, provider, "Without native proof of an empty machine the Claim stays");
                     var endpoint = scene.endpoint(Target.A).endpointIdentity();
+                    if (testId.equals("productionproviderreleasecasfailure")) {
+                        var claimBefore = scene.endpoint(Target.A).claimState();
+                        var nativeLane = provider.lane(0);
+                        space.controlnet.ae2federation.ae2.processing.FederationPatternProviderTargetCache.find(nativeLane);
+                        var oldTarget = ((space.controlnet.ae2federation.processing.provider.ProviderTargetResolution.Authorized)
+                                provider.runtime().orElseThrow().lastResolution()).target();
+                        var confirmation = provider.releaseConfirmation(endpoint);
+                        ReleaseClaimFailureProbe.rejectNext();
+                        helper.assertValueEqual(provider.releaseEndpoint(endpoint), "rejected-claim-changed",
+                                "A failed CAS cannot report successful release");
+                        helper.assertValueEqual(scene.endpoint(Target.A).claimState(), claimBefore, "Failed CAS preserves Claim");
+                        helper.assertValueEqual(provider.releaseConfirmation(endpoint), confirmation, "Failed CAS preserves binding");
+                        helper.assertTrue(provider.retained(endpoint), "Failed CAS remains retained");
+                        helper.assertTrue(provider.releaseEndpoint(endpoint).startsWith("released-"),
+                                "Subsequent real CAS can release normally");
+                        accepted(helper, scene.map(0, Target.B), "Reuse the drained Lane for B");
+                        helper.assertTrue(provider.lane(0) == nativeLane
+                                && provider.laneFor(scene.endpoint(Target.B).endpointIdentity()).orElseThrow() == 0,
+                                "Reuse preserves the native Lane object with a new binding");
+                        helper.assertTrue(provider.saveWithFullMetadata(helper.getLevel().registryAccess())
+                                .getList("laneBindings", net.minecraft.nbt.Tag.TAG_COMPOUND).getCompound(0)
+                                .getLong("revision") > oldTarget.provenance().lane().revision(), "Reuse advances revision");
+                        helper.assertTrue(!space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding
+                                .captureFederatedReturn(oldTarget), "Old authorization cannot restore a return path");
+                        helper.assertTrue(!scene.returnAvailable(Target.A), "Old Endpoint cannot return into reused Lane");
+                        writeEvidence(testId, 10, Map.of("forcedCasFailureRejected", "true", "realCasSucceeded", "true",
+                                "reusedLaneRejectsOldReturn", "true"));
+                        helper.succeed();
+                        return;
+                    }
+                    if (testId.equals("productionprovidercleanupbuffers")) {
+                        // Test-only native buffer fixture: seed a persisted native remainder, then exercise rejection
+                        // and native dismantling recovery. This is not evidence of an actual machine partial insert.
+                        var lane = provider.lane(0);
+                        lane.getReturnInv().insert(AEItemKey.of(Items.EMERALD), 2,
+                                appeng.api.config.Actionable.MODULATE,
+                                appeng.api.networking.security.IActionSource.empty());
+                        helper.assertValueEqual(provider.releaseEndpoint(endpoint), "rejected-pending-return",
+                                "A native return buffer cannot be discarded by release");
+                        var remainder = new appeng.api.stacks.GenericStack(ProductionProviderScene.INPUT, 3);
+                        ((space.controlnet.ae2federation.mixin.PatternProviderLogicAccess) (Object) lane)
+                                .ae2federation$getSendList().add(remainder);
+                        helper.assertValueEqual(provider.releaseEndpoint(endpoint), "rejected-pending-send",
+                                "A native send remainder cannot be rebound or discarded");
+                        helper.assertTrue(provider.retained(endpoint), "Buffer rejection preserves binding");
+                        var drops = new java.util.ArrayList<net.minecraft.world.item.ItemStack>();
+                        provider.addAdditionalDrops(helper.getLevel(), provider.getBlockPos(), drops);
+                        helper.assertValueEqual(drops.stream().filter(stack -> stack.is(Items.EMERALD))
+                                .mapToInt(net.minecraft.world.item.ItemStack::getCount).sum(), 2, "Native return drops preserved");
+                        helper.assertValueEqual(drops.stream().filter(stack -> stack.is(Items.COBBLESTONE))
+                                .mapToInt(net.minecraft.world.item.ItemStack::getCount).sum(), 3, "Native send drops preserved");
+                        // Complete the same native drop/clear sequence used by explicit dismantling.
+                        provider.clearContent();
+                        helper.setBlock(ProductionProviderScene.PROVIDER, net.minecraft.world.level.block.Blocks.AIR);
+                        writeEvidence(testId, 5, Map.of("pendingSendRejected", "true", "pendingReturnRejected", "true",
+                                "nativeDropRecovery", "true"));
+                        helper.succeed();
+                        return;
+                    }
+                    if (testId.endsWith("cleanup")) {
+                        var player = helper.makeMockServerPlayerInLevel();
+                        var router = helper.absolutePos(ProductionProviderScene.ROUTER);
+                        player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
+                        var session = FederationDomainPolicySession.forRouter(player, router);
+                        for (int attempt = 0; attempt < 4 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
+                            session.releaseEndpoint();
+                            if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
+                        }
+                        helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Confirm old binding");
+                        ClaimState protectedClaim = null;
+                        if (testId.equals("productionproviderreplacedcleanup")) {
+                            scene.replaceEndpoint(Target.A);
+                            protectedClaim = scene.endpoint(Target.A).claimState();
+                        } else if (testId.equals("productionproviderclaimchangedcleanup")) {
+                            var entity = scene.endpoint(Target.A);
+                            var oldState = entity.claimState();
+                            helper.assertTrue(entity.releaseClaim(oldState.owner().orElseThrow(), oldState.epoch()),
+                                    "Original owner releases its Claim");
+                            entity.claim(new space.controlnet.ae2federation.processing.claim.ClaimRequest(
+                                    endpoint, entity.claimState().epoch(),
+                                    new space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity(
+                                            scene.secondProvider().providerIdentity())));
+                            protectedClaim = entity.claimState();
+                        } else {
+                            scene.unloadEndpoint(Target.A); // Test-only removal, not a real chunk-unload proof.
+                        }
+                        staleIdentity[0] = endpoint;
+                        protectedRemoteClaim[0] = protectedClaim;
+                        phase[0] = 90;
+                        session.releaseEndpoint();
+                        helper.assertTrue(!session.mappingStatusCode().startsWith("released-")
+                                        && !session.mappingStatusCode().startsWith("cleared-stale-"),
+                                "State change cannot reuse the old confirmation");
+                        helper.fail("Reopen management after topology change");
+                    }
                     helper.assertTrue(provider.releaseEndpoint(scene.endpoint(Target.B).endpointIdentity())
                             .startsWith("rejected-"), "Releasing an Endpoint without a retained Lane is rejected");
                     // Explicit release through the Domain management session opened at the Router.
@@ -199,6 +326,31 @@ public final class ProductionProviderRetentionGameTests {
                     facts.put("explicitRelease", status);
                     facts.put("reclaimedBySecond", "true");
                     writeEvidence(testId, 26, facts);
+                    helper.succeed();
+                }
+                case 90 -> {
+                    var provider = scene.provider();
+                    var endpoint = staleIdentity[0];
+                    var player = helper.makeMockServerPlayerInLevel();
+                    var router = helper.absolutePos(ProductionProviderScene.ROUTER);
+                    player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
+                    var session = FederationDomainPolicySession.forRouter(player, router);
+                    for (int attempt = 0; attempt < 5 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
+                        session.releaseEndpoint();
+                        if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
+                    }
+                    helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Select offline retained identity");
+                    helper.assertTrue(provider.retained(endpoint), "Unconfirmed cleanup retains binding");
+                    session.releaseEndpoint();
+                    helper.assertTrue(session.mappingStatusCode().startsWith("cleared-stale-"),
+                            "Management cleanup: " + session.mappingStatusCode());
+                    helper.assertTrue(provider.laneFor(endpoint).isEmpty(), "Stale lane retired");
+                    if (protectedRemoteClaim[0] != null) {
+                        helper.assertValueEqual(scene.endpoint(Target.A).claimState(), protectedRemoteClaim[0],
+                                "Replacement or new owner's Claim unchanged");
+                    }
+                    helper.assertValueEqual(scene.sourceAmount(ProductionProviderScene.OUTPUT), 1L, "No resource loss");
+                    writeEvidence(testId, 6, Map.of("managementCleanup", "true", "confirmationInvalidated", "true"));
                     helper.succeed();
                 }
                 default -> throw new IllegalStateException("Unknown phase " + phase[0]);

@@ -109,6 +109,73 @@ public final class IdentityQueryCostGameTests {
         }
     }
 
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityInitializationOrder(GameTestHelper helper) {
+        // Managed native nodes isolate assembly order; actual CableBus wrapping is tested by identityPartOnSettledCable.
+        for (int order = 0; order < 4; order++) {
+            var created = new ArrayList<IManagedGridNode>();
+            try {
+                var stable = node(helper, created, new CompoundTag(), 0);
+                var expected = stable.getGrid().getService(NetworkIdentityService.class).lineage(stable.getNode()).networkId();
+                IManagedGridNode first;
+                IManagedGridNode second;
+                UUID firstId;
+                UUID secondId;
+                try (var scope = space.controlnet.ae2federation.identity.NativeIdentityInitialization.begin()) {
+                    first = node(helper, created, new CompoundTag(), order % 2 == 0 ? 1 : 2);
+                    second = node(helper, created, new CompoundTag(), order % 2 == 0 ? 2 : 1);
+                    firstId = first.getGrid().getService(NetworkIdentityService.class).lineage(first.getNode()).nodeId();
+                    secondId = second.getGrid().getService(NetworkIdentityService.class).lineage(second.getNode()).nodeId();
+                    helper.assertValueEqual(first.getGrid().getService(NetworkIdentityService.class).settlement().status(),
+                            IdentityStatus.PARTIAL_LOAD, "Construction cannot expose a durable identity");
+                    if (order < 2) {
+                        GridHelper.createConnection(first.getNode(), second.getNode());
+                        GridHelper.createConnection(second.getNode(), stable.getNode());
+                    } else {
+                        GridHelper.createConnection(stable.getNode(), second.getNode());
+                        GridHelper.createConnection(second.getNode(), first.getNode());
+                    }
+                    for (int query = 0; query < (order % 2 == 0 ? 1 : 100); query++) {
+                        helper.assertValueEqual(stable.getGrid().getService(NetworkIdentityService.class).settlement().status(),
+                                IdentityStatus.PARTIAL_LOAD, "Queries cannot finish native initialization");
+                    }
+                }
+                var service = stable.getGrid().getService(NetworkIdentityService.class);
+                helper.assertValueEqual(service.settlement().status(), IdentityStatus.SETTLED, "Assembly closes deterministically");
+                helper.assertValueEqual(service.settlement().networkId().orElseThrow(), expected, "Stable identity wins every assembly order");
+                helper.assertValueEqual(service.lineage(first.getNode()).nodeId(), firstId, "First node UUID is preserved");
+                helper.assertValueEqual(service.lineage(second.getNode()).nodeId(), secondId, "Second node UUID is preserved");
+                var saved = new ArrayList<CompoundTag>();
+                for (var managed : created) {
+                    var tag = new CompoundTag();
+                    managed.saveToNBT(tag);
+                    saved.add(tag);
+                }
+                created.forEach(IManagedGridNode::destroy);
+                created.clear();
+                if (order % 2 != 0) {
+                    java.util.Collections.reverse(saved);
+                }
+                IManagedGridNode previous = null;
+                for (var tag : saved) {
+                    var restored = node(helper, created, tag, created.size());
+                    if (previous != null) {
+                        GridHelper.createConnection(previous.getNode(), restored.getNode());
+                    }
+                    previous = restored;
+                }
+                var restoredService = previous.getGrid().getService(NetworkIdentityService.class);
+                helper.assertValueEqual(restoredService.settlement().status(), IdentityStatus.SETTLED, "Reload order converges");
+                helper.assertValueEqual(restoredService.settlement().networkId().orElseThrow(), expected, "Reload preserves identity");
+            } finally {
+                created.forEach(IManagedGridNode::destroy);
+            }
+        }
+        writeEvidence("identityinitializationorder", 32, Map.of("assemblyOrders", "4", "queryIndependent", "true"));
+        helper.succeed();
+    }
+
     private static List<IManagedGridNode> grid(GameTestHelper helper, List<IManagedGridNode> created,
             NetworkId network, int size, List<UUID> nodeIds) {
         var nodes = new ArrayList<IManagedGridNode>(size);

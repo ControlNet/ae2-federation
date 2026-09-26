@@ -246,9 +246,113 @@ public final class IdentityGameTests {
         });
     }
 
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identityLegacyProvisional(GameTestHelper helper) {
+        var sourcePos = new BlockPos(1, 1, 1);
+        var copyPos = new BlockPos(5, 1, 1);
+        var targetPos = new BlockPos(7, 1, 1);
+        helper.setBlock(sourcePos, AEBlocks.ME_CHEST.block());
+        helper.setBlock(targetPos, AEBlocks.ME_CHEST.block());
+        helper.setBlock(targetPos.above(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        var phase = new int[1];
+        var original = new space.controlnet.ae2federation.identity.NodeLineage[1];
+        helper.succeedWhen(() -> {
+            var source = relativeNode(helper, sourcePos);
+            var target = relativeNode(helper, targetPos);
+            helper.assertTrue(com.google.common.collect.Iterables.size(target.getGrid().getNodes()) >= 2, "Target Grid must absorb the copied lone node");
+            if (phase[0] == 0) {
+                helper.assertTrue(service(source).settlement().canInheritPolicy(), "Single node establishes identity");
+                original[0] = service(source).lineage(source);
+                var tag = helper.<MEChestBlockEntity>getBlockEntity(sourcePos)
+                        .saveWithFullMetadata(helper.getLevel().registryAccess());
+                markLegacyProvisional(tag);
+                helper.setBlock(copyPos, AEBlocks.ME_CHEST.block());
+                helper.<MEChestBlockEntity>getBlockEntity(copyPos).loadWithComponents(tag, helper.getLevel().registryAccess());
+                phase[0] = 1;
+            }
+            var copy = relativeNode(helper, copyPos);
+            if (phase[0] == 1) {
+                helper.assertValueEqual(service(copy).lineage(copy), original[0], "Legacy NBT preserves full lineage");
+                helper.assertValueEqual(service(source).settlement().status(), IdentityStatus.COPIED_LIVE_IDENTITY,
+                        "Standalone legacy copy conflicts with original");
+                GridHelper.createConnection(copy, target);
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(service(copy).lineage(copy), original[0], "Joining cannot erase copied node UUID");
+            helper.assertTrue(!service(copy).settlement().canInheritPolicy(), "Joined legacy copy fails closed");
+            helper.assertTrue(!service(source).settlement().canInheritPolicy(), "Original still detects the copy");
+            writeEvidence("identitylegacyprovisional", 6, original[0].networkId().toString(), "copied-live-identity");
+        });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identitySingleEstablishedMerge(GameTestHelper helper) {
+        var left = new BlockPos(1, 1, 1);
+        var right = new BlockPos(5, 1, 1);
+        helper.setBlock(left, AEBlocks.ME_CHEST.block());
+        helper.setBlock(right, AEBlocks.ME_CHEST.block());
+        var phase = new int[1];
+        var policyKey = new space.controlnet.ae2federation.policy.PolicyKey[1];
+        var policyRecord = new Object[1];
+        var lineage = new space.controlnet.ae2federation.identity.NodeLineage[1];
+        helper.succeedWhen(() -> {
+            var first = relativeNode(helper, left);
+            var second = relativeNode(helper, right);
+            if (phase[0] == 0) {
+                helper.assertTrue(service(first).settlement().canInheritPolicy(), "Independent single node settles");
+                lineage[0] = service(first).lineage(first);
+                policyKey[0] = new space.controlnet.ae2federation.policy.PolicyKey(lineage[0].networkId(),
+                        service(second).lineage(second).networkId(),
+                        space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+                var policies = space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel());
+                helper.assertTrue(policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(policyKey[0],
+                        policies.revision(policyKey[0]), space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()))
+                        instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                        "A settled single-node identity can receive persisted Policy");
+                policyRecord[0] = policies.configured(policyKey[0]).orElseThrow();
+                var tag = helper.<MEChestBlockEntity>getBlockEntity(left)
+                        .saveWithFullMetadata(helper.getLevel().registryAccess());
+                markLegacyProvisional(tag);
+                helper.setBlock(left, Blocks.AIR);
+                helper.setBlock(left, AEBlocks.ME_CHEST.block());
+                helper.<MEChestBlockEntity>getBlockEntity(left).loadWithComponents(tag, helper.getLevel().registryAccess());
+                phase[0] = 1;
+                helper.fail("Reloading saved legacy single node");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(service(first).lineage(first), lineage[0], "Reload preserves lineage");
+                helper.assertTrue(service(first).settlement().canInheritPolicy(), "Reloaded single node settles");
+                helper.assertValueEqual(space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel())
+                        .configured(policyKey[0]).orElseThrow(), policyRecord[0], "Node reload preserves configured Policy");
+                GridHelper.createConnection(first, second);
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(service(first).lineage(first), lineage[0], "Merge preserves original lineage");
+            helper.assertValueEqual(service(first).settlement().status(), IdentityStatus.AMBIGUOUS_MERGE,
+                    "Two independent single-node histories cannot silently adopt each other");
+            helper.assertTrue(!service(first).settlement().canInheritPolicy(), "Merged network cannot inherit Policy");
+            helper.assertValueEqual(space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel())
+                    .configured(policyKey[0]).orElseThrow(), policyRecord[0], "Merge retains but cannot inherit old Policy");
+            writeEvidence("identitysingleestablishedmerge", 9, lineage[0].networkId().toString(), "ambiguous-merge");
+        });
+    }
+
+    private static void markLegacyProvisional(net.minecraft.nbt.CompoundTag tag) {
+        for (var key : tag.getAllKeys()) {
+            if (tag.get(key) instanceof net.minecraft.nbt.CompoundTag child) {
+                if (key.equals("ae2federation_network_identity")) {
+                    child.putBoolean("provisional", true);
+                } else {
+                    markLegacyProvisional(child);
+                }
+            }
+        }
+    }
+
     private static void prepareRestart(GameTestHelper helper) {
         var storagePos = helper.getLevel().getSharedSpawnPos().offset(8, 2, 0);
-        helper.getLevel().setBlockAndUpdate(storagePos.below(), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
         helper.getLevel().setBlockAndUpdate(storagePos, AEBlocks.ME_CHEST.block().defaultBlockState());
         helper.succeedWhen(() -> {
             var node = absoluteNode(helper, storagePos);
