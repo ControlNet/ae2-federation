@@ -19,3 +19,5 @@
 ## First publication execution
 
 - The initial serial release run was canceled before publication to partition the 152 required GameTests across eight runners. `select_shard` tests verify complete, unique, nonempty coverage; the no-argument command still runs the entire suite. Publication depends on all eight groups.
+
+- First parallel CI exposed intermittent `provenanceopaqueboundary` setup failure: the cable initialized as an independent grid before the chest/power-cell grid, leaving durable conflicting network identities after the grids joined. The failure log had three initial native nodes and no alias-provider node, so it preceded the provenance assertion. A standalone local replay passed. `ProvenanceStorageFixture.ready()` now places its cable only after the chest grid is active, booted, and settled; the native provenance assertions are unchanged.
