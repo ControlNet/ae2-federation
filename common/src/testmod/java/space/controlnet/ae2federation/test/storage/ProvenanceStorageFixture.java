@@ -36,8 +36,9 @@ public final class ProvenanceStorageFixture implements AutoCloseable {
 
     public boolean ready() {
         var node = chest().getMainNode().getNode();
-        if (node == null || !node.isActive() || !node.hasGridBooted()
-                || FederationDomainRegistryAccess.confirmedNetworkId(grid()).isEmpty()) {
+        var originReady = node != null && node.isActive() && node.hasGridBooted()
+                && FederationDomainRegistryAccess.confirmedNetworkId(grid()).isPresent();
+        if (!originReady) {
             return false;
         }
         if (!cablePlaced) {
