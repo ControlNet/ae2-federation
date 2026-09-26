@@ -21,7 +21,9 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Release version rules
-        run: python3 -m unittest discover -s tests -p test_release_metadata.py -v
+        run: |
+          python3 -m unittest discover -s tests -p test_release_metadata.py -v
+          python3 -m unittest discover -s tests -p test_required_gametests.py -v
       - name: Strict JUnit and production archives
         run: ./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build --dependency-verification=strict --no-configuration-cache
       - name: Archive tuple, license and contamination checks
