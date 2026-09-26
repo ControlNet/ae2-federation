@@ -15,6 +15,7 @@ descriptive, not medians or a speedup claim.
 | `c371346` identity cache only | 3,388 jobs | 6,520 jobs | passes |
 | `31e8533` all changes | 2,747 jobs / 547,697 ticks | 5,655 jobs / 90,480 units / 1,128,262 ticks | passes; persisted result consumed by `federationVerifyEvidence` |
 | `1e77d1d` final (Bridge refresh deferral) | 2,711 jobs / 541,898 ticks | 4,922 jobs in 606.6 s / 981,915 ticks | passes; persisted result consumed; ran while other GameTests used separate cores |
+| `4f81513` (retained Endpoints, return rebinding, alias rule, provisional identity) | 2,684 jobs / 536,612 ticks | 5,514 jobs / 1,105,030 ticks | passes; persisted result consumed; ran while the full GameTest regression used other cores |
 
 The stage diagnostics attribute the baseline's time to `TARGET_INPUT_CONTEXT` and `MACHINE_CALLBACK` with server-thread
 CPU equal to wall time. With the identity settlement cache the same stages cost about 0.6 ms of server-thread CPU per
