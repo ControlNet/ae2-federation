@@ -1,6 +1,15 @@
 {
   "schemaVersion": 1,
   "cases": [
+    {"id":"identity.part-policy-activation","backend":"gametest","testId":"policypartpreservesactivation","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"identity.initialization-order","backend":"gametest","testId":"identityinitializationorder","structure":"ae2federation_test:harness_native_smoke","assertions":32},
+    {"id":"provider.production-release-cas-failure","backend":"gametest","testId":"productionproviderreleasecasfailure","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"provider.production-cleanup-buffers","backend":"gametest","testId":"productionprovidercleanupbuffers","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"provider.production-replaced-cleanup","backend":"gametest","testId":"productionproviderreplacedcleanup","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"provider.production-claim-changed-cleanup","backend":"gametest","testId":"productionproviderclaimchangedcleanup","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"identity.single-established-merge","backend":"gametest","testId":"identitysingleestablishedmerge","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"identity.legacy-provisional","backend":"gametest","testId":"identitylegacyprovisional","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"provider.production-stale-cleanup","backend":"gametest","testId":"productionproviderstalecleanup","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"harness.native-smoke","backend":"gametest","testId":"harnessnativesmoke","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"harness.reject-stale","backend":"self-test","assertions":1},
     {"id":"harness.reject-empty","backend":"self-test","assertions":1},

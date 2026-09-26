@@ -144,6 +144,44 @@ public final class PolicyLifecycleGameTests {
         });
     }
 
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void policyPartPreservesActivation(GameTestHelper helper) {
+        var position = new BlockPos(5, 3, 5);
+        var fixtures = new PolicyBridgeFixtures(helper, position);
+        var phase = new int[1];
+        var key = new PolicyKey[1];
+        var revision = new PolicyRevision[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(fixtures.networksSettled(), "Native networks must settle");
+                fixtures.placeFirstBridge();
+                phase[0] = 1;
+            }
+            helper.assertTrue(fixtures.firstBridgeReady(), "Domain must confirm both native networks");
+            var service = PolicyService.get(helper.getLevel());
+            if (phase[0] == 1) {
+                key[0] = storageKey(fixtures);
+                revision[0] = accepted(service.edit(new PolicyEdit(key[0], PolicyRevision.NONE, PolicyRule.storageDefaults())));
+                helper.assertValueEqual(activation(helper, fixtures, key[0]), PolicyActivationState.ACTIVE,
+                        "Policy is effective before adding the part");
+                appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(position.east()),
+                        net.minecraft.core.Direction.DOWN, null, appeng.core.definitions.AEParts.EXPORT_BUS.asItem());
+                phase[0] = 2;
+            }
+            var bus = appeng.api.parts.PartHelper.getPart(helper.getLevel(), helper.absolutePos(position.east()),
+                    net.minecraft.core.Direction.DOWN);
+            helper.assertTrue(bus != null && bus.getGridNode() != null && bus.getGridNode().getGrid() == fixtures.mainGrid(),
+                    "Real Export Bus joins the preexisting cable Grid");
+            helper.assertValueEqual(storageKey(fixtures), key[0], "Both Policy endpoint identities survive");
+            helper.assertValueEqual(service.revision(key[0]), revision[0], "Policy revision is unchanged");
+            helper.assertValueEqual(activation(helper, fixtures, key[0]), PolicyActivationState.ACTIVE,
+                    "The same Policy remains effective after adding the Export Bus");
+            PolicyEvidence.write("policypartpreservesactivation", 5, Map.of("exportBusKeepsActivePolicy", "true"));
+            fixtures.close();
+        });
+    }
+
     static PolicyKey storageKey(PolicyBridgeFixtures fixtures) {
         return new PolicyKey(fixtures.mainNetwork(), fixtures.outerNetwork(), PolicyCapability.STORAGE);
     }
