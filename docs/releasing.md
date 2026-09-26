@@ -64,6 +64,8 @@ For subsequent releases, use the same sequence with the next version. For hotfix
 
 The **Release** workflow runs on pushes to `master` and can be rerun manually on `master`. It uses the built-in `GITHUB_TOKEN`; no publishing credentials need to be added. Only the publishing job receives `contents: write`.
 
+The required manifest GameTests run in eight parallel groups, with each test assigned exactly once. Publication waits for every group to succeed.
+
 After the build, unit tests, archive validation, and all required manifest GameTests pass, the workflow publishes:
 
 - `ae2federation-neoforge-1.21.1-0.0.1.jar` — install this file.
