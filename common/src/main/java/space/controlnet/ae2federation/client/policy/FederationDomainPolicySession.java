@@ -271,6 +271,7 @@ public final class FederationDomainPolicySession {
         refreshPreparedRelease();
         var root = new com.google.gson.JsonObject();
         root.addProperty("navigationReceipt", navigationReceipt);
+        root.addProperty("bridgeUnavailable", entrance instanceof BridgePolicyEntrance && context == null);
         root.addProperty("scope", context == null && deviceDomainAvailability != null ? deviceDomainAvailability.key() : "domain");
         root.addProperty("initialPage", entrance instanceof DevicePolicyEntrance device ? (device.provider() ? "mapping" : "diagnostics") : "overview");
         root.addProperty("returnProvider", entrance instanceof DevicePolicyEntrance device && device.provider());

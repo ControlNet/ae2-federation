@@ -35,11 +35,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private UI currentUi;
     private FederationWorkspace currentWorkspace;
     private String serverStatus = "pending";
-    private final boolean endpointInspection;
+    private final int preferredWidth;
+    private final int preferredHeight;
 
-    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, boolean endpointInspection) {
+    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, int preferredWidth, int preferredHeight) {
         this.session = session;
-        this.endpointInspection = endpointInspection;
+        this.preferredWidth = preferredWidth;
+        this.preferredHeight = preferredHeight;
         menuNonce = session == null ? null : UUID.randomUUID();
     }
 
@@ -160,8 +162,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             public void init(int screenWidth, int screenHeight) {
                 ui.rootElement.removeClass("compact");
                 if (screenHeight < 280) ui.rootElement.addClass("compact");
-                ui.rootElement.layout(style -> style.width(Math.min(endpointInspection ? 440 : 640, screenWidth - 8))
-                        .height(Math.min(endpointInspection ? 280 : 400, screenHeight - 8)));
+                ui.rootElement.layout(style -> style.width(Math.min(preferredWidth, screenWidth - 8))
+                        .height(Math.min(preferredHeight, screenHeight - 8)));
                 super.init(screenWidth, screenHeight);
             }
 

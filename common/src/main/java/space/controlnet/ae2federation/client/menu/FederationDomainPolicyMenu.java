@@ -15,6 +15,7 @@ import space.controlnet.ae2federation.client.policy.FederationDomainPolicySessio
 public final class FederationDomainPolicyMenu {
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "domain_policy");
     private static final ResourceLocation ENDPOINT_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "endpoint_inspection");
+    private static final ResourceLocation BRIDGE_DIAGNOSTIC_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "bridge_diagnostic");
     private static final Map<UUID, FederationDomainPolicySession> PENDING = new ConcurrentHashMap<>();
 
     private FederationDomainPolicyMenu() {
@@ -22,9 +23,11 @@ public final class FederationDomainPolicyMenu {
 
     public static void register() {
         PlayerUIMenuType.register(ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, false));
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 640, 400));
         PlayerUIMenuType.register(ENDPOINT_ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, true));
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 440, 280));
+        PlayerUIMenuType.register(BRIDGE_DIAGNOSTIC_ID, player -> new FederationDomainPolicyMenuHolder(
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 360, 160));
     }
 
     public static boolean openRouter(ServerPlayer player, BlockPos position) {
@@ -38,7 +41,8 @@ public final class FederationDomainPolicyMenu {
     }
 
     public static boolean openBridge(ServerPlayer player, BridgeRightClickContext bridge) {
-        return open(player, FederationDomainPolicySession.forBridge(player, bridge));
+        var session = FederationDomainPolicySession.forBridge(player, bridge);
+        return open(player, session, session.context().isEmpty() ? BRIDGE_DIAGNOSTIC_ID : ID);
     }
 
     private static boolean open(ServerPlayer player, FederationDomainPolicySession session) {

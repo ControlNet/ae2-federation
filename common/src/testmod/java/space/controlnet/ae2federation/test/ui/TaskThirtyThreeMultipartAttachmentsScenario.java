@@ -55,8 +55,11 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .waitForTextContains("#ack_status", "Connect a network to the bridge outer side.")
-                .click("#tab_policy")
-                .checkText("#policy_direction", "No network pair is available for policy editing.")
+                .check("disconnected Bridge presents diagnostics instead of empty editors", context ->
+                        context.el("#bridge_unavailable").isVisible() && !context.el("#workspace_tabs").isVisible()
+                                && !context.el("#page_overview").isVisible() && !context.el("#page_policy").isVisible())
+                .check("Bridge diagnostic is compact", context -> context.el("#domain_root").bounds().width() <= 360
+                        && context.el("#domain_root").bounds().height() <= 160)
                 .check("disconnected Bridge cannot edit policies", context -> !context.el("#policy_toggle").isActive())
                 .check("unavailable explanation fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#ack_status"))
                 .screenshot("ui-bridge-disconnected").closeScreen();

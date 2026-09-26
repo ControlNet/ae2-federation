@@ -8,11 +8,15 @@
             <label id="entrance_value" class="domain-caption"/>
             <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
         </element>
-        <element class="workspace-tabs">
+        <element id="workspace_tabs" class="workspace-tabs">
             <button id="tab_overview" text="ae2federation.ui.workspace.overview"/>
             <button id="tab_policy" text="ae2federation.ui.workspace.policy"/>
             <button id="tab_mapping" text="ae2federation.ui.workspace.mapping"/>
             <button id="tab_diagnostics" text="ae2federation.ui.workspace.diagnostics"/>
+        </element>
+        <element id="bridge_unavailable" class="bridge-unavailable">
+            <label class="domain-heading"><lang key="ae2federation.ui.workspace.bridge_unavailable"/></label>
+            <label class="page-description"><lang key="ae2federation.ui.workspace.bridge_reopen"/></label>
         </element>
         <element id="page_overview" class="workspace-page">
             <element class="graph-toolbar">

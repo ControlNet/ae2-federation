@@ -126,3 +126,5 @@
 }
 
 .domain-panel #endpoint_local { display: none; flex: 1; min-width: 0; height: 20; padding-all: 3; font-size: 7; vertical-align: center; background: built-in(federation:FIELD); }
+
+.bridge-unavailable { display: none; flex: 1; min-height: 0; padding-all: 8; gap-all: 8; background: #ffb7bac9; }

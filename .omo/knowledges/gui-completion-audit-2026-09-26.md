@@ -9,7 +9,7 @@ No requirement is removed merely because its current implementation is smaller o
 Reviewed `domain.xml`, `domain.lss`, `FederationWorkspace`, `FederationGraphPresenter`,
 `FederationDomainPolicySession`, `FederationDomainPolicyEntrance`, `FederationReleaseDialog`, request/reply handling,
 and the Task 33 actual-client scenarios. Latest complete UI evidence:
-`.omo/evidence/gui-compact-endpoint/attempt-20260926T141955132Z`: 6/6 scenarios, 1296 steps, 131/131 checks,
+`.omo/evidence/gui-bridge-diagnostic/attempt-20260926T142558155Z`: 6/6 scenarios, 1294 steps, 132/132 checks,
 `BUILD SUCCESSFUL`. Earlier request protocol probe is documented in `gui-request-feedback-2026-09-26.md`.
 
 ## Requirement-by-requirement disposition
@@ -84,3 +84,5 @@ Latest runtime evidence: `gui-runtime-cycle-revision-energy-2026-09-27.md` cover
 Latest local Endpoint evidence: `gui-local-endpoint-lifecycle-2026-09-27.md`; 6/6 scenarios, 129/129 checks, 248 unit tests pass. The real pre-first-tick menu open exposed and now verifies a null-binding fix. Dedicated compact Endpoint sizing and final full-scope visual audit remain open.
 
 Compact Endpoint follow-up: `gui-compact-endpoint-2026-09-27.md` verifies the dedicated 440x280 default, initial centering, complete visible owned-device details and retained Chinese narrow layout. This closes the previously noted excessive default whitespace; final full-scope audit remains open.
+
+Unavailable Bridge follow-up: `gui-bridge-diagnostic-panel-2026-09-27.md` replaces the previously empty workspace with a compact diagnostic panel. Actual outer-disconnection presentation passes; dedicated Chinese unavailable-Bridge coverage remains unverified.
