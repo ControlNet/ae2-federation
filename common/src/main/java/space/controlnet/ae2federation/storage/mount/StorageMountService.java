@@ -42,6 +42,18 @@ public final class StorageMountService implements AutoCloseable {
         return SERVICES.computeIfAbsent(level, StorageMountService::new);
     }
 
+    /** Last reconciliation snapshot only; does not create a service, reconcile, or authorize an operation. */
+    public static synchronized boolean hasPublishedBinding(ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        return service != null && service.mounts.containsKey(key);
+    }
+
+    /** Last source discovery failure, read without initiating discovery or reconciliation. */
+    public static synchronized ProvenanceDiagnostic lastDiagnosticIfPresent(ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        return service == null ? null : service.lastDiagnostic(key);
+    }
+
     public static synchronized void reconcileIfPresent(ServerLevel level) {
         var service = SERVICES.get(level);
         if (service != null) service.reconcileAll();

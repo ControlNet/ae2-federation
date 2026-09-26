@@ -39,4 +39,19 @@ class FederationDomainPolicyActionRequestTest {
         assertThrows(NullPointerException.class, () -> new FederationDomainPolicyActionRequest(
                 FederationDomainPolicyAction.NEXT_CONSUMER, 1, null, 0, scope, PolicyRevision.NONE));
     }
+    @Test
+    void directSelectionRequiresBoundedTargetAndKeepsAuthority() {
+        var scope = new FederationDomainReference(new FederationDomainId("physical:menu-authority"), 7);
+        var nonce = UUID.randomUUID();
+        var request = new FederationDomainPolicyActionRequest(FederationDomainPolicyAction.SELECT_TARGET, 1, nonce, 2,
+                scope, PolicyRevision.NONE, "slot:17");
+        assertEquals("slot:17", request.target());
+        assertEquals(nonce, request.menuNonce());
+        assertThrows(IllegalArgumentException.class, () -> new FederationDomainPolicyActionRequest(
+                FederationDomainPolicyAction.SELECT_TARGET, 1, nonce, 2, scope, PolicyRevision.NONE));
+        assertThrows(IllegalArgumentException.class, () -> new FederationDomainPolicyActionRequest(
+                FederationDomainPolicyAction.SELECT_TARGET, 1, nonce, 2, scope, PolicyRevision.NONE, "x".repeat(161)));
+        assertThrows(IllegalArgumentException.class, () -> new FederationDomainPolicyActionRequest(
+                FederationDomainPolicyAction.TOGGLE_POLICY, 1, nonce, 2, scope, PolicyRevision.NONE, "slot:17"));
+    }
 }

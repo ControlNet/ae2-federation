@@ -52,7 +52,7 @@ final class TaskThirtyFourMultiClientContractTest {
                 && client.contains("status.hasClass(\"ready\") && renderedStatus.equals(expectedStatus)")
                 && client.contains("refreshedStableFrames >= 3")
                 && client.contains("refreshedRenderedStatus = renderedStatus")
-                && client.contains("refreshedRenderedMembers = memberLines.getFirst()"));
+                && client.contains("refreshedRenderedMembers = renderedMembers"));
         assertTrue(verifier.contains("refreshedRenderedStatus") && verifier.contains("refreshedRenderedMembers")
                 && verifier.contains("refreshedStableFrames")
                 && verifier.contains("fabricated-refreshed-render"));

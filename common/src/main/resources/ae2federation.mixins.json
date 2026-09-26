@@ -12,6 +12,10 @@
     "compat.StorageServiceMountLedgerMixin",
     "compat.StorageServiceProviderStateMixin"
   ],
+  "client": [
+    "compat.LDLibTextThreadMixin",
+    "compat.GuideTooltipThreadMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

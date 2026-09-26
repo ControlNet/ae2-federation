@@ -34,7 +34,8 @@ final class TaskFifteenWorldFixture {
     }
 
     static ScenarioBuilder arrange(ScenarioBuilder scenario) {
-        return scenario.server("place proven real Bridge topology", TaskFifteenWorldFixture::placeBridgeTopology)
+        return scenario.timeoutMs(45_000).waitUntil("resources finish loading", context -> context.mc().getOverlay() == null)
+                .frames(5).server("place proven real Bridge topology", TaskFifteenWorldFixture::placeBridgeTopology)
                 .serverTicks(3)
                 .waitUntilServer("Bridge networks become operational and settled",
                         TaskFifteenWorldFixture::bridgeNetworksSettled)
@@ -132,7 +133,11 @@ final class TaskFifteenWorldFixture {
     }
 
     private static void placeBridgeTopology(ServerContext context) {
-        var bridge = context.player().blockPosition().above(3).east(2);
+        // Keep every scene inside one loaded chunk, independent of the preceding screenshot camera.
+        context.level().getChunk(0, 0);
+        var ground = context.level().getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 6, 8);
+        context.player().connection.teleport(6.5, ground, 8.5, 0, 0);
+        var bridge = new BlockPos(8, ground + 3, 8);
         var router = bridge.east(2);
         var world = new WorldState(router, bridge);
         context.put(WORLD, world);
@@ -165,7 +170,10 @@ final class TaskFifteenWorldFixture {
 
     private static boolean extensionsSettled(ServerContext context) {
         var world = world(context);
-        return world.mainNetwork.equals(confirmedNetwork(context, world.bridge.east()))
+        // AE2 may retain either network identity when a new cable grid merges into the fixture.
+        // Resolve the live Bridge identities after expansion and compare both actual attachment paths.
+        return bridgeNetworksSettled(context)
+                && world.mainNetwork.equals(confirmedNetwork(context, world.bridge.east()))
                 && world.outerNetwork.equals(confirmedNetwork(context, world.router.north()));
     }
 

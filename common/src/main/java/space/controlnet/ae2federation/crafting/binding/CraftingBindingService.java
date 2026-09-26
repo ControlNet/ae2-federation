@@ -29,6 +29,7 @@ public final class CraftingBindingService implements AutoCloseable {
     private final NativeCraftingBackendRegistry backends = new NativeCraftingBackendRegistry();
     private final Map<PolicyKey, CraftingCapabilityBinding> bindings = new java.util.HashMap<>();
     private final NativeCraftingRequestRegistry nativeRequests = new NativeCraftingRequestRegistry();
+    private final Map<PolicyKey, space.controlnet.ae2federation.policy.BindingDiagnostic> diagnostics = new java.util.HashMap<>();
     private int publications;
     private int withdrawals;
 
@@ -39,6 +40,28 @@ public final class CraftingBindingService implements AutoCloseable {
 
     public static synchronized CraftingBindingService get(ServerLevel level) {
         return SERVICES.computeIfAbsent(level, CraftingBindingService::new);
+    }
+
+    /** Last reconciliation snapshot only; does not create a service, reconcile, or authorize an operation. */
+    public static synchronized boolean hasPublishedBinding(ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        return service != null && service.bindings.containsKey(key);
+    }
+
+    /** Read-only historical reason, discarded when policy or topology revisions no longer match. */
+    public static synchronized Optional<space.controlnet.ae2federation.policy.BindingDiagnostic> lastDiagnostic(
+            ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        if (service == null) return Optional.empty();
+        var diagnostic = service.diagnostics.get(key);
+        return diagnostic != null && diagnostic.matches(PolicyService.get(level).revision(key),
+                FederationDomainRegistryAccess.get(level).snapshot().topologyRevision())
+                ? Optional.of(diagnostic) : Optional.empty();
+    }
+
+    private void recordDiagnostic(PolicyKey key, space.controlnet.ae2federation.policy.BindingDiagnostic.Reason reason) {
+        diagnostics.put(key, new space.controlnet.ae2federation.policy.BindingDiagnostic(reason,
+                PolicyService.get(level).revision(key), federationDomains.topologyRevision()));
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
@@ -77,6 +100,7 @@ public final class CraftingBindingService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        diagnostics.clear();
         nativeRequests.retireTerminal();
         var desired = federationDomains.relationships();
         var policies = PolicyService.get(level);
@@ -89,6 +113,8 @@ public final class CraftingBindingService implements AutoCloseable {
             }
         }
         var cyclic = CraftingDependencyCycleGuard.cyclicKeys(eligible);
+        cyclic.forEach(key -> recordDiagnostic(key,
+                space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_CYCLE));
         List.copyOf(bindings.keySet()).stream()
                 .filter(key -> !eligible.contains(key) || cyclic.contains(key))
                 .forEach(this::remove);
@@ -195,6 +221,7 @@ public final class CraftingBindingService implements AutoCloseable {
 
     @Override
     public void close() {
+        diagnostics.clear();
         withdrawals += bindings.size();
         bindings.clear();
         nativeRequests.close();
@@ -214,16 +241,20 @@ public final class CraftingBindingService implements AutoCloseable {
         try {
             backend = backends.discover(relationship.providerGrid());
         } catch (CraftingBackendUnavailableException exception) {
+            recordDiagnostic(relationship.key(), exception.reason());
             remove(relationship.key());
             return;
         }
-        if (policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
-                relationship.providerGrid(), BackendStatus.READY)) != PolicyActivationState.ACTIVE) {
+        var activation = policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
+                relationship.providerGrid(), BackendStatus.READY));
+        if (activation != PolicyActivationState.ACTIVE) {
+            recordDiagnostic(relationship.key(), space.controlnet.ae2federation.policy.BindingDiagnostic.inactiveReason(activation));
             remove(relationship.key());
             return;
         }
         var references = federationDomains.references(relationship);
         if (references.isEmpty()) {
+            recordDiagnostic(relationship.key(), space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.DOMAIN_REFERENCE_MISSING);
             remove(relationship.key());
             return;
         }

@@ -28,7 +28,14 @@ final class TaskThirtyThreeScenarioSupport {
                 .awaitModularUI()
                 .awaitElement("#domain_graph")
                 .click("#graph_fit")
-                .hover("#domain_graph");
+                .hover("#domain_graph")
+                .step("record visible overview", context -> context.put("task33.graphVisited", Boolean.toString(context.el("#domain_graph").isVisible())));
+    }
+
+    static void activateNavigation(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        var bounds = context.el(selector).bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }
 
     static void configure(com.lowdragmc.lowdraglib2.uitest.ScenarioOptions options, int guiScale) {
@@ -39,9 +46,13 @@ final class TaskThirtyThreeScenarioSupport {
     static void attach(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
         context.attach("caseId", caseId);
         context.attach("mappingAck", context.el("#mapping_status").text());
+        context.attach("mappingAckCode", context.el("#mapping_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                .getStyle().tooltips().asList().getFirst().getString());
         context.attach("endpointDetail", context.el("#endpoint_detail").text());
+        context.attach("endpointIdentity", context.el("#endpoint_identity").text());
         context.attach("visibleStatus", context.el("#ack_status").text());
-        context.attach("graphVisible", Boolean.toString(context.el("#domain_graph").isVisible()));
+        context.attach("graphVisited", context.get("task33.graphVisited"));
+        context.attach("workspaceVisible", Boolean.toString(context.el("#domain_root").isVisible()));
         context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));
@@ -51,6 +62,39 @@ final class TaskThirtyThreeScenarioSupport {
         context.attach("glVendor", Objects.toString(GL11.glGetString(GL11.GL_VENDOR), ""));
         context.attach("glRenderer", Objects.toString(GL11.glGetString(GL11.GL_RENDERER), ""));
         context.attach("glVersion", Objects.toString(GL11.glGetString(GL11.GL_VERSION), ""));
+    }
+
+    static boolean wrappedTextFits(com.lowdragmc.lowdraglib2.uitest.TestContext context, String... selectors) {
+        for (var selector : selectors) {
+            var text = context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class);
+            var style = text.getTextStyle();
+            var lines = com.lowdragmc.lowdraglib2.utils.TextUtilities.computeFormattedLines(text.getFont(),
+                    com.lowdragmc.lowdraglib2.utils.TextUtilities.withFont(text.getText(), style.font()),
+                    style.fontSize(), text.getContentWidth());
+            float height = lines.size() * (style.fontSize() + style.lineSpacing()) - style.lineSpacing();
+            if (height > text.getContentHeight() + 0.01f
+                    || lines.stream().anyMatch(line -> line.getB() > text.getContentWidth() + 0.01f)) return false;
+        }
+        return true;
+    }
+
+    static boolean graphNodeCentered(com.lowdragmc.lowdraglib2.uitest.TestContext context, String id) {
+        var viewport = context.el("#domain_graph").bounds();
+        var node = context.el("#graph_node_" + id.replaceAll("[^a-zA-Z0-9_-]", "_")).bounds();
+        return viewport.width() > 0 && viewport.height() > 0
+                && Math.abs(viewport.centerX() - node.centerX()) < 1
+                && Math.abs(viewport.centerY() - node.centerY()) < 1;
+    }
+
+    static boolean withinWorkspace(com.lowdragmc.lowdraglib2.uitest.TestContext context, String... selectors) {
+        var root = context.el("#domain_root").bounds();
+        for (var selector : selectors) {
+            var bounds = context.el(selector).bounds();
+            if (bounds.x() < root.x() || bounds.y() < root.y()
+                    || bounds.x() + bounds.width() > root.x() + root.width() + 0.01f
+                    || bounds.y() + bounds.height() > root.y() + root.height() + 0.01f) return false;
+        }
+        return true;
     }
 
     static boolean buttonTextContained(com.lowdragmc.lowdraglib2.uitest.TestContext context, String... selectors) {

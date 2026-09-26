@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.client.menu;
 
 public enum FederationDomainPolicyActionResult {
     ACCEPTED,
+    INVALID_TARGET,
     WRONG_THREAD,
     WRONG_MENU,
     STALE_CONTAINER,

@@ -15,7 +15,7 @@ final class TaskThirtyThreeUiContractTest {
     };
 
     @Test
-    void productionResourcesExposeTheScopedThreeRegionWorkspace() throws IOException {
+    void productionResourcesExposeTheScopedTabbedWorkspace() throws IOException {
         var xml = Files.readString(REPOSITORY_ROOT.resolve(
                 "common/src/main/resources/assets/ae2federation/ui/domain.xml"));
         var lss = Files.readString(REPOSITORY_ROOT.resolve(
@@ -36,17 +36,13 @@ final class TaskThirtyThreeUiContractTest {
                 "Graph interaction must be enabled in shared LSS");
         assertTrue(lss.contains("width: 396;") && lss.contains("height: 236;"),
                 "The production workspace must fit a 400x240 logical scale-4 viewport");
-        assertTrue(xml.contains("class=\"policy-actions\"") && lss.contains(".policy-actions"),
-                "Long policy actions must stack instead of sharing a cramped row");
-        assertTrue(lss.contains(".domain-left .__button_text__") && lss.contains("adaptive-width: false")
-                        && lss.contains("text-wrap: wrap"),
-                "Long localized policy actions must wrap inside their button bounds");
-        assertTrue(lss.contains(".compact-actions button { width: 49%; height: 14; font-size: 3.5; }"),
-                "Paired mapping controls must fit without overflowing or clipping Chinese labels");
-        assertTrue(lss.contains(".domain-right { width: 126;") && lss.contains(".domain-center { width: 182;"),
-                "The diagnostics column must be wide enough for paired labels without collapsing the graph");
-        assertTrue(holder.contains("FederationDomainGraphLayoutCache") && holder.contains("stringS2C"),
-                "The rendered graph must consume a server-owned scoped projection with cached topology layout");
+        for (var page : new String[] {"overview", "policy", "mapping", "diagnostics"}) {
+            assertTrue(xml.contains("id=\"page_" + page + "\""), "Missing task page " + page);
+        }
+        assertTrue(lss.contains(".__button_text__") && lss.contains("adaptive-width: false"),
+                "Button child text must have an explicit bounded style");
+        assertTrue(holder.contains("FederationGraphPresenter") && holder.contains("stringS2C"),
+                "The rendered graph must consume a server-owned scoped projection");
     }
 
     @Test

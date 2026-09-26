@@ -1,59 +1,122 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <ldlib2-ui>
-    <stylesheet location="ldlib2:lss/mc.lss"/>
+    <stylesheet location="ldlib2:lss/modern.lss"/>
     <stylesheet location="ae2federation:lss/domain.lss"/>
-    <root id="domain_root" class="panel_bg domain-panel">
+    <root id="domain_root" class="domain-panel">
         <element class="domain-header">
             <label id="domain_title" class="domain-title"><lang key="ae2federation.ui.domain.title"/></label>
-            <label id="entrance_value" class="domain-caption"><lang key="ae2federation.ui.domain.status.pending"/></label>
+            <label id="entrance_value" class="domain-caption"/>
+            <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
         </element>
-        <element class="domain-workspace">
-            <element class="domain-sidebar domain-left">
-                <label class="domain-heading"><lang key="ae2federation.ui.domain.members.heading"/></label>
-                <label id="members_value" class="domain-summary"><lang key="ae2federation.ui.domain.members.pending"/></label>
-                <virtual-scroller-view id="member_list" class="domain-list"/>
-                <label class="domain-heading"><lang key="ae2federation.ui.domain.policy.heading"/></label>
-                <label id="consumer_value" class="domain-row"><lang key="ae2federation.ui.domain.consumer"><style color="#ffffffff">-</style></lang></label>
-                <button id="consumer_next" text="ae2federation.ui.domain.action.next_consumer"/>
-                <label id="provider_value" class="domain-row"><lang key="ae2federation.ui.domain.provider"><style color="#ffffffff">-</style></lang></label>
-                <button id="provider_next" text="ae2federation.ui.domain.action.next_provider"/>
-                <label id="rule_value" class="domain-row"><lang key="ae2federation.ui.domain.rule.unavailable"/></label>
-                <element class="policy-actions">
-                    <button id="capability_next" text="ae2federation.ui.domain.action.next_capability"/>
-                    <button id="policy_toggle" text="ae2federation.ui.domain.action.toggle"/>
-                </element>
+        <element class="workspace-tabs">
+            <button id="tab_overview" text="ae2federation.ui.workspace.overview"/>
+            <button id="tab_policy" text="ae2federation.ui.workspace.policy"/>
+            <button id="tab_mapping" text="ae2federation.ui.workspace.mapping"/>
+            <button id="tab_diagnostics" text="ae2federation.ui.workspace.diagnostics"/>
+        </element>
+        <element id="page_overview" class="workspace-page">
+            <element class="graph-toolbar">
+                <button id="graph_zoom_in" class="graph-zoom" text="+"/>
+                <button id="graph_zoom_out" class="graph-zoom" text="-"/>
+                <button id="graph_fit" text="ae2federation.ui.domain.graph.fit"/>
+                <button id="physical_layer_toggle" text="ae2federation.ui.domain.graph.physical"/>
+                <button id="capability_layer_toggle" text="ae2federation.ui.domain.graph.capability"/>
             </element>
-            <element class="domain-center">
-                <element class="graph-toolbar">
-                    <button id="graph_zoom_in" class="graph-zoom" text="ae2federation.ui.domain.graph.zoom_in"/>
-                    <button id="graph_zoom_out" class="graph-zoom" text="ae2federation.ui.domain.graph.zoom_out"/>
-                    <button id="graph_fit" class="graph-fit" text="ae2federation.ui.domain.graph.fit"/>
-                    <button id="physical_layer_toggle" class="graph-physical" text="ae2federation.ui.domain.graph.physical"/>
-                    <button id="capability_layer_toggle" class="graph-capability" text="ae2federation.ui.domain.graph.capability"/>
-                </element>
+            <element class="overview-body">
                 <graph-view id="domain_graph" class="domain-graph"/>
-                <label id="ack_status" class="domain-status pending"><lang key="ae2federation.ui.domain.status.pending"/></label>
-            </element>
-            <element class="domain-sidebar domain-right">
-                <label class="domain-heading"><lang key="ae2federation.ui.domain.mapping.heading"/></label>
-                <label id="mapping_provider_value" class="domain-row">-</label>
-                <button id="mapping_provider_next" text="ae2federation.ui.domain.mapping.next_provider"/>
-                <label id="mapping_selection_value" class="domain-row">-</label>
-                <element class="compact-actions">
-                    <button id="mapping_slot_next" text="ae2federation.ui.domain.mapping.next_slot"/>
-                    <button id="mapping_lane_next" text="ae2federation.ui.domain.mapping.next_lane"/>
+                <element class="object-inspector">
+                    <text-field id="graph_search" mode="string" value=""/>
+                    <label id="members_value" class="domain-summary"/>
+                    <virtual-scroller-view id="member_list" class="domain-list"/>
+                    <label id="graph_search_empty" class="graph-search-empty"/>
+                    <label id="graph_selection" class="inspector-detail"><lang key="ae2federation.ui.workspace.select_node"/></label>
+                    <button id="graph_open" class="primary-action" text="ae2federation.ui.workspace.open_details"/>
                 </element>
-                <element class="compact-actions">
-                    <button id="mapping_toggle" text="ae2federation.ui.domain.mapping.toggle"/>
-                    <button id="mapping_release" text="ae2federation.ui.domain.mapping.release"/>
-                </element>
-                <label id="mapping_status" class="mapping-status"><lang key="ae2federation.ui.domain.mapping.status"><style color="#ffffffff">ready</style></lang></label>
-                <text-field id="pattern_search" mode="string" value="" class="pattern-search"/>
-                <virtual-scroller-view id="pattern_list" class="pattern-list"/>
-                <label class="domain-heading"><lang key="ae2federation.ui.domain.endpoint.heading"/></label>
-                <button id="endpoint_next" text="ae2federation.ui.domain.endpoint.next"/>
-                <label id="endpoint_detail" class="endpoint-detail"><lang key="ae2federation.ui.domain.endpoint.none"/></label>
             </element>
         </element>
+        <element id="page_policy" class="workspace-page">
+            <label class="page-description"><lang key="ae2federation.ui.workspace.policy_help"/></label>
+            <label id="policy_direction" class="policy-direction"/>
+            <element class="form-columns">
+                <element class="form-column">
+                    <label id="consumer_value" class="domain-row"/>
+                    <selector id="consumer_next"/>
+                    <label id="provider_value" class="domain-row"/>
+                    <selector id="provider_next"/>
+                </element>
+                <element class="form-column">
+                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.capability"/></label>
+                    <selector id="capability_next"/>
+                    <scroller-view id="policy_detail_scroll" class="diagnostic-scroll">
+                        <label id="rule_value" class="rule-detail"/>
+                    </scroller-view>
+                    <element class="compact-actions">
+                        <button id="policy_browse" text="ae2federation.ui.workspace.rules"/>
+                        <button id="policy_toggle" class="primary-action" text="ae2federation.ui.domain.action.toggle"/>
+                    </element>
+                </element>
+            </element>
+        </element>
+        <element id="page_mapping" class="workspace-page">
+            <element class="mapping-toolbar">
+                <label class="domain-heading"><lang key="ae2federation.ui.workspace.provider"/></label>
+                <selector id="mapping_provider_next"/>
+                <label id="mapping_provider_value" class="identity-caption"/>
+            </element>
+            <element class="mapping-body">
+                <element class="pattern-column">
+                    <element class="pattern-search-row">
+                        <text-field id="pattern_search" mode="string" value=""/>
+                        <button id="pattern_show_empty" text="ae2federation.ui.workspace.show_empty"/>
+                    </element>
+                    <label id="pattern_summary" class="domain-caption"/>
+                    <label id="pattern_empty" class="empty-message"/>
+                    <virtual-scroller-view id="pattern_list" class="pattern-list"/>
+                </element>
+                <element class="target-column">
+                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.pattern"/></label>
+                    <selector id="mapping_slot_next"/>
+                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.target"/></label>
+                    <selector id="mapping_lane_next"/>
+                    <label id="mapping_selection_value" class="mapping-selection"/>
+                    <element class="compact-actions">
+                        <button id="mapping_toggle" class="primary-action" text="ae2federation.ui.domain.mapping.toggle"/>
+                        <button id="mapping_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
+                    </element>
+                    <scroller-view id="mapping_feedback_scroll" class="diagnostic-scroll feedback-scroll">
+                        <label id="mapping_status" class="mapping-status"/>
+                    </scroller-view>
+                </element>
+            </element>
+        </element>
+        <element id="page_diagnostics" class="workspace-page">
+            <label id="diagnostics_description" class="page-description"><lang key="ae2federation.ui.workspace.diagnostics_help"/></label>
+            <element class="diagnostic-toolbar">
+                <selector id="endpoint_next"/>
+                <label id="endpoint_local"/>
+                <button id="endpoint_browse" text="ae2federation.ui.workspace.endpoints_browse"/>
+                <button id="endpoint_locate" text="ae2federation.ui.workspace.endpoint_locate"/>
+            </element>
+            <element class="endpoint-columns">
+                <element class="endpoint-column">
+                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.operation"/></label>
+                    <scroller-view id="endpoint_operation_scroll" class="diagnostic-scroll">
+                        <label id="endpoint_detail" class="endpoint-facts"/>
+                    </scroller-view>
+                </element>
+                <element class="endpoint-column">
+                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.identity_ownership"/></label>
+                    <scroller-view id="endpoint_identity_scroll" class="diagnostic-scroll">
+                        <label id="endpoint_identity" class="endpoint-facts"/>
+                    </scroller-view>
+                </element>
+            </element>
+            <element class="compact-actions diagnostic-navigation">
+                <button id="endpoint_mapping" text="ae2federation.ui.workspace.endpoint_mapping"/>
+                <button id="endpoint_policy" text="ae2federation.ui.workspace.endpoint_policy"/>
+            </element>
+        </element>
+        <label id="ack_status" class="domain-status pending"/>
+        <label id="request_status" class="domain-status request-status"/>
     </root>
 </ldlib2-ui>
