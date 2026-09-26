@@ -92,7 +92,12 @@ final class HarnessContractTest {
 
     @Test
     void productionJarExcludesDevTestmod() throws IOException {
-        var jar = REPOSITORY_ROOT.resolve("neoforge-1.21.1/build/libs/ae2federation-0.1.0-dev.jar");
+        var properties = new java.util.Properties();
+        try (var reader = Files.newBufferedReader(REPOSITORY_ROOT.resolve("gradle.properties"))) {
+            properties.load(reader);
+        }
+        var jar = REPOSITORY_ROOT.resolve("neoforge-1.21.1/build/libs/"
+                + properties.getProperty("mod_id") + "-" + properties.getProperty("mod_version") + ".jar");
 
         assertTrue(Files.isRegularFile(jar), "production jar baseline must exist");
         try (var zip = new java.util.zip.ZipFile(jar.toFile())) {

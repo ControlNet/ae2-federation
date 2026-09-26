@@ -1,9 +1,50 @@
-# ae2-federation
+# AE2 Federation (NeoForge)
 
-Local, unpublished six-capability prototype for isolated AE2 network connections, persistent directional Policy, native remote Processing and Crafting, shared Storage and directional ME power, and an in-game Federation Domain workspace. AE2 retains Grid, planner, CPU, Provider, storage and energy-service authority; Federation connects authorized capabilities without merging native Grids. This is not a scale-qualified release.
+![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-62B47A?style=flat-square)
+![NeoForge](https://img.shields.io/badge/NeoForge-21.1.250-F16436?style=flat-square)
+[![License](https://img.shields.io/github/license/ControlNet/ae2-federation?style=flat-square)](LICENSE)
 
-The sole declared tuple is Minecraft 1.21.1, NeoForge 21.1.250, Java 21, AE2 19.2.17 and LDLib2 2.2.34. Use Gradle 9.2.1 via the included wrapper. On a graphical Java 21 desktop, run `./gradlew :neoforge-1.21.1:runManualClient --dependency-verification=strict --no-configuration-cache` from the repository root, then follow the [manual real-client walkthrough](docs/testing/manual-client.md). Its world persists in the ignored `neoforge-1.21.1/run-manual-client/` directory; no human workflow or F3 approval is claimed. See [artifact identity and EULA requirements](docs/compatibility/artifact.md), [dependency details](docs/compatibility/dependencies.md), and [automated test commands](docs/testing/commands.md).
+Connect separate **Applied Energistics 2 networks** to share storage, autocrafting, processing machines, and ME power while keeping each network independent.
 
-The multipart Bridge connects two distinct native domains directly, not through Federation Cable. A Router accepts independent native or Federation Cable attachments on six faces without a shared ME node. The ME Federation Pattern Provider (`ae2federation:pattern_provider`) is a placeable production block: one Federation face, five native faces, one native Pattern inventory edited through AE2's own Pattern Provider screen, and one native Lane per mapped Endpoint; the Endpoint exposes five logistics faces and one Federation face, with Local or claimed Federated ownership. Policy is sparse, directional, persistent across unrelated topology changes, and fails closed on stale or unconfigured relationships. See the [native attachment](docs/architecture/native-attachment-boundary.md), [crafting](docs/architecture/native-crafting-contract.md), and [storage provenance](docs/architecture/storage-provenance.md) contracts.
+## Features
 
-Prototype visuals are provisional. Dev-only machines and scenario fixtures are not third-party compatibility evidence. Only the exact tested addon rows in the [compatibility matrix](docs/compatibility/matrix.md) are qualified; its blocked rows are not supported. [Acceptance coverage](docs/acceptance-matrix.md) identifies what can be checked now. The four-case documentation-only QA has a [source-bound PASS recorded in the QA log](.omo/evidence/task-40-qa/verification.md); it checks documentation claims, not full qualification. [Task 37 timing](docs/benchmarks/task-37.md) is incomplete: same-source small direct/subnet have 3/3 windows each, Federation previously failed its 256-job warmup at 27 jobs; after the identity settlement cache a local Small Federation run completed its warmup and one 600-second sample (not a median, not three repetitions), late/ultra and resource parity are unavailable. Task 38's two-hour soak is absent. Task 40 and final F1-F4 gates have not passed. No external publication or broad platform/version support is claimed.
+- **Shared storage**: access items and fluids across connected ME networks.
+- **Remote autocrafting**: request crafting from another network through your ME terminal.
+- **Distributed processing**: map patterns to Processing Endpoints on other networks using the Federation Pattern Provider.
+- **ME power sharing**: supply power from one network to another.
+- **Directional permissions**: choose what each network can access. Sharing stays off until you enable it.
+- **In-game configuration**: view connected networks, edit permissions, and assign processing targets. English and Simplified Chinese included.
+
+## Requirements
+
+- Minecraft **1.21.1** / Java **21**
+- NeoForge **21.1.250**
+- Applied Energistics 2 **19.2.17** and its dependencies
+- LDLib2 **2.2.34** and its dependencies
+
+These are the exact versions required by the current build. Install the mod and its dependencies on **both the client and server** for multiplayer.
+
+## Installation
+
+1. Set up a NeoForge instance with the versions listed above.
+2. Download the mod JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and put it alongside its required mods in the instance's `mods/` folder.
+3. Launch Minecraft. For multiplayer, install the same mods on the server.
+
+Version **0.0.1** is an early release with no survival crafting recipes; try the blocks from the **AE2 Federation** Creative tab.
+
+## Getting started
+
+1. Build two separate, powered ME networks.
+2. Connect them through an **ME Federation Router**, using a different face for each network. Use **ME Federation Cable** to link Routers over longer distances. For two adjacent networks, an **ME Federation Bridge** can connect them directly.
+3. Right-click the Router or Bridge, select the source and target networks, and enable the sharing permissions you need. Permissions apply in one direction; configure the reverse direction separately if needed.
+4. Use your normal ME terminal to access the storage and crafting you enabled.
+
+For remote processing, add an **ME Federation Pattern Provider** to the source network and an **ME Federation Processing Endpoint** beside the target machines. Connect their Federation faces to the Federation network, insert encoded processing patterns into the Provider, then map them to Endpoints in the Router or Bridge screen and enable processing permissions.
+
+## Feedback
+
+[Report a bug or suggest a feature](https://github.com/ControlNet/ae2-federation/issues). For bugs, include your mod versions, what happened, and relevant logs or screenshots.
+
+## Development
+
+See [build and test commands](docs/testing/commands.md), [Gitflow and releases](docs/releasing.md), and [compatibility details](docs/compatibility/matrix.md).

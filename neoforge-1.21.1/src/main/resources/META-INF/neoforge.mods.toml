@@ -4,11 +4,11 @@ license="AGPL-3.0-only"
 
 [[mods]]
 modId="ae2federation"
-version="0.1.0-dev"
+version="${mod_version}"
 displayName="AE2 Federation"
 authors="ControlNet"
 description='''
-Shared-source NeoForge foundation for AE2 Federation.
+Connect independent AE2 networks to share storage, autocrafting, processing, and ME power.
 '''
 
 [[mixins]]

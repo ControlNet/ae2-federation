@@ -18,6 +18,7 @@ from typing import TypedDict
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.artifact_shutdown import close_client_window, stop_server
+from tools.release_metadata import archive_names, properties
 
 
 class ArtifactPins(TypedDict):
@@ -32,6 +33,12 @@ class ArchiveInspection(TypedDict):
     entries: list[str]
     sourceEntries: list[str]
     tuple: dict[str, str]
+
+
+def load_pins(root: Path) -> ArtifactPins:
+    pins = json.loads((root / "docs/compatibility/artifact.json").read_text())
+    pins["manifest"]["Implementation-Version"] = properties(root)["mod_version"]
+    return pins
 
 
 def sha256(path: Path) -> str:
@@ -80,6 +87,8 @@ def inspect_archive(jar: Path, sources: Path, pins: ArtifactPins) -> ArchiveInsp
     metadata = tomllib.loads(binary["META-INF/neoforge.mods.toml"].decode())
     if len(metadata["mods"]) != 1 or metadata["mods"][0]["modId"] != "ae2federation" or metadata["license"] != "AGPL-3.0-only":
         raise ValueError("Production metadata/license mismatch")
+    if metadata["mods"][0]["version"] != pins["manifest"]["Implementation-Version"]:
+        raise ValueError("Production mod version mismatch")
     dependencies = metadata["dependencies"]["ae2federation"]
     declared = {dependency["modId"]: dependency["versionRange"] for dependency in dependencies}
     if len(declared) != len(dependencies) or declared != pins["modRanges"]:
@@ -168,7 +177,7 @@ def runtime_probe(root: Path, report_path: Path, approved_eula_file: Path | None
     eula_content = require_approved_eula(approved_eula_file)
     assert approved_eula_file is not None
     approved_eula_path = approved_eula_file.resolve()
-    jar = root / "neoforge-1.21.1/build/libs/ae2federation-0.1.0-dev.jar"
+    jar = root / "neoforge-1.21.1/build/libs" / archive_names(root)[0]
     installed = []
     processes = []
     logs = []
@@ -331,8 +340,8 @@ def isolated_build(root: Path, pins: ArtifactPins, report_path: Path) -> Archive
     before = source_digest(root, names)
     revision = git_output(root, "rev-parse", "HEAD").decode().strip()
     local_archives = root / "neoforge-1.21.1/build/libs"
-    reference = inspect_archive(local_archives / "ae2federation-0.1.0-dev.jar",
-                                local_archives / "ae2federation-0.1.0-dev-sources.jar", pins)
+    reference = inspect_archive(local_archives / archive_names(root)[0],
+                                local_archives / archive_names(root)[1], pins)
     with tempfile.TemporaryDirectory(prefix="ae2f-task39-") as temporary:
         worktree = Path(temporary) / "checkout"
         cache = Path(temporary) / "gradle-home"
@@ -365,8 +374,8 @@ def isolated_build(root: Path, pins: ArtifactPins, report_path: Path) -> Archive
             if exit_code != 0 or b"BUILD SUCCESSFUL" not in log.read_bytes():
                 raise ValueError(f"Isolated build failed (exit {exit_code}): {log}")
             prefix = worktree / "neoforge-1.21.1/build/libs"
-            jar = prefix / "ae2federation-0.1.0-dev.jar"
-            sources = prefix / "ae2federation-0.1.0-dev-sources.jar"
+            jar = prefix / archive_names(root)[0]
+            sources = prefix / archive_names(root)[1]
             inspected = inspect_archive(jar, sources, pins)
             try:
                 verify_rebuilt_hashes(reference, inspected)
@@ -418,12 +427,12 @@ def main() -> None:
     if args.action == "runtime":
         require_approved_eula(args.approved_eula_file)
     root = args.root.resolve()
-    pins = json.loads((root / "docs/compatibility/artifact.json").read_text())
+    pins = load_pins(root)
     if args.action == "inspect":
         verify_target_settings((root / "settings.gradle").read_text())
         directory = root / "neoforge-1.21.1/build/libs"
-        result = inspect_archive(directory / "ae2federation-0.1.0-dev.jar",
-                                 directory / "ae2federation-0.1.0-dev-sources.jar", pins)
+        result = inspect_archive(directory / archive_names(root)[0],
+                                 directory / archive_names(root)[1], pins)
     elif args.action == "runtime":
         if args.report is None:
             parser.error("runtime requires --report")
