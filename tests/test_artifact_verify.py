@@ -10,10 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.artifact_verify import inspect_archive, runtime_probe, sha256, verify_rebuilt_hashes, verify_runtime_loads, verify_target_settings
 
 
+from tools.release_metadata import archive_names
+from tools.artifact_verify import load_pins
+
+
 ROOT = Path(__file__).resolve().parents[1]
-JAR = ROOT / "neoforge-1.21.1/build/libs/ae2federation-0.1.0-dev.jar"
-SOURCES = ROOT / "neoforge-1.21.1/build/libs/ae2federation-0.1.0-dev-sources.jar"
-PINS = json.loads((ROOT / "docs/compatibility/artifact.json").read_text())
+JAR = ROOT / "neoforge-1.21.1/build/libs" / archive_names(ROOT)[0]
+SOURCES = ROOT / "neoforge-1.21.1/build/libs" / archive_names(ROOT)[1]
+PINS = load_pins(ROOT)
 
 
 class ArtifactVerificationTest(unittest.TestCase):
@@ -21,7 +25,8 @@ class ArtifactVerificationTest(unittest.TestCase):
                                 orderly_descendant: bool = False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            jar = root / "neoforge-1.21.1/build/libs/ae2federation-0.1.0-dev.jar"
+            (root / "gradle.properties").write_bytes((ROOT / "gradle.properties").read_bytes())
+            jar = root / "neoforge-1.21.1/build/libs" / archive_names(root)[0]
             jar.parent.mkdir(parents=True)
             jar.write_bytes(b"synthetic JAR for isolated lifecycle test")
             approved = root / "approved-eula.txt"
@@ -134,14 +139,21 @@ class ArtifactVerificationTest(unittest.TestCase):
     def test_reject_wrong_tuple(self):
         with tempfile.TemporaryDirectory() as directory:
             modified = Path(directory) / "wrong-tuple.jar"
-            with zipfile.ZipFile(JAR) as original, zipfile.ZipFile(modified, "w") as rewritten:
-                for entry in original.infolist():
-                    content = original.read(entry.filename)
-                    if entry.filename == "META-INF/neoforge.mods.toml":
-                        content = content.replace(b'versionRange="[1.21.1]"', b'versionRange="[1.21.2]"')
-                    rewritten.writestr(entry, content)
-            with self.assertRaisesRegex(ValueError, "tuple"):
-                inspect_archive(modified, SOURCES, PINS)
+            version = PINS["manifest"]["Implementation-Version"]
+            mutations = (
+                (b'versionRange="[1.21.1]"', b'versionRange="[1.21.2]"', "tuple"),
+                (f'version="{version}"'.encode(), b'version="0.0.0"', "mod version mismatch"),
+            )
+            for before, after, message in mutations:
+                with self.subTest(message=message):
+                    with zipfile.ZipFile(JAR) as original, zipfile.ZipFile(modified, "w") as rewritten:
+                        for entry in original.infolist():
+                            content = original.read(entry.filename)
+                            if entry.filename == "META-INF/neoforge.mods.toml":
+                                content = content.replace(before, after)
+                            rewritten.writestr(entry, content)
+                    with self.assertRaisesRegex(ValueError, message):
+                        inspect_archive(modified, SOURCES, PINS)
 
     def test_reject_corrupted_jar(self):
         with tempfile.TemporaryDirectory() as directory:

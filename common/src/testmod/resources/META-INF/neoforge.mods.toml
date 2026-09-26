@@ -14,7 +14,7 @@ config="ae2federation_test.mixins.json"
 [[dependencies.ae2federation_test]]
 modId="ae2federation"
 type="required"
-versionRange="[0.1.0-dev]"
+versionRange="[${mod_version}]"
 ordering="AFTER"
 side="BOTH"
 

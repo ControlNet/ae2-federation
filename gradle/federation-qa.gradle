@@ -491,8 +491,8 @@ verifyTaskThirtyNineEvidence = { File attempt, List requested, List<String> path
     if (['server', 'client'].any { sha256(new File(attempt, "artifact-installed-${it}.jar").bytes) != expected }) {
         throw new GradleException('Task 39 captured installed JAR differs from built binary')
     }
-    if (runtime.serverLoadedPath != new File(attempt, 'artifact-server-runtime/mods/ae2federation-0.1.0-dev.jar').canonicalPath
-            || runtime.clientLoadedPath != new File(attempt, 'artifact-client-runtime/mods/ae2federation-0.1.0-dev.jar').canonicalPath
+    if (runtime.serverLoadedPath != new File(attempt, "artifact-server-runtime/mods/${jar.name}").canonicalPath
+            || runtime.clientLoadedPath != new File(attempt, "artifact-client-runtime/mods/${jar.name}").canonicalPath
             || server.count("AE2F_ARTIFACT_LOAD path=${runtime.serverLoadedPath} sha256=${expected}") != 1
             || client.count("AE2F_ARTIFACT_LOAD path=${runtime.clientLoadedPath} sha256=${expected}") != 1
             || !server.contains('Done (') || !server.contains('AE2F_ARTIFACT_SERVER_JOIN player=ArtifactProbe')
