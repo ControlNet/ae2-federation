@@ -19,16 +19,29 @@ does not replay `IStorageProvider.mountInventories` to discover sources. It obse
   third-party inventories registered through either native path need no Federation registration. Federation's own
   projection and route providers, AE2's crafting-service storage, and complete `NetworkStorage` aggregates are excluded.
 - One provider mounting several independent handles (for example a drive with several cells) yields one source per
-  handle. The same handle mounted by several providers, or an AE2 `DelegatingMEInventory` chain reaching another mounted
-  handle, is deduplicated because that aliasing is provable from native objects. Wrappers sharing an unmounted inner
-  inventory (`AMBIGUOUS_SHARED_DELEGATE`) and third-party handles referencing another mounted handle
-  (`OPAQUE_EXTERNAL_ALIAS`) fail closed with a diagnostic; they are never guessed into one source.
+  handle. The same handle mounted by several providers is deduplicated. A `DelegatingMEInventory` chain reaching another
+  mounted handle is deduplicated only when every wrapper above that handle is exactly AE2's base
+  `DelegatingMEInventory` class, which forwards every call unchanged. A subclass is not proof of transparency:
+  `MEInventoryHandler` (and `DriveWatcher`) apply a filter, insert/extract access limits and `isPreferredStorageFor`,
+  and native AE2 mounts the wrapper and its delegate as two storages with their own priorities. Folding such a wrapper
+  into its delegate would change where items land, so that combination fails closed with `NON_TRANSPARENT_ALIAS`.
+  A non-transparent wrapper whose delegate is not mounted is its own source and executes through the wrapper, so its
+  filter, access limits and simulate/modulate behaviour stay native. Wrappers sharing an unmounted inner inventory
+  (`AMBIGUOUS_SHARED_DELEGATE`) and third-party handles referencing another mounted handle (`OPAQUE_EXTERNAL_ALIAS`)
+  also fail closed with a diagnostic; they are never guessed into one source.
 - A listing evaluates source validity and relationship currency once and then applies the Policy resource filter per
   key. Insert and extract validate per call against cheap revision stamps (ledger generation, Policy revision, Domain
   topology, identity), so disconnect, revocation or a remount stops real operations on the next call.
 
 Measured with 2,500 distinct keys (`storage.source-index-scale`): five listings previously caused 12,505 discovery
 rebuilds, 75,030 node scans and 50,020 `mountInventories` replays; they now cause 0, 0 and 0 with 5 source validations.
+
+`storage.alias-wrapper-semantics` compares Federation with native AE2 for a filtering `MEInventoryHandler` W (priority
+100, iron only) over a mounted B (priority 0) beside C (priority 50, accepts iron): native lands iron in C, and
+Federation now reports `NON_TRANSPARENT_ALIAS` instead of merging W into B (which landed it in B). It also covers W
+alone (filter, access limits and dynamic filter match native), a priority remount, a transparent wrapper plus a duplicate
+global mount (one source, counted once, no replay or rebuild on stable queries), a dynamic delegate change, two
+handlers sharing one inner inventory, and a wrapper retargeted onto a mounted handle.
 
 Compatibility is pinned to AE2 `19.2.17` / commit
 [`79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a`](https://github.com/AppliedEnergistics/Applied-Energistics-2/tree/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a),
