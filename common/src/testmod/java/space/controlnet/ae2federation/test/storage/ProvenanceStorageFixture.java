@@ -24,20 +24,29 @@ public final class ProvenanceStorageFixture implements AutoCloseable {
 
     private final GameTestHelper helper;
     private final NativePortFixtures ports;
+    private boolean cablePlaced;
 
     public ProvenanceStorageFixture(GameTestHelper helper) {
         this.helper = helper;
         ports = new NativePortFixtures(helper);
         helper.setBlock(CHEST.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         ports.placeChest(CHEST);
-        ports.placeCable(CABLE);
         chest().setCell(AEItems.ITEM_CELL_1K.stack());
     }
 
     public boolean ready() {
         var node = chest().getMainNode().getNode();
-        return node != null && node.isActive() && node.hasGridBooted()
-                && FederationDomainRegistryAccess.confirmedNetworkId(grid()).isPresent();
+        if (node == null || !node.isActive() || !node.hasGridBooted()
+                || FederationDomainRegistryAccess.confirmedNetworkId(grid()).isEmpty()) {
+            return false;
+        }
+        if (!cablePlaced) {
+            // Chunk initialization order must not create an independent cable grid before the chest exists.
+            ports.placeCable(CABLE);
+            cablePlaced = true;
+            return false;
+        }
+        return true;
     }
 
     public MEChestBlockEntity chest() {
