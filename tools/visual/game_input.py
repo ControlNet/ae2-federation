@@ -37,5 +37,22 @@ elif sys.argv[1] == 'reload':
     key('F3'); tap('t'); key('F3',False)
 elif sys.argv[1] == 'profile':
     key('F3'); tap('l'); key('F3',False)
+elif sys.argv[1] == 'command':
+    # Use real keyboard events so client-only commands are exercised too.
+    command = sys.argv[2].removeprefix('/')
+    if not command.isascii() or any(ord(c) < 32 for c in command):
+        raise ValueError('Expected one printable ASCII Minecraft command')
+    tap('slash'); time.sleep(.2)
+    for char in command:
+        mappings = [(code, index) for code, index in d.keysym_to_keycodes(ord(char)) if index < 2]
+        if not mappings:
+            raise ValueError(f'No keyboard mapping for {char!r}')
+        code, index = mappings[0]
+        if index: key('Shift_L')
+        xtest.fake_input(d, X.KeyPress, code)
+        xtest.fake_input(d, X.KeyRelease, code)
+        if index: key('Shift_L', False)
+        d.sync(); time.sleep(.015)
+    tap('Return')
 else:
     tap(sys.argv[1])

@@ -56,7 +56,7 @@ for path in (BASE / 'textures').rglob('*.png'):
         assert im.getextrema()[3] == (255, 255)
         assert im.crop((0, 0, 16, 16)).tobytes() != im.crop((0, 16, 16, 32)).tobytes()
     else:
-        assert im.height == 16
+        assert im.height == (32 if path.name == 'cable_flow.png' else 16)
 
 def elements(mask, layer):
     return models[f'{NS}block/cable/{mask:02d}_{layer}']['elements']
@@ -161,6 +161,18 @@ for name, transform in [('east', Image.Transpose.FLIP_LEFT_RIGHT),
 assert models[NS+'item/cable']['parent'] == NS+'block/cable/00'
 assert models[NS+'block/cable/00_glass']['render_type'] == 'minecraft:translucent'
 assert models[NS+'block/cable/00_stream']['render_type'] == 'minecraft:cutout'
+# The optional BER texture must retain a continuous base and transparent edges.
+flow = Image.open(BASE / 'textures/entity/cable_flow.png').convert('RGBA')
+assert flow.size == (16, 32)
+assert all(flow.getpixel((x, y))[3] == 0 for x in range(16) for y in (0, 15))
+assert all(0 < flow.getpixel((x, 8))[3] < 255 for x in range(16))
+assert flow.getpixel((6, 8))[1] > flow.getpixel((0, 8))[1]
+for across in range(16):
+    base = flow.getpixel((0, across))
+    assert flow.getpixel((across, 16)) == base
+    assert flow.getpixel((across, 31)) == base
+    assert flow.getpixel((0, 16 + across)) == base
+    assert flow.getpixel((15, 16 + across)) == base
 assert json.loads((BASE/'blockstates/processing_endpoint.json').read_text())['variants']['']['y'] == 270
 bridge = models[NS+'part/bridge']['elements']
 assert [min(e['from'][i] for e in bridge) for i in range(3)] == [4,4,0]

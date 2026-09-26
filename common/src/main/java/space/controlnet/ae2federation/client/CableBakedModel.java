@@ -68,6 +68,18 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource random,
             ModelData data, @Nullable RenderType renderType) {
+        if (CableFlowRenderer.isEnabled() && state != null) {
+            if (renderType == RenderType.cutout()) return List.of();
+            if (renderType == null) {
+                var quads = new java.util.ArrayList<BakedQuad>();
+                for (var layer : select(data).getRenderTypes(state, random, ModelData.EMPTY)) {
+                    if (layer != RenderType.cutout()) {
+                        quads.addAll(select(data).getQuads(state, side, random, ModelData.EMPTY, layer));
+                    }
+                }
+                return quads;
+            }
+        }
         return select(data).getQuads(state, side, random, ModelData.EMPTY, renderType);
     }
 
