@@ -38,6 +38,9 @@
     "ExportBusAutomationEvidenceMixin",
     "AuthorizedStorageProjectionAutomationEvidenceMixin"
   ],
+  "client": [
+    "ClientFontThreadGuardMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

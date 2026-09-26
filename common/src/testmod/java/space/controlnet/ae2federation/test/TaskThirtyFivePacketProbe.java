@@ -89,8 +89,19 @@ public final class TaskThirtyFivePacketProbe {
 
     private static FederationDomainPolicyActionRequest roundTrip(FederationDomainPolicyActionRequest request) {
         var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
-        FederationDomainPolicyActionPayload.STREAM_CODEC.encode(buffer, new FederationDomainPolicyActionPayload(request));
-        return FederationDomainPolicyActionPayload.STREAM_CODEC.decode(buffer).request();
+        var payload = new FederationDomainPolicyActionPayload(request);
+        FederationDomainPolicyActionPayload.STREAM_CODEC.encode(buffer, payload);
+        var decoded = FederationDomainPolicyActionPayload.STREAM_CODEC.decode(buffer);
+        if (!decoded.requestId().equals(payload.requestId())) throw new IllegalStateException("Request correlation identity changed");
+        var reply = new space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyReplyPayload(
+                request.containerId(), request.menuNonce(), payload.requestId(), request.menuSequence(),
+                space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionResult.STALE_REVISION);
+        buffer.clear();
+        space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyReplyPayload.STREAM_CODEC.encode(buffer, reply);
+        if (!reply.equals(space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyReplyPayload.STREAM_CODEC.decode(buffer))) {
+            throw new IllegalStateException("Request reply did not round trip");
+        }
+        return decoded.request();
     }
 
     private static boolean rejectsOversizedAction() {

@@ -7,12 +7,21 @@ import space.controlnet.ae2federation.observability.ObservationLimits;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 
 public record FederationDomainPolicyActionRequest(FederationDomainPolicyAction action, int containerId, UUID menuNonce,
-        long menuSequence, FederationDomainReference context, PolicyRevision expectedRevision) {
+        long menuSequence, FederationDomainReference context, PolicyRevision expectedRevision, String target) {
     public static final int MAX_CONTAINER_ID = 100;
     public static final int MAX_PAYLOAD_BYTES = 512;
 
+    public FederationDomainPolicyActionRequest(FederationDomainPolicyAction action, int containerId, UUID menuNonce,
+            long menuSequence, FederationDomainReference context, PolicyRevision expectedRevision) {
+        this(action, containerId, menuNonce, menuSequence, context, expectedRevision, "");
+    }
+
     public FederationDomainPolicyActionRequest {
         Objects.requireNonNull(action);
+        Objects.requireNonNull(target);
+        if (target.length() > 160 || (action == FederationDomainPolicyAction.SELECT_TARGET) != !target.isEmpty()) {
+            throw new IllegalArgumentException("Invalid selection target");
+        }
         Objects.requireNonNull(menuNonce);
         Objects.requireNonNull(context);
         Objects.requireNonNull(expectedRevision);

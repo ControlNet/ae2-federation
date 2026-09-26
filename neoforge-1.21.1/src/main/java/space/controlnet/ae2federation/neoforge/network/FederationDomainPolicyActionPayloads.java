@@ -14,15 +14,27 @@ public final class FederationDomainPolicyActionPayloads {
 
     public static void register(IEventBus modBus) {
         modBus.addListener(FederationDomainPolicyActionPayloads::registerPayloads);
-        FederationDomainPolicyActionSink.register(request ->
-                PacketDistributor.sendToServer(new FederationDomainPolicyActionPayload(request)));
+        FederationDomainPolicyActionSink.registerReturn(containerId ->
+                PacketDistributor.sendToServer(new ProviderMenuNavigationPayload(containerId, true)));
+        FederationDomainPolicyActionSink.register((request, requestId) ->
+                PacketDistributor.sendToServer(new FederationDomainPolicyActionPayload(request, requestId)));
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").playToServer(FederationDomainPolicyActionPayload.TYPE, FederationDomainPolicyActionPayload.STREAM_CODEC,
+        event.registrar("1").playToServer(ProviderMenuNavigationPayload.TYPE, ProviderMenuNavigationPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> {
+                    if (context.player() instanceof ServerPlayer player) payload.handle(player);
+                }));
+        event.registrar("2").playToClient(FederationDomainPolicyReplyPayload.TYPE, FederationDomainPolicyReplyPayload.STREAM_CODEC,
+                (payload, context) -> context.enqueueWork(() -> FederationDomainPolicyMenu.acceptReply(context.player(),
+                        payload.containerId(), payload.menuNonce(), payload.requestId(), payload.sequence(), payload.result())));
+        event.registrar("2").playToServer(FederationDomainPolicyActionPayload.TYPE, FederationDomainPolicyActionPayload.STREAM_CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (context.player() instanceof ServerPlayer player) {
-                        FederationDomainPolicyActionPayloads.handle(player, payload);
+                        var result = FederationDomainPolicyActionPayloads.handle(player, payload);
+                        var request = payload.request();
+                        PacketDistributor.sendToPlayer(player, new FederationDomainPolicyReplyPayload(request.containerId(),
+                                request.menuNonce(), payload.requestId(), request.menuSequence(), result));
                     }
                 }));
     }

@@ -11,7 +11,11 @@ import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.ObservationLimits;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 
-public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRequest request) implements CustomPacketPayload {
+public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRequest request, java.util.UUID requestId) implements CustomPacketPayload {
+    public FederationDomainPolicyActionPayload(FederationDomainPolicyActionRequest request) {
+        this(request, java.util.UUID.randomUUID());
+    }
+
     public static final Type<FederationDomainPolicyActionPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("ae2federation", "domain_policy_action"));
     public static final StreamCodec<RegistryFriendlyByteBuf, FederationDomainPolicyActionPayload> STREAM_CODEC =
@@ -26,6 +30,10 @@ public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRe
         buffer.writeUtf(request.context().federationDomainId().value(), ObservationLimits.MAX_ID_LENGTH);
         buffer.writeVarLong(request.context().generation());
         buffer.writeVarLong(request.expectedRevision().value());
+        if (request.action() == FederationDomainPolicyAction.SELECT_TARGET) {
+            buffer.writeUtf(request.target(), 160);
+        }
+        buffer.writeUUID(requestId);
         if (buffer.writerIndex() - start > FederationDomainPolicyActionRequest.MAX_PAYLOAD_BYTES) {
             throw new IllegalArgumentException("Federation Domain policy action payload is oversized");
         }
@@ -42,11 +50,13 @@ public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRe
         var federationDomainId = new FederationDomainId(buffer.readUtf(ObservationLimits.MAX_ID_LENGTH));
         var context = new FederationDomainReference(federationDomainId, buffer.readVarLong());
         var revision = new PolicyRevision(buffer.readVarLong());
+        var target = action == FederationDomainPolicyAction.SELECT_TARGET ? buffer.readUtf(160) : "";
+        var requestId = buffer.readUUID();
         if (buffer.isReadable()) {
             throw new IllegalArgumentException("Federation Domain policy action payload has trailing data");
         }
         return new FederationDomainPolicyActionPayload(
-                new FederationDomainPolicyActionRequest(action, containerId, nonce, sequence, context, revision));
+                new FederationDomainPolicyActionRequest(action, containerId, nonce, sequence, context, revision, target), requestId);
     }
 
     @Override

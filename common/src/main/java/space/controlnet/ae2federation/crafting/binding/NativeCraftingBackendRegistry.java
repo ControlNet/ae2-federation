@@ -17,7 +17,7 @@ final class NativeCraftingBackendRegistry {
 
     NativeCraftingBackend discover(IGrid grid) {
         var origin = FederationDomainRegistryAccess.confirmedNetworkId(grid).orElseThrow(() ->
-                new CraftingBackendUnavailableException("Native crafting source identity is unsettled"));
+                new CraftingBackendUnavailableException(space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.IDENTITY_UNCONFIRMED));
         var identity = grid.getService(NetworkIdentityService.class);
         var providers = new ArrayList<NativeCraftingProviderSource>();
         for (var node : grid.getNodes()) {
@@ -32,7 +32,9 @@ final class NativeCraftingBackendRegistry {
         var cpus = service.getCpus();
         if (providers.isEmpty() || cpus.isEmpty()) {
             invalidate(origin);
-            throw new CraftingBackendUnavailableException("Native crafting provider or CPU is unavailable");
+            throw new CraftingBackendUnavailableException(providers.isEmpty()
+                    ? space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_PROVIDER_MISSING
+                    : space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_CPU_MISSING);
         }
         var identities = new ArrayList<Object>();
         providers.forEach(source -> identities.add(source.provider()));

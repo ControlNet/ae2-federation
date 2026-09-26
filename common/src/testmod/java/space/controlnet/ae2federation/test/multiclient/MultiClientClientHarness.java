@@ -78,6 +78,7 @@ public final class MultiClientClientHarness {
         minecraft.getTutorial().stop();
         minecraft.gui.getChat().clearMessages(true);
         if (minecraft.screen instanceof ModularUIContainerScreen screen) {
+            if (element(screen, "page_overview").isDisplayed() && screenTicks >= 5) click(screen, "tab_policy");
             if (!firstMenuClosed) {
                 screenTicks++;
                 firstScreen(minecraft, screen);
@@ -178,10 +179,7 @@ public final class MultiClientClientHarness {
         var expectedStatus = Component.translatable("ae2federation.ui.domain.status.ready").getString();
         var expectedMembers = Component.translatable("ae2federation.ui.domain.members", 2).getString();
         var expectedEntrance = Component.translatable("ae2federation.ui.domain.entrance.router").getString();
-        var memberLines = renderedMembers.lines().toList();
-        var membersCurrent = memberLines.size() == 3 && memberLines.getFirst().equals(expectedMembers)
-                && memberLines.stream().skip(1).noneMatch(String::isBlank)
-                && memberLines.stream().skip(1).distinct().count() == 2;
+        var membersCurrent = renderedMembers.equals(expectedMembers);
         var current = status.hasClass("ready") && renderedStatus.equals(expectedStatus)
                 && membersCurrent
                 && text(screen, "entrance_value").equals(expectedEntrance)
@@ -190,7 +188,7 @@ public final class MultiClientClientHarness {
         if (refreshedStableFrames >= 3) {
             refreshed = true;
             refreshedRenderedStatus = renderedStatus;
-            refreshedRenderedMembers = memberLines.getFirst();
+            refreshedRenderedMembers = renderedMembers;
             capture("client-" + ROLE.toLowerCase(java.util.Locale.ROOT) + "-refreshed.png");
             refreshedCaptured = true;
         }

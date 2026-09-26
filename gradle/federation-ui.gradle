@@ -148,18 +148,22 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || controls.find { it.selector == '#endpoint_detail' } == null) {
         throw new GradleException('Task 33 graph, mapping, Endpoint, screenshot, or outcome accounting is incomplete')
     }
-    if (outcomes.values().any { it.graphVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
+    if (outcomes.values().any { it.graphVisited != 'true' || it.workspaceVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
         throw new GradleException('Task 33 actual-client graph or renderer evidence is missing')
     }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
-            || mapping.mappingAck != 'Server: accepted-0-0'
+            || mapping.mappingAck != 'Mapping updated for pattern slot 0.'
+            || mapping.mappingAckCode != 'accepted-0-0'
             || mapping.providerId == null || mapping.providerId.isBlank()) {
         throw new GradleException('Task 33 authoritative Provider mapping acknowledgment is invalid')
     }
     def endpoint = outcomes['ui.endpoint']
     if (endpoint.endpointMode != 'FEDERATED' || endpoint.endpointId == null || endpoint.endpointId.isBlank()
-            || !endpoint.endpointDetail.contains('Claim epoch 1')) {
+            || !endpoint.endpointDetail.contains('Configured mode: Federated')
+            || !endpoint.endpointDetail.contains('Runtime mode: Federated')
+            || !endpoint.endpointIdentity?.contains(endpoint.endpointId)
+            || !endpoint.endpointIdentity?.contains('Claim epoch: 1')) {
         throw new GradleException('Task 33 live Endpoint diagnostic is invalid')
     }
     def multipart = outcomes['ui.multipart-attachments']
@@ -170,12 +174,14 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     def chinese = outcomes['ui.chinese-scales']
     def exercisedScales = outcomes.values().collect { it.guiScale as double } as Set
     if (chinese.language != 'zh_cn' || chinese.guiScale as double != 4d
-            || !chinese.largeQuantity.contains('4000000000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
+            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
         throw new GradleException('Task 33 Chinese text, large quantity, or GUI scale evidence is invalid')
     }
     def conflict = outcomes['ui.reject-claim-conflict']
-    if (conflict.claimConflict != 'Rejected' || !conflict.claimConflictResult.contains('OWNER_CONFLICT')
-            || !conflict.endpointDetail.contains('Claim epoch 1')) {
+    if (conflict.claimConflict != 'Rejected'
+            || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')
+            || !conflict.endpointIdentity?.contains('OWNER_CONFLICT')
+            || !conflict.endpointIdentity?.contains('Claim epoch: 1')) {
         throw new GradleException('Task 33 Claim conflict was not visibly rejected by production authority')
     }
     def controlsOutcome = outcomes['ui.graph-controls']

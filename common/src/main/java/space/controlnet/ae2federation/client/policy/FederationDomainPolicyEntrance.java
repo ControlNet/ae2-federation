@@ -10,14 +10,14 @@ import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.router.RouterBlockEntity;
 
-sealed interface FederationDomainPolicyEntrance permits RouterPolicyEntrance, BridgePolicyEntrance {
+sealed interface FederationDomainPolicyEntrance permits RouterPolicyEntrance, BridgePolicyEntrance, DevicePolicyEntrance {
     BlockPos position();
 
     boolean present(ServerLevel level);
 
     boolean enabled();
 
-    String diagnostic();
+    Component diagnostic();
 
     Component label(ServerLevel level);
 }
@@ -34,8 +34,8 @@ record RouterPolicyEntrance(BlockPos position) implements FederationDomainPolicy
     }
 
     @Override
-    public String diagnostic() {
-        return "PENDING_TOPOLOGY";
+    public Component diagnostic() {
+        return Component.translatable("ae2federation.ui.domain.status.pending");
     }
 
     @Override
@@ -58,8 +58,8 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
     }
 
     @Override
-    public String diagnostic() {
-        return reason.name();
+    public Component diagnostic() {
+        return Component.translatable("ae2federation.ui.workspace.bridge_reason." + reason.name().toLowerCase(java.util.Locale.ROOT));
     }
 
     @Override
@@ -70,5 +70,21 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
                     side.getSerializedName(), bridge.getCableConnectionLength(AECableType.GLASS));
         }
         return Component.translatable("ae2federation.ui.domain.entrance.bridge");
+    }
+}
+
+record DevicePolicyEntrance(BlockPos position, boolean provider) implements FederationDomainPolicyEntrance {
+    @Override
+    public boolean present(ServerLevel level) {
+        var entity = level.getBlockEntity(position);
+        return provider ? entity instanceof space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity
+                : entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
+    }
+
+    @Override public boolean enabled() { return true; }
+    @Override public Component diagnostic() { return Component.translatable("ae2federation.ui.domain.status.pending"); }
+    @Override public Component label(ServerLevel level) {
+        return Component.translatable("ae2federation.ui.workspace.entrance." + (provider ? "provider" : "endpoint"),
+                position.getX(), position.getY(), position.getZ());
     }
 }

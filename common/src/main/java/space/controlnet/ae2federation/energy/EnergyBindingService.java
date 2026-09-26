@@ -29,6 +29,7 @@ public final class EnergyBindingService implements AutoCloseable {
     private final EnergyFederationDomainObserver federationDomains;
     private final NativeEnergyBackendRegistry backends = new NativeEnergyBackendRegistry();
     private final Map<PolicyKey, EnergyCapabilityBinding> bindings = new HashMap<>();
+    private final Map<PolicyKey, space.controlnet.ae2federation.policy.BindingDiagnostic> diagnostics = new java.util.HashMap<>();
     private int publications;
     private int withdrawals;
     private int demandDepth;
@@ -45,6 +46,28 @@ public final class EnergyBindingService implements AutoCloseable {
     @Nullable
     static synchronized EnergyBindingService find(ServerLevel level) {
         return SERVICES.get(level);
+    }
+
+    /** Last reconciliation snapshot only; does not create a service, reconcile, or authorize an operation. */
+    public static synchronized boolean hasPublishedBinding(ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        return service != null && service.bindings.containsKey(key);
+    }
+
+    /** Read-only historical reason, discarded when policy or topology revisions no longer match. */
+    public static synchronized Optional<space.controlnet.ae2federation.policy.BindingDiagnostic> lastDiagnostic(
+            ServerLevel level, PolicyKey key) {
+        var service = SERVICES.get(level);
+        if (service == null) return Optional.empty();
+        var diagnostic = service.diagnostics.get(key);
+        return diagnostic != null && diagnostic.matches(PolicyService.get(level).revision(key),
+                FederationDomainRegistryAccess.get(level).snapshot().topologyRevision())
+                ? Optional.of(diagnostic) : Optional.empty();
+    }
+
+    private void recordDiagnostic(PolicyKey key, space.controlnet.ae2federation.policy.BindingDiagnostic.Reason reason) {
+        diagnostics.put(key, new space.controlnet.ae2federation.policy.BindingDiagnostic(reason,
+                PolicyService.get(level).revision(key), federationDomains.topologyRevision()));
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
@@ -75,6 +98,7 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        diagnostics.clear();
         var desired = federationDomains.relationships();
         var policies = PolicyService.get(level);
         List.copyOf(bindings.keySet()).stream().filter(key -> !eligible(policies, desired.get(key)))
@@ -144,6 +168,7 @@ public final class EnergyBindingService implements AutoCloseable {
 
     @Override
     public void close() {
+        diagnostics.clear();
         withdrawals += bindings.size();
         bindings.clear();
         backends.clear();
@@ -163,19 +188,28 @@ public final class EnergyBindingService implements AutoCloseable {
         NativeEnergyBackend backend;
         try {
             backend = backends.discover(relationship.providerGrid());
+        } catch (EnergyBackendUnavailableException exception) {
+            recordDiagnostic(relationship.key(), exception.reason());
+            remove(relationship.key());
+            return;
         } catch (IllegalStateException exception) {
             remove(relationship.key());
             return;
         }
         var policies = PolicyService.get(level);
-        if (policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
-                relationship.providerGrid(), BackendStatus.READY)) != PolicyActivationState.ACTIVE) {
+        var activation = policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
+                relationship.providerGrid(), BackendStatus.READY));
+        if (activation != PolicyActivationState.ACTIVE) {
+            recordDiagnostic(relationship.key(), space.controlnet.ae2federation.policy.BindingDiagnostic.inactiveReason(activation));
             remove(relationship.key());
             return;
         }
         var references = federationDomains.references(relationship);
         var source = selectSource(relationship.consumerGrid());
         if (references.isEmpty() || source == null) {
+            recordDiagnostic(relationship.key(), references.isEmpty()
+                    ? space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.DOMAIN_REFERENCE_MISSING
+                    : space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CONSUMER_ENERGY_INTERFACE_MISSING);
             remove(relationship.key());
             return;
         }

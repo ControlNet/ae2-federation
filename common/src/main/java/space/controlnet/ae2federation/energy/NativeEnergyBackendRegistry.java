@@ -12,7 +12,7 @@ final class NativeEnergyBackendRegistry {
 
     NativeEnergyBackend discover(IGrid grid) {
         var origin = FederationDomainRegistryAccess.confirmedNetworkId(grid)
-                .orElseThrow(() -> new IllegalStateException("Native energy provider identity is unsettled"));
+                .orElseThrow(() -> new EnergyBackendUnavailableException(space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.IDENTITY_UNCONFIRMED));
         var identity = grid.getService(NetworkIdentityService.class);
         var sources = new ArrayList<NativeEnergySource>();
         for (var node : grid.getNodes()) {
@@ -27,7 +27,7 @@ final class NativeEnergyBackendRegistry {
                 .compareTo(right.registrationNodeId().toString()));
         if (sources.isEmpty()) {
             ledger.invalidate(origin);
-            throw new IllegalStateException("Native energy provider has no local public source");
+            throw new EnergyBackendUnavailableException(space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.ENERGY_SOURCE_MISSING);
         }
         var service = grid.getEnergyService();
         var snapshot = ledger.update(origin, service, sources);

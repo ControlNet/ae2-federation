@@ -25,6 +25,7 @@ final class TaskFifteenScenarioSupport {
                 })
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
+                .awaitElement("#tab_policy").frames(3).click("#tab_policy")
                 .awaitElement("#policy_toggle");
     }
 

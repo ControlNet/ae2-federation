@@ -10,7 +10,10 @@ public enum FederationDomainPolicyAction {
     NEXT_MAPPING_LANE(6),
     TOGGLE_MAPPING(7),
     NEXT_ENDPOINT(8),
-    RELEASE_ENDPOINT(9);
+    RELEASE_ENDPOINT(9),
+    SELECT_TARGET(10),
+    PREPARE_RELEASE(11),
+    CANCEL_RELEASE(12);
 
     private final int wireId;
 
