@@ -1,0 +1,786 @@
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.security.MessageDigest
+import java.util.Properties
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.146'
+}
+
+group = rootProject.group
+version = rootProject.version
+
+base {
+    archivesName = mod_id
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+sourceSets.main {
+    java.srcDir(rootProject.file('common/src/main/java'))
+    resources.srcDir(rootProject.file('common/src/main/resources'))
+}
+
+sourceSets.test {
+    java.srcDir(rootProject.file('common/src/test/java'))
+    resources.srcDir(rootProject.file('common/src/test/resources'))
+}
+
+def testmod = sourceSets.create('testmod') {
+    java.srcDir(rootProject.file('common/src/testmod/java'))
+    resources.srcDir(rootProject.file('common/src/testmod/resources'))
+    compileClasspath += sourceSets.main.output + configurations.compileClasspath
+    runtimeClasspath += output + compileClasspath + configurations.runtimeClasspath
+}
+
+sourceSets.test.compileClasspath += testmod.output
+sourceSets.test.runtimeClasspath += testmod.output
+
+def appfluxTest = sourceSets.create('appfluxTest') {
+    java.srcDir(rootProject.file('common/src/appfluxtest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+def functionalStorageTest = sourceSets.create('functionalStorageTest') {
+    java.srcDir(rootProject.file('common/src/functionalstoragetest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+def prettyPipesTest = sourceSets.create('prettyPipesTest') {
+    java.srcDir(rootProject.file('common/src/prettypipestest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+def gtceuTest = sourceSets.create('gtceuTest') {
+    java.srcDir(rootProject.file('common/src/gtceutest/java'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'FirstDark'
+        url = 'https://maven.firstdark.dev/snapshots'
+        content {
+            includeGroup('com.lowdragmc.ldlib2')
+            includeGroup('dev.vfyjxf')
+            includeGroup('org.appliedenergistics.yoga')
+        }
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeModule('maven.modrinth', 'appflux')
+            includeModule('maven.modrinth', 'glodium')
+            includeModule('maven.modrinth', 'cO40ZIg3')
+            includeModule('maven.modrinth', '1Ro7m06l')
+            includeModule('maven.modrinth', 'XExdLWCQ')
+            includeModule('maven.modrinth', 'rZwE3agR')
+        }
+    }
+    maven {
+        name = 'GTCEu'
+        url = 'https://maven.gtceu.com'
+        content {
+            includeGroup('com.gregtechceu.gtceu')
+        }
+    }
+}
+
+def prepareLoopbackServerProperties = tasks.register('prepareLoopbackServerProperties') {
+    def serverPropertiesFile = layout.projectDirectory.file('run-server/server.properties')
+    outputs.file(serverPropertiesFile)
+
+    doLast {
+        def serverProperties = new Properties()
+        def propertiesFile = serverPropertiesFile.asFile
+        if (propertiesFile.exists()) {
+            propertiesFile.withInputStream { serverProperties.load(it) }
+        } else {
+            propertiesFile.parentFile.mkdirs()
+        }
+        serverProperties.setProperty('server-ip', '127.0.0.1')
+        propertiesFile.withOutputStream { serverProperties.store(it, 'Task-owned NeoForge development server settings') }
+    }
+}
+
+def releaseServerGameDirectory = providers.gradleProperty('federationReleaseServerGameDir')
+        .map { project.file(it) }.getOrElse(layout.buildDirectory.dir('task35-release-server').get().asFile)
+def prepareReleaseServer = tasks.register('prepareReleaseServer') {
+    doLast {
+        def directory = releaseServerGameDirectory
+        directory.mkdirs()
+        def properties = new Properties()
+        properties.setProperty('server-ip', '127.0.0.1')
+        properties.setProperty('server-port', '0')
+        properties.setProperty('online-mode', 'false')
+        properties.setProperty('enforce-secure-profile', 'false')
+        properties.setProperty('level-name', 'task35-world')
+        new File(directory, 'server.properties').withOutputStream {
+            properties.store(it, 'Task 35 production-only dedicated server')
+        }
+    }
+}
+
+def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-uitest/options.txt')
+    outputs.file(optionsFile)
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+    }
+}
+
+def multiClientGameDirectory = providers.gradleProperty('federationMultiClientGameDir')
+        .map { project.file(it) }.getOrElse(project.file('run-multiclient'))
+def multiClientPort = providers.gradleProperty('federationMultiClientPort').getOrElse('25565')
+def prepareMultiClientRuntime = tasks.register('prepareMultiClientRuntime') {
+    doLast {
+        def directory = multiClientGameDirectory
+        directory.mkdirs()
+        if (providers.gradleProperty('federationMultiClientRole').getOrElse('').isBlank()) {
+            def properties = new Properties()
+            properties.setProperty('server-ip', '127.0.0.1')
+            properties.setProperty('server-port', multiClientPort)
+            properties.setProperty('online-mode', 'false')
+            properties.setProperty('enforce-secure-profile', 'false')
+            properties.setProperty('level-name', 'task34-world')
+            new File(directory, 'server.properties').withOutputStream {
+                properties.store(it, 'Task 34 isolated loopback dedicated server')
+            }
+        } else {
+            new File(directory, 'options.txt').setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+        }
+    }
+}
+
+def requireArtifactEulaApproval = tasks.register('requireArtifactEulaApproval') {
+    doLast {
+        def approvedPath = providers.gradleProperty('federationApprovedEulaFile').orNull
+        if (approvedPath == null || approvedPath.isBlank()) {
+            throw new GradleException('Task 39 BLOCKED: supply a user-approved EULA file with -PfederationApprovedEulaFile')
+        }
+        def approvedFile = project.file(approvedPath)
+        if (!approvedFile.isFile() || java.nio.file.Files.isSymbolicLink(approvedFile.toPath())
+                || !java.util.Arrays.equals(approvedFile.bytes, 'eula=true\n'.getBytes(StandardCharsets.UTF_8))) {
+            throw new GradleException('Task 39 BLOCKED: approved EULA file must contain exactly eula=true followed by a newline')
+        }
+    }
+}
+
+neoForge {
+    version = neo_version
+    validateAccessTransformers = true
+
+    runs {
+        server {
+            server()
+            gameDirectory = project.file('run-server')
+            programArgument('--nogui')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareLoopbackServerProperties)
+        }
+        releaseServer {
+            server()
+            gameDirectory = releaseServerGameDirectory
+            sourceSet = sourceSets.main
+            programArgument('--nogui')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareReleaseServer)
+        }
+        artifactServer {
+            server()
+            gameDirectory = providers.gradleProperty('federationArtifactGameDir').map { project.file(it) }
+                    .getOrElse(layout.buildDirectory.dir('artifact-server').get().asFile)
+            programArgument('--nogui')
+            systemProperty('ae2federation.artifactProof', 'true')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(requireArtifactEulaApproval)
+        }
+        artifactClient {
+            client()
+            gameDirectory = providers.gradleProperty('federationArtifactGameDir').map { project.file(it) }
+                    .getOrElse(layout.buildDirectory.dir('artifact-client').get().asFile)
+            programArguments.addAll('--quickPlayMultiplayer',
+                    "127.0.0.1:${providers.gradleProperty('federationArtifactPort').getOrElse('25565')}",
+                    '--username', 'ArtifactProbe')
+            systemProperty('ae2federation.artifactProof', 'true')
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(requireArtifactEulaApproval)
+        }
+        manualClient {
+            client()
+            gameDirectory = project.file('run-manual-client')
+            sourceSet = sourceSets.main
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        gameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-gametest')
+            sourceSet = testmod
+            systemProperty('neoforge.enabledGameTestNamespaces', providers.gradleProperty('federationGameTestNamespace').getOrElse('ae2federation_test'))
+            systemProperty('ae2federation.testSelection', providers.gradleProperty('federationGameTestSelection').getOrElse('positive'))
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationGameTestId').getOrElse('harnessnativesmoke'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
+            systemProperty('ae2federation.benchmarkEmpty', providers.gradleProperty('federationBenchmarkEmpty').getOrElse('false'))
+    systemProperty('ae2federation.processingBenchmarkProfile', providers.gradleProperty('federationProcessingBenchmarkProfile').getOrElse(''))
+            systemProperty('ae2federation.processingBenchmarkSeed', providers.gradleProperty('federationProcessingBenchmarkSeed').getOrElse(''))
+            systemProperty('ae2federation.uiBenchmarkProfile', providers.gradleProperty('federationUiBenchmarkProfile').getOrElse(''))
+            systemProperty('ae2federation.mixedBenchmarkProfile', providers.gradleProperty('federationMixedBenchmarkProfile').getOrElse(''))
+            systemProperty('ae2federation.identityPhase', providers.gradleProperty('federationIdentityPhase').getOrElse(''))
+            systemProperty('ae2federation.identityStateFile', providers.gradleProperty('federationIdentityStateFile').getOrElse(''))
+            systemProperty('ae2federation.policyPhase', providers.gradleProperty('federationPolicyPhase').getOrElse(''))
+            systemProperty('ae2federation.policyStateFile', providers.gradleProperty('federationPolicyStateFile').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        appfluxGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-appflux-gametest')
+            sourceSet = appfluxTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('resourcesstoredfe'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        functionalStorageGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-functional-storage-gametest')
+            sourceSet = functionalStorageTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatfunctionalstorage'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        prettyPipesGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-pretty-pipes-gametest')
+            sourceSet = prettyPipesTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatprettypipes'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        gtceuGameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('run-gtceu-gametest')
+            sourceSet = gtceuTest
+            systemProperty('neoforge.enabledGameTestNamespaces', 'ae2federation_test')
+            systemProperty('ae2federation.testSelection', 'positive')
+            systemProperty('ae2federation.testId', providers.gradleProperty('federationCompatibilityTestId')
+                    .getOrElse('compatgtceu'))
+            systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile')
+                    .getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+        }
+        uiTestClient {
+            client()
+            gameDirectory = project.file('run-uitest')
+            sourceSet = testmod
+            systemProperty('ldlib2.uitest.run', providers.gradleProperty('federationUiSelection').getOrElse(''))
+            systemProperty('ldlib2.uitest.out', providers.gradleProperty('federationUiOutputDir').getOrElse(''))
+            systemProperty('ldlib2.uitest.guiScale', providers.gradleProperty('federationUiGuiScale').getOrElse('3'))
+            systemProperty('ldlib2.uitest.window', providers.gradleProperty('federationUiWindow').getOrElse('1280x720'))
+            systemProperty('ldlib2.uitest.inputMode', 'SYNTHETIC')
+            systemProperty('ldlib2.uitest.watchdogSec', providers.gradleProperty('federationUiWatchdogSec').getOrElse('90'))
+            systemProperty('ae2federation.ui.runId', providers.gradleProperty('federationUiRunId').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareUiTestClientOptions)
+        }
+        multiclientServer {
+            server()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArgument('--nogui')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
+        }
+        multiclientClientA {
+            client()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArguments.addAll('--server', '127.0.0.1', '--port', multiClientPort, '--username', 'ClientA')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.role', 'A')
+            systemProperty('ae2federation.multiclient.port', multiClientPort)
+            systemProperty('ae2federation.multiclient.clientOutput',
+                    providers.gradleProperty('federationMultiClientClientOutput').getOrElse(''))
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
+        }
+        multiclientClientB {
+            client()
+            gameDirectory = multiClientGameDirectory
+            sourceSet = testmod
+            programArguments.addAll('--server', '127.0.0.1', '--port', multiClientPort, '--username', 'ClientB')
+            systemProperty('ae2federation.multiclient.enabled', 'true')
+            systemProperty('ae2federation.multiclient.role', 'B')
+            systemProperty('ae2federation.multiclient.port', multiClientPort)
+            systemProperty('ae2federation.multiclient.clientOutput',
+                    providers.gradleProperty('federationMultiClientClientOutput').getOrElse(''))
+            systemProperty('ae2federation.multiclient.serverEvidence',
+                    providers.gradleProperty('federationMultiClientServerEvidence').getOrElse(''))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareMultiClientRuntime)
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+        ae2federation_test {
+            sourceSet(testmod)
+            if (providers.gradleProperty('enableAppfluxCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(appfluxTest)
+            }
+            if (providers.gradleProperty('enableFunctionalStorageCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(functionalStorageTest)
+            }
+            if (providers.gradleProperty('enablePrettyPipesCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(prettyPipesTest)
+            }
+            if (providers.gradleProperty('enableGtceuCompatibility').getOrElse('false').toBoolean()) {
+                sourceSet(gtceuTest)
+            }
+        }
+    }
+    runs.releaseServer.loadedMods = [mods."${mod_id}"]
+    runs.artifactServer.loadedMods = []
+    runs.artifactClient.loadedMods = []
+    runs.manualClient.loadedMods = [mods."${mod_id}"]
+}
+
+configurations {
+    runtimeClasspath.extendsFrom(localRuntime)
+    appliedFluxCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 25 Applied Flux compatibility runtime.'
+    }
+    appfluxTestImplementation.extendsFrom(appliedFluxCompatibility)
+    functionalStorageCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 Functional Storage compatibility runtime.'
+    }
+    functionalStorageTestImplementation.extendsFrom(functionalStorageCompatibility)
+    prettyPipesCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 Pretty Pipes item/fluid compatibility runtime.'
+    }
+    prettyPipesTestImplementation.extendsFrom(prettyPipesCompatibility)
+    gtceuCompatibility {
+        canBeConsumed = false
+        canBeResolved = true
+        description = 'Isolated Task 36 GTCEu production-line compatibility runtime.'
+    }
+    gtceuTestImplementation.extendsFrom(gtceuCompatibility)
+}
+
+dependencies {
+    implementation("org.appliedenergistics:appliedenergistics2:${ae2_version}")
+    implementation("com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all")
+    testImplementation(platform('org.junit:junit-bom:5.10.1'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    appliedFluxCompatibility('maven.modrinth:appflux:1.21-2.1.4-neoforge')
+    appliedFluxCompatibility('org.appliedenergistics:guideme:21.1.1')
+    appliedFluxCompatibility('maven.modrinth:glodium:1.21-2.2-neoforge')
+    functionalStorageCompatibility('maven.modrinth:cO40ZIg3:qyocTQUb')
+    functionalStorageCompatibility('maven.modrinth:1Ro7m06l:IeKDJ7R3')
+    prettyPipesCompatibility('maven.modrinth:XExdLWCQ:wboQrdtH')
+    prettyPipesCompatibility('maven.modrinth:rZwE3agR:ipO3SD1p')
+    prettyPipesTestCompileOnly('org.jgrapht:jgrapht-core:1.5.2') { transitive = false }
+    gtceuCompatibility('com.gregtechceu.gtceu:gtceu-1.21.1:7.0.2') {
+        // The published NeoForge distribution embeds Registrate, LDLib, and Configuration as JarJar dependencies.
+        transitive = false
+    }
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+tasks.register('federationTaskThirtyFivePacketProbe', JavaExec) {
+    group = 'verification'
+    description = 'Executes production packet codecs and context rejection without starting a game runtime.'
+    dependsOn(tasks.named('testmodClasses'))
+    classpath = testmod.runtimeClasspath
+    mainClass = 'space.controlnet.ae2federation.test.TaskThirtyFivePacketProbe'
+    notCompatibleWithConfigurationCache('Reads the parent-selected evidence path at execution time.')
+    doFirst {
+        def evidencePath = providers.gradleProperty('federationPacketEvidenceFile').orNull
+        if (evidencePath == null || evidencePath.isBlank()) throw new GradleException('Missing packet evidence file')
+        def evidence = rootProject.file(evidencePath)
+        evidence.parentFile.mkdirs()
+        def runtimeDirectory = new File(evidence.parentFile, 'packet-probe-runtime')
+        runtimeDirectory.mkdirs()
+        workingDir(runtimeDirectory)
+        args(evidence.absolutePath)
+    }
+    doLast {
+        def evidencePath = providers.gradleProperty('federationPacketEvidenceFile').get()
+        def runtimeDirectory = new File(rootProject.file(evidencePath).parentFile, 'packet-probe-runtime')
+        if (runtimeDirectory.exists()) {
+            Files.walk(runtimeDirectory.toPath()).sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+        }
+    }
+}
+
+def cleanupAppfluxGameTest = tasks.register('cleanupAppfluxGameTest', Delete) {
+    delete(layout.projectDirectory.dir('run-appflux-gametest'))
+}
+
+tasks.named('runAppfluxGameTestServer').configure {
+    finalizedBy(cleanupAppfluxGameTest)
+}
+
+['FunctionalStorage', 'PrettyPipes', 'Gtceu'].each { profile ->
+    def directoryName = profile.replaceAll(/([a-z])([A-Z])/, '$1-$2').toLowerCase()
+    def cleanup = tasks.register("cleanup${profile}GameTest", Delete) {
+        delete(layout.projectDirectory.dir("run-${directoryName}-gametest"))
+    }
+    tasks.named("run${profile}GameTestServer").configure {
+        finalizedBy(cleanup)
+    }
+}
+
+tasks.withType(ProcessResources).configureEach {
+    inputs.property('mod_version', project.version.toString())
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(mod_version: project.version.toString())
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.named('jar', Jar).configure {
+    from(rootProject.file('LICENSE')) {
+        into('META-INF')
+    }
+    manifest {
+        attributes(
+                'Implementation-Title': mod_name,
+                'Implementation-Version': project.version,
+                'Built-For-Minecraft': minecraft_version,
+                'Built-For-NeoForge': neo_version,
+                'Applied-Energistics-Version': ae2_version,
+                'LDLib2-Version': ldlib2_version
+        )
+    }
+}
+
+tasks.named('sourcesJar', Jar).configure {
+    includeEmptyDirs = false
+    from(rootProject.file('LICENSE')) {
+        into('META-INF')
+    }
+}
+
+def targetJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+def targetSourcesJar = tasks.named('sourcesJar', Jar).flatMap { it.archiveFile }
+def verifyReleaseArchive = { File archive, boolean sources ->
+    def entries = [:]
+    new java.util.zip.ZipFile(archive).withCloseable { zip ->
+        zip.entries().findAll { !it.directory }.each { entry -> entries[entry.name] = zip.getInputStream(entry).bytes }
+    }
+    def forbiddenPaths = ['space/controlnet/ae2federation/test/', 'data/ae2federation_test/',
+            'assets/ae2federation_test/', 'com/glodblock/github/appflux/', 'com/buuz135/functionalstorage/',
+            'de/maxhenkel/pipez/', 'com/gregtechceu/gtceu/', 'ae2federation_test.mixins.json']
+    def forbiddenSymbols = ['FederationTestMod', 'RegisterGameTestsEvent', 'LDLRegisterClient',
+            'UIScenario', 'ae2federation.testId', 'ae2federation_test', 'RegisterCommandsEvent']
+    def leaked = entries.findAll { name, bytes ->
+        def text = new String(bytes, sources ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1)
+        forbiddenPaths.any(name::contains) || forbiddenSymbols.any(text::contains)
+    }.keySet().sort()
+    if (!leaked.isEmpty()) {
+        throw new GradleException("Test, scenario, instrumentation, or debug registration leaked into ${archive}: ${leaked}")
+    }
+    if (!sources) {
+        def metadata = new String(entries['META-INF/neoforge.mods.toml'], StandardCharsets.UTF_8)
+        if (metadata.count('modId="ae2federation"') != 1 || metadata.contains('modId="ae2federation_test"')
+                || metadata.count('config="ae2federation.mixins.json"') != 1) {
+            throw new GradleException("Production mod metadata is not exact in ${archive}")
+        }
+        def mixins = new JsonSlurper().parse(entries['ae2federation.mixins.json'])
+        if (mixins.package != 'space.controlnet.ae2federation.mixin'
+                || (mixins.mixins as List).any { (it as String).contains('test') }) {
+            throw new GradleException("Production Mixin registration is not release-only in ${archive}")
+        }
+    }
+}
+def verifySharedJarContent = tasks.register('verifySharedJarContent') {
+    group = 'verification'
+    description = 'Checks that the target JAR contains shared code and resources.'
+    dependsOn(tasks.named('jar'), tasks.named('sourcesJar'))
+    inputs.file(targetJar)
+    inputs.file(targetSourcesJar)
+
+    doLast {
+        def archive = targetJar.get().asFile
+        def expectedEntries = [
+                'space/controlnet/ae2federation/CommonStartup.class',
+                'assets/ae2federation/lang/en_us.json',
+                'pack.mcmeta'
+        ] as Set
+        def actualEntries = [] as Set
+        new java.util.zip.ZipFile(archive).withCloseable { zip ->
+            zip.entries().each { actualEntries.add(it.name) }
+        }
+        if (!actualEntries.containsAll(expectedEntries)) {
+            throw new GradleException("Shared content missing from ${archive}: expected ${expectedEntries}")
+        }
+        new java.util.zip.ZipFile(archive).withCloseable { zip ->
+            def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
+                    'ProviderRuntimeReplayControl', 'ae2federation_test']
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'com/glodblock/github/appflux/', 'NativeStorageTrace',
+                    'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
+                    'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
+                    'ae2federation_test.mixins.json']
+            def leaked = zip.entries().findAll { !it.directory }.findAll { entry ->
+                def content = new String(zip.getInputStream(entry).bytes, StandardCharsets.ISO_8859_1)
+                forbiddenEntries.any(entry.name::contains) || forbiddenControls.any(content::contains)
+            }.collect { it.name }
+            if (!leaked.isEmpty()) {
+                throw new GradleException("Test control leaked into ${archive}: ${leaked}")
+            }
+            def runtimeEntry = zip.getEntry('space/controlnet/ae2federation/processing/provider/ProviderRuntime.class')
+            def symbols = new String(zip.getInputStream(runtimeEntry).bytes, StandardCharsets.ISO_8859_1)
+            if (['replayResolutions', 'laneResolutions', 'replayAuthorizedResolutionOnce', 'laneProvenance'].any {
+                symbols.contains(it)
+            }) {
+                throw new GradleException("Replay-only ProviderRuntime state or API leaked into ${archive}")
+            }
+        }
+        def sourcesArchive = targetSourcesJar.get().asFile
+        new java.util.zip.ZipFile(sourcesArchive).withCloseable { zip ->
+            def sourceNames = zip.entries().collect { it.name }
+            def forbiddenControls = ['ae2federation.testId', 'ProviderRuntimeReplay', 'ProviderRuntimeProbe',
+                    'ProviderRuntimeReplayControl', 'ae2federation_test']
+            def forbiddenEntries = ['space/controlnet/ae2federation/test/', 'com/glodblock/github/appflux/', 'NativeStorageTrace',
+                    'NativeEndpointTrace', 'ProviderTargetTrace', 'PatternProviderLogicEndpointTrace',
+                    'PatternProviderTargetCacheEndpointTrace', 'NetworkStorageTrace', 'DelegatingMEInventoryTrace',
+                    'ae2federation_test.mixins.json']
+            def leaked = zip.entries().findAll { !it.directory }.findAll { entry ->
+                def content = zip.getInputStream(entry).getText(StandardCharsets.UTF_8.name())
+                forbiddenEntries.any(entry.name::contains) || forbiddenControls.any(content::contains)
+            }.collect { it.name }
+            if (!leaked.isEmpty()) {
+                throw new GradleException("Test control source leaked into ${sourcesArchive}: ${leaked}")
+            }
+            def runtimeEntry = zip.getEntry('space/controlnet/ae2federation/processing/provider/ProviderRuntime.java')
+            def source = zip.getInputStream(runtimeEntry).getText(StandardCharsets.UTF_8.name())
+            if (['replayResolutions', 'laneResolutions', 'replayAuthorizedResolutionOnce', 'laneProvenance'].any {
+                source.contains(it)
+            }) {
+                throw new GradleException("Replay-only ProviderRuntime source leaked into ${sourcesArchive}")
+            }
+        }
+        verifyReleaseArchive(archive, false)
+        verifyReleaseArchive(sourcesArchive, true)
+    }
+}
+
+tasks.register('federationReleaseServerSmoke') {
+    group = 'verification'
+    description = 'Starts and stops a production-source-set dedicated server without testmod or optional addons.'
+    dependsOn(tasks.named('jar'), tasks.named('verifySharedJarContent'))
+    notCompatibleWithConfigurationCache('Launches and controls an isolated nested production server.')
+    doLast {
+        def evidencePath = providers.gradleProperty('federationReleaseEvidenceFile').orNull
+        if (evidencePath == null || evidencePath.isBlank()) throw new GradleException('Missing release evidence file')
+        def evidence = rootProject.file(evidencePath)
+        evidence.parentFile.mkdirs()
+        def gameDirectory = new File(evidence.parentFile, 'release-server-runtime')
+        def command = [new File(gradle.gradleHomeDir, 'bin/gradle').absolutePath, '--no-daemon',
+                '--no-configuration-cache', '--dependency-verification=strict', ':neoforge-1.21.1:runReleaseServer',
+                "-PfederationReleaseServerGameDir=${gameDirectory.absolutePath}"].collect { it.toString() }
+        def processLog = new File(evidence.parentFile, 'release-server-process.log')
+        def process = new ProcessBuilder(command).directory(rootProject.projectDir).redirectErrorStream(true)
+                .redirectOutput(processLog).start()
+        def deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(120)
+        while (process.isAlive() && System.nanoTime() < deadline
+                && (!processLog.isFile() || !processLog.text.contains('Done ('))) {
+            java.util.concurrent.TimeUnit.MILLISECONDS.sleep(250)
+        }
+        def text = processLog.isFile() ? processLog.text : ''
+        def started = text.contains('Done (')
+        if (started && process.isAlive()) {
+            process.outputStream.withWriter { it.write('stop\n'); it.flush() }
+        }
+        if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.toHandle().descendants().forEach { it.destroy() }
+            process.destroy()
+        }
+        if (!process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.toHandle().descendants().forEach { it.destroyForcibly() }
+            process.destroyForcibly()
+            process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+        }
+        text = processLog.text
+        logger.lifecycle(text)
+        def forbidden = ['ae2federation_test', 'com.glodblock.github.appflux', 'Attempted to load class net/minecraft/client',
+                'NoClassDefFoundError', 'ClassNotFoundException', 'LoadingFailedException']
+        if (process.isAlive() || !started || forbidden.any(text::contains)) {
+            throw new GradleException('Production dedicated-server smoke failed or loaded forbidden content')
+        }
+        def facts = new Properties()
+        facts.setProperty('serverStarted', 'true')
+        facts.setProperty('runtimeTerminated', 'true')
+        facts.setProperty('sourceSet', 'main')
+        facts.setProperty('testmodLoaded', 'false')
+        facts.setProperty('clientClassLoadFailure', 'false')
+        facts.setProperty('optionalAddonPresent', 'false')
+        facts.setProperty('debugRegistrationPresent', 'false')
+        facts.setProperty('productJarSha256', MessageDigest.getInstance('SHA-256').digest(targetJar.get().asFile.bytes).encodeHex().toString())
+        facts.setProperty('sourcesJarSha256', MessageDigest.getInstance('SHA-256').digest(targetSourcesJar.get().asFile.bytes).encodeHex().toString())
+        evidence.withOutputStream { facts.store(it, 'Task 35 production release runtime') }
+        if (gameDirectory.exists()) {
+            Files.walk(gameDirectory.toPath()).sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+        }
+    }
+}
+
+tasks.named('check').configure {
+    dependsOn(rootProject.tasks.named('verifyTaskOneStructure'))
+    dependsOn(verifySharedJarContent)
+}
+
+apply from: rootProject.file('gradle/federation-qa.gradle')
+apply from: rootProject.file('gradle/federation-ui.gradle')
+
+tasks.register('federationAppliedFluxCompatibility') {
+    group = 'verification'
+    description = 'Resolves the pinned isolated Applied Flux compatibility runtime and validates its dossier.'
+    def dossier = rootProject.layout.projectDirectory.file('tests/compatibility/applied-flux.properties')
+    inputs.file(dossier)
+
+    doLast {
+        def facts = new Properties()
+        dossier.asFile.withInputStream { facts.load(it) }
+        if (facts.getProperty('status') != 'QUALIFIED'
+                || facts.getProperty('inspectedCommit') != 'a54eafb72d72bd259bc3b5fa226b4f5542c4c3c4'
+                || facts.getProperty('artifactSha256') != '2d5c0dfbf1853e28d515b4224ca39a1de4520a1ac2e0fe987e6400965bf1f555'
+                || facts.getProperty('sourceArtifactCorrelation') != 'authoritative-ordinary') {
+            throw new GradleException('Applied Flux qualification dossier is malformed')
+        }
+        def resolved = configurations.appliedFluxCompatibility.resolve()
+        if (resolved*.name.toSet() != ['appflux-1.21-2.1.4-neoforge.jar',
+                'guideme-21.1.1.jar', 'glodium-1.21-2.2-neoforge.jar'] as Set) {
+            throw new GradleException("Applied Flux compatibility artifacts are incomplete: ${resolved*.name}")
+        }
+        logger.lifecycle('Applied Flux 2.1.4 isolated compatibility artifacts verified')
+    }
+}
+
+tasks.register('dependencyVerificationSelfTest') {
+    group = 'verification'
+    description = 'Proves strict verification rejects a corrupted task-owned dependency copy.'
+    notCompatibleWithConfigurationCache('Creates and invokes an isolated nested Gradle build.')
+
+    doLast {
+        def workDir = layout.buildDirectory.dir('tmp/dependency-verification-self-test').get().asFile
+        def reportFile = layout.buildDirectory.file('reports/dependency-verification-self-test.log').get().asFile
+        delete(workDir)
+        workDir.mkdirs()
+        reportFile.parentFile.mkdirs()
+
+        def trustedArtifact = new File(workDir, 'trusted/task1-probe-1.0.jar')
+        trustedArtifact.parentFile.mkdirs()
+        trustedArtifact.setText('task-one-trusted-artifact\n', StandardCharsets.UTF_8.name())
+
+        def repositoryDir = new File(workDir, 'probe/repository/com/example/task1-probe/1.0')
+        repositoryDir.mkdirs()
+        def corruptedCopy = new File(repositoryDir, 'task1-probe-1.0.jar')
+        Files.copy(trustedArtifact.toPath(), corruptedCopy.toPath())
+        corruptedCopy.append('corruption\n', StandardCharsets.UTF_8.name())
+        new File(repositoryDir, 'task1-probe-1.0.pom').setText('''<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>task1-probe</artifactId>
+  <version>1.0</version>
+</project>
+''', StandardCharsets.UTF_8.name())
+
+        def digest = MessageDigest.getInstance('SHA-256')
+        def trustedSha256 = digest.digest(trustedArtifact.bytes).encodeHex().toString()
+        def probeDir = new File(workDir, 'probe')
+        new File(probeDir, 'settings.gradle').setText("rootProject.name = 'dependency-verification-probe'\n", StandardCharsets.UTF_8.name())
+        new File(probeDir, 'build.gradle').setText('''repositories {
+    maven { url = uri('repository') }
+}
+configurations { probe }
+dependencies { probe 'com.example:task1-probe:1.0' }
+tasks.register('resolveProbe') {
+    doLast { configurations.probe.files.each { println "PROBE_ARTIFACT=${it.name}" } }
+}
+''', StandardCharsets.UTF_8.name())
+        def metadataDir = new File(probeDir, 'gradle')
+        metadataDir.mkdirs()
+        new File(metadataDir, 'verification-metadata.xml').setText("""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<verification-metadata>
+  <configuration>
+    <verify-metadata>false</verify-metadata>
+    <verify-signatures>false</verify-signatures>
+  </configuration>
+  <components>
+    <component group=\"com.example\" name=\"task1-probe\" version=\"1.0\">
+      <artifact name=\"task1-probe-1.0.jar\">
+        <sha256 value=\"${trustedSha256}\" origin=\"Task 1 pristine fixture\"/>
+      </artifact>
+    </component>
+  </components>
+</verification-metadata>
+""", StandardCharsets.UTF_8.name())
+
+        def isolatedGradleHome = new File(workDir, 'gradle-home')
+        def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
+        def process = new ProcessBuilder(
+                gradleExecutable.absolutePath,
+                '--no-daemon',
+                '--offline',
+                '--dependency-verification=strict',
+                '--gradle-user-home', isolatedGradleHome.absolutePath,
+                'resolveProbe'
+        ).directory(probeDir).redirectErrorStream(true).start()
+        def output = process.inputStream.getText(StandardCharsets.UTF_8.name())
+        def exitCode = process.waitFor()
+        reportFile.setText(output, StandardCharsets.UTF_8.name())
+
+        if (exitCode == 0 || !output.contains('Dependency verification failed')) {
+            throw new GradleException("Corrupted dependency was not rejected as expected; exit=${exitCode}, report=${reportFile}")
+        }
+
+        delete(workDir)
+        logger.lifecycle("Strict dependency verification rejected the corrupted task-owned copy; report: ${reportFile}")
+    }
+}

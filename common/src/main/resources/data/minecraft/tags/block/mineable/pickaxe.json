@@ -1,0 +1,8 @@
+{
+  "values": [
+    "ae2federation:router",
+    "ae2federation:cable",
+    "ae2federation:pattern_provider",
+    "ae2federation:processing_endpoint"
+  ]
+}

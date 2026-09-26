@@ -1,0 +1,24 @@
+plugins {
+    id 'base'
+}
+
+group = mod_group_id
+version = mod_version
+
+def configuredProjectPaths = providers.provider {
+    subprojects.collect { it.path }.toSet()
+}
+
+tasks.register('verifyTaskOneStructure') {
+    group = 'verification'
+    description = 'Verifies that Task 1 exposes exactly one Minecraft target.'
+    def actualProjects = configuredProjectPaths.get()
+    inputs.property('configuredProjectPaths', actualProjects.toList().sort())
+
+    doLast {
+        def expectedProjects = [':neoforge-1.21.1'] as Set
+        if (actualProjects != expectedProjects) {
+            throw new GradleException("Expected only ${expectedProjects}, found ${actualProjects}")
+        }
+    }
+}

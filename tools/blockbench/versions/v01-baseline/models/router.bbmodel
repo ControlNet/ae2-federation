@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "router",
+  "model_identifier": "router",
+  "resolution": {
+    "width": 16,
+    "height": 16
+  },
+  "elements": [
+    {
+      "name": "solid_000",
+      "uuid": "c491de53-59c6-5e7d-a6a1-bd209baeb206",
+      "type": "cube",
+      "box_uv": false,
+      "autouv": 0,
+      "export": true,
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "shade": true,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "router",
+      "uuid": "9fe01b99-17f7-5e46-af08-eeecf8ea1abf",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "export": true,
+      "isOpen": false,
+      "visibility": true
+    },
+    {
+      "name": "solid",
+      "uuid": "af2528ef-7bf6-5175-8cc4-88f2ac42655b",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "export": true,
+      "isOpen": false,
+      "visibility": true
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "9fe01b99-17f7-5e46-af08-eeecf8ea1abf",
+      "children": [
+        {
+          "uuid": "af2528ef-7bf6-5175-8cc4-88f2ac42655b",
+          "children": [
+            "c491de53-59c6-5e7d-a6a1-bd209baeb206"
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "router.png",
+      "id": "0",
+      "uuid": "9e7caa44-16f9-5399-9edf-eb41308aa3e4",
+      "namespace": "ae2federation",
+      "folder": "block",
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "internal": true,
+      "mode": "bitmap",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA2klEQVR4nK2Suw4BURCGP3IScTnUOo1S52WUSrIUnsATKBBKpRfwGFRULolEsgoJ1iEikVAtu85xCb5uMv/8c8kE1rv9hR8Q6/2RraO+Kl5tHIQbJGRUE6RtB4C+FFrOJfhVaw83a0cdtOSrzpqBl1y+YBR3O+3PDAAm9QbNTAoAazgnXS4ZdUGAaq1FVp3JqvObgdF0AqBaKdIzFFvD+VOj2WJJPBa5r/DJwXw6mfT/wSPPdn4kMLVXl798ogn3WH0pUMeTLyfDIeCfn2jCe1i3o2YwGI1/muAKh3hHuqPaqFEAAAAASUVORK5CYII="
+    }
+  ],
+  "java_block_version": "1.9.0"
+}

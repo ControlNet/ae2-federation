@@ -1,0 +1,39 @@
+.gradle/
+build/
+**/build/
+**/run-server/
+**/run-gametest/
+**/run-uitest/
+**/run-manual-client/
+.omo/evidence/
+.omo/boulder.json
+.omo/drafts/
+.omo/run-continuation/
+.omo/start-work/
+.omo/ulw-execute/
+__pycache__/
+*.pyc
+.project
+.settings/
+**/.project
+**/.settings/
+**/.eclipse/
+**/.classpath
+**/bin/
+
+# Local development environments
+.pixi/
+.env.local
+
+# Downloaded visual reference website and its original archives.
+# Maintained assets and frozen reviews live in tools/blockbench/ instead.
+/design/visual/ae2-federation-web/
+/design/visual/ae2-federation-web*.zip
+
+# Local cable-flow prototype captures and runtime evidence.
+# Keep source code, production textures, and the prototype README tracked.
+/docs/art/cable-flow-prototype/*.png
+/docs/art/cable-flow-prototype/*.gif
+/docs/art/cable-flow-prototype/*.mp4
+/docs/art/cable-flow-prototype/artifact.json
+/docs/art/cable-flow-prototype/profiles.json

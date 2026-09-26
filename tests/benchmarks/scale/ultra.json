@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ultra",
+  "seed": 370512,
+  "gridCount": 512,
+  "logicalPatterns": 16000,
+  "orderUnits": 2097152,
+  "warmupSeconds": 300,
+  "sampleSeconds": 600,
+  "repetitions": 3,
+  "layouts": ["native-big-grid", "native-subnet", "federation"],
+  "equalAcrossLayouts": ["cpus", "energy", "loadedChunks", "inputReplay"],
+  "perKeyResourceConservation": true
+}

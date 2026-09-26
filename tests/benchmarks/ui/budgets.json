@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "ui-small-v1",
+  "seed": 340034,
+  "maxEncodedPayloadBytes": 32768,
+  "maxRetainedGraphEntries": 128,
+  "maxProjectionNanos": 30000000000,
+  "maxLayoutNanos": 30000000000,
+  "minimumLayoutReuseCount": 32,
+  "minimumClosedGuiTicks": 20,
+  "timingClassification": "environment-sensitive-secondary",
+  "baselineUpdate": "explicit-edit-and-rerun-required"
+}

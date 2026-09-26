@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "late",
+  "seed": 370128,
+  "gridCount": 128,
+  "logicalPatterns": 4000,
+  "orderUnits": 262144,
+  "warmupSeconds": 300,
+  "sampleSeconds": 600,
+  "repetitions": 3,
+  "layouts": ["native-big-grid", "native-subnet", "federation"],
+  "equalAcrossLayouts": ["cpus", "energy", "loadedChunks", "inputReplay"],
+  "perKeyResourceConservation": true
+}

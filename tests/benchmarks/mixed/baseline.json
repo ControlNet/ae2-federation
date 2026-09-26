@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "profileVersion": "mixed-small-v1",
+  "seed": 30028029,
+  "captureIdentitySha256": "3c68ee27e53cc59f90195a8aefa759f1f933679f4da890a4919f349f5b494ed5",
+  "profileSha256": "aa48bc33db466ff2a19edf8d256eb886a13c41a247bb27b8e3b95e70735cee0b",
+  "budgetSha256": "cb807fd3980d4a0de473958e819e051806aca0f5dc5419be38d0780e169e7792",
+  "dependencyLockSha256": "74bdb2dc15608fe3ce30dbd0da3c87d76a7ab8a1678af7f5f65a74f6e3d12ddc",
+  "minecraftVersion": "1.21.1",
+  "neoForgeVersion": "21.1.250",
+  "ae2Version": "19.2.17",
+  "ldlib2Version": "2.2.34",
+  "correctness": {
+    "recipeChainLength": 4,
+    "cpuLimit": 2,
+    "stockingCycles": 3,
+    "handlerCallsPerRun": 9,
+    "providerExecutionsPerRun": 9,
+    "resourceReconciliationRequired": true
+  }
+}

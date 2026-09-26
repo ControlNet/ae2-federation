@@ -1,0 +1,261 @@
+package space.controlnet.ae2federation.test;
+
+import appeng.api.config.RedstoneMode;
+import appeng.api.config.Settings;
+import appeng.api.config.Actionable;
+import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.parts.PartHelper;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+import appeng.core.definitions.AEItems;
+import appeng.core.definitions.AEParts;
+import appeng.api.util.AEColor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Properties;
+import net.minecraft.SharedConstants;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.persistence.PolicySavedData;
+import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyEdit;
+import space.controlnet.ae2federation.policy.PolicyKey;
+import space.controlnet.ae2federation.policy.PolicyMutationResult;
+import space.controlnet.ae2federation.policy.PolicyRule;
+import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
+import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Target;
+
+/**
+ * Dev-only exporter (not compiled, not part of the manifest): builds a configured production topology with the registered blocks
+ * and writes it as a structure template plus the Policy SavedData, so a production server without the testmod can
+ * load it. Source Grid: raw iron in an ME Chest, a CPU and the Federation Pattern Provider mapped to Endpoint A with a
+ * raw iron to iron ingot Processing Pattern. Endpoint A's Subnet feeds a real furnace through an Export Bus; a hopper
+ * returns the ingots into the Endpoint. Grid C holds gold and is shared to the source Grid through a Storage Policy.
+ * Two source Export Buses (iron with a Crafting Card, gold without) wait for a redstone signal, so nothing moves before
+ * the structure is placed in production.
+ *
+ * <p>To use it, copy it into the testmod sources as a {@code .java} file, register it in {@code FederationTestMod}, and
+ * run {@code runGameTestServer -PfederationGameTestId=productiontopologyexport
+ * -PfederationNativeEvidenceFile=<dir>/evidence.properties}. Place the template at the GameTest origin's absolute
+ * position: Lane bindings store the Endpoint's absolute position, so a relocated copy has no reachable Endpoint.
+ */
+@PrefixGameTestTemplate(false)
+public final class ProductionTopologyExportGameTests {
+    static final BlockPos SOURCE_BUS = new BlockPos(1, 2, 3);
+    static final BlockPos IRON_CHEST = new BlockPos(1, 3, 3);
+    static final BlockPos GOLD_CHEST = new BlockPos(1, 2, 2);
+    static final BlockPos REDSTONE = new BlockPos(0, 2, 3);
+    static final BlockPos FURNACE = new BlockPos(7, 3, 4);
+    static final BlockPos HOPPER = new BlockPos(7, 2, 4);
+    static final BlockPos[] SUBNET_CABLES = { new BlockPos(7, 2, 6), new BlockPos(7, 3, 6), new BlockPos(7, 4, 6),
+            new BlockPos(7, 4, 5), new BlockPos(7, 4, 4) };
+    static final AEItemKey RAW_IRON = AEItemKey.of(Items.RAW_IRON);
+    static final AEItemKey IRON = AEItemKey.of(Items.IRON_INGOT);
+    static final AEItemKey GOLD = AEItemKey.of(Items.GOLD_INGOT);
+
+    private ProductionTopologyExportGameTests() {
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void productionTopologyExport(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var phase = new int[] { 0 };
+        var cablesPlaced = new int[] { 0 };
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    var readiness = scene.topologyReadiness();
+                    helper.assertTrue("ready".equals(readiness), "Waiting for topology: " + readiness);
+                    // Resources first, before any Policy exists, so each lands in its own Grid.
+                    helper.assertValueEqual(scene.sourceGrid().getStorageService().getInventory()
+                            .insert(RAW_IRON, 8, Actionable.MODULATE, IActionSource.empty()), 8L, "Source raw iron");
+                    helper.assertValueEqual(scene.targetGrid(Target.C).getStorageService().getInventory()
+                            .insert(GOLD, 16, Actionable.MODULATE, IActionSource.empty()), 16L, "Grid C gold");
+                    // Cables before parts, so every part joins a settled cable Grid.
+                    phase[0] = 1;
+                    helper.fail("Placing cables");
+                }
+                case 1 -> {
+                    // One cable per tick, each after the previous one joined its settled Grid. Two fresh nodes
+                    // that join each other first form their own durable Grid and would merge ambiguously.
+                    if (placeNextCable(helper, scene, cablesPlaced)) {
+                        helper.fail("Placing cables");
+                    }
+                    requireSettled(helper, scene);
+                    placeMachine(helper);
+                    placeSourceBuses(helper);
+                    phase[0] = 2;
+                    helper.fail("Placed buses");
+                }
+                case 2 -> {
+                    // Configured once the bus parts joined their settled Grids.
+                    requireSettled(helper, scene);
+                    configureBuses(helper);
+                    phase[0] = 4;
+                    helper.fail("Configured buses");
+                }
+                case 4 -> {
+                    requireSettled(helper, scene);
+                    var pattern = PatternDetailsHelper.encodeProcessingPattern(
+                            List.of(new GenericStack(RAW_IRON, 1)), List.of(new GenericStack(IRON, 1)));
+                    helper.assertTrue(scene.provider().getTerminalPatternInventory().insertItem(0, pattern, false)
+                            .isEmpty(), "Pattern slot 0");
+                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy for A");
+                    var storage = PolicyService.get(helper.getLevel()).edit(new PolicyEdit(storageKey(scene),
+                            PolicyService.get(helper.getLevel()).revision(storageKey(scene)),
+                            PolicyRule.storageDefaults()));
+                    helper.assertTrue(storage instanceof PolicyMutationResult.Accepted, "Storage Policy for C");
+                    var mapped = scene.map(0, Target.A);
+                    helper.assertTrue(mapped.startsWith("accepted-"), "Mapping slot 0 to A: " + mapped);
+                    phase[0] = 5;
+                    helper.fail("Configured");
+                }
+                default -> {
+                    requireSettled(helper, scene);
+                    helper.assertTrue(StorageMountService.get(helper.getLevel()).projection(storageKey(scene)) != null,
+                            "Waiting for the storage projection");
+                    helper.assertValueEqual(scene.sourceAmount(GOLD), 16L, "Source Grid sees Grid C's gold");
+                    helper.assertValueEqual(scene.sourceAmount(IRON), 0L, "No ingots before production");
+                    export(helper, scene);
+                    helper.succeed();
+                }
+            }
+        });
+    }
+
+    /** Places the next cable once the previous one joined its Grid; returns false when all are placed. */
+    private static boolean placeNextCable(GameTestHelper helper, ProductionProviderScene scene, int[] placed) {
+        var chain = new java.util.ArrayList<>(List.of(SUBNET_CABLES));
+        chain.add(SOURCE_BUS);
+        if (placed[0] > 0) {
+            var previous = chain.get(placed[0] - 1);
+            var grid = previous.equals(SOURCE_BUS) ? scene.sourceGrid() : scene.targetGrid(Target.A);
+            var node = appeng.api.networking.GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(previous),
+                    Direction.DOWN);
+            var cableNode = node != null ? node : appeng.api.networking.GridHelper.getExposedNode(helper.getLevel(),
+                    helper.absolutePos(previous), Direction.NORTH);
+            helper.assertTrue(cableNode != null && cableNode.getGrid() == grid
+                    && FederationDomainRegistryAccess.confirmedNetworkId(grid).isPresent(),
+                    "Waiting for cable " + (placed[0] - 1) + " to join");
+        }
+        if (placed[0] >= chain.size()) {
+            return false;
+        }
+        PartHelper.setPart(helper.getLevel(), helper.absolutePos(chain.get(placed[0])), null, null,
+                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT));
+        placed[0]++;
+        return true;
+    }
+
+    private static void requireSettled(GameTestHelper helper, ProductionProviderScene scene) {
+        for (var grid : List.of(scene.sourceGrid(), scene.targetGrid(Target.A), scene.targetGrid(Target.C))) {
+            helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(grid).isPresent(),
+                    "Waiting for settled identities: " + grid.getService(
+                            space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement().status()
+                            + " size=" + grid.size());
+        }
+        var source = appeng.api.networking.GridHelper.getExposedNode(helper.getLevel(),
+                helper.absolutePos(SOURCE_BUS), Direction.DOWN);
+        helper.assertTrue(source != null && source.getGrid() == scene.sourceGrid(), "Source cable joined");
+        var subnet = appeng.api.networking.GridHelper.getExposedNode(helper.getLevel(),
+                helper.absolutePos(SUBNET_CABLES[4]), Direction.NORTH);
+        helper.assertTrue(subnet != null && subnet.getGrid() == scene.targetGrid(Target.A), "Subnet cable joined");
+    }
+
+    private static void placeMachine(GameTestHelper helper) {
+        helper.setBlock(FURNACE, Blocks.FURNACE);
+        helper.<FurnaceBlockEntity>getBlockEntity(FURNACE).setItem(1, new ItemStack(Items.COAL, 16));
+        helper.setBlock(HOPPER, Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN));
+        PartHelper.setPart(helper.getLevel(), helper.absolutePos(SUBNET_CABLES[4]), Direction.DOWN, null,
+                AEParts.EXPORT_BUS.asItem());
+    }
+
+    private static void placeSourceBuses(GameTestHelper helper) {
+        helper.setBlock(IRON_CHEST, Blocks.CHEST);
+        helper.setBlock(GOLD_CHEST, Blocks.CHEST);
+        var position = helper.absolutePos(SOURCE_BUS);
+        PartHelper.setPart(helper.getLevel(), position, Direction.UP, null, AEParts.EXPORT_BUS.asItem());
+        PartHelper.setPart(helper.getLevel(), position, Direction.NORTH, null, AEParts.EXPORT_BUS.asItem());
+    }
+
+    private static void configureBuses(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var subnet = (appeng.parts.automation.ExportBusPart) PartHelper.getPart(level,
+                helper.absolutePos(SUBNET_CABLES[4]), Direction.DOWN);
+        subnet.getConfig().setStack(0, new GenericStack(RAW_IRON, 1));
+        var position = helper.absolutePos(SOURCE_BUS);
+        var iron = (appeng.parts.automation.ExportBusPart) PartHelper.getPart(level, position, Direction.UP);
+        iron.getConfig().setStack(0, new GenericStack(IRON, 1));
+        iron.getUpgrades().addItems(AEItems.CRAFTING_CARD.stack());
+        iron.getUpgrades().addItems(AEItems.REDSTONE_CARD.stack());
+        iron.getConfigManager().putSetting(Settings.REDSTONE_CONTROLLED, RedstoneMode.HIGH_SIGNAL);
+        var gold = (appeng.parts.automation.ExportBusPart) PartHelper.getPart(level, position, Direction.NORTH);
+        gold.getConfig().setStack(0, new GenericStack(GOLD, 1));
+        gold.getUpgrades().addItems(AEItems.REDSTONE_CARD.stack());
+        gold.getConfigManager().putSetting(Settings.REDSTONE_CONTROLLED, RedstoneMode.HIGH_SIGNAL);
+    }
+
+    private static PolicyKey storageKey(ProductionProviderScene scene) {
+        return new PolicyKey(FederationDomainRegistryAccess.confirmedNetworkId(scene.sourceGrid()).orElseThrow(),
+                FederationDomainRegistryAccess.confirmedNetworkId(scene.targetGrid(Target.C)).orElseThrow(),
+                PolicyCapability.STORAGE);
+    }
+
+    private static void export(GameTestHelper helper, ProductionProviderScene scene) {
+        var level = helper.getLevel();
+        var template = new StructureTemplate();
+        template.fillFromWorld(level, helper.absolutePos(BlockPos.ZERO), new net.minecraft.core.Vec3i(10, 6, 8),
+                false, null);
+        var policies = new CompoundTag();
+        policies.put("data", PolicySavedData.get(level).save(new CompoundTag(), level.registryAccess()));
+        policies.putInt("DataVersion", SharedConstants.getCurrentVersion().getDataVersion().getVersion());
+        var properties = new Properties();
+        properties.setProperty("sourceNetwork", FederationDomainRegistryAccess.confirmedNetworkId(scene.sourceGrid())
+                .orElseThrow().value().toString());
+        properties.setProperty("endpointNetwork", FederationDomainRegistryAccess
+                .confirmedNetworkId(scene.targetGrid(Target.A)).orElseThrow().value().toString());
+        properties.setProperty("storageNetwork", FederationDomainRegistryAccess
+                .confirmedNetworkId(scene.targetGrid(Target.C)).orElseThrow().value().toString());
+        properties.setProperty("provider", pos(ProductionProviderScene.PROVIDER));
+        properties.setProperty("ironChest", pos(IRON_CHEST));
+        properties.setProperty("goldChest", pos(GOLD_CHEST));
+        properties.setProperty("redstone", pos(REDSTONE));
+        properties.setProperty("furnace", pos(FURNACE));
+        properties.setProperty("expectedIronIngots", "8");
+        properties.setProperty("expectedGoldIngots", "16");
+        try {
+            // Reuses the evidence-file property that the GameTest run already forwards; the files go next to it.
+            var directory = Path.of(System.getProperty("ae2federation.nativeEvidenceFile")).toAbsolutePath().getParent();
+            Files.createDirectories(directory);
+            NbtIo.writeCompressed(template.save(new CompoundTag()), directory.resolve("production_topology.nbt"));
+            NbtIo.writeCompressed(policies, directory.resolve("ae2federation_global_policies.dat"));
+            try (var output = Files.newOutputStream(directory.resolve("production_topology.properties"))) {
+                properties.store(output, "Relative positions inside production_topology.nbt");
+            }
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+    }
+
+    private static String pos(BlockPos position) {
+        return position.getX() + "," + position.getY() + "," + position.getZ();
+    }
+}

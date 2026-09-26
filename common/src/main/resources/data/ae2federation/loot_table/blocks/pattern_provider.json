@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [{ "type": "minecraft:item", "name": "ae2federation:pattern_provider" }],
+      "conditions": [{ "condition": "minecraft:survives_explosion" }]
+    }
+  ],
+  "random_sequence": "ae2federation:blocks/pattern_provider"
+}

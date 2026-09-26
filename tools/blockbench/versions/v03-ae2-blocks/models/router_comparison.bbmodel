@@ -1,0 +1,462 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "router_comparison",
+  "resolution": {
+    "width": 16,
+    "height": 16
+  },
+  "elements": [
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        }
+      },
+      "type": "cube",
+      "uuid": "cc7ad09f-60a3-4fc9-ad0b-6277f4db06c4"
+    },
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        24,
+        0,
+        0
+      ],
+      "to": [
+        40,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        32,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        }
+      },
+      "type": "cube",
+      "uuid": "b2e94c5a-93c5-4ee0-8cb3-779d3e1b194e"
+    }
+  ],
+  "groups": [
+    {
+      "name": "router",
+      "uuid": "f816eb25-ed62-4737-8e2b-f75c72e07acd",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "225c7874-8fde-489d-aa0e-a0bf06fa97dc",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V02",
+      "uuid": "90017902-4acf-4e10-9b77-0d0e80a23716",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    },
+    {
+      "name": "router",
+      "uuid": "062764cb-b6fe-44de-9ca1-8606c34ca2ea",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "d356e002-e7ce-4f0e-91a3-cb41bfdf7ddd",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V03",
+      "uuid": "179efb60-a2a1-457e-9b2a-b3f203e6a7ea",
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "90017902-4acf-4e10-9b77-0d0e80a23716",
+      "children": [
+        {
+          "uuid": "f816eb25-ed62-4737-8e2b-f75c72e07acd",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "225c7874-8fde-489d-aa0e-a0bf06fa97dc",
+              "isOpen": false,
+              "children": [
+                "cc7ad09f-60a3-4fc9-ad0b-6277f4db06c4"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uuid": "179efb60-a2a1-457e-9b2a-b3f203e6a7ea",
+      "children": [
+        {
+          "uuid": "062764cb-b6fe-44de-9ca1-8606c34ca2ea",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "d356e002-e7ce-4f0e-91a3-cb41bfdf7ddd",
+              "isOpen": false,
+              "children": [
+                "b2e94c5a-93c5-4ee0-8cb3-779d3e1b194e"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "router.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "0",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "7761e4d6-a4e8-4de7-b8cb-fc2150243446",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABV0lEQVR4AaSSvUoDURCFD7fxGaxMhDVRcJtY2NkIWgiKoIVvoKiFhaVgZydYpLUVG42FGBIEmyDBIKwiasSkU7ATJSJIzBmYZTbeQjTk252fM4fdu+MKp8X2f3Do/KK7OshYbhi/gVpFDFYWZhFmgo5V8r9Wucby5jbeWh8JrF4MzmpXMtktlKLnonq2xCCb7kdu6OcTUOCDWs6wJwYMLLsHxyDp5j0yQZ/EzK1GY69B4aiMyvMrGqkBgTFrOmTvjqe5f1LExuVDDAW9oyOYCVMCY9ashjOsOZ7+/OQEPkulGDZ8WA1nqIlfYWt9EQobT+cXOIyaAmPWtM87cxIbMLG8VKuIdvICY9uzsdegvJcHCVeXkB0MJGZuBzUWAx6I/Uy6UCrqzqnlDPtioKv53vqChQJSu6nDonr2xEBX87bxCMt0TxtzU+PUJVA9i44ryV34C/yU3wAAAP//3XgyGwAAAAZJREFUAwBGbi3KEc/75AAAAABJRU5ErkJggg=="
+    },
+    {
+      "name": "router.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "1",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "d587306c-fe34-4058-8579-a912979cf255",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABK0lEQVR4AaSToUtDYRTFDy+LaBDEZtImGC0WMQji32C2ycBgFIPw8E8Qi2EDq4pYLIJBwSFjhiEoqGBwqFnd74Pz/N73UBgb/Ljnnnvv2cK37KB+8j0ImXqfxYU5QU+Giv6LeKd521YIwHx4fKaIatYuWwL3VJaop2cXyN8AuumpScq/pDvFL4ivarVNwetuLkBDvGNdCWDxc2Rc7/NLJfCY+dC1EsDga2ZWW6vLJfCYpRQBO09vgnhhv9mRsc8OuC8CbPRbi4CNiVGBA/jmzlVLxj474L4IsEHNbq7DIdrgWce1EpDn2xrqvmj4/KgEHrP4GB0C/KowoFHfE4yt1wRoYJYSAlKTpwr20eA+riGA59m+u1fKykdXkPr03BCUIRqHx+Kf1Q/cEPADAAD//2PWuUsAAAAGSURBVAMA05v8QyQZlJMAAAAASUVORK5CYII="
+    }
+  ],
+  "editor_state": {
+    "selected_elements": [],
+    "selected_groups": [],
+    "previews": {
+      "main": {
+        "position": [
+          150,
+          85,
+          160
+        ],
+        "target": [
+          40,
+          8,
+          22
+        ],
+        "orthographic": false,
+        "zoom": 0.5
+      }
+    }
+  }
+}

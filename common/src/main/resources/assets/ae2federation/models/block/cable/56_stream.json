@@ -1,0 +1,227 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "stream_u": "ae2federation:block/stream_u",
+    "stream_v": "ae2federation:block/stream_v",
+    "particle": "ae2federation:block/armor"
+  },
+  "elements": [
+    {
+      "from": [
+        6,
+        6,
+        6
+      ],
+      "to": [
+        10,
+        10,
+        10
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            6,
+            6,
+            10,
+            10
+          ],
+          "texture": "#stream_v"
+        },
+        "west": {
+          "uv": [
+            6,
+            6,
+            10,
+            10
+          ],
+          "texture": "#stream_v"
+        },
+        "up": {
+          "uv": [
+            6,
+            6,
+            10,
+            10
+          ],
+          "texture": "#stream_v"
+        }
+      },
+      "shade": false,
+      "neoforge_data": {
+        "block_light": 15,
+        "sky_light": 15,
+        "ambient_occlusion": false
+      }
+    },
+    {
+      "from": [
+        6,
+        0,
+        6
+      ],
+      "to": [
+        10,
+        6,
+        10
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        },
+        "west": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        },
+        "south": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        },
+        "north": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        }
+      },
+      "shade": false,
+      "neoforge_data": {
+        "block_light": 15,
+        "sky_light": 15,
+        "ambient_occlusion": false
+      }
+    },
+    {
+      "from": [
+        6,
+        6,
+        10
+      ],
+      "to": [
+        10,
+        10,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            6,
+            6,
+            10
+          ],
+          "texture": "#stream_u"
+        },
+        "west": {
+          "uv": [
+            10,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stream_u"
+        },
+        "up": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        },
+        "down": {
+          "uv": [
+            6,
+            0,
+            10,
+            6
+          ],
+          "texture": "#stream_v"
+        }
+      },
+      "shade": false,
+      "neoforge_data": {
+        "block_light": 15,
+        "sky_light": 15,
+        "ambient_occlusion": false
+      }
+    },
+    {
+      "from": [
+        6,
+        6,
+        0
+      ],
+      "to": [
+        10,
+        10,
+        6
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            10,
+            6,
+            16,
+            10
+          ],
+          "texture": "#stream_u"
+        },
+        "west": {
+          "uv": [
+            0,
+            6,
+            6,
+            10
+          ],
+          "texture": "#stream_u"
+        },
+        "up": {
+          "uv": [
+            6,
+            0,
+            10,
+            6
+          ],
+          "texture": "#stream_v"
+        },
+        "down": {
+          "uv": [
+            6,
+            10,
+            10,
+            16
+          ],
+          "texture": "#stream_v"
+        }
+      },
+      "shade": false,
+      "neoforge_data": {
+        "block_light": 15,
+        "sky_light": 15,
+        "ambient_occlusion": false
+      }
+    }
+  ]
+}

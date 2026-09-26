@@ -1,0 +1,16 @@
+[workspace]
+name = "ae2-federation-visual"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+pillow = "11.*"
+
+[tasks]
+generate = "python build_assets.py"
+validate = "python validate_assets.py"
+
+[pypi-dependencies]
+portablemc = ">=4.4.1, <5"
+python-xlib = ">=0.33, <0.34"

@@ -1,0 +1,47 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "space.controlnet.ae2federation.test.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EndpointReleaseFailureMixin",
+    "CompatibilityGameTestPlacementMixin",
+    "ProviderRuntimeReplayMixin",
+    "FederationPatternProviderTargetCacheReplayTraceMixin",
+    "PatternProviderLogicNativeEvidenceMixin",
+    "PatternProviderLogicProcessingEvidenceMixin",
+    "PatternProviderLogicReturnAccess",
+    "PatternProviderReturnInventoryEvidenceMixin",
+    "PatternProviderTargetCacheNativeEvidenceMixin",
+    "NetworkStorageNativeEvidenceMixin",
+    "DelegatingMEInventoryNativeEvidenceMixin",
+    "NativeStorageProviderEvidenceMixin",
+    "StorageBusCompatibilityEvidenceMixin",
+    "FederationNativeTargetEvidenceMixin",
+    "EndpointTargetBindingEvidenceMixin",
+    "EndpointPersistenceEvidenceMixin",
+    "SourceSnapshotLedgerTestHookMixin",
+    "NativeStorageNotificationHubTestHookMixin",
+    "CapturedTerminalRequesterEvidenceMixin",
+    "TerminalCraftingServiceEvidenceMixin",
+    "TerminalCraftingCpuEvidenceMixin",
+    "TerminalCraftingResultEvidenceMixin",
+    "TerminalPhysicalResultEvidenceMixin",
+    "TerminalPolicyThreadGuardMixin",
+    "TerminalFederationDomainThreadGuardMixin",
+    "TerminalBackendThreadGuardMixin",
+    "TerminalGameTestHelperThreadGuardMixin",
+    "TerminalWorldThreadGuardMixin",
+    "CraftingBackendLifecycleEvidenceMixin",
+    "MultiCraftingTrackerAutomationEvidenceMixin",
+    "ImportBusAutomationEvidenceMixin",
+    "ExportBusAutomationEvidenceMixin",
+    "AuthorizedStorageProjectionAutomationEvidenceMixin"
+  ],
+  "client": [
+    "ClientFontThreadGuardMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
