@@ -1,0 +1,782 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "processing_endpoint_comparison",
+  "resolution": {
+    "width": 16,
+    "height": 16
+  },
+  "elements": [
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 8,
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 5
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 4
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 2
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 3
+        }
+      },
+      "type": "cube",
+      "uuid": "69f58874-50c7-4710-a972-b3c5ce9e2eb5"
+    },
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        24,
+        0,
+        0
+      ],
+      "to": [
+        40,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 8,
+      "origin": [
+        32,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 11
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 6
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 10
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 7
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 8
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 9
+        }
+      },
+      "type": "cube",
+      "uuid": "69a38d8b-2856-446a-b3a6-28c2edb4c134"
+    }
+  ],
+  "groups": [
+    {
+      "name": "processing_endpoint",
+      "uuid": "b911db0b-93c6-4eaa-9453-d68a2e78111b",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "b8ec263a-c2a9-4236-877d-ab9a9e0692fe",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V04",
+      "uuid": "dc925d02-ad53-4e37-bc7a-99b566c03713",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    },
+    {
+      "name": "processing_endpoint",
+      "uuid": "0ba34719-dd6e-4f18-b74b-bdb88ea638a4",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "96447898-c08d-4000-8894-ccc9848f40fb",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V05",
+      "uuid": "5e5c2206-a841-4183-aab9-11e161f8c88d",
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "dc925d02-ad53-4e37-bc7a-99b566c03713",
+      "children": [
+        {
+          "uuid": "b911db0b-93c6-4eaa-9453-d68a2e78111b",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "b8ec263a-c2a9-4236-877d-ab9a9e0692fe",
+              "isOpen": false,
+              "children": [
+                "69f58874-50c7-4710-a972-b3c5ce9e2eb5"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uuid": "5e5c2206-a841-4183-aab9-11e161f8c88d",
+      "children": [
+        {
+          "uuid": "0ba34719-dd6e-4f18-b74b-bdb88ea638a4",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "96447898-c08d-4000-8894-ccc9848f40fb",
+              "isOpen": false,
+              "children": [
+                "69a38d8b-2856-446a-b3a6-28c2edb4c134"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "me_side_east.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "0",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "fdd2e408-c8bd-4c57-84fb-37cd56a373bc",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABRklEQVR4AYyTu0vDUBTGPzJpEREE/wBBDFZEF92cXNUupUg3oSDuLoKT4KKzCAXBoUhx8bE6uQmCi5VOzkFwCdJ2S/Nd7jnc9KaPkB/nmS8nN5wgjuNkGFH0mwjDegKk1/7uIfI4qByjVjszVKsnXk/6KIwAnaeXW+TRaFyiXj83uHU+Q1SAgfB88wny89YFiT4SEOaI9NGqQKfTY6ysroRoPjxmYE4brKMCNs6YYjGEkCmkwczsPPhSFSgUptK0f+8dbfhJJ6MCzJ2+vqN8dUd3LP/xH/jSgGNI9+baMpbWQwknsmYCfg+7SwtzuNjZoqsMnroWrBNwDOt7ptVqQ3CL7tRmAn6P2yB+pVyCwL/x9d2WklojoJF1ePKL29NwYU5wp/YEOJ5g9UYaFZBlGrdA0ieqRkCW5L55DcLl4RIRqeVZivQBAAD//5bCr5UAAAAGSURBVAMAZOLfHc3muv0AAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_side_west.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "1",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "87b2cb50-8436-486a-bea6-03f9f136e49b",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABRklEQVR4AXyTvUvDUBTFL5m0iAiCf4AgBiuii25OrmqXUqSbUBB3F8FJcNFZhILgUKS4+LE6uQmCi5VOzkHoEkrbLc157bm8l74m5Jf7+Q55F24Qx3HiI4r+E+KrMxdI+hzuH4tNtXomtdqF4ahy6tTsvvSoGAE4L2/3Qur1SwGNxrXmWKPFGaACCF7vvgVEX4mAv4++AOQAerI4Aiiur4XSfHp2QA410usN6EqAYG5+URN0isVQCHM+O/EHdtPByZYdql8ozKgfIOjGHU3kOeWbBzl//3Racv/A6UyDlc1QtjdWU2/04vq5AtnJX+3tSGlpwZzm3FQAaqYy/rRabSHj1ITB9VWA1Z/ftpl+pVwSwpptOTcVgBqmTpZ3Z8UGeVuAvgow4bO4HsnWVcBeEtuftlgUMgJcEJ/FQgEs12PzVgD7IDIEAAD//yNVPT4AAAAGSURBVAMAnhLfHZH5P+4AAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_side_up.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "2",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "646c7f09-db93-4776-a825-14d91ec55341",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABPUlEQVR4AYSTvUpDQRCFh1tJEBEEn0DxYkS00RewVdNIkHRCQOwtrQQbexECFkqQYONP6wPYCSLqIwTB5hKCpEnyDZllyN6bBL7szNmzh7kLm2RZ1p9Gu/3bhzxfIsPf/u6RTKJePxMY9wyPigZQPL3cCNy3rgSojWbzUsB6Vs5ACKCB19tvgefrdykCnxEFsLG2mkoR7HtyA1oPj1IEwd3uv8zOLWhOFICBnXI5lXHQPQRFAd6wd7wphtdLpZnQaoCNE9RR4S9xJIWlk/1prQFUjMMK1YNK7iWif379YFGYJPEHUTFMAo9HJ7Bx2LBvZn1b6sld5yPcAxrgMzSAhnFYPVvrK7K8kXopqpO8g+aqLM7Lxc62tnwqaOP+wgT+odRqpwJeO6yeCJhmGRrA4/DwcBqN8+hReQ81IQMAAAD//9E65scAAAAGSURBVAMAjSj8OXgDNGkAAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_side_down.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "3",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "3ed7e3a4-cc07-4df3-a1a5-70994e5836a3",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABM0lEQVR4AXyTu0oDURRFN1OIhGDjT6iIYOcH2PpoJEjQQgiIvY1gZWkvQsAuSLCJ2voD2ihiJKIfEAKCDBLsYtaFo2ceNwOL87jnbPYduEmapqNJ9PuDEcRmEo2/jbU9xdiuHajROFa9fliYGa8qCJBc314ILttnAnKj1ToVWE1kB/4EKKBSmRaQH93dqzP4Ii1lOPz5d1A28f7U08PzW+GIRWtmHNycP8qzU13SysdUpmeL1ZnZkGYE6CwuzGkSzBhcNfF2WGxfdfTy2itA3y9aHhyYHWsS1/eXZVDn+U4/QysIkHkn1P5fUMdIuEf+sNvtKQ8zXI3oCQ6wgxADta1NxfCLlgcBK4iIxOA8T0bAflpZXN2dF0QF/GPi4YDv8ajAeiYUHPA4PM3micD3ynJEfgEAAP//HXWmFAAAAAZJREFUAwBsdQdIou7WCwAAAABJRU5ErkJggg=="
+    },
+    {
+      "name": "processing_endpoint.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "4",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "00242503-d6e0-4994-86ee-f5e5dd2255d8",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABNUlEQVR4AXyTvWoCQRSFL1sFCWnyDCGpQqrkBdIGyxAWEgjYpE6aQKpAmvRphBTCImIltr6AVmKl+AIi2Cwiduo3eIZZHRU+77k/c3ZmYJI8z1cxJpPpSsT6qiW2+ZUfXi0kTT+sUvlyPD2+FXrh3GapOQNEq/1volr9NsiyX19TT5E14A1IRKl0YqD8WNwz+Ox07RiYLRZLgiMhOT07d4n+bq8vLYb6YSzsgC/TzGoti0GPmfB4Cck8n9Fz8GXExc2Vpc9lB5qaemhR2IGKir3BSDIaOf6egRaN+0N3D6xEE9VD6968AW4/93f0jC0DCwANNDWD5vjegAIwAHyVCKFmBnRv3gA3GqL5/iJpofbFrfAG2zwaOJ7YHfAG4SMJ9aGHJSNnoAcSizwo4HHVG38GmsNkDQAA//9XgQEkAAAABklEQVQDAMy68R0skf0zAAAAAElFTkSuQmCC"
+    },
+    {
+      "name": "me_port.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "5",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "45d00657-da46-4a94-b6a2-a65c70d1a4bc",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABMUlEQVR4AZyTPUsDQRCGx6s0iI2NtVU0NoK1la0fjQQJWAgBsbe0srQXIWAXJNho/AfWgo2RVNZBsDkk2p15Ft9lcncayMFzs/Nx7+3uMEmaplkZg8F7JsryiiU2ena3j8zTaJxas3kWOKifjOV83ehTCwIs7h+uTbRa5wbt9kWMKSfLNxAFcLpXzwaDp8zg7fHLBHFBrRgTILi2WrXO7V2BXq9v5KgZDr8xgQRnfmExOP5Vq1XN43N+XdiBT+4crxv4GOtKZRYTSHA+04/gTPP6dweTBDn+1AK6tyiAWv6P3d+25uPyOX4UUFCWtnkUl9W9RQHUSL689kP76vt7loccNZ4oQJCWieXNORNLGzMGW4crhbZGAT8kfv3XYPFDCAIakDLLQAHDddO5NFAdAj8AAAD//37kL6cAAAAGSURBVAMAxrLlHWORm7oAAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_side_east.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "6",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "e57318b9-32f3-4214-88d4-e037351575d9",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABRUlEQVR4AYSTP0sDQRDFH1dpEBEEP4AgBiOijXZWtv5pREI6ISCCpYWClaCFdoIIAcEiBEu1tbKzsjFiZR2ENEdI0iX3JpllsrdHQn652TczL7MHE8Vx3Mui0fjvKVk1EZLP7vYhQhQPjlEuXwil0mmqJmmFGDB4eXtEiGr1BpXKpWDz7CHOgIcscrkJkFDeGbTb3VAerw9fQjCZiM4giVPf65Oa0/4+Oi5mMDU9C/6pM/BHtM31+i974JtQdAY8nL9/Yv/2CbaZukVNWnFT3kvEMbRgfWURC6t5PcpzeSmPQmFUk8TwRybgfXjem5vB1dYGzu6KPAaZ35wc0SP/7ppVk++fwf2pa7OdWibgfVjgoybUtZmxRQys4Mc7R2sgVrdTpww4nmKbsmJnoMs0boG0Tg3FQJek9nwPwuXhEhHNhZ406QMAAP//+G5U8gAAAAZJREFUAwBqtcodc38T7wAAAABJRU5ErkJggg=="
+    },
+    {
+      "name": "me_side_west.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "7",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "436b27fa-73da-41ff-8e6f-dae8bff2832a",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABQklEQVR4AXyTvUsDQRDFh6s0iAiCf4AgHkZEG+2sbP1oREI6ISCCpYWClaCFdoIIAcEiBEu1tbKzsjFiZR0Em0OSdEnehDfMXfZy8HY+3s6P24WNkiTphtRs/napkM9eJP1ve3NfvMrlY6lUzlSlvcOU5/f1R0UBSJ5e7oWqVs8FqtWurEePETOQAVBQhcKYQKxHxSAAA893HwIhz6rV6lgrQjExOW0NJD9vbQTV5VFdY94y9AccbjS+bSYL8ceLUPwnf7qZw1pkFkB2rx/k9PU95Qz9Ad1iMZbFhZilxrnlWFaX5jXHguOnALPr4+gHdXJTkouNNdmZmVKf92YA0OB4yOfX4B4wDC8rHN8A3vSQvGHemwFA85CtgxWBfC+UGyBksofjUewxGsA/Ep/nPawUgA8kFPGgIDyu+uOtQNwHSA8AAP//sYua1gAAAAZJREFUAwDv1sod42kgnwAAAABJRU5ErkJggg=="
+    },
+    {
+      "name": "me_side_up.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "8",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "fbf16796-46ce-4496-9a59-abb27df6a338",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABSUlEQVR4AYSTvUoDQRSFL1tJEBEEW0EQFyOijb6ArcZOQjohIPYWFlaCjaUgQsAuSLDx5w18AG2MpLIOgs0qUWzifpfc9eqMJuSbOXPm3rOzCZNkWdYfRrf73IdYXSL5p7K2Jf9Rr+8L/K7JW0UDEFc3ZwLnrRMBtNFsHgnYmpkeKAJYQKk0IoB+un0XQP9FEGCFvtFr27c5GhBr8F6v9yGjYxOaEQRcn97Lw2OnoHVxKYDHnnYNBoKCgMGezM+lSrmcCpjPbL8RWgPsOBjr20vSbnf0qTwZbbBHDbxlL0zffyPHUScf9o6r+fjzG/M4SeIbfYtv8NrXoPUV7DgYntfKtNxNfXor0BqAy3GYPcsLszKzmHor0Ems0ao2JsflcHVFl7wq6MINxQn8RanVdgW8V93cETDPMjSAy+Hh4jQaB8Gl8jVoQr4AAAD//wkPu2UAAAAGSURBVAMA00biOcXZlQ0AAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_side_down.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "9",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "5af8af44-fa20-49c7-ab69-9fe340e5944b",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABQ0lEQVR4AXyTvUoDURCFhy1Eg9r4BlbB2OgD+Ab+NBIknRAQwdJGsLKwsBchYBeCndHWF9BGESMrgmAXAoIsIaRL8g3MZti9m4Vv77kzZ2ZnL9woSZLRLLrd3giKPJFMnt3tQynioHos9fq51GqnOc+kVLQBov14K9C6uxZAG83mlYDtWamBtAEbKJXmBdBnT89y3/tHBhkMhtMJQo7vt1he3r9yKQotmJvAEqybv3Oy1P6R0LO4vKLhwgaXJy018PKavcGvRn4cS4QKfIxC8+oENg7Bh5tXqVTKKdX9PQFi5PBAP/ljmR5idpJOJxb4+IwF1B14RX4c8jtHG7K+Vtav8mW0QQ6PR3+BcXyj1a0F71EdipHQBogsvsDrrK+wAUYKAc0ZAdqTNvCXiYsDPsalAotZE23A5fA0GhcCPhbSNBkDAAD//1l/pHEAAAAGSURBVAMAKR3QOaGb9u4AAAAASUVORK5CYII="
+    },
+    {
+      "name": "processing_endpoint.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "10",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "bfe0ac93-d744-4d7d-806b-64f9fc7dfb30",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABN0lEQVR4AYSTsUpDYQyFw52kiAiCbyA6iZO+gKvoIiIdBKGLsy6Ck+Cis0tBcCgiLoqrL6CTOCm+QCkIcpHi1vb76Qlp771t4TTJSf6T5EKyPM97ZWi3Oz2hLC8us8Fve+vQIur1E2s0zhL2945GcrFu8NSSAM7T840Jzea5gVbr0jnlZHkDXIBAqNVmDCieZEsFHju/BvQQHyjudv/lWkYwO7fgxOnLq719fNnO4rxz+HDknBw6hQnWV5dTio4RkN/vn5iR9TJ2/ct/UiL+qSud8WMu+oUJYnKaz/qVAuzLyGD36ragpe/mAqhRxcjYi80Nezg+cMAtra1gHKzvAmJ5ON6VCeDIqU7fzQVQU1Kdq2LxWBcgqALrCeM1LhCPJPpVhyWhJKADKbMcFOC47u6vDagOkT4AAAD//6+djY4AAAAGSURBVAMAupnuHZWU9FQAAAAASUVORK5CYII="
+    },
+    {
+      "name": "me_port.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "11",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "26b6cf49-46ee-4647-ab87-a38fbd49451f",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABMUlEQVR4AYyTPUpDQRSFL6/SIDbuwB24AXeglhLSCQERLC0srCwsLAURAnYhWBp34AZsjFhZB8HmIdEume+GM8ybN4GEnLl/cz9m3nCruq7nJU2n33OpVFeusvA7OjixVL3ehfX7V67u8Vmjlu4LreYAnOeXR5MGg2tDw+FtzKkmSw+KAAKp09kwNH54M6R8yRYBbPx6/cO4bs5HbrXMZv9yrSLY2t6JCRw1TyafhK4c4smwtE6g5lBr/QXheipWBL/1j8d58+Vd1w5P97ymRRDFrROosI7l+g3A7v5mo28cXqF0Kjbpu0UANAo5hJzEleRjuX4EkJBSyPvH8iXyZn23CIAmADaF5M3UpQhQIrW8AOJ6UlrHj4B0SFJ/1WDRjBygASlZBgoxXKOne0PaB2ABAAD//zxF+/EAAAAGSURBVAMAMa7QHc8tLQYAAAAASUVORK5CYII="
+    }
+  ],
+  "editor_state": {
+    "selected_elements": [],
+    "selected_groups": [],
+    "previews": {
+      "main": {
+        "position": [
+          150,
+          85,
+          160
+        ],
+        "target": [
+          40,
+          8,
+          22
+        ],
+        "orthographic": false,
+        "zoom": 0.5
+      }
+    }
+  }
+}

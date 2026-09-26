@@ -1,0 +1,89 @@
+{
+  "version": "5.2.1",
+  "results": [
+    {
+      "name": "ae2_federation_overview",
+      "cubes": 155,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "bridge",
+      "cubes": 11,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_corner",
+      "cubes": 14,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_cross",
+      "cubes": 26,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_end",
+      "cubes": 8,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_isolated",
+      "cubes": 1,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_six_way",
+      "cubes": 36,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_straight_x",
+      "cubes": 12,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_straight_y",
+      "cubes": 12,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_straight_z",
+      "cubes": 12,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "cable_tee",
+      "cubes": 20,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "pattern_provider",
+      "cubes": 1,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "processing_endpoint",
+      "cubes": 1,
+      "textureErrors": 0,
+      "missingFaces": 0
+    },
+    {
+      "name": "router",
+      "cubes": 1,
+      "textureErrors": 0,
+      "missingFaces": 0
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "editor": "Blockbench 5.2.1",
+  "transport": "MCP",
+  "models": [
+    {
+      "file": "bridge.bbmodel",
+      "cubes": 11,
+      "textures": 7,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_corner.bbmodel",
+      "cubes": 14,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_cross.bbmodel",
+      "cubes": 26,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_end.bbmodel",
+      "cubes": 8,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_isolated.bbmodel",
+      "cubes": 1,
+      "textures": 1,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_six_way.bbmodel",
+      "cubes": 36,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_straight_x.bbmodel",
+      "cubes": 12,
+      "textures": 3,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_straight_y.bbmodel",
+      "cubes": 12,
+      "textures": 3,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_straight_z.bbmodel",
+      "cubes": 12,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "cable_tee.bbmodel",
+      "cubes": 20,
+      "textures": 4,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "pattern_provider.bbmodel",
+      "cubes": 1,
+      "textures": 6,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "pattern_provider_comparison.bbmodel",
+      "cubes": 2,
+      "textures": 12,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "processing_endpoint.bbmodel",
+      "cubes": 1,
+      "textures": 6,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "processing_endpoint_comparison.bbmodel",
+      "cubes": 2,
+      "textures": 12,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "router.bbmodel",
+      "cubes": 1,
+      "textures": 1,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "router_comparison.bbmodel",
+      "cubes": 2,
+      "textures": 2,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "v06_key_faces.bbmodel",
+      "cubes": 3,
+      "textures": 8,
+      "errors": [],
+      "missing": 0
+    },
+    {
+      "file": "v06_family.bbmodel",
+      "cubes": 55,
+      "textures": 20,
+      "errors": [],
+      "missing": 0
+    }
+  ],
+  "game_tested": false
+}

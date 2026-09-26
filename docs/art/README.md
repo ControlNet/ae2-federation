@@ -1,14 +1,15 @@
-# Production visual assets v1
+# Production visual assets — approved V07 integration
 
-The authority is `design/visual/AE2-Federation-Visual-Design-Spec-v0.2.md`. The self-contained generator and structural
+The design direction is `design/visual/AE2-Federation-Visual-Design-Spec-v0.2.md`; the user-approved V07 snapshot is the current pixel authority. The self-contained generator and structural
 validator in `tools/visual` are adapted from the supplied website v07 `scripts/build_assets.py` and
 `scripts/validate_assets.py`. The website remains reference material; neither it nor its preview assets are shipped.
 
 ## Source and output
 
-- `tools/visual/build_assets.py`: palette, pixel drawing, geometry, UVs, animation sheets and production adapters.
+- `tools/blockbench/versions/v07-isolated-cable/textures/`: approved texture source (V06 full blocks, retained V02 Bridge/cable, V07 isolated geometry). Frozen PNGs and animation metadata are checked against their manifest before generation.
+- `tools/visual/build_assets.py`: copies that approved texture source and generates geometry, UVs, animation layer routing and production adapters. Pixel drawing now lives in the archived Blockbench design sources.
 - `common/src/main/resources/assets/ae2federation`: generated blockstates, block/part/item models and PNGs. Edit the
-  generator, then regenerate; do not hand-edit these generated files. Language files are independently maintained.
+  approved source/version selection or geometry generator, then regenerate; do not hand-edit these generated files. Language files are independently maintained.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow). The optional game inspection
   tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates. Cable and
@@ -31,7 +32,7 @@ placeholder overwrite cannot silently pass validation. It also checks all local 
 | `router` | Full cube, one cold-white face texture with a cyan core and four short paths; six identical faces | Symmetric |
 | `pattern_provider` | Full cube, three cyan pattern strips with short distribution line; purple rear/periphery | South-authored model rotated for all six existing `facing` values, without UV lock |
 | `processing_endpoint` | Full cube, focused cyan execution window and paired marks; purple rear/periphery | South-authored model rotated 270 degrees about Y: actual fixed EAST front |
-| `cable` | Isolated 6-unit cube; connected 6-unit glass envelope around one continuous 4-unit flow body; stationary collars | Real neighbor port projection, masks E/W/U/D/S/N = 1/2/4/8/16/32 |
+| `cable` | Isolated 6-unit glass envelope and 4-unit animated core; connected 6-unit glass envelope around one continuous 4-unit flow body; stationary collars | Real neighbor port projection, masks E/W/U/D/S/N = 1/2/4/8/16/32 |
 | `bridge` | Multipart 8x8x6 overall; 6x6 contact seats and a thicker 8x8 middle, purple ends/cyan middle | Source south geometry converted to AE2's north-facing quad convention; collision API uses south coordinates |
 
 Router, Cable and Endpoint explicitly return `RenderShape.MODEL`. Cable uses `noOcclusion` and cached connection
@@ -78,15 +79,15 @@ Use a disposable test world. **The gallery function clears its bounded exhibit v
 never run it in a valuable world.** The stress function places 2,048 cables and 128 machines at X=99..164, Z=0..62.
 Neither scene is a configured factory or a throughput benchmark. No fake business data is supplied.
 
-The current isolated production-JAR installation is `build/visual-v1/server` and `build/visual-v1/client`. The server
+The current isolated production-JAR installation is `build/visual-v07/server` and `build/visual-v07/client`. Earlier V1 evidence remains archived separately. The server
 uses loopback port 25579 and a copy of the previously approved EULA file. Its library installation is reused from
 `build/ae2f-work/prod-server`; the client reuses the already installed pinned version and assets in
 `build/ae2f-work/prod-client`. Both have the actual release JAR and the same AE2/GuideME/LDLib2 dependencies; no testmod.
 Always wait for BOTH processes to exit before replacing any JAR.
 
 ```bash
-python3 tools/visual/build_scene.py build/visual-v1/server/visual-world
-(cd build/visual-v1/server && ./run.sh nogui)
+python3 tools/visual/build_scene.py build/visual-v07/server/visual-world
+(cd build/visual-v07/server && ./run.sh nogui)
 ```
 
 In the dedicated server console, after the client joins:
@@ -113,7 +114,7 @@ In another terminal:
 
 ```bash
 DISPLAY=:79 LIBGL_ALWAYS_SOFTWARE=1 pixi run --manifest-path tools/visual/pixi.toml portablemc \
-  --main-dir build/ae2f-work/prod-client --work-dir build/visual-v1/client \
+  --main-dir build/ae2f-work/prod-client --work-dir build/visual-v07/client \
   start --jvm /usr/bin/java --resolution 1280x720 --jvm-args='-Xmx2G' \
   -u VisualProbe -s 127.0.0.1 -p 25579 neoforge:21.1.250
 ```
@@ -124,8 +125,10 @@ Use `game_input.py` for real client F2 screenshots, F3+T reload or F3+L ten-seco
 DISPLAY=:79 pixi run --manifest-path tools/visual/pixi.toml python tools/visual/game_input.py reload
 DISPLAY=:79 pixi run --manifest-path tools/visual/pixi.toml python tools/visual/game_input.py profile
 DISPLAY=:79 pixi run --manifest-path tools/visual/pixi.toml python tools/visual/game_input.py shot \
-  build/visual-v1/client/screenshots build/visual-v1/capture.png
+  build/visual-v07/client/screenshots build/visual-v07/capture.png
 ```
 
-Screenshots are untouched Minecraft F2 output, not browser renders. See [acceptance.md](acceptance.md) for actual
+Screenshots are untouched Minecraft F2 output, not browser renders. See [acceptance-v07.md](acceptance-v07.md) for actual
 results, limitations, final-JAR identity and the screenshot index.
+
+The V07 zero mask now participates in the same glass/stream connectivity and exposed-surface checks as every connected mask. It has no collar and all six sides are closed. The cable item inherits this same model. No additional client renderer, state synchronization, per-frame geometry or world lighting was added.

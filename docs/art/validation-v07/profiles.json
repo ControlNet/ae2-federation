@@ -1,0 +1,22 @@
+{
+  "renderer": "Xvfb 1280x720, software OpenGL, render distance 8, max FPS 60",
+  "samples": [
+    {
+      "archive": "build/visual-v07/client/debug/profiling/2026-09-26_18_46_58-Minecraft Server-1_21_1.zip",
+      "frames": 563,
+      "mean_frame_ms": 17.67,
+      "p95_frame_ms": 20.22,
+      "max_pending_uploads": 0.0,
+      "max_pending_batches": 0.0
+    },
+    {
+      "archive": "build/visual-v07/client/debug/profiling/2026-09-26_18_47_42-Minecraft Server-1_21_1.zip",
+      "frames": 201,
+      "mean_frame_ms": 49.76,
+      "p95_frame_ms": 53.14,
+      "max_pending_uploads": 0.0,
+      "max_pending_batches": 0.0
+    }
+  ],
+  "hardware_gpu_benchmark": false
+}

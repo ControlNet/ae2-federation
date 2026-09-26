@@ -24,3 +24,8 @@ __pycache__/
 # Local development environments
 .pixi/
 .env.local
+
+# Downloaded visual reference website and its original archives.
+# Maintained assets and frozen reviews live in tools/blockbench/ instead.
+/design/visual/ae2-federation-web/
+/design/visual/ae2-federation-web*.zip
