@@ -1,3 +1,4 @@
+import argparse
 import json
 import re
 import subprocess
@@ -28,8 +29,18 @@ def verify_one(test_id: str, output: str, exit_code: int) -> None:
         raise ValueError(f"GameTest {test_id} reported an initialization failure")
 
 
+def select_shard(test_ids: list[str], index: int, count: int) -> list[str]:
+    if count < 1 or count > len(test_ids) or not 0 <= index < count:
+        raise ValueError("Shard index/count must select a nonempty partition of the test manifest")
+    return test_ids[index::count]
+
+
 def main() -> None:
-    test_ids = required_test_ids()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--shard-count", type=int, default=1)
+    args = parser.parse_args()
+    test_ids = select_shard(required_test_ids(), args.shard_index, args.shard_count)
     with LOG.open("w") as log:
         for index, test_id in enumerate(test_ids, 1):
             command = [str(ROOT / "gradlew"), ":neoforge-1.21.1:runGameTestServer",
@@ -46,7 +57,7 @@ def main() -> None:
             log.flush()
             verify_one(test_id, result.stdout, result.returncode)
             print(f"PASS {index}/{len(test_ids)} {test_id}", flush=True)
-    print(f"All {len(test_ids)} distinct manifest GameTests executed and passed", flush=True)
+    print(f"All {len(test_ids)} distinct manifest GameTests in shard {args.shard_index + 1}/{args.shard_count} executed and passed", flush=True)
 
 
 if __name__ == "__main__":

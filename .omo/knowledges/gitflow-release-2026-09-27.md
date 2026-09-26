@@ -15,3 +15,7 @@
 - `harnessnativesmoke` ran exactly one required GameTest successfully with the expanded 0.0.1 metadata. The full manifest suite is configured in CI; it was not rerun locally for this change.
 - actionlint 1.7.7 passed for both changed workflows. The exact workflow packaging script produced both release JARs and passing SHA-256 checksums under ignored `build/release/`.
 - GitHub publication itself has not been exercised; no tag or remote release was created during setup.
+
+## First publication execution
+
+- The initial serial release run was canceled before publication to partition the 152 required GameTests across eight runners. `select_shard` tests verify complete, unique, nonempty coverage; the no-argument command still runs the entire suite. Publication depends on all eight groups.
