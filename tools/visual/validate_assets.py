@@ -64,16 +64,18 @@ def elements(mask, layer):
 for mask in range(64):
     root = models[f'{NS}block/cable/{mask:02d}']
     assert root['loader'] == 'neoforge:composite'
-    layers = ['solid', 'glass'] + (['stream'] if mask else [])
+    layers = ['solid', 'glass', 'stream']
     for layer in layers:
         for e in elements(mask, layer):
             for bit, (face, axis, end) in enumerate(directions):
                 if mask & (1 << bit) and (e['to'][axis] if end else e['from'][axis]) == end:
                     assert face not in e['faces'], (mask, layer, 'connected cap', face)
     if not mask:
-        e, = elements(mask, 'solid')
-        assert e['from'] == [5]*3 and e['to'] == [11]*3
-        continue
+        assert elements(mask, 'solid') == [], 'Isolated node must not have a collar'
+        for layer, lo, hi in [('glass', 5, 11), ('stream', 6, 10)]:
+            e, = elements(mask, layer)
+            assert e['from'] == [lo]*3 and e['to'] == [hi]*3
+            assert set(e['faces']) == {d[0] for d in directions}
     streams = elements(mask, 'stream')
     # Revised v0.2: one connected 4x4 flow volume, rather than two diagonal 1x1 streams.
     cells = set()
@@ -102,7 +104,7 @@ for mask in range(64):
         assert any(mask & (1 << bit) and (e['from'][axis] >= 15 if end else e['to'][axis] <= 1)
                    for bit, (_, axis, end) in enumerate(directions)), (mask, 'collar away from boundary')
 # Compare every visible unit face against the union boundary, including junction seams.
-for mask in range(1,64):
+for mask in range(64):
     for layer, core in [('stream',range(6,10)),('glass',range(5,11))]:
         geometry=elements(mask,layer)
         cells=set(itertools.product(core,repeat=3))
@@ -147,9 +149,18 @@ expected = {'south': (0,0), 'west': (0,90), 'north': (0,180), 'east': (0,270), '
 for face, (x,y) in expected.items():
     variant=provider['facing='+face]
     assert (variant.get('x',0),variant.get('y',0)) == (x,y)
-cyan = lambda c: c[1] > 150 and c[0] < 80
-for tex, point in [('me_side_east',(3,5)),('me_side_west',(12,5)),('me_side_up',(10,12)),('me_side_down',(5,3))]:
-    assert cyan(Image.open(BASE/'textures/block'/f'{tex}.png').getpixel(point)), tex
+# Check the authored cue and all rotated ME faces, not the obsolete V1 pixel palette.
+approved = REPO / 'tools/blockbench/versions/v07-isolated-cable'
+for source in (approved / 'textures').iterdir():
+    assert (BASE / 'textures/block' / source.name).read_bytes() == source.read_bytes(), source.name
+west = Image.open(BASE/'textures/block/me_side_west.png').convert('RGBA')
+assert west.getpixel((12, 8))[:3] == (162, 220, 226)
+for name, transform in [('east', Image.Transpose.FLIP_LEFT_RIGHT),
+                        ('up', Image.Transpose.ROTATE_270), ('down', Image.Transpose.ROTATE_90)]:
+    assert Image.open(BASE/f'textures/block/me_side_{name}.png').convert('RGBA').tobytes() == west.transpose(transform).tobytes()
+assert models[NS+'item/cable']['parent'] == NS+'block/cable/00'
+assert models[NS+'block/cable/00_glass']['render_type'] == 'minecraft:translucent'
+assert models[NS+'block/cable/00_stream']['render_type'] == 'minecraft:cutout'
 assert json.loads((BASE/'blockstates/processing_endpoint.json').read_text())['variants']['']['y'] == 270
 bridge = models[NS+'part/bridge']['elements']
 assert [min(e['from'][i] for e in bridge) for i in range(3)] == [4,4,0]

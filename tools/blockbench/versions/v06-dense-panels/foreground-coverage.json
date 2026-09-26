@@ -1,0 +1,24 @@
+{
+  "metric": "Non-neutral pixels in the central 10x10 field (100 pixels); not an aesthetic score",
+  "counts": {
+    "v04-ae2-quartz": {
+      "router": 64,
+      "pattern_provider": 84,
+      "processing_endpoint": 66
+    },
+    "v05-pattern-study": {
+      "router": 48,
+      "pattern_provider": 78,
+      "processing_endpoint": 44
+    },
+    "v06-dense-panels": {
+      "router": 100,
+      "pattern_provider": 100,
+      "processing_endpoint": 100
+    },
+    "AE2 19.2.17": {
+      "pattern_provider": 100,
+      "interface": 100
+    }
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "java_block",
+    "box_uv": false
+  },
+  "name": "cable_isolated",
+  "model_identifier": "cable_isolated",
+  "resolution": {
+    "width": 16,
+    "height": 16
+  },
+  "elements": [
+    {
+      "name": "solid_000",
+      "uuid": "73c81d02-c33e-5041-8148-38a77ca20bd3",
+      "type": "cube",
+      "box_uv": false,
+      "autouv": 0,
+      "export": true,
+      "from": [
+        5,
+        5,
+        5
+      ],
+      "to": [
+        11,
+        11,
+        11
+      ],
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "shade": true,
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            5,
+            5,
+            11,
+            11
+          ],
+          "texture": 0
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "cable_isolated",
+      "uuid": "f8de7f3f-52fb-5c1a-a6d5-70cfdfcb86d2",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "export": true,
+      "isOpen": false,
+      "visibility": true
+    },
+    {
+      "name": "solid",
+      "uuid": "b882ecfb-7031-5305-9a23-813c38c080ae",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "export": true,
+      "isOpen": false,
+      "visibility": true
+    },
+    {
+      "name": "glass",
+      "uuid": "796d3aa4-fd4a-5227-8a83-630370a38bc1",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "export": true,
+      "isOpen": false,
+      "visibility": true
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "f8de7f3f-52fb-5c1a-a6d5-70cfdfcb86d2",
+      "children": [
+        {
+          "uuid": "b882ecfb-7031-5305-9a23-813c38c080ae",
+          "children": [
+            "73c81d02-c33e-5041-8148-38a77ca20bd3"
+          ]
+        },
+        {
+          "uuid": "796d3aa4-fd4a-5227-8a83-630370a38bc1",
+          "children": []
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "cable_idle.png",
+      "id": "0",
+      "uuid": "0038549c-b1fa-5805-8ac6-3fbaaafac181",
+      "namespace": "ae2federation",
+      "folder": "block",
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "internal": true,
+      "mode": "bitmap",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWElEQVR4nGM8c/3efwYKABMlmoeJASzYBJWkxbAqvvf0FXEGMDAwMEhVtqPwn7VXYlWH1ws9PfUMPT31+JTQKAxgoKSkkXwDcPmZKAOwhTYuMPAJaeANAACushLUH7yEDQAAAABJRU5ErkJggg=="
+    }
+  ],
+  "java_block_version": "1.9.0"
+}

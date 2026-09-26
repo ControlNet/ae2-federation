@@ -1,96 +1,31 @@
-"""Generate the canonical Minecraft 1.21.1 / NeoForge asset kit.
-Adapted from the v07 reference generator; v0.2 is the visual authority.
+"""Generate Minecraft 1.21.1 / NeoForge assets with approved Blockbench V07 art.
+Geometry adapters originate in the website v07 generator; approved art is frozen.
 """
 from pathlib import Path
-from PIL import Image, ImageDraw
 import json
 import argparse
-ROOT=Path(__file__).resolve().parents[2]/'common'/'src'/'main'/'resources'
-parser=argparse.ArgumentParser()
+import hashlib
+import shutil
+REPO = Path(__file__).resolve().parents[2]
+APPROVED = REPO / 'tools/blockbench/versions/v07-isolated-cable'
+ROOT = REPO / 'common/src/main/resources'
+parser = argparse.ArgumentParser()
 parser.add_argument('--output', type=Path, default=ROOT)
-ROOT=parser.parse_args().output
-NS='ae2federation'
-BASE=ROOT/'assets'/NS
-MODELS=BASE/'models'/'block'
-TEX=BASE/'textures'/'block'
-MODELS.mkdir(parents=True,exist_ok=True);TEX.mkdir(parents=True,exist_ok=True)
-C={'white':'#eef2f4','shell':'#ccd7de','shade':'#a9bac5','dark':'#253847','black':'#14232f','steel':'#4c6574','teal':'#086b7b','cyan':'#00cada','bright':'#94f7fa','purple':'#ad77dc','violet':'#684887'}
-def image(bg='dark'):
- im=Image.new('RGBA',(16,16),C.get(bg,bg));return im,ImageDraw.Draw(im)
-def rect(d,x,y,w,h,c):
- d.rectangle((x,y,x+w-1,y+h-1),fill=C.get(c,c))
-def frame(d,x,y,w,h,c):
- rect(d,x,y,w,1,c);rect(d,x,y+h-1,w,1,c);rect(d,x,y,1,h,c);rect(d,x+w-1,y,1,h,c)
-def save(name,im):im.save(TEX/(name+'.png'))
-# One face-wide atlas; the thin frame samples only the matching 1-pixel strips.
-im,d=image('shell');rect(d,0,0,16,1,'white');rect(d,0,0,1,16,'white');rect(d,15,0,1,16,'shade');rect(d,0,15,16,1,'shade');rect(d,4,0,3,1,'#dce5e9');rect(d,0,9,1,3,'#dce5e9');rect(d,15,5,1,2,'#c1cdd5');rect(d,7,15,3,1,'#bfccd5');rect(d,2,3,5,3,'#d2dde3');rect(d,9,10,5,3,'#c4d1d9');save('armor',im)
-im=im.copy();d=ImageDraw.Draw(im);rect(d,7,5,1,2,'cyan');rect(d,8,7,1,2,'steel');rect(d,7,9,1,2,'cyan');save('collar',im)
-def shell_panel():
- im,d=image('shell')
- # Broad flush ceramic plates, small pixel steps and interrupted service seams.
- rect(d,0,0,16,1,'white');rect(d,0,1,1,14,'#dce6eb')
- rect(d,0,15,16,1,'shade');rect(d,15,1,1,14,'#b7c6cf')
- rect(d,2,2,5,2,'#dbe4e9');rect(d,10,12,4,2,'#bfced7')
- rect(d,1,7,2,1,'steel');rect(d,13,8,2,1,'shade')
- return im,d
-def socket(d):
- rect(d,3,3,10,1,'shade');rect(d,3,4,10,9,'dark')
- rect(d,3,4,1,8,'black');rect(d,4,12,9,1,'#7b94a3')
- rect(d,4,13,9,1,'white');rect(d,13,4,1,9,'#dce6eb')
-im,d=image('shell');frame(d,5,5,6,6,'white');frame(d,6,6,4,4,'teal');rect(d,7,7,2,2,'bright');save('cable_idle',im)
-for kind in ['router','processing_endpoint','pattern_provider','me_port']:
- im,d=shell_panel()
- if kind=='router':
-  rect(d,5,5,6,6,'dark');rect(d,6,6,4,4,'cyan');rect(d,7,6,2,2,'bright')
-  for n in [2,3,12,13]:rect(d,7,n,2,1,'cyan');rect(d,n,7,1,2,'cyan')
- elif kind=='processing_endpoint':
-  rect(d,4,5,8,6,'dark');rect(d,6,6,4,4,'teal');rect(d,6,6,4,2,'cyan')
-  rect(d,7,6,2,1,'bright');rect(d,3,7,1,2,'cyan');rect(d,12,7,1,2,'cyan')
- elif kind=='pattern_provider':
-  for y in [4,7,10]:
-   rect(d,4,y,7,2,'teal');rect(d,4,y,6,1,'cyan');rect(d,4,y,1,2,'bright')
-  rect(d,12,4,1,8,'cyan')
-  for y in [4,7,10]:rect(d,10,y,2,1,'cyan')
- else:
-  frame(d,4,4,8,8,'violet');frame(d,5,5,6,6,'purple');rect(d,7,6,2,4,'#dcc1f4');rect(d,6,7,4,2,'#dcc1f4')
- save(kind,im)
-im,d=shell_panel()
-for y in [5,8,11]:rect(d,3,y,10,2,'black');rect(d,3,y,7,1,'purple');rect(d,10,y,1,1,'#6a8fa8');rect(d,11,y,2,1,'cyan')
-rect(d,6,3,4,1,'steel');save('me_side_west',im)
-save('me_side_east',im.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
-save('me_side_up',im.transpose(Image.Transpose.ROTATE_270))
-save('me_side_down',im.transpose(Image.Transpose.ROTATE_90))
-# Bridge patches use native world-space UV coordinates. Every glyph texel is 1 model unit.
-for kind in ['bridge_east','bridge_west','bridge_up','bridge_down','bridge_end']:
- im,d=image('dark')
- if kind=='bridge_end':
-  frame(d,6,6,4,4,'violet');rect(d,7,7,2,2,'purple')
- elif kind in ['bridge_east','bridge_west']:
-  start=1 if kind=='bridge_east' else 11
-  rect(d,start,4,4,1,'steel');rect(d,start,11,4,1,'steel');rect(d,start,5,1,6,'cyan');rect(d,start+3,5,1,6,'cyan');rect(d,start+1,7,2,2,'bright')
- else:
-  start=11 if kind=='bridge_up' else 1
-  rect(d,4,start,1,4,'steel');rect(d,11,start,1,4,'steel');rect(d,5,start,6,1,'cyan');rect(d,5,start+3,6,1,'cyan');rect(d,7,start+1,2,2,'bright')
- save(kind,im)
-for name,col in [('core','cyan'),('me_context','purple')]:
- im,d=image(col);rect(d,0,7,16,1,'bright' if name=='core' else '#bf99e5');save(name,im)
-im,d=image((94,201,222,18));rect(d,5,5,6,1,(171,231,241,75));rect(d,5,10,6,1,(171,231,241,60));rect(d,5,6,1,4,(148,214,230,50));save('glass',im)
-# 16x16 frames in a 16x256 vertical sheet. Reverse sheet travels in the opposite direction.
-for axis in ['u','v']:
- for rev in [False,True]:
-  name='stream_'+axis+('_reverse' if rev else '')
-  sheet=Image.new('RGBA',(16,256),(0,0,0,0))
-  for n in range(16):
-   tile=Image.new('RGBA',(16,16),C['teal']);d=ImageDraw.Draw(tile)
-   for start in [0]:
-    pos=(start+(-n if rev else n))%16
-    for k,col in [(0,'bright'),(1,'cyan'),(2,'cyan'),(3,'teal')]:
-     a=(pos+k)%16
-     if axis=='u':rect(d,a,0,1,16,col)
-     else:rect(d,0,a,16,1,col)
-   sheet.paste(tile,(0,n*16))
-  save(name,sheet)
-  (TEX/(name+'.png.mcmeta')).write_text(json.dumps({'animation':{'width':16,'height':16,'frametime':2,'interpolate':False}},indent=2)+'\n')
+ROOT = parser.parse_args().output
+NS = 'ae2federation'
+BASE = ROOT / 'assets' / NS
+MODELS = BASE / 'models/block'
+TEX = BASE / 'textures/block'
+MODELS.mkdir(parents=True, exist_ok=True)
+TEX.mkdir(parents=True, exist_ok=True)
+# The approved native Blockbench snapshot is the texture authority. Geometry
+# remains generated here to retain all masks, layer routing and AE2 Part axes.
+manifest = json.loads((APPROVED / 'manifest.json').read_text())
+for source in sorted((APPROVED / 'textures').iterdir()):
+    name = source.relative_to(APPROVED).as_posix()
+    if hashlib.sha256(source.read_bytes()).hexdigest() != manifest['files'][name]:
+        raise ValueError(f'Approved texture changed: {name}; create a new version')
+    shutil.copyfile(source, TEX / source.name)
 DIRS=['east','west','up','down','south','north']
 NORMAL={'east':(1,0,0),'west':(-1,0,0),'up':(0,1,0),'down':(0,-1,0),'south':(0,0,1),'north':(0,0,-1)}
 def uv(a,b,f):
@@ -203,8 +138,7 @@ def cable(mask):
    add_collar(solid,cage(4,12,ax,(15,16) if positive else (0,1)))
  if mask in [3,12,48]:
   ax={3:0,12:1,48:2}[mask];streams=[flow(*region(ax,0,16,6,10),ax)]
- if mask==0:
-  solid=[el([5,5,5],[11,11,11],'cable_idle')];glass=[];streams=[]
+ # Mask zero retains the same closed central glass/core as connected cable.
  for e in solid:
   for face in e['faces'].values():
    if face['texture']=='#armor':face['texture']='#collar'

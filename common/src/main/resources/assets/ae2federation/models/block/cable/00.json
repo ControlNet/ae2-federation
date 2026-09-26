@@ -10,6 +10,9 @@
     },
     "glass": {
       "parent": "ae2federation:block/cable/00_glass"
+    },
+    "stream": {
+      "parent": "ae2federation:block/cable/00_stream"
     }
   }
 }

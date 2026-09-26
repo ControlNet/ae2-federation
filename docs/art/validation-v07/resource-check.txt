@@ -1,0 +1,9 @@
+Generated production assets for ae2federation (64 cable masks).
+{
+  "passed": true,
+  "models": 267,
+  "faces": 5094,
+  "cable_masks": 64,
+  "reproducible": true,
+  "in_game_tested": false
+}
