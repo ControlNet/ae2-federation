@@ -1,0 +1,13 @@
+package space.controlnet.ae2federation.client.menu;
+
+public enum FederationDomainPolicyActionResult {
+    ACCEPTED,
+    INVALID_TARGET,
+    WRONG_THREAD,
+    WRONG_MENU,
+    STALE_CONTAINER,
+    STALE_SESSION,
+    STALE_CONTEXT,
+    STALE_REVISION,
+    STALE_SEQUENCE
+}

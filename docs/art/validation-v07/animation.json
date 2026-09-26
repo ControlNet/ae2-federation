@@ -1,0 +1,42 @@
+{
+  "method": "Six native F2 captures, ~0.5 s apart, fixed camera; compare cable-only region",
+  "region": [
+    180,
+    365,
+    1280,
+    570
+  ],
+  "changed_bounds": [
+    null,
+    [
+      0,
+      17,
+      1093,
+      158
+    ],
+    [
+      9,
+      18,
+      1093,
+      158
+    ],
+    [
+      22,
+      21,
+      1093,
+      158
+    ],
+    [
+      0,
+      16,
+      1095,
+      158
+    ],
+    [
+      0,
+      17,
+      1093,
+      158
+    ]
+  ]
+}

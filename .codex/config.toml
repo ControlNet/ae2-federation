@@ -1,0 +1,5 @@
+# Only this trusted project loads this server. Start tools/blockbench/launch.sh first.
+[mcp_servers.ae2f_blockbench]
+url = "http://127.0.0.1:31337/bb-mcp"
+startup_timeout_sec = 20
+tool_timeout_sec = 120

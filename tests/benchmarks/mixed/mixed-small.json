@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "mixed-small-v1",
+  "id": "mixed-small",
+  "testId": "mixedbenchmarksmall",
+  "structure": "ae2federation_test:harness_native_smoke",
+  "seed": 30028029,
+  "lifecycle": {
+    "executionTimeoutSeconds": 300,
+    "shutdownGraceSeconds": 10
+  },
+  "warmupIterations": 1,
+  "measuredIterations": 3,
+  "recipeChainLength": 4,
+  "alternativeInputs": 2,
+  "blockedLanes": 1,
+  "cpuLimit": 2,
+  "stockingCycles": 3,
+  "resourceKeyCount": 11,
+  "largeBatchCalls": 2,
+  "largeBatchUnits": 16,
+  "smallBatchCalls": 16,
+  "smallBatchUnits": 2,
+  "variants": [
+    "large-batch-low-frequency",
+    "small-batch-high-frequency"
+  ],
+  "initial": {
+    "diamonds": 31,
+    "cobblestone": 2,
+    "dirt": 2,
+    "redstone": 1
+  },
+  "requested": {
+    "emeralds": 2,
+    "glass": 1,
+    "stockedDiamonds": 9,
+    "busDiamonds": 4
+  }
+}

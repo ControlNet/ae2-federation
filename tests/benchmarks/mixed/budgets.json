@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "mixed-small-v1",
+  "seed": 30028029,
+  "timingClassification": "environment-sensitive-secondary",
+  "maxInFlight": 2,
+  "maxWaiting": 1,
+  "maxRetainedOrders": 2,
+  "resourceReconciliationRequired": true,
+  "baselineUpdate": "explicit-edit-and-rerun-required"
+}

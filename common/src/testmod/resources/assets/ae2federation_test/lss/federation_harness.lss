@@ -1,0 +1,28 @@
+.harness-panel {
+  width: 320;
+  height: 108;
+  padding-all: 12;
+  gap-all: 8;
+  background: border(2, #ff334155);
+}
+
+#shared_resource_text {
+  height: 18;
+  font-size: 11;
+  text-color: #fff8fafc;
+}
+
+#ack_status {
+  height: 18;
+  font-size: 10;
+  text-color: #ffcbd5e1;
+}
+
+#ack_status.acknowledged {
+  text-color: #ff4ade80;
+}
+
+#ack_control {
+  width: 280;
+  height: 22;
+}

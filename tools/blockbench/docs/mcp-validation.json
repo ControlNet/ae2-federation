@@ -1,0 +1,29 @@
+{
+  "server": {
+    "name": "Blockbench MCP",
+    "version": "1.9.2"
+  },
+  "protocol": "2025-03-26",
+  "source": "tools/blockbench/projects/pattern_provider.bbmodel",
+  "source_sha256": "3e913d630d4194b94d7f6151e67b2d4012af32b85ebad868b39689a18e6198e7",
+  "checks": {
+    "read": true,
+    "geometry_edit": true,
+    "undo": true,
+    "redo": true,
+    "paint": true,
+    "paint_undo": true,
+    "mcp_screenshot": true,
+    "save": true,
+    "reopen": true,
+    "source_unchanged": true
+  },
+  "project": {
+    "cubes": 1,
+    "meshes": 0,
+    "groups": 2,
+    "textures": 6,
+    "outliner_elements": 1
+  },
+  "java_block_version": "1.9.0"
+}

@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      should_release: ${{ steps.version.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test release rules and determine version
+        id: version
+        run: |
+          python3 -m unittest discover -s tests -p test_release_metadata.py -v
+          python3 tools/release_metadata.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build and verify production archives
+        run: ./gradlew :neoforge-1.21.1:build --dependency-verification=strict --no-configuration-cache --no-daemon
+      - name: Archive validation and regression tests
+        run: |
+          python3 -m unittest discover -s tests -p test_artifact_verify.py -v
+          python3 tools/artifact_verify.py inspect
+      - name: Every required manifest GameTest
+        run: python3 -B tools/required_gametests.py
+      - name: Package release assets
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, shutil, tomllib, zipfile
+          from pathlib import Path
+          from tools.release_metadata import archive_names, properties
+          root = Path.cwd()
+          values = properties(root)
+          version = os.environ['RELEASE_VERSION']
+          binary, sources = archive_names(root)
+          libraries = root / 'neoforge-1.21.1/build/libs'
+          with zipfile.ZipFile(libraries / binary) as jar:
+              metadata = tomllib.loads(jar.read('META-INF/neoforge.mods.toml').decode())
+              assert metadata['mods'][0]['version'] == version, 'Packaged mod version differs from release'
+          output = root / 'build/release'
+          output.mkdir(parents=True, exist_ok=True)
+          base = f"{values['mod_id']}-neoforge-{values['minecraft_version']}-{version}"
+          checksums = []
+          for source, name in ((binary, base + '.jar'), (sources, base + '-sources.jar')):
+              target = output / name
+              shutil.copy2(libraries / source, target)
+              checksums.append(f'{hashlib.sha256(target.read_bytes()).hexdigest()}  {name}\n')
+          (output / 'SHA256SUMS.txt').write_text(''.join(checksums))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: build/release/*
+          if-no-files-found: error
+      - name: Retain test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-test-diagnostics
+          path: |
+            gametest.log
+            neoforge-1.21.1/build/reports/tests/
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    if: needs.build.outputs.should_release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.build.outputs.tag }}
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: build/release
+      - name: Verify downloaded assets
+        working-directory: build/release
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Create tag and publish GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate --slurp "repos/$GH_REPO/releases" > build/releases.json
+          state=$(jq -r --arg tag "$RELEASE_TAG" '[.[][] | select(.tag_name == $tag)] | if length == 0 then "missing" elif .[0].draft then "draft" else "published" end' build/releases.json)
+          if [[ "$state" == published ]]; then
+            echo "Release $RELEASE_TAG is already published; leaving its assets unchanged."
+            exit 0
+          fi
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            [[ "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" == "$RELEASE_COMMIT" ]]
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a "$RELEASE_TAG" "$RELEASE_COMMIT" -m "Release $RELEASE_TAG"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+          if [[ "$state" == missing ]]; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" build/release/*.jar build/release/SHA256SUMS.txt --clobber
+          gh release edit "$RELEASE_TAG" --draft=false

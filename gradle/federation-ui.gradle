@@ -1,0 +1,997 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
+import java.util.Properties
+
+def uiRepositoryDir = rootProject.layout.projectDirectory.asFile
+def uiVerificationMetadata = rootProject.layout.projectDirectory.file('gradle/verification-metadata.xml')
+def uiProductJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+def uiLdlibJar = configurations.runtimeClasspath.incoming.artifactView {
+    componentFilter { identifier -> identifier.displayName.contains('ldlib2-neoforge-1.21.1:2.2.34') }
+}.files.elements.map { elements -> elements.collect { it.asFile }.find { it.name.endsWith('-all.jar') } }
+
+def uiSha256 = { byte[] bytes ->
+    MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString()
+}
+
+def uiRunProcess = { List<String> command, File directory, File stdout, timeoutSeconds, Map<String, String> environment ->
+    stdout.parentFile.mkdirs()
+    def builder = new ProcessBuilder(command.collect { it.toString() })
+            .directory(directory).redirectErrorStream(true).redirectOutput(stdout)
+    builder.environment().putAll(environment)
+    def process = builder.start()
+    def completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+    if (!completed) {
+        def descendants = process.toHandle().descendants().toList()
+        descendants.reverseEach { it.destroyForcibly() }
+        process.destroyForcibly()
+        process.waitFor(10, TimeUnit.SECONDS)
+        return [exit: 124, timedOut: true]
+    }
+    [exit: process.exitValue(), timedOut: false]
+}
+
+def uiStrictCanonicalPath = { File file ->
+    def absolute = file.absoluteFile.toPath()
+    if (absolute != absolute.normalize() || file.absolutePath != file.canonicalPath) {
+        throw new GradleException("Symlink or traversal path rejected: ${file}")
+    }
+    file.canonicalFile
+}
+
+def uiDeleteRecursively = { File root ->
+    if (!root.exists()) return
+    Files.walk(root.toPath()).withCloseable { paths ->
+        paths.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+    }
+}
+
+def uiCurrentSourceIdentity = { File outputDir ->
+    outputDir.mkdirs()
+    def headFile = new File(outputDir, 'source-head.txt')
+    def diffFile = new File(outputDir, 'source-diff.patch')
+    def statusFile = new File(outputDir, 'source-status.txt')
+    if (uiRunProcess(['git', 'rev-parse', 'HEAD'], uiRepositoryDir, headFile, 20, [:]).exit != 0
+            || uiRunProcess(['git', 'diff', '--binary', 'HEAD', '--', '.', ':(exclude).omo/**',
+                    ':(exclude)**/build/**', ':(exclude)neoforge-1.21.1/run-gametest/**',
+                    ':(exclude)neoforge-1.21.1/run-server/**',
+                    ':(exclude)neoforge-1.21.1/run-uitest/**'], uiRepositoryDir, diffFile, 20, [:]).exit != 0
+            || uiRunProcess(['git', 'status', '--porcelain=v1', '--untracked-files=all', '--', '.',
+                    ':(exclude).omo/**', ':(exclude)**/build/**',
+                    ':(exclude)neoforge-1.21.1/run-gametest/**', ':(exclude)neoforge-1.21.1/run-server/**',
+                    ':(exclude)neoforge-1.21.1/run-uitest/**'], uiRepositoryDir, statusFile, 20, [:]).exit != 0) {
+        throw new GradleException('Cannot capture current UI-test source identity')
+    }
+    def worktreeIdentity = new StringBuilder(statusFile.text)
+    statusFile.readLines().each { statusLine ->
+        if (statusLine.length() > 3) {
+            def relativePath = statusLine.substring(3).replace(' -> ', '\n').readLines().last()
+            def sourceFile = new File(uiRepositoryDir, relativePath)
+            if (sourceFile.isFile()) {
+                worktreeIdentity.append(relativePath).append('=').append(uiSha256(sourceFile.bytes)).append('\n')
+            }
+        }
+    }
+    def dirtyIdentityFile = new File(outputDir, 'dirty-identity.txt')
+    dirtyIdentityFile.text = worktreeIdentity.toString()
+    [revision: headFile.text.trim(), dirtySha256: uiSha256(dirtyIdentityFile.bytes),
+            files: [headFile, diffFile, statusFile, dirtyIdentityFile]]
+}
+
+def uiTaskThreeScenarioNames = ['ui-harness.shared-resource', 'ui-harness.server-ack'] as Set
+def uiTaskThreeExpectedCases = ['ui-harness.shared-resource', 'ui-harness.server-ack', 'ui-harness.reject-stale'] as Set
+def uiTaskFifteenScenarioNames = ['ui.router', 'ui.bridge', 'ui.shared-policy', 'ui.stale-context',
+        'ui.close-unsubscribe'] as Set
+def uiTaskFifteenExpectedCases = uiTaskFifteenScenarioNames
+def uiTaskThirtyThreeScenarioNames = ['ui.graph-controls', 'ui.mapping', 'ui.endpoint',
+        'ui.multipart-attachments', 'ui.chinese-scales', 'ui.reject-claim-conflict'] as Set
+def uiTaskThirtyThreeExpectedCases = uiTaskThirtyThreeScenarioNames
+def uiTaskThirtyFourExpectedCases = ['multiclient.shared-server', 'multiclient.conflicting-edit',
+        'multiclient.domain-split', 'multiclient.disconnect-cleanup'] as Set
+def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames + uiTaskThirtyThreeScenarioNames
+
+def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
+    def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
+    if (outcomes.keySet() as Set != uiTaskFifteenScenarioNames || captures.size() < 5
+            || controls.count { it.selector == '#policy_toggle' } < 5) {
+        throw new GradleException('Task 15 control, screenshot, or scenario outcome accounting is incomplete')
+    }
+    if (outcomes.values().any { it.recordIdentity == null || it.recordIdentity.isBlank()
+            || it.recordIdentity != it.bridgeRecordIdentity }) {
+        throw new GradleException('Task 15 Router and Bridge entrances do not derive one real directional Policy identity')
+    }
+    ['ui.router', 'ui.bridge'].each { caseId ->
+        def outcome = outcomes[caseId]
+        def revision = outcome.policyRevision as long
+        def expectedStatus = "Server accepted revision ${revision} - acknowledgment policy-${revision}"
+        if (outcome.mutationStatus != 'ACCEPTED' || revision <= 0L || outcome.policyEnabled != 'true'
+                || outcome.visibleStatus != expectedStatus) {
+            throw new GradleException("Task 15 server acknowledgment is invalid for ${caseId}")
+        }
+    }
+    def shared = outcomes['ui.shared-policy']
+    if (shared.mutationStatus != 'SHARED' || shared.policyEnabled != 'true'
+            || (shared.policyRevision as long) <= 0L
+            || shared.visibleRule != "STORAGE: enabled (revision ${shared.policyRevision})") {
+        throw new GradleException('Task 15 Router edit was not observed as the same Bridge policy record')
+    }
+    if (!attachments.any { it.bridgeDiagnosticOnly == 'true' }) {
+        throw new GradleException('Task 15 disabled Bridge did not remain diagnostic-only')
+    }
+    def stale = outcomes['ui.stale-context']
+    if (stale.mutationStatus != 'STALE_CONTEXT' || stale.staleContext != 'true'
+            || (stale.policyRevision as long) != 0L || stale.policyEnabled != 'false'
+            || stale.visibleStatus != 'Rejected by server: Federation Domain topology changed; reopen this editor') {
+        throw new GradleException('Task 15 stale Federation Domain context was not visibly rejected without mutation')
+    }
+    def closed = outcomes['ui.close-unsubscribe']
+    if (closed.menuClosedBeforeMutation != 'true' || closed.sharingContinues != 'true'
+            || closed.mutationStatus != 'POST_CLOSE_ACCEPTED' || closed.policyEnabled != 'false'
+            || (closed.policyRevision as long) != (closed.previousRevision as long) + 1L
+            || closed.visibleRule != "STORAGE: disabled (revision ${closed.policyRevision})") {
+        throw new GradleException('Task 15 menu closure lifecycle or continued sharing is invalid')
+    }
+}
+
+def verifyTaskThirtyThreeReport = { List attachments, List controls, List captures, String runId ->
+    def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
+    if (outcomes.keySet() as Set != uiTaskThirtyThreeScenarioNames || captures.size() < 10
+            || controls.find { it.selector == '#domain_graph' } == null
+            || controls.find { it.selector == '#mapping_toggle' } == null
+            || controls.find { it.selector == '#endpoint_detail' } == null) {
+        throw new GradleException('Task 33 graph, mapping, Endpoint, screenshot, or outcome accounting is incomplete')
+    }
+    if (outcomes.values().any { it.graphVisited != 'true' || it.workspaceVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
+        throw new GradleException('Task 33 actual-client graph or renderer evidence is missing')
+    }
+    def mapping = outcomes['ui.mapping']
+    if (mapping.authoritativeMappingLanes != '[0]'
+            || mapping.mappingAck != 'Mapping updated for pattern slot 0.'
+            || mapping.mappingAckCode != 'accepted-0-0'
+            || mapping.providerId == null || mapping.providerId.isBlank()) {
+        throw new GradleException('Task 33 authoritative Provider mapping acknowledgment is invalid')
+    }
+    def endpoint = outcomes['ui.endpoint']
+    if (endpoint.endpointMode != 'FEDERATED' || endpoint.endpointId == null || endpoint.endpointId.isBlank()
+            || !endpoint.endpointDetail.contains('Configured mode: Federated')
+            || !endpoint.endpointDetail.contains('Runtime mode: Federated')
+            || !endpoint.endpointIdentity?.contains(endpoint.endpointId)
+            || !endpoint.endpointIdentity?.contains('Claim epoch: 1')) {
+        throw new GradleException('Task 33 live Endpoint diagnostic is invalid')
+    }
+    def multipart = outcomes['ui.multipart-attachments']
+    if (multipart.multipartAttachment != 'north:bridge;cable-extension:5'
+            || multipart.visibleAttachment != 'ME Federation Bridge - side North / type bridge / cable extension 5.0') {
+        throw new GradleException('Task 33 multipart Bridge attachment evidence is invalid')
+    }
+    def chinese = outcomes['ui.chinese-scales']
+    def exercisedScales = outcomes.values().collect { it.guiScale as double } as Set
+    if (chinese.language != 'zh_cn' || chinese.guiScale as double != 4d
+            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
+        throw new GradleException('Task 33 Chinese text, large quantity, or GUI scale evidence is invalid')
+    }
+    def conflict = outcomes['ui.reject-claim-conflict']
+    if (conflict.claimConflict != 'Rejected'
+            || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')
+            || !conflict.endpointIdentity?.contains('OWNER_CONFLICT')
+            || !conflict.endpointIdentity?.contains('Claim epoch: 1')) {
+        throw new GradleException('Task 33 Claim conflict was not visibly rejected by production authority')
+    }
+    def controlsOutcome = outcomes['ui.graph-controls']
+    if ((controlsOutcome.policyRevision as long) <= 0L || controlsOutcome.policyEnabled != 'true'
+            || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
+            || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
+            || !captures.any { it.path.contains('world-router-overview') }
+            || !captures.any { it.path.contains('world-multipart-bridge-north') }
+            || !captures.any { it.path.contains('world-provider-host') }
+            || !captures.any { it.path.contains('world-endpoint-faces') }) {
+        throw new GradleException('Task 33 current-source policy edit or actual-world captures are incomplete')
+    }
+}
+
+def verifyLdlibReport = { File reportFile, File outputDir, Set<String> selectedScenarios, String runId ->
+    if (!reportFile.isFile()) throw new GradleException("LDLib2 UI report is missing: ${reportFile}")
+    def report
+    try {
+        report = new JsonSlurper().parse(reportFile)
+    } catch (Exception exception) {
+        throw new GradleException("Malformed LDLib2 UI report: ${reportFile}", exception)
+    }
+    if (report.schema != 1 || report.status != 'PASS' || report.runId == null
+            || report.totals.scenarios != selectedScenarios.size() || report.totals.passed != selectedScenarios.size()
+            || report.totals.failed != 0 || report.totals.errored != 0 || report.totals.checks <= 0
+            || report.totals.checksFailed != 0 || report.totals.captures < selectedScenarios.size()) {
+        throw new GradleException('LDLib2 UI report status or nonzero accounting is invalid')
+    }
+    def scenarios = report.scenarios.collectEntries { [(it.name): it] }
+    if (scenarios.keySet() as Set != selectedScenarios) {
+        throw new GradleException("LDLib2 executed scenario mismatch: ${scenarios.keySet()} != ${selectedScenarios}")
+    }
+    def controls = []
+    def captures = []
+    scenarios.each { name, scenario ->
+        if (scenario.status != 'PASS' || scenario.steps == null || scenario.steps.isEmpty()) {
+            throw new GradleException("LDLib2 scenario did not pass: ${name}")
+        }
+        scenario.steps.each { step ->
+            if (step.status != 'PASS' || step.checks.any { !it.passed }) {
+                throw new GradleException("LDLib2 step/check failed in ${name}: ${step.name}")
+            }
+            if (step.target != null) {
+                if (!(step.target.selector instanceof String) || step.target.selector.isBlank()
+                        || step.target.width <= 0 || step.target.height <= 0 || !step.target.hitTestOk) {
+                    throw new GradleException("Invalid or unclickable control bounds in ${name}: ${step.target}")
+                }
+                controls.add([scenario: name, selector: step.target.selector, path: step.target.path,
+                        x: step.target.x, y: step.target.y, width: step.target.width, height: step.target.height])
+            }
+            step.captures.each { capture ->
+                def image = new File(outputDir, capture.path as String).canonicalFile
+                if (!image.toPath().startsWith(outputDir.canonicalFile.toPath()) || !image.isFile()
+                        || image.length() <= 100 || capture.suspect) {
+                    throw new GradleException("Missing, blank, suspect, or external screenshot: ${capture.path}")
+                }
+                def dimensionsLog = File.createTempFile('ae2f-ui-identify-', '.txt')
+                try {
+                    def identify = uiRunProcess(['identify', '-format', '%m %w %h %[mean] %[standard-deviation]', image.absolutePath],
+                            uiRepositoryDir, dimensionsLog, 20, [:])
+                    if (identify.exit != 0) throw new GradleException("Cannot inspect screenshot ${image}")
+                    def metadata = dimensionsLog.text.trim().split(/\s+/)
+                    if (metadata.size() != 5 || metadata[0] != 'PNG' || (metadata[1] as int) <= 0
+                            || (metadata[2] as int) <= 0 || (metadata[4] as double) <= 0d) {
+                        throw new GradleException("Screenshot has invalid dimensions or flat pixels: ${image}")
+                    }
+                    captures.add([scenario: name, path: outputDir.parentFile.toPath().relativize(image.toPath()).toString(),
+                            sha256: uiSha256(image.bytes), width: metadata[1] as int, height: metadata[2] as int,
+                            mean: metadata[3] as double, standardDeviation: metadata[4] as double])
+                } finally {
+                    dimensionsLog.delete()
+                }
+            }
+        }
+    }
+    def attachments = scenarios.values().collectMany { scenario ->
+        scenario.steps.collectMany { step -> step.attachments == null ? [] : [step.attachments] }
+    }
+    def shared = attachments.find { it.controlId == 'shared_resource_text' }
+    if (selectedScenarios == uiTaskThreeScenarioNames) {
+        def ack = attachments.find { it.controlId == 'ack_control' }
+        if (shared?.visibleText != 'Shared resource rendered after reload'
+                || ack?.visibleText != "Server acknowledged ${runId}"
+                || ack?.acknowledgmentId != runId || controls.find { it.selector == '#ack_control' } == null) {
+            throw new GradleException('Rendered shared-resource text, stable control, or matching server acknowledgment is missing')
+        }
+    } else if (selectedScenarios == uiTaskFifteenScenarioNames) {
+        verifyTaskFifteenReport(attachments, controls, captures, runId)
+    } else if (selectedScenarios == uiTaskThirtyThreeScenarioNames) {
+        verifyTaskThirtyThreeReport(attachments, controls, captures, runId)
+    } else {
+        throw new GradleException("Unsupported LDLib2 scenario set: ${selectedScenarios}")
+    }
+    def environment = report.environment
+    def runtime = selectedScenarios == uiTaskThreeScenarioNames ? shared
+            : attachments.find { it.glRenderer != null }
+    if (environment.guiScale <= 0 || environment.windowWidth <= 0 || environment.windowHeight <= 0
+            || environment.framebufferWidth <= 0 || environment.framebufferHeight <= 0
+            || environment.inputMode != 'SYNTHETIC' || runtime?.guiScale == null
+            || runtime?.windowWidth == null || runtime?.windowHeight == null
+            || runtime?.framebufferWidth == null || runtime?.framebufferHeight == null) {
+        throw new GradleException('LDLib2 client environment metadata is incomplete')
+    }
+    [report: report, controls: controls, captures: captures, attachments: attachments]
+}
+
+def verifyUiPersistedReport
+verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
+    uiStrictCanonicalPath(resultFile)
+    if (!resultFile.isFile()) throw new GradleException("UI result report does not exist: ${resultFile}")
+    def attempt = resultFile.parentFile.canonicalFile
+    def report
+    try {
+        report = new JsonSlurper().parse(resultFile)
+    } catch (Exception exception) {
+        throw new GradleException("Malformed UI result report: ${resultFile}", exception)
+    }
+    if (report.schemaVersion != 3 || report.kind != 'ui' || report.status != 'complete' || report.parentExit != 0
+            || report.evidenceRoot != attempt.parentFile.canonicalPath || report.attemptPath != attempt.canonicalPath
+            || attempt.name != "attempt-${report.runId}") {
+        throw new GradleException('UI result report identity/status is invalid')
+    }
+    def binding = [evidenceRoot: report.evidenceRoot, attemptPath: report.attemptPath, runId: report.runId]
+    if (report.pathIdentitySha256 != uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))) {
+        throw new GradleException('UI producer path identity hash mismatch')
+    }
+    def started = Instant.parse(report.startedAt as String)
+    def ended = Instant.parse(report.endedAt as String)
+    if (ended.isBefore(started) || ended.isAfter(Instant.now().plusSeconds(5))
+            || started.isBefore(Instant.now().minusSeconds(900))) {
+        throw new GradleException('UI result timestamps are stale or invalid')
+    }
+    def expectedCases = report.requested as Set
+    if (!(report.requested instanceof List)
+            || !(expectedCases == uiTaskThreeExpectedCases || expectedCases == uiTaskFifteenExpectedCases
+                    || expectedCases == uiTaskThirtyThreeExpectedCases || expectedCases == uiTaskThirtyFourExpectedCases)
+            || report.executed != report.requested
+            || !(report.assertions instanceof List) || report.assertions.size() != report.requested.size()
+            || report.assertions.any { it.status != 'passed' || !(it.caseId in report.requested) }
+            || report.clientExit != 0 || report.displayMode != 'xvfb' || report.inputMode != 'SYNTHETIC'
+            || !(report.controls instanceof List) || report.controls.isEmpty()
+            || !(report.screenshots instanceof List) || report.screenshots.size() < 2) {
+        throw new GradleException('UI case, client, control, input, or screenshot accounting is incomplete')
+    }
+    report.artifacts.each { artifact ->
+        def file = new File(attempt, artifact.path as String).canonicalFile
+        if (!file.toPath().startsWith(attempt.toPath()) || !file.isFile() || uiSha256(file.bytes) != artifact.sha256) {
+            throw new GradleException("UI artifact is missing, external, or hash-mismatched: ${artifact.path}")
+        }
+    }
+    report.screenshots.each { screenshot ->
+        def file = new File(attempt, screenshot.path as String).canonicalFile
+        if (!file.toPath().startsWith(attempt.toPath()) || !file.isFile()
+                || uiSha256(file.bytes) != screenshot.sha256) {
+            throw new GradleException("UI screenshot is stale or hash-mismatched: ${screenshot.path}")
+        }
+    }
+    if (expectedCases == uiTaskThirtyFourExpectedCases) {
+        def server = new Properties(); server.load(new File(attempt, 'server.properties').newInputStream())
+        def clientA = new Properties(); clientA.load(new File(attempt, 'clients/client-a.properties').newInputStream())
+        def clientB = new Properties(); clientB.load(new File(attempt, 'clients/client-b.properties').newInputStream())
+        if (server.getProperty('status') != 'passed' || server.getProperty('dedicatedServer') != 'true'
+                || server.getProperty('connectedClients') != '2' || server.getProperty('authoritativeRevision') != '1'
+                || server.getProperty('staleRevisionRejected') != 'true'
+                || server.getProperty('federationDomainSplitInvalidated') != 'true'
+                || server.getProperty('scopeRefreshed') != 'true'
+                || server.getProperty('refreshedFederationDomainMembers') != '2'
+                || server.getProperty('refreshedReferenceCurrent') != 'true'
+                || server.getProperty('refreshedExpectedIdentities') != 'true'
+                || server.getProperty('activeSubscriptions') != '0'
+                || (server.getProperty('subscriptionRemovals') as long) < 4
+                || (server.getProperty('closedGuiSimulationTicks') as long) < 20
+                || clientA.getProperty('singleplayer') != 'false' || clientB.getProperty('singleplayer') != 'false'
+                || clientA.getProperty('firstAccepted') != 'true' || clientB.getProperty('staleRevision') != 'true'
+                || clientA.getProperty('staleContext') != 'true'
+                || clientB.getProperty('staleRevisionRenderedText') != 'Rejected by server: policy revision is now 1'
+                || (clientB.getProperty('staleRevisionStableFrames') as int) < 3
+                || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Federation Domain topology changed; reopen this editor'
+                || (clientA.getProperty('staleContextStableFrames') as int) < 3
+                || !report.screenshots.any { it.path == 'clients/client-b-stale-revision.png' }
+                || !report.screenshots.any { it.path == 'clients/client-a-domain-split.png' }
+                || clientA.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
+                || clientB.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
+                || clientA.getProperty('refreshedRenderedMembers') != '2 members'
+                || clientB.getProperty('refreshedRenderedMembers') != '2 members'
+                || (clientA.getProperty('refreshedStableFrames') as int) < 3
+                || (clientB.getProperty('refreshedStableFrames') as int) < 3
+                || !report.screenshots.any { it.path == 'clients/client-a-refreshed.png' }
+                || !report.screenshots.any { it.path == 'clients/client-b-refreshed.png' }
+                || clientA.getProperty('scopeRefreshed') != 'true' || clientB.getProperty('scopeRefreshed') != 'true'
+                || report.serverExit != 0 || report.clientExits != [A: 0, B: 0]) {
+            throw new GradleException('Task 34 dedicated-server authority, invalidation, or cleanup evidence is invalid')
+        }
+    } else {
+        def upstreamArtifacts = report.artifacts.findAll { it.path == 'ldlib2/report.json' }
+        if (upstreamArtifacts.size() != 1) {
+            throw new GradleException('UI result must bind exactly one LDLib2 report artifact')
+        }
+        def upstreamReport = new File(attempt, upstreamArtifacts[0].path as String).canonicalFile
+        def selectedScenarios = expectedCases.findAll { it in uiAllScenarioNames } as Set
+        def verifiedUpstream = verifyLdlibReport(upstreamReport, upstreamReport.parentFile, selectedScenarios,
+                report.runId as String)
+        def upstreamAttachments = verifiedUpstream.attachments.findAll { !it.isEmpty() }
+        def renderer = upstreamAttachments.find { it.glRenderer != null } ?: [:]
+        if (report.upstreamReportRunId != verifiedUpstream.report.runId
+                || report.controls != verifiedUpstream.controls || report.controlAttachments != upstreamAttachments
+                || report.screenshots != verifiedUpstream.captures || report.guiScale != renderer.guiScale as double
+                || report.language != renderer.language || report.glVendor != renderer.glVendor
+                || report.glRenderer != renderer.glRenderer || report.glVersion != renderer.glVersion
+                || report.window != [width: renderer.windowWidth as int, height: renderer.windowHeight as int,
+                        framebufferWidth: renderer.framebufferWidth as int,
+                        framebufferHeight: renderer.framebufferHeight as int]) {
+            throw new GradleException('UI result semantic projections do not match the bound LDLib2 report')
+        }
+    }
+    if (requireCurrentIdentity) {
+        def identityDir = new File(attempt, '.identity-check')
+        def identity = uiCurrentSourceIdentity(identityDir)
+        uiDeleteRecursively(identityDir)
+        def jar = uiProductJar.get().asFile
+        def ldlib = uiLdlibJar.get()
+        if (report.sourceRevision != identity.revision || report.dirtyDiffSha256 != identity.dirtySha256
+                || report.dependencyLockSha256 != uiSha256(uiVerificationMetadata.asFile.bytes)
+                || !jar.isFile() || report.productJarSha256 != uiSha256(jar.bytes)
+                || ldlib == null || report.ldlibJarSha256 != uiSha256(ldlib.bytes)) {
+            throw new GradleException('UI report source, dependency, product, or LDLib2 identity is stale')
+        }
+    }
+    report
+}
+
+def uiCopyRecursively = { File source, File target ->
+    Files.walk(source.toPath()).withCloseable { paths ->
+        paths.forEach { path ->
+            def destination = target.toPath().resolve(source.toPath().relativize(path))
+            if (Files.isDirectory(path)) {
+                Files.createDirectories(destination)
+            } else {
+                Files.copy(path, destination, StandardCopyOption.REPLACE_EXISTING)
+            }
+        }
+    }
+}
+
+def uiCreatePersistedProbe = { File resultFile, File probeRoot, String name, Closure mutate ->
+    def originalAttempt = resultFile.parentFile.canonicalFile
+    def attempt = new File(probeRoot, "${name}/${originalAttempt.name}")
+    uiCopyRecursively(originalAttempt, attempt)
+    def reboundResult = new File(attempt, 'result.json')
+    def report = new JsonSlurper().parse(reboundResult)
+    def binding = [evidenceRoot: attempt.parentFile.canonicalPath, attemptPath: attempt.canonicalPath,
+            runId: report.runId]
+    report.evidenceRoot = binding.evidenceRoot
+    report.attemptPath = binding.attemptPath
+    report.pathIdentitySha256 = uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+    def identityDir = new File(attempt, '.probe-identity')
+    def identity = uiCurrentSourceIdentity(identityDir)
+    uiDeleteRecursively(identityDir)
+    report.sourceRevision = identity.revision
+    report.dirtyDiffSha256 = identity.dirtySha256
+    report.dependencyLockSha256 = uiSha256(uiVerificationMetadata.asFile.bytes)
+    report.productJarSha256 = uiSha256(uiProductJar.get().asFile.bytes)
+    report.ldlibJarSha256 = uiSha256(uiLdlibJar.get().bytes)
+    report.startedAt = Instant.now().minusSeconds(1).toString()
+    report.endedAt = Instant.now().toString()
+    def upstream = report.requested as Set == uiTaskThirtyFourExpectedCases
+            ? attempt : new File(attempt, 'ldlib2/report.json')
+    mutate(report, upstream)
+    report.artifacts.each { artifact ->
+        artifact.sha256 = uiSha256(new File(attempt, artifact.path as String).bytes)
+    }
+    reboundResult.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    reboundResult
+}
+
+def uiPersistedVerifierRejects = { File resultFile, File probeRoot, String name, Closure mutate ->
+    def reboundResult = uiCreatePersistedProbe(resultFile, probeRoot, name, mutate)
+    try {
+        verifyUiPersistedReport(reboundResult, true)
+        null
+    } catch (GradleException exception) {
+        exception.message
+    }
+}
+
+def uiPersistedOuterRejects = { File baselineResult, File probeRoot, String name, Closure mutate ->
+    def sourceAttempt = baselineResult.parentFile.canonicalFile
+    def attempt = new File(probeRoot, "${name}/${sourceAttempt.name}")
+    uiCopyRecursively(sourceAttempt, attempt)
+    def result = new File(attempt, 'result.json')
+    def report = new JsonSlurper().parse(result)
+    def binding = [evidenceRoot: attempt.parentFile.canonicalPath, attemptPath: attempt.canonicalPath,
+            runId: report.runId]
+    report.evidenceRoot = binding.evidenceRoot
+    report.attemptPath = binding.attemptPath
+    report.pathIdentitySha256 = uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+    mutate(report, attempt)
+    result.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+    try {
+        verifyUiPersistedReport(result, true)
+        null
+    } catch (GradleException exception) {
+        exception.message
+    }
+}
+
+def uiPreparePersistedBaseline = { File canonicalResult, File probeRoot ->
+    def baselineAttempt = new File(probeRoot, "baseline/${canonicalResult.parentFile.name}")
+    uiCopyRecursively(canonicalResult.parentFile, baselineAttempt)
+    def baselineResult = new File(baselineAttempt, 'result.json')
+    def baselineReport = new JsonSlurper().parse(baselineResult)
+    def sourceIdentity = uiCurrentSourceIdentity(new File(baselineAttempt, '.identity-rebind'))
+    uiDeleteRecursively(new File(baselineAttempt, '.identity-rebind'))
+    def binding = [evidenceRoot: baselineAttempt.parentFile.canonicalPath,
+            attemptPath: baselineAttempt.canonicalPath, runId: baselineReport.runId]
+    baselineReport.evidenceRoot = binding.evidenceRoot
+    baselineReport.attemptPath = binding.attemptPath
+    baselineReport.pathIdentitySha256 = uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8))
+    baselineReport.sourceRevision = sourceIdentity.revision
+    baselineReport.dirtyDiffSha256 = sourceIdentity.dirtySha256
+    baselineReport.dependencyLockSha256 = uiSha256(uiVerificationMetadata.asFile.bytes)
+    baselineReport.productJarSha256 = uiSha256(uiProductJar.get().asFile.bytes)
+    baselineReport.ldlibJarSha256 = uiSha256(uiLdlibJar.get().bytes)
+    baselineReport.startedAt = Instant.now().minusSeconds(1).toString()
+    baselineReport.endedAt = Instant.now().toString()
+    baselineReport.artifacts.each { artifact ->
+        artifact.sha256 = uiSha256(new File(baselineAttempt, artifact.path as String).bytes)
+    }
+    baselineResult.text = JsonOutput.prettyPrint(JsonOutput.toJson(baselineReport)) + '\n'
+    verifyUiPersistedReport(baselineResult, true)
+    baselineResult
+}
+
+def uiUpstreamMutations = [
+        'zero-check': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            ldlibReport.totals.checks = 0
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'malformed-upstream': { report, upstream -> upstream.text = '{\n' },
+        'forged-local-ack': { report, upstream ->
+            def forgedId = 'locally-forged-ack'
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def ackAttachments = ldlibReport.scenarios.find { it.name == 'ui-harness.server-ack' }.steps
+                    .find { it.attachments?.controlId == 'ack_control' }.attachments
+            ackAttachments.visibleText = "Server acknowledged ${forgedId}"
+            ackAttachments.acknowledgmentId = forgedId
+            def outerAck = report.controlAttachments.find { it.controlId == 'ack_control' }
+            outerAck.visibleText = ackAttachments.visibleText
+            outerAck.acknowledgmentId = forgedId
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        }
+]
+
+def uiTaskFifteenUpstreamMutations = [
+        'forged-task15-ack': { report, upstream ->
+            def forgedId = 'locally-forged-task15-ack'
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.router' }.steps
+                    .find { it.attachments?.caseId == 'ui.router' }.attachments
+            upstreamOutcome.visibleStatus = upstreamOutcome.visibleStatus.replaceFirst(/policy-[0-9]+$/, forgedId)
+            report.controlAttachments.find { it.caseId == 'ui.router' }.visibleStatus = upstreamOutcome.visibleStatus
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'stale-context-success': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.stale-context' }.steps
+                    .find { it.attachments?.caseId == 'ui.stale-context' }.attachments
+            upstreamOutcome.mutationStatus = 'ACCEPTED'
+            report.controlAttachments.find { it.caseId == 'ui.stale-context' }.mutationStatus = 'ACCEPTED'
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        }
+]
+
+def uiTaskThirtyThreeUpstreamMutations = [
+        'forged-task33-mapping-lanes': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.mapping' }.steps
+                    .find { it.attachments?.caseId == 'ui.mapping' }.attachments
+            upstreamOutcome.authoritativeMappingLanes = '[]'
+            report.controlAttachments.find { it.caseId == 'ui.mapping' }.authoritativeMappingLanes =
+                    upstreamOutcome.authoritativeMappingLanes
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'claim-conflict-success': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.reject-claim-conflict' }.steps
+                    .find { it.attachments?.caseId == 'ui.reject-claim-conflict' }.attachments
+            upstreamOutcome.claimConflictResult = 'SUCCESS'
+            report.controlAttachments.find { it.caseId == 'ui.reject-claim-conflict' }.claimConflictResult = 'SUCCESS'
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        },
+        'fabricated-task33-multipart': { report, upstream ->
+            def ldlibReport = new JsonSlurper().parse(upstream)
+            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.multipart-attachments' }.steps
+                    .find { it.attachments?.caseId == 'ui.multipart-attachments' }.attachments
+            upstreamOutcome.multipartAttachment = 'north:bridge;cable-extension:8'
+            upstreamOutcome.visibleAttachment = 'ME Federation Bridge - side North / type bridge / cable extension 8.0'
+            def outerOutcome = report.controlAttachments.find { it.caseId == 'ui.multipart-attachments' }
+            outerOutcome.multipartAttachment = upstreamOutcome.multipartAttachment
+            outerOutcome.visibleAttachment = upstreamOutcome.visibleAttachment
+            upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
+        }
+]
+
+def uiTaskThirtyFourUpstreamMutations = [
+        'fabricated-authoritative-revision': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['authoritativeRevision'] = '0'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound authoritative revision probe') }
+        },
+        'fabricated-stale-revision': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['staleRevision'] = 'false'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound stale revision probe') }
+            report.controlAttachments.find { it.role == 'B' }.staleRevision = 'false'
+        },
+        'fabricated-stale-revision-render': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['staleRevisionRenderedText'] = 'Ready - changes require server confirmation'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound stale revision render probe') }
+            report.controlAttachments.find { it.role == 'B' }.staleRevisionRenderedText =
+                    'Ready - changes require server confirmation'
+        },
+        'fabricated-refreshed-render': { report, attempt ->
+            def file = new File(attempt, 'clients/client-b.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['refreshedRenderedStatus'] = 'Pending current topology'
+            properties['refreshedRenderedMembers'] = 'No confirmed Federation Domain membership'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound premature refreshed render probe') }
+            def attachment = report.controlAttachments.find { it.role == 'B' }
+            attachment.refreshedRenderedStatus = 'Pending current topology'
+            attachment.refreshedRenderedMembers = 'No confirmed Federation Domain membership'
+        },
+        'fabricated-refreshed-domain': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['refreshedFederationDomainMembers'] = '1'
+            properties['refreshedReferenceCurrent'] = 'false'
+            properties['refreshedExpectedIdentities'] = 'false'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound incomplete refreshed Federation Domain probe') }
+        },
+        'fabricated-cleanup': { report, attempt ->
+            def file = new File(attempt, 'server.properties')
+            def properties = new Properties()
+            file.withInputStream { properties.load(it) }
+            properties['activeSubscriptions'] = '1'
+            file.withOutputStream { properties.store(it, 'Task 34 rebound cleanup probe') }
+        }
+]
+
+def uiMutationsFor = { File resultFile ->
+    def requested = new JsonSlurper().parse(resultFile).requested as Set
+    requested == uiTaskFifteenExpectedCases ? uiTaskFifteenUpstreamMutations
+            : requested == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeUpstreamMutations
+            : requested == uiTaskThirtyFourExpectedCases ? uiTaskThirtyFourUpstreamMutations : uiUpstreamMutations
+}
+
+def cleanupUiRuntime = { File attempt ->
+    def runtime = layout.projectDirectory.dir('run-uitest').asFile
+    def diagnostics = new File(attempt, 'runtime-diagnostics')
+    diagnostics.mkdirs()
+    try {
+        if (runtime.exists()) {
+            Files.walk(runtime.toPath()).withCloseable { paths ->
+                paths.filter { Files.isRegularFile(it) }.forEach { source ->
+                    def relative = runtime.toPath().relativize(source)
+                    if (relative.startsWith('logs') || relative.startsWith('crash-reports')) {
+                        def target = diagnostics.toPath().resolve(relative)
+                        Files.createDirectories(target.parent)
+                        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING)
+                    }
+                }
+            }
+        }
+    } finally {
+        uiDeleteRecursively(runtime)
+    }
+}
+
+def casesProperty = providers.gradleProperty('cases')
+def uiEvidenceProperty = providers.gradleProperty('evidenceDir')
+def uiResultProperty = providers.gradleProperty('resultFile')
+def uiProbeProperty = providers.gradleProperty('probe')
+
+tasks.register('federationUiTest') {
+    group = 'verification'
+    description = 'Runs bounded LDLib2 2.2.34 scenarios in an actual Minecraft client under Xvfb.'
+    dependsOn(tasks.named('jar'), tasks.named('test'), tasks.named('testmodClasses'))
+    notCompatibleWithConfigurationCache('Launches an isolated actual client and captures current machine evidence.')
+    doLast {
+        def requested = casesProperty.orNull?.split(',')?.collect { it.trim() }?.findAll { !it.isEmpty() } ?: []
+        def requestedSet = requested as Set
+        if (requested == ['final.native-workflow', 'final.router-six-faces', 'final.bridge-invalid',
+                'final.policy-reconnect', 'final.chinese-scales']) {
+            throw new GradleException('F3 BLOCKED: the exact actual-client final workflow and benchmark spot-check are not implemented')
+        }
+        def taskThirtyFour = requestedSet == uiTaskThirtyFourExpectedCases
+        def selectedScenarioNames = requestedSet == uiTaskThreeExpectedCases ? uiTaskThreeScenarioNames
+                : requestedSet == uiTaskFifteenExpectedCases ? uiTaskFifteenScenarioNames
+                : requestedSet == uiTaskThirtyThreeExpectedCases ? uiTaskThirtyThreeScenarioNames : null
+        if (requested.isEmpty() || (selectedScenarioNames == null && !taskThirtyFour)) {
+            throw new GradleException("UI verification requires exact Task 3, Task 15, Task 33, or Task 34 cases; requested=${requested}")
+        }
+        def evidenceText = uiEvidenceProperty.orNull
+        if (evidenceText == null || evidenceText.isBlank()) throw new GradleException('Missing -PevidenceDir')
+        def evidenceRoot = uiStrictCanonicalPath(rootProject.file(evidenceText))
+        evidenceRoot.mkdirs()
+        def runId = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSS'Z'").withZone(ZoneOffset.UTC).format(Instant.now())
+        def attempt = new File(evidenceRoot, "attempt-${runId}")
+        if (!attempt.mkdirs()) throw new GradleException("Cannot create UI evidence attempt ${attempt}")
+        def sourceIdentity = uiCurrentSourceIdentity(attempt)
+        def jar = uiProductJar.get().asFile
+        def ldlib = uiLdlibJar.get()
+        if (ldlib == null) throw new GradleException('Resolved LDLib2 2.2.34 all JAR is unavailable')
+        def startedAt = Instant.now().toString()
+        if (taskThirtyFour) {
+            def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
+            def serverEvidence = new File(attempt, 'server.properties')
+            def clientsDir = new File(attempt, 'clients'); clientsDir.mkdirs()
+            def runtimeRoot = new File(layout.buildDirectory.get().asFile, "task34-runtime-${runId}")
+            def portSocket = new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())
+            def port = portSocket.localPort; portSocket.close()
+            def start = { List<String> command, File log, Map<String, String> environment ->
+                log.parentFile.mkdirs()
+                def builder = new ProcessBuilder(command.collect { it.toString() }).directory(uiRepositoryDir)
+                        .redirectErrorStream(true).redirectOutput(log)
+                builder.environment().putAll(environment)
+                builder.start()
+            }
+            def base = [gradleExecutable.absolutePath, '--no-daemon', '--no-configuration-cache',
+                    '--dependency-verification=strict']
+            def serverLog = new File(attempt, 'dedicated-server.log')
+            def serverDir = new File(runtimeRoot, 'server')
+            def server = start(base + [':neoforge-1.21.1:runMulticlientServer',
+                    "-PfederationMultiClientGameDir=${serverDir.absolutePath}",
+                    "-PfederationMultiClientPort=${port}",
+                    "-PfederationMultiClientServerEvidence=${serverEvidence.absolutePath}"], serverLog, [:])
+            def clientA = null
+            def clientB = null
+            try {
+                def readyDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(120)
+                def listening = false
+                while (server.isAlive() && System.nanoTime() < readyDeadline && !listening) {
+                    try (def socket = new java.net.Socket()) {
+                        socket.connect(new java.net.InetSocketAddress('127.0.0.1', port), 250)
+                        listening = true
+                    } catch (IOException ignored) {
+                        TimeUnit.MILLISECONDS.sleep(250)
+                    }
+                }
+                if (!listening) throw new GradleException("Task 34 dedicated server did not listen; log=${serverLog}")
+                def clientCommand = { String role ->
+                    def clientGameDirectory = new File(runtimeRoot, "client-${role}").absolutePath
+                    def command = ['xvfb-run', '--auto-servernum',
+                            '--server-args=-screen 0 1280x720x24 -nolisten tcp']
+                    command.addAll(base)
+                    command.addAll([":neoforge-1.21.1:runMulticlientClient${role}",
+                            "-PfederationMultiClientGameDir=${clientGameDirectory}",
+                            "-PfederationMultiClientPort=${port}", "-PfederationMultiClientRole=${role}",
+                            "-PfederationMultiClientUsername=Client${role}",
+                            "-PfederationMultiClientClientOutput=${clientsDir.absolutePath}",
+                            "-PfederationMultiClientServerEvidence=${serverEvidence.absolutePath}"])
+                    command
+                }
+                clientA = start(clientCommand('A'), new File(attempt, 'client-a.log'), ['LIBGL_ALWAYS_SOFTWARE': '1'])
+                clientB = start(clientCommand('B'), new File(attempt, 'client-b.log'), ['LIBGL_ALWAYS_SOFTWARE': '1'])
+                def deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(300)
+                while ((clientA.isAlive() || clientB.isAlive()) && System.nanoTime() < deadline) {
+                    TimeUnit.MILLISECONDS.sleep(250)
+                }
+                if (clientA.isAlive() || clientB.isAlive()) throw new GradleException('Task 34 clients timed out')
+                if (clientA.exitValue() != 0 || clientB.exitValue() != 0) {
+                    throw new GradleException("Task 34 client/server evidence failed; A=${clientA.exitValue()}, B=${clientB.exitValue()}")
+                }
+                def evidenceDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
+                while (server.isAlive() && !serverEvidence.isFile() && System.nanoTime() < evidenceDeadline) {
+                    TimeUnit.MILLISECONDS.sleep(250)
+                }
+                if (!serverEvidence.isFile()) throw new GradleException('Task 34 server evidence timed out')
+                if (server.isAlive()) server.outputStream.withWriter { it.write('stop\n'); it.flush() }
+                if (!server.waitFor(30, TimeUnit.SECONDS)) throw new GradleException('Task 34 server did not stop cleanly')
+                if (server.exitValue() != 0) throw new GradleException("Task 34 server exit=${server.exitValue()}")
+
+                def screenshots = []
+                clientsDir.listFiles()?.findAll { it.name.endsWith('.png') }?.sort { it.name }?.each { image ->
+                    def dimensionsLog = File.createTempFile('ae2f-task34-identify-', '.txt')
+                    try {
+                        def identify = uiRunProcess(['identify', '-format', '%m %w %h %[mean] %[standard-deviation]',
+                                image.absolutePath], uiRepositoryDir, dimensionsLog, 20, [:])
+                        def metadata = dimensionsLog.text.trim().split(/\s+/)
+                        if (identify.exit != 0 || metadata.size() != 5 || metadata[0] != 'PNG'
+                                || (metadata[4] as double) <= 0d) {
+                            throw new GradleException("Task 34 screenshot is blank or malformed: ${image}")
+                        }
+                        screenshots.add([path: attempt.toPath().relativize(image.toPath()).toString(),
+                                sha256: uiSha256(image.bytes), width: metadata[1] as int, height: metadata[2] as int,
+                                mean: metadata[3] as double, standardDeviation: metadata[4] as double])
+                    } finally { dimensionsLog.delete() }
+                }
+                if (screenshots.size() < 4) throw new GradleException('Task 34 requires two screenshots from each client')
+                def load = { File file -> def value = new Properties(); file.withInputStream { value.load(it) }; value }
+                def clientFactsA = load(new File(clientsDir, 'client-a.properties'))
+                def clientFactsB = load(new File(clientsDir, 'client-b.properties'))
+                def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
+                cleanupReceipt.text = 'Task 34: two Xvfb clients and one loopback dedicated server exited; isolated game directories were removed.\n'
+                def files = []
+                Files.walk(attempt.toPath()).withCloseable { paths ->
+                    paths.filter { Files.isRegularFile(it) }.forEach { path ->
+                        if (path.fileName.toString() != 'result.json') files.add(path.toFile())
+                    }
+                }
+                def artifacts = files.collect { file -> [path: attempt.toPath().relativize(file.toPath()).toString(),
+                        sha256: uiSha256(file.bytes)] }
+                def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
+                def attachments = [['role': 'A'] + clientFactsA.collectEntries { key, value -> [(key.toString()): value.toString()] },
+                        ['role': 'B'] + clientFactsB.collectEntries { key, value -> [(key.toString()): value.toString()] }]
+                def report = [schemaVersion: 3, kind: 'ui', status: 'complete', runId: runId,
+                        evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
+                        pathIdentitySha256: uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
+                        sourceRevision: sourceIdentity.revision, dirtyDiffSha256: sourceIdentity.dirtySha256,
+                        dependencyLockSha256: uiSha256(uiVerificationMetadata.asFile.bytes),
+                        productJarSha256: uiSha256(jar.bytes), ldlibJarSha256: uiSha256(ldlib.bytes),
+                        startedAt: startedAt, endedAt: Instant.now().toString(), requested: requested,
+                        executed: requested, assertions: requested.collect { [caseId: it, status: 'passed'] },
+                        parentExit: 0, clientExit: 0, clientExits: [A: clientA.exitValue(), B: clientB.exitValue()],
+                        serverExit: server.exitValue(), displayMode: 'xvfb', displayNetwork: 'disabled (-nolisten tcp)',
+                        inputMode: 'SYNTHETIC', guiScale: clientFactsA.guiScale as double,
+                        language: clientFactsA.language, glVendor: clientFactsA.glVendor,
+                        glRenderer: clientFactsA.glRenderer, glVersion: clientFactsA.glVersion,
+                        window: [width: clientFactsA.windowWidth as int, height: clientFactsA.windowHeight as int,
+                                framebufferWidth: clientFactsA.framebufferWidth as int,
+                                framebufferHeight: clientFactsA.framebufferHeight as int],
+                        controls: [[selector: '#policy_toggle', clients: ['A', 'B']]],
+                        controlAttachments: attachments, screenshots: screenshots,
+                        upstreamReportRunId: null, artifacts: artifacts]
+                def resultFile = new File(attempt, 'result.json')
+                resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+                verifyUiPersistedReport(resultFile, true)
+                logger.lifecycle("Federation multi-client UI evidence: ${attempt}")
+                return
+            } finally {
+                [clientA, clientB, server].findAll { it != null && it.isAlive() }.each { process ->
+                    process.toHandle().descendants().toList().reverseEach { it.destroyForcibly() }
+                    process.destroyForcibly()
+                }
+                uiDeleteRecursively(runtimeRoot)
+            }
+        }
+        def ldlibOutput = new File(attempt, 'ldlib2')
+        def clientLog = new File(attempt, 'actual-client.log')
+        def gradleExecutable = new File(gradle.gradleHomeDir, 'bin/gradle')
+        def taskThirtyThreeWindow = selectedScenarioNames == uiTaskThirtyThreeScenarioNames
+        def window = taskThirtyThreeWindow ? '1600x960' : '1280x720'
+        def command = ['xvfb-run', '--auto-servernum', "--server-args=-screen 0 ${window}x24 -nolisten tcp",
+                gradleExecutable.absolutePath, '--no-daemon', '--dependency-verification=strict',
+                ':neoforge-1.21.1:runUiTestClient',
+                 "-PfederationUiSelection=${selectedScenarioNames.join(',')}",
+                "-PfederationUiOutputDir=${ldlibOutput.absolutePath}", "-PfederationUiRunId=${runId}",
+                '-PfederationUiGuiScale=3', "-PfederationUiWindow=${window}", '-PfederationUiWatchdogSec=90']
+        def child
+        try {
+            child = uiRunProcess(command, uiRepositoryDir, clientLog, 240, ['LIBGL_ALWAYS_SOFTWARE': '1'])
+        } finally {
+            cleanupUiRuntime(attempt)
+        }
+        if (child.exit != 0 || child.timedOut) {
+            throw new GradleException("Actual Minecraft client failed or timed out; exit=${child.exit}, log=${clientLog}")
+        }
+        def verified = verifyLdlibReport(new File(ldlibOutput, 'report.json'), ldlibOutput, selectedScenarioNames, runId)
+        def assertionMap = requested.collect { caseId -> [caseId: caseId, status: 'passed'] }
+        def cleanupReceipt = new File(attempt, 'cleanup-receipt.txt')
+        cleanupReceipt.text = 'xvfb-run owned the private display with -nolisten tcp; actual client exited; run-uitest was removed; no task-owned listener/world/config remains.\n'
+        def files = []
+        Files.walk(attempt.toPath()).withCloseable { paths ->
+            paths.filter { Files.isRegularFile(it) }.forEach { path ->
+                def relative = attempt.toPath().relativize(path).toString()
+                if (relative != 'result.json' && !relative.startsWith('.identity-check/')) {
+                    files.add(path.toFile())
+                }
+            }
+        }
+        def artifacts = files.collect { file ->
+            def canonical = file.canonicalFile
+            [path: attempt.canonicalFile.toPath().relativize(canonical.toPath()).toString(), sha256: uiSha256(canonical.bytes)]
+        }
+        def binding = [evidenceRoot: evidenceRoot.canonicalPath, attemptPath: attempt.canonicalPath, runId: runId]
+        def attachments = verified.attachments.findAll { !it.isEmpty() }
+        def renderer = attachments.find { it.glRenderer != null } ?: [:]
+        def report = [schemaVersion: 3, kind: 'ui', status: 'complete', runId: runId,
+                evidenceRoot: binding.evidenceRoot, attemptPath: binding.attemptPath,
+                pathIdentitySha256: uiSha256(JsonOutput.toJson(binding).getBytes(StandardCharsets.UTF_8)),
+                sourceRevision: sourceIdentity.revision, dirtyDiffSha256: sourceIdentity.dirtySha256,
+                dependencyLockSha256: uiSha256(uiVerificationMetadata.asFile.bytes),
+                productJarSha256: uiSha256(jar.bytes), ldlibJarSha256: uiSha256(ldlib.bytes),
+                ldlibCoordinates: 'com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.34:all',
+                startedAt: startedAt, endedAt: Instant.now().toString(), requested: requested, executed: requested,
+                assertions: assertionMap, parentExit: 0, clientExit: child.exit, displayMode: 'xvfb',
+                displayNetwork: 'disabled (-nolisten tcp)', inputMode: 'SYNTHETIC',
+                guiScale: renderer.guiScale as double, language: renderer.language,
+                glVendor: renderer.glVendor, glRenderer: renderer.glRenderer, glVersion: renderer.glVersion,
+                window: [width: renderer.windowWidth as int, height: renderer.windowHeight as int,
+                        framebufferWidth: renderer.framebufferWidth as int,
+                        framebufferHeight: renderer.framebufferHeight as int],
+                controls: verified.controls, controlAttachments: attachments, screenshots: verified.captures,
+                upstreamReportRunId: verified.report.runId, artifacts: artifacts]
+        def resultFile = new File(attempt, 'result.json')
+        resultFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(report)) + '\n'
+        verifyUiPersistedReport(resultFile, true)
+        def outerProbeRoot = new File(temporaryDir, "outer-${runId}")
+        uiDeleteRecursively(outerProbeRoot)
+        try {
+            def baselineResult = uiPreparePersistedBaseline(resultFile, outerProbeRoot)
+            def outerRejections = [
+                    stale: uiPersistedOuterRejects(baselineResult, outerProbeRoot, 'stale') { probe, probeAttempt ->
+                        probe.startedAt = Instant.now().minusSeconds(3600).toString()
+                    },
+                    missing: uiPersistedOuterRejects(baselineResult, outerProbeRoot, 'missing') { probe, probeAttempt ->
+                        new File(probeAttempt, probe.screenshots[0].path as String).delete()
+                    },
+                    mismatch: uiPersistedOuterRejects(baselineResult, outerProbeRoot, 'mismatch') { probe, probeAttempt ->
+                        probe.runId = 'different'
+                    },
+                    screenshotHash: uiPersistedOuterRejects(baselineResult, outerProbeRoot, 'screenshot-hash') { probe, probeAttempt ->
+                        new File(probeAttempt, probe.screenshots[0].path as String).bytes = [1, 2, 3] as byte[]
+                    }
+            ]
+            if (outerRejections.any { it.value == null }) {
+                throw new GradleException("Stale, missing, mismatched, or screenshot-hash UI evidence was accepted: ${outerRejections}")
+            }
+        } finally {
+            uiDeleteRecursively(outerProbeRoot)
+        }
+        logger.lifecycle("Federation UI evidence: ${attempt}")
+    }
+}
+
+tasks.register('federationUiVerifyEvidence') {
+    group = 'verification'
+    description = 'Consumes and validates a persisted Task 3 actual-client report.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Captures current Git worktree identity while consuming UI evidence.')
+    doLast {
+        def resultText = uiResultProperty.orNull
+        if (resultText == null || resultText.isBlank()) throw new GradleException('Missing -PresultFile')
+        def resultFile = new File(resultText)
+        verifyUiPersistedReport(resultFile.isAbsolute() ? resultFile : new File(uiRepositoryDir, resultText), true)
+    }
+}
+
+tasks.register('federationUiVerifierSelfTest') {
+    group = 'verification'
+    description = 'Proves rebound malformed or forged upstream LDLib2 reports fail persisted consumption.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and mutates a canonical persisted UI evidence attempt.')
+    doLast {
+        def resultText = uiResultProperty.orNull
+        if (resultText == null || resultText.isBlank()) throw new GradleException('Missing -PresultFile')
+        def resultFile = new File(resultText)
+        def canonicalResult = resultFile.isAbsolute() ? resultFile : new File(uiRepositoryDir, resultText)
+        def probeRoot = new File(temporaryDir, 'rebound-upstream')
+        uiDeleteRecursively(probeRoot)
+        try {
+            def baselineResult = uiPreparePersistedBaseline(canonicalResult, probeRoot)
+            def rejected = uiMutationsFor(baselineResult).collectEntries { name, mutate ->
+                [(name): uiPersistedVerifierRejects(baselineResult, probeRoot, name, mutate)]
+            }
+            if (rejected.any { it.value == null }) {
+                throw new GradleException("Persisted UI verifier accepted rebound upstream evidence: ${rejected}")
+            }
+            rejected.each { name, reason ->
+                logger.lifecycle("Federation UI verifier probe: ${name}=rejected reason=${reason}")
+            }
+        } finally {
+            uiDeleteRecursively(probeRoot)
+        }
+    }
+}
+
+tasks.register('federationUiVerifierProbe') {
+    group = 'verification'
+    description = 'Runs one rebound upstream LDLib2 corruption through persisted consumption and must fail.'
+    dependsOn(tasks.named('jar'))
+    notCompatibleWithConfigurationCache('Copies and mutates a canonical persisted UI evidence attempt.')
+    doLast {
+        def resultText = uiResultProperty.orNull
+        if (resultText == null || resultText.isBlank()) throw new GradleException('Missing -PresultFile')
+        def probeName = uiProbeProperty.orNull
+        def resultFile = new File(resultText)
+        def canonicalResult = resultFile.isAbsolute() ? resultFile : new File(uiRepositoryDir, resultText)
+        def mutations = uiMutationsFor(canonicalResult)
+        def mutation = mutations[probeName]
+        if (mutation == null) throw new GradleException("Unknown -Pprobe; expected ${mutations.keySet()}")
+        def probeRoot = new File(temporaryDir, "selected-${probeName}")
+        uiDeleteRecursively(probeRoot)
+        try {
+            def baselineResult = uiPreparePersistedBaseline(canonicalResult, probeRoot)
+            def reboundResult = uiCreatePersistedProbe(baselineResult, probeRoot, probeName, mutation)
+            verifyUiPersistedReport(reboundResult, true)
+            throw new GradleException("Persisted UI verifier accepted rebound probe ${probeName}")
+        } finally {
+            uiDeleteRecursively(probeRoot)
+        }
+    }
+}

@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="AGPL-3.0-only"
+
+[[mods]]
+modId="ae2federation_test"
+version="1"
+displayName="AE2 Federation Test Fixtures"
+description='''Dev-only NeoForge GameTest and actual-client UI fixtures.'''
+
+[[mixins]]
+config="ae2federation_test.mixins.json"
+
+[[dependencies.ae2federation_test]]
+modId="ae2federation"
+type="required"
+versionRange="[${mod_version}]"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.ae2federation_test]]
+modId="ae2"
+type="required"
+versionRange="[19.2.17]"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.ae2federation_test]]
+modId="ldlib2"
+type="required"
+versionRange="[2.2.34]"
+ordering="AFTER"
+side="BOTH"

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ldlib2-ui>
+    <stylesheet location="ldlib2:lss/mc.lss"/>
+    <stylesheet location="ae2federation_test:lss/federation_harness.lss"/>
+    <root id="harness_root" class="panel_bg harness-panel">
+        <label id="shared_resource_text">Shared resource baseline</label>
+        <label id="ack_status">Server acknowledgment pending</label>
+        <button id="ack_control" text="Request server acknowledgment"/>
+    </root>
+</ldlib2-ui>

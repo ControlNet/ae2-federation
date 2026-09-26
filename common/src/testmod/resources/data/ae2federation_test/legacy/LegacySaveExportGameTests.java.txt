@@ -1,0 +1,86 @@
+package space.controlnet.ae2federation.test;
+
+import appeng.api.networking.GridHelper;
+import appeng.api.networking.IGrid;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Properties;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.bridge.BridgeOperationalReason;
+import space.controlnet.ae2federation.bridge.BridgeRegistration;
+import space.controlnet.ae2federation.fabric.FabricRegistryAccess;
+import space.controlnet.ae2federation.fabric.port.HubPortKind;
+import space.controlnet.ae2federation.hub.HubBlockEntity;
+import space.controlnet.ae2federation.hub.HubRegistration;
+import space.controlnet.ae2federation.test.bridge.BridgeFixtures;
+
+/** Pre-rename build only: exports a structure containing blocks, block entities and parts under the old ids. */
+@PrefixGameTestTemplate(false)
+public final class LegacySaveExportGameTests {
+    private LegacySaveExportGameTests() {
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void legacySaveExport(GameTestHelper helper) {
+        var fixtures = new BridgeFixtures(helper);
+        var bridgePosition = new BlockPos(4, 1, 4);
+        fixtures.placeNativeHosts(bridgePosition);
+        var bridge = fixtures.placeBridge(bridgePosition);
+        var hub = new BlockPos(1, 1, 1);
+        fixtures.nativePorts().placeChest(hub.west());
+        helper.setBlock(hub, HubRegistration.HUB.get());
+        helper.setBlock(hub.east(), HubRegistration.FEDERATION_CABLE.get());
+        helper.setBlock(hub.east(2), HubRegistration.FEDERATION_CABLE.get());
+        var chestPosition = new BlockPos(7, 1, 1);
+        helper.setBlock(chestPosition, Blocks.CHEST);
+        var chest = helper.<ChestBlockEntity>getBlockEntity(chestPosition);
+        chest.setItem(0, new ItemStack(HubRegistration.HUB_ITEM.get(), 3));
+        chest.setItem(1, new ItemStack(HubRegistration.FEDERATION_CABLE_ITEM.get(), 17));
+        chest.setItem(2, new ItemStack(BridgeRegistration.MULTIPART_BRIDGE.get(), 5));
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(bridge.operationalReason(), BridgeOperationalReason.VALID, "Bridge must be valid");
+            var hubEntity = helper.<HubBlockEntity>getBlockEntity(hub);
+            helper.assertValueEqual(hubEntity.binding(Direction.WEST).kind(), HubPortKind.NATIVE_ME, "Hub native face");
+            helper.assertValueEqual(hubEntity.binding(Direction.EAST).kind(), HubPortKind.FEDERATION, "Hub cable face");
+            var main = network(bridge.getMainNode().getGrid());
+            var outer = network(bridge.getExternalFacingNode().getGrid());
+            var hubNetwork = network(GridHelper.getExposedNode(helper.getLevel(), helper.absolutePos(hub.west()),
+                    Direction.EAST).getGrid());
+            var properties = new Properties();
+            properties.setProperty("bridgeMainNetwork", main);
+            properties.setProperty("bridgeOuterNetwork", outer);
+            properties.setProperty("hubNativeNetwork", hubNetwork);
+            properties.setProperty("chestItems", "hub=3,federation_cable=17,multipart_bridge=5");
+            var template = new StructureTemplate();
+            template.fillFromWorld(helper.getLevel(), helper.absolutePos(BlockPos.ZERO), new net.minecraft.core.Vec3i(9, 3, 8),
+                    false, null);
+            try {
+                var directory = Path.of(System.getProperty("ae2federation.legacyExportDir"));
+                Files.createDirectories(directory);
+                NbtIo.writeCompressed(template.save(new net.minecraft.nbt.CompoundTag()),
+                        directory.resolve("legacy_save.nbt"));
+                try (var output = Files.newOutputStream(directory.resolve("legacy_save.properties"))) {
+                    properties.store(output, "Pre-rename AE2 Federation save sample");
+                }
+            } catch (java.io.IOException exception) {
+                throw new IllegalStateException(exception);
+            }
+            fixtures.close();
+        });
+    }
+
+    private static String network(IGrid grid) {
+        return FabricRegistryAccess.confirmedNetworkId(grid).orElseThrow(() -> new net.minecraft.gametest.framework
+                .GameTestAssertException("Waiting for settled identity")).value().toString();
+    }
+}

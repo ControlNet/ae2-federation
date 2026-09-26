@@ -1,0 +1,462 @@
+{
+  "meta": {
+    "format_version": "5.0",
+    "model_format": "free",
+    "box_uv": false
+  },
+  "name": "router_comparison",
+  "resolution": {
+    "width": 16,
+    "height": 16
+  },
+  "elements": [
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        8,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 0
+        }
+      },
+      "type": "cube",
+      "uuid": "52816ab4-633a-4930-8961-f860480e0f01"
+    },
+    {
+      "name": "solid_000",
+      "box_uv": false,
+      "render_order": "default",
+      "rescale": false,
+      "locked": false,
+      "shade": true,
+      "light_emission": 0,
+      "export": true,
+      "scope": 0,
+      "allow_mirror_modeling": true,
+      "from": [
+        24,
+        0,
+        0
+      ],
+      "to": [
+        40,
+        16,
+        16
+      ],
+      "autouv": 0,
+      "color": 6,
+      "origin": [
+        32,
+        8,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": 1
+        }
+      },
+      "type": "cube",
+      "uuid": "d27160f0-fd3f-4492-9d5d-2eb5928d3d94"
+    }
+  ],
+  "groups": [
+    {
+      "name": "router",
+      "uuid": "6de2a494-42fe-4713-833c-9225cff96c9d",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "b0fa4042-5769-40c9-aca9-b791837b6ec5",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V03",
+      "uuid": "3d0c12bb-6dc5-47da-acfa-13bbca51f05c",
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    },
+    {
+      "name": "router",
+      "uuid": "9d67e7f6-5676-45a5-a3c8-03bef65b14ec",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "solid",
+      "uuid": "5d9ffb1c-2b23-4f67-b756-4ee651342cd6",
+      "export": true,
+      "locked": false,
+      "scope": 0,
+      "selected": false,
+      "visibility": true,
+      "_static": {
+        "properties": {},
+        "temp_data": {}
+      },
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "children": [],
+      "reset": false,
+      "shade": true,
+      "mirror_uv": false,
+      "autouv": 0,
+      "isOpen": false,
+      "primary_selected": false
+    },
+    {
+      "name": "V04",
+      "uuid": "7be8104f-2c88-42b6-87b3-321cf7cc62e2",
+      "origin": [
+        24,
+        0,
+        0
+      ],
+      "visibility": true,
+      "export": true,
+      "isOpen": false
+    }
+  ],
+  "outliner": [
+    {
+      "uuid": "3d0c12bb-6dc5-47da-acfa-13bbca51f05c",
+      "children": [
+        {
+          "uuid": "6de2a494-42fe-4713-833c-9225cff96c9d",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "b0fa4042-5769-40c9-aca9-b791837b6ec5",
+              "isOpen": false,
+              "children": [
+                "52816ab4-633a-4930-8961-f860480e0f01"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uuid": "7be8104f-2c88-42b6-87b3-321cf7cc62e2",
+      "children": [
+        {
+          "uuid": "9d67e7f6-5676-45a5-a3c8-03bef65b14ec",
+          "isOpen": false,
+          "children": [
+            {
+              "uuid": "5d9ffb1c-2b23-4f67-b756-4ee651342cd6",
+              "isOpen": false,
+              "children": [
+                "d27160f0-fd3f-4492-9d5d-2eb5928d3d94"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "name": "router.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "0",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "607e0d93-ea17-4bd0-88fa-dc40071ee296",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABK0lEQVR4AaSToUtDYRTFDy+LaBDEZtImGC0WMQji32C2ycBgFIPw8E8Qi2EDq4pYLIJBwSFjhiEoqGBwqFnd74Pz/N73UBgb/Ljnnnvv2cK37KB+8j0ImXqfxYU5QU+Giv6LeKd521YIwHx4fKaIatYuWwL3VJaop2cXyN8AuumpScq/pDvFL4ivarVNwetuLkBDvGNdCWDxc2Rc7/NLJfCY+dC1EsDga2ZWW6vLJfCYpRQBO09vgnhhv9mRsc8OuC8CbPRbi4CNiVGBA/jmzlVLxj474L4IsEHNbq7DIdrgWce1EpDn2xrqvmj4/KgEHrP4GB0C/KowoFHfE4yt1wRoYJYSAlKTpwr20eA+riGA59m+u1fKykdXkPr03BCUIRqHx+Kf1Q/cEPADAAD//2PWuUsAAAAGSURBVAMA05v8QyQZlJMAAAAASUVORK5CYII="
+    },
+    {
+      "name": "router.png",
+      "path": "",
+      "folder": "block",
+      "namespace": "ae2federation",
+      "id": "1",
+      "group": "",
+      "scope": 0,
+      "width": 16,
+      "height": 16,
+      "uv_width": 16,
+      "uv_height": 16,
+      "particle": false,
+      "use_as_default": false,
+      "layers_enabled": false,
+      "sync_to_project": "",
+      "file_format": "png",
+      "render_mode": "default",
+      "render_sides": "auto",
+      "wrap_mode": "limited",
+      "pbr_channel": "color",
+      "fps": 7,
+      "frame_time": 1,
+      "frame_order_type": "loop",
+      "frame_order": "",
+      "frame_interpolate": false,
+      "visible": true,
+      "internal": true,
+      "saved": false,
+      "uuid": "f3d3e014-1bd2-426d-adb9-7fe04c04b428",
+      "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABJElEQVR4AZSTsUoDQRRFH1tJEBEEf8HO0r+Q2EiQBQNCmtRaWllqnSYgRFgk2Bj8CyuxUvyBEBBkkZAuyRm4j5lkA9mFw5257+3dmYWXlWU5r2I8nsxFVV1eZsuneXplMXl+Y53ObeCi1U1qcd/yVQsBLEZvjyb6/TuDorh3TzUp74AHsBGNxo61e0N7nfwFzh8GKq1pZcBa14oxnc7cydjs7h24UXeRnICjivyy6Vms5aNcUcWMzX/5G/Y0Coz3z28T8lFqIjmBzG2V6ycBxdPIBF+Og+Sj+PpvHkDay3XbxM/Hl50cHwVYy0cJAK7vARh10H/zANLqBKjXA2RIOerZ4b7BoNsyrgiqSz0gHpJ4vWmwkgANSJUyUMBwPQ97BuojZAEAAP//4IMIIQAAAAZJREFUAwC+QuUdeN5gGQAAAABJRU5ErkJggg=="
+    }
+  ],
+  "editor_state": {
+    "selected_elements": [],
+    "selected_groups": [],
+    "previews": {
+      "main": {
+        "position": [
+          150,
+          85,
+          160
+        ],
+        "target": [
+          40,
+          8,
+          22
+        ],
+        "orthographic": false,
+        "zoom": 0.5
+      }
+    }
+  }
+}

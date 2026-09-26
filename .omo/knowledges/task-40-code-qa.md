@@ -1,0 +1,17 @@
+# Task 40 code-side QA boundary
+
+- `federationVerify` selects manifest cases by exact ID, runs the matching backend, and the canonical schema-v3 consumer requires `status=complete`, `parentExit=0`, matching source/dependency/JAR identity, and hash-bound artifacts. An ID in the manifest alone does not execute a validator.
+- Documentation and final audits must not emit a passing report while Task 37/38 evidence and final client review are absent. The provisional acceptance matrix explicitly records failed Federation small warmup and absent soak; the suite result remains `BLOCKED`, including when its independent negative probes reject.
+- F3 is a distinct client workflow, not an alias to Task 33's LDLib2 scenarios. The current `federationUiTest` only recognizes exact Task 3/15/33/34 sets. Register F3 only with a real end-to-end client scenario and current benchmark spot-check.
+- The exact commands, exits and receipts for the interim QA dispatch are in `.omo/evidence/task-40-qa/verification.md`.
+
+## Revised gate
+
+- Docs qualification is independent of Tasks 37/38 being complete. Parse the expanded matrix's exact `T-*` ranges and manifest IDs; require references to exist and truthful 3/3 direct/subnet, 27/256 failed Federation warmup, 0/3 Federation windows, NON_COMPARABLE resources, absent soak, provisional art/compatibility, and unapproved final wave. Run the same validator on the bound copy in persisted consumption and compare it to current docs bytes. Full F1-F4 approvals remain separate and blocked.
+- Exact F3 IDs are now registered with explicit blocked backend semantics. The real `federationUiTest` entrypoint rejects those IDs before client launch; registering them is not actual-client proof.
+
+## Truthful pending-claim gate and receipt
+
+- Never reject documentation simply because it says Task 40/F1-F4 have not passed or cites an earlier `BLOCKED` attempt: that creates a self-lock before a source-bound positive docs run. Reject affirmative unsupported current approval separately. The writer's F3 registration and exact command corrections enabled a four-case schema-v3 `complete` docs attempt at `.omo/evidence/task-40/attempt-20260925T064840570Z/result.json` (SHA-256 `110a51effe1ab81aa927829eaf5376618a798f3c276789af8a362bee80b8788b`), accepted by `federationVerifyEvidence`; five rebound negative probes and five deliberately invalid source inputs rejected. F1-F4 remain BLOCKED independent of docs acceptance. Full command/exits and document hashes are in `.omo/evidence/task-40-qa/verification.md`.
+- The writer then changed `docs/benchmarks/task-37.md`, and the old receipt was correctly rejected as stale. The newer accepted complete report is `.omo/evidence/task-40/attempt-20260925T065111416Z/result.json` (SHA-256 `cf95313dd2c247abe8a59ca959386c28cb280172fc6eff8686aea06c2f28b091`); it passed the persisted consumer and five rebound semantic probes. Re-run the suite and consumer after any further bound-document edit.
+- Final code-side check also rejects affirmative fabricated Federation 3/3 and Task 38 completed soak claims in any bound README/matrix/benchmark text. Seven source-level negative fixtures reject at their intended boundaries. The latest accepted report after that code change is `.omo/evidence/task-40/attempt-20260925T065252111Z/result.json` (SHA-256 `15af22254dab9529a2706a7c3ba1988d97078a6121ba29057047ead63aa7db50`); its persisted consumer and five rebound probes passed. F1-F4 remain BLOCKED.

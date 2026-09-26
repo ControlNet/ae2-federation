@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "profileVersion": "processing-small-v3",
+  "id": "processing-small",
+  "testId": "processingbenchmarksmall",
+  "structure": "ae2federation_test:harness_native_smoke",
+  "seed": 20019006,
+  "comparison": "native-single-grid-vs-federation-multi-provider",
+  "equalResources": true,
+  "lifecycle": {
+    "executionTimeoutSeconds": 300,
+    "shutdownGraceSeconds": 10
+  },
+  "inputResource": "minecraft:cobblestone",
+  "primaryOutputResource": "minecraft:diamond",
+  "byproductOutputResource": "minecraft:gold_ingot",
+  "gridCount": 16,
+  "physicalPatterns": 256,
+  "logicalPatterns": 256,
+  "logicalLanes": 15,
+  "routes": 270,
+  "providerEntries": 270,
+  "targetRelationships": 15,
+  "cpuLimit": 1,
+  "startingResourceUnits": 4096,
+  "plannedOutputUnits": 960,
+  "batchUnits": 256,
+  "primaryOutputUnits": 64,
+  "byproductOutputUnits": 32,
+  "warmupRejectedAttempts": 1,
+  "measurementSamples": 15,
+  "rejectedAttemptsPerScene": 1,
+  "largeBatchCalls": 15,
+  "largeBatchUnits": 256,
+  "smallBatchCalls": 240,
+  "smallBatchUnits": 16,
+  "replayVariants": [
+    "large-batch-low-frequency",
+    "small-batch-high-frequency"
+  ],
+  "endpointStates": [
+    "busy",
+    "result-locked",
+    "rejecting",
+    "return-congested",
+    "eligible"
+  ]
+}

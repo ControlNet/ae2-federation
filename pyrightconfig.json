@@ -1,0 +1,13 @@
+{
+  "include": [
+    "tools/visual",
+    "tools/blockbench"
+  ],
+  "venvPath": "tools/visual/.pixi/envs",
+  "venv": "default",
+  "pythonVersion": "3.12",
+  "exclude": [
+    "tools/blockbench/.local",
+    "tools/blockbench/versions"
+  ]
+}
