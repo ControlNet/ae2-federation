@@ -472,9 +472,14 @@ tasks.named('runAppfluxGameTestServer').configure {
 }
 
 tasks.withType(ProcessResources).configureEach {
-    inputs.property('mod_version', project.version.toString())
+    def metadataProperties = [
+            mod_version: project.version.toString(),
+            ae2_version_range: ae2_version_range,
+            ldlib2_version_range: ldlib2_version_range
+    ]
+    inputs.properties(metadataProperties)
     filesMatching('META-INF/neoforge.mods.toml') {
-        expand(mod_version: project.version.toString())
+        expand(metadataProperties)
     }
 }
 

@@ -19,10 +19,10 @@ Connect separate **Applied Energistics 2 networks** to share storage, autocrafti
 
 - Minecraft **1.21.1** / Java **21**
 - NeoForge **21.1.250**
-- Applied Energistics 2 **19.2.17** and its dependencies
-- LDLib2 **2.2.34** and its dependencies
+- Applied Energistics 2 **19.2.9 or newer** for Minecraft 1.21.1 and its dependencies
+- LDLib2 **2.2.34 or newer** for Minecraft 1.21.1 and its dependencies
 
-These are the exact versions required by the current build. Install the mod and its dependencies on **both the client and server** for multiplayer.
+Regular builds and tests use AE2 19.2.17 and LDLib2 2.2.34; see the [minimum-version investigation](docs/compatibility/minimum-versions.md) for the lower bounds. Newer versions are allowed by the loader, but have not all been compatibility-tested. Install the mod and its dependencies on **both the client and server** for multiplayer.
 
 ## Installation
 

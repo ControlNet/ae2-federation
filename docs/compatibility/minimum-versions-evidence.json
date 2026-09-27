@@ -1,0 +1,129 @@
+{
+  "date": "2026-09-27",
+  "runtime": {
+    "minecraft": "1.21.1",
+    "neoforge": "21.1.250",
+    "ae2": "19.2.9",
+    "ldlib2": "2.2.34",
+    "guideme": "21.1.1"
+  },
+  "compiledAgainst": {
+    "ae2": "19.2.17",
+    "ldlib2": "2.2.34"
+  },
+  "productionJarSha256": "72042809e3f05420310fd12b254d319de130b0bb020f651f5a1b563ab10dfca9",
+  "productionClassFilesCompared": 433,
+  "productionClassFilesMatchJar": true,
+  "runtimeLaunch": "NeoForge development GameTest server and actual client; unchanged pinned-build class files, not a separately packaged-JAR launch",
+  "gametests": [
+    {
+      "testId": "harnessnativesmoke",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-harnessnativesmoke.log",
+      "sha256": "05545ffb19699a5f16ef40078c244d3635c381bd5be3d7004b7bd46b27471e14"
+    },
+    {
+      "testId": "lanenativethreeway",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-lanenativethreeway.log",
+      "sha256": "417ae1ec954f10b24f8d69189bf4852738dc5276064c43c6021e95e0e7527d10"
+    },
+    {
+      "testId": "lanerejectlocalfallback",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-lanerejectlocalfallback.log",
+      "sha256": "2ccffd06836cb3a37ee329192237cfa04d49a7d82f05cb6f5500b9cd01b78d8b"
+    },
+    {
+      "testId": "processingnativedifferential",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-processingnativedifferential.log",
+      "sha256": "fb7c4ffcfcba00bdca7475b7df1e97a5165bf38da1d1c8700e2fe2db6c49d20c"
+    },
+    {
+      "testId": "storagenativeaccess",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-storagenativeaccess.log",
+      "sha256": "fddbb0c378e1d846ec4ca2c50b1ab34104548e168436aef8282a6c900083d809"
+    },
+    {
+      "testId": "identitypartonsettledcable",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-identitypartonsettledcable.log",
+      "sha256": "8cdc96ced85b7d83557d98b8c75181622f18e9347fe060f81908c6eb69d820e1"
+    },
+    {
+      "testId": "energydirectionalpolicy",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-energydirectionalpolicy.log",
+      "sha256": "79d84f6ab4a9cae401797ffe0504d7cb1faaa45121e89efd5ce0a62d5432fe84"
+    },
+    {
+      "testId": "scalesmallprocessingdevelopment",
+      "status": "PASS",
+      "log": "build/dependency-floor/gametest-scalesmallprocessingdevelopment.log",
+      "sha256": "9752f1f75717b86ed86ab470ebc7424f3658e6d5f868b8efcb2d3a09ea818076"
+    }
+  ],
+  "uiRuns": [
+    {
+      "report": "build/dependency-floor/ui/report.json",
+      "sha256": "5ea7695af2da60125723a3ebb92827465ec7aa5d99290297899b48a48a4ea2ba",
+      "status": "FAIL",
+      "totals": {
+        "scenarios": 3,
+        "passed": 2,
+        "failed": 1,
+        "errored": 0,
+        "skipped": 0,
+        "steps": 925,
+        "checks": 87,
+        "checksFailed": 1,
+        "captures": 39
+      },
+      "scenarios": [
+        {
+          "name": "ui.endpoint",
+          "status": "PASS"
+        },
+        {
+          "name": "ui.graph-controls",
+          "status": "FAIL"
+        },
+        {
+          "name": "ui.mapping",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "report": "build/dependency-floor/ui-1600/report.json",
+      "sha256": "1fcf5b8bec0dc59073d744e88d04ee512521157dc540745602c63cd9667e6daf",
+      "status": "PASS",
+      "totals": {
+        "scenarios": 1,
+        "passed": 1,
+        "failed": 0,
+        "errored": 0,
+        "skipped": 0,
+        "steps": 316,
+        "checks": 22,
+        "checksFailed": 0,
+        "captures": 15
+      },
+      "scenarios": [
+        {
+          "name": "ui.graph-controls",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "initialUiFailure": "1280x720 graph minimum-height assertion; endpoint and mapping passed. Graph controls passed at the existing Task 33 1600x960 dimensions.",
+  "limitations": [
+    "No complete 152-case GameTest suite on the minimum tuple",
+    "Test-only CPU suspension fixtures need newer AE2 and were excluded",
+    "No guarantee for all future versions admitted by the open ranges",
+    "No published release asset changed"
+  ]
+}

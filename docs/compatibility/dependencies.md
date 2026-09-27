@@ -12,14 +12,17 @@
 | Applied Energistics 2 | 19.2.17 | `org.appliedenergistics:appliedenergistics2:19.2.17` | Qualified |
 | LDLib2 | 2.2.34 | `com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.34:all` | Qualified |
 
-No candidate version was changed. All direct declarations are exact; there are no dynamic selectors or automatic toolchain downgrades.
+No build dependency version was changed. All direct Gradle dependency declarations are exact; there are no dynamic selectors or automatic toolchain downgrades. Runtime AE2 and LDLib2 minimums are configured separately through `ae2_version_range` and `ldlib2_version_range` in `gradle.properties`.
+
+See [minimum-version investigation](minimum-versions.md) for the API boundary and
+runtime checks supporting AE2 19.2.9 and LDLib2 2.2.34 as the lower bounds.
 
 ## Compatibility intersection
 
 - The official NeoForge 1.21.1 ModDevGradle MDK commit `30cafee9cd8d7f46427ec88fa8579d49c146df9a` pins ModDevGradle `2.0.146`, NeoForge `21.1.250`, Java 21, and Gradle `9.2.1` together.
 - AE2 `19.2.17` is published for Minecraft `1.21.1`, requires NeoForge `21.1.169` or newer, and declares Java 21. Its runtime variant requires GuideME `21.1.1`.
 - LDLib2 `2.2.34` publishes a Java 21 NeoForge 1.21.1 runtime variant and requires NeoForge `21.1.216` or newer. Its module metadata requires Kotlin stdlib `2.1.20`, Yoga `1.0.0`, and Taffy `1.1.4`.
-- The project metadata declares exact runtime requirements for Minecraft, NeoForge, AE2, and LDLib2. Qualification applies only to this tuple and does not imply compatibility with another Minecraft target.
+- The project metadata declares exact runtime requirements for Minecraft and NeoForge, with AE2 `[19.2.9,)` and LDLib2 `[2.2.34,)`. These minimum ranges permit newer releases to load; qualification still applies only to the tested tuple and does not imply that every newer release, or another Minecraft target, has been tested.
 
 ## Artifact integrity
 
