@@ -28,6 +28,37 @@ jobs:
         run: ./gradlew :neoforge-1.21.1:check :neoforge-1.21.1:build --dependency-verification=strict --no-configuration-cache
       - name: Archive tuple, license and contamination checks
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_artifact_verify.py -v
+      - name: Package development JAR
+        if: github.ref == 'refs/heads/dev'
+        id: development
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, shutil
+          from pathlib import Path
+          from tools.release_metadata import archive_names, properties
+          root = Path.cwd()
+          values = properties(root)
+          commit = os.environ['GITHUB_SHA']
+          name = f"{values['mod_id']}-neoforge-{values['minecraft_version']}-dev-{commit[:12]}"
+          output = root / 'build/development'
+          output.mkdir(parents=True, exist_ok=True)
+          target = output / f'{name}.jar'
+          shutil.copy2(root / 'neoforge-1.21.1/build/libs' / archive_names(root)[0], target)
+          (output / 'SHA256SUMS.txt').write_text(f'{hashlib.sha256(target.read_bytes()).hexdigest()}  {target.name}\n')
+          (output / 'BUILD.txt').write_text(
+              f'Commit: {commit}\nMod version: {values["mod_version"]}\n'
+              'Development build. Check the workflow result for full GameTest status.\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write(f'name={name}\n')
+          PY
+      - name: Upload development JAR (7 days)
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.development.outputs.name }}-${{ github.run_attempt }}
+          path: build/development/*
+          if-no-files-found: error
+          retention-days: 7
       - name: Every required manifest GameTest (exact selected count)
         run: PYTHONDONTWRITEBYTECODE=1 python3 -B tools/required_gametests.py
       - name: Retain GameTest diagnostics
@@ -37,3 +68,4 @@ jobs:
           name: required-gametest-log
           path: gametest.log
           if-no-files-found: ignore
+          retention-days: 7

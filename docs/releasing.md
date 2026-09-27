@@ -12,6 +12,20 @@ This repository follows the same branch convention as `ControlNet/minecraft-matr
 
 Pull requests also run correctness checks. CI does not merge branches or create pull requests.
 
+## Development downloads
+
+Runs on `dev` upload an installable JAR after the build, unit tests, and archive
+checks pass. Open the **Quick correctness** run and download its
+`ae2federation-neoforge-1.21.1-dev-<commit>-<attempt>` artifact. It contains the
+binary JAR, `SHA256SUMS.txt`, and `BUILD.txt` with the full commit and embedded
+mod version. The filename identifies the development commit; it does not change
+the mod version declared in `gradle.properties`.
+
+Development artifacts and uploaded Quick correctness GameTest logs expire after
+7 days. The JAR is available before the longer GameTest suite finishes; inspect
+the final workflow result for full test status. These downloads do not create a
+GitHub Release. Published versions remain available from GitHub Releases.
+
 ## Versioning
 
 The first version is **0.0.1**, targeting Minecraft **1.21.1 / NeoForge**.
