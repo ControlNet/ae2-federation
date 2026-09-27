@@ -65,3 +65,18 @@ No GameTest uses an ME Controller or ME Drive, and no test places a Router/Bridg
   a new `NativeAttachment`, so the binding compares unequal and the Router republishes.
 - Remaining gap: if a face publishes `Unsettled` evidence and the identity later settles with no node/grid event, the
   Router does not republish (the Bridge compares confirmed ids on every refresh; the Router does not).
+
+## Regression from the neutral-boundary change (CI run 36313854149)
+
+- CI failed `productionproviderendpointreloadreturns` ("return path of order 0 restored", 0 instead of 1). The target
+  Subnet was `AMBIGUOUS_MERGE` after the Endpoint reload.
+- The scene's unload helper calls `onChunkUnloaded()` (destroys the node) before saving, so the reloaded Endpoint has no
+  lineage. It first joined the Router face's Grid, which held only the neutral face node, so it minted a fresh id and
+  then merged with the Subnet's chest. Before the change the face carried the Subnet id and handed it over. The same
+  applies in play when a new device touches a Router face before (or at the same time as) the network.
+- Fix: neutral lineage is still never a claim, but it is a hint. A node without saved data takes a regular node's id,
+  else a boundary's id, else the Grid's fresh id (`establishedHint`). A neutral node re-added to a Grid with regular
+  nodes follows their id, without `onSaveChanges` (that fires inside Grid propagation and Router `invalidate()` would
+  reconcile services synchronously there).
+- CI runs `tools/required_gametests.py`, which stops at the first failure; a local run of every manifest GameTest takes
+  roughly 1.5-2 hours sequentially.

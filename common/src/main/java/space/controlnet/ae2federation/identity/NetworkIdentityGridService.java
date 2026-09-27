@@ -38,11 +38,17 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         var neutral = neutral(gridNode);
         var transientNode = !neutral && NativeIdentityInitialization.contains(gridNode);
         if (lineage == null) {
-            var existingId = nodes.entrySet().stream().filter(entry -> !neutral(entry.getKey())).findFirst()
-                    .map(entry -> entry.getValue().networkId()).orElse(newGridId);
-            lineage = new NodeLineage(existingId, UUID.randomUUID(), 1);
+            lineage = new NodeLineage(establishedHint(), UUID.randomUUID(), 1);
             transientNode = !neutral && NativeIdentityInitialization.register(gridNode);
             ((GridNode) gridNode).callListener(IGridNodeListener::onSaveChanges);
+        } else if (neutral) {
+            // Follow the network this boundary attaches to, so it can hand that id to a node that later joins through
+            // it alone. No save callback: it fires inside Grid propagation, and the id is only a hint, never a claim.
+            var attached = nodes.entrySet().stream().filter(entry -> !neutral(entry.getKey())).findFirst()
+                    .map(entry -> entry.getValue().networkId());
+            if (attached.isPresent() && !attached.get().equals(lineage.networkId())) {
+                lineage = new NodeLineage(attached.get(), lineage.nodeId(), lineage.revision());
+            }
         }
         // Saved provisional flags are legacy durable evidence. Only the original live node in this call scope
         // is transient; copied NBT never carries this authority, and node UUIDs are never regenerated on transfer.
@@ -72,6 +78,20 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
                 ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
             }
         }
+    }
+
+    /** A regular node's network id, else a boundary's attached-network hint, else this Grid's fresh id. */
+    private NetworkId establishedHint() {
+        NetworkId hint = null;
+        for (var entry : nodes.entrySet()) {
+            if (!neutral(entry.getKey())) {
+                return entry.getValue().networkId();
+            }
+            if (hint == null) {
+                hint = entry.getValue().networkId();
+            }
+        }
+        return hint == null ? newGridId : hint;
     }
 
     /**
