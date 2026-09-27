@@ -193,6 +193,9 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     def controlsOutcome = outcomes['ui.graph-controls']
     if ((controlsOutcome.policyRevision as long) <= 0L || controlsOutcome.policyEnabled != 'true'
             || controlsOutcome.networkRename != 'North Storage'
+            || !((controlsOutcome.highlightBlocks ?: '0') as int > 1)
+            || !captures.any { it.path.contains('ui-network-location') }
+            || !captures.any { it.path.contains('world-network-highlight') }
             || !captures.any { it.path.contains('ui-graph-network-renamed') }
             || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
             || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'

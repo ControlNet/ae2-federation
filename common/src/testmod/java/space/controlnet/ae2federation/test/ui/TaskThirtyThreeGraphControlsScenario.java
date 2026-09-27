@@ -55,6 +55,21 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                                         .getString().contains(" types · CPU "))))
                 .waitUntil("settled network can be renamed", context -> context.el("#network_rename").isActive())
                 .screenshot("ui-graph-network-detail")
+                .waitUntil("the location map samples loaded terrain", context -> context.el("#network_preview .map-preview-tile")
+                        .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
+                .checkTextContains("#network_location_note", "Tinted: ")
+                .step("reveal the location map", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_location"))
+                .frames(2)
+                .hover("#network_highlight")
+                .step("highlight the network in the world", context ->
+                        TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
+                .waitUntil("the network's blocks are outlined", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
+                .checkTextContains("#network_location_note", "for 10 s")
+                .step("record highlight evidence", context -> context.put("task33.highlightBlocks",
+                        Integer.toString(space.controlnet.ae2federation.client.WorldHighlight.activeBlocks())))
+                .screenshot("ui-network-location")
+                .step("return the aside to the top", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_title"))
                 .click("#network_rename")
                 .waitUntil("rename field opens", context -> context.el("#network_rename_field").isVisible())
                 .typeInto("#network_rename_field", "North Storage").blur()
@@ -118,6 +133,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.attach("policyRevision", context.get("task33.policyRevision"));
                     context.attach("policyEnabled", context.get("task33.policyEnabled"));
                     context.attach("networkRename", context.get("task33.renamed"));
+                    context.attach("highlightBlocks", context.get("task33.highlightBlocks"));
                     context.attach("worldCaptures", "router-overview,bridge-north,provider-host,endpoint-faces");
                 })
                 .server("policy detail reads preserve backend counters", TaskThirtyThreeWorldFixture::verifyPolicySnapshotReads)
@@ -181,7 +197,22 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
                 .frames(2).screenshot("ui-policy-runtime-energy-source-missing")
                 .click("#tab_overview").frames(2)
-                .screenshot("ui-graph-controls").closeScreen()
+                .screenshot("ui-graph-controls")
+                .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.providerHost")))
+                .waitUntil("its location is shown", context -> context.el("#network_location").isVisible()
+                        && context.el("#network_highlight").isActive())
+                .step("reveal the location map", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_location"))
+                .frames(2)
+                .hover("#network_highlight")
+                .step("highlight the network before looking at it", context ->
+                        TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
+                .closeScreen()
+                .server("look at the highlighted Provider host", TaskThirtyThreeWorldFixture::positionProviderCamera)
+                .serverTicks(2).frames(2)
+                .check("the highlight is still running", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
+                .screenshot("world-network-highlight")
                 .server("position Router overview camera", TaskThirtyThreeWorldFixture::positionRouterOverviewCamera)
                 .serverTicks(2).frames(2).screenshot("world-router-overview")
                 .server("position ME Federation Bridge camera", TaskThirtyThreeWorldFixture::positionBridgeCamera)

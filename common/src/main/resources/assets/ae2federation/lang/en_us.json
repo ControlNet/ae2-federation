@@ -353,5 +353,10 @@
   "ae2federation.ui.processing.claim.local": "Local mode",
   "ae2federation.ui.processing.claim.local.detail": "Configured for local use; switch it to federated mode to map it.",
   "ae2federation.ui.processing.claim.unobserved": "Not loaded",
-  "ae2federation.ui.processing.claim.unobserved.detail": "Its chunk is not loaded, so its state is unknown."
+  "ae2federation.ui.processing.claim.unobserved.detail": "Its chunk is not loaded, so its state is unknown.",
+  "ae2federation.ui.location.highlight": "Highlight in world (10 s)",
+  "ae2federation.ui.location.highlight_help": "Outlines these blocks in the world for 10 seconds. Only you see it.",
+  "ae2federation.ui.location.highlighted": "Outlining %s blocks for 10 s.",
+  "ae2federation.ui.location.network_blocks": "Tinted: %s blocks of this network. Marked: its controller or first node.",
+  "ae2federation.ui.location.other_dimension": "In %s. Maps and highlights only show the dimension you are in."
 }

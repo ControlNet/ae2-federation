@@ -69,6 +69,15 @@ final class FederationTopologyView {
     private final TextField renameField;
     private final Button renameSave;
     private final UIElement stats;
+    private final FederationMapPreview preview = new FederationMapPreview();
+    private final UIElement location;
+    private final Label locationNote;
+    private final Button highlight;
+    private List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> highlightBlocks = List.of();
+    private String highlightDimension = "";
+    private int highlightColor;
+    private String highlightedNetwork = "";
+    private long highlightedUntil;
 
     private final List<Network> networks = new ArrayList<>();
     private final Map<String, JsonObject> rules = new HashMap<>();
@@ -156,6 +165,18 @@ final class FederationTopologyView {
             refresh();
         });
         renameRow.setDisplay(false);
+        location = element(ui, "network_location", UIElement.class);
+        locationNote = element(ui, "network_location_note", Label.class);
+        highlight = element(ui, "network_highlight", Button.class);
+        element(ui, "network_preview", UIElement.class).addChild(preview);
+        highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
+        highlight.setOnClick(event -> {
+            if (highlightBlocks.isEmpty()) return;
+            space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
+            highlightedNetwork = selectedNetwork;
+            highlightedUntil = System.currentTimeMillis() + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS;
+            locationNote.setText(FederationWorkspace.trLocation("highlighted", highlightBlocks.size()));
+        });
     }
 
     /** Device-to-network membership and live network status come from the scoped graph projection. */
@@ -480,6 +501,7 @@ final class FederationTopologyView {
         detail.setText(explanation.append(tr("network_detail", tr("network_status." + status), providers(network).size(),
                 endpoints(network).size())));
         renderStats(facts, identityState);
+        renderLocation(network, facts);
         devices.setText(tr("devices", providers(network).size() + endpoints(network).size()));
         devices.setActive(!providers(network).isEmpty() || !endpoints(network).isEmpty());
         var others = networks.stream().filter(other -> !other.id().equals(network.id())).toList();
@@ -506,6 +528,33 @@ final class FederationTopologyView {
             });
             links.addChild(link);
         }
+    }
+
+    /** The map tile of the network's blocks around its controller, and the matching in-world highlight. */
+    private void renderLocation(Network network, JsonObject facts) {
+        if (facts == null || !facts.has("x")) {
+            location.setDisplay(false);
+            preview.clear();
+            highlightBlocks = List.of();
+            return;
+        }
+        location.setDisplay(true);
+        var blocks = new ArrayList<Integer>();
+        if (facts.has("blocks")) facts.getAsJsonArray("blocks").forEach(value -> blocks.add(value.getAsInt()));
+        var mask = space.controlnet.ae2federation.client.policy.BlockMarks.fromFlat(blocks);
+        var anchor = new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(facts.get("x").getAsInt(),
+                facts.get("y").getAsInt(), facts.get("z").getAsInt());
+        var dimension = facts.get("dimension").getAsString();
+        preview.show(dimension, mask, network.accent(), List.of(anchor), FederationTheme.DARK_TITLE);
+        highlightDimension = dimension;
+        highlightColor = network.accent();
+        highlightBlocks = mask.isEmpty() ? List.of(anchor) : mask;
+        boolean here = preview.inPlayerDimension();
+        highlight.setActive(here);
+        boolean outlined = network.id().equals(highlightedNetwork) && System.currentTimeMillis() < highlightedUntil;
+        locationNote.setText(outlined ? FederationWorkspace.trLocation("highlighted", highlightBlocks.size())
+                : here ? FederationWorkspace.trLocation("network_blocks", mask.size())
+                : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
     }
 
     private void renderStats(JsonObject facts, String identityState) {

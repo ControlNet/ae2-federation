@@ -272,8 +272,14 @@ final class FederationWorkspace {
             processingAvailable = available;
             updateProcessingView();
         }
-        if (processing != null) processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
-                confirmedSelections.get("target"));
+        if (processing != null) {
+            var providerId = confirmedSelections.get("mapping_provider");
+            var providerAt = choices.getOrDefault("mapping_provider", List.of()).stream()
+                    .filter(choice -> choice.get("id").getAsString().equals(providerId) && choice.has("position"))
+                    .map(choice -> choice.get("position").getAsString()).findFirst().orElse("");
+            processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
+                    confirmedSelections.get("target"), providerAt);
+        }
         var signature = root.getAsJsonArray("slot").toString() + selectedSlot;
         if (!patternSignature.equals(signature)) {
             patternSignature = signature;
@@ -418,6 +424,10 @@ final class FederationWorkspace {
         if (choice.get("empty").getAsBoolean()) return tr("empty_slot");
         var outputs = resources(choice, "outputs");
         return outputs.isEmpty() ? Component.literal(choice.get("label").getAsString()) : outputs.getFirst().what().getDisplayName();
+    }
+
+    static net.minecraft.network.chat.MutableComponent trLocation(String key, Object... arguments) {
+        return Component.translatable("ae2federation.ui.location." + key, arguments);
     }
 
     static net.minecraft.network.chat.MutableComponent tr(String key, Object... arguments) {

@@ -57,6 +57,11 @@
                         <button id="graph_open" class="primary-action" text="ae2federation.ui.topology.devices"/>
                         <label id="network_links_heading" class="aside-heading"/>
                         <element id="network_links" class="network-links"/>
+                        <element id="network_location" class="dark-panel location-panel">
+                            <element id="network_preview" class="map-preview"/>
+                            <label id="network_location_note" class="panel-text"/>
+                            <button id="network_highlight" text="ae2federation.ui.location.highlight"/>
+                        </element>
                         <element id="network_stats" class="dark-panel network-stats"/>
                     </element>
                     <element id="pair_editor" class="aside-section">
@@ -80,6 +85,8 @@
                     <scroller-view id="processing_scroll" class="processing-scroll"/>
                     <element class="dark-panel processing-detail">
                         <label id="processing_detail_text" class="panel-text"/>
+                        <element id="processing_preview" class="map-preview"/>
+                        <button id="processing_highlight" text="ae2federation.ui.location.highlight"/>
                         <element class="compact-actions">
                             <button id="processing_unlink" class="danger-action" text="ae2federation.ui.processing.unlink"/>
                             <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>

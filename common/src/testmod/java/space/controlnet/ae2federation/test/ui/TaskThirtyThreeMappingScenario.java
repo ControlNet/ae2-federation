@@ -42,6 +42,11 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click(".processing-endpoint")
                 .waitForTextContains("#processing_detail_text", "Patterns sent here: #1")
                 .check("an Endpoint still in use cannot be released", context -> !context.el("#processing_release").isActive())
+                .waitUntil("the Endpoint location map samples loaded terrain", context -> context.el("#processing_preview .map-preview-tile")
+                        .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
+                .click("#processing_highlight")
+                .check("the selected Endpoint is outlined in the world", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1)
                 .screenshot("ui-processing-endpoint-detail")
                 .step("record processing wire evidence", context -> context.put("task33.processingWire", "mapped-unlinked"))
                 .click("#mapping_view_list")

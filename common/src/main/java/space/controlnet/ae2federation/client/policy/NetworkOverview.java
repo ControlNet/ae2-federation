@@ -27,6 +27,9 @@ import space.controlnet.ae2federation.identity.NodeLineage;
  * plus a few getters per member network; callers throttle how often they build one.
  */
 public final class NetworkOverview {
+    /** Enough to outline a base on the location map and in the world without flooding the menu sync. */
+    static final int MAX_BLOCKS = 256;
+
     private NetworkOverview() {
     }
 
@@ -72,6 +75,7 @@ public final class NetworkOverview {
             json.addProperty("x", node.pos().getX());
             json.addProperty("y", node.pos().getY());
             json.addProperty("z", node.pos().getZ());
+            json.add("blocks", blocks(grid, node.level()));
         });
         var energy = grid.getEnergyService();
         json.addProperty("energy", Math.round(energy.getStoredPower()));
@@ -87,6 +91,22 @@ public final class NetworkOverview {
         json.addProperty("channels", pathing.getUsedChannels());
         json.addProperty("controller", pathing.getControllerState().name().toLowerCase(java.util.Locale.ROOT));
         json.addProperty("nodes", grid.size());
+    }
+
+    /** Distinct block positions of the grid's nodes in the location's dimension, as flat {@code [x, y, z, ...]}. */
+    private static JsonArray blocks(IGrid grid, ServerLevel level) {
+        var seen = new java.util.LinkedHashSet<BlockPos>();
+        for (var node : grid.getNodes()) {
+            if (seen.size() >= MAX_BLOCKS) break;
+            located(node).filter(located -> located.level() == level).ifPresent(located -> seen.add(located.pos()));
+        }
+        var out = new JsonArray();
+        for (var pos : seen) {
+            out.add(pos.getX());
+            out.add(pos.getY());
+            out.add(pos.getZ());
+        }
+        return out;
     }
 
     private record Located(ServerLevel level, BlockPos pos) {

@@ -49,6 +49,9 @@ final class FederationProcessingGraph {
     private final Button unlink;
     private final Button releaseButton;
     private final Canvas canvas = new Canvas();
+    private final FederationMapPreview preview = new FederationMapPreview();
+    private final Button highlight;
+    private String providerPosition = "";
 
     private final List<JsonObject> slots = new ArrayList<>();
     private final List<JsonObject> endpoints = new ArrayList<>();
@@ -75,6 +78,14 @@ final class FederationProcessingGraph {
         unlink = element(ui, "processing_unlink", Button.class);
         releaseButton = element(ui, "processing_release", Button.class);
         scroll.addScrollViewChild(canvas);
+        element(ui, "processing_preview", UIElement.class).addChild(preview);
+        highlight = element(ui, "processing_highlight", Button.class);
+        highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
+        highlight.setOnClick(event -> {
+            var focus = focusMarks();
+            if (!focus.isEmpty()) space.controlnet.ae2federation.client.WorldHighlight.show(playerDimension(), focus,
+                    FederationTheme.SELECT);
+        });
         unlink.setOnClick(event -> {
             if (selection.kind() != Kind.WIRE || !editable) return;
             setMapping.accept(new MappingWireTarget(selection.slot(), selection.endpoint(), false).encode());
@@ -98,7 +109,8 @@ final class FederationProcessingGraph {
     }
 
     /** Pattern slots and Endpoints of the selected Provider, from the same authorized choices as the list view. */
-    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, String selectedTarget) {
+    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, String selectedTarget, String providerAt) {
+        providerPosition = providerAt == null ? "" : providerAt;
         slots.clear();
         slotChoices.stream().filter(choice -> !choice.get("empty").getAsBoolean()).forEach(slots::add);
         endpoints.clear();
@@ -304,6 +316,7 @@ final class FederationProcessingGraph {
         unlink.setActive(editable && wire && wires.contains(new Wire(selection.slot(), selection.endpoint())));
         releaseButton.setDisplay(endpointSelected);
         releaseButton.setActive(editable && endpointSelected && releasable(selection.endpoint()));
+        renderLocation();
         endpointCards.forEach((id, card) -> {
             boolean selected = (endpointSelected || wire) && id.equals(selection.endpoint());
             var endpoint = endpoint(id);
@@ -315,6 +328,39 @@ final class FederationProcessingGraph {
             card.removeClass("selected");
             if (selected) card.addClass("selected");
         });
+    }
+
+    /**
+     * Map of the Provider and its Endpoints: the selected Endpoint (or both ends of the selected wire) is marked, the
+     * rest are tinted. Devices of one Provider session are in the player's dimension.
+     */
+    private void renderLocation() {
+        var others = new ArrayList<space.controlnet.ae2federation.client.policy.BlockMarks.Mark>();
+        position(providerPosition).ifPresent(others::add);
+        for (var endpoint : endpoints) {
+            if (endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(others::add);
+        }
+        var focus = focusMarks();
+        preview.show(playerDimension(), others, FederationTheme.TEAL, focus, FederationTheme.SELECT);
+        highlight.setActive(!focus.isEmpty());
+    }
+
+    /** The selected Endpoint, both ends of the selected wire, or the Provider when nothing is selected. */
+    private List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> focusMarks() {
+        var focus = new ArrayList<space.controlnet.ae2federation.client.policy.BlockMarks.Mark>();
+        var endpoint = selection.kind() == Kind.NONE ? null : endpoint(selection.endpoint());
+        if (endpoint != null && endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(focus::add);
+        if (selection.kind() != Kind.ENDPOINT) position(providerPosition).ifPresent(focus::add);
+        return focus;
+    }
+
+    private static java.util.Optional<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> position(String value) {
+        return value.isEmpty() ? java.util.Optional.empty() : space.controlnet.ae2federation.client.policy.BlockMarks.parseShort(value);
+    }
+
+    private static String playerDimension() {
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        return level == null ? "" : level.dimension().location().toString();
     }
 
     /** The server released a retained Endpoint only when this Provider still holds it and it is the confirmed target. */

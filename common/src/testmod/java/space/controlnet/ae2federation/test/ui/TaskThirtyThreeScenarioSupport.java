@@ -106,8 +106,12 @@ final class TaskThirtyThreeScenarioSupport {
 
     /** Scrolls the topology aside so a pair-editor row is in view for screenshots. */
     static void revealRule(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
-        var row = context.el(ruleControl(context, "row", context.get("net.providerHost"), capability))
-                .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+        revealInAside(context, ruleControl(context, "row", context.get("net.providerHost"), capability));
+    }
+
+    /** Scrolls the topology aside so the element matching {@code selector} is at the top of the viewport. */
+    static void revealInAside(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        var row = context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
         var aside = context.el("#topology_aside").as(com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView.class);
         // The vertical scroller is normalized over the overflow between the content and its viewport.
         float overflow = aside.viewContainer.getSizeHeight() - aside.viewPort.getContentHeight();
