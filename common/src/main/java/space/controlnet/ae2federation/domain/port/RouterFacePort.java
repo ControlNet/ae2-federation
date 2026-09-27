@@ -13,10 +13,11 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.energy.DirectionalEnergySource;
 
-public final class RouterFacePort {
+public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = (owner, node) -> owner.invalidate();
 
     private final BlockPos routerPosition;

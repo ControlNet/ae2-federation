@@ -212,6 +212,7 @@
   "ae2federation.ui.workspace.target_state.unclaimed": "Unclaimed",
   "ae2federation.ui.workspace.target_state.unclaimed.detail": "No Provider currently owns this endpoint. Mapping still checks policy, topology and target readiness.",
   "ae2federation.ui.workspace.bridge_reason.valid": "No unique domain with at least two networks is available.",
+  "ae2federation.ui.workspace.bridge_reason.identity_unsettled": "A connected network's identity is unconfirmed, for example because separately built networks were joined.",
   "ae2federation.ui.workspace.bridge_reason.missing_main_attachment": "Connect a network to the bridge host.",
   "ae2federation.ui.workspace.bridge_reason.missing_outer_attachment": "Connect a network to the bridge outer side.",
   "ae2federation.ui.workspace.bridge_reason.same_grid": "Both sides connect to the same ME network.",

@@ -212,6 +212,7 @@
   "ae2federation.ui.workspace.target_state.unclaimed": "未占用",
   "ae2federation.ui.workspace.target_state.unclaimed.detail": "当前没有样板供应器占用该端点。映射仍需检查策略、拓扑与目标就绪状态。",
   "ae2federation.ui.workspace.bridge_reason.valid": "没有可用的、包含至少两个网络的唯一联邦域。",
+  "ae2federation.ui.workspace.bridge_reason.identity_unsettled": "有网络的身份未确认，例如分别搭建的网络被连到了一起。",
   "ae2federation.ui.workspace.bridge_reason.missing_main_attachment": "请将网络连接到桥接器所在的宿主。",
   "ae2federation.ui.workspace.bridge_reason.missing_outer_attachment": "请将网络连接到桥接器外侧。",
   "ae2federation.ui.workspace.bridge_reason.same_grid": "两侧连接到了同一个 ME 网络。",

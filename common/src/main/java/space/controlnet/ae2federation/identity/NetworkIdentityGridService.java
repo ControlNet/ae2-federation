@@ -35,11 +35,13 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     @Override
     public void addNode(IGridNode gridNode, @Nullable CompoundTag savedData) {
         var lineage = read(savedData);
-        var transientNode = NativeIdentityInitialization.contains(gridNode);
+        var neutral = neutral(gridNode);
+        var transientNode = !neutral && NativeIdentityInitialization.contains(gridNode);
         if (lineage == null) {
-            var existingId = nodes.values().stream().findFirst().map(NodeLineage::networkId).orElse(newGridId);
+            var existingId = nodes.entrySet().stream().filter(entry -> !neutral(entry.getKey())).findFirst()
+                    .map(entry -> entry.getValue().networkId()).orElse(newGridId);
             lineage = new NodeLineage(existingId, UUID.randomUUID(), 1);
-            transientNode = NativeIdentityInitialization.register(gridNode);
+            transientNode = !neutral && NativeIdentityInitialization.register(gridNode);
             ((GridNode) gridNode).callListener(IGridNodeListener::onSaveChanges);
         }
         // Saved provisional flags are legacy durable evidence. Only the original live node in this call scope
@@ -56,7 +58,8 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         if (provisional.isEmpty()) {
             return;
         }
-        var durable = nodes.entrySet().stream().filter(entry -> !provisional.contains(entry.getKey()))
+        var durable = nodes.entrySet().stream()
+                .filter(entry -> !provisional.contains(entry.getKey()) && !neutral(entry.getKey()))
                 .map(entry -> entry.getValue().networkId()).distinct().toList();
         if (durable.size() > 1) {
             return;
@@ -71,6 +74,15 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         }
     }
 
+    /**
+     * Boundary nodes (Router faces, Bridge sides) only attach to a native network. They keep a lineage for their node id
+     * and persistence, but never publish it as a claim, so their own history can neither merge, split, nor copy-conflict
+     * the network they attach to.
+     */
+    private static boolean neutral(IGridNode node) {
+        return node.getOwner() instanceof IdentityNeutralNodeOwner;
+    }
+
     void finishInitialization(IGridNode node) {
         if (provisional.remove(node)) {
             ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
@@ -79,6 +91,10 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
 
     private void put(IGridNode gridNode, NodeLineage lineage) {
         var previous = nodes.put(gridNode, lineage);
+        if (neutral(gridNode)) {
+            // Boundary nodes are never identity evidence: no claim, so no merge, split, or copy conflict.
+            return;
+        }
         if (previous != null) {
             release(previous);
         }
@@ -99,7 +115,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             duplicateLineages = 0;
             registry.release(grid);
             settlement = IdentityReconciler.reconcile(nodes.values(), false, false, true);
-        } else if (lineage != null) {
+        } else if (lineage != null && !neutral(gridNode)) {
             release(lineage);
         }
     }

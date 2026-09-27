@@ -44,7 +44,7 @@ record RouterPolicyEntrance(BlockPos position) implements FederationDomainPolicy
     }
 }
 
-record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperationalReason reason)
+record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperationalReason reason, boolean identityConfirmed)
         implements FederationDomainPolicyEntrance {
     @Override
     public boolean present(ServerLevel level) {
@@ -59,6 +59,9 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
 
     @Override
     public Component diagnostic() {
+        if (reason == BridgeOperationalReason.VALID && !identityConfirmed) {
+            return Component.translatable("ae2federation.ui.workspace.bridge_reason.identity_unsettled");
+        }
         return Component.translatable("ae2federation.ui.workspace.bridge_reason." + reason.name().toLowerCase(java.util.Locale.ROOT));
     }
 

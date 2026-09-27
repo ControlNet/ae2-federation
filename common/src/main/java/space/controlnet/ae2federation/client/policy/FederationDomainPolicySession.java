@@ -83,7 +83,10 @@ public final class FederationDomainPolicySession {
     }
 
     public static FederationDomainPolicySession forBridge(ServerPlayer player, BridgeRightClickContext bridge) {
-        var entrance = new BridgePolicyEntrance(bridge.position(), bridge.side(), bridge.reason());
+        var identityConfirmed = bridge.mainGrid() != null && bridge.outerGrid() != null
+                && FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isPresent()
+                && FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent();
+        var entrance = new BridgePolicyEntrance(bridge.position(), bridge.side(), bridge.reason(), identityConfirmed);
         var session = new FederationDomainPolicySession(player, entrance, bridgeFederationDomain(player.serverLevel(), bridge),
                 PolicyEditorSessionState.Status.DISABLED);
         session.initialGraphNetwork = bridge.mainGrid() == null ? null
@@ -212,11 +215,10 @@ public final class FederationDomainPolicySession {
             for (int i = 0; i < selection.members().size(); i++) {
                 if (selection.members().get(i).value().toString().equals(id)) index = i;
             }
-            if (index < 0 || index == (group.equals("consumer") ? selection.providerIndex() : selection.consumerIndex())) return false;
+            if (index < 0) return false;
             final int selected = index;
-            changeSelection(old -> new PolicyEditorSelection(old.members(),
-                    group.equals("consumer") ? selected : old.consumerIndex(),
-                    group.equals("provider") ? selected : old.providerIndex(), old.capabilityIndex()));
+            // Picking the opposite side's network swaps the direction; a two-member domain has no other way to reach it.
+            changeSelection(old -> group.equals("consumer") ? old.withConsumer(selected) : old.withProvider(selected));
         } else if (group.equals("capability")) {
             PolicyCapability capability;
             try { capability = PolicyCapability.valueOf(id); } catch (IllegalArgumentException exception) { return false; }
@@ -310,8 +312,8 @@ public final class FederationDomainPolicySession {
                 });
         for (var member : selection.members()) {
             var id = member.value().toString();
-            if (!member.equals(selection.key().providerNetworkId())) addChoice(root, "consumer", id, shortId(id));
-            if (!member.equals(selection.key().consumerNetworkId())) addChoice(root, "provider", id, shortId(id));
+            addChoice(root, "consumer", id, shortId(id));
+            addChoice(root, "provider", id, shortId(id));
         }
         selected.addProperty("consumer", selection.key().consumerNetworkId().value().toString());
         selected.addProperty("provider", selection.key().providerNetworkId().value().toString());
