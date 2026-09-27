@@ -18,8 +18,8 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.BRIDGE)
                 .checkTextContains("#entrance_value", "ME Federation Bridge - side ")
-                .checkBounds("#policy_toggle", bounds -> bounds.width() > 40 && bounds.height() > 10)
-                .click("#policy_toggle")
+                .checkBounds(TaskFifteenScenarioSupport.STORAGE_SWITCH, bounds -> bounds.width() >= 20 && bounds.height() >= 10)
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
                 .waitForTextContains("#ack_status", "Server accepted revision")
@@ -34,7 +34,8 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .waitForTextContains("#ack_status", "Bridge diagnostic only:")
-                .check("disabled Bridge submit is inactive", context -> !context.el("#policy_toggle").isActive())
+                .check("disabled Bridge submit is inactive", context -> context.elOpt(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                        .map(element -> !element.isActive() || !element.isVisible()).orElse(true))
                 .step("record disabled Bridge proof", context -> context.attach("bridgeDiagnosticOnly", "true"))
                 .screenshot("ui-bridge-disabled")
                 .closeScreen();

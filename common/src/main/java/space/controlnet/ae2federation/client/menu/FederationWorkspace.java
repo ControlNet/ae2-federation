@@ -28,14 +28,12 @@ import net.minecraft.world.item.ItemStack;
 
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
-    private static final List<String> PAGES = List.of("overview", "policy", "mapping", "diagnostics");
+    private static final List<String> PAGES = List.of("overview", "mapping", "diagnostics");
     private static final Map<String, String> SELECTORS = Map.of(
-            "consumer", "consumer_next", "provider", "provider_next", "capability", "capability_next",
             "mapping_provider", "mapping_provider_next", "slot", "mapping_slot_next",
             "target", "mapping_lane_next", "endpoint", "endpoint_next");
     private final Map<JsonObject, List<GenericStack>> resourceCache = new java.util.IdentityHashMap<>();
     private final UI ui;
-    private final FederationPolicyBrowser policyBrowser;
     private final FederationEndpointBrowser endpointBrowser;
     private final Consumer<String> select;
     private final Map<String, Selector<String>> selectors = new HashMap<>();
@@ -50,6 +48,7 @@ final class FederationWorkspace {
     private String navigationId;
     private String endpointNavigationReceipt;
     private String endpointNavigationPage;
+    private FederationTopologyView topology;
     private boolean authorityAllowsNavigation;
     private String filter = "";
     private String selectedSlot = "";
@@ -59,13 +58,20 @@ final class FederationWorkspace {
     FederationWorkspace(UI ui, Consumer<String> select) {
         this.ui = ui;
         this.select = select;
-        policyBrowser = new FederationPolicyBrowser(ui, select);
         endpointBrowser = new FederationEndpointBrowser(ui, select);
         element("endpoint_mapping", Button.class).setOnClick(event -> navigateEndpoint("mapping"));
         element("endpoint_policy", Button.class).setOnClick(event -> navigateEndpoint("policy"));
         element("endpoint_browse", Button.class).setOnClick(event -> endpointBrowser.open());
-        element("policy_browse", Button.class).setOnClick(event -> policyBrowser.open());
-        for (var page : PAGES) element("tab_" + page, Button.class).setOnClick(event -> show(page));
+        var icons = Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING,
+                "diagnostics", FederationIcons.DIAGNOSTICS);
+        for (var page : PAGES) {
+            var tab = element("tab_" + page, Button.class);
+            tab.noText();
+            tab.addChild(new UIElement().layout(style -> style.widthPercent(100).heightPercent(100))
+                    .style(style -> style.backgroundTexture(icons.get(page))));
+            tab.style(style -> style.tooltips(tr(page)));
+            tab.setOnClick(event -> show(page));
+        }
         show("overview");
         SELECTORS.forEach((group, id) -> {
             var selector = (Selector<String>) element(id, Selector.class);
@@ -85,7 +91,7 @@ final class FederationWorkspace {
                 selector.setValue(confirmedSelections.get(group), false);
             });
             selectors.put(group, selector);
-            if (!group.equals("capability")) {
+            {
                 var search = new TextField();
                 search.setId(id + "_search");
                 search.layout(style -> style.height(18).widthPercent(100).flexShrink(0));
@@ -107,7 +113,9 @@ final class FederationWorkspace {
         patterns.setItemUIProvider(this::patternRow);
         element("pattern_show_empty", Button.class).setOnClick(event -> {
             showEmpty = !showEmpty;
-            FederationGraphPresenter.mark(element("pattern_show_empty", Button.class), showEmpty);
+            var button = element("pattern_show_empty", Button.class);
+            button.removeClass("selected");
+            if (showEmpty) button.addClass("selected");
             refreshPatterns();
         });
         element("pattern_search", TextField.class).textFieldStyle(style -> style.placeholder(tr("search_patterns").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
@@ -144,7 +152,8 @@ final class FederationWorkspace {
         select.accept(endpointNavigationReceipt);
     }
 
-    void bindGraph(FederationGraphPresenter graph) {
+    void bindGraph(FederationTopologyView graph) {
+        topology = graph;
         element("endpoint_locate", Button.class).setOnClick(event -> {
             var id = confirmedSelections.get("endpoint");
             if (id != null && graph.focusObject(id)) show("overview");
@@ -159,6 +168,8 @@ final class FederationWorkspace {
             button.removeClass("selected");
             if (candidate.equals(page)) button.addClass("selected");
         }
+        // Network search filters the topology only.
+        element("graph_search", UIElement.class).setDisplay("overview".equals(page));
         // Close floating selectors when navigating away from their anchors.
         selectors.values().forEach(Selector::hide);
     }
@@ -167,7 +178,6 @@ final class FederationWorkspace {
         if (encoded.isEmpty()) return;
         resourceCache.clear();
         var root = JsonParser.parseString(encoded).getAsJsonObject();
-        policyBrowser.accept(root);
         endpointBrowser.accept(root);
         if (!entranceApplied) {
             if (root.has("initialPage")) show(root.get("initialPage").getAsString());
@@ -186,7 +196,7 @@ final class FederationWorkspace {
         localLabel.setDisplay(localEndpoint);
         if (localEndpoint) localLabel.setText(tr("local_endpoint", root.get("localEndpointPosition").getAsString()));
         element("diagnostics_description", Label.class).setText(tr(localEndpoint ? "local_diagnostics_help" : "diagnostics_help"));
-        for (var id : List.of("endpoint_browse", "policy_browse")) {
+        for (var id : List.of("endpoint_browse")) {
             var button = element(id, Button.class);
             button.setActive(hasDomain);
             button.style(style -> style.tooltips(tr(hasDomain ? "domain_browse_help" : "domain_browse_unavailable")));
@@ -205,14 +215,17 @@ final class FederationWorkspace {
         updateEndpointNavigation();
         if (endpointNavigationReceipt != null && root.has("navigationReceipt")
                 && endpointNavigationReceipt.equals(root.get("navigationReceipt").getAsString())) {
-            show(endpointNavigationPage);
+            if (endpointNavigationPage.equals("policy")) {
+                // The server selected the owner's processing rule; show that pair in the topology editor.
+                if (topology != null && selected.has("consumer") && selected.has("provider")) {
+                    topology.selectPair(selected.get("consumer").getAsString(), selected.get("provider").getAsString());
+                }
+                show("overview");
+            } else {
+                show(endpointNavigationPage);
+            }
             endpointNavigationReceipt = null;
         }
-        boolean hasPolicyPair = confirmedSelections.get("consumer") != null && confirmedSelections.get("provider") != null;
-        element("policy_direction", Label.class).setText(hasPolicyPair ? tr("policy_direction",
-                choiceText("consumer", confirmedSelections.get("consumer")),
-                choiceText("provider", confirmedSelections.get("provider")),
-                choiceText("capability", confirmedSelections.get("capability"))) : tr("policy_pair_unavailable"));
         if (navigationGroup != null && navigationId.equals(confirmedSelections.get(navigationGroup))) {
             show(navigationGroup.equals("mapping_provider") ? "mapping" : "diagnostics");
             navigationGroup = null;
@@ -262,7 +275,6 @@ final class FederationWorkspace {
 
     private Component choiceText(String group, String id) {
         if (id == null) return tr("none");
-        if (group.equals("capability")) return tr("capability." + id.toLowerCase(Locale.ROOT));
         var choice = choices.getOrDefault(group, List.of()).stream()
                 .filter(value -> value.get("id").getAsString().equals(id)).findFirst().orElse(null);
         if (choice == null) return Component.literal(id);

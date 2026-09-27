@@ -7,7 +7,9 @@ final class PolicyEditorSessionState {
         DISABLED,
         ACCEPTED,
         STALE_CONTEXT,
-        STALE_REVISION
+        STALE_REVISION,
+        /** One switched rule changed elsewhere; the session stays editable and shows the current rule. */
+        CONFLICT
     }
 
     private Status status;
@@ -40,6 +42,10 @@ final class PolicyEditorSessionState {
 
     void accepted() {
         status = Status.ACCEPTED;
+    }
+
+    void conflicted() {
+        if (editingAllowed) status = Status.CONFLICT;
     }
 
     void reject(Status rejectedStatus) {

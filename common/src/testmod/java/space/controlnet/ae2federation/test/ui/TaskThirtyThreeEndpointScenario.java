@@ -49,11 +49,16 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .click("#tab_diagnostics")
                 .hover("#endpoint_policy")
                 .step("open endpoint processing policy", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_policy"))
-                .waitUntil("server-confirmed navigation opens processing policy", context -> context.el("#page_policy").isVisible())
-                .check("policy selects the actual directional network pair", context ->
-                        context.el("#consumer_next").value().equals(context.get("navigation.consumer"))
-                                && context.el("#provider_next").value().equals(context.get("navigation.provider"))
-                                && context.el("#capability_next").value().equals("PROCESSING"))
+                .waitUntil("server-confirmed navigation opens the pair editor", context -> context.el("#page_overview").isVisible()
+                        && context.el("#pair_editor").isVisible())
+                .check("pair editor shows the actual network pair", context -> {
+                    var title = context.el("#pair_title").text();
+                    return title.contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("navigation.consumer")))
+                            && title.contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("navigation.provider")));
+                })
+                .check("the processing rule is in the consumer's section", context -> context.elOpt(
+                        TaskThirtyThreeScenarioSupport.ruleControl(context, "switch", context.get("navigation.consumer"), "processing"))
+                        .isPresent())
                 .checkServer("contextual navigation does not mutate policy mappings or claim", TaskThirtyThreeWorldFixture::endpointNavigationReadOnly)
                 .screenshot("ui-diagnostic-processing-policy")
                 .click("#tab_diagnostics")
@@ -147,23 +152,22 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .step("return to the original endpoint", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".endpoint-table-row"))
                 .waitUntil("original identity is restored by server selection", context -> context.el("#endpoint_identity").text()
                         .contains(context.<String>get("task33.endpointId")))
-                .step("record confirmed endpoint graph identity", context -> context.put("endpoint.graphId", context.el("#endpoint_next").value()))
                 .hover("#endpoint_locate")
                 .step("locate inspected endpoint on graph", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_locate"))
                 .waitUntil("diagnostic navigation opens graph", context -> context.el("#page_overview").isVisible())
-                .waitUntil("graph selects the exact inspected endpoint", context -> context.el("#graph_selection")
-                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).collectHoverTooltips().tooltipTexts().stream()
-                        .anyMatch(line -> line.getString().replace("\n", "").equals(context.<String>get("endpoint.graphId"))))
-                .checkTextContains("#graph_selection", "10, -57, 13")
-                .waitUntil("located node is centered in screen space", context -> TaskThirtyThreeScenarioSupport.graphNodeCentered(
-                        context, context.get("endpoint.graphId")))
+                .waitUntil("graph selects the inspected endpoint's network", context -> context.el("#network_detail").isVisible()
+                        && context.el("#network_title").text().contains(TaskThirtyThreeScenarioSupport.networkTag(
+                                context.get("navigation.provider"))))
+                .checkTextContains("#graph_selection", "Processing endpoints: ")
+                .waitUntil("located network is centered in screen space", context -> TaskThirtyThreeScenarioSupport.networkCardCentered(
+                        context, context.get("navigation.provider")))
                 .screenshot("ui-diagnostics-locate-endpoint")
                 .click("#graph_zoom_in")
                 .click("#tab_diagnostics")
                 .hover("#endpoint_locate")
                 .step("locate after returning from a hidden graph", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_locate"))
-                .waitUntil("repeated locate centers the node after layout", context -> TaskThirtyThreeScenarioSupport.graphNodeCentered(
-                        context, context.get("endpoint.graphId")))
+                .waitUntil("repeated locate centers the network after layout", context -> TaskThirtyThreeScenarioSupport.networkCardCentered(
+                        context, context.get("navigation.provider")))
                 .closeScreen()
                 .server("open a real Endpoint before its first network tick", TaskThirtyThreeWorldFixture::openNewEndpointBeforeIdentitySettles)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
@@ -191,11 +195,11 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                                 && !context.el("#endpoint_policy").isActive())
                 .screenshot("ui-endpoint-no-domain")
                 .click("#tab_overview").frames(3)
-                .checkTextContains("#graph_selection", "No editable domain")
+                .checkTextContains("#network_title", "No editable domain")
+                .checkTextContains("#graph_selection", "No domain with two networks")
                 .screenshot("ui-endpoint-no-domain-graph")
-                .click("#tab_policy")
-                .check("isolated device cannot edit a policy", context -> !context.el("#policy_toggle").isActive()
-                        && !context.el("#policy_browse").isActive())
+                .check("isolated device cannot edit a policy", context -> context.all(".policy-switch").isEmpty()
+                        && !context.el("#pair_editor").isVisible())
                 .closeScreen();
     }
 }

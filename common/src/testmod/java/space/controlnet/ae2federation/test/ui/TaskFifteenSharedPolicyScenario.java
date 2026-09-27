@@ -18,14 +18,16 @@ public final class TaskFifteenSharedPolicyScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
-                .click("#policy_toggle")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("Router edit accepted", TaskFifteenWorldFixture::policyConfigured)
                 .closeScreen()
                 .server("open the same policy from the real Bridge", TaskFifteenWorldFixture::openBridge)
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .waitForTextContains("#entrance_value", "ME Federation Bridge - side ")
-                .waitForTextContains("#rule_value", "STORAGE: enabled (revision")
+                .waitUntil("Bridge shows the Router's switch on", context -> context.elOpt(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                        .map(element -> element.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("on"))
+                        .orElse(false))
                 .checkServer("both entrances retain one directional record", context ->
                         TaskFifteenWorldFixture.policyEnabled(context))
                 .server("observe shared production policy", context ->

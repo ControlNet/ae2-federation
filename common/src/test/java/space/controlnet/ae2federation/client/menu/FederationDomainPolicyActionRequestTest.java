@@ -54,4 +54,18 @@ class FederationDomainPolicyActionRequestTest {
         assertThrows(IllegalArgumentException.class, () -> new FederationDomainPolicyActionRequest(
                 FederationDomainPolicyAction.TOGGLE_POLICY, 1, nonce, 2, scope, PolicyRevision.NONE, "slot:17"));
     }
+
+    @Test
+    void explicitPolicySwitchCarriesItsTargetOnTheWire() {
+        var scope = new FederationDomainReference(new FederationDomainId("physical:menu-authority"), 7);
+        var nonce = UUID.randomUUID();
+        var request = new FederationDomainPolicyActionRequest(FederationDomainPolicyAction.SET_POLICY, 1, nonce, 2,
+                scope, PolicyRevision.NONE, "switch");
+
+        assertEquals("switch", request.target());
+        assertEquals(FederationDomainPolicyAction.SET_POLICY,
+                FederationDomainPolicyAction.fromWireId(FederationDomainPolicyAction.SET_POLICY.wireId()));
+        assertThrows(IllegalArgumentException.class, () -> new FederationDomainPolicyActionRequest(
+                FederationDomainPolicyAction.SET_POLICY, 1, nonce, 2, scope, PolicyRevision.NONE));
+    }
 }

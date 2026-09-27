@@ -100,7 +100,7 @@ def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames +
 def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
     def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
     if (outcomes.keySet() as Set != uiTaskFifteenScenarioNames || captures.size() < 5
-            || controls.count { it.selector == '#policy_toggle' } < 5) {
+            || controls.count { it.selector == '#policy_switch_0_storage' } < 5) {
         throw new GradleException('Task 15 control, screenshot, or scenario outcome accounting is incomplete')
     }
     if (outcomes.values().any { it.recordIdentity == null || it.recordIdentity.isBlank()
@@ -119,7 +119,8 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     def shared = outcomes['ui.shared-policy']
     if (shared.mutationStatus != 'SHARED' || shared.policyEnabled != 'true'
             || (shared.policyRevision as long) <= 0L
-            || shared.visibleRule != "STORAGE: enabled (revision ${shared.policyRevision})") {
+            || shared.visibleSwitch != 'on' || shared.visibleRule.startsWith('Off')
+            || !shared.visibleRule.endsWith("revision ${shared.policyRevision}")) {
         throw new GradleException('Task 15 Router edit was not observed as the same Bridge policy record')
     }
     if (!attachments.any { it.bridgeDiagnosticOnly == 'true' }) {
@@ -135,7 +136,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     if (closed.menuClosedBeforeMutation != 'true' || closed.sharingContinues != 'true'
             || closed.mutationStatus != 'POST_CLOSE_ACCEPTED' || closed.policyEnabled != 'false'
             || (closed.policyRevision as long) != (closed.previousRevision as long) + 1L
-            || closed.visibleRule != "STORAGE: disabled (revision ${closed.policyRevision})") {
+            || closed.visibleSwitch != 'off' || closed.visibleRule != "Off · revision ${closed.policyRevision}") {
         throw new GradleException('Task 15 menu closure lifecycle or continued sharing is invalid')
     }
 }
@@ -357,7 +358,7 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 || clientA.getProperty('singleplayer') != 'false' || clientB.getProperty('singleplayer') != 'false'
                 || clientA.getProperty('firstAccepted') != 'true' || clientB.getProperty('staleRevision') != 'true'
                 || clientA.getProperty('staleContext') != 'true'
-                || clientB.getProperty('staleRevisionRenderedText') != 'Rejected by server: policy revision is now 1'
+                || clientB.getProperty('staleRevisionRenderedText') != 'Rule changed elsewhere (revision 1). The switch now shows its current state.'
                 || (clientB.getProperty('staleRevisionStableFrames') as int) < 3
                 || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Federation Domain topology changed; reopen this editor'
                 || (clientA.getProperty('staleContextStableFrames') as int) < 3
@@ -823,7 +824,7 @@ tasks.register('federationUiTest') {
                         window: [width: clientFactsA.windowWidth as int, height: clientFactsA.windowHeight as int,
                                 framebufferWidth: clientFactsA.framebufferWidth as int,
                                 framebufferHeight: clientFactsA.framebufferHeight as int],
-                        controls: [[selector: '#policy_toggle', clients: ['A', 'B']]],
+                        controls: [[selector: '#policy_switch_0_storage', clients: ['A', 'B']]],
                         controlAttachments: attachments, screenshots: screenshots,
                         upstreamReportRunId: null, artifacts: artifacts]
                 def resultFile = new File(attempt, 'result.json')

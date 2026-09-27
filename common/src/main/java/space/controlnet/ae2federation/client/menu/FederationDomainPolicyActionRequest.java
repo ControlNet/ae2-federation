@@ -19,7 +19,7 @@ public record FederationDomainPolicyActionRequest(FederationDomainPolicyAction a
     public FederationDomainPolicyActionRequest {
         Objects.requireNonNull(action);
         Objects.requireNonNull(target);
-        if (target.length() > 160 || (action == FederationDomainPolicyAction.SELECT_TARGET) != !target.isEmpty()) {
+        if (target.length() > 160 || action.takesTarget() != !target.isEmpty()) {
             throw new IllegalArgumentException("Invalid selection target");
         }
         Objects.requireNonNull(menuNonce);

@@ -19,7 +19,7 @@ public final class TaskFifteenRouterScenario implements UIScenario {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
                 .checkText("#entrance_value", "Opened from ME Federation Router")
                 .checkTextContains("#members_value", "2 members")
-                .click("#policy_toggle")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
                 .waitForTextContains("#ack_status", "Server accepted revision")

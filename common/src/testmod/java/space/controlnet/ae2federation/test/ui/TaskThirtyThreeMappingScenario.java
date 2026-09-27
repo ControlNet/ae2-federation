@@ -161,13 +161,16 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("narrow English mapping controls stay in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#mapping_toggle", "#mapping_release", "#mapping_feedback_scroll"))
                 .screenshot("ui-english-narrow-mapping")
-                .click("#tab_policy").frames(3)
-                .check("narrow English policy text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#rule_value", "#policy_direction"))
+                .click("#tab_overview").frames(3)
+                .check("narrow English pair editor text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                .check("narrow English pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
+                        context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-english-narrow-policy")
                 .click("#tab_diagnostics").frames(3)
                 .check("narrow English diagnostic text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#endpoint_detail", "#endpoint_identity"))
                 .screenshot("ui-english-narrow-diagnostics")
-                .click("#tab_overview").frames(3)
+                .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
                 .screenshot("ui-english-narrow-overview")
                 .click("#tab_mapping").frames(3)

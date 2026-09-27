@@ -308,8 +308,40 @@ public final class FederationDomainPolicySession {
                     row.addProperty("capability", record.key().capability().name());
                     row.addProperty("enabled", record.rule().enabled());
                     row.addProperty("revision", record.revision().value());
+                    row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
                     rules.add(row);
                 });
+        // Deleted rules keep a revision; a switch that recreates one must present it for compare-and-set.
+        var revisions = new com.google.gson.JsonArray();
+        root.add("revisions", revisions);
+        space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
+                .filter(space.controlnet.ae2federation.policy.PolicyRecord.Deleted.class::isInstance)
+                .filter(record -> selection.members().contains(record.key().consumerNetworkId())
+                        && selection.members().contains(record.key().providerNetworkId()))
+                .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
+                .forEach(record -> {
+                    var row = new com.google.gson.JsonObject();
+                    row.addProperty("consumer", record.key().consumerNetworkId().value().toString());
+                    row.addProperty("provider", record.key().providerNetworkId().value().toString());
+                    row.addProperty("capability", record.key().capability().name());
+                    row.addProperty("revision", record.revision().value());
+                    revisions.add(row);
+                });
+        var networks = new com.google.gson.JsonArray();
+        root.add("networks", networks);
+        var providerNetworks = currentProviders().stream().map(entry -> FederationDomainRegistryAccess
+                .confirmedNetworkId(entry.provider().getGrid()).orElse(null)).toList();
+        var endpointNetworks = currentEndpoints().stream().map(binding -> FederationDomainRegistryAccess
+                .confirmedNetworkId(binding.subnetNode().getGrid()).orElse(null)).toList();
+        for (var member : selection.members()) {
+            var network = new com.google.gson.JsonObject();
+            network.addProperty("id", member.value().toString());
+            network.addProperty("member", space.controlnet.ae2federation.observability.id.MemberId
+                    .forNetwork(context.federationDomainId(), member).value());
+            network.addProperty("providers", providerNetworks.stream().filter(member::equals).count());
+            network.addProperty("endpoints", endpointNetworks.stream().filter(member::equals).count());
+            networks.add(network);
+        }
         for (var member : selection.members()) {
             var id = member.value().toString();
             addChoice(root, "consumer", id, shortId(id));
@@ -503,6 +535,55 @@ public final class FederationDomainPolicySession {
             expectedRevision = rejected.currentRevision();
             reject(PolicyEditorSessionState.Status.STALE_REVISION);
         }
+    }
+
+    /**
+     * Applies one explicit pair-editor switch. The rule's own revision is compared with the one the client saw, so a
+     * concurrent edit is reported without disabling the rest of this session.
+     */
+    public boolean setPolicy(String encoded) {
+        var target = PolicySwitchTarget.parse(encoded).orElse(null);
+        if (target == null || selection == null || !state.editingAllowed()) return false;
+        if (!isStillValid(player) || context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+            reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
+            return true;
+        }
+        var key = target.key();
+        var members = selection.members();
+        if (!members.contains(key.consumerNetworkId()) || !members.contains(key.providerNetworkId())) return false;
+        selection = new PolicyEditorSelection(members, members.indexOf(key.consumerNetworkId()),
+                members.indexOf(key.providerNetworkId()), key.capability().ordinal());
+        acknowledgmentId = "";
+        var service = PolicyService.get(level);
+        var revision = service.revision(key);
+        expectedRevision = revision;
+        if (!revision.equals(target.observedRevision())) {
+            state.conflicted();
+            return true;
+        }
+        var configured = service.configured(key);
+        if (configured.map(record -> record.rule().enabled()).orElse(false) == target.enabled()) {
+            state.selectionChanged();
+            return true;
+        }
+        var rule = configured.map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
+                .withEnabled(target.enabled());
+        var result = service.edit(new PolicyEdit(key, revision, rule));
+        if (result instanceof PolicyMutationResult.Accepted accepted) {
+            expectedRevision = accepted.revision();
+            state.accepted();
+            acknowledgmentId = "policy-" + accepted.revision().value();
+        } else if (result instanceof PolicyMutationResult.Rejected rejected) {
+            expectedRevision = rejected.currentRevision();
+            state.conflicted();
+        }
+        return true;
+    }
+
+    /** Session, distance and domain authority without the selected rule's revision; switches carry their own. */
+    public boolean matchesContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
+        return isStillValid(candidate) && context != null && context.equals(requestedContext)
+                && FederationDomainRegistryAccess.get(level).isCurrent(context) && state.editingAllowed() && selection != null;
     }
 
     public void nextMappingProvider() {
@@ -780,9 +861,36 @@ public final class FederationDomainPolicySession {
 
     private Component runtimeObservationText(PolicyKey key,
             PolicyRule rule) {
-        String prefix = "ae2federation.ui.domain.runtime.";
-        if (rule == null) return Component.translatable(prefix + "unconfigured");
-        if (!rule.enabled()) return Component.translatable(prefix + "off");
+        return runtimeObservation(key, rule).toComponent();
+    }
+
+    /** The last observed runtime result of one rule, as translation keys rather than rendered text. */
+    record RuntimeObservation(String code, String operation, String backend, String storage) {
+        Component toComponent() {
+            String prefix = "ae2federation.ui.domain.runtime.";
+            if (code.equals("operation_missing")) return Component.translatable(prefix + code,
+                    Component.translatable(prefix + "operation." + operation));
+            var text = Component.translatable(prefix + code);
+            if (!backend.isEmpty()) text.append("\n").append(Component.translatable(prefix + "backend_reason",
+                    Component.translatable(prefix + "backend." + backend)));
+            if (!storage.isEmpty()) text.append("\n").append(Component.translatable(prefix + "storage_reason",
+                    Component.translatable(prefix + "provenance." + storage)));
+            return text;
+        }
+
+        com.google.gson.JsonObject toJson() {
+            var json = new com.google.gson.JsonObject();
+            json.addProperty("code", code);
+            if (!operation.isEmpty()) json.addProperty("operation", operation);
+            if (!backend.isEmpty()) json.addProperty("backend", backend);
+            if (!storage.isEmpty()) json.addProperty("storage", storage);
+            return json;
+        }
+    }
+
+    private RuntimeObservation runtimeObservation(PolicyKey key, PolicyRule rule) {
+        if (rule == null) return new RuntimeObservation("unconfigured", "", "", "");
+        if (!rule.enabled()) return new RuntimeObservation("off", "", "", "");
         var required = switch (key.capability()) {
             case CRAFTING -> List.of(PolicyOperation.REQUEST);
             case PROCESSING -> List.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY);
@@ -791,12 +899,11 @@ public final class FederationDomainPolicySession {
         };
         for (var operation : required) {
             if (!rule.operations().contains(operation)) {
-                return Component.translatable(prefix + "operation_missing",
-                        Component.translatable(prefix + "operation." + operation.name().toLowerCase(java.util.Locale.ROOT)));
+                return new RuntimeObservation("operation_missing", operation.name().toLowerCase(java.util.Locale.ROOT), "", "");
             }
         }
         if (key.capability() == PolicyCapability.PROCESSING) {
-            return Component.translatable(prefix + "on_dispatch");
+            return new RuntimeObservation("on_dispatch", "", "", "");
         }
         boolean published = switch (key.capability()) {
             case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
@@ -804,21 +911,19 @@ public final class FederationDomainPolicySession {
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergyBindingService.hasPublishedBinding(level, key);
             case PROCESSING -> throw new IllegalStateException("Processing has no persistent capability binding");
         };
-        var text = Component.translatable(prefix + (published ? "published" : "unobserved"));
+        if (published) return new RuntimeObservation("published", "", "", "");
         var backendDiagnostic = switch (key.capability()) {
             case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(level, key);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergyBindingService.lastDiagnostic(level, key);
             default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic>empty();
         };
-        if (!published) backendDiagnostic.ifPresent(diagnostic -> text.append("\n").append(
-                Component.translatable(prefix + "backend_reason", Component.translatable(prefix + "backend."
-                        + diagnostic.reason().name().toLowerCase(java.util.Locale.ROOT)))));
-        if (key.capability() == PolicyCapability.STORAGE && !published) {
+        var backend = backendDiagnostic.map(diagnostic -> diagnostic.reason().name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+        var storage = "";
+        if (key.capability() == PolicyCapability.STORAGE) {
             var diagnostic = space.controlnet.ae2federation.storage.mount.StorageMountService.lastDiagnosticIfPresent(level, key);
-            if (diagnostic != null) text.append("\n").append(Component.translatable(prefix + "storage_reason",
-                    Component.translatable(prefix + "provenance." + diagnostic.name().toLowerCase(java.util.Locale.ROOT))));
+            if (diagnostic != null) storage = diagnostic.name().toLowerCase(java.util.Locale.ROOT);
         }
-        return text;
+        return new RuntimeObservation("unobserved", "", backend, storage);
     }
 
     public Component statusText() {
@@ -834,6 +939,7 @@ public final class FederationDomainPolicySession {
             case STALE_CONTEXT -> Component.translatable("ae2federation.ui.domain.status.stale_context");
             case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision",
                     expectedRevision.value());
+            case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict", expectedRevision.value());
         };
     }
 

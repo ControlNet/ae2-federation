@@ -39,15 +39,25 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 });
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .waitForText("#domain_title", "ME联邦域管理")
-                .typeInto("#graph_search", "10, -57, 10")
-                .click(".graph-object-row")
-                .checkTextContains("#graph_selection", "最近目标检查：策略未允许访问")
-                .check("localized provider observation fits compact inspector", context ->
-                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection"))
+                .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
+                .check("localized pair editor fits compact aside", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                .hover("#domain_title").frames(3).screenshot("ui-chinese-pair-editor")
+                .typeInto("#graph_search", "网络")
+                .check("localized network search matches", context -> !context.el("#graph_search_empty").isVisible())
+                .typeInto("#graph_search", "").blur()
+                .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.providerHost")))
+                .waitUntil("localized network detail is shown", context -> context.el("#network_detail").isVisible())
+                .checkTextContains("#graph_selection", "Pattern Provider：1")
+                .check("localized network detail fits compact inspector", context ->
+                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection", "#network_identity"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-provider-observation")
-                .typeInto("#graph_search", "端点")
-                .click(".graph-object-row")
-                .checkTextContains("#graph_selection", "端点")
+                .step("select the Endpoint network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.endpoint")))
+                .waitUntil("endpoint network detail is shown", context -> context.el("#network_title").text()
+                        .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("net.endpoint"))))
+                .checkTextContains("#graph_selection", "处理端点：")
                 .check("compact graph detail fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection"))
                 .check("compact graph inspector action remains inside workspace", context -> {
                     var button = context.el("#graph_open").bounds();
@@ -149,22 +159,17 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .screenshot("ui-chinese-narrow-endpoint-table")
                 .hover("#endpoint_browser_close")
                 .step("close endpoint overview", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_browser_close"))
-                .click("#tab_policy").frames(3)
-                .check("narrow policy detail fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#rule_value", "#policy_direction"))
-                .screenshot("ui-chinese-narrow-policy")
-                .hover("#policy_browse")
-                .step("browse rules in narrow Chinese layout", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#policy_browse"))
-                .awaitElement("#policy_rule_search")
-                .typeInto("#policy_rule_search", "加工")
-                .waitUntil("localized rule search finds processing", context -> context.all(".policy-rule-row").size() == 1)
-                .check("narrow rule browser controls fit", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
-                        context, "#policy_rule_search", "#policy_rule_list", "#policy_browser_close"))
-                .check("narrow browser close label fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#policy_browser_close"))
-                .screenshot("ui-chinese-narrow-rules")
-                .hover("#policy_browser_close")
-                .step("close narrow rule browser", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#policy_browser_close"))
                 .click("#tab_overview").frames(3)
+                .hover(".network-link")
+                .step("open the pair in the narrow layout", context ->
+                        TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))
+                .waitUntil("narrow pair editor is shown", context -> context.el("#pair_editor").isVisible())
+                .check("narrow pair editor fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_0_processing"))
+                .check("narrow pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
+                        context, "#topology_aside", "#policy_switch_0_storage"))
+                .screenshot("ui-chinese-narrow-policy")
+                .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow graph inspector fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection"))
                 .screenshot("ui-chinese-narrow-overview")
                 .closeScreen()
@@ -192,7 +197,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                                 "#bridge_diagnostic_help", "#ack_status", "#entrance_value"))
                 .check("Chinese unavailable Bridge has no empty editor", context ->
                         !context.el("#workspace_tabs").isVisible() && context.el("#bridge_unavailable").isVisible()
-                                && !context.el("#page_policy").isVisible())
+                                && !context.el("#page_mapping").isVisible())
                 .check("Chinese diagnostic contents fit the small workspace", context ->
                         TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#bridge_diagnostic_title",
                                 "#bridge_diagnostic_help", "#ack_status"))

@@ -24,25 +24,37 @@ final class TaskThirtyThreeUiContractTest {
                 "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenuHolder.java"));
 
         for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
-                "physical_layer_toggle", "capability_layer_toggle", "member_list", "pattern_search",
+                "graph_search", "network_links", "pair_editor", "pair_sections", "pattern_search",
                 "pattern_list", "mapping_provider_next", "mapping_slot_next", "mapping_lane_next",
                 "mapping_toggle", "mapping_status", "endpoint_next", "endpoint_detail", "entrance_value",
-                "members_value", "consumer_value", "provider_value", "rule_value", "ack_status" }) {
+                "members_value", "ack_status" }) {
             assertTrue(xml.contains("id=\"" + id + "\""), "Missing stable Task 33 control #" + id);
         }
         assertTrue(xml.contains("<graph-view"), "Production UI must use LDLib2's pan/zoom graph canvas");
-        assertTrue(xml.contains("<virtual-scroller-view"), "Large member and Pattern lists must be virtualized");
+        assertTrue(xml.contains("<virtual-scroller-view"), "Large Pattern lists must be virtualized");
         assertTrue(lss.contains("allow-zoom: true") && lss.contains("allow-pan: true"),
                 "Graph interaction must be enabled in shared LSS");
-        assertTrue(lss.contains("width: 396;") && lss.contains("height: 236;"),
-                "The production workspace must fit a 400x240 logical scale-4 viewport");
-        for (var page : new String[] {"overview", "policy", "mapping", "diagnostics"}) {
+        assertTrue(holder.contains("screenWidth - 8") && holder.contains("screenHeight - 8"),
+                "The production workspace must shrink to fit a 400x240 logical scale-4 viewport");
+        for (var page : new String[] {"overview", "mapping", "diagnostics"}) {
             assertTrue(xml.contains("id=\"page_" + page + "\""), "Missing task page " + page);
         }
         assertTrue(lss.contains(".__button_text__") && lss.contains("adaptive-width: false"),
                 "Button child text must have an explicit bounded style");
-        assertTrue(holder.contains("FederationGraphPresenter") && holder.contains("stringS2C"),
+        assertTrue(holder.contains("FederationTopologyView") && holder.contains("stringS2C"),
                 "The rendered graph must consume a server-owned scoped projection");
+    }
+
+    @Test
+    void menuTexturesCanBeBuiltOnTheDedicatedServer() throws IOException {
+        // Menus are constructed on both sides; an IGuiTexture lambda links against client-only GuiGraphics.
+        try (var sources = Files.list(REPOSITORY_ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/client/menu"))) {
+            for (var source : sources.toList()) {
+                assertTrue(!Files.readString(source).contains("(graphics, mouseX, mouseY"),
+                        "Menu textures must be painted through FederationTheme.painted: " + source.getFileName());
+            }
+        }
     }
 
     @Test

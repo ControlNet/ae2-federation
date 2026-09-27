@@ -42,7 +42,7 @@ final class TaskThirtyFourMultiClientContractTest {
         assertTrue(client.contains("FrameCapture.grab()") && client.contains("hasSingleplayerServer()"));
         assertTrue(client.contains("ConnectScreen.startConnecting") && client.contains("ServerAddress.parseString"));
         assertTrue(client.contains("ScreenEvent.Render.Post")
-                && client.contains("status.hasClass(\"stale_revision\") && renderedText.equals(expectedText)")
+                && client.contains("status.hasClass(\"conflict\") && renderedText.equals(expectedText)")
                 && client.contains("staleRevisionStableFrames >= 3")
                 && client.contains("staleRevisionRenderedText = renderedText"));
         assertTrue(client.contains("minecraft.gui.getChat().clearMessages(true)"));

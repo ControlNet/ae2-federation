@@ -228,21 +228,31 @@ final class TaskThirtyThreeWorldFixture {
                 "Disabled rule must not retain its prior backend failure");
         context.put("runtime.disabledRevision", policies.revision(key).value());
         context.put("runtime.disabledKey", key);
-        context.put("runtime.expectedRevision", space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(
-                context.player(), space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY)
-                .orElseThrow().expectedRevision());
     }
 
+    /** A switch observed before the latest revision is refused instead of overwriting the newer rule. */
     static boolean displayedRevisionDoesNotGrantAuthority(ServerContext context) {
-        var request = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(context.player(),
-                space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY).orElseThrow();
-        require(request.expectedRevision().equals(context.get("runtime.expectedRevision")),
-                "Rendering the current revision must not silently refresh submission authority");
-        var result = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.dispatch(context.player(), request);
         var key = context.<space.controlnet.ae2federation.policy.PolicyKey>get("runtime.disabledKey");
+        long disabledRevision = context.get("runtime.disabledRevision");
+        var current = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(context.player(),
+                space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY).orElseThrow();
+        var outdated = new space.controlnet.ae2federation.client.policy.PolicySwitchTarget(key, true,
+                new space.controlnet.ae2federation.policy.PolicyRevision(disabledRevision - 1));
+        var result = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.dispatch(context.player(),
+                new space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionRequest(
+                        space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.SET_POLICY,
+                        current.containerId(), current.menuNonce(), current.menuSequence(), current.context(),
+                        current.expectedRevision(), outdated.encode()));
         var configured = space.controlnet.ae2federation.policy.PolicyService.get(context.level()).configured(key).orElseThrow();
-        return result == space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionResult.STALE_REVISION
-                && !configured.rule().enabled() && configured.revision().value() == context.<Long>get("runtime.disabledRevision");
+        return result == space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionResult.ACCEPTED
+                && !configured.rule().enabled() && configured.revision().value() == disabledRevision;
+    }
+
+    static void recordNetworks(ServerContext context) {
+        context.put("net.providerHost", FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid())
+                .orElseThrow().value().toString());
+        context.put("net.endpoint", FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid())
+                .orElseThrow().value().toString());
     }
 
     static void removeEndpointEnergySource(ServerContext context) {

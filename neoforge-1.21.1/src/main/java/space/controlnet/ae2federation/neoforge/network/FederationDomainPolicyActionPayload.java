@@ -30,7 +30,7 @@ public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRe
         buffer.writeUtf(request.context().federationDomainId().value(), ObservationLimits.MAX_ID_LENGTH);
         buffer.writeVarLong(request.context().generation());
         buffer.writeVarLong(request.expectedRevision().value());
-        if (request.action() == FederationDomainPolicyAction.SELECT_TARGET) {
+        if (request.action().takesTarget()) {
             buffer.writeUtf(request.target(), 160);
         }
         buffer.writeUUID(requestId);
@@ -50,7 +50,7 @@ public record FederationDomainPolicyActionPayload(FederationDomainPolicyActionRe
         var federationDomainId = new FederationDomainId(buffer.readUtf(ObservationLimits.MAX_ID_LENGTH));
         var context = new FederationDomainReference(federationDomainId, buffer.readVarLong());
         var revision = new PolicyRevision(buffer.readVarLong());
-        var target = action == FederationDomainPolicyAction.SELECT_TARGET ? buffer.readUtf(160) : "";
+        var target = action.takesTarget() ? buffer.readUtf(160) : "";
         var requestId = buffer.readUUID();
         if (buffer.isReadable()) {
             throw new IllegalArgumentException("Federation Domain policy action payload has trailing data");

@@ -8,9 +8,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.VirtualScrollerView;
 import com.lowdragmc.lowdraglib2.utils.XmlUtils;
 import java.util.Objects;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +32,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private final ActionRequestProgress requestProgress = new ActionRequestProgress();
     private UI currentUi;
     private FederationWorkspace currentWorkspace;
+    private FederationTopologyView currentTopology;
     private String serverStatus = "pending";
     private final int preferredWidth;
     private final int preferredHeight;
@@ -60,9 +59,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         currentUi = ui;
         bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
-        bind(ui, "consumer_value", this::consumerText);
-        bind(ui, "provider_value", this::providerText);
-        bind(ui, "rule_value", this::ruleText);
         bind(ui, "ack_status", this::statusText);
         bind(ui, "mapping_provider_value", this::mappingProviderText);
         bind(ui, "mapping_selection_value", this::mappingSelectionText);
@@ -84,11 +80,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
         currentWorkspace = workspace;
-        var consumer = element(ui, "consumer_next", UIElement.class);
-        var provider = element(ui, "provider_next", UIElement.class);
-        var capability = element(ui, "capability_next", UIElement.class);
-        var toggle = element(ui, "policy_toggle", Button.class);
-        toggle.setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_POLICY));
         element(ui, "mapping_toggle", Button.class).setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_MAPPING));
         element(ui, "mapping_release", Button.class).setOnClick(event -> {
             if (clientAuthority != null) {
@@ -98,28 +89,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         });
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
-        var graph = element(ui, "domain_graph", GraphView.class);
-        var graphState = new FederationGraphPresenter(graph, element(ui, "graph_selection", Label.class), virtualList(ui, "member_list"),
-                element(ui, "graph_open", Button.class), element(ui, "graph_search", com.lowdragmc.lowdraglib2.gui.ui.elements.TextField.class),
-                element(ui, "graph_search_empty", Label.class), workspace::openObject);
+        var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
+                workspace::openObject);
+        currentTopology = graphState;
         workspace.bindGraph(graphState);
-        for (var zoomId : new String[] {"graph_zoom_in", "graph_zoom_out"}) {
-            element(ui, zoomId, Button.class).layout(style -> style.flexGrow(0).flexShrink(0).width(22));
-        }
-        element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
-        element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
-        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, 0.25f));
-        var physical = element(ui, "physical_layer_toggle", Button.class);
-        var ownership = element(ui, "capability_layer_toggle", Button.class);
-        FederationGraphPresenter.mark(physical, true);
-        FederationGraphPresenter.mark(ownership, true);
-        physical.setOnClick(event -> graphState.togglePhysical(physical));
-        ownership.setOnClick(event -> graphState.toggleCapability(ownership));
         var choices = new BindableValue<String>("");
         choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.workspaceChoices())
                 .initialValue("").remoteSetter(value -> {
                     workspace.acceptChoices(value);
-                    graphState.acceptChoices(value);
+                    if (!value.isEmpty()) graphState.acceptChoices(com.google.gson.JsonParser.parseString(value).getAsJsonObject());
                     releaseDialog.acceptChoices(value);
                 }).build());
         choices.addClass("state-sync");
@@ -206,6 +184,19 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (context == null || !context.equals(request.context())) {
             return FederationDomainPolicyActionResult.STALE_CONTEXT;
         }
+        if (request.action() == FederationDomainPolicyAction.SET_POLICY) {
+            // A switch carries the revision of its own rule; the selected rule's revision does not gate it.
+            if (!session.matchesContext(player, request.context())) {
+                return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
+                        : FederationDomainPolicyActionResult.WRONG_MENU;
+            }
+            session.clearPendingRelease();
+            if (!session.setPolicy(request.target())) {
+                return FederationDomainPolicyActionResult.INVALID_TARGET;
+            }
+            menuSequence = Math.incrementExact(menuSequence);
+            return FederationDomainPolicyActionResult.ACCEPTED;
+        }
         if (!session.expectedRevision().equals(request.expectedRevision())) {
             return FederationDomainPolicyActionResult.STALE_REVISION;
         }
@@ -222,6 +213,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         switch (request.action()) {
             case PREPARE_RELEASE -> session.releaseEndpoint();
             case CANCEL_RELEASE -> session.cancelRelease();
+            case SET_POLICY -> throw new IllegalStateException("Policy switches are dispatched before selection authority");
             case SELECT_TARGET -> {
                 if (!session.selectTarget(request.target())) {
                     return FederationDomainPolicyActionResult.INVALID_TARGET;
@@ -318,13 +310,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private void renderRequestProgress() {
         if (currentUi == null) return;
         var pending = requestProgress.pending();
-        applyState(pending ? "pending" : serverStatus, currentUi,
-                element(currentUi, "consumer_next", UIElement.class), element(currentUi, "provider_next", UIElement.class),
-                element(currentUi, "capability_next", UIElement.class), element(currentUi, "policy_toggle", Button.class));
+        var active = applyState(pending ? "pending" : serverStatus, currentUi);
+        if (currentTopology != null) currentTopology.setEditable(active && clientAuthority != null);
         var message = element(currentUi, "request_status", Label.class);
         var rejection = requestProgress.rejection();
         if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && clientAuthority != null
-                && (serverStatus.equals("ready") || serverStatus.equals("accepted")), rejection != null);
+                && (serverStatus.equals("ready") || serverStatus.equals("accepted") || serverStatus.equals("conflict")),
+                rejection != null);
         boolean visible = pending || rejection != null;
         message.setDisplay(visible);
         element(currentUi, "ack_status", Label.class).setDisplay(!visible);
@@ -350,18 +342,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
 
     private Component membersText() {
         return session == null ? Component.translatable("ae2federation.ui.domain.members.pending") : session.membersText();
-    }
-
-    private Component consumerText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.consumer", "-") : session.consumerText();
-    }
-
-    private Component providerText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.provider", "-") : session.providerText();
-    }
-
-    private Component ruleText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.rule.unavailable") : session.ruleText();
     }
 
     private Component statusText() {
@@ -393,32 +373,27 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? "pending" : session.statusCode();
     }
 
-    private static void applyState(String code, UI ui, UIElement consumer, UIElement provider, UIElement capability,
-            Button toggle) {
+    private static boolean applyState(String code, UI ui) {
         var status = element(ui, "ack_status", Label.class);
-        for (var state : new String[] { "ready", "pending", "disabled", "accepted", "stale_context",
+        for (var state : new String[] { "ready", "pending", "disabled", "accepted", "conflict", "stale_context",
                 "stale_revision" }) {
             status.removeClass(state);
         }
         status.addClass(code);
         var active = !code.equals("pending") && !code.equals("disabled")
                 && !code.equals("stale_context") && !code.equals("stale_revision");
-        consumer.setActive(active);
-        provider.setActive(active);
-        capability.setActive(active);
-        toggle.setActive(active);
+        var lamp = element(ui, "sync_lamp", UIElement.class);
+        lamp.style(style -> style.backgroundTexture(FederationTheme.solid(active ? FederationTheme.OK
+                : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR)));
         for (var id : new String[] {"mapping_provider_next", "mapping_slot_next", "mapping_lane_next", "mapping_toggle", "mapping_release", "endpoint_next", "pattern_list"}) {
             element(ui, id, UIElement.class).setActive(active);
         }
+        return active;
     }
 
     private static <T> T element(UI ui, String id, Class<T> type) {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
-    @SuppressWarnings("unchecked")
-    private static VirtualScrollerView<String> virtualList(UI ui, String id) {
-        return (VirtualScrollerView<String>) (VirtualScrollerView<?>) element(ui, id, VirtualScrollerView.class);
-    }
 
 }

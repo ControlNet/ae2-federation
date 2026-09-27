@@ -18,7 +18,7 @@ public final class TaskFifteenCloseUnsubscribeScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
-                .click("#policy_toggle")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("initial edit accepted", TaskFifteenWorldFixture::policyConfigured)
                 .closeScreen()
                 .waitUntilServer("production menu closed", TaskFifteenWorldFixture::menuClosed)
@@ -28,7 +28,7 @@ public final class TaskFifteenCloseUnsubscribeScenario implements UIScenario {
                 })
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForTextContains("#rule_value", "STORAGE: disabled (revision")
+                .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "Off · revision")
                 .checkServer("menu close did not stop policy sharing", context ->
                         !TaskFifteenWorldFixture.policyEnabled(context))
                 .server("observe post-close production mutation", context ->

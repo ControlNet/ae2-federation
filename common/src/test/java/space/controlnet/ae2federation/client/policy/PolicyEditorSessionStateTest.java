@@ -18,6 +18,19 @@ final class PolicyEditorSessionStateTest {
     }
 
     @Test
+    void switchConflictKeepsTheSessionEditable() {
+        var state = PolicyEditorSessionState.ready();
+
+        state.conflicted();
+
+        org.junit.jupiter.api.Assertions.assertTrue(state.editingAllowed());
+        assertEquals(PolicyEditorSessionState.Status.CONFLICT, state.status());
+        state.reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
+        state.conflicted();
+        assertEquals(PolicyEditorSessionState.Status.STALE_CONTEXT, state.status());
+    }
+
+    @Test
     void staleRevisionRejectionIsTerminalForSelectorActions() {
         var state = PolicyEditorSessionState.ready();
 
