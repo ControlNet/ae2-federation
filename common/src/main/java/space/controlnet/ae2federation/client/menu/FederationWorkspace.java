@@ -49,6 +49,13 @@ final class FederationWorkspace {
     private String endpointNavigationReceipt;
     private String endpointNavigationPage;
     private FederationTopologyView topology;
+    private FederationProcessingGraph processing;
+    /**
+     * Wires are the default processing view; the list stays available and is the only view for native Providers.
+     * The player's choice is kept for this client session so reopened menus keep it.
+     */
+    private static boolean processingList;
+    private boolean processingAvailable;
     private boolean authorityAllowsNavigation;
     private String filter = "";
     private String selectedSlot = "";
@@ -152,6 +159,35 @@ final class FederationWorkspace {
         select.accept(endpointNavigationReceipt);
     }
 
+    void bindProcessing(Consumer<String> setMapping, Runnable release) {
+        processing = new FederationProcessingGraph(ui, setMapping, select, release, this::patternName, this::outputStack);
+        element("mapping_view_graph", Button.class).setOnClick(event -> {
+            processingList = false;
+            updateProcessingView();
+        });
+        element("mapping_view_list", Button.class).setOnClick(event -> {
+            processingList = true;
+            updateProcessingView();
+        });
+        updateProcessingView();
+    }
+
+    void setProcessingEditable(boolean editable) {
+        if (processing != null) processing.setEditable(editable);
+    }
+
+    private void updateProcessingView() {
+        boolean wires = processingAvailable && !processingList;
+        element("mapping_list", UIElement.class).setDisplay(!wires);
+        element("processing_graph", UIElement.class).setDisplay(wires);
+        element("mapping_view_switch", UIElement.class).setDisplay(processingAvailable);
+        for (var mode : List.of("graph", "list")) {
+            var button = element("mapping_view_" + mode, Button.class);
+            button.removeClass("selected");
+            if (mode.equals("graph") == wires) button.addClass("selected");
+        }
+    }
+
     void bindGraph(FederationTopologyView graph) {
         topology = graph;
         element("endpoint_locate", Button.class).setOnClick(event -> {
@@ -231,6 +267,13 @@ final class FederationWorkspace {
             navigationGroup = null;
         }
         selectedSlot = selected.has("slot") ? selected.get("slot").getAsString() : "";
+        boolean available = root.has("mappingGraph") && root.get("mappingGraph").getAsBoolean();
+        if (available != processingAvailable) {
+            processingAvailable = available;
+            updateProcessingView();
+        }
+        if (processing != null) processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
+                confirmedSelections.get("target"));
         var signature = root.getAsJsonArray("slot").toString() + selectedSlot;
         if (!patternSignature.equals(signature)) {
             patternSignature = signature;

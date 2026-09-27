@@ -376,6 +376,7 @@ public final class FederationDomainPolicySession {
         }
         selectedProvider().ifPresent(entry -> {
             selected.addProperty("mapping_provider", FederationDomainGraphProjection.providerId(context, entry));
+            root.addProperty("mappingGraph", entry.controller().isPresent());
             var inventory = entry.provider().patternInventory();
             for (int slot = 0; slot < inventory.size(); slot++) {
                 var stack = inventory.getStackInSlot(slot);
@@ -391,6 +392,11 @@ public final class FederationDomainPolicySession {
                 choice.add("inputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, inputs).getOrThrow());
                 choice.addProperty("empty", stack.isEmpty());
                 choice.addProperty("mapped", entry.provider().lanesForSlot(slot).size());
+                var slotEndpoints = new com.google.gson.JsonArray();
+                final int wireSlot = slot;
+                entry.controller().ifPresent(controller -> controller.endpointsForSlot(wireSlot)
+                        .forEach(endpoint -> slotEndpoints.add(endpointChoiceId(endpoint))));
+                choice.add("endpoints", slotEndpoints);
             }
             selected.addProperty("slot", Integer.toString(mappingSlotIndex));
             var endpoints = mappingEndpoints();
@@ -400,6 +406,9 @@ public final class FederationDomainPolicySession {
                 var binding = currentEndpoints().stream().filter(candidate -> candidate.endpointIdentity().equals(endpoint))
                         .findFirst().orElse(null);
                 choice.addProperty("state", mappingTargetState(entry, endpoint, binding));
+                choice.addProperty("retained", entry.controller().filter(controller -> controller.retained(endpoint)).isPresent());
+                choice.addProperty("ownedHere", binding != null && binding.claimState().owner()
+                        .filter(owner -> owner.provider().equals(entry.identity())).isPresent());
                 if (binding != null) {
                     choice.addProperty("position", binding.runtime().position().toShortString());
                     binding.claimState().owner().ifPresent(owner -> {
@@ -707,6 +716,33 @@ public final class FederationDomainPolicySession {
         } catch (IllegalArgumentException | IndexOutOfBoundsException | java.util.NoSuchElementException exception) {
             mappingAcknowledgment = "rejected-invalid-selection";
         }
+    }
+
+    /**
+     * Sets one wire between a pattern slot of the selected Provider and one of its Endpoint choices to an explicit
+     * state. The slot and Endpoint become the selection; an unchanged wire is acknowledged without a toggle, so a
+     * repeated request cannot reverse it. Ownership is checked by the Provider exactly as for the list view.
+     */
+    public boolean setMapping(String encoded) {
+        if (!authorizeAction()) return false;
+        var target = MappingWireTarget.parse(encoded).orElse(null);
+        var entry = selectedProvider().orElse(null);
+        if (target == null || entry == null || entry.controller().isEmpty()) return false;
+        var slot = target.slotIndex();
+        if (slot >= entry.provider().patternInventory().size()) return false;
+        var endpoints = mappingEndpoints();
+        var endpoint = endpoints.stream().filter(candidate -> endpointChoiceId(candidate).equals(target.endpoint()))
+                .findFirst().orElse(null);
+        if (endpoint == null) return false;
+        mappingSlotIndex = slot;
+        mappingLaneIndex = endpoints.indexOf(endpoint);
+        mappingEndpointSelection = endpoint;
+        if (entry.controller().orElseThrow().endpointsForSlot(slot).contains(endpoint) == target.mapped()) {
+            mappingAcknowledgment = "ready";
+        } else {
+            toggleMapping();
+        }
+        return true;
     }
 
     /** Prepares a target-specific confirmation or executes the matching, still-current prepared release. */

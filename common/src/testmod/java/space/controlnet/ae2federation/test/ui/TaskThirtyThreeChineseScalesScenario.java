@@ -72,6 +72,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         context, "#endpoint_detail", "#endpoint_identity"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-diagnostics-scale-4")
                 .click("#tab_mapping").frames(3)
+                .click("#mapping_view_list")
                 .check("Chinese mapping action labels fit", context ->
                         TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#mapping_toggle", "#mapping_release"))
                 .checkBounds("#pattern_list", bounds -> bounds.width() > 100 && bounds.height() > 40)

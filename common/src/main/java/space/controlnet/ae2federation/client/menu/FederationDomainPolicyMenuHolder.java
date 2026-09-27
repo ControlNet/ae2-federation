@@ -63,13 +63,16 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         bind(ui, "mapping_provider_value", this::mappingProviderText);
         bind(ui, "mapping_selection_value", this::mappingSelectionText);
         bind(ui, "mapping_status", this::mappingStatusText);
+        bind(ui, "processing_status", this::mappingStatusText);
         var mappingFeedback = new BindableValue<String>("pending");
         mappingFeedback.bind(DataBindingBuilder.stringS2C(this::currentMappingStatus).initialValue("pending")
                 .remoteSetter(code -> {
-                    var label = element(ui, "mapping_status", Label.class);
-                    label.style(style -> style.tooltips(Component.literal(code)));
-                    for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
-                    label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
+                    for (var id : new String[] {"mapping_status", "processing_status"}) {
+                        var label = element(ui, id, Label.class);
+                        label.style(style -> style.tooltips(Component.literal(code)));
+                        for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
+                        label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
+                    }
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
@@ -81,12 +84,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
         currentWorkspace = workspace;
         element(ui, "mapping_toggle", Button.class).setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_MAPPING));
-        element(ui, "mapping_release", Button.class).setOnClick(event -> {
+        Runnable prepareRelease = () -> {
             if (clientAuthority != null) {
                 releaseDialog.prepare(clientAuthority.menuSequence());
                 send(FederationDomainPolicyAction.PREPARE_RELEASE);
             }
-        });
+        };
+        element(ui, "mapping_release", Button.class).setOnClick(event -> prepareRelease.run());
+        workspace.bindProcessing(target -> send(FederationDomainPolicyAction.SET_MAPPING, target), prepareRelease);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
@@ -239,6 +244,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             case NEXT_MAPPING_SLOT -> session.nextMappingSlot();
             case NEXT_MAPPING_LANE -> session.nextMappingLane();
             case TOGGLE_MAPPING -> session.toggleMapping();
+            case SET_MAPPING -> {
+                if (!session.setMapping(request.target())) {
+                    return FederationDomainPolicyActionResult.INVALID_TARGET;
+                }
+            }
             case NEXT_ENDPOINT -> session.nextEndpoint();
             case RELEASE_ENDPOINT -> session.releaseEndpoint();
         }
@@ -324,6 +334,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var pending = requestProgress.pending();
         var active = applyState(pending ? "pending" : serverStatus, currentUi);
         if (currentTopology != null) currentTopology.setEditable(active && clientAuthority != null);
+        if (currentWorkspace != null) currentWorkspace.setProcessingEditable(active && clientAuthority != null);
         var message = element(currentUi, "request_status", Label.class);
         var rejection = requestProgress.rejection();
         if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && clientAuthority != null

@@ -32,6 +32,16 @@ final class TaskThirtyThreeScenarioSupport {
                 .step("record visible overview", context -> context.put("task33.graphVisited", Boolean.toString(context.el("#domain_graph").isVisible())));
     }
 
+    /** Clicks the middle of the wire from a pattern port to the only Endpoint card of the processing view. */
+    static void clickWire(com.lowdragmc.lowdraglib2.uitest.TestContext context, String slot) {
+        var port = context.el("#processing_port_" + slot).bounds();
+        var card = context.el(".processing-endpoint").bounds();
+        float x = (port.x() + port.width() - 2 + card.x()) / 2;
+        float y = (port.centerY() + card.centerY()) / 2;
+        context.input().mouseDown(x, y, 0);
+        context.input().mouseUp(x, y, 0);
+    }
+
     static void activateNavigation(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
         var bounds = context.el(selector).bounds();
         context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);

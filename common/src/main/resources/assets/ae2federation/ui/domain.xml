@@ -71,8 +71,23 @@
                     <label class="domain-heading"><lang key="ae2federation.ui.workspace.provider"/></label>
                     <selector id="mapping_provider_next"/>
                     <label id="mapping_provider_value" class="identity-caption"/>
+                    <element id="mapping_view_switch" class="view-switch">
+                        <button id="mapping_view_graph" text="ae2federation.ui.processing.view_wires"/>
+                        <button id="mapping_view_list" text="ae2federation.ui.processing.view_list"/>
+                    </element>
                 </element>
-                <element class="mapping-body">
+                <element id="processing_graph" class="processing-graph">
+                    <scroller-view id="processing_scroll" class="processing-scroll"/>
+                    <element class="dark-panel processing-detail">
+                        <label id="processing_detail_text" class="panel-text"/>
+                        <element class="compact-actions">
+                            <button id="processing_unlink" class="danger-action" text="ae2federation.ui.processing.unlink"/>
+                            <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
+                        </element>
+                        <label id="processing_status" class="mapping-status"/>
+                    </element>
+                </element>
+                <element id="mapping_list" class="mapping-body">
                     <element class="pattern-column">
                         <element class="pattern-search-row">
                             <text-field id="pattern_search" mode="string" value=""/>

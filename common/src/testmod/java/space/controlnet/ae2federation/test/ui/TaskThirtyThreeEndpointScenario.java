@@ -43,6 +43,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .hover("#endpoint_mapping")
                 .step("open owner mapping relationship", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_mapping"))
                 .waitUntil("server-confirmed navigation opens mappings", context -> context.el("#page_mapping").isVisible())
+                .click("#mapping_view_list")
                 .check("mapping selects the actual endpoint and mapped slot", context -> context.el("#mapping_lane_next").value().equals(context.get("navigation.target"))
                         && context.el("#mapping_slot_next").value().equals("1"))
                 .screenshot("ui-diagnostic-owner-mapping")

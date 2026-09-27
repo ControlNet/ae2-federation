@@ -94,6 +94,21 @@ final class TaskThirtyThreeWorldFixture {
         return provider != null && provider.mappedProvider().lanesForSlot(0).equals(Set.of(0));
     }
 
+    static boolean endpointOwnedByProvider(ServerContext context) {
+        return !provider(context).retained(endpoint(context).endpointIdentity())
+                && !provider(context).mappedProvider().lanesForSlot(1).isEmpty()
+                && endpoint(context).claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned;
+    }
+
+    static String slotZeroLanes(ServerContext context) {
+        return provider(context).mappedProvider().lanesForSlot(0).toString();
+    }
+
+    static boolean slotZeroUnmapped(ServerContext context) {
+        var provider = provider(context);
+        return provider != null && provider.mappedProvider().lanesForSlot(0).isEmpty();
+    }
+
     static void installRichPatterns(ServerContext context) {
         var namedDiamond = new net.minecraft.world.item.ItemStack(Items.DIAMOND);
         namedDiamond.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,

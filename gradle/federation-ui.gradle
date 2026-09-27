@@ -154,8 +154,11 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
+            || mapping.processingWire != 'mapped-unlinked'
+            || !captures.any { it.path.contains('ui-processing-wire-selected') }
             || mapping.mappingAck != 'Mapping updated for pattern slot 0.'
-            || mapping.mappingAckCode != 'accepted-0-0'
+            // The wires view maps and unlinks slot 0 first, so the list toggle sees mapping generation 2.
+            || mapping.mappingAckCode != 'accepted-0-2'
             || mapping.providerId == null || mapping.providerId.isBlank()) {
         throw new GradleException('Task 33 authoritative Provider mapping acknowledgment is invalid')
     }
@@ -180,6 +183,8 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def conflict = outcomes['ui.reject-claim-conflict']
     if (conflict.claimConflict != 'Rejected'
+            || conflict.processingOccupiedDrop != 'refused'
+            || !captures.any { it.path.contains('ui-processing-drop-occupied') }
             || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')
             || !conflict.endpointIdentity?.contains('OWNER_CONFLICT')
             || !conflict.endpointIdentity?.contains('Claim epoch: 1')) {

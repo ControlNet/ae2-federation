@@ -20,6 +20,31 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960));
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .click("#tab_mapping").frames(3)
+                .click("#mapping_view_graph")
+                .waitUntil("wires view lists patterns and the Endpoint", context -> context.el("#processing_graph").isVisible()
+                        && !context.el("#mapping_list").isVisible() && context.all(".processing-endpoint").size() == 1
+                        && !context.all("#processing_port_1").isEmpty())
+                .check("empty slots have no port", context -> context.all("#processing_port_2").isEmpty())
+                .check("the mapped Endpoint is shown as used by this Provider", context ->
+                        context.el(".processing-endpoint-state").text().equals("In use by this Provider"))
+                .screenshot("ui-processing-wires")
+                .drag("#processing_port_0", ".processing-endpoint")
+                .waitUntilServer("dropping a port maps the pattern", TaskThirtyThreeWorldFixture::mappingAccepted)
+                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
+                .step("select the new wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "0"))
+                .waitForTextContains("#processing_detail_text", "#0 ")
+                .check("a mapped wire can be unlinked", context -> context.el("#processing_unlink").isActive())
+                .screenshot("ui-processing-wire-selected")
+                .hover("#processing_unlink")
+                .step("unlink the wire", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_unlink"))
+                .waitUntilServer("unlinking removes only that wire", TaskThirtyThreeWorldFixture::slotZeroUnmapped)
+                .checkServer("the Endpoint stays claimed by the remaining pattern", TaskThirtyThreeWorldFixture::endpointOwnedByProvider)
+                .click(".processing-endpoint")
+                .waitForTextContains("#processing_detail_text", "Patterns sent here: #1")
+                .check("an Endpoint still in use cannot be released", context -> !context.el("#processing_release").isActive())
+                .screenshot("ui-processing-endpoint-detail")
+                .step("record processing wire evidence", context -> context.put("task33.processingWire", "mapped-unlinked"))
+                .click("#mapping_view_list")
                 .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Owned")
                 .step("remember target identity", context -> context.put("target.initialId", context.el("#mapping_lane_next").value()))
                 .click("#mapping_provider_next")
@@ -73,6 +98,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.mapping");
                     context.attach("providerId", context.get("task33.providerId"));
                     context.attach("authoritativeMappingLanes", context.get("task33.mappingLanes"));
+                    context.attach("processingWire", context.get("task33.processingWire"));
                 })
                 .screenshot("ui-mapping-accepted")
                 .server("install component-rich and fluid processing patterns", TaskThirtyThreeWorldFixture::installRichPatterns)
