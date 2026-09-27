@@ -273,7 +273,7 @@
   "ae2federation.ui.workspace.bridge_unavailable": "Bridge domain unavailable",
   "ae2federation.ui.workspace.bridge_reopen": "Resolve the condition below, then reopen this Bridge to inspect its domain.",
   "ae2federation.ui.domain.status.conflict": "Rule changed elsewhere (revision %s). The switch now shows its current state.",
-  "ae2federation.ui.topology.legend": "A▸B: A uses B's capability · green active · yellow not active yet · grey off",
+  "ae2federation.ui.topology.legend": "A▸B: A uses B's capability · green active · yellow not active yet · grey off · teal dots: deliveries in the last 5 s",
   "ae2federation.ui.topology.pair_note": "Rules apply to this network pair everywhere, including through other Routers or Bridges.",
   "ae2federation.ui.topology.devices": "Devices (%s)",
   "ae2federation.ui.topology.search": "Search networks…",
@@ -358,5 +358,14 @@
   "ae2federation.ui.location.highlight_help": "Outlines these blocks in the world for 10 seconds. Only you see it.",
   "ae2federation.ui.location.highlighted": "Outlining %s blocks for 10 s.",
   "ae2federation.ui.location.network_blocks": "Tinted: %s blocks of this network. Marked: its controller or first node.",
-  "ae2federation.ui.location.other_dimension": "In %s. Maps and highlights only show the dimension you are in."
+  "ae2federation.ui.location.other_dimension": "In %s. Maps and highlights only show the dimension you are in.",
+  "ae2federation.ui.topology.scope.domain": "Scope: domain",
+  "ae2federation.ui.topology.scope.related": "Scope: related",
+  "ae2federation.ui.topology.scope.help": "Also show %s networks of other domains that share a network with this one. They are read-only here.",
+  "ae2federation.ui.topology.related_card": "Related domain %s",
+  "ae2federation.ui.topology.read_only": "Read-only here",
+  "ae2federation.ui.topology.related_detail": "Member of related domain %s. Edit its rules from that domain's Router or Bridge.",
+  "ae2federation.ui.topology.pair_read_only": "Read-only: this pair belongs to domain %s.",
+  "ae2federation.ui.topology.flow": "Delivered %s× in the last 5 s",
+  "ae2federation.ui.topology.flow_energy": "Delivered %s× in the last 5 s · %s AE"
 }

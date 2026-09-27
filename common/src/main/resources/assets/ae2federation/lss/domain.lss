@@ -36,6 +36,8 @@
 .domain-graph { width: 100%; height: 100%; allow-pan: true; allow-zoom: true; min-scale: 0.25; max-scale: 3; grid-size: 16; grid-subdivisions: 4; grid-line-color: #0dd8d3e4; grid-accent-color: #1ad8d3e4; background: #ff201e27; }
 .graph-toolbar { position: absolute; right: 3; top: 3; flex-direction: row; gap-all: 2; }
 .domain-panel .graph-toolbar .toolbar-button { width: 16; height: 16; padding-all: 0; padding-bottom: 2; }
+/* Below the zoom row: a narrow canvas has no room for both in one row. */
+.domain-panel .scope-button { position: absolute; right: 3; top: 21; width: 88; height: 16; padding-all: 0; padding-bottom: 2; }
 .graph-search-empty { position: absolute; left: 6; top: 6; width: 150; height: 10; display: none; text-color: #ffffd65a; }
 .domain-panel .graph-legend { position: absolute; left: 3; bottom: 3; right: 3; adaptive-height: true; text-wrap: wrap; padding-horizontal: 3; text-color: #ffaaa4b2; background: #e017141e; }
 

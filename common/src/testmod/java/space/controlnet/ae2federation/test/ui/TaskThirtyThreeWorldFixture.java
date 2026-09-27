@@ -94,6 +94,72 @@ final class TaskThirtyThreeWorldFixture {
         return provider != null && provider.mappedProvider().lanesForSlot(0).equals(Set.of(0));
     }
 
+    /**
+     * A second, real ME Federation Bridge from the Router's outer network to a fresh ME Chest network. Its domain
+     * shares the outer network with the Router's domain, so it is a related domain there.
+     */
+    static void installRelatedDomain(ServerContext context) {
+        var cable = TaskFifteenWorldFixture.routerPosition(context).north().east();
+        context.put("related.cable", cable);
+        require(appeng.api.parts.PartHelper.setPart(context.level(), cable, null, null,
+                appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.BLUE)) != null,
+                "Related domain cable must be placed");
+        require(appeng.api.parts.PartHelper.setPart(context.level(), cable, Direction.EAST, null,
+                space.controlnet.ae2federation.bridge.BridgeRegistration.BRIDGE.get()) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart,
+                "Related domain Bridge must be placed");
+        context.level().setBlockAndUpdate(cable.east(), appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState());
+    }
+
+    static boolean relatedDomainReady(ServerContext context) {
+        BlockPos cable = context.get("related.cable");
+        var host = appeng.api.parts.PartHelper.getPartHost(context.level(), cable);
+        if (!(host != null && host.getPart(Direction.EAST) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart bridge)
+                || bridge.operationalReason() != space.controlnet.ae2federation.bridge.BridgeOperationalReason.VALID) return false;
+        var candidate = bridge.membershipCandidate().orElse(null);
+        if (candidate == null) return false;
+        var inner = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+        var outer = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+        if (inner == null || outer == null || inner.equals(outer)) return false;
+        var registry = FederationDomainRegistryAccess.get(context.level());
+        var related = registry.federationdomainsFor(outer).stream().map(registry::federationDomain)
+                .flatMap(java.util.Optional::stream).anyMatch(domain -> domain.memberships().containsKey(inner));
+        if (!related) return false;
+        context.put("related.shared", inner);
+        context.put("related.network", outer);
+        return true;
+    }
+
+    /** The chest network uses the shared network's storage: a rule of the related domain only. */
+    static void installRelatedRule(ServerContext context) {
+        var key = new space.controlnet.ae2federation.policy.PolicyKey(context.get("related.network"), context.get("related.shared"),
+                space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+        var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+        var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
+                space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()));
+        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                "Related domain rule must be accepted");
+    }
+
+    static String relatedNetwork(ServerContext context) {
+        return context.<space.controlnet.ae2federation.identity.NetworkId>get("related.network").value().toString();
+    }
+
+    static void removeRelatedDomain(ServerContext context) {
+        BlockPos cable = context.get("related.cable");
+        if (cable == null) return;
+        context.level().setBlockAndUpdate(cable.east(), Blocks.AIR.defaultBlockState());
+        context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+    }
+
+    /** Whether the Provider host's processing rule recorded an accepted delivery in the last five seconds. */
+    static boolean processingFlowObserved(ServerContext context) {
+        var source = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
+        var target = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
+        return space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level()).pairFlow(
+                new space.controlnet.ae2federation.policy.PolicyKey(source, target,
+                        space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING)).active();
+    }
+
     static boolean endpointOwnedByProvider(ServerContext context) {
         return !provider(context).retained(endpoint(context).endpointIdentity())
                 && !provider(context).mappedProvider().lanesForSlot(1).isEmpty()
@@ -673,6 +739,8 @@ final class TaskThirtyThreeWorldFixture {
 
     private static void cleanup(ServerContext context) {
         var state = context.<State>get(STATE);
+        // An aborted scope check must not leave the related domain in the shared world.
+        removeRelatedDomain(context);
         if (state == null) {
             return;
         }

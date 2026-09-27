@@ -198,6 +198,48 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(2).screenshot("ui-policy-runtime-energy-source-missing")
                 .click("#tab_overview").frames(2)
                 .screenshot("ui-graph-controls")
+                .server("add a real Bridge domain that shares the outer network", TaskThirtyThreeWorldFixture::installRelatedDomain)
+                .waitUntilServer("the related domain settles", TaskThirtyThreeWorldFixture::relatedDomainReady)
+                .server("configure a rule inside the related domain", TaskThirtyThreeWorldFixture::installRelatedRule)
+                .serverGet("record the related network", "related.id", TaskThirtyThreeWorldFixture::relatedNetwork)
+                .waitForTextContains("#graph_scope", "Scope: domain")
+                .check("the domain scope shows only members", context -> context.all(".graph-node-member").size() == 2
+                        && context.all(".related-network").isEmpty())
+                .click("#graph_scope")
+                .waitUntil("all related shows the related network read-only", context ->
+                        context.all(".related-network").size() == 1 && context.all(".graph-node-member").size() == 3)
+                .waitUntil("the graph refits so the related card is in view", context -> {
+                    var viewport = context.el("#domain_graph").bounds();
+                    var card = context.el(".related-network").bounds();
+                    return card.x() >= viewport.x() && card.y() >= viewport.y()
+                            && card.x() + card.width() <= viewport.x() + viewport.width()
+                            && card.y() + card.height() <= viewport.y() + viewport.height();
+                })
+                .step("select the related network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("related.id")))
+                .waitForTextContains("#graph_selection", "Member of related domain")
+                .check("a related network cannot be renamed here", context -> !context.el("#network_rename").isActive())
+                .step("open the related pair", context -> {
+                    var tag = TaskThirtyThreeScenarioSupport.networkTag(context.get("net.endpoint"));
+                    var link = context.all(".network-link").stream().filter(candidate -> candidate.text().contains(tag))
+                            .findFirst().orElseThrow();
+                    var bounds = link.bounds();
+                    context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+                    context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+                })
+                .waitForTextContains("#pair_title", "Read-only: this pair belongs to domain")
+                .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
+                        .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
+                .screenshot("ui-scope-related")
+                .step("record scope evidence", context -> {
+                    // A separate record: the case record above already holds the accepted-edit status.
+                    context.attach("evidenceFor", "ui.graph-controls");
+                    context.attach("scope", "related-read-only");
+                    context.attach("relatedNetwork", context.get("related.id"));
+                })
+                .click("#graph_scope")
+                .waitUntil("the domain scope hides the related network again", context -> context.all(".related-network").isEmpty())
+                .server("remove the related domain", TaskThirtyThreeWorldFixture::removeRelatedDomain)
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("its location is shown", context -> context.el("#network_location").isVisible()

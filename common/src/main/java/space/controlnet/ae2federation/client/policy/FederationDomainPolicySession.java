@@ -58,6 +58,12 @@ public final class FederationDomainPolicySession {
     private space.controlnet.ae2federation.processing.claim.EndpointIdentity mappingEndpointSelection;
     private String mappingAcknowledgment = "ready";
     private String overviewText = "";
+    private static final long FLOW_INTERVAL_TICKS = 10;
+    private static final int MAX_RELATED_NETWORKS = 24;
+    private String flowText = "";
+    private long flowTick;
+    /** Networks of other domains that share a member with this one, from the last choices build; read-only here. */
+    private java.util.Set<space.controlnet.ae2federation.identity.NetworkId> relatedNetworks = java.util.Set.of();
     private long overviewTick;
     private List<NetworkId> overviewMembers = List.of();
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
@@ -348,6 +354,7 @@ public final class FederationDomainPolicySession {
                     .ifPresent(name -> network.addProperty("name", name));
             networks.add(network);
         }
+        addRelated(root);
         for (var member : selection.members()) {
             var id = member.value().toString();
             addChoice(root, "consumer", id, shortId(id));
@@ -609,6 +616,98 @@ public final class FederationDomainPolicySession {
             overviewText = NetworkOverview.describe(level, overviewMembers).toString();
         }
         return overviewText;
+    }
+
+    /**
+     * Networks and rules of the other domains that share a member network with this one. The workspace shows them
+     * read-only: editing stays with the Router or Bridge of the domain that owns the pair.
+     */
+    private void addRelated(com.google.gson.JsonObject root) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        var members = new java.util.HashSet<>(selection.members());
+        var networksOut = new com.google.gson.JsonArray();
+        var rulesOut = new com.google.gson.JsonArray();
+        root.add("relatedNetworks", networksOut);
+        root.add("relatedRules", rulesOut);
+        var domains = new java.util.TreeSet<space.controlnet.ae2federation.domain.FederationDomainId>();
+        members.forEach(member -> domains.addAll(registry.federationdomainsFor(member)));
+        domains.remove(context.federationDomainId());
+        var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
+        var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
+        var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);
+        var records = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values();
+        for (var domainId : domains) {
+            var domain = registry.federationDomain(domainId).orElse(null);
+            if (domain == null) continue;
+            var domainMembers = domain.memberships().keySet();
+            domainMembers.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
+                    .filter(network -> !members.contains(network) && seen.size() < MAX_RELATED_NETWORKS)
+                    .filter(seen::add).forEach(network -> {
+                        var row = new com.google.gson.JsonObject();
+                        row.addProperty("id", network.value().toString());
+                        row.addProperty("domain", shortId(domainId.value()));
+                        names.name(network).ifPresent(name -> row.addProperty("name", name));
+                        networksOut.add(row);
+                    });
+            records.stream()
+                    .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
+                    .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
+                    .filter(record -> domainMembers.contains(record.key().consumerNetworkId())
+                            && domainMembers.contains(record.key().providerNetworkId())
+                            && !record.key().consumerNetworkId().equals(record.key().providerNetworkId())
+                            && !(members.contains(record.key().consumerNetworkId())
+                                    && members.contains(record.key().providerNetworkId()))
+                            && (members.contains(record.key().consumerNetworkId()) || seen.contains(record.key().consumerNetworkId()))
+                            && (members.contains(record.key().providerNetworkId()) || seen.contains(record.key().providerNetworkId()))
+                            && ruleKeys.add(record.key()))
+                    .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
+                    .forEach(record -> {
+                        var row = new com.google.gson.JsonObject();
+                        row.addProperty("consumer", record.key().consumerNetworkId().value().toString());
+                        row.addProperty("provider", record.key().providerNetworkId().value().toString());
+                        row.addProperty("capability", record.key().capability().name());
+                        row.addProperty("enabled", record.rule().enabled());
+                        row.addProperty("revision", record.revision().value());
+                        row.addProperty("domain", shortId(domainId.value()));
+                        rulesOut.add(row);
+                    });
+        }
+        relatedNetworks = java.util.Set.copyOf(seen);
+    }
+
+    /**
+     * Accepted deliveries of each enabled rule among the shown networks over the last five seconds. Only real,
+     * accepted transfers are counted; a rule with no entry moved nothing in that window. Rebuilt twice a second.
+     */
+    public String pairFlowText() {
+        if (selection == null || context == null) return "";
+        var now = level.getGameTime();
+        if (!flowText.isEmpty() && now - flowTick < FLOW_INTERVAL_TICKS && now >= flowTick) return flowText;
+        flowTick = now;
+        var shown = new java.util.HashSet<>(selection.members());
+        shown.addAll(relatedNetworks);
+        var observability = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level);
+        var out = new com.google.gson.JsonArray();
+        space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
+                .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
+                .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
+                .filter(record -> record.rule().enabled() && shown.contains(record.key().consumerNetworkId())
+                        && shown.contains(record.key().providerNetworkId()))
+                .sorted(java.util.Comparator.comparing(record -> record.key().toString()))
+                .forEach(record -> {
+                    var summary = observability.pairFlow(record.key());
+                    if (!summary.active()) return;
+                    var row = new com.google.gson.JsonObject();
+                    row.addProperty("consumer", record.key().consumerNetworkId().value().toString());
+                    row.addProperty("provider", record.key().providerNetworkId().value().toString());
+                    row.addProperty("capability", record.key().capability().name());
+                    row.addProperty("events", summary.events());
+                    row.addProperty("amount", summary.amount());
+                    row.addProperty("age", summary.ticksSinceLast());
+                    out.add(row);
+                });
+        flowText = out.toString();
+        return flowText;
     }
 
     /** Renames a member network whose identity is settled; an empty name clears it. */

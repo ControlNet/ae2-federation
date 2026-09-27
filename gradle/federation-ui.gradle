@@ -152,6 +152,15 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (outcomes.values().any { it.graphVisited != 'true' || it.workspaceVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
         throw new GradleException('Task 33 actual-client graph or renderer evidence is missing')
     }
+    def evidence = { String caseId, String field -> attachments.find { it.evidenceFor == caseId && it[field] != null }?.getAt(field) }
+    if (evidence('ui.graph-controls', 'scope') != 'related-read-only'
+            || !captures.any { it.path.contains('ui-scope-related') }) {
+        throw new GradleException('Task 33 related-domain scope was not shown read-only')
+    }
+    if (!(evidence('ui.mapping', 'processingFlow') ?: '').contains('Delivered 1× in the last 5 s')
+            || !captures.any { it.path.contains('ui-flow-processing') }) {
+        throw new GradleException('Task 33 processing rule did not show its real delivery')
+    }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
             || mapping.processingWire != 'mapped-unlinked'

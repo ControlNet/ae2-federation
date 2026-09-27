@@ -170,6 +170,21 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("native navigation returns to mapping", context -> context.el("#page_mapping").isVisible())
                 .screenshot("ui-provider-mapping")
                 .waitUntilServer("native lane sends a real processing input", TaskThirtyThreeWorldFixture::dispatchRealWork)
+                .checkServer("the send was recorded against its processing rule", TaskThirtyThreeWorldFixture::processingFlowObserved)
+                .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
+                .click("#tab_overview")
+                .waitUntil("the pair editor is shown", context -> context.el("#pair_editor").isVisible())
+                .waitUntil("the processing rule shows the real delivery", context ->
+                        TaskThirtyThreeScenarioSupport.ruleState(context, "processing").contains("Delivered 1× in the last 5 s"))
+                .step("reveal the processing rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "processing"))
+                .frames(2).screenshot("ui-flow-processing")
+                .step("record flow evidence", context -> {
+                    context.attach("evidenceFor", "ui.mapping");
+                    context.attach("processingFlow", TaskThirtyThreeScenarioSupport.ruleState(context, "processing"));
+                })
+                .step("scroll the pair editor back to its top", context ->
+                        TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
+                .click("#tab_mapping")
                 .click("#pattern_slot_1")
                 .waitForTextContains("#mapping_selection_value", "Pattern slot 1 / Endpoint ")
                 .click("#mapping_toggle")

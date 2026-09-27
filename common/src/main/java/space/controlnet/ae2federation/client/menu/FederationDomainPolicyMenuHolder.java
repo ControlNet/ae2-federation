@@ -146,6 +146,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 .build());
         overview.addClass("state-sync");
         ui.rootElement.addChild(overview);
+        var flows = new BindableValue<String>("");
+        flows.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.pairFlowText())
+                .initialValue("")
+                .remoteSetter(value -> {
+                    if (!value.isEmpty()) graphState.acceptFlows(com.google.gson.JsonParser.parseString(value).getAsJsonArray());
+                })
+                .build());
+        flows.addClass("state-sync");
+        ui.rootElement.addChild(flows);
         var observation = session == null ? java.util.Optional
                 .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
                 : session.openObservation();

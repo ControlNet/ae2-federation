@@ -273,7 +273,7 @@
   "ae2federation.ui.workspace.bridge_unavailable": "桥接器联邦域不可用",
   "ae2federation.ui.workspace.bridge_reopen": "请先处理下方提示的问题，再重新打开桥接器查看联邦域。",
   "ae2federation.ui.domain.status.conflict": "规则已在别处被修改（修订 %s），开关现在显示的是当前状态。",
-  "ae2federation.ui.topology.legend": "甲▸乙：甲使用乙的能力 · 绿色生效 · 黄色尚未生效 · 灰色关闭",
+  "ae2federation.ui.topology.legend": "甲▸乙：甲使用乙的能力 · 绿色生效 · 黄色尚未生效 · 灰色关闭 · 青色圆点：最近 5 秒的送达",
   "ae2federation.ui.topology.pair_note": "规则对这对网络全局生效，经由其他 Router 或 Bridge 的连接也会受影响。",
   "ae2federation.ui.topology.devices": "处理设备（%s）",
   "ae2federation.ui.topology.search": "搜索网络…",
@@ -358,5 +358,14 @@
   "ae2federation.ui.location.highlight_help": "在世界中描出这些方块的轮廓 10 秒，只有你能看到。",
   "ae2federation.ui.location.highlighted": "正在描出 %s 个方块，持续 10 秒。",
   "ae2federation.ui.location.network_blocks": "着色：本网络的 %s 个方块。标记：控制器或首个节点。",
-  "ae2federation.ui.location.other_dimension": "位于%s。地图和高亮只显示你所在的维度。"
+  "ae2federation.ui.location.other_dimension": "位于%s。地图和高亮只显示你所在的维度。",
+  "ae2federation.ui.topology.scope.domain": "范围：本域",
+  "ae2federation.ui.topology.scope.related": "范围：全部相关",
+  "ae2federation.ui.topology.scope.help": "同时显示与本域共享网络的其他域中的 %s 个网络，这里只读。",
+  "ae2federation.ui.topology.related_card": "相关域 %s",
+  "ae2federation.ui.topology.read_only": "此处只读",
+  "ae2federation.ui.topology.related_detail": "属于相关域 %s。请从该域的路由器或桥接器编辑其规则。",
+  "ae2federation.ui.topology.pair_read_only": "只读：此网络对属于域 %s。",
+  "ae2federation.ui.topology.flow": "最近 5 秒送达 %s 次",
+  "ae2federation.ui.topology.flow_energy": "最近 5 秒送达 %s 次 · %s AE"
 }

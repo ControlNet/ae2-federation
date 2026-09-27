@@ -33,6 +33,7 @@
                         <button id="graph_zoom_out" class="toolbar-button" text="-"/>
                         <button id="graph_fit" class="toolbar-button" text="□"/>
                     </element>
+                    <button id="graph_scope" class="toolbar-button scope-button" text="ae2federation.ui.topology.scope.domain"/>
                     <label id="graph_search_empty" class="graph-search-empty"/>
                     <label id="graph_legend" class="graph-legend"><lang key="ae2federation.ui.topology.legend"/></label>
                 </element>
