@@ -19,7 +19,6 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
         ClientStartup.start(LOGGER);
-        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::registerCommands);
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onArtifactJoin);
         }

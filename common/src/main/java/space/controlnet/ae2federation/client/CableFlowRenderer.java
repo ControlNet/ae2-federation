@@ -1,25 +1,19 @@
 package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
-/** Opt-in visual experiment using Minecraft's standard emissive translucent shader. */
+/** Cable interiors rendered with Minecraft's standard emissive translucent shader. */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
-    private static volatile boolean enabled = Boolean.getBoolean("ae2federation.cableFlowPrototype");
     private static final RenderType FLOW = RenderType.entityTranslucentEmissive(
             ResourceLocation.fromNamespaceAndPath("ae2federation", "textures/entity/cable_flow.png"), false);
 
@@ -28,32 +22,11 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                 context -> new CableFlowRenderer());
     }
 
-    public static boolean isEnabled() {
-        return enabled;
-    }
-
-    public static void registerCommands(RegisterClientCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("ae2f_cable_preview")
-                .then(Commands.literal("on").executes(context -> setEnabled(true)))
-                .then(Commands.literal("off").executes(context -> setEnabled(false))));
-    }
-
-    private static int setEnabled(boolean value) {
-        enabled = value;
-        var client = Minecraft.getInstance();
-        client.levelRenderer.allChanged();
-        if (client.player != null) {
-            client.player.displayClientMessage(Component.literal(
-                    "Cable flow preview: " + (enabled ? "ON (standard shader)" : "OFF (V07)")), false);
-        }
-        return 1;
-    }
-
     @Override
     public void render(FederationCableBlockEntity cable, float partialTick, PoseStack stack,
             MultiBufferSource buffers, int packedLight, int packedOverlay) {
         var level = cable.getLevel();
-        if (!enabled || level == null) return;
+        if (level == null) return;
         var pos = cable.getBlockPos();
         int mask = CableVisualConnections.mask(level, pos);
         var vertices = buffers.getBuffer(FLOW);
@@ -86,10 +59,5 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
     @Override
     public int getViewDistance() {
         return 256;
-    }
-
-    @Override
-    public boolean shouldRender(FederationCableBlockEntity cable, Vec3 camera) {
-        return enabled && BlockEntityRenderer.super.shouldRender(cable, camera);
     }
 }
