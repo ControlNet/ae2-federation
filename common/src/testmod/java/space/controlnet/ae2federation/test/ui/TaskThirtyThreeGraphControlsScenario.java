@@ -43,7 +43,43 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         && context.el("#network_title").text().equals(TaskThirtyThreeScenarioSupport.networkName(
                                 context.get("net.providerHost"))))
                 .checkTextContains("#graph_selection", "Pattern providers: 1")
+                .waitForTextContains("#network_stat_energy", " AE (")
+                .checkTextContains("#network_stat_cpus", "Crafting CPUs ")
+                .checkTextContains("#network_stat_channels", "Channels ")
+                .waitForTextContains("#network_stat_identity", "Identity settled")
+                .check("identity location is shown", context -> context.el("#network_stat_place").text().startsWith("Location Overworld "))
+                .check("card shows live figures", context -> context.all(".graph-node-member").stream()
+                        .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                                .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                                .anyMatch(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText()
+                                        .getString().contains(" types · CPU "))))
+                .waitUntil("settled network can be renamed", context -> context.el("#network_rename").isActive())
                 .screenshot("ui-graph-network-detail")
+                .click("#network_rename")
+                .waitUntil("rename field opens", context -> context.el("#network_rename_field").isVisible())
+                .typeInto("#network_rename_field", "North Storage").blur()
+                .hover("#network_rename_save")
+                .step("save the name", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_rename_save"))
+                .waitUntilServer("server stores the new name", context ->
+                        TaskThirtyThreeWorldFixture.providerHostName(context).equals("North Storage"))
+                .waitUntil("the renamed network shows its name", context ->
+                        context.el("#network_title").text().equals("North Storage")
+                                && !context.el("#network_rename_row").isVisible())
+                .check("the card shows the new name", context -> context.all(".graph-node-member").stream()
+                        .anyMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                                .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                                .anyMatch(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText()
+                                        .getString().equals("North Storage"))))
+                .screenshot("ui-graph-network-renamed")
+                .click("#network_rename")
+                .typeInto("#network_rename_field", "").blur()
+                .hover("#network_rename_save")
+                .step("save the name", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_rename_save"))
+                .waitUntilServer("an empty name restores the default", context ->
+                        TaskThirtyThreeWorldFixture.providerHostName(context).isEmpty())
+                .waitUntil("the default name returns", context -> context.el("#network_title").text()
+                        .equals(TaskThirtyThreeScenarioSupport.networkName(context.get("net.providerHost"))))
+                .step("record rename evidence", context -> context.put("task33.renamed", "North Storage"))
                 .hover("#graph_open")
                 .step("open the network's devices", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#graph_open"))
                 .waitUntil("Provider network opens mapping", context -> context.el("#page_mapping").isVisible())
@@ -81,6 +117,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.graph-controls");
                     context.attach("policyRevision", context.get("task33.policyRevision"));
                     context.attach("policyEnabled", context.get("task33.policyEnabled"));
+                    context.attach("networkRename", context.get("task33.renamed"));
                     context.attach("worldCaptures", "router-overview,bridge-north,provider-host,endpoint-faces");
                 })
                 .server("policy detail reads preserve backend counters", TaskThirtyThreeWorldFixture::verifyPolicySnapshotReads)

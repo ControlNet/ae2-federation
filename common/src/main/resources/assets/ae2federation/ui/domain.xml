@@ -41,6 +41,14 @@
                         <element class="aside-title-row">
                             <element id="network_accent" class="network-accent"/>
                             <label id="network_title" class="aside-title"/>
+                            <button id="network_rename" class="title-action" text="ae2federation.ui.topology.rename"/>
+                        </element>
+                        <element id="network_rename_row" class="rename-row">
+                            <text-field id="network_rename_field" mode="string" value=""/>
+                            <element class="compact-actions">
+                                <button id="network_rename_save" class="primary-action" text="ae2federation.ui.topology.rename_save"/>
+                                <button id="network_rename_cancel" text="ae2federation.ui.topology.rename_cancel"/>
+                            </element>
                         </element>
                         <label id="network_identity" class="aside-caption"/>
                         <element class="dark-panel">
@@ -49,6 +57,7 @@
                         <button id="graph_open" class="primary-action" text="ae2federation.ui.topology.devices"/>
                         <label id="network_links_heading" class="aside-heading"/>
                         <element id="network_links" class="network-links"/>
+                        <element id="network_stats" class="dark-panel network-stats"/>
                     </element>
                     <element id="pair_editor" class="aside-section">
                         <label id="pair_title" class="aside-title"/>

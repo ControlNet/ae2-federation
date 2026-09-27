@@ -42,7 +42,7 @@
 .topology-aside { width: 176; flex-shrink: 0; height: 100%; scroller-view-mode: vertical; }
 .topology-aside .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
 .aside-section { width: 100%; flex-shrink: 0; gap-all: 4; }
-.aside-title-row { height: 11; flex-direction: row; gap-all: 4; align-items: center; }
+.aside-title-row { height: 12; flex-direction: row; gap-all: 4; align-items: center; }
 .network-accent { width: 7; height: 7; flex-shrink: 0; background: #ff61afef; }
 .aside-title { flex: 1; min-width: 0; height: 10; }
 .domain-panel #pair_title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
@@ -52,6 +52,12 @@
 .domain-panel .dark-panel label { text-color: #ffd6d0e0; }
 .domain-panel .panel-text { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .network-links { width: 100%; flex-shrink: 0; gap-all: 2; }
+.domain-panel .title-action { width: 50; height: 12; padding-all: 0; padding-bottom: 2; flex-shrink: 0; }
+.rename-row { width: 100%; flex-shrink: 0; gap-all: 3; display: none; }
+.rename-row #network_rename_field { width: 100%; }
+.network-stats { gap-all: 2; }
+.domain-panel .stat-line { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
+.stat-bar { width: 100%; height: 3; flex-shrink: 0; margin-bottom: 2; }
 .domain-panel .network-link { height: 18; }
 .domain-panel .network-link .__button_text__ { horizontal-align: left; }
 .domain-panel .paper-note { width: 100%; adaptive-height: true; flex-shrink: 0; padding-all: 3; text-wrap: wrap; text-color: #ff3f3d52; background: #fff2f2f2; }

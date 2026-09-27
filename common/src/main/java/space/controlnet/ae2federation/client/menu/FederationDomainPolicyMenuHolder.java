@@ -90,7 +90,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
-                workspace::openObject);
+                target -> send(FederationDomainPolicyAction.RENAME_NETWORK, target), workspace::openObject);
         currentTopology = graphState;
         workspace.bindGraph(graphState);
         var choices = new BindableValue<String>("");
@@ -132,6 +132,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 .build());
         graphBinding.addClass("state-sync");
         ui.rootElement.addChild(graphBinding);
+        var overview = new BindableValue<String>("");
+        overview.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.networkOverviewText())
+                .initialValue("")
+                .remoteSetter(value -> {
+                    if (!value.isEmpty()) graphState.acceptOverview(com.google.gson.JsonParser.parseString(value).getAsJsonArray());
+                })
+                .build());
+        overview.addClass("state-sync");
+        ui.rootElement.addChild(overview);
         var observation = session == null ? java.util.Optional
                 .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
                 : session.openObservation();
@@ -184,14 +193,17 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (context == null || !context.equals(request.context())) {
             return FederationDomainPolicyActionResult.STALE_CONTEXT;
         }
-        if (request.action() == FederationDomainPolicyAction.SET_POLICY) {
-            // A switch carries the revision of its own rule; the selected rule's revision does not gate it.
+        if (request.action() == FederationDomainPolicyAction.SET_POLICY
+                || request.action() == FederationDomainPolicyAction.RENAME_NETWORK) {
+            // Switches carry the revision of their own rule and names are not rules: the selected rule does not gate them.
             if (!session.matchesContext(player, request.context())) {
                 return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
                         : FederationDomainPolicyActionResult.WRONG_MENU;
             }
             session.clearPendingRelease();
-            if (!session.setPolicy(request.target())) {
+            var applied = request.action() == FederationDomainPolicyAction.SET_POLICY
+                    ? session.setPolicy(request.target()) : session.renameNetwork(request.target());
+            if (!applied) {
                 return FederationDomainPolicyActionResult.INVALID_TARGET;
             }
             menuSequence = Math.incrementExact(menuSequence);
@@ -213,7 +225,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         switch (request.action()) {
             case PREPARE_RELEASE -> session.releaseEndpoint();
             case CANCEL_RELEASE -> session.cancelRelease();
-            case SET_POLICY -> throw new IllegalStateException("Policy switches are dispatched before selection authority");
+            case SET_POLICY, RENAME_NETWORK -> throw new IllegalStateException("Dispatched before selection authority");
             case SELECT_TARGET -> {
                 if (!session.selectTarget(request.target())) {
                     return FederationDomainPolicyActionResult.INVALID_TARGET;

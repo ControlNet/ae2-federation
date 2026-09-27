@@ -255,6 +255,12 @@ final class TaskThirtyThreeWorldFixture {
                 .orElseThrow().value().toString());
     }
 
+    /** The persisted display name of the Provider host network, or empty when it uses its default name. */
+    static String providerHostName(ServerContext context) {
+        var network = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
+        return space.controlnet.ae2federation.persistence.NetworkNames.get(context.level()).name(network).orElse("");
+    }
+
     static void removeEndpointEnergySource(ServerContext context) {
         var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
         var target = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();

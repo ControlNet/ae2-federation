@@ -15,7 +15,9 @@ public enum FederationDomainPolicyAction {
     PREPARE_RELEASE(11),
     CANCEL_RELEASE(12),
     /** Sets one directional rule to an explicit state; the target carries the rule revision the client observed. */
-    SET_POLICY(13);
+    SET_POLICY(13),
+    /** Names a member network; the target is the network id and the new name. */
+    RENAME_NETWORK(14);
 
     private final int wireId;
 
@@ -28,7 +30,7 @@ public enum FederationDomainPolicyAction {
     }
 
     public boolean takesTarget() {
-        return this == SELECT_TARGET || this == SET_POLICY;
+        return this == SELECT_TARGET || this == SET_POLICY || this == RENAME_NETWORK;
     }
 
     public static FederationDomainPolicyAction fromWireId(int wireId) {

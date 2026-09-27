@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.client.menu;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.client.shader.LDLibRenderTypes;
 import com.lowdragmc.lowdraglib2.gui.texture.GuiTextureGroup;
@@ -30,8 +31,10 @@ import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
+import space.controlnet.ae2federation.client.policy.NetworkRenameTarget;
 import space.controlnet.ae2federation.client.policy.PolicySwitchTarget;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.persistence.NetworkNameBook;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyRevision;
@@ -42,11 +45,12 @@ import space.controlnet.ae2federation.policy.PolicyRevision;
  */
 final class FederationTopologyView {
     static final float CARD_WIDTH = 160;
-    static final float CARD_HEIGHT = 46;
+    static final float CARD_HEIGHT = 58;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
 
     private final GraphView graph;
     private final Consumer<String> setPolicy;
+    private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
     private final Label title;
     private final Label identity;
@@ -60,6 +64,11 @@ final class FederationTopologyView {
     private final Label pairTitle;
     private final UIElement pairSections;
     private final Label searchEmpty;
+    private final Button renameButton;
+    private final UIElement renameRow;
+    private final TextField renameField;
+    private final Button renameSave;
+    private final UIElement stats;
 
     private final List<Network> networks = new ArrayList<>();
     private final Map<String, JsonObject> rules = new HashMap<>();
@@ -69,6 +78,11 @@ final class FederationTopologyView {
     private final Map<String, List<String>> endpointsByMember = new HashMap<>();
     private final Map<String, Vector2f> positions = new LinkedHashMap<>();
     private final Map<String, Button> cards = new HashMap<>();
+    private final Map<String, Label[]> cardLines = new HashMap<>();
+    private final Map<String, JsonObject> overview = new HashMap<>();
+    private String renaming = "";
+    /** The name sent for {@link #renaming}; the editor closes once the server's choices carry it. */
+    private String pendingName;
     private String focus = "";
     private boolean focusApplied;
     private String selectedNetwork = "";
@@ -81,8 +95,9 @@ final class FederationTopologyView {
     private String pendingCenter = "";
     private String scope = "domain";
 
-    FederationTopologyView(UI ui, Consumer<String> setPolicy, BiConsumer<String, String> openObject) {
+    FederationTopologyView(UI ui, Consumer<String> setPolicy, Consumer<String> rename, BiConsumer<String, String> openObject) {
         this.setPolicy = setPolicy;
+        this.rename = rename;
         this.openObject = openObject;
         graph = element(ui, "domain_graph", GraphView.class);
         title = element(ui, "network_title", Label.class);
@@ -109,6 +124,38 @@ final class FederationTopologyView {
         element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, 0.25f));
         devices.setOnClick(event -> openDevices());
         pairEditor.setDisplay(false);
+        stats = element(ui, "network_stats", UIElement.class);
+        renameButton = element(ui, "network_rename", Button.class);
+        renameRow = element(ui, "network_rename_row", UIElement.class);
+        renameField = element(ui, "network_rename_field", TextField.class);
+        renameSave = element(ui, "network_rename_save", Button.class);
+        renameField.textFieldStyle(style -> style.placeholder(tr("rename_placeholder").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
+        renameField.setTextResponder(value -> renameSave.setActive(NetworkNameBook.sanitize(value).isPresent()));
+        renameButton.setOnClick(event -> {
+            var network = network(selectedNetwork);
+            if (network == null || !renamable(network)) return;
+            renaming = network.id();
+            pendingName = null;
+            renameField.setText(network.name(), false);
+            renameSave.setActive(true);
+            asideSignature = "";
+            refresh();
+        });
+        renameSave.setOnClick(event -> {
+            var network = network(renaming);
+            var value = NetworkNameBook.sanitize(renameField.getValue());
+            if (network == null || value.isEmpty() || !renamable(network)) return;
+            this.rename.accept(new NetworkRenameTarget(NetworkId.parse(network.id()), value.get()).encode());
+            pendingName = value.get();
+            renameSave.setActive(false);
+        });
+        element(ui, "network_rename_cancel", Button.class).setOnClick(event -> {
+            renaming = "";
+            pendingName = null;
+            asideSignature = "";
+            refresh();
+        });
+        renameRow.setDisplay(false);
     }
 
     /** Device-to-network membership and live network status come from the scoped graph projection. */
@@ -140,7 +187,8 @@ final class FederationTopologyView {
             var index = 0;
             for (var value : root.getAsJsonArray("networks")) {
                 var json = value.getAsJsonObject();
-                networks.add(new Network(json.get("id").getAsString(), json.get("member").getAsString(), index++));
+                networks.add(new Network(json.get("id").getAsString(), json.get("member").getAsString(), index++,
+                        json.has("name") ? json.get("name").getAsString() : ""));
             }
         }
         rules.clear();
@@ -165,6 +213,21 @@ final class FederationTopologyView {
             }
         }
         if (!selectedNetwork.isEmpty() && network(selectedNetwork) == null) selectedNetwork = "";
+        var renamed = network(renaming);
+        if (pendingName != null && renamed != null && renamed.name().equals(pendingName)) {
+            renaming = "";
+            pendingName = null;
+        }
+        refresh();
+    }
+
+    /** Identity state, location and AE2 service figures per network, refreshed by the server about once a second. */
+    void acceptOverview(JsonArray values) {
+        overview.clear();
+        for (var value : values) {
+            var json = value.getAsJsonObject();
+            overview.put(json.get("id").getAsString(), json);
+        }
         refresh();
     }
 
@@ -200,7 +263,7 @@ final class FederationTopologyView {
 
     private void refresh() {
         var signature = new StringBuilder();
-        networks.forEach(network -> signature.append(network.id()).append(','));
+        networks.forEach(network -> signature.append(network.id()).append('=').append(network.name()).append(','));
         signature.append('|').append(selectedNetwork).append('|').append(selectedPair).append('|');
         pairsWithRules().forEach(value -> signature.append(value).append(';'));
         rules.values().forEach(rule -> signature.append(rule.get("capability").getAsString())
@@ -210,6 +273,7 @@ final class FederationTopologyView {
             structure = signature.toString();
             rebuildGraph();
         }
+        updateCards();
         renderAside();
         applySearch();
     }
@@ -217,6 +281,7 @@ final class FederationTopologyView {
     private void rebuildGraph() {
         graph.clearAllContentChildren();
         cards.clear();
+        cardLines.clear();
         layout();
         graph.addContentChild(new Links());
         for (var pair : pairsWithRules()) graph.addContentChild(edgePill(pair));
@@ -270,13 +335,37 @@ final class FederationTopologyView {
         var heading = text(name(network), FederationTheme.DARK_TITLE);
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
         head.addChildren(swatch, heading);
-        button.addChildren(head, text(tr("network_status." + status).withStyle(Style.EMPTY.withColor(statusColor & 0xffffff)),
-                FederationTheme.DARK_TEXT), text(tr("network_devices", providers(network).size(), endpoints(network).size()),
-                FederationTheme.DARK_MUTED));
+        var stateLine = text(Component.empty(), FederationTheme.DARK_TEXT);
+        var statsLine = text(Component.empty(), FederationTheme.DARK_MUTED);
+        stateLine.setId("graph_node_state_" + sanitize(network.member()));
+        statsLine.setId("graph_node_stats_" + sanitize(network.member()));
+        button.addChildren(head, stateLine, statsLine, text(tr("network_devices", providers(network).size(),
+                endpoints(network).size()), FederationTheme.DARK_MUTED));
         button.setOnClick(event -> selectNetwork(network.id()));
         button.style(style -> style.tooltips(name(network), Component.literal(network.id())));
         cards.put(network.id(), button);
+        cardLines.put(network.id(), new Label[] {stateLine, statsLine});
         return button;
+    }
+
+    /** Card state and figures change every second; they are updated in place instead of rebuilding the graph. */
+    private void updateCards() {
+        for (var network : networks) {
+            var lines = cardLines.get(network.id());
+            if (lines == null) continue;
+            var facts = overview.get(network.id());
+            var identityState = identityState(network);
+            if (!identityState.equals("settled") && !identityState.isEmpty()) {
+                lines[0].setText(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
+            } else {
+                var status = memberStatus.getOrDefault(network.member(), "pending");
+                lines[0].setText(tr("network_status." + status).withStyle(Style.EMPTY.withColor(
+                        (status.equals("online") ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff)));
+            }
+            lines[1].setText(facts == null || !facts.has("energyMax") ? tr("stats_unavailable")
+                    : tr("card_stats", percent(facts), compact(facts.get("types").getAsLong()),
+                    facts.get("cpusBusy").getAsInt(), facts.get("cpus").getAsInt()));
+        }
     }
 
     private Button edgePill(String pair) {
@@ -344,7 +433,7 @@ final class FederationTopologyView {
 
     private void renderAside() {
         var signature = scope + "|" + selectedNetwork + "|" + selectedPair + "|" + editable + "|" + rules + "|" + revisions + "|"
-                + memberStatus + "|" + providersByMember + "|" + endpointsByMember + "|" + networks;
+                + memberStatus + "|" + providersByMember + "|" + endpointsByMember + "|" + networks + "|" + overview + "|" + renaming;
         if (signature.equals(asideSignature)) return;
         asideSignature = signature;
         var pairEnds = selectedPair.isEmpty() ? null : selectedPair.split("\\|");
@@ -356,6 +445,11 @@ final class FederationTopologyView {
 
     private void renderNetwork(Network network) {
         links.clearAllChildren();
+        stats.clearAllChildren();
+        if (network == null || !network.id().equals(renaming)) renaming = "";
+        renameRow.setDisplay(!renaming.isEmpty());
+        renameButton.setDisplay(network != null);
+        stats.setDisplay(network != null);
         if (network == null) {
             var scoped = networks.isEmpty() && !scope.equals("domain") && !scope.equals("available");
             title.setText(scoped ? FederationWorkspace.tr("scope_summary." + scope) : tr("no_network"));
@@ -368,10 +462,24 @@ final class FederationTopologyView {
         }
         accent.style(style -> style.backgroundTexture(FederationTheme.solid(network.accent())));
         title.setText(name(network));
+        boolean canRename = renamable(network) && renaming.isEmpty();
+        renameButton.setActive(canRename);
+        renameButton.style(style -> style.opacity(canRename ? 1f : 0.55f).tooltips(tr(canRename ? "rename_help"
+                : editable ? "rename_locked" : "rename_read_only")));
+        var facts = overview.get(network.id());
         identity.setText(tr("network_identity", network.id()));
         var status = memberStatus.getOrDefault(network.member(), "pending");
-        detail.setText(tr("network_detail", tr("network_status." + status), providers(network).size(),
-                endpoints(network).size()));
+        var identityState = identityState(network);
+        var explanation = Component.empty();
+        if (!identityState.isEmpty() && !identityState.equals("settled")) {
+            explanation.append(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(
+                    (identityState.equals("settled") ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff)));
+            if (!identityState.equals("settled")) explanation.append("\n").append(tr("identity." + identityState + ".help"));
+            explanation.append("\n");
+        }
+        detail.setText(explanation.append(tr("network_detail", tr("network_status." + status), providers(network).size(),
+                endpoints(network).size())));
+        renderStats(facts, identityState);
         devices.setText(tr("devices", providers(network).size() + endpoints(network).size()));
         devices.setActive(!providers(network).isEmpty() || !endpoints(network).isEmpty());
         var others = networks.stream().filter(other -> !other.id().equals(network.id())).toList();
@@ -398,6 +506,85 @@ final class FederationTopologyView {
             });
             links.addChild(link);
         }
+    }
+
+    private void renderStats(JsonObject facts, String identityState) {
+        if (identityState.equals("settled")) stats.addChild(statLine("network_stat_identity",
+                tr("identity.settled").withStyle(Style.EMPTY.withColor(FederationTheme.OK & 0xffffff))));
+        if (facts != null && facts.has("x")) stats.addChild(statLine("network_stat_place", tr("network_place",
+                dimension(facts.get("dimension").getAsString()), facts.get("x").getAsInt(), facts.get("y").getAsInt(),
+                facts.get("z").getAsInt())));
+        if (facts == null || !facts.has("energyMax")) {
+            stats.addChild(statLine("network_stat_unavailable", tr("stats_unavailable")));
+            return;
+        }
+        long stored = facts.get("energy").getAsLong();
+        long max = facts.get("energyMax").getAsLong();
+        stats.addChild(statLine("network_stat_energy", tr("stat.energy", compact(stored), compact(max), percent(facts))));
+        var bar = new UIElement();
+        bar.addClass("stat-bar");
+        bar.setId("network_stat_energy_bar");
+        float fill = max <= 0 ? 0 : Math.min(1f, stored / (float) max);
+        int barColor = fill > 0.25f ? FederationTheme.OK : FederationTheme.WARN;
+        bar.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, 0xff2a2830);
+            pen.rect(x, y, width * fill, height, barColor);
+        })));
+        stats.addChild(bar);
+        stats.addChild(statLine("network_stat_io", tr("stat.io", decimal(facts.get("energyIn").getAsDouble()),
+                decimal(facts.get("energyOut").getAsDouble()))));
+        stats.addChild(statLine("network_stat_types", tr("stat.types", compact(facts.get("types").getAsLong()))));
+        stats.addChild(statLine("network_stat_cpus", tr("stat.cpus", facts.get("cpusBusy").getAsInt(),
+                facts.get("cpus").getAsInt())));
+        stats.addChild(statLine("network_stat_channels", tr("stat.channels", facts.get("channels").getAsInt(),
+                facts.get("nodes").getAsInt(), tr("controller." + facts.get("controller").getAsString()))));
+    }
+
+    private static Label statLine(String id, Component value) {
+        var label = new Label();
+        label.addClass("stat-line");
+        label.setId(id);
+        label.setText(value);
+        return label;
+    }
+
+    private String identityState(Network network) {
+        var facts = overview.get(network.id());
+        return facts == null ? "" : facts.get("identity").getAsString();
+    }
+
+    /** Mirrors the server: only a settled identity takes a name, and only while this player may edit the domain. */
+    private boolean renamable(Network network) {
+        return editable && identityState(network).equals("settled");
+    }
+
+    private static int percent(JsonObject facts) {
+        long max = facts.get("energyMax").getAsLong();
+        return max <= 0 ? 0 : (int) Math.min(100, Math.round(facts.get("energy").getAsLong() * 100d / max));
+    }
+
+    /** 950, 12.3k, 1.44M: AE2-style short figures. */
+    static String compact(long value) {
+        if (Math.abs(value) < 1000) return Long.toString(value);
+        var units = "kMGT";
+        double scaled = value;
+        int unit = -1;
+        while (Math.abs(scaled) >= 1000 && unit < units.length() - 1) {
+            scaled /= 1000;
+            unit++;
+        }
+        var text = Math.abs(scaled) >= 100 ? String.format(Locale.ROOT, "%.0f", scaled)
+                : Math.abs(scaled) >= 10 ? String.format(Locale.ROOT, "%.1f", scaled) : String.format(Locale.ROOT, "%.2f", scaled);
+        return text + units.charAt(unit);
+    }
+
+    private static String decimal(double value) {
+        return value >= 1000 ? compact(Math.round(value)) : String.format(Locale.ROOT, "%.1f", value);
+    }
+
+    private static Component dimension(String id) {
+        var path = id.substring(id.indexOf(':') + 1);
+        return Component.translatableWithFallback("ae2federation.ui.topology.dimension." + path, path);
     }
 
     private void renderPair(Network a, Network b) {
@@ -581,6 +768,7 @@ final class FederationTopologyView {
     }
 
     static Component name(Network network) {
+        if (!network.name().isEmpty()) return Component.literal(network.name());
         return tr("network_name", tag(network) + network.id().substring(4, 8).toUpperCase(Locale.ROOT));
     }
 
@@ -604,7 +792,7 @@ final class FederationTopologyView {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
-    record Network(String id, String member, int index) {
+    record Network(String id, String member, int index, String name) {
         int accent() {
             return FederationTheme.networkAccent(index);
         }

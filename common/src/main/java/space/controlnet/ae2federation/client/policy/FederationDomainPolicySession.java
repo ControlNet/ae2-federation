@@ -37,6 +37,7 @@ import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 
 public final class FederationDomainPolicySession {
     private static final double MAX_DISTANCE_SQUARED = 64.0;
+    private static final long OVERVIEW_INTERVAL_TICKS = 20;
 
     private final ServerPlayer player;
     private final ServerLevel level;
@@ -56,6 +57,9 @@ public final class FederationDomainPolicySession {
     private DeviceDomainAvailability deviceDomainAvailability;
     private space.controlnet.ae2federation.processing.claim.EndpointIdentity mappingEndpointSelection;
     private String mappingAcknowledgment = "ready";
+    private String overviewText = "";
+    private long overviewTick;
+    private List<NetworkId> overviewMembers = List.of();
     private @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.processing.provider.ProviderMappingController.ReleaseConfirmation pendingRelease;
 
     private FederationDomainPolicySession(ServerPlayer player, FederationDomainPolicyEntrance entrance, Optional<FederationDomainSnapshot> federationDomain,
@@ -340,6 +344,8 @@ public final class FederationDomainPolicySession {
                     .forNetwork(context.federationDomainId(), member).value());
             network.addProperty("providers", providerNetworks.stream().filter(member::equals).count());
             network.addProperty("endpoints", endpointNetworks.stream().filter(member::equals).count());
+            space.controlnet.ae2federation.persistence.NetworkNames.get(level).name(member)
+                    .ifPresent(name -> network.addProperty("name", name));
             networks.add(network);
         }
         for (var member : selection.members()) {
@@ -577,6 +583,35 @@ public final class FederationDomainPolicySession {
             expectedRevision = rejected.currentRevision();
             state.conflicted();
         }
+        return true;
+    }
+
+    /**
+     * Identity, location and AE2 service figures for each member network. Figures such as stored energy change every
+     * tick, so the text is rebuilt at most once a second instead of on every binding poll.
+     */
+    public String networkOverviewText() {
+        if (selection == null || context == null) return "";
+        var now = level.getGameTime();
+        if (overviewText.isEmpty() || now - overviewTick >= OVERVIEW_INTERVAL_TICKS || now < overviewTick
+                || !selection.members().equals(overviewMembers)) {
+            overviewMembers = selection.members();
+            overviewTick = now;
+            overviewText = NetworkOverview.describe(level, overviewMembers).toString();
+        }
+        return overviewText;
+    }
+
+    /** Renames a member network whose identity is settled; an empty name clears it. */
+    public boolean renameNetwork(String encoded) {
+        var target = NetworkRenameTarget.parse(encoded).orElse(null);
+        if (target == null || selection == null || !state.editingAllowed()
+                || !selection.members().contains(target.network())) return false;
+        var grids = NetworkOverview.gridsByNetwork(level).getOrDefault(target.network(), List.of());
+        var settlements = grids.stream().map(grid -> grid.getService(
+                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()).toList();
+        if (!NetworkIdentityState.of(target.network(), settlements).renamable()) return false;
+        space.controlnet.ae2federation.persistence.NetworkNames.get(level).rename(target.network(), target.name());
         return true;
     }
 
