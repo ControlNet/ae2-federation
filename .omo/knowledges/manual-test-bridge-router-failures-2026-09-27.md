@@ -50,3 +50,18 @@ No GameTest uses an ME Controller or ME Drive, and no test places a Router/Bridg
   broken and re-placed.
 - Test layout lesson: two adjacent transparent cables connect directly; use different colors for the Bridge host cable
   and the outer cable.
+
+## Router faces never bound a late-attached neighbor (2026-09-27, follow-up)
+
+- Symptom: after the identity fix the Bridge worked, but a Router with one controller + drive network per face still
+  showed no networks. `storagecontrollerdriverouter` reproduced it: the Router domain existed with `members={}` and
+  every face binding was `Disconnected`.
+- Cause: `RouterFacePort`'s node listener was a lambda, i.e. only `onSaveChanges`. A newly placed cable bus creates its
+  AE2 node on its first tick, after the block update that dirtied the face, so the face resolved before the connection
+  existed. The later `onInWorldConnectionChanged` / `onGridChanged` events were ignored. Existing tests placed cables in
+  the same tick as the Router, so the Router's first-tick initialize already saw them.
+- Fix: those two events set the face `dirty` only (no synchronous registry/service reconcile, because they fire inside
+  AE2 Grid propagation and chunk unload); `RouterBlockEntity.serverTick` resolves and publishes. A changed `Grid` makes
+  a new `NativeAttachment`, so the binding compares unequal and the Router republishes.
+- Remaining gap: if a face publishes `Unsettled` evidence and the identity later settles with no node/grid event, the
+  Router does not republish (the Bridge compares confirmed ids on every refresh; the Router does not).

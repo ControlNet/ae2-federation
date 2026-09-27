@@ -18,7 +18,27 @@ import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.energy.DirectionalEnergySource;
 
 public final class RouterFacePort implements IdentityNeutralNodeOwner {
-    private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = (owner, node) -> owner.invalidate();
+    /**
+     * A newly placed native neighbor (e.g. a cable bus) creates its node on a later tick than the block update that
+     * dirtied this face, so the face must also re-resolve when the in-world connection or Grid actually changes. Those
+     * events fire inside AE2 Grid propagation, so they only mark the face dirty; the Router tick resolves and publishes.
+     */
+    private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = new IGridNodeListener<>() {
+        @Override
+        public void onSaveChanges(RouterFacePort owner, IGridNode node) {
+            owner.invalidate();
+        }
+
+        @Override
+        public void onInWorldConnectionChanged(RouterFacePort owner, IGridNode node) {
+            owner.dirty = true;
+        }
+
+        @Override
+        public void onGridChanged(RouterFacePort owner, IGridNode node) {
+            owner.dirty = true;
+        }
+    };
 
     private final BlockPos routerPosition;
     private final Direction face;

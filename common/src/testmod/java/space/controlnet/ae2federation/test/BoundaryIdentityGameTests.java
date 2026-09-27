@@ -184,6 +184,78 @@ public final class BoundaryIdentityGameTests {
         });
     }
 
+    /** The reported Router layout: a controller + drive network on each of two Router faces, Router placed first. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void storageControllerDriveRouter(GameTestHelper helper) {
+        var consumerController = new BlockPos(0, 1, 1);
+        var consumerDrive = new BlockPos(1, 1, 1);
+        var consumerCable = new BlockPos(2, 1, 1);
+        var routerPos = new BlockPos(3, 1, 1);
+        var providerCable = new BlockPos(4, 1, 1);
+        var providerDrive = new BlockPos(5, 1, 1);
+        var providerController = new BlockPos(6, 1, 1);
+        var routers = new RouterFixtures(helper);
+        routers.placeRouter(routerPos);
+        helper.setBlock(consumerController.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(consumerController, AEBlocks.CONTROLLER.block());
+        helper.setBlock(consumerDrive, AEBlocks.DRIVE.block());
+        helper.setBlock(providerController.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.setBlock(providerController, AEBlocks.CONTROLLER.block());
+        helper.setBlock(providerDrive, AEBlocks.DRIVE.block());
+        var phase = new int[1];
+        var key = new PolicyKey[1];
+        var diamond = AEItemKey.of(Items.DIAMOND);
+        helper.succeedWhen(() -> {
+            var consumer = node(helper, consumerDrive).getGrid();
+            var provider = node(helper, providerDrive).getGrid();
+            if (phase[0] == 0) {
+                helper.assertTrue(routers.router(routerPos).boundaryNode(Direction.WEST) != null, "Router must be ready");
+                helper.<DriveBlockEntity>getBlockEntity(consumerDrive).getInternalInventory()
+                        .setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
+                helper.<DriveBlockEntity>getBlockEntity(providerDrive).getInternalInventory()
+                        .setItemDirect(0, AEItems.ITEM_CELL_1K.stack());
+                phase[0] = 1;
+                helper.fail("Waiting for drive cells to mount");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(node(helper, providerDrive).isActive(), "Provider drive must be powered and online");
+                settled(helper, consumer, "Consumer network must settle");
+                settled(helper, provider, "Provider network must settle");
+                helper.assertValueEqual(provider.getStorageService().getInventory().insert(diamond, 7,
+                        Actionable.MODULATE, IActionSource.empty()), 7L, "Provider drive must accept the fixture items");
+                routers.nativePorts().placeCable(consumerCable);
+                routers.nativePorts().placeCable(providerCable);
+                phase[0] = 2;
+                helper.fail("Waiting for the cables to reach the Router");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(consumer != provider, "Router must not join the native networks");
+                var consumerId = settled(helper, consumer, "Consumer must stay settled behind the Router");
+                var providerId = settled(helper, provider, "Provider must stay settled behind the Router");
+                var nodeId = FederationDomainRegistryAccess.nodeId(helper.getLevel(), helper.absolutePos(routerPos));
+                var registry = FederationDomainRegistryAccess.get(helper.getLevel()).snapshot();
+                var domains = registry.federationDomains().values().stream()
+                        .filter(domain -> domain.nodes().contains(nodeId)).toList();
+                helper.assertValueEqual(domains.size(), 1, "Router must publish one domain; invalidations="
+                        + registry.invalidations().get(nodeId) + " bindings=" + routers.router(routerPos).bindings());
+                helper.assertTrue(domains.getFirst().memberships().keySet().containsAll(java.util.Set.of(consumerId, providerId)),
+                        "Router domain must contain both networks: members=" + domains.getFirst().memberships()
+                                + " consumer=" + consumerId + " provider=" + providerId
+                                + " bindings=" + routers.router(routerPos).bindings());
+                key[0] = new PolicyKey(consumerId, providerId, PolicyCapability.STORAGE);
+                var result = PolicyService.get(helper.getLevel())
+                        .edit(new PolicyEdit(key[0], PolicyRevision.NONE, PolicyRule.storageDefaults()));
+                helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "Storage policy must be accepted: " + result);
+                phase[0] = 3;
+                helper.fail("Waiting for the storage mount");
+            }
+            helper.assertValueEqual(consumer.getStorageService().getInventory().getAvailableStacks().get(diamond), 7L,
+                    "Consumer terminal view must show the provider drive contents");
+            routers.close();
+        });
+    }
+
     private static NetworkId settled(GameTestHelper helper, IGrid grid, String message) {
         var settlement = grid.getService(NetworkIdentityService.class).settlement();
         helper.assertValueEqual(settlement.status(), IdentityStatus.SETTLED, message);
