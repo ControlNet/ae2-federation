@@ -50,7 +50,12 @@
 - [x] (phase 6) Bugs:
   - "Highlight in world (10 s)" overflows its button.
   - The processing status spills under the footer (the drop-occupied screenshot).
-- [ ] zh copy aligned with the design strings.
+- [x] (phase 10) zh copy aligned with the design strings (V2Topology, V2Identity, BuiltProcessing).
+  - 身份已确定 (not 已确认) throughout.
+  - The design's pair note and rename help are used as written.
+  - The drag help follows "从左侧样板行右边的端口按住拖到右侧端点".
+  - "释放保留的端点…": the release has a confirm step.
+  - "全局规则修订 #N · 拓扑修订 #M".
 
 ### Phase 7: medium items that need new server data
 
@@ -88,8 +93,8 @@
 
 - The rule error state comes from `RuleHealth`: `operation_missing`, or a backend reason the player has to fix in the
   world (crafting cycle, missing CPU or Provider, missing energy source or interface, missing domain reference).
-- Drop hints use `DropHint`. The "rule not enabled" reason is still open, because the server does not send the
-  Endpoints a Provider may not use.
+- Drop hints use `DropHint`. The "rule not enabled" reason was closed in phase 7: every target carries its rule
+  state (on/off/none), and a drop without an enabled rule is a yellow NO_RULE hint ("will pause").
 - The card state line keeps the online status. "Identity confirmed" is the settled wording in the aside and the
   stats.
 - The footer uses "Rule rev #N · topology rev #M" (shortened to fit). The values are the policy store's high
