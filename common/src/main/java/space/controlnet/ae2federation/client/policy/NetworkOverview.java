@@ -59,7 +59,46 @@ public final class NetworkOverview {
         json.addProperty("identity", state.key());
         json.addProperty("parts", grids.size());
         primaryGrid(network, grids, settlements).ifPresent(grid -> addGridFacts(json, grid));
+        if (state.hasParts()) json.add("identityParts", parts(state, grids));
         return json;
+    }
+
+    /**
+     * The parts a player has to tell apart while the identity is in doubt, each with its blocks: for a merge, the
+     * histories joined in one Grid (by the network their nodes came from); for a split, each Grid claiming it.
+     */
+    private static JsonArray parts(NetworkIdentityState state, List<IGrid> grids) {
+        var groups = new java.util.LinkedHashMap<String, List<IGridNode>>();
+        for (var index = 0; index < grids.size(); index++) {
+            var grid = grids.get(index);
+            if (state == NetworkIdentityState.SPLIT) {
+                var nodes = new ArrayList<IGridNode>();
+                grid.getNodes().forEach(nodes::add);
+                groups.put("part" + index, nodes);
+                continue;
+            }
+            var service = grid.getService(NetworkIdentityService.class);
+            for (var node : grid.getNodes()) {
+                try {
+                    groups.computeIfAbsent(service.lineage(node).networkId().value().toString(),
+                            ignored -> new ArrayList<>()).add(node);
+                } catch (IllegalArgumentException untracked) {
+                    // A node the identity service does not track yet carries no history of its own.
+                }
+            }
+        }
+        var out = new JsonArray();
+        int perPart = Math.max(1, MAX_BLOCKS / Math.max(1, groups.size()));
+        groups.forEach((key, nodes) -> {
+            var part = new JsonObject();
+            if (state == NetworkIdentityState.MERGE) part.addProperty("network", key);
+            nodes.stream().map(NetworkOverview::located).flatMap(Optional::stream).findFirst().ifPresent(first -> {
+                part.addProperty("dimension", first.level().dimension().location().toString());
+                part.add("blocks", blocks(nodes, first.level(), perPart));
+            });
+            out.add(part);
+        });
+        return out;
     }
 
     private static Optional<IGrid> primaryGrid(NetworkId network, List<IGrid> grids, List<IdentitySettlement> settlements) {
@@ -95,9 +134,13 @@ public final class NetworkOverview {
 
     /** Distinct block positions of the grid's nodes in the location's dimension, as flat {@code [x, y, z, ...]}. */
     private static JsonArray blocks(IGrid grid, ServerLevel level) {
+        return blocks(grid.getNodes(), level, MAX_BLOCKS);
+    }
+
+    private static JsonArray blocks(Iterable<IGridNode> nodes, ServerLevel level, int limit) {
         var seen = new java.util.LinkedHashSet<BlockPos>();
-        for (var node : grid.getNodes()) {
-            if (seen.size() >= MAX_BLOCKS) break;
+        for (var node : nodes) {
+            if (seen.size() >= limit) break;
             located(node).filter(located -> located.level() == level).ifPresent(located -> seen.add(located.pos()));
         }
         var out = new JsonArray();

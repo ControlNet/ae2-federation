@@ -30,6 +30,35 @@ public enum NetworkIdentityState {
         return LOADING;
     }
 
+    /** How the state is coloured: settled is fine, a doubt is a warning, copied data an error, loading information. */
+    public enum Tone {
+        OK,
+        WARN,
+        ERROR,
+        INFO,
+        MUTED
+    }
+
+    public Tone tone() {
+        return switch (this) {
+            case SETTLED -> Tone.OK;
+            case MERGE, SPLIT -> Tone.WARN;
+            case COPIED -> Tone.ERROR;
+            case LOADING -> Tone.INFO;
+            case UNLOADED -> Tone.MUTED;
+        };
+    }
+
+    /** Merge and split have separate parts in the world that the player can be shown. */
+    public boolean hasParts() {
+        return this == MERGE || this == SPLIT;
+    }
+
+    /** States the player resolves by changing the world, with a resolution line of their own. */
+    public boolean hasFix() {
+        return this == MERGE || this == SPLIT || this == COPIED;
+    }
+
     /** Names are only shown and edited for an identity that is not in doubt. */
     public boolean renamable() {
         return this == SETTLED;

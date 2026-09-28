@@ -162,6 +162,48 @@ final class TaskThirtyThreeWorldFixture {
         context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
     }
 
+    /**
+     * Cables from the Provider host's energy cell down its column to the Endpoint's west face. They join two
+     * established member networks in one Grid: a real merge, the case the design shows. (A freshly placed node has
+     * no established history and is simply adopted, so it cannot merge.) The Endpoint's own energy cell sat at the
+     * end of that column, but the energy-source check earlier in the scenario has removed it.
+     */
+    static void joinMemberNetworks(ServerContext context) {
+        var hostCell = state(context).hostPosition().west();
+        require(hostCell.south(3).equals(state(context).endpointPosition().west()), "The column must end beside the Endpoint");
+        require(context.level().getBlockState(hostCell.south(3)).isAir(), "The Endpoint's energy cell must be gone");
+        var cables = List.of(hostCell.south(1), hostCell.south(2), hostCell.south(3));
+        context.put("merge.cables", cables);
+        for (var cable : cables) {
+            require(appeng.api.parts.PartHelper.setPart(context.level(), cable, null, null,
+                    appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
+                    "Joining cable must be placed");
+        }
+    }
+
+    static boolean memberNetworksMerged(ServerContext context) {
+        var grid = provider(context).getMainNode().getGrid();
+        return grid != null && grid == endpoint(context).getMainNode().getGrid()
+                && grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class)
+                        .settlement().status() == space.controlnet.ae2federation.identity.IdentityStatus.AMBIGUOUS_MERGE;
+    }
+
+    static boolean memberNetworksRecovered(ServerContext context) {
+        var host = provider(context).getMainNode().getGrid();
+        var endpointGrid = endpoint(context).getMainNode().getGrid();
+        return host != null && endpointGrid != null && host != endpointGrid
+                && FederationDomainRegistryAccess.confirmedNetworkId(host).map(id -> id.value().toString())
+                        .filter(id -> id.equals(context.get("net.providerHost"))).isPresent()
+                && FederationDomainRegistryAccess.confirmedNetworkId(endpointGrid).map(id -> id.value().toString())
+                        .filter(id -> id.equals(context.get("net.endpoint"))).isPresent();
+    }
+
+    static void separateMemberNetworks(ServerContext context) {
+        List<BlockPos> cables = context.get("merge.cables");
+        if (cables == null) return;
+        for (var cable : cables) context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+    }
+
     /** Whether the Provider host's processing rule recorded an accepted delivery in the last five seconds. */
     static boolean processingFlowObserved(ServerContext context) {
         var source = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
@@ -752,6 +794,7 @@ final class TaskThirtyThreeWorldFixture {
         var state = context.<State>get(STATE);
         // An aborted scope check must not leave the related domain in the shared world.
         removeRelatedDomain(context);
+        separateMemberNetworks(context);
         if (state == null) {
             return;
         }

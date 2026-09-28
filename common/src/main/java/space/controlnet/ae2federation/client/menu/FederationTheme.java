@@ -29,6 +29,7 @@ public final class FederationTheme {
     public static final int ERROR = 0xffff6a75;
     public static final int VALUE = 0xff8377ff;
     public static final int TEAL = 0xff26a6bd;
+    public static final int INFO = 0xff55a7ff;
     public static final int EDGE = 0xff8b83a0;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */
     public static final int[] NETWORK_ACCENTS = {0xff61afef, 0xffd19a66, 0xffc678dd, 0xff98c379, 0xffe06c75,

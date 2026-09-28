@@ -251,6 +251,31 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the legend unfolds", context -> context.el("#graph_legend").isVisible())
                 .click("#graph_legend_toggle")
                 .waitUntil("the legend folds away again", context -> !context.el("#graph_legend").isVisible())
+                .server("join the two member networks with a cable", TaskThirtyThreeWorldFixture::joinMemberNetworks)
+                .waitUntilServer("the joined Grid reports a merge", TaskThirtyThreeWorldFixture::memberNetworksMerged)
+                .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.providerHost")))
+                .waitForTextContains("#graph_selection", "Merge pending")
+                .check("the merge names both histories and how to recover", context -> {
+                    var text = context.el("#graph_selection").text();
+                    return text.contains("Contains: ") && text.contains(" · ") && text.contains("Disconnect them to recover.");
+                })
+                .waitForTextContains("#network_highlight", "Highlight both parts")
+                .step("highlight both parts", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
+                .check("both parts are outlined in their own colours", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2)
+                .step("reveal the identity explanation", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#graph_selection"))
+                .frames(2).screenshot("ui-identity-merge")
+                .step("record merge evidence", context -> {
+                    context.attach("evidenceFor", "ui.graph-controls");
+                    context.attach("identityMerge", context.el("#graph_selection").text());
+                    context.attach("identityMergeGroups", Integer.toString(
+                            space.controlnet.ae2federation.client.WorldHighlight.activeGroups()));
+                })
+                .server("disconnect the two networks again", TaskThirtyThreeWorldFixture::separateMemberNetworks)
+                .waitUntilServer("both networks recover their own identity", TaskThirtyThreeWorldFixture::memberNetworksRecovered)
+                .waitUntil("the workspace shows the recovered identity", context ->
+                        !context.el("#graph_selection").text().contains("Merge pending"))
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("its location is shown", context -> context.el("#network_location").isVisible()

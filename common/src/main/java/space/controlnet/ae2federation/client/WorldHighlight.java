@@ -20,19 +20,38 @@ public final class WorldHighlight {
     private WorldHighlight() {
     }
 
-    private record Highlight(String dimension, List<BlockMarks.Mark> blocks, int color, long expiresAt) {
+    /** Blocks outlined in one colour, for example one part of a network whose identity is in doubt. */
+    public record Group(List<BlockMarks.Mark> blocks, int color) {
+        public Group {
+            blocks = List.copyOf(blocks);
+        }
+    }
+
+    private record Highlight(String dimension, List<Group> groups, long expiresAt) {
     }
 
     /** Replaces any running highlight; only one set of blocks is outlined at a time. */
     public static void show(String dimension, List<BlockMarks.Mark> blocks, int color) {
-        current = blocks.isEmpty() ? null
-                : new Highlight(dimension, List.copyOf(blocks), color, System.currentTimeMillis() + DURATION_MILLIS);
+        show(dimension, List.of(new Group(blocks, color)));
+    }
+
+    /** Replaces any running highlight with several groups, each in its own colour. */
+    public static void show(String dimension, List<Group> groups) {
+        var shown = groups.stream().filter(group -> !group.blocks().isEmpty()).toList();
+        current = shown.isEmpty() ? null : new Highlight(dimension, shown, System.currentTimeMillis() + DURATION_MILLIS);
     }
 
     /** Blocks outlined right now, for the workspace's own feedback and tests. */
     public static int activeBlocks() {
         var highlight = current;
-        return highlight == null || highlight.expiresAt() < System.currentTimeMillis() ? 0 : highlight.blocks().size();
+        return highlight == null || highlight.expiresAt() < System.currentTimeMillis() ? 0
+                : highlight.groups().stream().mapToInt(group -> group.blocks().size()).sum();
+    }
+
+    /** Colour groups outlined right now. */
+    public static int activeGroups() {
+        var highlight = current;
+        return highlight == null || highlight.expiresAt() < System.currentTimeMillis() ? 0 : highlight.groups().size();
     }
 
     public static void render(RenderLevelStageEvent event) {
@@ -47,17 +66,19 @@ public final class WorldHighlight {
         }
         if (!level.dimension().location().toString().equals(highlight.dimension())) return;
         float pulse = 0.55f + 0.45f * (float) Math.sin(now / 160.0);
-        float red = (highlight.color() >> 16 & 0xff) / 255f;
-        float green = (highlight.color() >> 8 & 0xff) / 255f;
-        float blue = (highlight.color() & 0xff) / 255f;
         var camera = event.getCamera().getPosition();
         var pose = new PoseStack();
         pose.translate(-camera.x, -camera.y, -camera.z);
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         var lines = buffers.getBuffer(RenderType.lines());
-        for (var block : highlight.blocks()) {
-            var box = new AABB(block.x(), block.y(), block.z(), block.x() + 1, block.y() + 1, block.z() + 1).inflate(0.02);
-            LevelRenderer.renderLineBox(pose, lines, box, red, green, blue, pulse);
+        for (var group : highlight.groups()) {
+            float red = (group.color() >> 16 & 0xff) / 255f;
+            float green = (group.color() >> 8 & 0xff) / 255f;
+            float blue = (group.color() & 0xff) / 255f;
+            for (var block : group.blocks()) {
+                var box = new AABB(block.x(), block.y(), block.z(), block.x() + 1, block.y() + 1, block.z() + 1).inflate(0.02);
+                LevelRenderer.renderLineBox(pose, lines, box, red, green, blue, pulse);
+            }
         }
         buffers.endBatch(RenderType.lines());
     }

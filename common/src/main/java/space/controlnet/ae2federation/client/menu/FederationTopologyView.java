@@ -32,6 +32,7 @@ import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
 import space.controlnet.ae2federation.client.policy.FlowPath;
+import space.controlnet.ae2federation.client.policy.NetworkIdentityState;
 import space.controlnet.ae2federation.client.policy.NetworkRenameTarget;
 import space.controlnet.ae2federation.client.policy.PolicySwitchTarget;
 import space.controlnet.ae2federation.client.policy.RelatedDomainLabel;
@@ -76,6 +77,8 @@ final class FederationTopologyView {
     private final Label locationNote;
     private final Button highlight;
     private List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> highlightBlocks = List.of();
+    /** The parts of a network whose identity is in doubt, each outlined in its own colour. */
+    private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightParts = List.of();
     private String highlightDimension = "";
     private int highlightColor;
     private String highlightedNetwork = "";
@@ -216,10 +219,14 @@ final class FederationTopologyView {
         highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
         highlight.setOnClick(event -> {
             if (highlightBlocks.isEmpty()) return;
-            space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
+            if (highlightParts.size() > 1) {
+                space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightParts);
+            } else {
+                space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
+            }
             highlightedNetwork = selectedNetwork;
             highlightedUntil = System.currentTimeMillis() + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS;
-            locationNote.setText(FederationWorkspace.trLocation("highlighted", highlightBlocks.size()));
+            locationNote.setText(highlightedText());
         });
     }
 
@@ -509,7 +516,7 @@ final class FederationTopologyView {
             var facts = overview.get(network.id());
             var identityState = identityState(network);
             if (!identityState.equals("settled") && !identityState.isEmpty()) {
-                lines[0].setText(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
+                lines[0].setText(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(toneColor(identityState) & 0xffffff)));
             } else {
                 var status = memberStatus.getOrDefault(network.member(), "pending");
                 lines[0].setText(tr("network_status." + status).withStyle(Style.EMPTY.withColor(
@@ -626,9 +633,24 @@ final class FederationTopologyView {
         var identityState = identityState(network);
         var explanation = Component.empty();
         if (!identityState.isEmpty() && !identityState.equals("settled")) {
-            explanation.append(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(
-                    (identityState.equals("settled") ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff)));
-            if (!identityState.equals("settled")) explanation.append("\n").append(tr("identity." + identityState + ".help"));
+            var state = NetworkIdentityState.valueOf(identityState.toUpperCase(java.util.Locale.ROOT));
+            var tone = Style.EMPTY.withColor(toneColor(identityState) & 0xffffff);
+            explanation.append(tr("identity." + identityState).withStyle(tone));
+            var parts = facts != null && facts.has("identityParts") ? facts.getAsJsonArray("identityParts") : null;
+            if (state == NetworkIdentityState.MERGE && parts != null) {
+                var names = new ArrayList<String>();
+                parts.forEach(part -> {
+                    var id = part.getAsJsonObject().has("network") ? part.getAsJsonObject().get("network").getAsString() : "";
+                    var known = network(id);
+                    names.add(known != null ? name(known).getString() : id.length() >= 8
+                            ? tr("network_name", id.substring(0, 8).toUpperCase(Locale.ROOT)).getString() : id);
+                });
+                explanation.append("\n").append(tr("identity.merge.contains", String.join(" · ", names)));
+            } else if (state == NetworkIdentityState.SPLIT && parts != null) {
+                explanation.append("\n").append(tr("identity.split.parts", parts.size()));
+            }
+            explanation.append("\n").append(tr("identity." + identityState + ".help"));
+            if (state.hasFix()) explanation.append("\n").append(tr("identity." + identityState + ".fix").withStyle(tone));
             explanation.append("\n");
         }
         detail.setText(network.foreign() ? tr("related_detail", domainName(network.domain()))
@@ -670,6 +692,7 @@ final class FederationTopologyView {
             location.setDisplay(false);
             preview.clear();
             highlightBlocks = List.of();
+            highlightParts = List.of();
             return;
         }
         location.setDisplay(true);
@@ -683,12 +706,37 @@ final class FederationTopologyView {
         highlightDimension = dimension;
         highlightColor = network.accent();
         highlightBlocks = mask.isEmpty() ? List.of(anchor) : mask;
+        highlightParts = identityParts(facts, dimension, network.accent());
+        highlight.setText(FederationWorkspace.trLocation(highlightParts.size() > 1 ? "highlight_parts" : "highlight"));
         boolean here = preview.inPlayerDimension();
         highlight.setActive(here);
         boolean outlined = network.id().equals(highlightedNetwork) && System.currentTimeMillis() < highlightedUntil;
-        locationNote.setText(outlined ? FederationWorkspace.trLocation("highlighted", highlightBlocks.size())
+        locationNote.setText(outlined ? highlightedText()
                 : here ? FederationWorkspace.trLocation("network_blocks", mask.size())
                 : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
+    }
+
+    /** Parts in the location's dimension with blocks, the first in the network's accent and the other in warning. */
+    private static List<space.controlnet.ae2federation.client.WorldHighlight.Group> identityParts(JsonObject facts,
+            String dimension, int accent) {
+        if (!facts.has("identityParts")) return List.of();
+        var groups = new ArrayList<space.controlnet.ae2federation.client.WorldHighlight.Group>();
+        for (var element : facts.getAsJsonArray("identityParts")) {
+            var part = element.getAsJsonObject();
+            if (!part.has("blocks") || !dimension.equals(part.get("dimension").getAsString())) continue;
+            var flat = new ArrayList<Integer>();
+            part.getAsJsonArray("blocks").forEach(value -> flat.add(value.getAsInt()));
+            groups.add(new space.controlnet.ae2federation.client.WorldHighlight.Group(
+                    space.controlnet.ae2federation.client.policy.BlockMarks.fromFlat(flat),
+                    groups.isEmpty() ? accent : FederationTheme.WARN));
+        }
+        return groups;
+    }
+
+    private Component highlightedText() {
+        if (highlightParts.size() > 1) return FederationWorkspace.trLocation("highlighted_parts", highlightParts.size(),
+                highlightParts.stream().mapToInt(group -> group.blocks().size()).sum());
+        return FederationWorkspace.trLocation("highlighted", highlightBlocks.size());
     }
 
     private void renderStats(JsonObject facts, String identityState) {
@@ -729,6 +777,18 @@ final class FederationTopologyView {
         label.setId(id);
         label.setText(value);
         return label;
+    }
+
+    /** The colour of an identity state, as the design gives it: doubt yellow, copy conflict red, loading blue. */
+    private static int toneColor(String identityState) {
+        if (identityState.isEmpty()) return FederationTheme.DARK_MUTED;
+        return switch (NetworkIdentityState.valueOf(identityState.toUpperCase(Locale.ROOT)).tone()) {
+            case OK -> FederationTheme.OK;
+            case WARN -> FederationTheme.WARN;
+            case ERROR -> FederationTheme.ERROR;
+            case INFO -> FederationTheme.INFO;
+            case MUTED -> FederationTheme.DARK_MUTED;
+        };
     }
 
     private String identityState(Network network) {

@@ -162,6 +162,12 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || !captures.any { it.path.contains('ui-flow-processing') }) {
         throw new GradleException('Task 33 processing rule did not show its real delivery')
     }
+    if (!(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Merge pending')
+            || !(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Contains: ')
+            || evidence('ui.graph-controls', 'identityMergeGroups') != '2'
+            || !captures.any { it.path.contains('ui-identity-merge') }) {
+        throw new GradleException('Task 33 merge identity state was not explained with both parts')
+    }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
             || mapping.processingWire != 'mapped-unlinked'

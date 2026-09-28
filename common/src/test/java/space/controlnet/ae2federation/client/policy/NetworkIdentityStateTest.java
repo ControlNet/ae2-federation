@@ -52,4 +52,21 @@ class NetworkIdentityStateTest {
             assertEquals(state == NetworkIdentityState.SETTLED, state.renamable());
         }
     }
+
+    @Test
+    void eachStateHasTheToneAndActionsOfTheDesign() {
+        assertEquals(NetworkIdentityState.Tone.OK, NetworkIdentityState.SETTLED.tone());
+        assertEquals(NetworkIdentityState.Tone.WARN, NetworkIdentityState.MERGE.tone());
+        assertEquals(NetworkIdentityState.Tone.WARN, NetworkIdentityState.SPLIT.tone());
+        assertEquals(NetworkIdentityState.Tone.INFO, NetworkIdentityState.LOADING.tone());
+        assertEquals(NetworkIdentityState.Tone.ERROR, NetworkIdentityState.COPIED.tone());
+        assertEquals(NetworkIdentityState.Tone.MUTED, NetworkIdentityState.UNLOADED.tone());
+        // Only merge and split have two parts a player can find in the world, and a fix to apply.
+        assertEquals(true, NetworkIdentityState.MERGE.hasParts());
+        assertEquals(true, NetworkIdentityState.SPLIT.hasParts());
+        assertEquals(false, NetworkIdentityState.COPIED.hasParts());
+        assertEquals(true, NetworkIdentityState.COPIED.hasFix());
+        assertEquals(false, NetworkIdentityState.LOADING.hasFix());
+        assertEquals(false, NetworkIdentityState.SETTLED.hasFix());
+    }
 }
