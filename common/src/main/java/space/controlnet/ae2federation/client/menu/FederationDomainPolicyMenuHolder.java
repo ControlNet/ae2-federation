@@ -60,6 +60,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
         bind(ui, "ack_status", this::statusText);
+        bind(ui, "revision_status", () -> session == null ? Component.empty() : session.revisionsText());
         bind(ui, "mapping_provider_value", this::mappingProviderText);
         bind(ui, "mapping_selection_value", this::mappingSelectionText);
         bind(ui, "mapping_status", this::mappingStatusText);

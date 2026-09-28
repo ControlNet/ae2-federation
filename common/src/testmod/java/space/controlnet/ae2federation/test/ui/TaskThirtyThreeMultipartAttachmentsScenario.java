@@ -28,7 +28,7 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                             .allMatch(card -> card.bounds().x() >= focus.get().bounds().x());
                 })
                 .checkText("#entrance_value", "ME Federation Bridge - side North / type bridge / cable extension 5.0")
-                .checkTextContains("#members_value", "2 members")
+                .checkTextContains("#members_value", "2 networks · ")
                 .server("record real multipart attachment", context ->
                         context.put("task33.multipart", TaskThirtyThreeWorldFixture.multipartAttachment(context)))
                 .step("record multipart evidence", context -> {

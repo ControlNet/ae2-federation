@@ -1,0 +1,22 @@
+package space.controlnet.ae2federation.client.policy;
+
+import java.util.Set;
+
+/**
+ * How a rule reads on the graph, from the server's last runtime observation. An error is a condition that will not
+ * clear by waiting: a missing operation or a backend reason the player has to fix in the world.
+ */
+public enum RuleHealth {
+    OFF, ACTIVE, WAITING, ERROR;
+
+    private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_cycle", "energy_source_missing",
+            "crafting_cpu_missing", "crafting_provider_missing", "consumer_energy_interface_missing",
+            "domain_reference_missing");
+
+    public static RuleHealth of(boolean enabled, String code, String backend) {
+        if (!enabled) return OFF;
+        if (code.equals("published") || code.equals("on_dispatch")) return ACTIVE;
+        if (code.equals("operation_missing") || BLOCKING_BACKENDS.contains(backend)) return ERROR;
+        return WAITING;
+    }
+}

@@ -110,7 +110,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     ['ui.router', 'ui.bridge'].each { caseId ->
         def outcome = outcomes[caseId]
         def revision = outcome.policyRevision as long
-        def expectedStatus = "Server accepted revision ${revision} - acknowledgment policy-${revision}"
+        def expectedStatus = "Server confirmed: Storage rule enabled · revision ${revision}"
         if (outcome.mutationStatus != 'ACCEPTED' || revision <= 0L || outcome.policyEnabled != 'true'
                 || outcome.visibleStatus != expectedStatus) {
             throw new GradleException("Task 15 server acknowledgment is invalid for ${caseId}")
@@ -213,7 +213,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || !captures.any { it.path.contains('ui-network-location') }
             || !captures.any { it.path.contains('world-network-highlight') }
             || !captures.any { it.path.contains('ui-graph-network-renamed') }
-            || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
+            || !controlsOutcome.visibleStatus.startsWith('Server confirmed: Storage rule ')
             || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
             || !captures.any { it.path.contains('world-router-overview') }
             || !captures.any { it.path.contains('world-multipart-bridge-north') }
@@ -392,8 +392,8 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 || !report.screenshots.any { it.path == 'clients/client-a-domain-split.png' }
                 || clientA.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
                 || clientB.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
-                || clientA.getProperty('refreshedRenderedMembers') != '2 members'
-                || clientB.getProperty('refreshedRenderedMembers') != '2 members'
+                || clientA.getProperty('refreshedRenderedMembers') != '2 networks'
+                || clientB.getProperty('refreshedRenderedMembers') != '2 networks'
                 || (clientA.getProperty('refreshedStableFrames') as int) < 3
                 || (clientB.getProperty('refreshedStableFrames') as int) < 3
                 || !report.screenshots.any { it.path == 'clients/client-a-refreshed.png' }

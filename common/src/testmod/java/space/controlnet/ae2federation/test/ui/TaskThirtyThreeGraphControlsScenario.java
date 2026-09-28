@@ -35,6 +35,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()
                                 - context.<Float>get("graph.searchScale")) < 0.0001f)
                 .hover("#domain_title").frames(3).screenshot("ui-graph-network-search")
+                .serverGet("record the Provider's position", "search.providerPosition",
+                        TaskThirtyThreeWorldFixture::providerPositionQuery)
+                .step("search by the Provider's coordinates", context -> context.el("#graph_search")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.elements.TextField.class).setText(context.get("search.providerPosition"), true))
+                .waitUntil("only the network holding that Provider stays highlighted", context ->
+                        opacity(context, context.get("net.providerHost")) == 1f && opacity(context, context.get("net.endpoint")) < 1f)
+                .typeInto("#graph_search", "endpoint")
+                .waitUntil("a device kind finds the Endpoint's network", context ->
+                        opacity(context, context.get("net.endpoint")) == 1f && opacity(context, context.get("net.providerHost")) < 1f)
                 .typeInto("#graph_search", "").blur()
                 .click("#graph_fit")
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
@@ -46,7 +55,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitForTextContains("#network_stat_energy", " AE (")
                 .checkTextContains("#network_stat_cpus", "Crafting CPUs ")
                 .checkTextContains("#network_stat_channels", "Channels ")
-                .waitForTextContains("#network_stat_identity", "Identity settled")
+                .waitForTextContains("#network_stat_identity", "Identity confirmed")
                 .check("identity location is shown", context -> context.el("#network_stat_place").text().startsWith("Location Overworld "))
                 .check("card shows live figures", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
@@ -123,7 +132,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntilServer("real policy revision advances", context ->
                         TaskFifteenWorldFixture.policyRevision(context)
                                 > context.<Long>get("task33.policyBefore"))
-                .waitForTextContains("#ack_status", "Server accepted revision")
+                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
+                .waitForTextContains("#policy_terms_0_storage",
+                        "Operations view insert extract · Filter: all resources · Re-export: off")
                 .server("record authoritative policy result", context -> {
                     context.put("task33.policyRevision", Long.toString(TaskFifteenWorldFixture.policyRevision(context)));
                     context.put("task33.policyEnabled", Boolean.toString(TaskFifteenWorldFixture.policyEnabled(context)));
@@ -194,6 +205,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .awaitElement("#policy_section_title_0")
                 .waitUntil("energy source absence is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "me_power")
                         .contains("Last backend check: No local public energy source allows extraction."))
+                .check("a missing energy source is a blocking error, not a wait", context ->
+                        TaskThirtyThreeScenarioSupport.ruleState(context, "me_power").startsWith("On, but blocked · revision"))
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
                 .frames(2).screenshot("ui-policy-runtime-energy-source-missing")
                 .click("#tab_overview").frames(2)
@@ -231,9 +244,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_title", "Read-only: this pair belongs to Bridge domain ")
+                .waitForTextContains("#pair_note", "Read-only: this pair belongs to Bridge domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
+                .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
+                .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
                     // A separate record: the case record above already holds the accepted-edit status.
@@ -299,5 +314,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .serverTicks(2).frames(2).screenshot("world-provider-host")
                 .server("position Endpoint face camera", TaskThirtyThreeWorldFixture::positionEndpointCamera)
                 .serverTicks(2).frames(2).screenshot("world-endpoint-faces");
+    }
+
+    private static float opacity(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        return TaskThirtyThreeScenarioSupport.networkCard(context, networkUuid)
+                .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().opacity();
     }
 }

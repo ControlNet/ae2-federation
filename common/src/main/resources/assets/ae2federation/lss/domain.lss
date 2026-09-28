@@ -26,7 +26,7 @@
 .sync-lamp { width: 5; height: 5; flex-shrink: 0; background: #ff55ff8a; }
 .domain-caption { height: 10; flex-shrink: 1; min-width: 0; text-color: #ff6d6a82; }
 #entrance_value { flex: 1; min-width: 0; }
-.members-caption { flex-shrink: 0; width: 70; }
+.members-caption { flex-shrink: 0; width: 104; }
 #graph_search { width: 110; flex-shrink: 0; }
 .return-provider { width: 104; flex-shrink: 0; display: none; }
 
@@ -38,7 +38,8 @@
 .domain-panel .graph-toolbar .toolbar-button { width: 16; height: 16; padding-all: 0; padding-bottom: 2; }
 /* Below the zoom row: a narrow canvas has no room for both in one row. */
 .domain-panel .scope-button { position: absolute; right: 3; top: 21; width: 88; height: 16; padding-all: 0; padding-bottom: 2; }
-.graph-search-empty { position: absolute; left: 6; top: 6; width: 150; height: 10; display: none; text-color: #ffffd65a; }
+.domain-panel .graph-throughput { position: absolute; left: 4; top: 5; width: 150; height: 10; text-color: #ffaaa4b2; }
+.graph-search-empty { position: absolute; left: 4; top: 16; width: 150; height: 10; display: none; text-color: #ffffd65a; }
 .domain-panel .graph-legend { position: absolute; left: 3; bottom: 3; right: 3; adaptive-height: true; text-wrap: wrap; padding-horizontal: 3; text-color: #ffaaa4b2; background: #e017141e; }
 
 .topology-aside { width: 176; flex-shrink: 0; height: 100%; scroller-view-mode: vertical; }
@@ -54,6 +55,7 @@
 .domain-panel .dark-panel label { text-color: #ffd6d0e0; }
 .domain-panel .panel-text { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .network-links { width: 100%; flex-shrink: 0; gap-all: 2; }
+.domain-panel .links-note { width: 100%; adaptive-height: true; text-wrap: wrap; text-color: #ff6d6a82; }
 .domain-panel .title-action { width: 50; height: 12; padding-all: 0; padding-bottom: 2; flex-shrink: 0; }
 .rename-row { width: 100%; flex-shrink: 0; gap-all: 3; display: none; }
 .rename-row #network_rename_field { width: 100%; }
@@ -67,19 +69,22 @@
 .domain-panel .network-link { height: 18; }
 .domain-panel .network-link .__button_text__ { horizontal-align: left; }
 .domain-panel .paper-note { width: 100%; adaptive-height: true; flex-shrink: 0; padding-all: 3; text-wrap: wrap; text-color: #ff3f3d52; background: #fff2f2f2; }
+.domain-panel .paper-note.read-only-banner { text-color: #ff5b3d12; background: #ffffe6a8; }
 .pair-sections { width: 100%; flex-shrink: 0; gap-all: 4; }
 .domain-panel .pair-section-title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffefeaf8; }
 .policy-row { width: 100%; flex-shrink: 0; gap-all: 1; padding-top: 2; }
 .policy-row-head { width: 100%; height: 12; flex-direction: row; gap-all: 3; align-items: center; }
 .domain-panel .policy-capability { flex: 1; min-width: 0; height: 10; text-color: #ffefeaf8; }
 .domain-panel .policy-state { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
+.domain-panel .policy-terms { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .domain-panel .policy-link { width: 44; height: 12; padding-all: 0; padding-bottom: 2; }
 .domain-panel .policy-switch { width: 22; height: 12; padding-all: 0; flex-shrink: 0; }
 .domain-panel button.policy-switch.__disabled__ { base-background: built-in(federation:SWITCH_OFF); }
 .domain-panel button.policy-switch.on.__disabled__ { base-background: built-in(federation:SWITCH_ON); }
 
-.domain-footer { width: 100%; height: 11; flex-shrink: 0; }
-.domain-status { width: 100%; height: 10; text-color: #ff6d6a82; }
+.domain-footer { width: 100%; height: 11; flex-shrink: 0; flex-direction: row; }
+.domain-status { flex: 1; min-width: 0; height: 10; text-color: #ff6d6a82; }
+.domain-panel .revision-status { flex: 0; width: 150; horizontal-align: right; }
 .domain-panel .domain-status.accepted { text-color: #ff28633b; }
 .domain-panel .domain-status.conflict { text-color: #ff79541b; }
 .domain-panel .domain-status.stale_context, .domain-panel .domain-status.stale_revision, .domain-panel .domain-status.disabled { text-color: #ff922e42; }
@@ -105,7 +110,11 @@
 .view-switch button { flex: 1; }
 .processing-graph { flex: 1; min-height: 0; width: 100%; flex-direction: row; gap-all: 6; }
 .processing-scroll { flex: 1; min-width: 0; height: 100%; background: built-in(federation:WELL); }
-.processing-detail { width: 118; height: 100%; flex-shrink: 0; }
+.processing-detail { width: 118; height: 100%; flex-shrink: 0; scroller-view-mode: vertical; }
+.processing-detail .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
+.processing-detail .__scroller_view_view-container__ { width: 100%; gap-all: 3; }
+// The detail text already explains what to do; only real feedback is repeated under it.
+.domain-panel .processing-detail .mapping-status.feedback-neutral { display: none; }
 .processing-detail .compact-actions { width: 100%; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 3; }
 .processing-detail .compact-actions button { flex: 1; }
 .domain-panel .processing-note { width: 100%; adaptive-height: true; text-wrap: wrap; text-color: #ffaaa4b2; }

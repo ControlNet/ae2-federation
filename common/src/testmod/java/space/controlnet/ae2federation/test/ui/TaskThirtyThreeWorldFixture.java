@@ -382,6 +382,11 @@ final class TaskThirtyThreeWorldFixture {
                 && !configured.rule().enabled() && configured.revision().value() == disabledRevision;
     }
 
+    /** The Provider's position as a player would type it, for example "10, -57, 10". */
+    static String providerPositionQuery(ServerContext context) {
+        return state(context).hostPosition().toShortString();
+    }
+
     static void recordNetworks(ServerContext context) {
         context.put("net.providerHost", FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid())
                 .orElseThrow().value().toString());

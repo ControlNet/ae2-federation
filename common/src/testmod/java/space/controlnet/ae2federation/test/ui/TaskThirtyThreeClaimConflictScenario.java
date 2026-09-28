@@ -59,11 +59,31 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                         context.el(".processing-endpoint-state").text().equals("Owned by another Provider"))
                 .serverGet("record lanes before the refused drop", "task33.lanesBeforeDrop",
                         TaskThirtyThreeWorldFixture::slotZeroLanes)
+                .step("start dragging pattern 0 without dropping it", context -> {
+                    var port = context.el("#processing_port_0").bounds();
+                    var card = context.el(".processing-endpoint").bounds();
+                    context.input().moveTo(port.centerX(), port.centerY());
+                    context.input().mouseDown(port.centerX(), port.centerY(), 0);
+                    context.input().dragTo((port.x() + port.width() + card.x()) / 2, card.centerY(), 0);
+                })
+                .waitUntil("the Endpoint card shows why it refuses the drop", context ->
+                        context.el(".processing-endpoint-state").text().startsWith("Taken by Provider ")
+                                && context.el(".processing-endpoint").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                                .hasClass("drop-refused"))
+                .screenshot("ui-processing-drop-hint")
+                .step("let go in the gap between the columns", context -> {
+                    var port = context.el("#processing_port_0").bounds();
+                    var card = context.el(".processing-endpoint").bounds();
+                    context.input().mouseUp((port.x() + port.width() + card.x()) / 2, card.centerY(), 0);
+                })
+                .waitUntil("the card returns to its claim once the drag ends", context ->
+                        context.el(".processing-endpoint-state").text().equals("Owned by another Provider"))
                 .drag("#processing_port_0", ".processing-endpoint")
                 .waitForTextContains("#processing_detail_text", "Release it there first.")
                 .checkServer("the refused drop changes no mapping", context ->
                         TaskThirtyThreeWorldFixture.slotZeroLanes(context).equals(context.get("task33.lanesBeforeDrop")))
-                .check("an Endpoint owned elsewhere cannot be released here", context -> !context.el("#processing_release").isActive())
+                .check("an Endpoint owned elsewhere cannot be released here", context -> !context.el("#processing_release").isActive()
+                        && !context.el("#processing_release").isVisible())
                 .screenshot("ui-processing-drop-occupied")
                 .step("record Claim conflict and refused drop evidence", context -> {
                     // Attachments are grouped per step; this record supersedes the earlier one for this case.

@@ -116,6 +116,7 @@ public final class NetworkOverview {
             json.addProperty("z", node.pos().getZ());
             json.add("blocks", blocks(grid, node.level()));
         });
+        json.add("devices", devices(grid));
         var energy = grid.getEnergyService();
         json.addProperty("energy", Math.round(energy.getStoredPower()));
         json.addProperty("energyMax", Math.round(energy.getMaxStoredPower()));
@@ -130,6 +131,29 @@ public final class NetworkOverview {
         json.addProperty("channels", pathing.getUsedChannels());
         json.addProperty("controller", pathing.getControllerState().name().toLowerCase(java.util.Locale.ROOT));
         json.addProperty("nodes", grid.size());
+    }
+
+    /** The mod's devices in the grid with their positions, so players can find a network by a device or where it is. */
+    private static JsonArray devices(IGrid grid) {
+        var out = new JsonArray();
+        addDevices(out, "provider", grid.getMachineNodes(
+                space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity.class));
+        addDevices(out, "endpoint", grid.getMachineNodes(
+                space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity.class));
+        return out;
+    }
+
+    private static void addDevices(JsonArray out, String kind, Iterable<IGridNode> nodes) {
+        for (var node : nodes) {
+            located(node).ifPresent(located -> {
+                var device = new JsonObject();
+                device.addProperty("kind", kind);
+                device.addProperty("x", located.pos().getX());
+                device.addProperty("y", located.pos().getY());
+                device.addProperty("z", located.pos().getZ());
+                out.add(device);
+            });
+        }
     }
 
     /** Distinct block positions of the grid's nodes in the location's dimension, as flat {@code [x, y, z, ...]}. */

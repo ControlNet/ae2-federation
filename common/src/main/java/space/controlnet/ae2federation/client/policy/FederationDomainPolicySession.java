@@ -318,6 +318,7 @@ public final class FederationDomainPolicySession {
                     row.addProperty("capability", record.key().capability().name());
                     row.addProperty("enabled", record.rule().enabled());
                     row.addProperty("revision", record.revision().value());
+                    row.add("terms", termsJson(record.rule()));
                     row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
                     rules.add(row);
                 });
@@ -622,6 +623,18 @@ public final class FederationDomainPolicySession {
      * Networks and rules of the other domains that share a member network with this one. The workspace shows them
      * read-only: editing stays with the Router or Bridge of the domain that owns the pair.
      */
+    private static com.google.gson.JsonObject termsJson(space.controlnet.ae2federation.policy.PolicyRule rule) {
+        var terms = RuleTerms.of(rule);
+        var json = new com.google.gson.JsonObject();
+        var operations = new com.google.gson.JsonArray();
+        terms.operations().forEach(operations::add);
+        json.add("operations", operations);
+        json.addProperty("filter", terms.filter());
+        json.addProperty("filterEntries", terms.filterEntries());
+        json.addProperty("reexport", terms.reexport());
+        return json;
+    }
+
     private void addRelated(com.google.gson.JsonObject root) {
         var registry = FederationDomainRegistryAccess.get(level);
         var members = new java.util.HashSet<>(selection.members());
@@ -668,6 +681,7 @@ public final class FederationDomainPolicySession {
                         row.addProperty("capability", record.key().capability().name());
                         row.addProperty("enabled", record.rule().enabled());
                         row.addProperty("revision", record.revision().value());
+                        row.add("terms", termsJson(record.rule()));
                         row.addProperty("domain", domainId.value());
                         rulesOut.add(row);
                     });
@@ -1002,7 +1016,23 @@ public final class FederationDomainPolicySession {
         if (selection == null) {
             return Component.translatable("ae2federation.ui.domain.members.pending");
         }
-        return Component.translatable("ae2federation.ui.domain.members", selection.members().size());
+        var links = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
+                .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
+                .map(record -> record.key())
+                .filter(key -> selection.members().contains(key.consumerNetworkId())
+                        && selection.members().contains(key.providerNetworkId())
+                        && !key.consumerNetworkId().equals(key.providerNetworkId()))
+                .map(key -> java.util.Set.of(key.consumerNetworkId(), key.providerNetworkId()))
+                .distinct().count();
+        return Component.translatable("ae2federation.ui.domain.members", selection.members().size()).append(" · ")
+                .append(Component.translatable("ae2federation.ui.domain.links", links));
+    }
+
+    /** The two server counters a stale edit is judged against: the rule store's and the domain topology's. */
+    public Component revisionsText() {
+        var policy = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().highWatermark().value();
+        var topology = FederationDomainRegistryAccess.get(level).snapshot().topologyRevision();
+        return Component.translatable("ae2federation.ui.domain.revisions", policy, topology);
     }
 
     public Component consumerText() {
@@ -1104,13 +1134,22 @@ public final class FederationDomainPolicySession {
             case READY -> Component.translatable("ae2federation.ui.domain.status.ready");
             case PENDING -> Component.translatable("ae2federation.ui.domain.status.pending");
             case DISABLED -> Component.translatable("ae2federation.ui.domain.status.disabled", entrance.diagnostic());
-            case ACCEPTED -> Component.translatable("ae2federation.ui.domain.status.accepted",
-                    expectedRevision.value(), acknowledgmentId);
+            case ACCEPTED -> acceptedText();
             case STALE_CONTEXT -> Component.translatable("ae2federation.ui.domain.status.stale_context");
             case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision",
                     expectedRevision.value());
             case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict", expectedRevision.value());
         };
+    }
+
+    /** "Server confirmed: Storage rule on · revision 12", from the rule the server just accepted. */
+    private Component acceptedText() {
+        var key = selection.key();
+        var enabled = PolicyService.get(level).configured(key).map(record -> record.rule().enabled()).orElse(false);
+        return Component.translatable("ae2federation.ui.domain.status.accepted",
+                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)),
+                Component.translatable("ae2federation.ui.domain.status.accepted." + (enabled ? "on" : "off")),
+                expectedRevision.value());
     }
 
     public String statusCode() {

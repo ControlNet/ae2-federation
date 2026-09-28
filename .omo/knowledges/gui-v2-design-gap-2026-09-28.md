@@ -19,42 +19,42 @@
 
 ### Phase 6: small items that current data mostly covers
 
-- [ ] Endpoint drop hints while dragging. Each card gets a green, red or grey ring and a reason:
+- [x] (phase 6) Endpoint drop hints while dragging. Each card gets a green, red or grey ring and a reason:
   - "can drop · will claim"
   - "occupied by Provider @pos"
   - "already connected to this pattern"
   - "not loaded"
   - "rule not enabled", which needs the server to also send the Endpoints the Provider may not use, with a reason.
-- [ ] Storage detail row under the storage rule: operations, filter and re-export. Serialize these fields.
-- [ ] Identity detail and resolution lines, in per-state colours: loading blue, copy conflict red, merge and split
+- [x] (phase 6) Storage detail row under the storage rule: operations, filter and re-export. Serialize these fields.
+- [x] (phase 6) Identity detail and resolution lines, in per-state colours: loading blue, copy conflict red, merge and split
   yellow.
   - Merge lists its "contains" networks, from the live claims.
   - Split shows "N parts claim the same identity".
-- [ ] Search also matches devices and coordinates: "search networks, devices or coordinates…".
-- [ ] Connections list shows linked networks only, as "Connections (N)" with direction chips. Networks without rules
+- [x] (phase 6) Search also matches devices and coordinates: "search networks, devices or coordinates…".
+- [x] (phase 6) Connections list shows linked networks only, as "Connections (N)" with direction chips. Networks without rules
   are shown separately or not at all.
-- [ ] Rule states: a red "error" state and a "!" suffix on the pill chip. Needs a real runtime error code, never an
+- [x] (phase 6) Rule states: a red "error" state and a "!" suffix on the pill chip. Needs a real runtime error code, never an
   invented one.
-- [ ] Read-only pair: a banner "open it from that domain's Bridge to edit", and unconfigured directions hidden.
-- [ ] Processing aside:
+- [x] (phase 6) Read-only pair: a banner "open it from that domain's Bridge to edit", and unconfigured directions hidden.
+- [x] (phase 6) Processing aside:
   - Labels "Unlink this mapping" and "Highlight both ends in world".
   - Release is shown only when the Endpoint is owned and has 0 patterns.
-- [ ] Acknowledgement text "Server confirmed: Storage rule enabled", replacing revision/ack codes in the visible
+- [x] (phase 6) Acknowledgement text "Server confirmed: Storage rule enabled", replacing revision/ack codes in the visible
   text.
-- [ ] Header summary: "synced · N networks · M links · this domain".
-- [ ] Footer: "global rule revision #N · topology revision #M". The server counters exist; they need to be sent.
-- [ ] Card state line reads "Identity confirmed". Aside identity reads "pos · network 3f9a…c21", not the full UUID
+- [x] (phase 6) Header summary: "synced · N networks · M links · this domain".
+- [x] (phase 6) Footer: "global rule revision #N · topology revision #M". The server counters exist; they need to be sent.
+- [x] (phase 6) Card state line reads "Identity confirmed". Aside identity reads "pos · network 3f9a…c21", not the full UUID
   on two lines.
-- [ ] Throughput label on the canvas: amount over the 5 s window. Do not claim 10 s.
-- [ ] Live-flow toggle, client only.
-- [ ] Bugs:
+- [x] (phase 6) Throughput label on the canvas: amount over the 5 s window. Do not claim 10 s.
+- [x] (phase 6) Live-flow toggle, client only.
+- [x] (phase 6) Bugs:
   - "Highlight in world (10 s)" overflows its button.
   - The processing status spills under the footer (the drop-occupied screenshot).
 - [ ] zh copy aligned with the design strings.
 
 ### Phase 7: medium items that need new server data
 
-- [ ] "Highlight both parts" for merge and split: blocks from every grid that claims the network.
+- [x] (phase 6) "Highlight both parts" for merge and split: blocks from every grid that claims the network.
 - [ ] Per-lane flow window, flow dots on busy wires, and the wire line "channel busy · sent N this batch · returned
   M".
 - [ ] Map slice: pick the Y range from the network's blocks instead of `WORLD_SURFACE`.
@@ -79,6 +79,18 @@
 - [ ] Cards: energy and storage bars, a position line and an identity badge. Stat bars where a real denominator
   exists.
 - [ ] Map thumbnails on the cards.
+
+## Phase 6 notes (2026-09-28)
+
+- The rule error state comes from `RuleHealth`: `operation_missing`, or a backend reason the player has to fix in the
+  world (crafting cycle, missing CPU or Provider, missing energy source or interface, missing domain reference).
+- Drop hints use `DropHint`. The "rule not enabled" reason is still open, because the server does not send the
+  Endpoints a Provider may not use.
+- The card state line keeps the online status. "Identity confirmed" is the settled wording in the aside and the
+  stats.
+- The footer uses "Rule rev #N · topology rev #M" (shortened to fit). The values are the policy store's high
+  watermark and the domain registry's topology revision.
+- zh copy was updated alongside every new string.
 
 ## Deliberately not implemented
 

@@ -29,12 +29,14 @@
                 <element class="topology-canvas">
                     <graph-view id="domain_graph" class="domain-graph"/>
                     <element class="graph-toolbar">
+                        <button id="graph_flow_toggle" class="toolbar-button" text="≈"/>
                         <button id="graph_legend_toggle" class="toolbar-button" text="?"/>
                         <button id="graph_zoom_in" class="toolbar-button" text="+"/>
                         <button id="graph_zoom_out" class="toolbar-button" text="-"/>
                         <button id="graph_fit" class="toolbar-button" text="□"/>
                     </element>
                     <button id="graph_scope" class="toolbar-button scope-button" text="ae2federation.ui.topology.scope.domain"/>
+                    <label id="graph_throughput" class="graph-throughput"/>
                     <label id="graph_search_empty" class="graph-search-empty"/>
                     <label id="graph_legend" class="graph-legend"><lang key="ae2federation.ui.topology.legend"/></label>
                 </element>
@@ -85,7 +87,7 @@
                 </element>
                 <element id="processing_graph" class="processing-graph">
                     <scroller-view id="processing_scroll" class="processing-scroll"/>
-                    <element class="dark-panel processing-detail">
+                    <scroller-view id="processing_detail" class="dark-panel processing-detail">
                         <label id="processing_detail_text" class="panel-text"/>
                         <element id="processing_preview" class="map-preview"/>
                         <button id="processing_highlight" text="ae2federation.ui.location.highlight"/>
@@ -94,7 +96,7 @@
                             <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
                         </element>
                         <label id="processing_status" class="mapping-status"/>
-                    </element>
+                    </scroller-view>
                 </element>
                 <element id="mapping_list" class="mapping-body">
                     <element class="pattern-column">
@@ -152,6 +154,7 @@
             <element class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>
                 <label id="request_status" class="domain-status request-status"/>
+                <label id="revision_status" class="domain-status revision-status"/>
             </element>
         </element>
     </root>

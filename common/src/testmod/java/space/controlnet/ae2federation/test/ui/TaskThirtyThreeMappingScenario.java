@@ -41,7 +41,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .checkServer("the Endpoint stays claimed by the remaining pattern", TaskThirtyThreeWorldFixture::endpointOwnedByProvider)
                 .click(".processing-endpoint")
                 .waitForTextContains("#processing_detail_text", "Patterns sent here: #1")
-                .check("an Endpoint still in use cannot be released", context -> !context.el("#processing_release").isActive())
+                .check("an Endpoint still in use offers no release", context -> !context.el("#processing_release").isActive()
+                        && !context.el("#processing_release").isVisible())
                 .waitUntil("the Endpoint location map samples loaded terrain", context -> context.el("#processing_preview .map-preview-tile")
                         .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
                 .click("#processing_highlight")
@@ -178,6 +179,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         TaskThirtyThreeScenarioSupport.ruleState(context, "processing").contains("Delivered 1× in the last 5 s"))
                 .waitUntil("teal dots travel along the delivering link", context -> context.el("#graph_flow_pulses")
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() > 0)
+                .waitForTextContains("#graph_throughput", "Flow · last 5 s: delivered 1×")
                 .step("reveal the processing rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "processing"))
                 .frames(2).screenshot("ui-flow-processing")
                 .step("record flow evidence", context -> {
@@ -186,6 +188,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     context.attach("flowDots", Integer.toString(context.el("#graph_flow_pulses")
                             .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots()));
                 })
+                .click("#graph_flow_toggle")
+                .waitForText("#graph_throughput", "Live flow off")
+                .waitUntil("no dots are drawn while live flow is off", context -> context.el("#graph_flow_pulses")
+                        .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() == 0)
+                .click("#graph_flow_toggle")
+                .waitUntil("live flow is back on", context -> !context.el("#graph_throughput").text().equals("Live flow off"))
                 .step("scroll the pair editor back to its top", context ->
                         TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .click("#tab_mapping")

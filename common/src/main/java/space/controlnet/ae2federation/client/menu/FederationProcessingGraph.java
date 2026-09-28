@@ -64,6 +64,9 @@ final class FederationProcessingGraph {
     private Selection selection = Selection.NONE;
     private Component rejection = Component.empty();
     private String hoverEndpoint = "";
+    /** The pattern slot whose drag the Endpoint cards currently show drop hints for; empty when nothing is dragged. */
+    private String hintSlot = "";
+    private final Map<String, Label> endpointStates = new LinkedHashMap<>();
 
     FederationProcessingGraph(UI ui, Consumer<String> setMapping, Consumer<String> select, Runnable release,
             Function<JsonObject, Component> patternName, Function<JsonObject, net.minecraft.world.item.ItemStack> patternIcon) {
@@ -142,6 +145,8 @@ final class FederationProcessingGraph {
         canvas.clearAllChildren();
         ports.clear();
         endpointCards.clear();
+        endpointStates.clear();
+        hintSlot = "";
         var left = column();
         var right = column();
         left.setId("processing_patterns");
@@ -241,6 +246,7 @@ final class FederationProcessingGraph {
             if (drag != null) drop(drag.slot(), id);
         });
         endpointCards.put(id, card);
+        endpointStates.put(id, state);
         return card;
     }
 
@@ -313,15 +319,30 @@ final class FederationProcessingGraph {
                 Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         detail.setText(text);
         unlink.setDisplay(wire);
+        highlight.setText(Component.translatable(wire ? "ae2federation.ui.processing.highlight_ends"
+                : "ae2federation.ui.location.highlight"));
         unlink.setActive(editable && wire && wires.contains(new Wire(selection.slot(), selection.endpoint())));
-        releaseButton.setDisplay(endpointSelected);
-        releaseButton.setActive(editable && endpointSelected && releasable(selection.endpoint()));
+        // Release only applies to an Endpoint this Provider holds with no patterns left on it.
+        boolean releasable = endpointSelected && releasable(selection.endpoint());
+        releaseButton.setDisplay(releasable);
+        releaseButton.setActive(editable && releasable);
         renderLocation();
         endpointCards.forEach((id, card) -> {
             boolean selected = (endpointSelected || wire) && id.equals(selection.endpoint());
             var endpoint = endpoint(id);
-            var border = endpoint != null && claim(endpoint) == Claim.OCCUPIED ? FederationTheme.ERROR
+            var hint = hint(id);
+            var border = hint != null ? hintColor(hint)
+                    : endpoint != null && claim(endpoint) == Claim.OCCUPIED ? FederationTheme.ERROR
                     : selected ? FederationTheme.SELECT : 0xff47434f;
+            var state = endpointStates.get(id);
+            if (state != null && endpoint != null) {
+                var claim = claim(endpoint);
+                state.setText(hint == null ? tr("claim." + claim.code()).withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff))
+                        : tr("drop_hint." + hint.code(), shortOwner(endpoint)).withStyle(Style.EMPTY.withColor(hintColor(hint) & 0xffffff)));
+            }
+            card.removeClass("drop-accepts");
+            card.removeClass("drop-refused");
+            if (hint != null) card.addClass(hint.accepts() ? "drop-accepts" : "drop-refused");
             var face = GuiTextureGroup.of(FederationTheme.WELL_RECT, new ColorBorderTexture(1, border));
             card.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.WELL_RECT,
                     new ColorBorderTexture(1, FederationTheme.SELECT))).pressedTexture(face));
@@ -368,6 +389,22 @@ final class FederationProcessingGraph {
         var endpoint = endpoint(endpointId);
         return endpoint != null && endpointId.equals(confirmedTarget) && endpoint.has("retained")
                 && endpoint.get("retained").getAsBoolean();
+    }
+
+    /** What a drop of the dragged pattern on this Endpoint would do, or null while nothing is dragged. */
+    private space.controlnet.ae2federation.client.policy.DropHint hint(String endpointId) {
+        var endpoint = endpoint(endpointId);
+        if (hintSlot.isEmpty() || endpoint == null) return null;
+        return space.controlnet.ae2federation.client.policy.DropHint.of(claim(endpoint).code(),
+                wires.contains(new Wire(hintSlot, endpointId)));
+    }
+
+    private static int hintColor(space.controlnet.ae2federation.client.policy.DropHint hint) {
+        return switch (hint.tone()) {
+            case OK -> FederationTheme.OK;
+            case ERROR -> FederationTheme.ERROR;
+            case MUTED -> FederationTheme.DARK_MUTED;
+        };
     }
 
     private static Claim claim(JsonObject endpoint) {
@@ -477,6 +514,18 @@ final class FederationProcessingGraph {
             layout(style -> style.widthPercent(100).flexDirection(FlexDirection.ROW).gapAll(GAP).paddingAll(3));
         }
 
+        /** Cards switch to drop hints when a drag starts and back to their claim when it ends. */
+        @Override
+        public void screenTick() {
+            super.screenTick();
+            var drag = dragged();
+            var slot = drag == null ? "" : drag.slot();
+            if (!slot.equals(hintSlot)) {
+                hintSlot = slot;
+                render();
+            }
+        }
+
         @Override
         public void drawBackgroundAdditional(GUIContext context) {
             super.drawBackgroundAdditional(context);
@@ -493,8 +542,8 @@ final class FederationProcessingGraph {
             var drag = dragged();
             var ui = getModularUI();
             if (drag != null && ui != null && ports.containsKey(drag.slot())) {
-                int color = hoverEndpoint.isEmpty() ? 0xaa8b83a0 : endpoint(hoverEndpoint) != null
-                        && claim(endpoint(hoverEndpoint)) == Claim.OCCUPIED ? FederationTheme.ERROR : FederationTheme.OK;
+                var hint = hoverEndpoint.isEmpty() ? null : hint(hoverEndpoint);
+                int color = hint == null ? 0xaa8b83a0 : hintColor(hint);
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(portPoint(ports.get(drag.slot())),
                         new Vector2f(ui.getLastMouseX(), ui.getLastMouseY())), color, color, 2f);
             }
