@@ -278,7 +278,7 @@ final class FederationWorkspace {
                     .filter(choice -> choice.get("id").getAsString().equals(providerId) && choice.has("position"))
                     .map(choice -> choice.get("position").getAsString()).findFirst().orElse("");
             processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
-                    confirmedSelections.get("target"), providerAt);
+                    confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"));
         }
         var signature = root.getAsJsonArray("slot").toString() + selectedSlot;
         if (!patternSignature.equals(signature)) {
@@ -411,6 +411,14 @@ final class FederationWorkspace {
     private String searchablePattern(JsonObject choice) {
         return patternName(choice).getString() + " " + resources(choice, "outputs").stream()
                 .map(output -> output.what().getDisplayName().getString()).collect(java.util.stream.Collectors.joining(" "));
+    }
+
+    /** The objects of one root array, or none when an older payload leaves it out. */
+    private static List<JsonObject> objects(JsonObject root, String field) {
+        if (!root.has(field)) return List.of();
+        var values = new java.util.ArrayList<JsonObject>();
+        root.getAsJsonArray(field).forEach(value -> values.add(value.getAsJsonObject()));
+        return values;
     }
 
     private ItemStack outputStack(JsonObject choice) {

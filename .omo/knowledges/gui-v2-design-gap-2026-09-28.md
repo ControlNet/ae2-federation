@@ -67,8 +67,8 @@
 
 ### Phase 8: large items
 
-- [ ] Several Providers from several networks on one processing canvas, each with its own allowed Endpoints and a
-  Provider header card with "3/9 slots".
+- [x] (phase 8) Several Providers on one processing canvas, each under a Provider header card with "N/9 slots".
+  Only the selected Provider is edited; the others show their patterns and wires muted, and a click selects one.
 - [ ] 3D isometric preview with a Map/3D switch, built with LDLib2 `Scene` over loaded chunks.
 
 ### Phase 9: visuals
@@ -106,6 +106,22 @@
 - A wire shows the processing rule it dispatches under. Mapping is allowed without a rule, but dispatch then
   pauses with POLICY_DENIED, so the drop hint is a yellow "no processing rule, will pause".
 - A dropped wire is drawn white and dashed until the server confirms it (5 s at most).
+
+## Phase 8 notes (2026-09-28)
+
+- The server sends `processingProviders`: every Provider of the domain (at most 6, plus the selected one), with
+  slot use and, for the non-selected ones, their pattern slots and wired Endpoints. It uses the same slot encoding
+  (`patternSlot`) as the `slot` choices.
+- The Endpoint column stays relative to the selected Provider. Claim, rule and lane facts depend on which Provider
+  asks, so another Provider's pattern is edited by selecting that Provider first. Dragging across Providers would
+  show hints for the wrong owner.
+- The session pins the selected Provider by `ProviderIdentity`, not only by index. A Provider added or removed
+  elsewhere in the domain no longer shifts which one is edited.
+- A Federation Pattern Provider is a domain node. Placing or removing one renews the domain generation, and an
+  open workspace becomes stale by design. The multi-Provider test therefore reopens the screen.
+- Test fixture: place the second Provider against the first so AE2 joins it to the main network. Seeding it with
+  the main network's identity and connecting afterwards made a duplicate identity, and the domain lost all its
+  Providers.
 
 ## Deliberately not implemented
 

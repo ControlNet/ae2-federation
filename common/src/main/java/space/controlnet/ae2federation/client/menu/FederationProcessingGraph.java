@@ -64,6 +64,11 @@ public final class FederationProcessingGraph {
     private final Map<String, UIElement> ports = new LinkedHashMap<>();
     private final Map<String, Button> endpointCards = new LinkedHashMap<>();
     private final List<Wire> wires = new ArrayList<>();
+    /** Every Provider of the domain, stacked above and below the selected one; only the selected one is editable. */
+    private final List<JsonObject> providers = new ArrayList<>();
+    /** Ports and wires of the other Providers, keyed by provider id and slot; drawn muted and never edited here. */
+    private final Map<String, UIElement> otherPorts = new LinkedHashMap<>();
+    private final List<Wire> otherWires = new ArrayList<>();
     /** Wires sent to the server and not yet confirmed, with when they were sent; drawn dashed until then. */
     private final Map<Wire, Long> pendingWires = new LinkedHashMap<>();
     private String structure = "";
@@ -120,8 +125,23 @@ public final class FederationProcessingGraph {
     }
 
     /** Pattern slots and Endpoints of the selected Provider, from the same authorized choices as the list view. */
-    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, String selectedTarget, String providerAt) {
+    void accept(List<JsonObject> slotChoices, List<JsonObject> targetChoices, String selectedTarget, String providerAt,
+            List<JsonObject> providerSections) {
         providerPosition = providerAt == null ? "" : providerAt;
+        providers.clear();
+        providers.addAll(providerSections);
+        otherWires.clear();
+        for (var provider : providers) {
+            if (selected(provider)) continue;
+            for (var slot : provider.getAsJsonArray("slots")) {
+                var key = otherPortKey(provider, slot.getAsJsonObject());
+                for (var endpoint : slot.getAsJsonObject().getAsJsonArray("endpoints")) {
+                    if (targetChoices.stream().anyMatch(choice -> choice.get("id").getAsString().equals(endpoint.getAsString()))) {
+                        otherWires.add(new Wire(key, endpoint.getAsString()));
+                    }
+                }
+            }
+        }
         slots.clear();
         slotChoices.stream().filter(choice -> !choice.get("empty").getAsBoolean()).forEach(slots::add);
         endpoints.clear();
@@ -146,6 +166,7 @@ public final class FederationProcessingGraph {
         var signature = new StringBuilder();
         slots.forEach(slot -> signature.append(slot).append(';'));
         endpoints.forEach(endpoint -> signature.append(endpoint).append(';'));
+        providers.forEach(provider -> signature.append(provider).append(';'));
         if (!signature.toString().equals(structure)) {
             structure = signature.toString();
             rebuild();
@@ -156,6 +177,7 @@ public final class FederationProcessingGraph {
     private void rebuild() {
         canvas.clearAllChildren();
         ports.clear();
+        otherPorts.clear();
         endpointCards.clear();
         endpointStates.clear();
         hintSlot = "";
@@ -163,9 +185,22 @@ public final class FederationProcessingGraph {
         var right = column();
         left.setId("processing_patterns");
         right.setId("processing_endpoints");
-        for (var slot : slots) left.addChild(patternRow(slot));
+        boolean selectedShown = false;
+        for (var provider : providers) {
+            left.addChild(providerHeader(provider));
+            if (selected(provider)) {
+                selectedShown = true;
+                for (var slot : slots) left.addChild(patternRow(slot));
+                if (slots.isEmpty()) left.addChild(note(tr("no_patterns")));
+            } else {
+                for (var slot : provider.getAsJsonArray("slots")) left.addChild(otherPatternRow(provider, slot.getAsJsonObject()));
+            }
+        }
+        if (!selectedShown) {
+            for (var slot : slots) left.addChild(patternRow(slot));
+            if (slots.isEmpty()) left.addChild(note(tr("no_patterns")));
+        }
         for (var endpoint : endpoints) right.addChild(endpointCard(endpoint));
-        if (slots.isEmpty()) left.addChild(note(tr("no_patterns")));
         if (endpoints.isEmpty()) right.addChild(note(tr("no_endpoints")));
         canvas.addChildren(left, right);
     }
@@ -218,6 +253,79 @@ public final class FederationProcessingGraph {
         row.style(style -> style.backgroundTexture(FederationTheme.WELL_RECT));
         ports.put(id, port);
         return row;
+    }
+
+    /**
+     * One Provider's header: where it is and how many of its pattern slots hold patterns. The selected Provider is the
+     * one being edited; clicking another one selects it, so its wires become editable.
+     */
+    private Button providerHeader(JsonObject provider) {
+        var id = provider.get("id").getAsString();
+        boolean current = selected(provider);
+        var header = new Button();
+        header.noText();
+        header.addClass("processing-provider");
+        if (current) header.addClass("selected");
+        header.setId("processing_provider_" + sanitize(id));
+        header.layout(style -> style.widthPercent(100).height(12).paddingLeft(3).paddingRight(3).flexDirection(FlexDirection.ROW)
+                .alignItems(AlignItems.CENTER));
+        var where = provider.has("position") ? provider.get("position").getAsString() : id.substring(0, Math.min(8, id.length()));
+        var text = new Label();
+        text.addClass("processing-provider-text");
+        text.setText(tr("provider_header", where, provider.get("slotsUsed").getAsInt(), provider.get("slotsTotal").getAsInt())
+                .append(" · ").append(tr(current ? "provider_editing" : "provider_open")));
+        text.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(current ? FederationTheme.DARK_TEXT : FederationTheme.DARK_MUTED));
+        text.layout(style -> style.flex(1).minWidth(0).height(9));
+        header.addChild(text);
+        var face = GuiTextureGroup.of(FederationTheme.WELL_RECT, new ColorBorderTexture(1, current ? FederationTheme.TEAL : 0xff47434f));
+        header.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.WELL_RECT,
+                new ColorBorderTexture(1, FederationTheme.SELECT))).pressedTexture(face));
+        header.style(style -> style.tooltips(tr(current ? "provider_editing_help" : "provider_open_help")));
+        if (!current) header.setOnClick(event -> select.accept("mapping_provider:" + id));
+        return header;
+    }
+
+    /** A pattern of another Provider: its name and a muted port its wires start from; it is edited by selecting it. */
+    private UIElement otherPatternRow(JsonObject provider, JsonObject slot) {
+        var key = otherPortKey(provider, slot);
+        var row = new UIElement();
+        row.addClass("processing-pattern-other");
+        row.setId("processing_pattern_" + sanitize(key));
+        row.layout(style -> style.widthPercent(100).height(ROW_HEIGHT - 6).flexDirection(FlexDirection.ROW)
+                .alignItems(AlignItems.CENTER).gapAll(3).paddingLeft(3));
+        var stack = patternIcon.apply(slot);
+        if (!stack.isEmpty()) {
+            var icon = new UIElement();
+            icon.layout(style -> style.width(12).height(12).flexShrink(0));
+            icon.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture(stack)));
+            row.addChild(icon);
+        }
+        var name = new Label();
+        name.setText(Component.literal("#" + slot.get("id").getAsString() + " ").append(patternName.apply(slot)));
+        name.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(FederationTheme.DARK_MUTED));
+        name.layout(style -> style.flex(1).minWidth(0).height(9));
+        var port = new UIElement();
+        port.setId("processing_port_" + sanitize(key));
+        port.layout(style -> style.width(10).height(ROW_HEIGHT - 6).flexShrink(0));
+        port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) ->
+                pen.rect(x + 3, y + height / 2 - 2, 4, 4, FederationTheme.DARK_MUTED))));
+        row.addChildren(name, port);
+        row.style(style -> style.backgroundTexture(FederationTheme.WELL_RECT).tooltips(tr("provider_open_help")));
+        var id = provider.get("id").getAsString();
+        row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+            select.accept("mapping_provider:" + id);
+            event.stopPropagation();
+        });
+        otherPorts.put(key, port);
+        return row;
+    }
+
+    private static boolean selected(JsonObject provider) {
+        return provider.has("selected") && provider.get("selected").getAsBoolean();
+    }
+
+    private static String otherPortKey(JsonObject provider, JsonObject slot) {
+        return provider.get("id").getAsString() + "/" + slot.get("id").getAsString();
     }
 
     private Button endpointCard(JsonObject endpoint) {
@@ -483,7 +591,10 @@ public final class FederationProcessingGraph {
     }
 
     private Vector2f[] ends(Wire wire) {
-        var port = ports.get(wire.slot());
+        return ends(ports.get(wire.slot()), wire);
+    }
+
+    private Vector2f[] ends(UIElement port, Wire wire) {
         var card = endpointCards.get(wire.endpoint());
         if (port == null || card == null) return null;
         return new Vector2f[] {portPoint(port), new Vector2f(card.getPositionX(), card.getPositionY() + card.getSizeHeight() / 2)};
@@ -600,6 +711,13 @@ public final class FederationProcessingGraph {
         @Override
         public void drawBackgroundAdditional(GUIContext context) {
             super.drawBackgroundAdditional(context);
+            // Other Providers' wires sit behind this one's, thin and muted: seen, not edited here.
+            for (var wire : otherWires) {
+                var ends = ends(otherPorts.get(wire.slot()), wire);
+                if (ends == null) continue;
+                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(ends[0], ends[1]),
+                        0x88625d70, 0x88625d70, 1f);
+            }
             for (var wire : wires) {
                 var ends = ends(wire);
                 if (ends == null) continue;

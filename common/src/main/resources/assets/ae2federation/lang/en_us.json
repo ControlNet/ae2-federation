@@ -426,5 +426,10 @@
   "ae2federation.ui.topology.live_flow.show": "Show live flow",
   "ae2federation.ui.topology.live_flow.hide": "Hide live flow",
   "ae2federation.ui.topology.flow": "Delivered %s× in the last 5 s",
-  "ae2federation.ui.topology.flow_energy": "Delivered %s× in the last 5 s · %s AE"
+  "ae2federation.ui.topology.flow_energy": "Delivered %s× in the last 5 s · %s AE",
+  "ae2federation.ui.processing.provider_header": "Provider %s · %s/%s slots",
+  "ae2federation.ui.processing.provider_editing": "editing",
+  "ae2federation.ui.processing.provider_open": "open",
+  "ae2federation.ui.processing.provider_editing_help": "The wires of this Provider are edited here: drag a pattern's port onto an Endpoint.",
+  "ae2federation.ui.processing.provider_open_help": "Another Provider of this domain. Click to select it and edit its wires."
 }

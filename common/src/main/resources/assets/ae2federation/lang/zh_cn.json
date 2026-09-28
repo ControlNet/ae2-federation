@@ -426,5 +426,10 @@
   "ae2federation.ui.topology.live_flow.show": "显示实时流量",
   "ae2federation.ui.topology.live_flow.hide": "隐藏实时流量",
   "ae2federation.ui.topology.flow": "最近 5 秒送达 %s 次",
-  "ae2federation.ui.topology.flow_energy": "最近 5 秒送达 %s 次 · %s AE"
+  "ae2federation.ui.topology.flow_energy": "最近 5 秒送达 %s 次 · %s AE",
+  "ae2federation.ui.processing.provider_header": "供应器 %s · %s/%s 槽位",
+  "ae2federation.ui.processing.provider_editing": "正在编辑",
+  "ae2federation.ui.processing.provider_open": "打开",
+  "ae2federation.ui.processing.provider_editing_help": "在这里编辑此供应器的连线：把样板的端口拖到端点上。",
+  "ae2federation.ui.processing.provider_open_help": "本域中的另一个供应器。点击选中它以编辑其连线。"
 }

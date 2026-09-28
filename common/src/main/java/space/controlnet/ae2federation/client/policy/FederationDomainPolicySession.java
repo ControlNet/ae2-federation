@@ -49,6 +49,8 @@ public final class FederationDomainPolicySession {
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
     private int mappingProviderIndex;
+    /** The Provider being edited, so a Provider added or removed elsewhere in the domain does not change it. */
+    private space.controlnet.ae2federation.processing.provider.ProviderIdentity mappingProviderIdentity;
     private int mappingSlotIndex;
     private int mappingLaneIndex;
     private int endpointIndex;
@@ -60,6 +62,8 @@ public final class FederationDomainPolicySession {
     private String overviewText = "";
     private static final long FLOW_INTERVAL_TICKS = 10;
     private static final int MAX_VIA_NODES = 3;
+    /** Providers stacked on the processing canvas; more would push the selected one out of reach. */
+    private static final int MAX_PROCESSING_PROVIDERS = 6;
     private static final int MAX_RELATED_NETWORKS = 24;
     private String flowText = "";
     private long flowTick;
@@ -242,6 +246,7 @@ public final class FederationDomainPolicySession {
             }
             if (index < 0) return false;
             mappingProviderIndex = index;
+            mappingProviderIdentity = null;
             mappingSlotIndex = 0;
             mappingLaneIndex = 0;
             mappingEndpointSelection = null;
@@ -374,6 +379,7 @@ public final class FederationDomainPolicySession {
                 choice.addProperty("position", entity.getBlockPos().toShortString());
             }
         }
+        root.add("processingProviders", processingProvidersJson());
         if (pendingRelease != null && state.editingAllowed()) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
@@ -389,24 +395,8 @@ public final class FederationDomainPolicySession {
             root.addProperty("mappingGraph", entry.controller().isPresent());
             var inventory = entry.provider().patternInventory();
             for (int slot = 0; slot < inventory.size(); slot++) {
-                var stack = inventory.getStackInSlot(slot);
-                var choice = addChoice(root, "slot", Integer.toString(slot), stack.isEmpty() ? "" : stack.getHoverName().getString());
-                var details = stack.isEmpty() ? null : appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
-                var ops = level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
-                var outputs = details == null ? java.util.List.<appeng.api.stacks.GenericStack>of() : details.getOutputs();
-                var inputs = details == null ? java.util.List.<appeng.api.stacks.GenericStack>of()
-                        : java.util.Arrays.stream(details.getInputs()).map(input -> new appeng.api.stacks.GenericStack(
-                                input.getPossibleInputs()[0].what(),
-                                Math.multiplyExact(input.getPossibleInputs()[0].amount(), input.getMultiplier()))).toList();
-                choice.add("outputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, outputs).getOrThrow());
-                choice.add("inputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, inputs).getOrThrow());
-                choice.addProperty("empty", stack.isEmpty());
-                choice.addProperty("mapped", entry.provider().lanesForSlot(slot).size());
-                var slotEndpoints = new com.google.gson.JsonArray();
-                final int wireSlot = slot;
-                entry.controller().ifPresent(controller -> controller.endpointsForSlot(wireSlot)
-                        .forEach(endpoint -> slotEndpoints.add(endpointChoiceId(endpoint))));
-                choice.add("endpoints", slotEndpoints);
+                var choice = addChoice(root, "slot", Integer.toString(slot), "");
+                patternSlot(choice, entry, slot);
             }
             selected.addProperty("slot", Integer.toString(mappingSlotIndex));
             var endpoints = mappingEndpoints();
@@ -506,6 +496,7 @@ public final class FederationDomainPolicySession {
                     .filter(candidate -> owner.controller().orElseThrow().endpointsForSlot(candidate).contains(endpoint.endpointIdentity()))
                     .findFirst().orElse(0);
             mappingProviderIndex = index;
+            mappingProviderIdentity = null;
             mappingSlotIndex = slot;
             mappingEndpointSelection = endpoint.endpointIdentity();
             mappingLaneIndex = 0;
@@ -530,6 +521,66 @@ public final class FederationDomainPolicySession {
         if (binding.runtime().configuredMode() != space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode.FEDERATED)
             return "local";
         return "unclaimed";
+    }
+
+    /** One pattern slot of a Provider: its pattern's inputs and outputs and the Endpoints its wires go to. */
+    private void patternSlot(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry, int slot) {
+        var stack = entry.provider().patternInventory().getStackInSlot(slot);
+        choice.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
+        var details = stack.isEmpty() ? null : appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
+        var ops = level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+        var outputs = details == null ? java.util.List.<appeng.api.stacks.GenericStack>of() : details.getOutputs();
+        var inputs = details == null ? java.util.List.<appeng.api.stacks.GenericStack>of()
+                : java.util.Arrays.stream(details.getInputs()).map(input -> new appeng.api.stacks.GenericStack(
+                        input.getPossibleInputs()[0].what(),
+                        Math.multiplyExact(input.getPossibleInputs()[0].amount(), input.getMultiplier()))).toList();
+        choice.add("outputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, outputs).getOrThrow());
+        choice.add("inputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, inputs).getOrThrow());
+        choice.addProperty("empty", stack.isEmpty());
+        choice.addProperty("mapped", entry.provider().lanesForSlot(slot).size());
+        var slotEndpoints = new com.google.gson.JsonArray();
+        entry.controller().ifPresent(controller -> controller.endpointsForSlot(slot)
+                .forEach(endpoint -> slotEndpoints.add(endpointChoiceId(endpoint))));
+        choice.add("endpoints", slotEndpoints);
+    }
+
+    /**
+     * Every Provider of the domain for the stacked processing canvas: slot use for its header and, for Providers other
+     * than the selected one, their patterns and wires so the canvas can show them read-only.
+     */
+    private com.google.gson.JsonArray processingProvidersJson() {
+        var array = new com.google.gson.JsonArray();
+        var providers = currentProviders();
+        var selected = selectedProvider().orElse(null);
+        for (int index = 0; index < providers.size(); index++) {
+            var entry = providers.get(index);
+            if (index >= MAX_PROCESSING_PROVIDERS && entry != selected) continue;
+            var json = new com.google.gson.JsonObject();
+            json.addProperty("id", FederationDomainGraphProjection.providerId(context, entry));
+            json.addProperty("selected", entry.equals(selected));
+            json.addProperty("graph", entry.controller().isPresent());
+            if (entry.controller().orElse(null) instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
+                json.addProperty("position", entity.getBlockPos().toShortString());
+            }
+            var inventory = entry.provider().patternInventory();
+            int used = 0;
+            var slots = new com.google.gson.JsonArray();
+            for (int slot = 0; slot < inventory.size(); slot++) {
+                var stack = inventory.getStackInSlot(slot);
+                if (stack.isEmpty()) continue;
+                used++;
+                if (entry == selected) continue;
+                var slotJson = new com.google.gson.JsonObject();
+                slotJson.addProperty("id", Integer.toString(slot));
+                patternSlot(slotJson, entry, slot);
+                slots.add(slotJson);
+            }
+            json.addProperty("slotsUsed", used);
+            json.addProperty("slotsTotal", inventory.size());
+            json.add("slots", slots);
+            array.add(json);
+        }
+        return array;
     }
 
     private static com.google.gson.JsonObject addChoice(com.google.gson.JsonObject root, String group, String id, String label) {
@@ -761,6 +812,7 @@ public final class FederationDomainPolicySession {
         }
         var providers = currentProviders();
         mappingProviderIndex = nextIndex(mappingProviderIndex, providers.size());
+        mappingProviderIdentity = null;
         mappingSlotIndex = 0;
         mappingLaneIndex = 0;
         mappingAcknowledgment = "ready";
@@ -1173,8 +1225,18 @@ public final class FederationDomainPolicySession {
 
     private Optional<ProviderObservationRegistry.Entry> selectedProvider() {
         var providers = currentProviders();
-        return providers.isEmpty() ? Optional.empty()
-                : Optional.of(providers.get(Math.floorMod(mappingProviderIndex, providers.size())));
+        if (providers.isEmpty()) return Optional.empty();
+        if (mappingProviderIdentity != null) {
+            for (int index = 0; index < providers.size(); index++) {
+                if (providers.get(index).identity().equals(mappingProviderIdentity)) {
+                    mappingProviderIndex = index;
+                    return Optional.of(providers.get(index));
+                }
+            }
+        }
+        var entry = providers.get(Math.floorMod(mappingProviderIndex, providers.size()));
+        mappingProviderIdentity = entry.identity();
+        return Optional.of(entry);
     }
 
     private space.controlnet.ae2federation.processing.claim.EndpointIdentity selectedMappingEndpoint(

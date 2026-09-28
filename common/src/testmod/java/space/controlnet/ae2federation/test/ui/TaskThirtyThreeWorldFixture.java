@@ -571,6 +571,47 @@ final class TaskThirtyThreeWorldFixture {
         context.put("target.competitor", competitor.id().value().toString());
     }
 
+    /**
+     * A second production Federation Pattern Provider with one real processing pattern. It is placed against the
+     * first one, so AE2 joins it to the main network as a player's placement would, keeping that network's identity.
+     */
+    static void placeSecondProvider(ServerContext context) {
+        var position = state(context).hostPosition().east();
+        require(context.level().isEmptyBlock(position), "Second Provider fixture position must be empty");
+        context.put("task33.secondProvider", position);
+        context.put("task33.mainNetworkBeforeSecondProvider",
+                FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).orElseThrow().toString());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
+    }
+
+    static boolean secondProviderReady(ServerContext context) {
+        var position = context.<BlockPos>get("task33.secondProvider");
+        if (!(context.level().getBlockEntity(position) instanceof FederationPatternProviderBlockEntity second)
+                || second.getMainNode().getNode() == null || second.runtime().isEmpty()) {
+            return false;
+        }
+        if (second.getMainNode().getGrid() != state(context).existing.getGrid()) return false;
+        var network = FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).map(Object::toString);
+        if (network.isEmpty()) return false;
+        require(network.get().equals(context.get("task33.mainNetworkBeforeSecondProvider")),
+                "Joining the second Provider must keep the main network's identity");
+        if (second.getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+            second.getTerminalPatternInventory().insertItem(0, PatternDetailsHelper.encodeProcessingPattern(
+                    List.of(new GenericStack(AEItemKey.of(Items.SAND), 1)),
+                    List.of(new GenericStack(AEItemKey.of(Items.GLASS), 1))), false);
+        }
+        return true;
+    }
+
+    static String secondProviderPosition(ServerContext context) {
+        return context.<BlockPos>get("task33.secondProvider").toShortString();
+    }
+
+    static void removeSecondProvider(ServerContext context) {
+        context.level().removeBlock(context.<BlockPos>get("task33.secondProvider"), false);
+    }
+
     static void recordEndpointNavigation(ServerContext context) {
         var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
         var source = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
