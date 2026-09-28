@@ -18,6 +18,8 @@ public final class FederationMapPreview extends UIElement {
     private static final int MIN_RADIUS = 8;
     private static final int MAX_RADIUS = 32;
     private static final int RESAMPLE_FRAMES = 40;
+    /** Blocks below the network's lowest block that still count as the ground it stands on. */
+    private static final int SLICE_DEPTH = 6;
 
     private String dimension = "";
     private BlockMarks.Mark center;
@@ -77,22 +79,37 @@ public final class FederationMapPreview extends UIElement {
         sampledCells = 0;
         var level = Minecraft.getInstance().level;
         if (level == null || center == null || !inPlayerDimension()) return;
+        // Look through the network's own heights, so a base under the ground is not hidden by the grass above it.
+        var all = new java.util.ArrayList<BlockMarks.Mark>(mask);
+        all.addAll(marks);
+        var slice = BlockMarks.slice(all, SLICE_DEPTH).orElse(null);
         var cursor = new BlockPos.MutableBlockPos();
-        for (int dz = 0; dz < size; dz++) {
+        // One extra row to the north, for the height shading of the first row.
+        int[] heights = new int[size * (size + 1)];
+        java.util.Arrays.fill(heights, Integer.MIN_VALUE);
+        for (int dz = -1; dz < size; dz++) {
             for (int dx = 0; dx < size; dx++) {
                 int x = center.x() - radius + dx;
                 int z = center.z() - radius + dz;
                 if (!level.hasChunk(x >> 4, z >> 4)) continue;
-                int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
-                cursor.set(x, top, z);
-                var color = level.getBlockState(cursor).getMapColor(level, cursor);
-                if (color == MapColor.NONE) continue;
-                // Shade by height relative to the northern neighbour, as vanilla maps do.
-                int north = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z - 1) - 1;
-                var brightness = top > north ? MapColor.Brightness.HIGH : top < north ? MapColor.Brightness.LOW
-                        : MapColor.Brightness.NORMAL;
-                colors[dz * size + dx] = 0xff000000 | abgrToRgb(color.calculateRGBColor(brightness));
-                sampledCells++;
+                int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+                int top = slice == null ? surface : Math.min(surface, slice.top());
+                int bottom = slice == null ? surface : slice.bottom();
+                for (int y = top; y >= bottom; y--) {
+                    cursor.set(x, y, z);
+                    var color = level.getBlockState(cursor).getMapColor(level, cursor);
+                    if (color == MapColor.NONE) continue;
+                    heights[(dz + 1) * size + dx] = y;
+                    if (dz >= 0) {
+                        int north = heights[dz * size + dx];
+                        // Shade by height relative to the northern neighbour, as vanilla maps do.
+                        var brightness = north == Integer.MIN_VALUE || y == north ? MapColor.Brightness.NORMAL
+                                : y > north ? MapColor.Brightness.HIGH : MapColor.Brightness.LOW;
+                        colors[dz * size + dx] = 0xff000000 | abgrToRgb(color.calculateRGBColor(brightness));
+                        sampledCells++;
+                    }
+                    break;
+                }
             }
         }
     }

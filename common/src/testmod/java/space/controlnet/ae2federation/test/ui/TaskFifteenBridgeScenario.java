@@ -18,6 +18,7 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.BRIDGE)
                 .checkTextContains("#entrance_value", "ME Federation Bridge - side ")
+                .waitForTextContains("#pair_title", "Via the Bridge at ")
                 .checkBounds(TaskFifteenScenarioSupport.STORAGE_SWITCH, bounds -> bounds.width() >= 20 && bounds.height() >= 10)
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->

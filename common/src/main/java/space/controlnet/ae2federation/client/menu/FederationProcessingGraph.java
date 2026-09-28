@@ -34,9 +34,15 @@ import space.controlnet.ae2federation.client.policy.MappingWireTarget;
  * it, clicking a wire offers to unlink it and clicking an Endpoint selects it for details and release. Every change
  * is an explicit {@link MappingWireTarget} request that the server checks against live ownership.
  */
-final class FederationProcessingGraph {
+public final class FederationProcessingGraph {
     private static final float ROW_HEIGHT = 20;
     private static final float GAP = 44;
+    /** A dropped wire the server has not confirmed within this long is no longer drawn as pending. */
+    private static final long PENDING_MILLIS = 5000;
+    private static final float DASH = 4;
+    private static final long FLOW_PERIOD_MILLIS = 1600;
+    /** Dots drawn on busy wires in the last frame, for tests and diagnostics. */
+    private static int drawnWireDots;
 
     private final Consumer<String> setMapping;
     private final Consumer<String> select;
@@ -58,6 +64,8 @@ final class FederationProcessingGraph {
     private final Map<String, UIElement> ports = new LinkedHashMap<>();
     private final Map<String, Button> endpointCards = new LinkedHashMap<>();
     private final List<Wire> wires = new ArrayList<>();
+    /** Wires sent to the server and not yet confirmed, with when they were sent; drawn dashed until then. */
+    private final Map<Wire, Long> pendingWires = new LinkedHashMap<>();
     private String structure = "";
     private String confirmedTarget = "";
     private boolean editable;
@@ -127,7 +135,11 @@ final class FederationProcessingGraph {
                 if (endpoint(id) != null) wires.add(new Wire(slot.get("id").getAsString(), id));
             }
         }
-        if (selection.kind() == Kind.WIRE && !wires.contains(new Wire(selection.slot(), selection.endpoint()))) {
+        long now = System.currentTimeMillis();
+        pendingWires.keySet().removeIf(wires::contains);
+        pendingWires.values().removeIf(sent -> now - sent > PENDING_MILLIS);
+        if (selection.kind() == Kind.WIRE && !wires.contains(new Wire(selection.slot(), selection.endpoint()))
+                && !pendingWires.containsKey(new Wire(selection.slot(), selection.endpoint()))) {
             selection = Selection.NONE;
         }
         if (selection.kind() == Kind.ENDPOINT && endpoint(selection.endpoint()) == null) selection = Selection.NONE;
@@ -267,6 +279,7 @@ final class FederationProcessingGraph {
         } else {
             rejection = Component.empty();
             setMapping.accept(new MappingWireTarget(slot, endpointId, true).encode());
+            pendingWires.put(new Wire(slot, endpointId), System.currentTimeMillis());
             selection = new Selection(Kind.WIRE, slot, endpointId);
         }
         render();
@@ -301,6 +314,12 @@ final class FederationProcessingGraph {
             text.append(tr("wire", slot == null ? Component.literal("#" + selection.slot())
                     : Component.literal("#" + selection.slot() + " ").append(patternName.apply(slot)),
                     endpoint == null ? Component.literal(selection.endpoint()) : endpointName(endpoint)));
+            if (endpoint != null) text.append("\n").append(ruleLine(endpoint));
+            // Measured per lane: every pattern mapped to this Endpoint shares the Provider's channel to it.
+            long sent = laneAmount(endpoint, "laneSent");
+            long returned = laneAmount(endpoint, "laneReturned");
+            text.append("\n").append(sent == 0 && returned == 0 ? tr("lane_idle")
+                    : tr("lane_flow", sent, returned).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
             if (!wires.contains(new Wire(selection.slot(), selection.endpoint()))) text.append("\n").append(tr("wire_pending"));
         } else if (endpointSelected) {
             var endpoint = endpoint(selection.endpoint());
@@ -308,6 +327,12 @@ final class FederationProcessingGraph {
                 var claim = claim(endpoint);
                 text.append(endpointName(endpoint)).append("\n").append(tr("claim." + claim.code() + ".detail"));
                 if (claim == Claim.OCCUPIED) text.append("\n").append(tr("owner", shortOwner(endpoint)));
+                if (endpoint.has("claimEpoch")) text.append("\n").append(tr("claim_epoch", endpoint.get("claimEpoch").getAsLong()));
+                if (endpoint.has("nodeReady")) {
+                    boolean ready = endpoint.get("nodeReady").getAsBoolean();
+                    text.append("\n").append(tr(ready ? "subnet_ready" : "subnet_not_ready").withStyle(Style.EMPTY.withColor(
+                            (ready ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff)));
+                }
                 var mapped = wires.stream().filter(value -> value.endpoint().equals(selection.endpoint()))
                         .map(value -> "#" + value.slot()).toList();
                 text.append("\n").append(tr("endpoint_patterns", mapped.isEmpty() ? "-" : String.join(", ", mapped)));
@@ -396,15 +421,37 @@ final class FederationProcessingGraph {
         var endpoint = endpoint(endpointId);
         if (hintSlot.isEmpty() || endpoint == null) return null;
         return space.controlnet.ae2federation.client.policy.DropHint.of(claim(endpoint).code(),
-                wires.contains(new Wire(hintSlot, endpointId)));
+                wires.contains(new Wire(hintSlot, endpointId)), ruleOn(endpoint));
     }
 
     private static int hintColor(space.controlnet.ae2federation.client.policy.DropHint hint) {
         return switch (hint.tone()) {
             case OK -> FederationTheme.OK;
+            case WARN -> FederationTheme.WARN;
             case ERROR -> FederationTheme.ERROR;
             case MUTED -> FederationTheme.DARK_MUTED;
         };
+    }
+
+    /** Whether the server reports an enabled processing rule from this Provider's network to the Endpoint's. */
+    private static boolean ruleOn(JsonObject endpoint) {
+        return endpoint.has("rule") && endpoint.get("rule").getAsString().equals("on");
+    }
+
+    public static int drawnWireDots() {
+        return drawnWireDots;
+    }
+
+    private static long laneAmount(JsonObject endpoint, String field) {
+        return endpoint != null && endpoint.has(field) ? endpoint.get(field).getAsLong() : 0L;
+    }
+
+    /** The wire's rule line: the processing rule it dispatches under, or why it will pause. */
+    private static Component ruleLine(JsonObject endpoint) {
+        var rule = endpoint.has("rule") ? endpoint.get("rule").getAsString() : "none";
+        var revision = endpoint.has("ruleRevision") ? endpoint.get("ruleRevision").getAsLong() : 0L;
+        return tr("wire_rule." + rule, revision).withStyle(Style.EMPTY.withColor(
+                (rule.equals("on") ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff));
     }
 
     private static Claim claim(JsonObject endpoint) {
@@ -444,6 +491,30 @@ final class FederationProcessingGraph {
 
     private static Vector2f portPoint(UIElement port) {
         return new Vector2f(port.getPositionX() + port.getSizeWidth() - 2, port.getPositionY() + port.getSizeHeight() / 2);
+    }
+
+    private static int flowDots(GUIContext context, space.controlnet.ae2federation.client.policy.FlowPath.Segment segment,
+            float phase, int color) {
+        var points = segment.dots(phase, 2);
+        for (int index = 0; index < points.length; index += 2) {
+            int x = Math.round(points[index]);
+            int y = Math.round(points[index + 1]);
+            context.graphics.fill(x - 2, y - 2, x + 2, y + 2, 0xff0b0a12);
+            context.graphics.fill(x - 1, y - 1, x + 1, y + 1, color);
+        }
+        return points.length / 2;
+    }
+
+    /** A white dashed line: a wire the player made that the server has not confirmed yet. */
+    private static void dashed(GUIContext context, Vector2f from, Vector2f to, int color) {
+        float length = from.distance(to);
+        if (length <= 0) return;
+        var step = new Vector2f(to).sub(from).div(length);
+        for (float at = 0; at < length; at += DASH * 2) {
+            var start = new Vector2f(step).mul(at).add(from);
+            var end = new Vector2f(step).mul(Math.min(length, at + DASH)).add(from);
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(start, end), color, color, 2f);
+        }
     }
 
     private static float distance(Vector2f point, Vector2f from, Vector2f to) {
@@ -539,6 +610,25 @@ final class FederationProcessingGraph {
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(ends[0], ends[1]), color, color,
                         selected ? 3f : 2f);
             }
+            long now = System.currentTimeMillis();
+            int dots = 0;
+            float phase = (now % FLOW_PERIOD_MILLIS) / (float) FLOW_PERIOD_MILLIS;
+            for (var wire : wires) {
+                var ends = ends(wire);
+                var endpoint = endpoint(wire.endpoint());
+                if (ends == null) continue;
+                var out = new space.controlnet.ae2federation.client.policy.FlowPath.Segment(ends[0].x, ends[0].y, ends[1].x, ends[1].y);
+                if (laneAmount(endpoint, "laneSent") > 0) dots += flowDots(context, out, phase, FederationTheme.TEAL);
+                if (laneAmount(endpoint, "laneReturned") > 0) dots += flowDots(context,
+                        new space.controlnet.ae2federation.client.policy.FlowPath.Segment(ends[1].x, ends[1].y, ends[0].x, ends[0].y),
+                        phase, FederationTheme.OK);
+            }
+            drawnWireDots = dots;
+            pendingWires.forEach((wire, sent) -> {
+                var ends = ends(wire);
+                if (ends == null || wires.contains(wire) || now - sent > PENDING_MILLIS) return;
+                dashed(context, ends[0], ends[1], 0xffefeaf8);
+            });
             var drag = dragged();
             var ui = getModularUI();
             if (drag != null && ui != null && ports.containsKey(drag.slot())) {

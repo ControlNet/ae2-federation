@@ -55,14 +55,14 @@
 ### Phase 7: medium items that need new server data
 
 - [x] (phase 6) "Highlight both parts" for merge and split: blocks from every grid that claims the network.
-- [ ] Per-lane flow window, flow dots on busy wires, and the wire line "channel busy · sent N this batch · returned
+- [x] (phase 7) Per-lane flow window, flow dots on busy wires, and the wire line "channel busy · sent N this batch · returned
   M".
-- [ ] Map slice: pick the Y range from the network's blocks instead of `WORLD_SURFACE`.
-- [ ] Endpoint facts:
+- [x] (phase 7) Map slice: pick the Y range from the network's blocks instead of `WORLD_SURFACE`.
+- [x] (phase 7) Endpoint facts:
   - "subnet ready" (`nodeReady`) and "owner … claim epoch N".
   - "return buffer empty, can be released", which needs a pending-return field.
-- [ ] "Via" line in the pair editor: Router group or Bridge, with the Bridge position from the domain registry.
-- [ ] Wire facts: its rule and state (client-derivable). A pending wire is drawn white and dashed until the server
+- [x] (phase 7) "Via" line in the pair editor: Router group or Bridge, with the Bridge position from the domain registry.
+- [x] (phase 7) Wire facts: its rule and state (client-derivable). A pending wire is drawn white and dashed until the server
   confirms.
 
 ### Phase 8: large items
@@ -92,6 +92,21 @@
   watermark and the domain registry's topology revision.
 - zh copy was updated alongside every new string.
 
+## Phase 7 notes (2026-09-28)
+
+- Lane flow is recorded per Provider lane (`LevelObservabilityService.LaneKey`), sent and returned separately, over
+  the same 5 s window.
+  - The send hook knows the lane, not the pattern slot. The wire detail therefore says "Lane · last 5 s", and every
+    pattern mapped to one Endpoint shares that figure.
+- The map tile looks through the network's own heights (`BlockMarks.slice`): from the highest block down to 6
+  blocks below the lowest, so underground bases are drawn.
+- Endpoint detail shows "Subnet ready" (subnet node active and booted) and "Claim epoch N".
+- "Via" comes from the domain snapshot's device nodes: a Router group (physical) or a Bridge (direct), with up to
+  3 positions.
+- A wire shows the processing rule it dispatches under. Mapping is allowed without a rule, but dispatch then
+  pauses with POLICY_DENIED, so the drop hint is a yellow "no processing rule, will pause".
+- A dropped wire is drawn white and dashed until the server confirms it (5 s at most).
+
 ## Deliberately not implemented
 
 - Type capacity and channel capacity: AE2 gives no per-network total, so a denominator would be invented.
@@ -101,3 +116,5 @@
 - A single merged "merging network" card, which would guess at identity.
 - Opacity on disabled switches: AE2 sprites render as black boxes.
 - Rendering unloaded chunks.
+- "Return buffer empty, can be released": Endpoint returns are handed back synchronously and there is no pending
+  buffer to report. Release eligibility already follows the real retained state.

@@ -81,6 +81,7 @@ public final class ProviderObservationRegistry {
         var pendingAfter = amounts(after);
         var root = OperationEventId.create();
         var flowKey = processingKey(entry);
+        var laneKey = new LevelObservabilityService.LaneKey(entry.identity().toString(), entry.laneIndex(), false);
         offered.forEach((resource, amount) -> {
             var remainder = Math.max(0L, pendingAfter.getOrDefault(resource, 0L)
                     - pendingBefore.getOrDefault(resource, 0L));
@@ -91,6 +92,7 @@ public final class ProviderObservationRegistry {
                 LevelObservabilityService.get(entry.level()).recordAccepted(scopes(entry), child,
                         resource.getId().toString(), accepted, unit(resource), FlowState.Attribution.EXACT_OPERATION);
                 flowKey.ifPresent(key -> LevelObservabilityService.get(entry.level()).recordPairFlow(key, accepted));
+                LevelObservabilityService.get(entry.level()).recordLaneFlow(laneKey, accepted);
             }
         });
     }
@@ -106,6 +108,8 @@ public final class ProviderObservationRegistry {
         if (entry != null && accepted > 0) {
             LevelObservabilityService.get(level).recordAccepted(scopes(entry), OperationEventId.create(),
                     resource.getId().toString(), accepted, unit(resource), FlowState.Attribution.AGGREGATE_LANE_RETURN);
+            LevelObservabilityService.get(level).recordLaneFlow(new LevelObservabilityService.LaneKey(
+                    entry.identity().toString(), entry.laneIndex(), true), accepted);
         }
     }
 

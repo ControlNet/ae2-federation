@@ -583,6 +583,18 @@ final class TaskThirtyThreeWorldFixture {
         context.put("navigation.policyRevision", space.controlnet.ae2federation.policy.PolicyService.get(context.level()).revision(key).value());
     }
 
+    /** The wire rule line the processing view must show, from the real processing rule of this Provider pair. */
+    static String expectedWireRule(ServerContext context) {
+        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
+        var source = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
+        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, source,
+                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
+        return space.controlnet.ae2federation.policy.PolicyService.get(context.level()).configured(key)
+                .map(record -> record.rule().enabled() ? "Processing rule on · revision " + record.revision().value()
+                        : "Processing rule off · dispatch pauses")
+                .orElse("No processing rule · dispatch pauses");
+    }
+
     static boolean endpointNavigationReadOnly(ServerContext context) {
         var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
         var source = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();

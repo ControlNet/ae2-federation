@@ -55,4 +55,22 @@ public final class BlockMarks {
         }
         return Math.min(radius, max);
     }
+
+    /** Heights a map tile looks through: from the highest mark down to {@code depth} blocks below the lowest. */
+    public record Slice(int top, int bottom) {
+        public boolean contains(int y) {
+            return y <= top && y >= bottom;
+        }
+    }
+
+    public static Optional<Slice> slice(List<Mark> marks, int depth) {
+        if (marks.isEmpty()) return Optional.empty();
+        int top = Integer.MIN_VALUE;
+        int bottom = Integer.MAX_VALUE;
+        for (var mark : marks) {
+            top = Math.max(top, mark.y());
+            bottom = Math.min(bottom, mark.y());
+        }
+        return Optional.of(new Slice(top, bottom - depth));
+    }
 }

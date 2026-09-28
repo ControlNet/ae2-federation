@@ -59,6 +59,7 @@ public final class FederationDomainPolicySession {
     private String mappingAcknowledgment = "ready";
     private String overviewText = "";
     private static final long FLOW_INTERVAL_TICKS = 10;
+    private static final int MAX_VIA_NODES = 3;
     private static final int MAX_RELATED_NETWORKS = 24;
     private String flowText = "";
     private long flowTick;
@@ -356,6 +357,7 @@ public final class FederationDomainPolicySession {
             networks.add(network);
         }
         addRelated(root);
+        currentFederationDomain().ifPresent(domain -> root.add("via", viaJson(domain)));
         for (var member : selection.members()) {
             var id = member.value().toString();
             addChoice(root, "consumer", id, shortId(id));
@@ -419,6 +421,15 @@ public final class FederationDomainPolicySession {
                         .filter(owner -> owner.provider().equals(entry.identity())).isPresent());
                 if (binding != null) {
                     choice.addProperty("position", binding.runtime().position().toShortString());
+                    choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
+                    choice.addProperty("claimEpoch", binding.claimState().epoch().value());
+                    addLaneFlow(choice, entry, endpoint);
+                    // The processing rule this wire would dispatch under; mapping works without one, dispatch pauses.
+                    endpointPolicySelection(entry, binding).map(PolicyEditorSelection::key).ifPresent(key -> {
+                        var rule = PolicyService.get(level).configured(key);
+                        choice.addProperty("rule", rule.map(record -> record.rule().enabled() ? "on" : "off").orElse("none"));
+                        rule.ifPresent(record -> choice.addProperty("ruleRevision", record.revision().value()));
+                    });
                     binding.claimState().owner().ifPresent(owner -> {
                         choice.addProperty("owner", owner.provider().id().value().toString());
                         choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
@@ -1184,6 +1195,43 @@ public final class FederationDomainPolicySession {
 
     private List<EndpointTargetBinding> currentEndpoints() {
         return currentFederationDomain().map(federationDomain -> FederationDomainGraphProjection.endpointEntries(level, federationDomain)).orElse(List.of());
+    }
+
+    /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window. */
+    private void addLaneFlow(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry,
+            space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
+        var controller = entry.controller().orElse(null);
+        if (controller == null) return;
+        var observability = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level);
+        long sent = 0;
+        long returned = 0;
+        for (int lane = 0; lane < entry.provider().lanes().size(); lane++) {
+            if (!controller.laneEndpoint(lane).filter(endpoint::equals).isPresent()) continue;
+            var provider = entry.identity().toString();
+            sent += observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
+                    .LaneKey(provider, lane, false)).amount();
+            returned += observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
+                    .LaneKey(provider, lane, true)).amount();
+        }
+        if (sent > 0) choice.addProperty("laneSent", sent);
+        if (returned > 0) choice.addProperty("laneReturned", returned);
+    }
+
+    /** What links this domain's networks: its Router group or its Bridge, with the device positions. */
+    private com.google.gson.JsonObject viaJson(FederationDomainSnapshot domain) {
+        var json = new com.google.gson.JsonObject();
+        json.addProperty("kind", RelatedDomainLabel.of(domain.federationDomainId().value()).kind());
+        json.addProperty("count", domain.nodes().size());
+        var nodes = new com.google.gson.JsonArray();
+        domain.nodes().stream().limit(MAX_VIA_NODES).forEach(node -> {
+            var position = net.minecraft.core.BlockPos.of(node.blockPosition());
+            var row = new com.google.gson.JsonObject();
+            row.addProperty("dimension", node.dimension());
+            row.addProperty("position", position.toShortString());
+            nodes.add(row);
+        });
+        json.add("nodes", nodes);
+        return json;
     }
 
     private Optional<FederationDomainSnapshot> currentFederationDomain() {

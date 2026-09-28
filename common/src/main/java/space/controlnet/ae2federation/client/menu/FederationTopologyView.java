@@ -92,6 +92,8 @@ final class FederationTopologyView {
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
     private Label throughput;
+    /** The domain's Router group or Bridge, as the server reports it. */
+    private JsonObject via;
     private boolean showRelated;
     private final Button scopeButton;
     private final Map<String, JsonObject> rules = new HashMap<>();
@@ -273,6 +275,7 @@ final class FederationTopologyView {
         // An unpublished domain sends no members; keep the last view until the server reports the context stale.
         if (!root.has("networks") && !networks.isEmpty()) return;
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
+        via = root.has("via") ? root.getAsJsonObject("via") : null;
         networks.clear();
         if (root.has("networks")) {
             var index = 0;
@@ -904,6 +907,8 @@ final class FederationTopologyView {
         if (a == null || b == null) return;
         var title = name(a).copy().append(" ⇄ ").append(name(b));
         var foreign = a.foreign() ? a : b.foreign() ? b : null;
+        if (foreign == null && via != null) title.append("\n").append(viaText(via)
+                .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         pairTitle.setText(title);
         // Another domain's pair is shown for reference: only its configured rules, and where to change them.
         pairNote.setText(foreign == null ? tr("pair_note") : tr("pair_read_only", domainName(foreign.domain())));
@@ -1013,6 +1018,19 @@ final class FederationTopologyView {
     private static Component domainName(String domain) {
         var label = RelatedDomainLabel.of(domain);
         return tr("domain_label." + label.kind(), label.tag());
+    }
+
+    /** "Via the Bridge at x, y, z" or "Via 2 Routers: …", from the domain's device nodes. */
+    private static MutableComponent viaText(JsonObject via) {
+        var positions = new ArrayList<String>();
+        for (var node : via.getAsJsonArray("nodes")) positions.add(node.getAsJsonObject().get("position").getAsString());
+        int count = via.get("count").getAsInt();
+        var list = String.join(" · ", positions) + (count > positions.size() ? " …" : "");
+        return switch (via.get("kind").getAsString()) {
+            case "bridge" -> tr("via.bridge", list);
+            case "router" -> tr("via.router", count, list);
+            default -> tr("via.other", list);
+        };
     }
 
     private static Component flowText(PolicyCapability capability, JsonObject flow) {

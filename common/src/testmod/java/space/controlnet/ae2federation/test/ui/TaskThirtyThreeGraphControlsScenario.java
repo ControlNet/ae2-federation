@@ -127,6 +127,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .checkTextContains("#policy_section_title_1", " uses ")
                 .check("the two sections are the two directions", context -> !context.el("#policy_section_title_0").text()
                         .equals(context.el("#policy_section_title_1").text()))
+                .check("the pair names the Routers that link it, with their positions", context -> context.el("#pair_title").text()
+                        .matches("(?s).*Via \\d+ Router\\(s\\): -?\\d+, -?\\d+, -?\\d+.*"))
                 .screenshot("ui-policy-direction")
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("real policy revision advances", context ->

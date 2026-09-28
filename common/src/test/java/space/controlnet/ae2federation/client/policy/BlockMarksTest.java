@@ -30,4 +30,14 @@ class BlockMarksTest {
         assertEquals(48, BlockMarks.radius(center, List.of(new BlockMarks.Mark(500, 0, 4)), 8, 48));
         assertTrue(BlockMarks.center(List.of()).isEmpty());
     }
+
+    @Test
+    void theMapSliceSpansTheNetworkAndALittleGroundBelowIt() {
+        var slice = BlockMarks.slice(List.of(new BlockMarks.Mark(0, -57, 0), new BlockMarks.Mark(3, -40, 1),
+                new BlockMarks.Mark(1, -60, 2)), 6).orElseThrow();
+        assertEquals(-40, slice.top());
+        assertEquals(-66, slice.bottom());
+        assertTrue(slice.contains(-40) && slice.contains(-66) && !slice.contains(-39) && !slice.contains(-67));
+        assertTrue(BlockMarks.slice(List.of(), 6).isEmpty());
+    }
 }
