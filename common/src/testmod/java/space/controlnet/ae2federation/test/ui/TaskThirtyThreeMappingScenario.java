@@ -185,6 +185,20 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntil("the wire reports what its lane really sent", context -> context.el("#processing_detail_text").text()
                         .matches("(?s).*Lane · last 5 s: sent [1-9]\\d* · returned \\d+.*"))
                 .screenshot("ui-processing-lane-flow")
+                .click("#processing_preview .map-mode-toggle")
+                .waitUntil("the 3D preview draws the loaded blocks around the wire", context -> {
+                    var preview = context.el("#processing_preview .map-preview-tile")
+                            .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class);
+                    return space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
+                            && preview.sceneView() != null && preview.sceneView().isDisplayed()
+                            && preview.sceneView().renderedBlocks() > 0;
+                })
+                .checkTextContains("#processing_preview .map-mode-toggle", "Map")
+                .frames(10)
+                .screenshot("ui-processing-preview-3d")
+                .click("#processing_preview .map-mode-toggle")
+                .check("the map is back", context -> !space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
+                        && !context.el("#processing_preview .map-preview-scene").isVisible())
                 .click("#mapping_view_list")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")

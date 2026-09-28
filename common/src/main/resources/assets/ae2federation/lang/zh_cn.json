@@ -431,5 +431,8 @@
   "ae2federation.ui.processing.provider_editing": "正在编辑",
   "ae2federation.ui.processing.provider_open": "打开",
   "ae2federation.ui.processing.provider_editing_help": "在这里编辑此供应器的连线：把样板的端口拖到端点上。",
-  "ae2federation.ui.processing.provider_open_help": "本域中的另一个供应器。点击选中它以编辑其连线。"
+  "ae2federation.ui.processing.provider_open_help": "本域中的另一个供应器。点击选中它以编辑其连线。",
+  "ae2federation.ui.location.mode_3d": "3D",
+  "ae2federation.ui.location.mode_map": "地图",
+  "ae2federation.ui.location.mode_help": "在俯视地图和已加载方块的 3D 视图之间切换。拖动可旋转 3D 视图，滚轮缩放。"
 }

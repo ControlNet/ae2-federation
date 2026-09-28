@@ -431,5 +431,8 @@
   "ae2federation.ui.processing.provider_editing": "editing",
   "ae2federation.ui.processing.provider_open": "open",
   "ae2federation.ui.processing.provider_editing_help": "The wires of this Provider are edited here: drag a pattern's port onto an Endpoint.",
-  "ae2federation.ui.processing.provider_open_help": "Another Provider of this domain. Click to select it and edit its wires."
+  "ae2federation.ui.processing.provider_open_help": "Another Provider of this domain. Click to select it and edit its wires.",
+  "ae2federation.ui.location.mode_3d": "3D",
+  "ae2federation.ui.location.mode_map": "Map",
+  "ae2federation.ui.location.mode_help": "Switch between the top-down map and a 3D view of the loaded blocks. Drag to turn the 3D view, scroll to zoom."
 }

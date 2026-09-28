@@ -69,7 +69,7 @@
 
 - [x] (phase 8) Several Providers on one processing canvas, each under a Provider header card with "N/9 slots".
   Only the selected Provider is edited; the others show their patterns and wires muted, and a click selects one.
-- [ ] 3D isometric preview with a Map/3D switch, built with LDLib2 `Scene` over loaded chunks.
+- [x] (phase 8) 3D isometric preview with a Map/3D switch, built with LDLib2 `Scene` over loaded chunks.
 
 ### Phase 9: visuals
 
@@ -122,6 +122,16 @@
 - Test fixture: place the second Provider against the first so AE2 joins it to the main network. Seeding it with
   the main network's identity and connecting afterwards made a duplicate identity, and the domain lost all its
   Providers.
+
+- The 3D preview (`FederationScenePreview`) is an LDLib2 `Scene` over the real `ClientLevel`. `TrackedDummyWorld`
+  proxies block reads and filters them to the rendered core.
+  - The core is the non-air blocks of a `SceneWindow`: radius 6 around the focus, from 4 below the lowest nearby
+    network block to 2 above the highest, and at most ±8 from the focus.
+  - It is read again every 200 frames. Devices are overlaid in their colour and network blocks faintly.
+  - The Map/3D choice is static, so it holds across previews and screens.
+- The UI tree is also built on the dedicated server, but a `Scene` subclass cannot be loaded there. Instantiating it
+  makes the verifier load `ClientLevel`, which crashes the server (T34 caught this). The Scene is therefore created
+  lazily on the first client frame (`drawBackgroundAdditional`).
 
 ## Deliberately not implemented
 

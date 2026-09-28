@@ -31,10 +31,63 @@ public final class FederationMapPreview extends UIElement {
     private int[] colors = new int[0];
     private int sampledCells;
     private int frames;
+    /** Map or 3D, shared by every preview so the player's choice holds across pages and screens. */
+    private static boolean threeDimensional;
+    /** Made on the first client frame: the UI tree is also built on the server, where a Scene cannot be loaded. */
+    private FederationScenePreview scene;
+    private final com.lowdragmc.lowdraglib2.gui.ui.elements.Button mode = new com.lowdragmc.lowdraglib2.gui.ui.elements.Button();
 
     FederationMapPreview() {
         addClass("map-preview-tile");
         layout(style -> style.widthPercent(100).heightPercent(100));
+        setOverflowVisible(false);
+        mode.addClass("map-mode-toggle");
+        mode.layout(style -> style.positionType(dev.vfyjxf.taffy.style.TaffyPosition.ABSOLUTE).right(2).top(2).width(26).height(11));
+        mode.style(style -> style.tooltips(FederationWorkspace.trLocation("mode_help")));
+        mode.setOnClick(event -> {
+            threeDimensional = !threeDimensional;
+            applyMode();
+        });
+        addChild(mode);
+        applyMode();
+    }
+
+    private void applyMode() {
+        if (scene != null) scene.setDisplay(threeDimensional);
+        mode.setText(FederationWorkspace.trLocation(threeDimensional ? "mode_map" : "mode_3d"));
+        mode.removeClass("three-d");
+        if (threeDimensional) mode.addClass("three-d");
+    }
+
+    private FederationScenePreview scene() {
+        if (scene == null) {
+            scene = new FederationScenePreview();
+            scene.layout(style -> style.positionType(dev.vfyjxf.taffy.style.TaffyPosition.ABSOLUTE).left(0).top(0)
+                    .widthPercent(100).heightPercent(100));
+            addChildAt(scene, 0);
+            showInScene();
+            applyMode();
+        }
+        return scene;
+    }
+
+    private void showInScene() {
+        if (scene == null) return;
+        if (inPlayerDimension()) {
+            scene.show(mask, maskColor, marks, markColor);
+        } else {
+            scene.show(List.of(), maskColor, List.of(), markColor);
+        }
+    }
+
+    /** The 3D view of this preview once it has been drawn, for tests and diagnostics; null before that. */
+    public FederationScenePreview sceneView() {
+        return scene;
+    }
+
+    /** Whether previews show the 3D view rather than the map. */
+    public static boolean threeDimensional() {
+        return threeDimensional;
     }
 
     /** Shows {@code marks} (the devices) over {@code mask} (the network's blocks) in the given dimension. */
@@ -52,6 +105,7 @@ public final class FederationMapPreview extends UIElement {
         this.marks = List.copyOf(marks);
         this.markColor = markColor;
         if (moved) frames = 0;
+        showInScene();
     }
 
     void clear() {
@@ -60,6 +114,7 @@ public final class FederationMapPreview extends UIElement {
         marks = List.of();
         colors = new int[0];
         sampledCells = 0;
+        if (scene != null) scene.show(List.of(), 0, List.of(), 0);
     }
 
     /** Columns that had a loaded, coloured surface at the last sample; zero when nothing could be drawn. */
@@ -121,6 +176,13 @@ public final class FederationMapPreview extends UIElement {
     @Override
     public void drawBackgroundAdditional(GUIContext context) {
         super.drawBackgroundAdditional(context);
+        if (threeDimensional) {
+            if (!scene().isDisplayed()) applyMode();
+            context.graphics.fill((int) getPositionX(), (int) getPositionY(), (int) (getPositionX() + getSizeWidth()),
+                    (int) (getPositionY() + getSizeHeight()), FederationTheme.WELL);
+            return;
+        }
+        if (scene != null && scene.isDisplayed()) applyMode();
         if (center == null) return;
         if (frames-- <= 0) {
             sample();
