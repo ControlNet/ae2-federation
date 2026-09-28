@@ -217,7 +217,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 })
                 .step("select the related network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("related.id")))
-                .waitForTextContains("#graph_selection", "Member of related domain")
+                .waitForTextContains("#graph_selection", ", a related domain")
+                .check("the related domain has a readable name, not its internal identity", context -> {
+                    var text = context.el("#graph_selection").text();
+                    return text.matches("(?s)Member of Bridge domain [0-9A-F]{4}, a related domain\\..*") && !text.contains("direct:");
+                })
                 .check("a related network cannot be renamed here", context -> !context.el("#network_rename").isActive())
                 .step("open the related pair", context -> {
                     var tag = TaskThirtyThreeScenarioSupport.networkTag(context.get("net.endpoint"));
@@ -227,7 +231,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_title", "Read-only: this pair belongs to domain")
+                .waitForTextContains("#pair_title", "Read-only: this pair belongs to Bridge domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .screenshot("ui-scope-related")
@@ -240,6 +244,13 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .click("#graph_scope")
                 .waitUntil("the domain scope hides the related network again", context -> context.all(".related-network").isEmpty())
                 .server("remove the related domain", TaskThirtyThreeWorldFixture::removeRelatedDomain)
+                .checkServer("the related domain's rule is gone with it", context -> space.controlnet.ae2federation.policy.PolicyService
+                        .get(context.level()).configured(context.get("related.rule")).isEmpty())
+                .check("the legend starts folded", context -> !context.el("#graph_legend").isVisible())
+                .click("#graph_legend_toggle")
+                .waitUntil("the legend unfolds", context -> context.el("#graph_legend").isVisible())
+                .click("#graph_legend_toggle")
+                .waitUntil("the legend folds away again", context -> !context.el("#graph_legend").isVisible())
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("its location is shown", context -> context.el("#network_location").isVisible()

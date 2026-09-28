@@ -133,6 +133,7 @@ final class TaskThirtyThreeWorldFixture {
     static void installRelatedRule(ServerContext context) {
         var key = new space.controlnet.ae2federation.policy.PolicyKey(context.get("related.network"), context.get("related.shared"),
                 space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+        context.put("related.rule", key);
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
         var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
                 space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()));
@@ -145,6 +146,16 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     static void removeRelatedDomain(ServerContext context) {
+        space.controlnet.ae2federation.policy.PolicyKey rule = context.get("related.rule");
+        if (rule != null) {
+            // The rule belongs to the related domain only; later cases must not see it.
+            var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+            if (policies.configured(rule).isPresent()) {
+                require(policies.delete(new space.controlnet.ae2federation.policy.PolicyDelete(rule, policies.revision(rule)))
+                        instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                        "Related domain rule must be removed");
+            }
+        }
         BlockPos cable = context.get("related.cable");
         if (cable == null) return;
         context.level().setBlockAndUpdate(cable.east(), Blocks.AIR.defaultBlockState());

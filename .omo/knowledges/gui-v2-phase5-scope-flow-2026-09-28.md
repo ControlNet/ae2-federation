@@ -60,3 +60,28 @@
 
 Evidence: `gui-v2-phase5-t33/attempt-20260927T170028259Z` (6/6), `gui-v2-phase5-t15/attempt-20260927T170441719Z` (5/5), Task 34 green.
 A UI run fails with `NoSuchFileException .../build/classes/...` if sources are edited while it runs; that is a build race, not a test failure.
+
+## Follow-up (2026-09-28)
+
+- The flow dots are drawn by `FederationFlowPulses` (`#graph_flow_pulses`, public `drawnDots()`).
+  - The layer order is `Links`, then pulses, then pills, then cards.
+  - The dots move along `FlowPath.between(...)`, the part of a link between the card edges. That part is short in a
+    two-card layout (about 40 px on each side of the pill).
+  - Before this, the dots were drawn in `Links` from centre to centre, and cards and pills hid almost all of them.
+- Related domains get a readable name from `RelatedDomainLabel.of(domainId)`:
+  - `direct:` means one Bridge ("Bridge domain XXXX").
+  - `physical:` means Routers joined by federation cable ("Router domain XXXX").
+  - The tag is 4 hex digits of `String.hashCode`, which is the same on every JVM.
+  - The session now sends the full domain id, and the client builds the name.
+- `PairFlowWindow` changes:
+  - Only one bucket is kept per tick, so the window holds at most `windowTicks` buckets.
+  - There is no event cap any more; the old 256-event cap silently truncated bursts.
+  - Sums saturate instead of overflowing, so `Math.addExact` can no longer throw on huge nanoAE amounts.
+- The legend is folded by default behind `#graph_legend_toggle` ("?"). The choice is a static field and lasts for the
+  client session.
+  - The legend has `setAllowHitTest(false)`.
+  - Unfolded on a narrow canvas, it used to swallow clicks meant for the cards under it (`selectFirstNetworkCard`
+    failed in `ui.mapping`).
+- `removeRelatedDomain` also deletes the related STORAGE rule through `PolicyService.delete`, and a check verifies
+  that it is gone.
+- LDLib2 `UIElement.setAllowHitTest(false)` makes an element transparent to clicks; there is no style property for it.

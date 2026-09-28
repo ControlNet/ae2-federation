@@ -645,7 +645,7 @@ public final class FederationDomainPolicySession {
                     .filter(seen::add).forEach(network -> {
                         var row = new com.google.gson.JsonObject();
                         row.addProperty("id", network.value().toString());
-                        row.addProperty("domain", shortId(domainId.value()));
+                        row.addProperty("domain", domainId.value());
                         names.name(network).ifPresent(name -> row.addProperty("name", name));
                         networksOut.add(row);
                     });
@@ -668,7 +668,7 @@ public final class FederationDomainPolicySession {
                         row.addProperty("capability", record.key().capability().name());
                         row.addProperty("enabled", record.rule().enabled());
                         row.addProperty("revision", record.revision().value());
-                        row.addProperty("domain", shortId(domainId.value()));
+                        row.addProperty("domain", domainId.value());
                         rulesOut.add(row);
                     });
         }

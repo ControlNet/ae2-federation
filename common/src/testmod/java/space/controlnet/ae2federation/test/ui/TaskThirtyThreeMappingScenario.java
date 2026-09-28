@@ -176,11 +176,15 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntil("the pair editor is shown", context -> context.el("#pair_editor").isVisible())
                 .waitUntil("the processing rule shows the real delivery", context ->
                         TaskThirtyThreeScenarioSupport.ruleState(context, "processing").contains("Delivered 1× in the last 5 s"))
+                .waitUntil("teal dots travel along the delivering link", context -> context.el("#graph_flow_pulses")
+                        .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() > 0)
                 .step("reveal the processing rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "processing"))
                 .frames(2).screenshot("ui-flow-processing")
                 .step("record flow evidence", context -> {
                     context.attach("evidenceFor", "ui.mapping");
                     context.attach("processingFlow", TaskThirtyThreeScenarioSupport.ruleState(context, "processing"));
+                    context.attach("flowDots", Integer.toString(context.el("#graph_flow_pulses")
+                            .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots()));
                 })
                 .step("scroll the pair editor back to its top", context ->
                         TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))

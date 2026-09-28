@@ -158,6 +158,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
         throw new GradleException('Task 33 related-domain scope was not shown read-only')
     }
     if (!(evidence('ui.mapping', 'processingFlow') ?: '').contains('Delivered 1× in the last 5 s')
+            || !((evidence('ui.mapping', 'flowDots') ?: '0') as Integer > 0)
             || !captures.any { it.path.contains('ui-flow-processing') }) {
         throw new GradleException('Task 33 processing rule did not show its real delivery')
     }

@@ -31,8 +31,10 @@ import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
+import space.controlnet.ae2federation.client.policy.FlowPath;
 import space.controlnet.ae2federation.client.policy.NetworkRenameTarget;
 import space.controlnet.ae2federation.client.policy.PolicySwitchTarget;
+import space.controlnet.ae2federation.client.policy.RelatedDomainLabel;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.persistence.NetworkNameBook;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -107,7 +109,14 @@ final class FederationTopologyView {
     private String asideSignature = "";
     private String search = "";
     private boolean editable;
+    /**
+     * The legend starts folded behind "?" because on a narrow canvas it covers the cards. The viewer's choice is kept
+     * for the client session, like the processing view choice.
+     */
+    private static boolean legendHidden = true;
     private boolean fitted;
+    /** Half sizes of the link labels, which hide the middle of their link. */
+    private final Map<String, Vector2f> pillHalfSizes = new HashMap<>();
     private int fitDelay;
     private String pendingCenter = "";
     private String scope = "domain";
@@ -139,6 +148,21 @@ final class FederationTopologyView {
         element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
         element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
         element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, 0.25f));
+        var legend = element(ui, "graph_legend", Label.class);
+        var legendToggle = element(ui, "graph_legend_toggle", Button.class);
+        // Reference text only: clicks reach the cards under it.
+        legend.setAllowHitTest(false);
+        Runnable showLegend = () -> {
+            legend.setDisplay(!legendHidden);
+            legendToggle.style(style -> style.tooltips(tr(legendHidden ? "legend.show" : "legend.hide")));
+            legendToggle.removeClass("selected");
+            if (!legendHidden) legendToggle.addClass("selected");
+        };
+        legendToggle.setOnClick(event -> {
+            legendHidden = !legendHidden;
+            showLegend.run();
+        });
+        showLegend.run();
         devices.setOnClick(event -> openDevices());
         pairEditor.setDisplay(false);
         scopeButton = element(ui, "graph_scope", Button.class);
@@ -378,10 +402,37 @@ final class FederationTopologyView {
         graph.clearAllContentChildren();
         cards.clear();
         cardLines.clear();
+        pillHalfSizes.clear();
         layout();
         graph.addContentChild(new Links());
+        // Above the lines but below the link labels and cards, so dots never cover text.
+        var pulses = new FederationFlowPulses(this::flowSegments);
+        float width = positions.values().stream().map(point -> point.x + CARD_WIDTH).max(Float::compare).orElse(1f);
+        float height = positions.values().stream().map(point -> point.y + CARD_HEIGHT).max(Float::compare).orElse(1f);
+        pulses.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(width + 8).height(height + 8));
+        graph.addContentChild(pulses);
         for (var pair : pairsWithRules()) graph.addContentChild(edgePill(pair));
         for (var network : shown()) graph.addContentChild(card(network));
+    }
+
+    /** Visible link segments, provider to consumer, of every rule that delivered something in the flow window. */
+    private List<FlowPath.Segment> flowSegments() {
+        var segments = new ArrayList<FlowPath.Segment>();
+        for (var pair : pairsWithRules()) {
+            var ends = pair.split("\\|");
+            if (!positions.containsKey(ends[0]) || !positions.containsKey(ends[1])) continue;
+            // Resources travel from the providing network to the consumer.
+            if (flowing(ends[0], ends[1])) segments.addAll(segment(pair, ends[1], ends[0]));
+            if (flowing(ends[1], ends[0])) segments.addAll(segment(pair, ends[0], ends[1]));
+        }
+        return segments;
+    }
+
+    private List<FlowPath.Segment> segment(String pair, String from, String to) {
+        var start = center(from);
+        var end = center(to);
+        var label = pillHalfSizes.getOrDefault(pair, new Vector2f());
+        return FlowPath.visible(start.x, start.y, end.x, end.y, CARD_WIDTH / 2, CARD_HEIGHT / 2, label.x, label.y);
     }
 
     /** Networks on an ellipse, the entrance network first on the left; two networks sit side by side. */
@@ -451,7 +502,7 @@ final class FederationTopologyView {
             var lines = cardLines.get(network.id());
             if (lines == null) continue;
             if (network.foreign()) {
-                lines[0].setText(tr("related_card", network.domain()).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+                lines[0].setText(tr("related_card", domainName(network.domain())).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
                 lines[1].setText(tr("read_only"));
                 continue;
             }
@@ -496,6 +547,7 @@ final class FederationTopologyView {
         button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.WELL_RECT,
                 new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.SELECT))).pressedTexture(face));
         float height = lines * 10 + 6;
+        pillHalfSizes.put(pair, new Vector2f(width / 2f, height / 2));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left((from.x + to.x) / 2 - width / 2f)
                 .top((from.y + to.y) / 2 - height / 2).width(width).height(height).paddingAll(2));
         button.setOnClick(event -> {
@@ -579,7 +631,7 @@ final class FederationTopologyView {
             if (!identityState.equals("settled")) explanation.append("\n").append(tr("identity." + identityState + ".help"));
             explanation.append("\n");
         }
-        detail.setText(network.foreign() ? tr("related_detail", network.domain())
+        detail.setText(network.foreign() ? tr("related_detail", domainName(network.domain()))
                 : explanation.append(tr("network_detail", tr("network_status." + status), providers(network).size(),
                 endpoints(network).size())));
         renderStats(facts, identityState);
@@ -723,7 +775,7 @@ final class FederationTopologyView {
         if (a == null || b == null) return;
         var title = name(a).copy().append(" ⇄ ").append(name(b));
         var foreign = a.foreign() ? a : b.foreign() ? b : null;
-        if (foreign != null) title.append("\n").append(tr("pair_read_only", foreign.domain()).withStyle(
+        if (foreign != null) title.append("\n").append(tr("pair_read_only", domainName(foreign.domain())).withStyle(
                 Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
         pairTitle.setText(title);
         int section = 0;
@@ -802,8 +854,14 @@ final class FederationTopologyView {
     }
 
     /** "Delivered 12× in the last 5 s", with the energy moved for ME power; only accepted transfers count. */
+    /** The readable name of another domain; its raw identity is internal. */
+    private static Component domainName(String domain) {
+        var label = RelatedDomainLabel.of(domain);
+        return tr("domain_label." + label.kind(), label.tag());
+    }
+
     private static Component flowText(PolicyCapability capability, JsonObject flow) {
-        var events = flow.get("events").getAsInt();
+        var events = flow.get("events").getAsLong();
         var text = capability == PolicyCapability.ME_POWER
                 ? tr("flow_energy", events, compact(flow.get("amount").getAsLong() / 1_000_000_000L))
                 : tr("flow", events);
@@ -999,9 +1057,6 @@ final class FederationTopologyView {
                 boolean selected = pair.equals(selectedPair);
                 line(context, center(ends[0]), center(ends[1]), selected ? FederationTheme.SELECT : FederationTheme.EDGE,
                         selected ? 3f : 2f, false);
-                // Resources travel from the providing network to the consumer, and only while deliveries happen.
-                if (flowing(ends[0], ends[1])) pulses(context, center(ends[1]), center(ends[0]));
-                if (flowing(ends[1], ends[0])) pulses(context, center(ends[0]), center(ends[1]));
             }
             if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
                 for (var other : shown()) {
@@ -1010,18 +1065,6 @@ final class FederationTopologyView {
                 }
             }
             pose.popPose();
-        }
-
-        private void pulses(GUIContext context, Vector2f from, Vector2f to) {
-            float phase = (System.currentTimeMillis() % 1500L) / 1500f;
-            for (int dot = 0; dot < 3; dot++) {
-                var point = new Vector2f(from).lerp(to, (phase + dot / 3f) % 1f);
-                var pose = context.graphics.pose();
-                pose.pushPose();
-                pose.translate(point.x, point.y, 0);
-                context.graphics.fill(-2, -2, 2, 2, FederationTheme.TEAL);
-                pose.popPose();
-            }
         }
 
         private void line(GUIContext context, Vector2f from, Vector2f to, int color, float width, boolean dashed) {

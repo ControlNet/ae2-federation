@@ -89,7 +89,7 @@ public final class LevelObservabilityService implements AutoCloseable {
     public void recordPairFlow(space.controlnet.ae2federation.policy.PolicyKey key, long amount) {
         if (amount <= 0) return;
         pairFlows.computeIfAbsent(key, ignored -> new space.controlnet.ae2federation.observability.meter.PairFlowWindow(
-                PAIR_FLOW_WINDOW_TICKS, 256)).record(level.getGameTime(), amount);
+                PAIR_FLOW_WINDOW_TICKS)).record(level.getGameTime(), amount);
     }
 
     public space.controlnet.ae2federation.observability.meter.PairFlowWindow.Summary pairFlow(

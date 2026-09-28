@@ -29,6 +29,7 @@
                 <element class="topology-canvas">
                     <graph-view id="domain_graph" class="domain-graph"/>
                     <element class="graph-toolbar">
+                        <button id="graph_legend_toggle" class="toolbar-button" text="?"/>
                         <button id="graph_zoom_in" class="toolbar-button" text="+"/>
                         <button id="graph_zoom_out" class="toolbar-button" text="-"/>
                         <button id="graph_fit" class="toolbar-button" text="□"/>
