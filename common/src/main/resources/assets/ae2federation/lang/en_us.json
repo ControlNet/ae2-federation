@@ -12,6 +12,7 @@
   "ae2federation.ui.domain.members.heading": "ME Networks in this Federation Domain",
   "ae2federation.ui.domain.revisions": "Rule rev #%s · topology rev #%s",
   "ae2federation.ui.domain.links": "%s links",
+  "ae2federation.ui.domain.links.one": "%s link",
   "ae2federation.ui.domain.members": "%s networks",
   "ae2federation.ui.domain.members.pending": "No confirmed Federation Domain membership",
   "ae2federation.ui.domain.policy.heading": "Directional policy",
@@ -434,5 +435,6 @@
   "ae2federation.ui.processing.provider_open_help": "Another Provider of this domain. Click to select it and edit its wires.",
   "ae2federation.ui.location.mode_3d": "3D",
   "ae2federation.ui.location.mode_map": "Map",
-  "ae2federation.ui.location.mode_help": "Switch between the top-down map and a 3D view of the loaded blocks. Drag to turn the 3D view, scroll to zoom."
+  "ae2federation.ui.location.mode_help": "Switch between the top-down map and a 3D view of the loaded blocks. Drag to turn the 3D view, scroll to zoom.",
+  "ae2federation.ui.topology.card_position": "%s %s"
 }

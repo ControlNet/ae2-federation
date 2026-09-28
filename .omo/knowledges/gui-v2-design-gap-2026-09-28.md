@@ -73,12 +73,16 @@
 
 ### Phase 9: visuals
 
-- [ ] Curved links and wires. Wires take the Provider network's accent colour.
-- [ ] Related-domain pill: dashed border and a lock marker.
-- [ ] Short names on pills ("Main▸Mine") instead of hex tags.
-- [ ] Cards: energy and storage bars, a position line and an identity badge. Stat bars where a real denominator
-  exists.
-- [ ] Map thumbnails on the cards.
+- [x] (phase 9) Curved processing wires (`WireCurve`: a cubic curve that leaves the port and enters the card
+  horizontally) in the Provider network's accent. Flow dots, pending dashes and click hit-testing all follow the
+  curve.
+- [x] (phase 9) Related-domain pill: dashed border and a lock marker (`FederationTheme.dashedBorder/lockMark`).
+- [x] (phase 9) Short names on pills (`PillName`): the first word of the player's name, else the identity tag.
+  Colliding short names fall back to tags.
+- [x] (phase 9) Cards: an identity badge (the tag, coloured by identity state), a position line and an energy bar.
+  The bar is stored/max, green, yellow under 25%, red when empty.
+- [x] (phase 9) Map thumbnails on cards (`FederationMapPreview(true)`: no 3D switch, hidden outside the player's
+  dimension).
 
 ## Phase 6 notes (2026-09-28)
 
@@ -132,6 +136,16 @@
 - The UI tree is also built on the dedicated server, but a `Scene` subclass cannot be loaded there. Instantiating it
   makes the verifier load `ClientLevel`, which crashes the server (T34 caught this). The Scene is therefore created
   lazily on the first client frame (`drawBackgroundAdditional`).
+
+## Phase 9 notes (2026-09-28)
+
+- Topology links stay straight on purpose. The pill sits at the chord midpoint, and `FlowPath` trims flow dots to
+  the visible stubs of the straight line. A curved link would put dots under the pill and cards.
+- There is no storage bar on cards. AE2 gives no per-network byte or type capacity, so it would need an invented
+  denominator (same as the type-capacity item below).
+- Cards grew to 184x70 for the thumbnail and position line. The ellipse layout radius went to max(130,
+  92/sin(pi/n)), so pills do not touch the cards.
+- "1 link" uses its own key (`ae2federation.ui.domain.links.one`).
 
 ## Deliberately not implemented
 

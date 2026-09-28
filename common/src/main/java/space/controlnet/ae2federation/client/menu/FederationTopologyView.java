@@ -47,8 +47,9 @@ import space.controlnet.ae2federation.policy.PolicyRevision;
  * editor whose switches each request one explicit rule state. Layout and colours are local presentation only.
  */
 final class FederationTopologyView {
-    static final float CARD_WIDTH = 160;
-    static final float CARD_HEIGHT = 58;
+    static final float CARD_WIDTH = 184;
+    private static final float THUMBNAIL = 30;
+    static final float CARD_HEIGHT = 70;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
 
     private final GraphView graph;
@@ -104,6 +105,9 @@ final class FederationTopologyView {
     private final Map<String, Vector2f> positions = new LinkedHashMap<>();
     private final Map<String, Button> cards = new HashMap<>();
     private final Map<String, Label[]> cardLines = new HashMap<>();
+    /** Stored energy as a fraction of capacity per card, read by its bar every frame; negative when unknown. */
+    private final Map<String, float[]> cardEnergy = new HashMap<>();
+    private final Map<String, FederationMapPreview> cardThumbnails = new HashMap<>();
     private final Map<String, JsonObject> overview = new HashMap<>();
     private String renaming = "";
     /** The name sent for {@link #renaming}; the editor closes once the server's choices carry it. */
@@ -451,6 +455,7 @@ final class FederationTopologyView {
         graph.clearAllContentChildren();
         cards.clear();
         cardLines.clear();
+        cardThumbnails.clear();
         pillHalfSizes.clear();
         layout();
         graph.addContentChild(new Links());
@@ -494,7 +499,7 @@ final class FederationTopologyView {
             ordered.addFirst(first);
         });
         int count = ordered.size();
-        float radius = count <= 2 ? 120 : (float) Math.max(110, 80 / Math.sin(Math.PI / count));
+        float radius = count <= 2 ? 120 : (float) Math.max(130, 92 / Math.sin(Math.PI / count));
         var raw = new ArrayList<Vector2f>();
         for (int i = 0; i < count; i++) {
             double angle = Math.PI + 2 * Math.PI * i / Math.max(1, count);
@@ -514,15 +519,14 @@ final class FederationTopologyView {
         button.addClass("graph-node-member");
         button.setId("graph_node_" + sanitize(network.member()));
         boolean selected = network.id().equals(selectedNetwork) || selectedPair.contains(network.id());
-        var status = memberStatus.getOrDefault(network.member(), "pending");
-        int statusColor = network.foreign() ? FederationTheme.DARK_MUTED : status.equals("online") ? FederationTheme.OK : FederationTheme.WARN;
         if (network.foreign()) button.addClass("related-network");
-        var face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD,
-                FederationTheme.accentLine(statusColor));
-        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.CARD_SELECTED,
-                FederationTheme.accentLine(statusColor))).pressedTexture(face));
+        var energy = cardEnergy.computeIfAbsent(network.id(), ignored -> new float[] {-1});
+        var bar = energyBar(energy);
+        var face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, bar);
+        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.CARD_SELECTED, bar))
+                .pressedTexture(face));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(position.x).top(position.y)
-                .width(CARD_WIDTH).height(CARD_HEIGHT).paddingAll(5).paddingBottom(6).gapAll(2)
+                .width(CARD_WIDTH).height(CARD_HEIGHT).paddingAll(5).paddingBottom(6).paddingRight(THUMBNAIL + 9).gapAll(2)
                 .flexDirection(FlexDirection.COLUMN).alignItems(AlignItems.FLEX_START));
         var head = new UIElement();
         head.layout(style -> style.widthPercent(100).height(10).flexDirection(FlexDirection.ROW).gapAll(3)
@@ -532,17 +536,31 @@ final class FederationTopologyView {
         swatch.style(style -> style.backgroundTexture(FederationTheme.solid(network.accent())));
         var heading = text(name(network), FederationTheme.DARK_TITLE);
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
-        head.addChildren(swatch, heading);
+        // The identity tag, coloured by how settled the identity is; the full id is in the tooltip.
+        var badge = text(Component.literal(tag(network)), FederationTheme.DARK_MUTED);
+        badge.setId("graph_node_badge_" + sanitize(network.member()));
+        badge.addClass("identity-badge");
+        badge.layout(style -> style.flexShrink(0).widthAuto().height(9).paddingLeft(2).paddingRight(2));
+        badge.style(style -> style.backgroundTexture(FederationTheme.solid(0xff2c2735)));
+        head.addChildren(swatch, heading, badge);
         var stateLine = text(Component.empty(), FederationTheme.DARK_TEXT);
         var statsLine = text(Component.empty(), FederationTheme.DARK_MUTED);
+        var positionLine = text(Component.empty(), FederationTheme.DARK_MUTED);
         stateLine.setId("graph_node_state_" + sanitize(network.member()));
         statsLine.setId("graph_node_stats_" + sanitize(network.member()));
+        positionLine.setId("graph_node_position_" + sanitize(network.member()));
         button.addChildren(head, stateLine, statsLine, text(tr("network_devices", providers(network).size(),
-                endpoints(network).size()), FederationTheme.DARK_MUTED));
+                endpoints(network).size()), FederationTheme.DARK_MUTED), positionLine);
+        // Where the network is, as a map tile of its blocks; related networks carry no location facts.
+        var thumbnail = new FederationMapPreview(true);
+        thumbnail.setId("graph_node_map_" + sanitize(network.member()));
+        thumbnail.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).right(5).top(17).width(THUMBNAIL).height(THUMBNAIL));
+        button.addChild(thumbnail);
+        cardThumbnails.put(network.id(), thumbnail);
         button.setOnClick(event -> selectNetwork(network.id()));
         button.style(style -> style.tooltips(name(network), Component.literal(network.id())));
         cards.put(network.id(), button);
-        cardLines.put(network.id(), new Label[] {stateLine, statsLine});
+        cardLines.put(network.id(), new Label[] {stateLine, statsLine, positionLine, badge});
         return button;
     }
 
@@ -551,13 +569,25 @@ final class FederationTopologyView {
         for (var network : shown()) {
             var lines = cardLines.get(network.id());
             if (lines == null) continue;
+            var energy = cardEnergy.get(network.id());
+            var thumbnail = cardThumbnails.get(network.id());
+            if (thumbnail != null) showThumbnail(thumbnail, network);
             if (network.foreign()) {
                 lines[0].setText(tr("related_card", domainName(network.domain())).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
                 lines[1].setText(tr("read_only"));
+                if (energy != null) energy[0] = -1;
                 continue;
             }
             var facts = overview.get(network.id());
             var identityState = identityState(network);
+            lines[3].textStyle(style -> style.textColor(toneColor(identityState)));
+            lines[3].style(style -> style.tooltips(identityState.isEmpty() ? Component.literal(network.id())
+                    : tr("identity." + identityState).append(" · " + network.id())));
+            lines[2].setText(facts == null || !facts.has("x") ? Component.empty() : tr("card_position",
+                    dimension(facts.get("dimension").getAsString()), facts.get("x").getAsInt() + ", " + facts.get("y").getAsInt()
+                            + ", " + facts.get("z").getAsInt()));
+            if (energy != null) energy[0] = facts == null || !facts.has("energyMax") || facts.get("energyMax").getAsLong() <= 0 ? -1
+                    : (float) Math.min(1, facts.get("energy").getAsDouble() / facts.get("energyMax").getAsDouble());
             if (!identityState.equals("settled") && !identityState.isEmpty()) {
                 lines[0].setText(tr("identity." + identityState).withStyle(Style.EMPTY.withColor(toneColor(identityState) & 0xffffff)));
             } else {
@@ -584,18 +614,28 @@ final class FederationTopologyView {
             summary.append(reverse);
         }
         var lines = summary.getString().split("\n").length;
+        // A related domain's link carries a lock mark at its right edge.
         var width = Math.max(60, net.minecraft.client.Minecraft.getInstance().font.width(summary.getString().lines()
-                .max(java.util.Comparator.comparingInt(String::length)).orElse("")) + 10);
+                .max(java.util.Comparator.comparingInt(String::length)).orElse("")) + 10) + (a.foreign() || b.foreign() ? 8 : 0);
         var button = new Button();
         button.setId("graph_pair_" + sanitize(a.member()) + "_" + sanitize(b.member()));
         button.addClass("graph-pair");
         button.setText(summary);
         button.textStyle(style -> style.textWrap(TextWrap.NONE).textColor(FederationTheme.DARK_TEXT));
         boolean selected = pair.equals(selectedPair);
-        var face = GuiTextureGroup.of(FederationTheme.WELL_RECT,
-                new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, selected ? FederationTheme.SELECT : 0xff47434f));
-        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.WELL_RECT,
-                new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.SELECT))).pressedTexture(face));
+        // A related domain's link is shown, not edited here: dashed and locked, as its cards are read-only.
+        boolean related = a.foreign() || b.foreign();
+        if (related) button.addClass("related-pair");
+        var border = selected ? FederationTheme.SELECT : 0xff47434f;
+        var face = related
+                ? GuiTextureGroup.of(FederationTheme.solid(FederationTheme.WELL), FederationTheme.dashedBorder(selected ? FederationTheme.SELECT : 0xff8b83a0),
+                        FederationTheme.lockMark(FederationTheme.DARK_MUTED))
+                : GuiTextureGroup.of(FederationTheme.WELL_RECT, new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, border));
+        var hover = related
+                ? GuiTextureGroup.of(FederationTheme.solid(FederationTheme.WELL), FederationTheme.dashedBorder(FederationTheme.SELECT),
+                        FederationTheme.lockMark(FederationTheme.DARK_MUTED))
+                : GuiTextureGroup.of(FederationTheme.WELL_RECT, new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.SELECT));
+        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
         float height = lines * 10 + 6;
         pillHalfSizes.put(pair, new Vector2f(width / 2f, height / 2));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left((from.x + to.x) / 2 - width / 2f)
@@ -609,14 +649,16 @@ final class FederationTopologyView {
         return button;
     }
 
-    /** "3F9A▸81D0 Storage Crafting", each capability coloured by its configured and observed state. */
+    /** "Main▸Mine Storage Crafting", each capability coloured by its configured and observed state. */
     private MutableComponent direction(Network consumer, Network provider) {
         var line = Component.empty();
         boolean any = false;
         for (var capability : CAPABILITIES) {
             var rule = rule(key(consumer.id(), provider.id(), capability.name()));
             if (rule == null) continue;
-            if (!any) line.append(Component.literal(tag(consumer) + "▸" + tag(provider) + " ")
+            var names = space.controlnet.ae2federation.client.policy.PillName.pair(consumer.name(), consumer.id(),
+                    provider.name(), provider.id());
+            if (!any) line.append(Component.literal(names.consumer() + "▸" + names.provider() + " ")
                     .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
             else line.append(" ");
             any = true;
@@ -871,6 +913,36 @@ final class FederationTopologyView {
     /** Mirrors the server: only a settled identity takes a name, and only while this player may edit the domain. */
     private boolean renamable(Network network) {
         return editable && identityState(network).equals("settled");
+    }
+
+    private void showThumbnail(FederationMapPreview thumbnail, Network network) {
+        var facts = overview.get(network.id());
+        if (network.foreign() || facts == null || !facts.has("x")) {
+            thumbnail.setDisplay(false);
+            return;
+        }
+        var blocks = new ArrayList<Integer>();
+        if (facts.has("blocks")) facts.getAsJsonArray("blocks").forEach(value -> blocks.add(value.getAsInt()));
+        var anchor = new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(facts.get("x").getAsInt(),
+                facts.get("y").getAsInt(), facts.get("z").getAsInt());
+        thumbnail.show(facts.get("dimension").getAsString(), space.controlnet.ae2federation.client.policy.BlockMarks.fromFlat(blocks),
+                network.accent(), List.of(anchor), FederationTheme.DARK_TITLE);
+        // Only the player's own dimension can be drawn; elsewhere the position line says where it is.
+        thumbnail.setDisplay(thumbnail.inPlayerDimension());
+    }
+
+    /**
+     * The card's bottom band: stored energy against capacity, green when comfortable, yellow when low and red when
+     * empty. Nothing is drawn while the figure is unknown, such as for a related domain's network.
+     */
+    private static com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture energyBar(float[] fraction) {
+        return FederationTheme.painted((pen, x, y, width, height) -> {
+            if (fraction[0] < 0) return;
+            float track = width - 10;
+            pen.rect(x + 5, y + height - 5, track, 2, 0xff2c2735);
+            int color = fraction[0] <= 0 ? FederationTheme.ERROR : fraction[0] < 0.25f ? FederationTheme.WARN : FederationTheme.OK;
+            pen.rect(x + 5, y + height - 5, Math.max(1, track * fraction[0]), 2, color);
+        });
     }
 
     private static int percent(JsonObject facts) {

@@ -193,6 +193,34 @@ public final class FederationTheme {
     }
 
     /** A one-pixel state line along a card's bottom edge. */
+    /** A one-pixel dashed outline: something shown here that belongs elsewhere, such as a related domain's link. */
+    public static IGuiTexture dashedBorder(int color) {
+        return painted((pen, x, y, width, height) -> {
+            for (float at = 0; at < width; at += 4) {
+                float length = Math.min(2, width - at);
+                pen.rect(x + at, y, length, 1, color);
+                pen.rect(x + at, y + height - 1, length, 1, color);
+            }
+            for (float at = 0; at < height; at += 4) {
+                float length = Math.min(2, height - at);
+                pen.rect(x, y + at, 1, length, color);
+                pen.rect(x + width - 1, y + at, 1, length, color);
+            }
+        });
+    }
+
+    /** A small padlock, 5x6 pixels at the top-right corner: this can be read here but not changed. */
+    public static IGuiTexture lockMark(int color) {
+        return painted((pen, x, y, width, height) -> {
+            float left = x + width - 8;
+            float top = y + 2;
+            pen.rect(left + 1, top, 3, 1, color);
+            pen.rect(left, top + 1, 1, 2, color);
+            pen.rect(left + 4, top + 1, 1, 2, color);
+            pen.rect(left, top + 3, 5, 3, color);
+        });
+    }
+
     public static IGuiTexture accentLine(int color) {
         return painted((pen, x, y, width, height) ->
                 pen.rect(x + 2, y + height - 3, width - 4, 1, color));

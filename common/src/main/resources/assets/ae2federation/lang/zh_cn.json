@@ -13,6 +13,7 @@
   "ae2federation.ui.domain.members.heading": "本联邦域内的 ME 网络",
   "ae2federation.ui.domain.revisions": "规则修订 #%s · 拓扑修订 #%s",
   "ae2federation.ui.domain.links": "%s 条链路",
+  "ae2federation.ui.domain.links.one": "%s 条链路",
   "ae2federation.ui.domain.members": "%s 个网络",
   "ae2federation.ui.domain.members.pending": "尚无已确认的联邦域成员",
   "ae2federation.ui.domain.policy.heading": "有方向的网络策略",
@@ -434,5 +435,6 @@
   "ae2federation.ui.processing.provider_open_help": "本域中的另一个供应器。点击选中它以编辑其连线。",
   "ae2federation.ui.location.mode_3d": "3D",
   "ae2federation.ui.location.mode_map": "地图",
-  "ae2federation.ui.location.mode_help": "在俯视地图和已加载方块的 3D 视图之间切换。拖动可旋转 3D 视图，滚轮缩放。"
+  "ae2federation.ui.location.mode_help": "在俯视地图和已加载方块的 3D 视图之间切换。拖动可旋转 3D 视图，滚轮缩放。",
+  "ae2federation.ui.topology.card_position": "%s %s"
 }

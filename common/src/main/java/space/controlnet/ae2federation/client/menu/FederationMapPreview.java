@@ -37,8 +37,16 @@ public final class FederationMapPreview extends UIElement {
     private FederationScenePreview scene;
     private final com.lowdragmc.lowdraglib2.gui.ui.elements.Button mode = new com.lowdragmc.lowdraglib2.gui.ui.elements.Button();
 
+    /** No Map/3D switch: a card's thumbnail stays a map, drawn small next to the card's figures. */
+    private final boolean thumbnail;
+
     FederationMapPreview() {
-        addClass("map-preview-tile");
+        this(false);
+    }
+
+    FederationMapPreview(boolean thumbnail) {
+        this.thumbnail = thumbnail;
+        addClass(thumbnail ? "map-thumbnail" : "map-preview-tile");
         layout(style -> style.widthPercent(100).heightPercent(100));
         setOverflowVisible(false);
         mode.addClass("map-mode-toggle");
@@ -48,7 +56,7 @@ public final class FederationMapPreview extends UIElement {
             threeDimensional = !threeDimensional;
             applyMode();
         });
-        addChild(mode);
+        if (!thumbnail) addChild(mode);
         applyMode();
     }
 
@@ -176,7 +184,7 @@ public final class FederationMapPreview extends UIElement {
     @Override
     public void drawBackgroundAdditional(GUIContext context) {
         super.drawBackgroundAdditional(context);
-        if (threeDimensional) {
+        if (threeDimensional && !thumbnail) {
             if (!scene().isDisplayed()) applyMode();
             context.graphics.fill((int) getPositionX(), (int) getPositionY(), (int) (getPositionX() + getSizeWidth()),
                     (int) (getPositionY() + getSizeHeight()), FederationTheme.WELL);

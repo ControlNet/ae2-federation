@@ -39,7 +39,7 @@ public final class FederationProcessingGraph {
     private static final float GAP = 44;
     /** A dropped wire the server has not confirmed within this long is no longer drawn as pending. */
     private static final long PENDING_MILLIS = 5000;
-    private static final float DASH = 4;
+    private static final int CURVE_SEGMENTS = 24;
     private static final long FLOW_PERIOD_MILLIS = 1600;
     /** Dots drawn on busy wires in the last frame, for tests and diagnostics. */
     private static int drawnWireDots;
@@ -69,6 +69,10 @@ public final class FederationProcessingGraph {
     /** Ports and wires of the other Providers, keyed by provider id and slot; drawn muted and never edited here. */
     private final Map<String, UIElement> otherPorts = new LinkedHashMap<>();
     private final List<Wire> otherWires = new ArrayList<>();
+    /** Accent colour of each other Provider's network, keyed like {@link #otherPorts}. */
+    private final Map<String, Integer> otherAccents = new LinkedHashMap<>();
+    /** Accent colour of the selected Provider's network; the neutral edge colour when it is unknown. */
+    private int wireAccent = FederationTheme.EDGE;
     /** Wires sent to the server and not yet confirmed, with when they were sent; drawn dashed until then. */
     private final Map<Wire, Long> pendingWires = new LinkedHashMap<>();
     private String structure = "";
@@ -131,10 +135,16 @@ public final class FederationProcessingGraph {
         providers.clear();
         providers.addAll(providerSections);
         otherWires.clear();
+        otherAccents.clear();
+        wireAccent = FederationTheme.EDGE;
         for (var provider : providers) {
-            if (selected(provider)) continue;
+            if (selected(provider)) {
+                wireAccent = accent(provider);
+                continue;
+            }
             for (var slot : provider.getAsJsonArray("slots")) {
                 var key = otherPortKey(provider, slot.getAsJsonObject());
+                otherAccents.put(key, accent(provider));
                 for (var endpoint : slot.getAsJsonObject().getAsJsonArray("endpoints")) {
                     if (targetChoices.stream().anyMatch(choice -> choice.get("id").getAsString().equals(endpoint.getAsString()))) {
                         otherWires.add(new Wire(key, endpoint.getAsString()));
@@ -320,6 +330,12 @@ public final class FederationProcessingGraph {
         return row;
     }
 
+    /** The accent of the Provider's network, as the overview colours its card; neutral outside the domain's networks. */
+    private static int accent(JsonObject provider) {
+        int index = provider.has("networkIndex") ? provider.get("networkIndex").getAsInt() : -1;
+        return index < 0 ? FederationTheme.EDGE : FederationTheme.networkAccent(index);
+    }
+
     private static boolean selected(JsonObject provider) {
         return provider.has("selected") && provider.get("selected").getAsBoolean();
     }
@@ -399,7 +415,7 @@ public final class FederationProcessingGraph {
         for (var wire : wires) {
             var ends = ends(wire);
             if (ends == null) continue;
-            float distance = distance(new Vector2f(event.x, event.y), ends[0], ends[1]);
+            float distance = curve(ends).distance(event.x, event.y, CURVE_SEGMENTS);
             if (distance < best) {
                 best = distance;
                 nearest = wire;
@@ -604,35 +620,38 @@ public final class FederationProcessingGraph {
         return new Vector2f(port.getPositionX() + port.getSizeWidth() - 2, port.getPositionY() + port.getSizeHeight() / 2);
     }
 
-    private static int flowDots(GUIContext context, space.controlnet.ae2federation.client.policy.FlowPath.Segment segment,
-            float phase, int color) {
-        var points = segment.dots(phase, 2);
-        for (int index = 0; index < points.length; index += 2) {
-            int x = Math.round(points[index]);
-            int y = Math.round(points[index + 1]);
+    /** Two dots travelling along the wire, from the port when {@code returning} is false and back when it is true. */
+    private static int flowDots(GUIContext context, space.controlnet.ae2federation.client.policy.WireCurve curve,
+            float phase, boolean returning, int color) {
+        for (int dot = 0; dot < 2; dot++) {
+            float t = (phase + dot / 2f) % 1f;
+            var point = curve.at(returning ? 1 - t : t);
+            int x = Math.round(point[0]);
+            int y = Math.round(point[1]);
             context.graphics.fill(x - 2, y - 2, x + 2, y + 2, 0xff0b0a12);
             context.graphics.fill(x - 1, y - 1, x + 1, y + 1, color);
         }
-        return points.length / 2;
+        return 2;
     }
 
-    /** A white dashed line: a wire the player made that the server has not confirmed yet. */
-    private static void dashed(GUIContext context, Vector2f from, Vector2f to, int color) {
-        float length = from.distance(to);
-        if (length <= 0) return;
-        var step = new Vector2f(to).sub(from).div(length);
-        for (float at = 0; at < length; at += DASH * 2) {
-            var start = new Vector2f(step).mul(at).add(from);
-            var end = new Vector2f(step).mul(Math.min(length, at + DASH)).add(from);
-            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(start, end), color, color, 2f);
+    /** A white dashed curve: a wire the player made that the server has not confirmed yet. */
+    private static void dashed(GUIContext context, space.controlnet.ae2federation.client.policy.WireCurve curve, int color) {
+        var line = polyline(curve);
+        for (int index = 1; index < line.size(); index += 2) {
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
+                    color, color, 2f);
         }
     }
 
-    private static float distance(Vector2f point, Vector2f from, Vector2f to) {
-        var segment = new Vector2f(to).sub(from);
-        float length = segment.lengthSquared();
-        float t = length == 0 ? 0 : Math.max(0, Math.min(1, new Vector2f(point).sub(from).dot(segment) / length));
-        return point.distance(new Vector2f(from).add(segment.mul(t)));
+    private static space.controlnet.ae2federation.client.policy.WireCurve curve(Vector2f[] ends) {
+        return new space.controlnet.ae2federation.client.policy.WireCurve(ends[0].x, ends[0].y, ends[1].x, ends[1].y);
+    }
+
+    private static List<Vector2f> polyline(space.controlnet.ae2federation.client.policy.WireCurve curve) {
+        var points = curve.points(CURVE_SEGMENTS);
+        var line = new ArrayList<Vector2f>(CURVE_SEGMENTS + 1);
+        for (int index = 0; index < points.length; index += 2) line.add(new Vector2f(points[index], points[index + 1]));
+        return line;
     }
 
     private JsonObject slot(String id) {
@@ -715,8 +734,8 @@ public final class FederationProcessingGraph {
             for (var wire : otherWires) {
                 var ends = ends(otherPorts.get(wire.slot()), wire);
                 if (ends == null) continue;
-                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(ends[0], ends[1]),
-                        0x88625d70, 0x88625d70, 1f);
+                int muted = 0x66000000 | (otherAccents.getOrDefault(wire.slot(), 0x625d70) & 0xffffff);
+                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), muted, muted, 1f);
             }
             for (var wire : wires) {
                 var ends = ends(wire);
@@ -724,8 +743,9 @@ public final class FederationProcessingGraph {
                 boolean selected = selection.kind() == Kind.WIRE && selection.slot().equals(wire.slot())
                         && selection.endpoint().equals(wire.endpoint());
                 boolean related = selection.kind() == Kind.ENDPOINT && selection.endpoint().equals(wire.endpoint());
-                int color = selected || related ? FederationTheme.SELECT : FederationTheme.EDGE;
-                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(ends[0], ends[1]), color, color,
+                // Wires take the colour of the Provider's network, as its card does in the overview.
+                int color = selected || related ? FederationTheme.SELECT : wireAccent;
+                DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), color, color,
                         selected ? 3f : 2f);
             }
             long now = System.currentTimeMillis();
@@ -735,17 +755,15 @@ public final class FederationProcessingGraph {
                 var ends = ends(wire);
                 var endpoint = endpoint(wire.endpoint());
                 if (ends == null) continue;
-                var out = new space.controlnet.ae2federation.client.policy.FlowPath.Segment(ends[0].x, ends[0].y, ends[1].x, ends[1].y);
-                if (laneAmount(endpoint, "laneSent") > 0) dots += flowDots(context, out, phase, FederationTheme.TEAL);
-                if (laneAmount(endpoint, "laneReturned") > 0) dots += flowDots(context,
-                        new space.controlnet.ae2federation.client.policy.FlowPath.Segment(ends[1].x, ends[1].y, ends[0].x, ends[0].y),
-                        phase, FederationTheme.OK);
+                var path = curve(ends);
+                if (laneAmount(endpoint, "laneSent") > 0) dots += flowDots(context, path, phase, false, FederationTheme.TEAL);
+                if (laneAmount(endpoint, "laneReturned") > 0) dots += flowDots(context, path, phase, true, FederationTheme.OK);
             }
             drawnWireDots = dots;
             pendingWires.forEach((wire, sent) -> {
                 var ends = ends(wire);
                 if (ends == null || wires.contains(wire) || now - sent > PENDING_MILLIS) return;
-                dashed(context, ends[0], ends[1], 0xffefeaf8);
+                dashed(context, curve(ends), 0xffefeaf8);
             });
             var drag = dragged();
             var ui = getModularUI();

@@ -62,6 +62,17 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                                 .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
                                 .anyMatch(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText()
                                         .getString().contains(" types · CPU "))))
+                .check("every card carries its identity tag", context -> context.all(".identity-badge").size()
+                        == context.all(".graph-node-member").size()
+                        && context.all(".identity-badge").stream().allMatch(badge -> badge.text().matches("[0-9A-F]{4}")))
+                .check("cards say where their network is", context -> context.all(".graph-node-member").stream()
+                        .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                                .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                                .anyMatch(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText()
+                                        .getString().matches("Overworld -?\\d+, -?\\d+, -?\\d+"))))
+                .waitUntil("card thumbnails map the loaded terrain", context -> !context.all(".map-thumbnail").isEmpty()
+                        && context.all(".map-thumbnail").stream().allMatch(tile -> tile.as(
+                                space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0))
                 .waitUntil("settled network can be renamed", context -> context.el("#network_rename").isActive())
                 .screenshot("ui-graph-network-detail")
                 .waitUntil("the location map samples loaded terrain", context -> context.el("#network_preview .map-preview-tile")
@@ -251,6 +262,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
                 .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
+                .check("the related domain's link is drawn as read-only", context -> context.all(".related-pair").size() == 1)
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
                     // A separate record: the case record above already holds the accepted-edit status.

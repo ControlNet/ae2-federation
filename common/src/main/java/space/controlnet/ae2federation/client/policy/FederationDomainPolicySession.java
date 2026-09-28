@@ -559,6 +559,9 @@ public final class FederationDomainPolicySession {
             json.addProperty("id", FederationDomainGraphProjection.providerId(context, entry));
             json.addProperty("selected", entry.equals(selected));
             json.addProperty("graph", entry.controller().isPresent());
+            // The same order as the "networks" array, so the canvas colours wires like the overview colours cards.
+            json.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid())
+                    .map(network -> selection == null ? -1 : selection.members().indexOf(network)).orElse(-1));
             if (entry.controller().orElse(null) instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
                 json.addProperty("position", entity.getBlockPos().toShortString());
             }
@@ -1088,7 +1091,7 @@ public final class FederationDomainPolicySession {
                 .map(key -> java.util.Set.of(key.consumerNetworkId(), key.providerNetworkId()))
                 .distinct().count();
         return Component.translatable("ae2federation.ui.domain.members", selection.members().size()).append(" · ")
-                .append(Component.translatable("ae2federation.ui.domain.links", links));
+                .append(Component.translatable(links == 1 ? "ae2federation.ui.domain.links.one" : "ae2federation.ui.domain.links", links));
     }
 
     /** The two server counters a stale edit is judged against: the rule store's and the domain topology's. */
