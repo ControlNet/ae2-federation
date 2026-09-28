@@ -157,6 +157,8 @@ def prepareMultiClientRuntime = tasks.register('prepareMultiClientRuntime') {
             properties.setProperty('online-mode', 'false')
             properties.setProperty('enforce-secure-profile', 'false')
             properties.setProperty('level-name', 'task34-world')
+            // A throwaway test world: synchronous chunk writes only make shutdown hang when the disk stalls.
+            properties.setProperty('sync-chunk-writes', 'false')
             new File(directory, 'server.properties').withOutputStream {
                 properties.store(it, 'Task 34 isolated loopback dedicated server')
             }

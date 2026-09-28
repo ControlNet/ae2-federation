@@ -45,7 +45,9 @@ final class TaskFifteenScenarioSupport {
         context.attach("visibleRule", context.el(STORAGE_STATE).text().lines().findFirst().orElse(""));
         context.attach("visibleSwitch", context.el(STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                 .hasClass("on") ? "on" : "off");
-        context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
+        // The player's option, and the scale the Federation screen actually uses (fixed by window size).
+        context.attach("guiScale", Double.toString(context.mc().options.guiScale().get()));
+        context.attach("effectiveGuiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));
         context.attach("framebufferWidth", Integer.toString(context.mc().getWindow().getWidth()));

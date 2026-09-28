@@ -159,7 +159,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var observation = session == null ? java.util.Optional
                 .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
                 : session.openObservation();
-        return new ModularUI(ui, player) {
+        final class FederationModularUI extends ModularUI implements space.controlnet.ae2federation.client.FederationGuiScale.Fixed {
+            FederationModularUI(UI document, Player viewer) {
+                super(document, viewer);
+            }
+
             @Override
             public void init(int screenWidth, int screenHeight) {
                 ui.rootElement.removeClass("compact");
@@ -174,7 +178,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 observation.ifPresent(value -> session.closeObservation(value));
                 super.onRemoved();
             }
-        };
+        }
+        return new FederationModularUI(ui, player);
     }
 
     @Override

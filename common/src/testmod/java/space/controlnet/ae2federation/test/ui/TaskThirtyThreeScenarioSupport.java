@@ -134,7 +134,9 @@ final class TaskThirtyThreeScenarioSupport {
         context.attach("visibleStatus", context.el("#ack_status").text());
         context.attach("graphVisited", context.get("task33.graphVisited"));
         context.attach("workspaceVisible", Boolean.toString(context.el("#domain_root").isVisible()));
-        context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
+        // The player's option, and the scale the Federation screen actually uses (fixed by window size).
+        context.attach("guiScale", Double.toString(context.mc().options.guiScale().get()));
+        context.attach("effectiveGuiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));
         context.attach("framebufferWidth", Integer.toString(context.mc().getWindow().getWidth()));

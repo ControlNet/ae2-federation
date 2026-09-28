@@ -194,7 +194,9 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     def chinese = outcomes['ui.chinese-scales']
     def exercisedScales = outcomes.values().collect { it.guiScale as double } as Set
     if (chinese.language != 'zh_cn' || chinese.guiScale as double != 4d
-            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
+            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)
+            // Whatever the option, a Federation screen at 1600x960 uses the one fixed scale.
+            || (outcomes.values().collect { it.effectiveGuiScale as double } as Set) != ([2d] as Set)) {
         throw new GradleException('Task 33 Chinese text, large quantity, or GUI scale evidence is invalid')
     }
     def conflict = outcomes['ui.reject-claim-conflict']

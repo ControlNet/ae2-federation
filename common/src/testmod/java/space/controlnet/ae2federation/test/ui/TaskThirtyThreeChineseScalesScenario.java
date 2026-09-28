@@ -106,7 +106,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .waitForTextContains("#mapping_status", "选择样板和目标端点")
                 .checkServer("Chinese cancellation keeps endpoint owned", TaskThirtyThreeWorldFixture::endpointRetained)
                 .step("resize to minimum supported logical width", context ->
-                        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1280, 960))
+                        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 320, 240))
                 .waitUntil("320 by 240 logical viewport", context -> context.mc().getWindow().getGuiScaledWidth() == 320
                         && context.mc().getWindow().getGuiScaledHeight() == 240)
                 .frames(5)
@@ -205,7 +205,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .screenshot("ui-chinese-narrow-bridge-unavailable")
                 .step("restore normal viewport", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
-                .waitUntil("normal viewport restored", context -> context.mc().getWindow().getGuiScaledWidth() == 400)
+                .waitUntil("normal viewport restored at the fixed scale", context -> context.mc().getWindow().getGuiScaledWidth() == 800)
                 .closeScreen();
     }
 }

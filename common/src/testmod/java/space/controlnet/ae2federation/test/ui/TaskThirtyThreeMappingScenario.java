@@ -208,7 +208,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Retained")
                 .check("target identity survives mapping state changes", context -> context.el("#mapping_lane_next").value().equals(context.get("target.initialId")))
                 .step("resize English workspace", context ->
-                        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 960, 720))
+                        org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 320, 240))
                 .waitUntil("narrow English viewport", context -> context.mc().getWindow().getGuiScaledWidth() == 320
                         && context.mc().getWindow().getGuiScaledHeight() == 240)
                 .frames(5)
