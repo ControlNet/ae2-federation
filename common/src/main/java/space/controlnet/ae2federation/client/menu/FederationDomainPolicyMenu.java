@@ -23,7 +23,9 @@ public final class FederationDomainPolicyMenu {
 
     public static void register() {
         PlayerUIMenuType.register(ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 640, 400));
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null,
+                space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_WIDTH,
+                space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_HEIGHT));
         PlayerUIMenuType.register(ENDPOINT_ID, player -> new FederationDomainPolicyMenuHolder(
                 player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 440, 280));
         PlayerUIMenuType.register(BRIDGE_DIAGNOSTIC_ID, player -> new FederationDomainPolicyMenuHolder(

@@ -131,6 +131,9 @@ final class FederationTopologyView {
     /** Half sizes of the link labels, which hide the middle of their link. */
     private final Map<String, Vector2f> pillHalfSizes = new HashMap<>();
     private int fitDelay;
+    /** The graph viewport's size at the last fit; a resized window fits again so the cards stay in view. */
+    private float fittedWidth;
+    private float fittedHeight;
     private String pendingCenter = "";
     private String scope = "domain";
 
@@ -1302,9 +1305,15 @@ final class FederationTopologyView {
         public void screenTick() {
             super.screenTick();
             if (graph.getContentWidth() <= 0 || graph.getContentHeight() <= 0 || positions.isEmpty()) return;
+            if (fitted && (graph.getContentWidth() != fittedWidth || graph.getContentHeight() != fittedHeight)) {
+                fitted = false;
+                fitDelay = 1;
+            }
             if (!fitted && fitDelay-- <= 0) {
                 graph.fitToChildren(16, 0.25f);
                 fitted = true;
+                fittedWidth = graph.getContentWidth();
+                fittedHeight = graph.getContentHeight();
             }
             if (!pendingCenter.isEmpty() && positions.containsKey(pendingCenter)) {
                 var point = center(pendingCenter);

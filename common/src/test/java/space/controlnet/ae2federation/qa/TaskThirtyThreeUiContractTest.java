@@ -34,8 +34,9 @@ final class TaskThirtyThreeUiContractTest {
         assertTrue(xml.contains("<virtual-scroller-view"), "Large Pattern lists must be virtualized");
         assertTrue(lss.contains("allow-zoom: true") && lss.contains("allow-pan: true"),
                 "Graph interaction must be enabled in shared LSS");
-        assertTrue(holder.contains("screenWidth - 8") && holder.contains("screenHeight - 8"),
-                "The production workspace must shrink to fit a 400x240 logical scale-4 viewport");
+        // WorkspaceSizeTest pins the sizes: it fills the screen less a margin and shrinks with a small viewport.
+        assertTrue(holder.contains("WorkspaceSize.fit(screenWidth, screenHeight"),
+                "The production workspace must size itself from the viewport, shrinking to fit a small one");
         for (var page : new String[] {"overview", "mapping", "diagnostics"}) {
             assertTrue(xml.contains("id=\"page_" + page + "\""), "Missing task page " + page);
         }

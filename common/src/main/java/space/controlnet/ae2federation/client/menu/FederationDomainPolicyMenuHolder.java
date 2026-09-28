@@ -34,13 +34,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private FederationWorkspace currentWorkspace;
     private FederationTopologyView currentTopology;
     private String serverStatus = "pending";
-    private final int preferredWidth;
-    private final int preferredHeight;
+    /** The largest size this screen grows to; it fills the screen up to it. */
+    private final int maxWidth;
+    private final int maxHeight;
 
-    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, int preferredWidth, int preferredHeight) {
+    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, int maxWidth, int maxHeight) {
         this.session = session;
-        this.preferredWidth = preferredWidth;
-        this.preferredHeight = preferredHeight;
+        this.maxWidth = maxWidth;
+        this.maxHeight = maxHeight;
         menuNonce = session == null ? null : UUID.randomUUID();
     }
 
@@ -168,8 +169,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             public void init(int screenWidth, int screenHeight) {
                 ui.rootElement.removeClass("compact");
                 if (screenHeight < 280) ui.rootElement.addClass("compact");
-                ui.rootElement.layout(style -> style.width(Math.min(preferredWidth, screenWidth - 8))
-                        .height(Math.min(preferredHeight, screenHeight - 8)));
+                var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(screenWidth, screenHeight, maxWidth, maxHeight);
+                ui.rootElement.layout(style -> style.width(size.width()).height(size.height()));
                 super.init(screenWidth, screenHeight);
             }
 

@@ -49,3 +49,17 @@
 - T34 can fail with "server did not stop cleanly" when the VM disk stalls. `IOWorker-chunk` then sits in `pwrite`,
   and `/proc/pressure/io` shows about 20% full. This happens on the committed baseline too, so rerun once the disk
   recovers.
+
+## Workspace size (2026-09-28, later)
+
+- The workspace used to stop at 640x400 GUI units. At 1600x960 (scale 2, an 800x480 viewport) it therefore filled
+  only about 77% x 83% of the screen.
+- `client/policy/WorkspaceSize.fit(screenW, screenH, maxW, maxH)` now fills the viewport less an 8-unit margin on
+  each side (4 when the viewport is at most 640x380), up to a maximum.
+  - The workspace's maximum is 1024x640.
+  - The Endpoint (440x280) and Bridge diagnostic (360x160) dialogs pass their own old sizes as the maximum, so they
+    stay dialogs.
+  - Sample results: 800x480 → 784x464, 960x540 → 944x524, 320x240 → 312x232.
+- The topology graph now fits again when its viewport size changes. Before this, it only fitted once after
+  opening, so shrinking the window left the cards outside the visible area. The narrow-layout tests caught this:
+  a card click missed.
