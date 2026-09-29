@@ -11,12 +11,25 @@
         <element id="domain_window" class="domain-panel">
             <element class="domain-header">
                 <element class="header-titles">
-                    <label id="domain_title" class="domain-title"><lang key="ae2federation.ui.domain.title"/></label>
+                    <element class="title-row">
+                        <label id="domain_title" class="domain-title"><lang key="ae2federation.ui.domain.title"/></label>
+                        <label id="domain_tab" class="domain-tab"/>
+                    </element>
                     <element class="header-status">
                         <element id="sync_lamp" class="sync-lamp"/>
+                        <label id="sync_text" class="sync-text"/>
                         <label id="entrance_value" class="domain-caption"/>
                         <label id="members_value" class="domain-caption members-caption"/>
+                        <label id="processing_summary" class="domain-caption members-caption"/>
                     </element>
+                </element>
+                <element id="header_graph_tools" class="header-tools">
+                    <button id="graph_scope" class="scope-button" text="ae2federation.ui.topology.scope.domain"/>
+                    <button id="graph_flow_toggle" class="header-toggle" text="≈"/>
+                </element>
+                <element id="mapping_view_switch" class="view-switch">
+                    <button id="mapping_view_graph" text="ae2federation.ui.processing.view_wires"/>
+                    <button id="mapping_view_list" text="ae2federation.ui.processing.view_list"/>
                 </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
@@ -29,16 +42,14 @@
                 <element class="topology-canvas">
                     <graph-view id="domain_graph" class="domain-graph"/>
                     <element class="graph-toolbar">
-                        <button id="graph_flow_toggle" class="toolbar-button" text="≈"/>
                         <button id="graph_legend_toggle" class="toolbar-button" text="?"/>
                         <button id="graph_zoom_in" class="toolbar-button" text="+"/>
                         <button id="graph_zoom_out" class="toolbar-button" text="-"/>
                         <button id="graph_fit" class="toolbar-button" text="□"/>
                     </element>
-                    <button id="graph_scope" class="toolbar-button scope-button" text="ae2federation.ui.topology.scope.domain"/>
                     <label id="graph_throughput" class="graph-throughput"/>
                     <label id="graph_search_empty" class="graph-search-empty"/>
-                    <label id="graph_legend" class="graph-legend"><lang key="ae2federation.ui.topology.legend"/></label>
+                    <label id="graph_legend" class="graph-legend"/>
                 </element>
                 <scroller-view id="topology_aside" class="topology-aside">
                     <element id="network_detail" class="aside-section">
@@ -55,18 +66,21 @@
                             </element>
                         </element>
                         <label id="network_identity" class="aside-caption"/>
+                        <element id="network_location" class="dark-panel location-panel">
+                            <label id="network_location_caption" class="panel-caption"/>
+                            <element id="network_preview" class="map-preview"/>
+                            <label id="network_location_note" class="panel-text"/>
+                        </element>
+                        <element class="compact-actions network-actions">
+                            <button id="network_highlight" text="ae2federation.ui.location.highlight"/>
+                            <button id="graph_open" class="primary-action" text="ae2federation.ui.topology.devices"/>
+                        </element>
                         <element class="dark-panel">
                             <label id="graph_selection" class="panel-text"><lang key="ae2federation.ui.workspace.select_node"/></label>
                         </element>
-                        <button id="graph_open" class="primary-action" text="ae2federation.ui.topology.devices"/>
+                        <element id="network_stats" class="dark-panel network-stats"/>
                         <label id="network_links_heading" class="aside-heading"/>
                         <element id="network_links" class="network-links"/>
-                        <element id="network_location" class="dark-panel location-panel">
-                            <element id="network_preview" class="map-preview"/>
-                            <label id="network_location_note" class="panel-text"/>
-                            <button id="network_highlight" text="ae2federation.ui.location.highlight"/>
-                        </element>
-                        <element id="network_stats" class="dark-panel network-stats"/>
                     </element>
                     <element id="pair_editor" class="aside-section">
                         <label id="pair_title" class="aside-title"/>
@@ -76,26 +90,28 @@
                 </scroller-view>
             </element>
             <element id="page_mapping" class="workspace-page">
-                <element class="mapping-toolbar">
+                <element id="mapping_toolbar" class="mapping-toolbar">
                     <label class="domain-heading"><lang key="ae2federation.ui.workspace.provider"/></label>
                     <selector id="mapping_provider_next"/>
                     <label id="mapping_provider_value" class="identity-caption"/>
-                    <element id="mapping_view_switch" class="view-switch">
-                        <button id="mapping_view_graph" text="ae2federation.ui.processing.view_wires"/>
-                        <button id="mapping_view_list" text="ae2federation.ui.processing.view_list"/>
-                    </element>
                 </element>
                 <element id="processing_graph" class="processing-graph">
-                    <scroller-view id="processing_scroll" class="processing-scroll"/>
+                    <element class="processing-area">
+                        <scroller-view id="processing_scroll" class="processing-scroll"/>
+                        <label id="processing_legend" class="processing-legend"/>
+                    </element>
                     <scroller-view id="processing_detail" class="dark-panel processing-detail">
-                        <label id="processing_detail_text" class="panel-text"/>
+                        <label id="processing_detail_title" class="processing-title"/>
+                        <label id="processing_preview_caption" class="panel-caption"/>
                         <element id="processing_preview" class="map-preview"/>
-                        <button id="processing_highlight" text="ae2federation.ui.location.highlight"/>
+                        <label id="processing_detail_text" class="panel-text"/>
+                        <element id="processing_facts" class="processing-facts"/>
                         <element class="compact-actions">
                             <button id="processing_unlink" class="danger-action" text="ae2federation.ui.processing.unlink"/>
                             <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
+                            <button id="processing_highlight" text="ae2federation.ui.location.highlight"/>
                         </element>
-                        <label id="processing_status" class="mapping-status"/>
+                        <label id="processing_note" class="processing-note"/>
                     </scroller-view>
                 </element>
                 <element id="mapping_list" class="mapping-body">
@@ -153,6 +169,7 @@
             </element>
             <element class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>
+                <label id="processing_status" class="domain-status mapping-status"/>
                 <label id="request_status" class="domain-status request-status"/>
                 <label id="revision_status" class="domain-status revision-status"/>
             </element>

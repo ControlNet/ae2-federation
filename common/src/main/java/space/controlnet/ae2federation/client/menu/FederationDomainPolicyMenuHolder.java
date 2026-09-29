@@ -75,6 +75,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                         for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
                         label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
                     }
+                    if (currentWorkspace != null) currentWorkspace.updateFeedback();
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
@@ -422,8 +423,12 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var active = !code.equals("pending") && !code.equals("disabled")
                 && !code.equals("stale_context") && !code.equals("stale_revision");
         var lamp = element(ui, "sync_lamp", UIElement.class);
-        lamp.style(style -> style.backgroundTexture(FederationTheme.solid(active ? FederationTheme.OK
-                : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR)));
+        int tone = active ? FederationTheme.OK : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR;
+        lamp.style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
+        // The lamp's word, in a darker shade of its colour so it reads on the light frame.
+        var sync = element(ui, "sync_text", Label.class);
+        sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
+        sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
         for (var id : new String[] {"mapping_provider_next", "mapping_slot_next", "mapping_lane_next", "mapping_toggle", "mapping_release", "endpoint_next", "pattern_list"}) {
             element(ui, id, UIElement.class).setActive(active);
         }

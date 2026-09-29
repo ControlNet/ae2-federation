@@ -4,21 +4,25 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import java.util.List;
 import java.util.function.Supplier;
-import space.controlnet.ae2federation.client.policy.FlowPath;
+import space.controlnet.ae2federation.client.policy.TopologyLink;
 
 /**
  * Teal dots moving from the providing network to the consumer along each link that delivered something in the flow
- * window. It sits above the lines and below the link labels and cards, and draws only between card edges.
+ * window. It sits above the links and below the link labels and cards; dots under a label are not drawn.
  */
 public final class FederationFlowPulses extends UIElement {
     private static final long PERIOD_MILLIS = 1500;
-    private static final int DOTS = 2;
+    private static final int DOTS = 3;
 
-    private final Supplier<List<FlowPath.Segment>> segments;
+    private final Supplier<List<Flow>> flows;
     private int drawnDots;
 
-    FederationFlowPulses(Supplier<List<FlowPath.Segment>> segments) {
-        this.segments = segments;
+    /** One direction of a link that delivered something; {@code returning} runs from the link's end to its start. */
+    record Flow(TopologyLink link, boolean returning, float labelHalfWidth, float labelHalfHeight) {
+    }
+
+    FederationFlowPulses(Supplier<List<Flow>> flows) {
+        this.flows = flows;
         setId("graph_flow_pulses");
         // Decoration only: clicks go to the cards and links underneath.
         setAllowHitTest(false);
@@ -38,8 +42,8 @@ public final class FederationFlowPulses extends UIElement {
         var pose = graphics.pose();
         pose.pushPose();
         pose.translate(getPositionX(), getPositionY(), 0);
-        for (var segment : segments.get()) {
-            var dots = segment.dots(phase, DOTS);
+        for (var flow : flows.get()) {
+            var dots = flow.link().dots(phase, DOTS, flow.returning(), flow.labelHalfWidth(), flow.labelHalfHeight());
             for (int index = 0; index < dots.length; index += 2) {
                 pose.pushPose();
                 pose.translate(dots[index], dots[index + 1], 0);

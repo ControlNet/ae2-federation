@@ -60,6 +60,7 @@ final class FederationWorkspace {
     private String filter = "";
     private String selectedSlot = "";
     private String patternSignature = "";
+    private String page = "overview";
 
     @SuppressWarnings("unchecked")
     FederationWorkspace(UI ui, Consumer<String> select) {
@@ -180,7 +181,9 @@ final class FederationWorkspace {
         boolean wires = processingAvailable && !processingList;
         element("mapping_list", UIElement.class).setDisplay(!wires);
         element("processing_graph", UIElement.class).setDisplay(wires);
-        element("mapping_view_switch", UIElement.class).setDisplay(processingAvailable);
+        // The wires canvas shows every Provider; the Provider selector belongs to the list view.
+        element("mapping_toolbar", UIElement.class).setDisplay(!wires);
+        element("mapping_view_switch", UIElement.class).setDisplay(processingAvailable && "mapping".equals(page));
         for (var mode : List.of("graph", "list")) {
             var button = element("mapping_view_" + mode, Button.class);
             button.removeClass("selected");
@@ -197,7 +200,15 @@ final class FederationWorkspace {
     }
 
     void show(String page) {
+        this.page = page;
         navigationGroup = null;
+        element("domain_tab", Label.class).setText(PAGES.contains(page) ? Component.literal(" · ").append(tr("tab_title." + page)) : Component.empty());
+        boolean mapping = "mapping".equals(page);
+        element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
+        element("members_value", UIElement.class).setDisplay(!mapping);
+        element("processing_summary", UIElement.class).setDisplay(mapping);
+        updateFeedback();
+        if (processing != null) updateProcessingView();
         for (var candidate : PAGES) {
             element("page_" + candidate, UIElement.class).setDisplay(candidate.equals(page));
             var button = element("tab_" + candidate, Button.class);
@@ -208,6 +219,12 @@ final class FederationWorkspace {
         element("graph_search", UIElement.class).setDisplay("overview".equals(page));
         // Close floating selectors when navigating away from their anchors.
         selectors.values().forEach(Selector::hide);
+    }
+
+    /** The footer repeats processing feedback on the processing page only, and only when there is something to say. */
+    void updateFeedback() {
+        var feedback = element("processing_status", UIElement.class);
+        feedback.setDisplay("mapping".equals(page) && !feedback.hasClass("feedback-neutral"));
     }
 
     void acceptChoices(String encoded) {
@@ -277,8 +294,11 @@ final class FederationWorkspace {
             var providerAt = choices.getOrDefault("mapping_provider", List.of()).stream()
                     .filter(choice -> choice.get("id").getAsString().equals(providerId) && choice.has("position"))
                     .map(choice -> choice.get("position").getAsString()).findFirst().orElse("");
+            var names = objects(root, "networks").stream().map(network -> FederationTopologyView.displayName(
+                    network.get("id").getAsString(), network.has("name") ? network.get("name").getAsString() : "").getString()).toList();
             processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
-                    confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"));
+                    confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"), names);
+            element("processing_summary", Label.class).setText(processing.summary());
         }
         var signature = root.getAsJsonArray("slot").toString() + selectedSlot;
         if (!patternSignature.equals(signature)) {
@@ -318,7 +338,7 @@ final class FederationWorkspace {
             if (choice.has("owner")) tooltip = tooltip.append(tr("target_owner", choice.get("owner").getAsString(),
                     choice.get("ownerInstance").getAsLong()));
         }
-        if (id != null) tooltip = tooltip.append(Component.literal(id));
+        // Choice ids are internal hashes: the position and state above already say which device this is.
         return tooltip;
     }
 

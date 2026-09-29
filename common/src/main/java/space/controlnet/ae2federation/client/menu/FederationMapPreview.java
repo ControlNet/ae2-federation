@@ -39,6 +39,8 @@ public final class FederationMapPreview extends UIElement {
 
     /** No Map/3D switch: a card's thumbnail stays a map, drawn small next to the card's figures. */
     private final boolean thumbnail;
+    /** The panel caption naming the current view, kept in step with the switch; none for thumbnails. */
+    private com.lowdragmc.lowdraglib2.gui.ui.elements.Label caption;
 
     FederationMapPreview() {
         this(false);
@@ -60,8 +62,15 @@ public final class FederationMapPreview extends UIElement {
         applyMode();
     }
 
+    /** Names the current view in {@code label}: the top-down map or the 3D view of loaded blocks. */
+    void setCaption(com.lowdragmc.lowdraglib2.gui.ui.elements.Label label) {
+        caption = label;
+        applyMode();
+    }
+
     private void applyMode() {
         if (scene != null) scene.setDisplay(threeDimensional);
+        if (caption != null) caption.setText(FederationWorkspace.trLocation(threeDimensional ? "caption_3d" : "caption_map"));
         mode.setText(FederationWorkspace.trLocation(threeDimensional ? "mode_map" : "mode_3d"));
         mode.removeClass("three-d");
         if (threeDimensional) mode.addClass("three-d");

@@ -423,7 +423,16 @@ public final class FederationDomainPolicySession {
                     binding.claimState().owner().ifPresent(owner -> {
                         choice.addProperty("owner", owner.provider().id().value().toString());
                         choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
+                        // Where the owner is, so the player can find it; absent when it is not a loaded block.
+                        currentProviders().stream().filter(candidate -> candidate.identity().equals(owner.provider()))
+                                .flatMap(candidate -> candidate.controller().stream())
+                                .filter(net.minecraft.world.level.block.entity.BlockEntity.class::isInstance)
+                                .map(controller -> ((net.minecraft.world.level.block.entity.BlockEntity) controller).getBlockPos())
+                                .findFirst().ifPresent(position -> choice.addProperty("ownerPosition", position.toShortString()));
                     });
+                    // The same order as the "networks" array, so the canvas names the Endpoint's network as the overview does.
+                    choice.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
+                            .map(network -> selection == null ? -1 : selection.members().indexOf(network)).orElse(-1));
                 }
             }
             if (!endpoints.isEmpty()) selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));

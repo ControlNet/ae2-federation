@@ -144,13 +144,47 @@
 
 ## Phase 9 notes (2026-09-28)
 
-- Topology links stay straight on purpose. The pill sits at the chord midpoint, and `FlowPath` trims flow dots to
-  the visible stubs of the straight line. A curved link would put dots under the pill and cards.
 - There is no storage bar on cards. AE2 gives no per-network byte or type capacity, so it would need an invented
-  denominator (same as the type-capacity item below).
-- Cards grew to 184x70 for the thumbnail and position line. The ellipse layout radius went to max(130,
-  92/sin(pi/n)), so pills do not touch the cards.
+  denominator (same as the type-capacity item below). The card has a "Storage  N types" row without a bar.
 - "1 link" uses its own key (`ae2federation.ui.domain.links.one`).
+- (Superseded in Phase 11: links are curved now, see below.)
+
+## Phase 11: second design pass (2026-09-29)
+
+A side-by-side review after the window grew found the layout, not the features, off the design. Fixed:
+
+- Proportions: the topology aside is 30% of the page (176..320), the processing aside 34% (118..340). The design's
+  left rail really is icon-only (36x40 at design scale); the tabs are just larger (22x24).
+- Header: "ME Federation Domain Management · <tab>" (tab names: Topology / Processing / Diagnostics), then
+  "● Synced · entrance · summary". The summary is the members line on topology and "N Providers · M Endpoints ·
+  K mappings" on processing. Scope and live-flow toggles and the Wires/List switch sit in the header.
+- Footer: processing feedback (`#processing_status`) moved to the footer, coloured, hidden when neutral or off-page
+  (LSS classes `feedback-neutral` / `off-page`, not `setDisplay`, so the LSS display rules keep working).
+- Cards are 200x88: map tile top left, name + identity badge, position, state; labelled Energy bar with %, Storage
+  N types, CPU x/y and Channels N. The bottom line takes the state colour. Unnamed networks read "Unnamed network"
+  on the card and "Network 082A" (4-hex tag) everywhere else; tests use the 4-hex tag.
+- Links are curves (`TopologyLink`): side edges when cards stand side by side, top/bottom when stacked, with an
+  accent square at each end. The pill sits on the curve's middle; flow dots follow the curve and hide under the pill
+  (`TopologyLink.dots`). `FlowPath` was removed.
+- Pills: one row per direction, "A▸B" then a bordered chip per capability in its state colour, struck through when
+  off, "!" on error. Related-domain pills add "Other domain · read only".
+- Legend is shown by default, with coloured squares; "?" folds it.
+- Pair editor rows are one line: capability, state (wraps for explanations), mapping link, switch.
+  "Not configured" replaces "Not configured · switch on to create". The via line is "Via 5 Routers · first at
+  x, y, z · this domain"; every Router position is in the title's tooltip.
+- Network aside order follows the design: title, position · id, preview (caption names Map/3D), Highlight + Devices
+  side by side, detail, stats with energy and CPU bars, connections with "›".
+- Processing canvas: column headings, Provider cards (map tile, accent, "Provider · <network>", "pos · used/total
+  slots · editing|open"), 22px rows with "→ N", round ports on the right edge, Endpoint cards with a round input
+  port on the left edge, map tile, "Endpoint · <network>", position, claim and a claim-coloured bottom line. The
+  drag draws a dashed curve with a cursor ring and outlines the dragged row. A legend line sits at the bottom.
+  - Endpoint choices now carry `networkIndex` and `ownerPosition`, so hints say "Taken by Provider @ x, y, z".
+  - The Provider selector row shows only in the list view.
+- Processing aside: title, preview, then a facts table (`.processing-fact`, values `#processing_fact_value_<key>`):
+  wire = Rule, Ownership, Lane, State; Endpoint = Network, Owner, Claim, Patterns, State. Buttons share one row.
+  One map shows both ends of a wire instead of the design's two thumbnails: it keeps the Map/3D switch and the
+  relation between the ends.
+- Selector tooltips no longer show internal choice ids (64-hex Provider hashes).
 
 ## Deliberately not implemented
 

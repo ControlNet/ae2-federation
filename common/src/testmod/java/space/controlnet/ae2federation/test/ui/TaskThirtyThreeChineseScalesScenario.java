@@ -161,10 +161,14 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .hover("#endpoint_browser_close")
                 .step("close endpoint overview", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_browser_close"))
                 .click("#tab_overview").frames(3)
+                .step("reveal the network's links", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, ".network-link"))
+                .frames(2)
                 .hover(".network-link")
                 .step("open the pair in the narrow layout", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))
                 .waitUntil("narrow pair editor is shown", context -> context.el("#pair_editor").isVisible())
+                .step("return the aside to the top", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
+                .frames(2)
                 .check("narrow pair editor fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
                         context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_0_processing"))
                 .check("narrow pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(

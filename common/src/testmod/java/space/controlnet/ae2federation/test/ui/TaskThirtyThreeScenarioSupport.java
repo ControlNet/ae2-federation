@@ -48,9 +48,9 @@ final class TaskThirtyThreeScenarioSupport {
         context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }
 
-    /** The workspace names a network by the first eight hex digits of its identity. */
+    /** The workspace names an unnamed network by the first four hex digits of its identity, its card badge. */
     static String networkTag(String networkUuid) {
-        return networkUuid.substring(0, 8).toUpperCase(java.util.Locale.ROOT);
+        return networkUuid.substring(0, 4).toUpperCase(java.util.Locale.ROOT);
     }
 
     static String networkName(String networkUuid) {

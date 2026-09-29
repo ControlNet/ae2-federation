@@ -3,8 +3,8 @@
 .domain-shell { flex-direction: row; padding-all: 0; gap-all: 0; }
 .domain-shell label, .domain-shell text-field, .domain-shell .__button_text__ { font: minecraft:default; text-shadow: false; }
 
-.workspace-rail { width: 22; flex-shrink: 0; margin-top: 30; padding-top: 3; padding-bottom: 5; padding-left: 2; gap-all: 2; background: built-in(federation:RAIL); }
-.workspace-rail .rail-tab { width: 18; height: 20; padding-all: 0; base-background: built-in(federation:TOOLBAR); hover-background: built-in(federation:TOOLBAR_HOVER); pressed-background: built-in(federation:TOOLBAR_ACTIVE); }
+.workspace-rail { width: 26; flex-shrink: 0; margin-top: 38; padding-top: 4; padding-bottom: 6; padding-left: 3; gap-all: 3; background: built-in(federation:RAIL); }
+.workspace-rail .rail-tab { width: 22; height: 24; padding-all: 0; base-background: built-in(federation:TOOLBAR); hover-background: built-in(federation:TOOLBAR_HOVER); pressed-background: built-in(federation:TOOLBAR_ACTIVE); }
 .workspace-rail .rail-tab.selected { base-background: built-in(federation:TOOLBAR_ACTIVE); }
 
 .domain-panel { flex: 1; min-width: 0; height: 100%; padding-all: 6; padding-bottom: 8; gap-all: 5; flex-direction: column; background: built-in(federation:FRAME); }
@@ -19,30 +19,34 @@
 .domain-panel .danger-action { base-background: built-in(federation:DANGER); }
 .domain-panel text-field { height: 16; padding-all: 3; background: built-in(federation:FIELD); text-color: #ff3f3d52; font-size: 9; }
 
-.domain-header { width: 100%; height: 24; flex-shrink: 0; flex-direction: row; gap-all: 6; align-items: center; }
-.header-titles { flex: 1; min-width: 0; gap-all: 2; }
-.domain-title { height: 10; text-color: #ff3f3d52; }
+.domain-header { width: 100%; height: 26; flex-shrink: 0; flex-direction: row; gap-all: 6; align-items: center; }
+.header-titles { flex: 1; min-width: 0; gap-all: 3; }
+.title-row { height: 10; flex-direction: row; }
+.domain-panel .domain-title { height: 10; adaptive-width: true; flex-shrink: 0; text-color: #ff3f3d52; }
+.domain-panel .domain-tab { height: 10; flex: 1; min-width: 0; text-color: #ff6d6a82; }
 .header-status { height: 10; flex-direction: row; gap-all: 4; align-items: center; }
 .sync-lamp { width: 5; height: 5; flex-shrink: 0; background: #ff55ff8a; }
+.domain-panel .sync-text { height: 10; adaptive-width: true; flex-shrink: 0; text-color: #ff20a94b; }
 .domain-caption { height: 10; flex-shrink: 1; min-width: 0; text-color: #ff6d6a82; }
 #entrance_value { flex: 1; min-width: 0; }
-.members-caption { flex-shrink: 0; width: 104; }
-#graph_search { width: 110; flex-shrink: 0; }
+.domain-panel .members-caption { flex-shrink: 0; adaptive-width: true; }
+.header-tools { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 2; }
+.domain-panel .header-tools .scope-button { width: 92; height: 18; }
+.domain-panel .header-tools .header-toggle { width: 18; height: 18; padding-all: 0; padding-bottom: 2; }
+#graph_search { width: 150; flex-shrink: 0; }
 .return-provider { width: 104; flex-shrink: 0; display: none; }
 
 .workspace-page { flex: 1; min-height: 0; width: 100%; gap-all: 5; }
 .topology-page { flex-direction: row; }
 .topology-canvas { flex: 1; min-width: 0; height: 100%; }
-.domain-graph { width: 100%; height: 100%; allow-pan: true; allow-zoom: true; min-scale: 0.25; max-scale: 3; grid-size: 16; grid-subdivisions: 4; grid-line-color: #0dd8d3e4; grid-accent-color: #1ad8d3e4; background: #ff201e27; }
+.domain-graph { width: 100%; height: 100%; allow-pan: true; allow-zoom: true; min-scale: 0.1; max-scale: 3; grid-size: 16; grid-subdivisions: 4; grid-line-color: #0dd8d3e4; grid-accent-color: #1ad8d3e4; background: #ff201e27; }
 .graph-toolbar { position: absolute; right: 3; top: 3; flex-direction: row; gap-all: 2; }
 .domain-panel .graph-toolbar .toolbar-button { width: 16; height: 16; padding-all: 0; padding-bottom: 2; }
-/* Below the zoom row: a narrow canvas has no room for both in one row. */
-.domain-panel .scope-button { position: absolute; right: 3; top: 21; width: 88; height: 16; padding-all: 0; padding-bottom: 2; }
 .domain-panel .graph-throughput { position: absolute; left: 4; top: 5; width: 150; height: 10; text-color: #ffaaa4b2; }
 .graph-search-empty { position: absolute; left: 4; top: 16; width: 150; height: 10; display: none; text-color: #ffffd65a; }
-.domain-panel .graph-legend { position: absolute; left: 3; bottom: 3; right: 3; adaptive-height: true; text-wrap: wrap; padding-horizontal: 3; text-color: #ffaaa4b2; background: #e017141e; }
+.domain-panel .graph-legend { position: absolute; left: 6; bottom: 6; max-width: 96%; adaptive-width: true; adaptive-height: true; text-wrap: wrap; padding-all: 3; padding-horizontal: 5; text-color: #ffaaa4b2; background: #eb17141e; }
 
-.topology-aside { width: 176; flex-shrink: 0; height: 100%; scroller-view-mode: vertical; }
+.topology-aside { width: 30%; min-width: 176; max-width: 320; flex-shrink: 0; height: 100%; scroller-view-mode: vertical; }
 .topology-aside .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
 .aside-section { width: 100%; flex-shrink: 0; gap-all: 4; }
 .aside-title-row { height: 12; flex-direction: row; gap-all: 4; align-items: center; }
@@ -61,30 +65,36 @@
 .rename-row #network_rename_field { width: 100%; }
 .network-stats { gap-all: 2; }
 .location-panel { gap-all: 3; }
-.map-preview { width: 100%; height: 72; flex-shrink: 0; }
-.processing-detail .map-preview { height: 56; }
+.map-preview { width: 100%; height: 110; flex-shrink: 0; }
+.processing-detail .map-preview { height: 96; }
+.compact .map-preview { height: 64; }
 .compact .processing-detail .map-preview { height: 40; }
+.domain-panel .panel-caption { width: 100%; height: 9; flex-shrink: 0; text-color: #ffaaa4b2; }
+.network-actions { width: 100%; }
 .domain-panel .stat-line { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
-.stat-bar { width: 100%; height: 3; flex-shrink: 0; margin-bottom: 2; }
-.domain-panel .network-link { height: 18; }
+.stat-bar { width: 100%; height: 5; flex-shrink: 0; margin-bottom: 2; }
+.domain-panel .network-link { height: 18; padding-right: 12; }
 .domain-panel .network-link .__button_text__ { horizontal-align: left; }
 .domain-panel .paper-note { width: 100%; adaptive-height: true; flex-shrink: 0; padding-all: 3; text-wrap: wrap; text-color: #ff3f3d52; background: #fff2f2f2; }
 .domain-panel .paper-note.read-only-banner { text-color: #ff5b3d12; background: #ffffe6a8; }
 .pair-sections { width: 100%; flex-shrink: 0; gap-all: 4; }
 .domain-panel .pair-section-title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffefeaf8; }
 .policy-row { width: 100%; flex-shrink: 0; gap-all: 1; padding-top: 2; }
-.policy-row-head { width: 100%; height: 12; flex-direction: row; gap-all: 3; align-items: center; }
-.domain-panel .policy-capability { flex: 1; min-width: 0; height: 10; text-color: #ffefeaf8; }
-.domain-panel .policy-state { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
+.policy-row-head { width: 100%; flex-direction: row; gap-all: 4; align-items: flex-start; }
+.domain-panel .policy-capability { width: 62; flex-shrink: 0; height: 10; margin-top: 1; text-color: #ffefeaf8; }
+.domain-panel .policy-state { flex: 1; min-width: 0; adaptive-height: true; margin-top: 1; text-wrap: wrap; }
 .domain-panel .policy-terms { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .domain-panel .policy-link { width: 44; height: 12; padding-all: 0; padding-bottom: 2; }
 .domain-panel .policy-switch { width: 22; height: 12; padding-all: 0; flex-shrink: 0; }
+.domain-panel .policy-link { flex-shrink: 0; }
 .domain-panel button.policy-switch.__disabled__ { base-background: built-in(federation:SWITCH_OFF); }
 .domain-panel button.policy-switch.on.__disabled__ { base-background: built-in(federation:SWITCH_ON); }
 
 .domain-footer { width: 100%; height: 11; flex-shrink: 0; flex-direction: row; }
 .domain-status { flex: 1; min-width: 0; height: 10; text-color: #ff6d6a82; }
 .domain-panel .revision-status { flex: 0; width: 150; horizontal-align: right; }
+// Processing feedback is shown on its page only, and only when there is something to report (FederationWorkspace).
+.domain-panel .domain-footer .mapping-status { flex: 1; min-width: 0; height: 10; text-wrap: hide; }
 .domain-panel .domain-status.accepted { text-color: #ff28633b; }
 .domain-panel .domain-status.conflict { text-color: #ff79541b; }
 .domain-panel .domain-status.stale_context, .domain-panel .domain-status.stale_revision, .domain-panel .domain-status.disabled { text-color: #ff922e42; }
@@ -106,19 +116,25 @@
 .mapping-toolbar selector { flex: 1; }
 .identity-caption { display: none; }
 .mapping-body { flex: 1; min-height: 0; flex-direction: row; gap-all: 8; }
-.view-switch { width: 84; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 2; }
+.view-switch { width: 84; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 2; display: none; }
 .view-switch button { flex: 1; }
 .processing-graph { flex: 1; min-height: 0; width: 100%; flex-direction: row; gap-all: 6; }
-.processing-scroll { flex: 1; min-width: 0; height: 100%; background: built-in(federation:WELL); }
-.processing-detail { width: 118; height: 100%; flex-shrink: 0; scroller-view-mode: vertical; }
+.processing-area { flex: 1; min-width: 0; height: 100%; }
+.processing-scroll { width: 100%; height: 100%; background: #ff201e27; }
+.domain-panel .processing-legend { position: absolute; left: 6; bottom: 5; right: 6; height: 10; text-wrap: hide; text-color: #ffaaa4b2; }
+.processing-detail { width: 34%; min-width: 118; max-width: 340; height: 100%; flex-shrink: 0; scroller-view-mode: vertical; }
 .processing-detail .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
 .processing-detail .__scroller_view_view-container__ { width: 100%; gap-all: 3; }
-// The detail text already explains what to do; only real feedback is repeated under it.
-.domain-panel .processing-detail .mapping-status.feedback-neutral { display: none; }
+.domain-panel .processing-title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffefeaf8; }
+.processing-facts { width: 100%; flex-shrink: 0; gap-all: 3; }
+.processing-fact { width: 100%; flex-shrink: 0; flex-direction: row; gap-all: 4; align-items: flex-start; }
+.domain-panel .processing-fact-name { width: 48; flex-shrink: 0; height: 9; text-color: #ffaaa4b2; }
+.domain-panel .processing-fact-value { flex: 1; min-width: 0; adaptive-height: true; text-wrap: wrap; text-color: #ffd6d0e0; }
 .processing-detail .compact-actions { width: 100%; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 3; }
 .processing-detail .compact-actions button { flex: 1; }
 .domain-panel .processing-note { width: 100%; adaptive-height: true; text-wrap: wrap; text-color: #ffaaa4b2; }
-.compact .processing-detail { width: 96; }
+.compact .processing-detail { min-width: 96; }
+.domain-shell.compact .processing-legend { display: none; }
 .pattern-column { flex: 1; min-width: 0; gap-all: 3; }
 .pattern-search-row { height: 16; flex-shrink: 0; flex-direction: row; gap-all: 3; }
 .pattern-search-row #pattern_search { flex: 1; min-width: 0; }
@@ -161,6 +177,9 @@
 
 // Narrow viewports keep controls reachable; the aside scrolls independently.
 .domain-shell.compact .members-caption { display: none; }
-.domain-shell.compact .graph-legend { display: none; }
+.domain-shell.compact .graph-legend, .domain-panel .graph-legend.folded { display: none; }
+.domain-shell.compact #graph_search { width: 72; }
+.domain-shell.compact .domain-panel .header-tools .scope-button { width: 72; }
+.domain-shell.compact .domain-tab { display: none; }
 .domain-shell.compact .target-column .compact-actions { height: 39; flex-direction: column; }
 .domain-shell.compact .target-column .domain-heading { display: none; }
