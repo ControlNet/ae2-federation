@@ -76,24 +76,29 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         context, "#endpoint_detail", "#endpoint_identity"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-diagnostics-scale-4")
                 .click("#tab_mapping").frames(3)
-                .click("#mapping_view_list")
-                .check("Chinese mapping action labels fit", context ->
-                        TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#mapping_toggle", "#mapping_release"))
-                .checkBounds("#pattern_list", bounds -> bounds.width() > 100 && bounds.height() > 40)
-                .check("rendered Pattern row contains native 64-bit quantity", context ->
-                        TaskThirtyThreeScenarioSupport.renderedVirtualRows(context).contains("4,000,000,000"))
+                .waitUntil("the wires view lists the Provider's patterns", context -> !context.all("#processing_pattern_0").isEmpty())
+                .checkBounds("#processing_scroll", bounds -> bounds.width() > 100 && bounds.height() > 40)
+                .click("#processing_pattern_0")
+                .waitUntil("the chosen pattern's detail shows its native 64-bit input", context ->
+                        context.el("#processing_detail_text").text().contains("4,000,000,000"))
                 .step("record Chinese scale evidence", context -> {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.chinese-scales");
-                    context.attach("largeQuantity", TaskThirtyThreeScenarioSupport.renderedVirtualRows(context));
+                    context.attach("largeQuantity", context.el("#processing_detail_text").text());
                 })
+                .hover("#domain_title").frames(3)
                 .screenshot("ui-chinese-scale-4")
                 .waitUntilServer("native lane sends a real processing input", TaskThirtyThreeWorldFixture::dispatchRealWork)
-                .click("#pattern_slot_1")
-                .waitForTextContains("#mapping_selection_value", "样板槽位 1")
+                .click("#processing_pattern_1")
+                .click(".processing-endpoint")
+                .waitForText("#mapping_toggle", "断开 #1")
+                .waitUntil("the unmap action is ready", context -> context.el("#mapping_toggle").isActive()).frames(2)
+                .check("Chinese mapping action labels fit", context ->
+                        TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#mapping_toggle", "#processing_highlight"))
                 .click("#mapping_toggle")
                 .waitUntilServer("Chinese scene retains unmapped endpoint", TaskThirtyThreeWorldFixture::endpointRetained)
-                .hover("#mapping_release")
-                .step("open Chinese release confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_release"))
+                .waitUntil("a retained Endpoint offers release", context -> context.el("#processing_release").isActive())
+                .hover("#processing_release")
+                .step("open Chinese release confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_release"))
                 .awaitElement("#release_confirm")
                 .checkTextContains("#release_consequence", "关闭返回此供应器的通道")
                 .checkBounds("#release_confirm", bounds -> bounds.height() >= 18 && bounds.width() > 60)
@@ -107,20 +112,23 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .screenshot("ui-chinese-release-scale-4")
                 .hover("#release_cancel")
                 .step("cancel Chinese release confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_cancel"))
-                .waitForTextContains("#mapping_status", "选择样板和目标端点")
+                .waitForTextContains("#processing_status", "选择样板和目标端点")
                 .checkServer("Chinese cancellation keeps endpoint owned", TaskThirtyThreeWorldFixture::endpointRetained)
                 .step("resize to minimum supported logical width", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 320, 240))
                 .waitUntil("320 by 240 logical viewport", context -> context.mc().getWindow().getGuiScaledWidth() == 320
                         && context.mc().getWindow().getGuiScaledHeight() == 240)
                 .frames(5)
+                .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
                 .check("narrow mapping action labels fit", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(
-                        context, "#mapping_toggle", "#mapping_release"))
-                .check("narrow mapping feedback fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#mapping_status", "#mapping_selection_value"))
+                        context, "#mapping_toggle", "#processing_release"))
+                .check("narrow mapping detail fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#processing_detail_title", "#processing_detail_text"))
+                .check("narrow mapping controls stay in the workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
+                        context, "#mapping_toggle", "#processing_release"))
                 .screenshot("ui-chinese-narrow-mapping")
-                .hover("#mapping_release")
-                .step("open narrow Chinese confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_release"))
+                .hover("#processing_release")
+                .step("open narrow Chinese confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_release"))
                 .awaitElement("#release_confirm")
                 .check("narrow Chinese release text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#release_consequence"))
                 .check("narrow Chinese release controls stay on screen", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
@@ -128,7 +136,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .screenshot("ui-chinese-narrow-release")
                 .hover("#release_cancel")
                 .step("cancel narrow Chinese confirmation", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_cancel"))
-                .waitForTextContains("#mapping_status", "选择样板和目标端点")
+                .waitForTextContains("#processing_status", "选择样板和目标端点")
                 .checkServer("narrow Chinese cancellation preserves ownership", TaskThirtyThreeWorldFixture::endpointRetained)
                 .click("#tab_diagnostics").frames(3)
                 .check("narrow diagnostics fit", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(

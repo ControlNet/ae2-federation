@@ -999,32 +999,6 @@ public final class FederationDomainPolicySession {
                 : FederationDomainGraphProjection.snapshot(level, context, selectedProvider()).encode();
     }
 
-    public Component mappingProviderText() {
-        return selectedProvider().map(entry -> Component.literal(shortId(FederationDomainGraphProjection.providerId(context, entry))))
-                .orElseGet(() -> Component.literal("-"));
-    }
-
-    public Component mappingSelectionText() {
-        var controller = selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller);
-        if (controller.isPresent()) {
-            var endpoints = mappingEndpoints();
-            if (endpoints.isEmpty()) {
-                return Component.translatable("ae2federation.ui.domain.mapping.selection_endpoint", mappingSlotIndex,
-                        "-", "-");
-            }
-            var endpoint = selectedMappingEndpoint(endpoints);
-            var mapped = controller.orElseThrow().endpointsForSlot(mappingSlotIndex)
-                    .contains(endpoint);
-            var state = mapped ? "ae2federation.ui.domain.mapping.mapped"
-                    : controller.orElseThrow().retained(endpoint)
-                            ? "ae2federation.ui.domain.mapping.retained" : "ae2federation.ui.domain.mapping.unmapped";
-            return Component.translatable("ae2federation.ui.domain.mapping.selection_endpoint", mappingSlotIndex,
-                    shortId(endpoint.id().value().toString()),
-                    Component.translatable(state));
-        }
-        return Component.translatable("ae2federation.ui.domain.mapping.selection", mappingSlotIndex, mappingLaneIndex);
-    }
-
     public Component mappingStatusText() {
         if (context == null && entrance instanceof DevicePolicyEntrance) {
             return statusText();

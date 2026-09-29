@@ -24,14 +24,17 @@ final class TaskThirtyThreeUiContractTest {
                 "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenuHolder.java"));
 
         for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
-                "graph_search", "network_links", "pair_editor", "pair_sections", "pattern_search",
-                "pattern_list", "mapping_provider_next", "mapping_slot_next", "mapping_lane_next",
-                "mapping_toggle", "mapping_status", "endpoint_next", "endpoint_detail", "entrance_value",
-                "members_value", "ack_status" }) {
+                "graph_search", "network_links", "pair_editor", "pair_sections", "processing_graph",
+                "processing_scroll", "processing_detail", "mapping_toggle", "processing_unlink", "processing_release",
+                "processing_status", "endpoint_next", "endpoint_detail", "entrance_value", "members_value",
+                "ack_status" }) {
             assertTrue(xml.contains("id=\"" + id + "\""), "Missing stable Task 33 control #" + id);
         }
         assertTrue(xml.contains("<graph-view"), "Production UI must use LDLib2's pan/zoom graph canvas");
-        assertTrue(xml.contains("<virtual-scroller-view"), "Large Pattern lists must be virtualized");
+        // The V2 processing page is the wires view alone; the V1 list and its view switch are gone.
+        for (var id : new String[] {"mapping_list", "mapping_view_list", "pattern_list", "mapping_provider_next"}) {
+            assertTrue(!xml.contains("id=\"" + id + "\""), "The processing page must not bring back the V1 list #" + id);
+        }
         assertTrue(lss.contains("allow-zoom: true") && lss.contains("allow-pan: true"),
                 "Graph interaction must be enabled in shared LSS");
         // WorkspaceSizeTest pins the sizes: it fills the screen less a margin and shrinks with a small viewport.

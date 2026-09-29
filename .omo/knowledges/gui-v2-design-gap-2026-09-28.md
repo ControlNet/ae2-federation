@@ -284,3 +284,31 @@ A side-by-side review after the window grew found the layout, not the features, 
     carry it, and flow dots hide under the moved label.
   - Card state lines and the aside's connection rows clip at a word (`TextWrap.HIDE`) instead of running out; the
     connection rows use darker state colours (`onPaper`) on the light aside. Pill names allow 10 characters, then "…".
+
+## Phase 16: the V1 list view is gone (2026-09-29)
+
+The processing page is now only the V2 wires view; the Wires/List switch, `mapping_list`, `pattern_list`
+(VirtualScroller), `mapping_provider_next`, `mapping_slot_next`, `mapping_lane_next`, `mapping_selection_value`,
+`mapping_release`, `mapping_status` and `mapping_feedback_scroll` were removed. What only the list could do moved:
+
+- Pattern search → the header `#graph_search`. `FederationTopologyView.onSearch(listener)` feeds the same query to
+  `FederationProcessingGraph.filter`: a Provider whose header (name, network, position) matches shows all its rows,
+  otherwise rows match on `patternText`; Endpoint cards match on title and position; `#processing_search_empty` shows
+  when nothing matches. Hidden cards/rows drop their wires (`ends()` returns null when not displayed).
+- Click-to-map → click a pattern row (selection kind `PATTERN`), click an Endpoint (keeps the chosen slot), then the
+  aside's `#mapping_toggle` ("Map #N here" / "Unmap #N"), which sends `SET_MAPPING` with an explicit state. The server
+  `TOGGLE_MAPPING` action still exists but no client control sends it.
+- Release → `#processing_release`, shown only for a selected Endpoint this Provider retains with no patterns.
+- Status/ack → `#processing_status` (the verifier's `mappingAck` comes from `attach()` reading it).
+
+Gotchas found on the way:
+
+- LDLib `Button.loadXml` turns `text=""` into `noText()`, which hides the label for good; a button whose label is set
+  in code needs `.enableText()` (or a non-empty text attribute).
+- The design keeps the aside's buttons directly under the facts, inside the detail scroller. In the 320x240 layout
+  they stack (`.domain-shell.compact .processing-actions` column), facts put the name above the value, the paper note
+  is hidden, and the aside is at least 104 wide so "Release retained" fits beside the scrollbar. UI tests scroll
+  `#processing_detail` down before hovering those buttons, as a player would.
+- In LSS `flex: 0` sets a zero basis and lets a fixed-height button collapse (to 6px here); use `flex-grow: 0` plus
+  `flex-shrink: 0`.
+- `federationUiTest` accepts only the exact case sets (T3/T15/T33/T34), not a subset.

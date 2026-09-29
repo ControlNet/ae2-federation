@@ -33,10 +33,6 @@
                     </element>
                     <button id="graph_flow_toggle" class="header-icon" text=""/>
                 </element>
-                <element id="mapping_view_switch" class="view-switch">
-                    <button id="mapping_view_graph" text="ae2federation.ui.processing.view_wires"/>
-                    <button id="mapping_view_list" text="ae2federation.ui.processing.view_list"/>
-                </element>
                 <text-field id="graph_search" mode="string" value=""/>
                 <button id="return_provider" class="return-provider" text="ae2federation.ui.workspace.back_provider"/>
             </element>
@@ -103,11 +99,6 @@
                 </scroller-view>
             </element>
             <element id="page_mapping" class="workspace-page">
-                <element id="mapping_toolbar" class="mapping-toolbar">
-                    <label class="domain-heading"><lang key="ae2federation.ui.workspace.provider"/></label>
-                    <selector id="mapping_provider_next"/>
-                    <label id="mapping_provider_value" class="identity-caption"/>
-                </element>
                 <element id="processing_graph" class="processing-graph">
                     <element class="processing-area">
                         <scroller-view id="processing_scroll" class="processing-scroll"/>
@@ -128,38 +119,14 @@
                             </element>
                             <label id="processing_detail_text" class="processing-help"/>
                             <element id="processing_facts" class="dark-panel processing-facts"/>
-                            <element class="compact-actions">
+                            <button id="mapping_toggle" class="primary-action processing-toggle" text=""/>
+                            <element class="processing-actions">
                                 <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
                                 <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
                                 <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
                             </element>
                         </scroller-view>
                         <label id="processing_note" class="paper-note processing-note"/>
-                    </element>
-                </element>
-                <element id="mapping_list" class="mapping-body">
-                    <element class="pattern-column">
-                        <element class="pattern-search-row">
-                            <text-field id="pattern_search" mode="string" value=""/>
-                            <button id="pattern_show_empty" text="ae2federation.ui.workspace.show_empty"/>
-                        </element>
-                        <label id="pattern_summary" class="domain-caption"/>
-                        <label id="pattern_empty" class="empty-message"/>
-                        <virtual-scroller-view id="pattern_list" class="pattern-list"/>
-                    </element>
-                    <element class="target-column">
-                        <label class="domain-heading"><lang key="ae2federation.ui.workspace.pattern"/></label>
-                        <selector id="mapping_slot_next"/>
-                        <label class="domain-heading"><lang key="ae2federation.ui.workspace.target"/></label>
-                        <selector id="mapping_lane_next"/>
-                        <label id="mapping_selection_value" class="mapping-selection"/>
-                        <element class="compact-actions">
-                            <button id="mapping_toggle" class="primary-action" text="ae2federation.ui.domain.mapping.toggle"/>
-                            <button id="mapping_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
-                        </element>
-                        <scroller-view id="mapping_feedback_scroll" class="diagnostic-scroll feedback-scroll">
-                            <label id="mapping_status" class="mapping-status"/>
-                        </scroller-view>
                     </element>
                 </element>
             </element>

@@ -2,17 +2,14 @@ package space.controlnet.ae2federation.client.menu;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.VirtualScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.event.HoverTooltips;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
-import dev.vfyjxf.taffy.style.FlexDirection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,9 +26,9 @@ import net.minecraft.world.item.ItemStack;
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
     private static final List<String> PAGES = List.of("overview", "mapping", "diagnostics");
-    private static final Map<String, String> SELECTORS = Map.of(
-            "mapping_provider", "mapping_provider_next", "slot", "mapping_slot_next",
-            "target", "mapping_lane_next", "endpoint", "endpoint_next");
+    /** The server's choice groups; only the Endpoint diagnostics keep a selector, the wires view is the rest. */
+    private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
+    private static final Map<String, String> SELECTORS = Map.of("endpoint", "endpoint_next");
     private final Map<JsonObject, List<GenericStack>> resourceCache = new java.util.IdentityHashMap<>();
     private final UI ui;
     private final FederationEndpointBrowser endpointBrowser;
@@ -41,25 +38,14 @@ final class FederationWorkspace {
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
     private final Map<String, String> choiceFilters = new HashMap<>();
     private final Map<String, Label> choiceEmptyLabels = new HashMap<>();
-    private final VirtualScrollerView<JsonObject> patterns;
     private boolean entranceApplied;
-    private boolean showEmpty;
     private String navigationGroup;
     private String navigationId;
     private String endpointNavigationReceipt;
     private String endpointNavigationPage;
     private FederationTopologyView topology;
     private FederationProcessingGraph processing;
-    /**
-     * Wires are the default processing view; the list stays available and is the only view for native Providers.
-     * The player's choice is kept for this client session so reopened menus keep it.
-     */
-    private static boolean processingList;
-    private boolean processingAvailable;
     private boolean authorityAllowsNavigation;
-    private String filter = "";
-    private String selectedSlot = "";
-    private String patternSignature = "";
     private String page = "overview";
 
     @SuppressWarnings("unchecked")
@@ -120,20 +106,6 @@ final class FederationWorkspace {
                 });
             }
         });
-        patterns = (VirtualScrollerView<JsonObject>) element("pattern_list", VirtualScrollerView.class);
-        patterns.setItemUIProvider(this::patternRow);
-        element("pattern_show_empty", Button.class).setOnClick(event -> {
-            showEmpty = !showEmpty;
-            var button = element("pattern_show_empty", Button.class);
-            button.removeClass("selected");
-            if (showEmpty) button.addClass("selected");
-            refreshPatterns();
-        });
-        element("pattern_search", TextField.class).textFieldStyle(style -> style.placeholder(tr("search_patterns").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
-        element("pattern_search", TextField.class).setTextResponder(value -> {
-            filter = value.toLowerCase(Locale.ROOT);
-            refreshPatterns();
-        });
     }
 
     void updateNavigationAuthority(boolean allowed, boolean rejected) {
@@ -164,38 +136,19 @@ final class FederationWorkspace {
     }
 
     void bindProcessing(Consumer<String> setMapping, Runnable release) {
-        processing = new FederationProcessingGraph(ui, setMapping, select, release, this::patternName, this::outputStack);
-        element("mapping_view_graph", Button.class).setOnClick(event -> {
-            processingList = false;
-            updateProcessingView();
-        });
-        element("mapping_view_list", Button.class).setOnClick(event -> {
-            processingList = true;
-            updateProcessingView();
-        });
-        updateProcessingView();
+        processing = new FederationProcessingGraph(ui, setMapping, select, release, this::patternName, this::outputStack,
+                this::patternFacts);
+        if (topology != null) topology.onSearch(processing::filter);
     }
 
     void setProcessingEditable(boolean editable) {
         if (processing != null) processing.setEditable(editable);
     }
 
-    private void updateProcessingView() {
-        boolean wires = processingAvailable && !processingList;
-        element("mapping_list", UIElement.class).setDisplay(!wires);
-        element("processing_graph", UIElement.class).setDisplay(wires);
-        // The wires canvas shows every Provider; the Provider selector belongs to the list view.
-        element("mapping_toolbar", UIElement.class).setDisplay(!wires);
-        element("mapping_view_switch", UIElement.class).setDisplay(processingAvailable && "mapping".equals(page));
-        for (var mode : List.of("graph", "list")) {
-            var button = element("mapping_view_" + mode, Button.class);
-            button.removeClass("selected");
-            if (mode.equals("graph") == wires) button.addClass("selected");
-        }
-    }
-
     void bindGraph(FederationTopologyView graph) {
         topology = graph;
+        // One header search: it dims networks in the topology and filters Providers, patterns and Endpoints here.
+        if (processing != null) graph.onSearch(processing::filter);
         element("endpoint_locate", Button.class).setOnClick(event -> {
             var id = confirmedSelections.get("endpoint");
             if (id != null && graph.focusObject(id)) show("overview");
@@ -215,15 +168,13 @@ final class FederationWorkspace {
             if (!summary.getValue()) label.addClass("off-page");
         }
         updateFeedback();
-        if (processing != null) updateProcessingView();
         for (var candidate : PAGES) {
             element("page_" + candidate, UIElement.class).setDisplay(candidate.equals(page));
             var button = element("tab_" + candidate, Button.class);
             button.removeClass("selected");
             if (candidate.equals(page)) button.addClass("selected");
         }
-        // Network search filters the topology only.
-        element("graph_search", UIElement.class).setDisplay("overview".equals(page));
+        element("graph_search", UIElement.class).setDisplay("overview".equals(page) || mapping);
         // Close floating selectors when navigating away from their anchors.
         selectors.values().forEach(Selector::hide);
     }
@@ -241,11 +192,6 @@ final class FederationWorkspace {
         endpointBrowser.accept(root);
         if (!entranceApplied) {
             boolean fromProvider = root.has("returnProvider") && root.get("returnProvider").getAsBoolean();
-            // Opening a Provider shows its wires; other entrances keep the view the player last chose.
-            if (fromProvider && processingList) {
-                processingList = false;
-                updateProcessingView();
-            }
             if (root.has("initialPage")) show(root.get("initialPage").getAsString());
             element("return_provider", Button.class).setDisplay(fromProvider);
             entranceApplied = true;
@@ -267,15 +213,15 @@ final class FederationWorkspace {
             button.setActive(hasDomain);
             button.style(style -> style.tooltips(tr(hasDomain ? "domain_browse_help" : "domain_browse_unavailable")));
         }
-        for (var group : SELECTORS.keySet()) {
+        for (var group : CHOICE_GROUPS) {
             var values = new ArrayList<JsonObject>();
             root.getAsJsonArray(group).forEach(value -> values.add(value.getAsJsonObject()));
             var previous = choices.put(group, List.copyOf(values));
             var selector = selectors.get(group);
-            if (!values.equals(previous)) refreshChoices(group);
+            if (!values.equals(previous) && selector != null) refreshChoices(group);
             var confirmed = selected.has(group) ? selected.get(group).getAsString() : null;
             confirmedSelections.put(group, confirmed);
-            selector.setValue(confirmed, false);
+            if (selector != null) selector.setValue(confirmed, false);
         }
         element("endpoint_locate", Button.class).setActive(confirmedSelections.get("endpoint") != null);
         updateEndpointNavigation();
@@ -288,6 +234,9 @@ final class FederationWorkspace {
                 }
                 show("overview");
             } else {
+                // The server selected the owner, its mapped slot and this Endpoint; the wires view selects them too.
+                if (endpointNavigationPage.equals("mapping") && processing != null) processing.focus(
+                        confirmedSelections.get("target"), selected.has("slot") ? selected.get("slot").getAsString() : "");
                 show(endpointNavigationPage);
             }
             endpointNavigationReceipt = null;
@@ -295,12 +244,6 @@ final class FederationWorkspace {
         if (navigationGroup != null && navigationId.equals(confirmedSelections.get(navigationGroup))) {
             show(navigationGroup.equals("mapping_provider") ? "mapping" : "diagnostics");
             navigationGroup = null;
-        }
-        selectedSlot = selected.has("slot") ? selected.get("slot").getAsString() : "";
-        boolean available = root.has("mappingGraph") && root.get("mappingGraph").getAsBoolean();
-        if (available != processingAvailable) {
-            processingAvailable = available;
-            updateProcessingView();
         }
         if (processing != null) {
             var providerId = confirmedSelections.get("mapping_provider");
@@ -315,11 +258,6 @@ final class FederationWorkspace {
             processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
                     confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"), names);
             element("processing_summary", Label.class).setText(processing.summary());
-        }
-        var signature = root.getAsJsonArray("slot").toString() + selectedSlot;
-        if (!patternSignature.equals(signature)) {
-            patternSignature = signature;
-            refreshPatterns();
         }
     }
 
@@ -372,60 +310,12 @@ final class FederationWorkspace {
         return Component.literal(choice.get("label").getAsString());
     }
 
-    private void refreshPatterns() {
-        var all = choices.getOrDefault("slot", List.of());
-        var visible = all.stream().filter(value -> showEmpty || !value.get("empty").getAsBoolean())
-                .filter(value -> filter.isEmpty() || (value.get("id").getAsString() + " " + searchablePattern(value))
-                        .toLowerCase(Locale.ROOT).contains(filter)).toList();
-        patterns.setItems(visible);
-        element("pattern_summary", Label.class).setText(tr("pattern_summary", visible.size(),
-                all.stream().filter(value -> !value.get("empty").getAsBoolean()).count()));
-        var empty = element("pattern_empty", Label.class);
-        empty.setDisplay(visible.isEmpty());
-        empty.setText(tr(all.isEmpty() ? "no_provider" : !filter.isEmpty() ? "no_matches" : "no_patterns"));
-        patterns.setDisplay(!visible.isEmpty());
-    }
-
-    private UIElement patternRow(JsonObject value) {
-        var row = new Button();
-        row.noText();
-        row.addClass("pattern-row");
-        row.setId("pattern_slot_" + value.get("id").getAsString());
-        row.layout(style -> style.height(36).paddingAll(3).gapAll(4).flexDirection(FlexDirection.ROW));
-        if (value.get("id").getAsString().equals(selectedSlot)) row.addClass("selected");
-        var stack = outputStack(value);
-        if (!stack.isEmpty()) {
-            var icon = new UIElement();
-            icon.layout(style -> style.width(18).height(18));
-            icon.style(style -> style.backgroundTexture(new ItemStackTexture(stack)));
-            row.addChild(icon);
-        }
-        var text = new Label();
-        text.addClass("virtual-row");
-        var summary = Component.literal("#" + value.get("id").getAsString() + " ").append(patternName(value));
-        var outputs = resources(value, "outputs");
-        if (!outputs.isEmpty()) {
-            summary.append(" × " + amount(outputs.getFirst()));
-            if (outputs.size() > 1) summary.append(" +" + (outputs.size() - 1));
-        }
-        var inputs = resources(value, "inputs");
-        if (!inputs.isEmpty()) {
-            summary.append("\n").append(tr("inputs", inputs.stream().map(FederationWorkspace::amount)
-                    .collect(java.util.stream.Collectors.joining(", "))));
-        }
-        summary.append("\n").append(tr("mapped_count", value.get("mapped").getAsInt()));
-        text.setText(summary);
-        text.layout(style -> style.flex(1).height(30));
-        text.textStyle(style -> style.fontSize(7).textShadow(false));
-        row.addChild(text);
-        row.setOnClick(event -> select.accept("slot:" + value.get("id").getAsString()));
-        var tooltip = new ArrayList<Component>();
-        tooltip.add(Component.literal("#" + value.get("id").getAsString() + " ").append(patternName(value)));
-        for (var output : outputs) tooltip.add(tr("output_resource", output.what().getDisplayName(), amount(output)));
-        for (var input : inputs) tooltip.add(tr("input_resource", input.what().getDisplayName(), amount(input)));
-        tooltip.add(tr("mapped_count", value.get("mapped").getAsInt()));
-        row.style(style -> style.tooltips(tooltip.toArray(Component[]::new)));
-        return row;
+    /** A pattern's outputs and inputs with exact amounts, for the wires view's pattern detail and search. */
+    private List<Component> patternFacts(JsonObject value) {
+        var lines = new ArrayList<Component>();
+        for (var output : resources(value, "outputs")) lines.add(tr("output_resource", output.what().getDisplayName(), amount(output)));
+        for (var input : resources(value, "inputs")) lines.add(tr("input_resource", input.what().getDisplayName(), amount(input)));
+        return lines;
     }
 
     private List<GenericStack> resources(JsonObject choice, String field) {
@@ -442,11 +332,6 @@ final class FederationWorkspace {
 
     private static String amount(GenericStack stack) {
         return stack.what().formatAmount(stack.amount(), AmountFormat.FULL);
-    }
-
-    private String searchablePattern(JsonObject choice) {
-        return patternName(choice).getString() + " " + resources(choice, "outputs").stream()
-                .map(output -> output.what().getDisplayName().getString()).collect(java.util.stream.Collectors.joining(" "));
     }
 
     /** The objects of one root array, or none when an older payload leaves it out. */

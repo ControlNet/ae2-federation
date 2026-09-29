@@ -126,13 +126,6 @@
 .domain-panel .__selector_dialog__ { background: built-in(federation:FRAME); }
 .choice-label { height: 12; padding-horizontal: 3; font-size: 9; text-color: #ff3f3d52; }
 .domain-panel .__selector_preview__ .choice-label { height: 12; vertical-align: center; }
-.mapping-toolbar { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 4; }
-.mapping-toolbar .domain-heading { width: 56; margin-top: 4; }
-.mapping-toolbar selector { flex: 1; }
-.identity-caption { display: none; }
-.mapping-body { flex: 1; min-height: 0; flex-direction: row; gap-all: 8; }
-.view-switch { width: 84; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 2; display: none; }
-.view-switch button { flex: 1; }
 .processing-graph { flex: 1; min-height: 0; width: 100%; flex-direction: row; gap-all: 6; }
 .processing-area { flex: 1; min-width: 0; height: 100%; }
 .processing-scroll { width: 100%; height: 100%; background: #ff201e27; }
@@ -152,35 +145,30 @@
 .processing-fact { width: 100%; flex-shrink: 0; flex-direction: row; gap-all: 4; align-items: flex-start; }
 .domain-panel .processing-fact-name { width: 48; flex-shrink: 0; height: 9; text-color: #ffaaa4b2; }
 .domain-panel .processing-fact-value { flex: 1; min-width: 0; adaptive-height: true; text-wrap: wrap; text-color: #ffd6d0e0; }
-.processing-detail .compact-actions { width: 100%; height: 18; flex-shrink: 0; flex-direction: row; gap-all: 3; }
-.processing-detail .compact-actions button { flex: 1; }
+.processing-toggle { width: 100%; height: 18; flex-shrink: 0; }
+// The actions sit right under the details, in a row; a narrow aside stacks them.
+.processing-actions { width: 100%; flex-shrink: 0; flex-direction: row; gap-all: 3; }
+.processing-actions button { flex: 1; height: 18; }
+.domain-shell.compact .processing-actions { flex-direction: column; gap-all: 2; }
+.domain-shell.compact .processing-actions button { flex-grow: 0; flex-shrink: 0; width: 100%; height: 16; }
+// A narrow aside puts each fact's name above its value, so values keep a readable width.
+.domain-shell.compact .processing-fact { flex-direction: column; gap-all: 0; }
+.domain-shell.compact .domain-panel .processing-fact-name { width: 100%; }
+.domain-shell.compact .domain-panel .processing-fact-value { flex-grow: 0; width: 100%; }
+.domain-shell.compact .processing-toggle { height: 16; }
 .domain-panel .processing-note { flex-shrink: 0; }
-.compact .processing-aside { min-width: 96; }
+.domain-shell.compact .processing-note { display: none; }
+.compact .processing-aside { min-width: 104; }
 .domain-shell.compact .processing-legend { display: none; }
-.pattern-column { flex: 1; min-width: 0; gap-all: 3; }
-.pattern-search-row { height: 16; flex-shrink: 0; flex-direction: row; gap-all: 3; }
-.pattern-search-row #pattern_search { flex: 1; min-width: 0; }
-.pattern-search-row #pattern_show_empty { width: 76; height: 16; flex-shrink: 0; }
-.pattern-list { flex: 1; min-height: 0; virtual-item-height-mode: fixed; virtual-estimated-item-height: 37; }
-.domain-panel .pattern-list .__scroller_view_view-port__ { background: built-in(federation:DARK_PANEL); }
-.domain-panel .pattern-row { base-background: built-in(federation:CARD); hover-background: built-in(federation:HOVER); pressed-background: built-in(federation:PRESSED); }
-.domain-panel .pattern-row.selected { base-background: built-in(federation:HOVER); }
-.domain-panel .pattern-row .virtual-row { text-color: #ffd6d0e0; }
-.domain-panel .pattern-row.selected .virtual-row { text-color: #ff1f2438; }
-.empty-message { flex: 1; padding-all: 8; text-wrap: wrap; }
-.target-column { flex: 1; min-width: 0; gap-all: 3; }
-.domain-panel .mapping-selection { height: auto; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .compact-actions { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 3; }
 .compact-actions button { flex: 1; }
 .diagnostic-scroll { flex: 1; min-height: 0; scroller-view-mode: vertical; }
 .diagnostic-scroll .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
-.feedback-scroll { min-height: 12; }
 .domain-panel .mapping-status { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ff79541b; }
 .domain-panel .mapping-status.feedback-neutral { text-color: #ff6d6a82; }
 .domain-panel .mapping-status.feedback-waiting { text-color: #ff79541b; }
 .domain-panel .mapping-status.feedback-success { text-color: #ff28633b; }
 .domain-panel .mapping-status.feedback-error { text-color: #ff922e42; }
-.virtual-row { height: 18; font-size: 9; }
 .diagnostic-toolbar { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 4; }
 .diagnostic-toolbar selector { flex: 1; }
 .diagnostic-toolbar button { width: 70; }
@@ -204,5 +192,3 @@
 .domain-shell.compact .domain-tab { display: none; }
 .domain-shell.compact .domain-panel .stat-row .stat-name { width: 44; }
 .domain-shell.compact .domain-panel .stat-row .stat-value { width: 80; }
-.domain-shell.compact .target-column .compact-actions { height: 39; flex-direction: column; }
-.domain-shell.compact .target-column .domain-heading { display: none; }

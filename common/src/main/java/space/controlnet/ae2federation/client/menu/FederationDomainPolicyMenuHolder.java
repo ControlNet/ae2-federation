@@ -62,19 +62,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         bind(ui, "members_value", this::membersText);
         bind(ui, "ack_status", this::statusText);
         bind(ui, "revision_status", () -> session == null ? Component.empty() : session.revisionsText());
-        bind(ui, "mapping_provider_value", this::mappingProviderText);
-        bind(ui, "mapping_selection_value", this::mappingSelectionText);
-        bind(ui, "mapping_status", this::mappingStatusText);
         bind(ui, "processing_status", this::mappingStatusText);
         var mappingFeedback = new BindableValue<String>("pending");
         mappingFeedback.bind(DataBindingBuilder.stringS2C(this::currentMappingStatus).initialValue("pending")
                 .remoteSetter(code -> {
-                    for (var id : new String[] {"mapping_status", "processing_status"}) {
-                        var label = element(ui, id, Label.class);
-                        label.style(style -> style.tooltips(Component.literal(code)));
-                        for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
-                        label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
-                    }
+                    var label = element(ui, "processing_status", Label.class);
+                    label.style(style -> style.tooltips(Component.literal(code)));
+                    for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
+                    label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
                     if (currentWorkspace != null) currentWorkspace.updateFeedback();
                 }).build());
         mappingFeedback.addClass("state-sync");
@@ -86,14 +81,12 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
         currentWorkspace = workspace;
-        element(ui, "mapping_toggle", Button.class).setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_MAPPING));
         Runnable prepareRelease = () -> {
             if (clientAuthority != null) {
                 releaseDialog.prepare(clientAuthority.menuSequence());
                 send(FederationDomainPolicyAction.PREPARE_RELEASE);
             }
         };
-        element(ui, "mapping_release", Button.class).setOnClick(event -> prepareRelease.run());
         workspace.bindProcessing(target -> send(FederationDomainPolicyAction.SET_MAPPING, target), prepareRelease);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
@@ -388,14 +381,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? Component.translatable("ae2federation.ui.domain.status.pending") : session.statusText();
     }
 
-    private Component mappingProviderText() {
-        return session == null ? Component.literal("-") : session.mappingProviderText();
-    }
-
-    private Component mappingSelectionText() {
-        return session == null ? Component.literal("-") : session.mappingSelectionText();
-    }
-
     private Component mappingStatusText() {
         return session == null ? Component.translatable("ae2federation.ui.mapping_feedback.pending") : session.mappingStatusText();
     }
@@ -429,9 +414,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var sync = element(ui, "sync_text", Label.class);
         sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
         sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
-        for (var id : new String[] {"mapping_provider_next", "mapping_slot_next", "mapping_lane_next", "mapping_toggle", "mapping_release", "endpoint_next", "pattern_list"}) {
-            element(ui, id, UIElement.class).setActive(active);
-        }
+        element(ui, "endpoint_next", UIElement.class).setActive(active);
         return active;
     }
 

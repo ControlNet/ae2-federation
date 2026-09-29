@@ -141,6 +141,7 @@ final class FederationTopologyView {
     private boolean fitted;
     /** Half sizes of the link labels, which hide the middle of their link. */
     private final Map<String, Vector2f> pillHalfSizes = new HashMap<>();
+    private final List<java.util.function.Consumer<String>> searchListeners = new ArrayList<>();
     /** Where each link's label sits along it, by pair; the middle unless crossing links would stack their labels. */
     private final Map<String, Float> labelSpots = new HashMap<>();
     private int fitDelay;
@@ -175,6 +176,7 @@ final class FederationTopologyView {
         searchField.setTextResponder(value -> {
             search = value.strip().toLowerCase(Locale.ROOT);
             applySearch();
+            searchListeners.forEach(listener -> listener.accept(search));
         });
         element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
         element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
@@ -1456,6 +1458,12 @@ final class FederationTopologyView {
         if (runtime.has("storage")) text.append("\n").append(Component.translatable(prefix + "storage_reason",
                 Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString())));
         return text;
+    }
+
+    /** Also tell {@code listener} the header search, lower-cased, as it changes; the processing page filters by it. */
+    void onSearch(java.util.function.Consumer<String> listener) {
+        searchListeners.add(listener);
+        listener.accept(search);
     }
 
     private void applySearch() {

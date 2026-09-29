@@ -139,8 +139,8 @@ final class TaskThirtyThreeScenarioSupport {
 
     static void attach(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
         context.attach("caseId", caseId);
-        context.attach("mappingAck", context.el("#mapping_status").text());
-        context.attach("mappingAckCode", context.el("#mapping_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+        context.attach("mappingAck", context.el("#processing_status").text());
+        context.attach("mappingAckCode", context.el("#processing_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                 .getStyle().tooltips().asList().getFirst().getString());
         context.attach("endpointDetail", context.el("#endpoint_detail").text());
         context.attach("endpointIdentity", context.el("#endpoint_identity").text());
@@ -217,10 +217,5 @@ final class TaskThirtyThreeScenarioSupport {
             }
         }
         return true;
-    }
-
-    static String renderedVirtualRows(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
-        return context.all(".virtual-row").stream().map(com.lowdragmc.lowdraglib2.uitest.ElementRef::text)
-                .collect(java.util.stream.Collectors.joining("\n"));
     }
 }

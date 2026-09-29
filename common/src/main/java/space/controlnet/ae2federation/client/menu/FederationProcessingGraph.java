@@ -32,9 +32,10 @@ import space.controlnet.ae2federation.client.policy.MappingWireTarget;
 /**
  * Processing wires for the domain's Pattern Providers: each Provider as a card of pattern rows with an output port on
  * the right edge, the Endpoints the selected Provider may use as cards with an input port on the left edge, and one
- * wire per mapped pattern and Endpoint. Dragging a port onto an Endpoint maps it, clicking a wire offers to unlink it
- * and clicking an Endpoint selects it for details and release. Every change is an explicit {@link MappingWireTarget}
- * request that the server checks against live ownership.
+ * wire per mapped pattern and Endpoint. Dragging a port onto an Endpoint maps it; so does clicking a pattern, then an
+ * Endpoint, then "Map". Clicking a wire offers to unlink it and clicking an Endpoint selects it for details and
+ * release. The header search filters Providers, patterns and Endpoints. Every change is an explicit
+ * {@link MappingWireTarget} request that the server checks against live ownership.
  */
 public final class FederationProcessingGraph {
     private static final float ROW_HEIGHT = 18;
@@ -72,6 +73,8 @@ public final class FederationProcessingGraph {
     private final Runnable release;
     private final Function<JsonObject, Component> patternName;
     private final Function<JsonObject, net.minecraft.world.item.ItemStack> patternIcon;
+    /** A pattern's outputs and inputs with exact amounts, one line each. */
+    private final Function<JsonObject, List<Component>> patternFacts;
     private final UIElement root;
     private final ScrollerView scroll;
     private final Label title;
@@ -79,6 +82,8 @@ public final class FederationProcessingGraph {
     private final UIElement facts;
     private final Button unlink;
     private final Button releaseButton;
+    /** Maps or unmaps the selected pattern on the selected Endpoint: the click alternative to dragging. */
+    private final Button mappingToggle;
     private final Canvas canvas = new Canvas();
     /** Both ends of the selected wire, or the selected Endpoint alone, as the cards draw them but larger. */
     private final FederationMapPreview fromPreview = new FederationMapPreview(true);
@@ -127,9 +132,20 @@ public final class FederationProcessingGraph {
     /** The pattern slot whose drag the Endpoint cards currently show drop hints for; empty when nothing is dragged. */
     private String hintSlot = "";
     private final Map<String, Label> endpointStates = new LinkedHashMap<>();
+    /** Provider cards and other Providers' pattern rows by id, so the search can hide them. */
+    private final Map<String, UIElement> providerCards = new LinkedHashMap<>();
+    private final Map<String, UIElement> otherRows = new LinkedHashMap<>();
+    private final Map<String, JsonObject> otherSlots = new LinkedHashMap<>();
+    private Label searchEmpty;
+    private String query = "";
+    /** Set by a press on a pattern row, so the canvas does not also pick the wire that starts at its port. */
+    private boolean patternPressed;
+    private Selection pendingFocus;
 
     FederationProcessingGraph(UI ui, Consumer<String> setMapping, Consumer<String> select, Runnable release,
-            Function<JsonObject, Component> patternName, Function<JsonObject, net.minecraft.world.item.ItemStack> patternIcon) {
+            Function<JsonObject, Component> patternName, Function<JsonObject, net.minecraft.world.item.ItemStack> patternIcon,
+            Function<JsonObject, List<Component>> patternFacts) {
+        this.patternFacts = patternFacts;
         this.setMapping = setMapping;
         this.select = select;
         this.release = release;
@@ -142,6 +158,9 @@ public final class FederationProcessingGraph {
         facts = element(ui, "processing_facts", UIElement.class);
         unlink = element(ui, "processing_unlink", Button.class);
         releaseButton = element(ui, "processing_release", Button.class);
+        // Its label is set per selection; an empty text attribute makes LDLib hide the label, so turn it back on.
+        mappingToggle = element(ui, "mapping_toggle", Button.class).enableText();
+        mappingToggle.setOnClick(event -> toggleSelected());
         scroll.addScrollViewChild(canvas);
         element(ui, "processing_preview_from", UIElement.class).addChild(fromPreview);
         element(ui, "processing_preview_to", UIElement.class).addChild(toPreview);
@@ -173,6 +192,39 @@ public final class FederationProcessingGraph {
 
     UIElement root() {
         return root;
+    }
+
+    /** Shows only the Providers, patterns and Endpoints whose text or position contains {@code value}. */
+    void filter(String value) {
+        var next = value == null ? "" : value.strip().toLowerCase(java.util.Locale.ROOT);
+        if (next.equals(query)) return;
+        query = next;
+        applyFilter();
+    }
+
+    /** Selects this Endpoint, with this pattern chosen, once both are in the next snapshot. */
+    void focus(String endpointId, String slot) {
+        if (endpointId != null) pendingFocus = new Selection(Kind.ENDPOINT, slot == null ? "" : slot, endpointId);
+    }
+
+    /** The selected pattern on the selected Endpoint: unmapped when it is wired there, mapped otherwise. */
+    private void toggleSelected() {
+        if (!editable || selection.kind() != Kind.ENDPOINT || selection.slot().isEmpty()) return;
+        var endpoint = endpoint(selection.endpoint());
+        if (endpoint == null || slot(selection.slot()) == null) return;
+        var wire = new Wire(selection.slot(), selection.endpoint());
+        boolean mapped = wires.contains(wire);
+        if (!mapped && !mappable(endpoint)) return;
+        rejection = Component.empty();
+        setMapping.accept(new MappingWireTarget(selection.slot(), selection.endpoint(), !mapped).encode());
+        if (!mapped) pendingWires.put(wire, System.currentTimeMillis());
+        render();
+    }
+
+    /** Whether the server would take a new wire to this Endpoint; the drop refuses the same ones. */
+    private static boolean mappable(JsonObject endpoint) {
+        var claim = claim(endpoint);
+        return claim == Claim.FREE || claim == Claim.IN_USE || claim == Claim.RETAINED;
     }
 
     /** Where the cards' thumbnails read each network's blocks; the overview keeps them current. */
@@ -250,6 +302,11 @@ public final class FederationProcessingGraph {
             selection = Selection.NONE;
         }
         if (selection.kind() == Kind.ENDPOINT && endpoint(selection.endpoint()) == null) selection = Selection.NONE;
+        if (pendingFocus != null && endpoint(pendingFocus.endpoint()) != null) {
+            selection = slot(pendingFocus.slot()) == null ? new Selection(Kind.ENDPOINT, "", pendingFocus.endpoint()) : pendingFocus;
+            pendingFocus = null;
+        }
+        if (selection.kind() == Kind.PATTERN && slot(selection.slot()) == null) selection = Selection.NONE;
         var signature = new StringBuilder();
         slots.forEach(slot -> signature.append(slot).append(';'));
         endpoints.forEach(endpoint -> signature.append(endpoint).append(';'));
@@ -272,6 +329,9 @@ public final class FederationProcessingGraph {
         endpointInsets.clear();
         endpointStates.clear();
         thumbnailRefresh.clear();
+        providerCards.clear();
+        otherRows.clear();
+        otherSlots.clear();
         hintSlot = "";
         var headings = new UIElement();
         headings.layout(style -> style.widthPercent(100).height(10).flexDirection(FlexDirection.ROW)
@@ -300,7 +360,10 @@ public final class FederationProcessingGraph {
         for (var endpoint : endpoints) right.addChild(endpointCard(endpoint, index++ < MAX_ENDPOINT_THUMBNAILS));
         if (endpoints.isEmpty()) right.addChild(note(tr("no_endpoints")));
         body.addChildren(left, right);
-        canvas.addChildren(headings, body);
+        searchEmpty = note(tr("no_matches"));
+        searchEmpty.setId("processing_search_empty");
+        canvas.addChildren(headings, searchEmpty, body);
+        applyFilter();
     }
 
     private static Label heading(Component text, float percent) {
@@ -346,6 +409,7 @@ public final class FederationProcessingGraph {
             pen.rect(x + 1, y + 1, width - 2, height - 2, CARD_FACE);
         })));
         card.addChild(providerHeader(provider, current));
+        providerCards.put(provider.get("id").getAsString(), card);
         if (current) {
             for (var slot : slots) card.addChild(patternRow(slot));
             if (slots.isEmpty()) card.addChild(note(tr("no_patterns")));
@@ -433,16 +497,25 @@ public final class FederationProcessingGraph {
             if (editable && port.isMouseDown(0)) port.startDrag(new PortDrag(id), null);
         }, true);
         row.addChild(port);
-        row.style(style -> style.backgroundTexture(rowFace(id)));
+        row.style(style -> style.backgroundTexture(rowFace(id)).tooltips(tr("pattern_help")));
+        // Selecting a pattern is the click way to map it: then click an Endpoint and "Map".
+        row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+            patternPressed = true;
+            selection = new Selection(Kind.PATTERN, id, "");
+            rejection = Component.empty();
+            render();
+        });
         ports.put(id, port);
         rows.put(id, row);
         return row;
     }
 
-    /** Rows sit on the card itself; the dragged one is lit. */
+    /** Rows sit on the card itself; the dragged one and the selected one are lit. */
     private IGuiTexture rowFace(String slot) {
         return FederationTheme.painted((pen, x, y, width, height) -> {
-            if (slot.equals(hintSlot)) pen.rect(x, y, width, height, 0x2e9cd3ff);
+            boolean chosen = selection.kind() != Kind.WIRE && slot.equals(selection.slot());
+            if (slot.equals(hintSlot) || chosen) pen.rect(x, y, width, height, 0x2e9cd3ff);
+            if (chosen) pen.rect(x, y, 2, height, FederationTheme.SELECT);
         });
     }
 
@@ -485,6 +558,8 @@ public final class FederationProcessingGraph {
             event.stopPropagation();
         });
         otherPorts.put(key, port);
+        otherRows.put(key, row);
+        otherSlots.put(key, slot);
         return row;
     }
 
@@ -593,7 +668,9 @@ public final class FederationProcessingGraph {
         lines.addChildren(name, where, state);
         card.addChild(lines);
         card.setOnClick(event -> {
-            selection = new Selection(Kind.ENDPOINT, "", id);
+            // A chosen pattern stays chosen, so the aside can offer to map it here.
+            var chosen = selection.kind() == Kind.PATTERN || selection.kind() == Kind.ENDPOINT ? selection.slot() : "";
+            selection = new Selection(Kind.ENDPOINT, chosen, id);
             rejection = Component.empty();
             if (!id.equals(confirmedTarget)) select.accept("target:" + id);
             render();
@@ -637,7 +714,61 @@ public final class FederationProcessingGraph {
         render();
     }
 
+    /** Hides what the header search does not match; a Provider whose header matches keeps all its patterns. */
+    private void applyFilter() {
+        boolean any = query.isEmpty();
+        for (var provider : providers) {
+            var card = providerCards.get(provider.get("id").getAsString());
+            if (card == null) continue;
+            var where = provider.has("position") ? provider.get("position").getAsString() : "";
+            boolean header = matches(tr("provider_title", networkName(provider)).getString() + " " + where);
+            boolean shown = header;
+            if (selected(provider)) {
+                for (var slot : slots) {
+                    var row = rows.get(slot.get("id").getAsString());
+                    boolean match = header || matches(patternText(slot));
+                    if (row != null) row.setDisplay(match);
+                    shown |= match;
+                }
+            } else {
+                for (var slot : provider.getAsJsonArray("slots")) {
+                    var key = otherPortKey(provider, slot.getAsJsonObject());
+                    var row = otherRows.get(key);
+                    boolean match = header || matches(patternText(slot.getAsJsonObject()));
+                    if (row != null) row.setDisplay(match);
+                    shown |= match;
+                }
+            }
+            card.setDisplay(shown);
+            any |= shown;
+        }
+        for (var endpoint : endpoints) {
+            var card = endpointCards.get(endpoint.get("id").getAsString());
+            if (card == null) continue;
+            boolean match = matches(tr("endpoint_title", networkName(endpoint)).getString() + " "
+                    + (endpoint.has("position") ? endpoint.get("position").getAsString() : endpoint.get("label").getAsString()));
+            card.setDisplay(match);
+            any |= match;
+        }
+        if (searchEmpty != null) searchEmpty.setDisplay(!any);
+    }
+
+    private boolean matches(String text) {
+        return query.isEmpty() || text.toLowerCase(java.util.Locale.ROOT).contains(query);
+    }
+
+    /** "#1 Gold Ingot" and its resources, as the search reads a pattern. */
+    private String patternText(JsonObject slot) {
+        var text = new StringBuilder("#").append(slot.get("id").getAsString()).append(' ').append(patternName.apply(slot).getString());
+        for (var line : patternFacts.apply(slot)) text.append(' ').append(line.getString());
+        return text.toString();
+    }
+
     private void pickWire(UIEvent event) {
+        if (patternPressed) {
+            patternPressed = false;
+            return;
+        }
         Wire nearest = null;
         float best = 4f;
         for (var wire : wires) {
@@ -659,6 +790,9 @@ public final class FederationProcessingGraph {
     private void render() {
         boolean wire = selection.kind() == Kind.WIRE;
         boolean endpointSelected = selection.kind() == Kind.ENDPOINT;
+        boolean patternSelected = selection.kind() == Kind.PATTERN && slot(selection.slot()) != null;
+        // The chosen pattern for the click way of mapping, while an Endpoint is selected after it.
+        var chosen = endpointSelected && !selection.slot().isEmpty() ? slot(selection.slot()) : null;
         facts.clearAllChildren();
         var text = Component.empty();
         if (wire) {
@@ -696,20 +830,42 @@ public final class FederationProcessingGraph {
                         .map(value -> "#" + value.slot()).toList();
                 fact("mapped", Component.literal(mapped.isEmpty() ? "-" : String.join(", ", mapped)));
                 fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
+                if (chosen != null) {
+                    boolean wiredHere = wires.contains(new Wire(selection.slot(), selection.endpoint()));
+                    var name = Component.literal("#" + selection.slot() + " ").append(patternName.apply(chosen));
+                    text.append(wiredHere ? tr("toggle_help.mapped", name) : mappable(endpoint) ? tr("toggle_help.free", name)
+                            : tr("drop_" + (claim == Claim.OCCUPIED ? "occupied" : claim == Claim.LOCAL ? "local" : "unobserved"),
+                                    endpointName(endpoint), owner(endpoint)));
+                }
             }
+        } else if (patternSelected) {
+            var slot = slot(selection.slot());
+            title.setText(Component.literal("#" + selection.slot() + " ").append(patternName.apply(slot)));
+            for (var line : patternFacts.apply(slot)) text.append(text.getString().isEmpty() ? line : Component.literal("\n").append(line));
+            var targets = wires.stream().filter(value -> value.slot().equals(selection.slot())).map(value -> endpoint(value.endpoint()))
+                    .filter(java.util.Objects::nonNull).map(value -> endpointName(value).getString()).toList();
+            fact("targets", Component.literal(targets.isEmpty() ? "-" : String.join(", ", targets)));
+            text.append(Component.literal(text.getString().isEmpty() ? "" : "\n")).append(tr("pattern_selected_help"));
         } else {
             title.setText(Component.empty());
             text.append(tr(slots.isEmpty() || endpoints.isEmpty() ? "empty_help" : "help"));
         }
-        title.setDisplay(wire || endpointSelected);
+        title.setDisplay(wire || endpointSelected || patternSelected);
         if (!rejection.getString().isEmpty()) {
             if (!text.getString().isEmpty()) text.append("\n");
             text.append(rejection.copy().withStyle(Style.EMPTY.withColor(REFUSAL & 0xffffff)));
         }
         detail.setText(text);
         detail.setDisplay(!text.getString().isEmpty());
-        facts.setDisplay(wire || endpointSelected);
+        facts.setDisplay(wire || endpointSelected || patternSelected);
         unlink.setDisplay(wire);
+        boolean togglable = chosen != null && endpoint(selection.endpoint()) != null;
+        boolean wiredHere = togglable && wires.contains(new Wire(selection.slot(), selection.endpoint()));
+        mappingToggle.setDisplay(togglable);
+        mappingToggle.setText(togglable ? tr(wiredHere ? "unmap_here" : "map_here", "#" + selection.slot()) : Component.empty());
+        mappingToggle.setActive(editable && togglable && (wiredHere || mappable(endpoint(selection.endpoint()))));
+        // With nothing selected the aside holds only the help, as in the design.
+        highlight.setDisplay(selection.kind() != Kind.NONE);
         highlight.setText(Component.translatable(wire ? "ae2federation.ui.processing.highlight_ends"
                 : "ae2federation.ui.location.highlight"));
         unlink.setActive(editable && wire && wires.contains(new Wire(selection.slot(), selection.endpoint())));
@@ -916,7 +1072,9 @@ public final class FederationProcessingGraph {
     /** From the port's centre to the Endpoint card's input port on its left edge. */
     private Vector2f[] ends(UIElement port, Wire wire) {
         var card = endpointCards.get(wire.endpoint());
-        if (port == null || card == null) return null;
+        // A search hides rows and cards; their wires go with them.
+        if (port == null || card == null || !card.isDisplayed() || !port.getParent().isDisplayed()
+                || !port.getParent().getParent().isDisplayed()) return null;
         return new Vector2f[] {portPoint(port), new Vector2f(card.getPositionX() - 1, card.getPositionY() + card.getSizeHeight() / 2)};
     }
 
@@ -978,7 +1136,7 @@ public final class FederationProcessingGraph {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
-    private enum Kind { NONE, WIRE, ENDPOINT }
+    private enum Kind { NONE, PATTERN, WIRE, ENDPOINT }
 
     private record Selection(Kind kind, String slot, String endpoint) {
         static final Selection NONE = new Selection(Kind.NONE, "", "");

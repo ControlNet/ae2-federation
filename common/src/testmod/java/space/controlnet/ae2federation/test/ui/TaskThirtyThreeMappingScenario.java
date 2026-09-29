@@ -20,9 +20,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960));
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .click("#tab_mapping").frames(3)
-                .click("#mapping_view_graph")
                 .waitUntil("wires view lists patterns and the Endpoint", context -> context.el("#processing_graph").isVisible()
-                        && !context.el("#mapping_list").isVisible() && context.all(".processing-endpoint").size() == 1
+                        && context.all(".processing-endpoint").size() == 1
                         && !context.all("#processing_port_1").isEmpty())
                 .check("empty slots have no port", context -> context.all("#processing_port_2").isEmpty())
                 .check("the mapped Endpoint is shown as used by this Provider", context ->
@@ -56,37 +55,27 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1)
                 .screenshot("ui-processing-endpoint-detail")
                 .step("record processing wire evidence", context -> context.put("task33.processingWire", "mapped-unlinked"))
-                .click("#mapping_view_list")
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Owned")
-                .step("remember target identity", context -> context.put("target.initialId", context.el("#mapping_lane_next").value()))
-                .click("#mapping_provider_next")
-                .typeInto("#mapping_provider_next_search", "no such device")
-                .check("device search exposes its empty state", context -> context.el("#mapping_provider_next_empty").isVisible())
-                .typeInto("#mapping_provider_next_search", "10, -57, 10")
-                .check("coordinate search finds provider", context -> !context.el("#mapping_provider_next_empty").isVisible())
+                .step("remember target identity", context -> context.put("target.initialId",
+                        context.el(".processing-endpoint").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getId()))
+                // The header search filters Providers, patterns and Endpoints on this page.
+                .typeInto("#graph_search", "no such device")
+                .waitUntil("the search exposes its empty state", context -> context.el("#processing_search_empty").isVisible())
+                .typeInto("#graph_search", "10, -57, 10")
+                .waitUntil("coordinate search finds the Provider", context -> !context.el("#processing_search_empty").isVisible()
+                        && context.el(".processing-provider-card").isVisible())
                 .screenshot("ui-provider-search")
-                .click("#tab_mapping")
-                .check("empty slots are hidden by default", context -> context.all("#pattern_slot_2").isEmpty())
-                .typeInto("#pattern_search", "no matching pattern")
-                .waitForTextContains("#pattern_empty", "No patterns match")
-                .check("no-result state is visible", context -> context.el("#pattern_empty").isVisible())
-                .typeInto("#pattern_search", "Gold")
-                .waitUntil("search shows only matching encoded pattern", context ->
-                        context.all("#pattern_slot_0").isEmpty() && !context.all("#pattern_slot_1").isEmpty())
-                .typeInto("#pattern_search", "").blur()
-                .click("#pattern_show_empty")
-                .awaitElement("#pattern_slot_2")
-                .click("#pattern_show_empty")
-                .check("empty slot toggle restores encoded list", context -> context.all("#pattern_slot_2").isEmpty())
-                .click("#pattern_slot_1")
-                .waitForTextContains("#mapping_selection_value", "Pattern slot 1 / Endpoint ")
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Mapped")
-                .click("#mapping_slot_next")
-                .typeInto("#mapping_slot_next_search", "Diamond")
-                .hover(".__selector_dialog__ .choice-slot-0 button")
-                .step("choose pattern through filtered popup", context -> TaskThirtyThreeScenarioSupport.activateNavigation(
-                        context, ".__selector_dialog__ .choice-slot-0 button"))
-                .waitForTextContains("#mapping_selection_value", "Pattern slot 0 / Endpoint ")
+                .typeInto("#graph_search", "Gold")
+                .waitUntil("search shows only the matching pattern", context ->
+                        !context.el("#processing_pattern_0").isVisible() && context.el("#processing_pattern_1").isVisible())
+                .typeInto("#graph_search", "").blur()
+                .waitUntil("clearing the search shows every pattern again", context -> context.el("#processing_pattern_0").isVisible())
+                .check("empty slots have no row", context -> context.all("#processing_pattern_2").isEmpty())
+                // The click way of mapping: a pattern, then an Endpoint, then "Map".
+                .click("#processing_pattern_0")
+                .waitForTextContains("#processing_detail_title", "#0 ")
+                .click(".processing-endpoint")
+                .waitForText("#mapping_toggle", "Map #0 here")
+                .waitUntil("the map action is ready", context -> context.el("#mapping_toggle").isActive())
                 .hover("#mapping_toggle")
                 .step("rapid mapping clicks show waiting and submit once", context -> {
                     var bounds = context.el("#mapping_toggle").bounds();
@@ -101,7 +90,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
                 .waitUntilServer("real Provider mapping accepted", TaskThirtyThreeWorldFixture::mappingAccepted)
-                .waitForTextContains("#mapping_status", "Mapping updated for pattern slot 0.")
+                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
                 .server("record authoritative mapping identity", context -> {
                     context.put("task33.providerId", TaskThirtyThreeWorldFixture.providerId(context));
                     context.put("task33.mappingLanes", TaskThirtyThreeWorldFixture.mappingLanes(context));
@@ -114,20 +103,20 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .screenshot("ui-mapping-accepted")
                 .server("install component-rich and fluid processing patterns", TaskThirtyThreeWorldFixture::installRichPatterns)
-                .typeInto("#pattern_search", "Calibrated Diamond")
-                .awaitElement("#pattern_slot_2")
+                .typeInto("#graph_search", "Calibrated Diamond")
+                .awaitElement("#processing_pattern_2")
+                .click("#processing_pattern_2")
                 .check("component name and long output amount survive projection", context -> {
-                    var row = context.el("#pattern_slot_2").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
-                    var lines = row.getStyle().tooltips().asList().stream().map(net.minecraft.network.chat.Component::getString).toList();
+                    var lines = java.util.List.of(context.el("#processing_detail_text").text().split("\n"));
                     return lines.stream().anyMatch(line -> line.contains("Calibrated Diamond") && line.contains("4,000,000,000"))
                             && lines.stream().anyMatch(line -> line.contains("Water") && line.contains("1.5 B"));
                 })
-                .typeInto("#pattern_search", "Water")
+                .typeInto("#graph_search", "Water")
                 .waitUntil("search includes secondary and primary fluid outputs", context ->
-                        !context.all("#pattern_slot_2").isEmpty() && !context.all("#pattern_slot_3").isEmpty()
-                                && context.all("#pattern_slot_0").isEmpty())
+                        context.el("#processing_pattern_2").isVisible() && context.el("#processing_pattern_3").isVisible()
+                                && !context.el("#processing_pattern_0").isVisible())
                 .check("fluid icon retains its AE resource and exact amount", context -> {
-                    var row = context.el("#pattern_slot_3").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+                    var row = context.el("#processing_pattern_3").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
                     var texture = row.getChildren().stream().map(child -> child.getStyle().backgroundTexture())
                             .filter(com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture.class::isInstance)
                             .map(com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture.class::cast).findFirst().orElseThrow();
@@ -137,6 +126,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(3)
                 .screenshot("ui-generic-patterns")
+                .typeInto("#graph_search", "").blur()
                 .closeScreen()
                 .server("sneak-right-click the Provider block", TaskThirtyThreeWorldFixture::sneakRightClickProvider)
                 .awaitScreen(appeng.client.gui.implementations.PatternProviderScreen.class)
@@ -188,7 +178,6 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .screenshot("ui-provider-mapping")
                 .waitUntilServer("native lane sends a real processing input", TaskThirtyThreeWorldFixture::dispatchRealWork)
                 .checkServer("the send was recorded against its processing rule", TaskThirtyThreeWorldFixture::processingFlowObserved)
-                .click("#mapping_view_graph")
                 .waitUntil("dots travel along the busy wire", context ->
                         space.controlnet.ae2federation.client.menu.FederationProcessingGraph.drawnWireDots() > 0)
                 .step("select the busy wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "1"))
@@ -199,7 +188,6 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && context.el("#processing_end_to").isVisible()
                         && context.el("#processing_from_label").text().startsWith("Provider @ ")
                         && context.el("#processing_to_label").text().startsWith("Endpoint @ "))
-                .click("#mapping_view_list")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")
                 .waitUntil("the pair editor is shown", context -> context.el("#pair_editor").isVisible())
@@ -231,27 +219,34 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("scroll the pair editor back to its top", context ->
                         TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .click("#tab_mapping")
-                .click("#pattern_slot_1")
-                .waitForTextContains("#mapping_selection_value", "Pattern slot 1 / Endpoint ")
+                .click("#processing_pattern_1")
+                .click(".processing-endpoint")
+                .waitForText("#mapping_toggle", "Unmap #1")
+                .waitUntil("the unmap action is ready", context -> context.el("#mapping_toggle").isActive())
                 .click("#mapping_toggle")
                 .waitUntilServer("slot one is unmapped", TaskThirtyThreeWorldFixture::slotOneUnmapped)
-                .click("#pattern_slot_0")
-                .waitForTextContains("#mapping_selection_value", "Pattern slot 0 / Endpoint ")
+                .click("#processing_pattern_0")
+                .click(".processing-endpoint")
+                .waitForText("#mapping_toggle", "Unmap #0")
+                .waitUntil("the unmap action is ready again", context -> context.el("#mapping_toggle").isActive())
                 .click("#mapping_toggle")
                 .waitUntilServer("last unmap retains the claim", TaskThirtyThreeWorldFixture::endpointRetained)
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Retained")
-                .check("target identity survives mapping state changes", context -> context.el("#mapping_lane_next").value().equals(context.get("target.initialId")))
+                .waitForText(".processing-endpoint-state", "Retained · return lane still open")
+                .check("target identity survives mapping state changes", context -> context.el(".processing-endpoint")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getId().equals(context.get("target.initialId")))
                 .step("resize English workspace", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 320, 240))
                 .waitUntil("narrow English viewport", context -> context.mc().getWindow().getGuiScaledWidth() == 320
                         && context.mc().getWindow().getGuiScaledHeight() == 240)
                 .frames(5)
+                // A narrow aside scrolls its details down to the actions, as a player would.
+                .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
                 .check("narrow English mapping buttons fit", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(
-                        context, "#mapping_toggle", "#mapping_release", "#return_provider"))
+                        context, "#mapping_toggle", "#processing_release", "#return_provider"))
                 .check("narrow English mapping text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#mapping_selection_value", "#mapping_status"))
+                        context, "#processing_detail_title", "#processing_detail_text"))
                 .check("narrow English mapping controls stay in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
-                        context, "#mapping_toggle", "#mapping_release", "#mapping_feedback_scroll"))
+                        context, "#mapping_toggle", "#processing_release", "#processing_detail"))
                 .screenshot("ui-english-narrow-mapping")
                 .click("#tab_overview").frames(3)
                 .check("narrow English pair editor text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
@@ -266,8 +261,9 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
                 .screenshot("ui-english-narrow-overview")
                 .click("#tab_mapping").frames(3)
-                .hover("#mapping_release")
-                .step("prepare release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_release"))
+                .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
+                .hover("#processing_release")
+                .step("prepare release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_release"))
                 .awaitElement("#release_confirm")
                 .checkTextContains("#release_consequence", "closes the return path")
                 .checkServer("opening confirmation does not release ownership", TaskThirtyThreeWorldFixture::endpointRetained)
@@ -277,10 +273,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .screenshot("ui-release-confirmation")
                 .hover("#release_cancel")
                 .step("cancel release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_cancel"))
-                .waitForTextContains("#mapping_status", "Choose a pattern")
+                .waitForTextContains("#processing_status", "Choose a pattern")
                 .checkServer("cancellation preserves ownership and return lane", TaskThirtyThreeWorldFixture::endpointRetained)
-                .hover("#mapping_release")
-                .step("prepare release again", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_release"))
+                .hover("#processing_release")
+                .step("prepare release again", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_release"))
                 .awaitElement("#release_confirm")
                 .server("external mapping edit invalidates prepared release", TaskThirtyThreeWorldFixture::toggleExternalMapping)
                 .waitUntil("stale confirmation disappears", context -> context.all("#release_confirm").isEmpty())
@@ -289,18 +285,18 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntilServer("external unmap preserves dispatched work", TaskThirtyThreeWorldFixture::endpointRetained)
                 .frames(5)
                 .check("old confirmation does not reopen", context -> context.all("#release_confirm").isEmpty())
-                .hover("#mapping_release")
-                .step("prepare fresh release after external change", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_release"))
+                .hover("#processing_release")
+                .step("prepare fresh release after external change", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#processing_release"))
                 .awaitElement("#release_confirm")
                 .hover("#release_confirm")
                 .step("confirm release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_confirm"))
                 .waitUntilServer("confirmed release removes retained ownership", TaskThirtyThreeWorldFixture::endpointReleased)
-                .waitForTextContains("#mapping_status", "Endpoint released. Its return path is closed.")
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Unclaimed")
-                .repeat(8, steps -> steps.scroll("#mapping_feedback_scroll", -1)).frames(3)
-                .check("narrow English feedback can expose its final line", context -> {
-                    var scroller = context.el("#mapping_feedback_scroll").as(com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView.class);
-                    var text = context.el("#mapping_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+                .waitForTextContains("#processing_status", "Endpoint released. Its return path is closed.")
+                .waitForText(".processing-endpoint-state", "Available · not claimed")
+                .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
+                .check("narrow English detail can expose its last control", context -> {
+                    var scroller = context.el("#processing_detail").as(com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView.class);
+                    var text = context.el("#processing_highlight").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
                     return text.getPositionY() + text.getSizeHeight()
                             <= scroller.viewPort.getContentY() + scroller.viewPort.getContentHeight() + 0.01f;
                 })
@@ -343,7 +339,6 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-pair")
                 .click("#tab_mapping").frames(2)
-                .click("#mapping_view_graph")
                 .waitUntil("showcase: three Providers and five Endpoints", context ->
                         context.all(".processing-provider-card").size() == 3 && context.all(".processing-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)

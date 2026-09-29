@@ -35,28 +35,19 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                 .check("all font-cache accesses stayed on the render thread", context -> FontThreadEvidence.violations() == 0)
                 .screenshot("ui-claim-conflict-rejected")
                 .click("#tab_mapping")
-                .click("#mapping_view_list")
-                .click("#pattern_slot_1")
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Mapped")
+                .waitUntil("the Endpoint is used by this Provider", context ->
+                        context.el(".processing-endpoint-state").text().equals("Patterns mapped: 1"))
                 .server("transfer idle claim to a competing identity", TaskThirtyThreeWorldFixture::transferIdleClaimToCompetitor)
-                .waitForTextContains("#mapping_lane_next .__selector_preview__ .choice-label", "Occupied")
-                .check("target tooltip identifies the real competing claim", context -> {
-                    var label = context.el("#mapping_lane_next .__selector_preview__ .choice-label")
-                            .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
-                    var tooltip = label.collectHoverTooltips();
-                    return tooltip != null && tooltip.tooltipTexts().stream().anyMatch(line ->
-                            line.getString().contains(context.<String>get("target.competitor")))
-                            && tooltip.tooltipTexts().stream().anyMatch(line ->
-                                    line.getString().contains("Another Provider owns this endpoint"));
-                })
-                .click("#mapping_lane_next")
-                .typeInto("#mapping_lane_next_search", "Occupied")
-                .check("occupied target can be found before attempting mapping", context -> !context.el("#mapping_lane_next_empty").isVisible())
-                .screenshot("ui-target-occupied-before-mapping")
-                .click("#tab_mapping")
-                .click("#mapping_view_graph")
                 .waitUntil("wires view marks the Endpoint as owned elsewhere", context ->
                         context.el(".processing-endpoint-state").text().equals("Owned by another Provider"))
+                .click("#processing_pattern_1")
+                .click(".processing-endpoint")
+                .waitUntil("the Endpoint detail names the real competing owner", context -> context.el("#processing_fact_value_owner")
+                        .text().contains(context.<String>get("target.competitor").substring(0, 8)))
+                .check("mapping the chosen pattern here is refused before anything is sent", context ->
+                        !context.el("#mapping_toggle").isActive()
+                                && context.el("#processing_detail_text").text().contains("Release it there first."))
+                .screenshot("ui-target-occupied-before-mapping")
                 .serverGet("record lanes before the refused drop", "task33.lanesBeforeDrop",
                         TaskThirtyThreeWorldFixture::slotZeroLanes)
                 .step("start dragging pattern 0 without dropping it", context -> {
@@ -104,7 +95,6 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .click("#tab_mapping")
-                .click("#mapping_view_graph")
                 .waitUntil("the wires view stacks both Providers", context -> context.all(".processing-provider-text").size() == 2
                         && context.all(".processing-provider-text").stream().anyMatch(header -> header.text().contains(
                                 context.<String>get("task33.secondProviderAt")) && header.text().contains("1/9 slots")))

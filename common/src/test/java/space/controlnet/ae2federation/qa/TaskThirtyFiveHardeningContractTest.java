@@ -44,7 +44,7 @@ final class TaskThirtyFiveHardeningContractTest {
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FederationDomainPolicyActionPayload.java"));
         var registration = Files.readString(ROOT.resolve(
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/network/FederationDomainPolicyActionPayloads.java"));
-        assertTrue(holder.contains("setOnClick(event -> send(FederationDomainPolicyAction.")
+        assertTrue(holder.contains("target -> send(FederationDomainPolicyAction.SET_MAPPING, target)")
                 && !holder.contains("setOnServerClick"));
         assertTrue(menu.contains("isSameThread()") && menu.contains("player.containerMenu"));
         assertTrue(holder.contains("request.containerId()") && holder.contains("request.menuNonce()")
