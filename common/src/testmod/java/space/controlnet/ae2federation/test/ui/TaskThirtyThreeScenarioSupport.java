@@ -60,12 +60,19 @@ final class TaskThirtyThreeScenarioSupport {
     static com.lowdragmc.lowdraglib2.uitest.ElementRef networkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context,
             String networkUuid) {
         var tag = networkTag(networkUuid);
+        // A card names its network and carries the full identity in its tooltip, which holds after a rename.
         return context.all(".graph-node-member").stream()
-                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
-                        .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
-                        .map(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText().getString())
-                        .anyMatch(text -> text.contains(tag)))
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips()
+                        .asList().stream().anyMatch(line -> line.getString().equals(networkUuid)))
                 .findFirst().orElseThrow(() -> new IllegalStateException("No topology card for network " + tag));
+    }
+
+    /** The texts a network's card shows, such as its name, position and state line. */
+    static java.util.List<String> cardTexts(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        return networkCard(context, networkUuid).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                .map(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText().getString())
+                .toList();
     }
 
     /** Selects the topology card of one network through its rendered name. */
@@ -98,6 +105,12 @@ final class TaskThirtyThreeScenarioSupport {
         var index = context.el("#policy_section_title_0").text().indexOf(networkTag(consumerUuid));
         var section = index >= 0 && index <= 12 ? 0 : 1;
         return "#policy_" + kind + "_" + section + "_" + capability;
+    }
+
+    /** Whether any tooltip line of the element contains {@code text}, such as the device counts on "Devices (N)". */
+    static boolean tooltipContains(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector, String text) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList()
+                .stream().anyMatch(line -> line.getString().contains(text));
     }
 
     static String ruleState(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {

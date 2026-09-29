@@ -38,7 +38,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                     else reload.join();
                 });
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
-                .waitForText("#domain_title", "ME联邦域管理")
+                .waitForText("#domain_title", "ME 联邦域")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .check("localized pair editor fits compact aside", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
                         context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
@@ -49,16 +49,20 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("localized network detail is shown", context -> context.el("#network_detail").isVisible())
-                .checkTextContains("#graph_selection", "Pattern Provider：1")
+                .check("localized device counts are on the devices button", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern Provider：1"))
                 .check("localized network detail fits compact inspector", context ->
-                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection", "#network_identity"))
+                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#network_identity", "#network_stat_energy")
+                                && TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open", "#network_highlight"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-provider-observation")
                 .step("select the Endpoint network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.endpoint")))
                 .waitUntil("endpoint network detail is shown", context -> context.el("#network_title").text()
                         .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("net.endpoint"))))
-                .checkTextContains("#graph_selection", "处理端点：")
-                .check("compact graph detail fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection"))
+                .check("localized endpoint count is on the devices button", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "处理端点："))
+                .check("compact graph detail fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context,
+                        "#network_identity", "#network_stat_cpus", "#network_stat_channels"))
                 .check("compact graph inspector action remains inside workspace", context -> {
                     var button = context.el("#graph_open").bounds();
                     var root = context.el("#domain_root").bounds();
@@ -175,7 +179,8 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-chinese-narrow-policy")
                 .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
-                .check("narrow graph inspector fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection"))
+                .check("narrow graph inspector fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context,
+                        "#network_identity", "#network_stat_energy", "#network_stat_types"))
                 .screenshot("ui-chinese-narrow-overview")
                 .closeScreen()
                 .server("open local Endpoint in compact Chinese viewport", TaskThirtyThreeWorldFixture::openEndpoint)

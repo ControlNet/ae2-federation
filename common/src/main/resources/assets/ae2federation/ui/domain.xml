@@ -18,14 +18,20 @@
                     <element class="header-status">
                         <element id="sync_lamp" class="sync-lamp"/>
                         <label id="sync_text" class="sync-text"/>
-                        <label id="entrance_value" class="domain-caption"/>
+                        <label class="domain-caption status-separator members-caption"><lang key="ae2federation.ui.workspace.separator"/></label>
                         <label id="members_value" class="domain-caption members-caption"/>
                         <label id="processing_summary" class="domain-caption members-caption"/>
+                        <label id="scope_caption" class="domain-caption members-caption"/>
+                        <label class="domain-caption status-separator"><lang key="ae2federation.ui.workspace.separator"/></label>
+                        <label id="entrance_value" class="domain-caption"/>
                     </element>
                 </element>
                 <element id="header_graph_tools" class="header-tools">
-                    <button id="graph_scope" class="scope-button" text="ae2federation.ui.topology.scope.domain"/>
-                    <button id="graph_flow_toggle" class="header-toggle" text="≈"/>
+                    <element class="scope-segment">
+                        <button id="graph_scope_domain" class="header-icon" text=""/>
+                        <button id="graph_scope" class="header-icon" text=""/>
+                    </element>
+                    <button id="graph_flow_toggle" class="header-icon" text=""/>
                 </element>
                 <element id="mapping_view_switch" class="view-switch">
                     <button id="mapping_view_graph" text="ae2federation.ui.processing.view_wires"/>
@@ -66,17 +72,24 @@
                             </element>
                         </element>
                         <label id="network_identity" class="aside-caption"/>
+                        <element id="network_explain" class="dark-panel">
+                            <label id="graph_selection" class="panel-text"><lang key="ae2federation.ui.workspace.select_node"/></label>
+                        </element>
                         <element id="network_location" class="dark-panel location-panel">
-                            <label id="network_location_caption" class="panel-caption"/>
+                            <element class="location-head">
+                                <label id="network_location_caption" class="panel-caption"/>
+                                <element class="map-mode-switch">
+                                    <button id="network_view_map" class="map-mode" text="ae2federation.ui.location.mode_map"/>
+                                    <button id="network_view_3d" class="map-mode" text="ae2federation.ui.location.mode_3d"/>
+                                </element>
+                            </element>
                             <element id="network_preview" class="map-preview"/>
+                            <label id="network_location_legend" class="location-legend"/>
                             <label id="network_location_note" class="panel-text"/>
                         </element>
                         <element class="compact-actions network-actions">
-                            <button id="network_highlight" text="ae2federation.ui.location.highlight"/>
-                            <button id="graph_open" class="primary-action" text="ae2federation.ui.topology.devices"/>
-                        </element>
-                        <element class="dark-panel">
-                            <label id="graph_selection" class="panel-text"><lang key="ae2federation.ui.workspace.select_node"/></label>
+                            <button id="network_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                            <button id="graph_open" text="ae2federation.ui.topology.devices"/>
                         </element>
                         <element id="network_stats" class="dark-panel network-stats"/>
                         <label id="network_links_heading" class="aside-heading"/>

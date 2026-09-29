@@ -230,3 +230,31 @@ A side-by-side review after the window grew found the layout, not the features, 
   `FederationWorkspace.acceptChoices`, while Router and Bridge entrances keep the last choice.
 - Test: `TaskThirtyThreeWorldFixture.rightClickProvider` drives `player.gameMode.useItemOn` with empty hands and
   `setShiftKeyDown`, so the real interaction path (including the sneak branch) is exercised, not `openDevice` directly.
+
+## Phase 14: topology page against the rendered V2Topology / V2PairEditor / V2Scope boards (2026-09-29)
+
+- Header: bold "ME Federation Domain" + " · <tab>"; the status line reads "Synced · N networks · N links · this
+  domain · <entrance>" (entrance last, so it is the part that clips). Scope is a segmented pair of icon buttons
+  (`#graph_scope_domain` dashed square, `#graph_scope` globe) plus the flow arrow icon; glyphs are 16x16 rows in
+  `FederationIcons`, put on buttons with `FederationIcons.apply`. The scope text is `#scope_caption`.
+- Header summary labels are shown per page by the `off-page` class, not `setDisplay`, so the compact LSS can still
+  hide them (`setDisplay` overrides LSS).
+- Cards: bold name ("Network 0A1F" while unnamed; no separate tag badge), state line "Online · Identity confirmed",
+  "Online · Low energy" under 25 %, or the identity doubt alone. Tests find a card by its tooltip's full UUID
+  (`TaskThirtyThreeScenarioSupport.networkCard`), which survives a rename.
+- Layout: `TopologySpacing.factor` spreads the ellipse until no link label (sized by `pillHalfSize`) comes within
+  8 px of a card; fixes labels hidden under cards in the related scope and merge state.
+- Network aside: name, "Overworld · x, y, z · network 3f9a…c21", explanation panel (`#network_explain`) only for
+  doubt / related / waiting, location panel with caption + segmented Map/3D (`#network_view_map` / `#network_view_3d`,
+  replacing the in-map toggle), 16:10 map (`aspect-rate: 1.6` in LSS; compact 2.6) with dimmed surroundings, opaque
+  accent blocks and a white controller outline, legend row, blue "Highlight 10 s" + grey "Devices (N)" (provider and
+  endpoint counts in its tooltip), then five figure rows `label | bar | value` (`#network_stat_<name>` is the value).
+  AE2 reports no type or channel capacity, so those bars stay empty tracks like the design's I/O and CPU rows.
+- Pair editor: bold titles, row rules (`ROW_RULE`), painted slider switches (`FederationTheme.slider`, locked
+  variants for read-only, replacing AE2 checkbox sprites), outlined "Map ›" link, storage terms as green operation
+  chips (`#policy_terms_row_*`) with "Filter · Re-export" in `#policy_terms_*`, "Not configured · switch on to create".
+  Revisions stay in the state text: stale-edit tests and players rely on them.
+- The mapping case's Provider right-click now selects an empty hotbar slot first; an earlier case can leave an item
+  in the selected slot, which made the step fail intermittently.
+- Kept deviations: zoom/fit/legend buttons in the canvas, the 5 s flow window label top-left, Minecraft font, revision
+  numbers, very narrow (320 px) header crowding when "Back to provider" is shown.

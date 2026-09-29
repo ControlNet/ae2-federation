@@ -40,12 +40,16 @@ public final class FederationMapPreview extends UIElement {
     private static boolean threeDimensional;
     /** Made on the first client frame: the UI tree is also built on the server, where a Scene cannot be loaded. */
     private FederationScenePreview scene;
-    private final com.lowdragmc.lowdraglib2.gui.ui.elements.Button mode = new com.lowdragmc.lowdraglib2.gui.ui.elements.Button();
+    /** The panel's segmented Map and 3D buttons; a thumbnail has none. */
+    private com.lowdragmc.lowdraglib2.gui.ui.elements.Button mapButton;
+    private com.lowdragmc.lowdraglib2.gui.ui.elements.Button sceneButton;
 
     /** No Map/3D switch: a card's thumbnail stays a map, drawn small next to the card's figures. */
     private final boolean thumbnail;
     /** The panel caption naming the current view, kept in step with the switch; none for thumbnails. */
     private com.lowdragmc.lowdraglib2.gui.ui.elements.Label caption;
+    /** The heights the map looks through, named in the caption as the design does ("slice Y 8–16"). */
+    private BlockMarks.Slice slice;
 
     FederationMapPreview() {
         this(false);
@@ -56,14 +60,20 @@ public final class FederationMapPreview extends UIElement {
         addClass(thumbnail ? "map-thumbnail" : "map-preview-tile");
         layout(style -> style.widthPercent(100).heightPercent(100));
         setOverflowVisible(false);
-        mode.addClass("map-mode-toggle");
-        mode.layout(style -> style.positionType(dev.vfyjxf.taffy.style.TaffyPosition.ABSOLUTE).right(2).top(2).width(26).height(11));
-        mode.style(style -> style.tooltips(FederationWorkspace.trLocation("mode_help")));
-        mode.setOnClick(event -> {
-            threeDimensional = !threeDimensional;
-            applyMode();
-        });
-        if (!thumbnail) addChild(mode);
+        applyMode();
+    }
+
+    /** The panel's segmented switch: {@code map} shows the top-down map, {@code iso} the 3D view. */
+    void setModeButtons(com.lowdragmc.lowdraglib2.gui.ui.elements.Button map, com.lowdragmc.lowdraglib2.gui.ui.elements.Button iso) {
+        mapButton = map;
+        sceneButton = iso;
+        for (var button : new com.lowdragmc.lowdraglib2.gui.ui.elements.Button[] {map, iso}) {
+            button.style(style -> style.tooltips(FederationWorkspace.trLocation("mode_help")));
+            button.setOnClick(event -> {
+                threeDimensional = button == iso;
+                applyMode();
+            });
+        }
         applyMode();
     }
 
@@ -75,10 +85,13 @@ public final class FederationMapPreview extends UIElement {
 
     private void applyMode() {
         if (scene != null) scene.setDisplay(threeDimensional);
-        if (caption != null) caption.setText(FederationWorkspace.trLocation(threeDimensional ? "caption_3d" : "caption_map"));
-        mode.setText(FederationWorkspace.trLocation(threeDimensional ? "mode_map" : "mode_3d"));
-        mode.removeClass("three-d");
-        if (threeDimensional) mode.addClass("three-d");
+        if (caption != null) caption.setText(threeDimensional ? FederationWorkspace.trLocation("caption_3d")
+                : slice == null ? FederationWorkspace.trLocation("caption_map")
+                : FederationWorkspace.trLocation("caption_slice", slice.bottom(), slice.top()));
+        if (mapButton == null) return;
+        mapButton.removeClass("selected");
+        sceneButton.removeClass("selected");
+        (threeDimensional ? sceneButton : mapButton).addClass("selected");
     }
 
     private FederationScenePreview scene() {
@@ -128,6 +141,13 @@ public final class FederationMapPreview extends UIElement {
         this.marks = List.copyOf(marks);
         this.markColor = markColor;
         if (moved) frames = 0;
+        var sliced = new java.util.ArrayList<BlockMarks.Mark>(mask);
+        sliced.addAll(marks);
+        var newSlice = BlockMarks.slice(sliced, SLICE_DEPTH).orElse(null);
+        if (!java.util.Objects.equals(newSlice, slice)) {
+            slice = newSlice;
+            applyMode();
+        }
         showInScene();
     }
 
@@ -135,6 +155,7 @@ public final class FederationMapPreview extends UIElement {
         center = null;
         mask = List.of();
         marks = List.of();
+        slice = null;
         colors = new int[0];
         sampledCells = 0;
         if (scene != null) scene.show(List.of(), 0, List.of(), 0);
@@ -151,12 +172,12 @@ public final class FederationMapPreview extends UIElement {
         return level != null && level.dimension().location().toString().equals(dimension);
     }
 
-    /** A thumbnail widens its square to the box's shape; a preview stays square. */
+    /** The square around the device is widened to the box's shape, so the map fills its panel. */
     private void fitGrid() {
         int side = radius * 2 + 1;
         int newColumns = side;
         int newRows = side;
-        if (thumbnail && getSizeWidth() > 0 && getSizeHeight() > 0) {
+        if (getSizeWidth() > 0 && getSizeHeight() > 0) {
             float ratio = getSizeWidth() / getSizeHeight();
             if (ratio > 1) newColumns = Math.round(side * ratio) | 1;
             else newRows = Math.round(side / ratio) | 1;
@@ -198,8 +219,8 @@ public final class FederationMapPreview extends UIElement {
                         var brightness = north == Integer.MIN_VALUE || y == north ? MapColor.Brightness.NORMAL
                                 : y > north ? MapColor.Brightness.HIGH : MapColor.Brightness.LOW;
                         int rgb = abgrToRgb(color.calculateRGBColor(brightness));
-                        // A thumbnail keeps the ground dark so the network's blocks read in its accent.
-                        colors[dz * columns + dx] = 0xff000000 | (thumbnail ? mix(rgb, 0x15131b, 0.62f) : rgb);
+                        // The surroundings are dimmed so the network's blocks read in its accent.
+                        colors[dz * columns + dx] = 0xff000000 | mix(rgb, 0x15131b, thumbnail ? 0.62f : 0.55f);
                         sampledCells++;
                     }
                     break;
@@ -247,13 +268,27 @@ public final class FederationMapPreview extends UIElement {
         for (int index = 0; index < colors.length; index++) {
             if (colors[index] != 0) graphics.fill(index % columns, index / columns, index % columns + 1, index / columns + 1, colors[index]);
         }
-        int tint = (thumbnail ? 0xc8000000 : 0x99000000) | (maskColor & 0xffffff);
+        int tint = (thumbnail ? 0xc8000000 : 0xe6000000) | (maskColor & 0xffffff);
         for (var block : mask) cell(graphics, block, tint, 0);
-        for (var mark : marks) {
+        if (thumbnail) for (var mark : marks) {
             cell(graphics, mark, 0xff000000, -1);
             cell(graphics, mark, markColor, 0);
         }
         pose.popPose();
+        // The panel marks the controller as the design's legend says: a white outline around its cell.
+        if (!thumbnail) for (var mark : marks) {
+            int x = mark.x() - center.x() + columns / 2;
+            int z = mark.z() - center.z() + rows / 2;
+            if (x < 0 || z < 0 || x >= columns || z >= rows) continue;
+            int x0 = Math.round(left + x * cell) - 1;
+            int y0 = Math.round(top + z * cell) - 1;
+            int x1 = Math.round(left + (x + 1) * cell) + 1;
+            int y1 = Math.round(top + (z + 1) * cell) + 1;
+            graphics.fill(x0, y0, x1, y0 + 1, 0xffffffff);
+            graphics.fill(x0, y1 - 1, x1, y1, 0xffffffff);
+            graphics.fill(x0, y0, x0 + 1, y1, 0xffffffff);
+            graphics.fill(x1 - 1, y0, x1, y1, 0xffffffff);
+        }
     }
 
     private void cell(net.minecraft.client.gui.GuiGraphics graphics, BlockMarks.Mark block, int color, int grow) {

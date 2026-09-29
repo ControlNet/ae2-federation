@@ -31,6 +31,8 @@ public final class FederationTheme {
     public static final int TEAL = 0xff26a6bd;
     public static final int INFO = 0xff55a7ff;
     public static final int EDGE = 0xff8b83a0;
+    /** AE2's energy green, for stored energy that is not running low. */
+    public static final int ENERGY = 0xff00fc00;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */
     public static final int[] NETWORK_ACCENTS = {0xff61afef, 0xffd19a66, 0xffc678dd, 0xff98c379, 0xffe06c75,
             0xff56b6c2, 0xffe5c07b, 0xffbe5046};
@@ -53,12 +55,29 @@ public final class FederationTheme {
     public static final IGuiTexture WELL_RECT = well();
     public static final IGuiTexture RAIL = rail();
 
-    private static final ResourceLocation AE2_CHECKBOX = ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
     private static final ResourceLocation AE2_STATES = ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/states.png");
-    public static final IGuiTexture SWITCH_OFF = sprite(AE2_CHECKBOX, 0, 28, 22, 12);
-    public static final IGuiTexture SWITCH_OFF_HOVER = sprite(AE2_CHECKBOX, 22, 28, 22, 12);
-    public static final IGuiTexture SWITCH_ON = sprite(AE2_CHECKBOX, 0, 40, 22, 12);
-    public static final IGuiTexture SWITCH_ON_HOVER = sprite(AE2_CHECKBOX, 22, 40, 22, 12);
+    public static final IGuiTexture SWITCH_OFF = slider(false, false, false);
+    public static final IGuiTexture SWITCH_OFF_HOVER = slider(false, true, false);
+    public static final IGuiTexture SWITCH_OFF_LOCKED = slider(false, false, true);
+    public static final IGuiTexture SWITCH_ON = slider(true, false, false);
+    public static final IGuiTexture SWITCH_ON_HOVER = slider(true, true, false);
+    public static final IGuiTexture SWITCH_ON_LOCKED = slider(true, false, true);
+    /** A flat outlined button on a dark panel, such as a rule's "Map ›" link. */
+    public static final IGuiTexture LINK = painted((pen, x, y, width, height) -> {
+        pen.rect(x, y, width, 1, EDGE);
+        pen.rect(x, y + height - 1, width, 1, EDGE);
+        pen.rect(x, y, 1, height, EDGE);
+        pen.rect(x + width - 1, y, 1, height, EDGE);
+    });
+    public static final IGuiTexture LINK_HOVER = painted((pen, x, y, width, height) -> {
+        pen.rect(x, y, width, height, 0xff47434f);
+        pen.rect(x, y, width, 1, SELECT);
+        pen.rect(x, y + height - 1, width, 1, SELECT);
+        pen.rect(x, y, 1, height, SELECT);
+        pen.rect(x + width - 1, y, 1, height, SELECT);
+    });
+    /** The faint rule between a pair editor's rule rows. */
+    public static final IGuiTexture ROW_RULE = painted((pen, x, y, width, height) -> pen.rect(x, y, width, 1, 0x1fd8d3e4));
     public static final IGuiTexture TOOLBAR = sprite(AE2_STATES, 176, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_HOVER = sprite(AE2_STATES, 212, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_ACTIVE = sprite(AE2_STATES, 194, 128, 18, 20);
@@ -112,6 +131,11 @@ public final class FederationTheme {
         provider.addResource("RAIL", RAIL);
         provider.addResource("SWITCH_OFF", SWITCH_OFF);
         provider.addResource("SWITCH_ON", SWITCH_ON);
+        provider.addResource("SWITCH_OFF_LOCKED", SWITCH_OFF_LOCKED);
+        provider.addResource("SWITCH_ON_LOCKED", SWITCH_ON_LOCKED);
+        provider.addResource("ROW_RULE", ROW_RULE);
+        provider.addResource("LINK", LINK);
+        provider.addResource("LINK_HOVER", LINK_HOVER);
         provider.addResource("TOOLBAR", TOOLBAR);
         provider.addResource("TOOLBAR_HOVER", TOOLBAR_HOVER);
         provider.addResource("TOOLBAR_ACTIVE", TOOLBAR_ACTIVE);
@@ -144,6 +168,46 @@ public final class FederationTheme {
             pen.rect(x + 1, y + 1, width - 1, 1, HIGHLIGHT);
             pen.rect(x + 1, y + 1, 1, height - 2, HIGHLIGHT);
         });
+    }
+
+    /**
+     * The design's slider switch: a raised knob beside a coloured track. On, the knob sits right of a blue track with
+     * a light bar; off, it sits left of a grey track with a hollow square. A locked switch is drawn faded.
+     */
+    private static IGuiTexture slider(boolean on, boolean hover, boolean locked) {
+        return painted((pen, x, y, width, height) -> {
+            float knob = Math.round(width * 0.46f);
+            float trackX = on ? x + 1 : x + 1 + knob;
+            float trackWidth = width - 2 - knob;
+            float knobX = on ? x + width - 1 - knob : x + 1;
+            pen.rect(x, y, width, height, fade(OUTLINE, locked));
+            pen.rect(trackX, y + 1, trackWidth, height - 2, fade(on ? SELECT : 0xff696d88, locked));
+            float middleX = Math.round(trackX + trackWidth / 2f);
+            float middleY = Math.round(y + height / 2f);
+            if (on) {
+                pen.rect(middleX - 1, middleY - 3, 1, 5, fade(0xffdaffff, locked));
+            } else {
+                int square = fade(0xff878fa5, locked);
+                pen.rect(middleX - 2, middleY - 2, 4, 1, square);
+                pen.rect(middleX - 2, middleY + 1, 4, 1, square);
+                pen.rect(middleX - 2, middleY - 2, 1, 4, square);
+                pen.rect(middleX + 1, middleY - 2, 1, 4, square);
+            }
+            pen.rect(knobX, y + 1, knob, height - 2, fade(hover ? 0xffadb0c4 : 0xff9a9fb4, locked));
+            pen.rect(knobX, y + 1, knob, 1, fade(hover ? 0xffdaffff : 0xffadb0c4, locked));
+            pen.rect(knobX, y + 1, 1, height - 4, fade(hover ? 0xffdaffff : 0xffadb0c4, locked));
+            pen.rect(knobX, y + height - 3, knob, 2, fade(0xff696d88, locked));
+        });
+    }
+
+    /** A locked control reads at about half strength against the dark panel, as the design's 55% opacity. */
+    private static int fade(int color, boolean locked) {
+        if (!locked) return color;
+        int panel = 0x2f2a34;
+        int r = Math.round((color >> 16 & 0xff) * 0.55f + (panel >> 16 & 0xff) * 0.45f);
+        int g = Math.round((color >> 8 & 0xff) * 0.55f + (panel >> 8 & 0xff) * 0.45f);
+        int b = Math.round((color & 0xff) * 0.55f + (panel & 0xff) * 0.45f);
+        return 0xff000000 | r << 16 | g << 8 | b;
     }
 
     /** A face with a top/left highlight and a darker bottom lip that reads as a raised AE2 button. */

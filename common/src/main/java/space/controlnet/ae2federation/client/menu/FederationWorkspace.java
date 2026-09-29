@@ -70,6 +70,9 @@ final class FederationWorkspace {
         element("endpoint_mapping", Button.class).setOnClick(event -> navigateEndpoint("mapping"));
         element("endpoint_policy", Button.class).setOnClick(event -> navigateEndpoint("policy"));
         element("endpoint_browse", Button.class).setOnClick(event -> endpointBrowser.open());
+        // The design's title is bold; the tab name after it is not.
+        element("domain_title", Label.class).setText(Component.translatable("ae2federation.ui.domain.title")
+                .withStyle(net.minecraft.ChatFormatting.BOLD));
         var icons = Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING,
                 "diagnostics", FederationIcons.DIAGNOSTICS);
         for (var page : PAGES) {
@@ -205,8 +208,12 @@ final class FederationWorkspace {
         element("domain_tab", Label.class).setText(PAGES.contains(page) ? Component.literal(" · ").append(tr("tab_title." + page)) : Component.empty());
         boolean mapping = "mapping".equals(page);
         element("header_graph_tools", UIElement.class).setDisplay("overview".equals(page));
-        element("members_value", UIElement.class).setDisplay(!mapping);
-        element("processing_summary", UIElement.class).setDisplay(mapping);
+        // Classes, not setDisplay: the narrow layout's LSS also folds the summary away.
+        for (var summary : Map.of("members_value", !mapping, "processing_summary", mapping, "scope_caption", "overview".equals(page)).entrySet()) {
+            var label = element(summary.getKey(), UIElement.class);
+            label.removeClass("off-page");
+            if (!summary.getValue()) label.addClass("off-page");
+        }
         updateFeedback();
         if (processing != null) updateProcessingView();
         for (var candidate : PAGES) {

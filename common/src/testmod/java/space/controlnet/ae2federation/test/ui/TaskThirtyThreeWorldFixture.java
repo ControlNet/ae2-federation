@@ -93,7 +93,16 @@ final class TaskThirtyThreeWorldFixture {
     static void rightClickProvider(ServerContext context, boolean sneaking) {
         var player = context.player();
         var position = state(context).hostPosition();
-        require(player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty(), "Provider use needs empty hands");
+        // Earlier cases may leave something in the selected hotbar slot; an empty-hand use picks an empty slot first.
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < net.minecraft.world.entity.player.Inventory.getSelectionSize()
+                && !player.getMainHandItem().isEmpty(); slot++) {
+            if (!inventory.getItem(slot).isEmpty()) continue;
+            inventory.selected = slot;
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket(slot));
+        }
+        require(player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty(), "Provider use needs empty hands; main="
+                + player.getMainHandItem() + " off=" + player.getOffhandItem());
         player.setShiftKeyDown(sneaking);
         try {
             var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(position),

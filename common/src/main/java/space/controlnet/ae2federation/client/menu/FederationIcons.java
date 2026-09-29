@@ -63,7 +63,74 @@ final class FederationIcons {
             "................",
             "................");
 
+    /** This domain only: three networks inside a dashed boundary. */
+    static final IGuiTexture SCOPE_DOMAIN = glyph(
+            "##.###.##.###.##",
+            "#..............#",
+            "................",
+            "#..............#",
+            "#......##......#",
+            "#......##......#",
+            "......#..#......",
+            "#.....#..#.....#",
+            "#....#....#....#",
+            "....#......#....",
+            "#..##......##..#",
+            "#..##########..#",
+            "#..............#",
+            "................",
+            "#..............#",
+            "##.###.##.###.##");
+
+    /** Every related domain: a globe. */
+    static final IGuiTexture SCOPE_ALL = glyph(
+            "....########....",
+            "..##...##...##..",
+            ".#....#..#....#.",
+            ".#...#....#...#.",
+            ".##############.",
+            "#....#....#....#",
+            "#....#....#....#",
+            "################",
+            "#....#....#....#",
+            "#....#....#....#",
+            "#....#....#....#",
+            ".##############.",
+            ".#...#....#...#.",
+            ".#....#..#....#.",
+            "..##...##...##..",
+            "....########....");
+
+    /** Live flow: an arrow carrying two dots. */
+    static final IGuiTexture FLOW = glyph(
+            "................",
+            "................",
+            "................",
+            "..........#.....",
+            "...........#....",
+            "............#...",
+            ".##...##.....#..",
+            "###############.",
+            "###############.",
+            ".##...##.....#..",
+            "............#...",
+            "...........#....",
+            "..........#.....",
+            "................",
+            "................",
+            "................");
+
     private FederationIcons() {}
+
+    /** Puts {@code icon} on a text-less button, centred above its bottom lip. */
+    static void apply(com.lowdragmc.lowdraglib2.gui.ui.elements.Button button, IGuiTexture icon) {
+        button.noText();
+        var glyph = new com.lowdragmc.lowdraglib2.gui.ui.UIElement();
+        glyph.setAllowHitTest(false);
+        glyph.layout(style -> style.widthPercent(100).heightPercent(100).paddingBottom(2));
+        glyph.style(style -> style.backgroundTexture(icon));
+        button.addChild(glyph);
+    }
 
     private static IGuiTexture glyph(String... rows) {
         return FederationTheme.painted((pen, x, y, width, height) -> {

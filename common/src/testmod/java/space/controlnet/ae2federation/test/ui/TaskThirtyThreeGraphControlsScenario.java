@@ -51,12 +51,18 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("network detail replaces the pair editor", context -> context.el("#network_detail").isVisible()
                         && context.el("#network_title").text().equals(TaskThirtyThreeScenarioSupport.networkName(
                                 context.get("net.providerHost"))))
-                .checkTextContains("#graph_selection", "Pattern providers: 1")
-                .waitForTextContains("#network_stat_energy", " AE (")
-                .checkTextContains("#network_stat_cpus", "Crafting CPUs ")
-                .checkTextContains("#network_stat_channels", "Channels ")
-                .waitForTextContains("#network_stat_identity", "Identity confirmed")
-                .check("identity location is shown", context -> context.el("#network_stat_place").text().startsWith("Location Overworld "))
+                .check("the devices button counts the network's devices", context ->
+                        context.el("#graph_open").text().equals("Devices (1)")
+                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern providers: 1"))
+                .waitForTextContains("#network_stat_energy", " AE")
+                .check("figures are the design's five rows", context -> context.all(".stat-row").size() == 5
+                        && context.el("#network_stat_cpus").text().matches("\\d+/\\d+ busy")
+                        && context.el("#network_stat_channels").text().matches("\\d+ · \\d+ nodes")
+                        && context.el("#network_stat_io").text().matches("\\+.* / −.* AE/t"))
+                .check("a confirmed member explains nothing more", context -> !context.el("#network_explain").isVisible())
+                .waitUntil("the card says the network is online and confirmed", context -> TaskThirtyThreeScenarioSupport
+                        .cardTexts(context, context.get("net.providerHost")).contains("Online · Identity confirmed"))
+                .check("identity location is shown", context -> context.el("#network_identity").text().startsWith("Overworld · "))
                 .check("card shows live figures", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
                                 .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
@@ -72,9 +78,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                                 .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
                                 .anyMatch(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText()
                                         .getString().matches("CPU \\d+/\\d+"))))
-                .check("every card carries its identity tag", context -> context.all(".identity-badge").size()
+                .check("every card is named by its identity tag while unnamed", context -> context.all(".card-name").size()
                         == context.all(".graph-node-member").size()
-                        && context.all(".identity-badge").stream().allMatch(badge -> badge.text().matches("[0-9A-F]{4}")))
+                        && context.all(".card-name").stream().allMatch(name -> name.text().matches("Network [0-9A-F]{4}")))
                 .check("cards say where their network is", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
                                 .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
@@ -87,7 +93,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .screenshot("ui-graph-network-detail")
                 .waitUntil("the location map samples loaded terrain", context -> context.el("#network_preview .map-preview-tile")
                         .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
-                .checkTextContains("#network_location_note", "Tinted: ")
+                .checkTextContains("#network_location_legend", "This network's blocks")
+                .check("the legend counts the tinted blocks", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#network_location_legend", "Tinted: "))
+                .check("the map caption names its slice", context -> context.el("#network_location_caption").text()
+                        .matches("Top-down · Y -?\\d+ to -?\\d+"))
                 .step("reveal the location map", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_location"))
                 .frames(2)
                 .hover("#network_highlight")
@@ -96,7 +106,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the network's blocks are outlined", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
                 .checkTextContains("#network_location_note", "for 10 s")
-                .click("#network_preview .map-mode-toggle")
+                .click("#network_view_3d")
                 .waitUntil("the 3D preview draws the network's loaded blocks", context -> {
                     var preview = context.el("#network_preview .map-preview-tile")
                             .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class);
@@ -104,10 +114,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && preview.sceneView() != null && preview.sceneView().isDisplayed()
                             && preview.sceneView().renderedBlocks() > 0;
                 })
-                .checkTextContains("#network_preview .map-mode-toggle", "Map")
+                .check("the segmented switch marks 3D", context -> context.all("#network_view_3d.selected").size() == 1
+                        && context.all("#network_view_map.selected").isEmpty())
                 .frames(10)
                 .screenshot("ui-network-preview-3d")
-                .click("#network_preview .map-mode-toggle")
+                .click("#network_view_map")
                 .check("the map is back", context -> !space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
                         && !context.el("#network_preview .map-preview-scene").isVisible())
                 .step("record highlight evidence", context -> context.put("task33.highlightBlocks",
@@ -170,8 +181,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         TaskFifteenWorldFixture.policyRevision(context)
                                 > context.<Long>get("task33.policyBefore"))
                 .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
-                .waitForTextContains("#policy_terms_0_storage",
-                        "Operations view insert extract · Filter: all resources · Re-export: off")
+                .waitForTextContains("#policy_terms_0_storage", "Filter: all resources · Re-export: off")
+                .check("each allowed operation is a chip", context -> context.all("#policy_terms_row_0_storage .term-chip").stream()
+                        .map(chip -> chip.text()).toList().equals(java.util.List.of("view", "insert", "extract")))
                 .server("record authoritative policy result", context -> {
                     context.put("task33.policyRevision", Long.toString(TaskFifteenWorldFixture.policyRevision(context)));
                     context.put("task33.policyEnabled", Boolean.toString(TaskFifteenWorldFixture.policyEnabled(context)));
@@ -252,7 +264,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntilServer("the related domain settles", TaskThirtyThreeWorldFixture::relatedDomainReady)
                 .server("configure a rule inside the related domain", TaskThirtyThreeWorldFixture::installRelatedRule)
                 .serverGet("record the related network", "related.id", TaskThirtyThreeWorldFixture::relatedNetwork)
-                .waitForTextContains("#graph_scope", "Scope: domain")
+                .waitForTextContains("#scope_caption", "this domain")
+                .check("the domain segment is selected", context -> context.all("#graph_scope_domain.selected").size() == 1)
                 .check("the domain scope shows only members", context -> context.all(".graph-node-member").size() == 2
                         && context.all(".related-network").isEmpty())
                 .click("#graph_scope")
@@ -286,6 +299,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
                 .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
+                .checkTextContains("#scope_caption", "with related domains (read-only)")
                 .check("the related domain's link is drawn as read-only", context -> context.all(".related-pair").size() == 1)
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
@@ -294,7 +308,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.attach("scope", "related-read-only");
                     context.attach("relatedNetwork", context.get("related.id"));
                 })
-                .click("#graph_scope")
+                .click("#graph_scope_domain")
                 .waitUntil("the domain scope hides the related network again", context -> context.all(".related-network").isEmpty())
                 .server("remove the related domain", TaskThirtyThreeWorldFixture::removeRelatedDomain)
                 .checkServer("the related domain's rule is gone with it", context -> space.controlnet.ae2federation.policy.PolicyService

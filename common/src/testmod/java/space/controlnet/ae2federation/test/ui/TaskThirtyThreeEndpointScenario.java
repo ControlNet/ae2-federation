@@ -159,7 +159,8 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .waitUntil("graph selects the inspected endpoint's network", context -> context.el("#network_detail").isVisible()
                         && context.el("#network_title").text().contains(TaskThirtyThreeScenarioSupport.networkTag(
                                 context.get("navigation.provider"))))
-                .checkTextContains("#graph_selection", "Processing endpoints: ")
+                .check("the network's devices name its endpoints", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Processing endpoints: "))
                 .waitUntil("located network is centered in screen space", context -> TaskThirtyThreeScenarioSupport.networkCardCentered(
                         context, context.get("navigation.provider")))
                 .screenshot("ui-diagnostics-locate-endpoint")
