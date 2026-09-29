@@ -12,7 +12,7 @@ public record MappingFeedback(String key, List<String> arguments, String tone) {
     private static final Set<String> REJECTIONS = Set.of("session", "no-provider", "no-endpoint", "invalid-selection",
             "claim_mismatch", "stale-slot", "provider-offline", "not-retained", "still-mapped",
             "pending-send", "pending-return", "endpoint-unloaded", "claim-changed", "owner_conflict", "stale_epoch",
-            "wrong_endpoint");
+            "wrong_endpoint", "domain-disconnected");
 
     public static MappingFeedback fromCode(String code) {
         if ("ready".equals(code)) return simple("ready", "neutral");

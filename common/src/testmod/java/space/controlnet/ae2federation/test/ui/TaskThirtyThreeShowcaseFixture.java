@@ -122,6 +122,11 @@ final class TaskThirtyThreeShowcaseFixture {
                     .setValue(BlockStateProperties.FACING, Direction.UP));
         }
         var cables = new ArrayList<BlockPos>();
+        // Each Provider's Federation face joins the Router's domain: the smelter's through the host's cable column,
+        // the Mine's through a cable run to the one on the Router's top.
+        cables.add(host.east().above());
+        var router = TaskFifteenWorldFixture.routerPosition(context);
+        for (int east = 1; east <= 3; east++) cables.add(router.above().east(east));
         for (int east = 1; east <= 4; east++) cables.add(first.above().east(east));
         for (int north = 1; north <= 2; north++) {
             cables.add(first.east(2).above().north(north));
@@ -147,6 +152,8 @@ final class TaskThirtyThreeShowcaseFixture {
                 GridHelper.createConnection(provider.getMainNode().getNode(), providerGrids.get(index));
                 return false;
             }
+            var routerNode = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
+            if (provider.federationDomain().filter(domain -> domain.nodes().contains(routerNode)).isEmpty()) return false;
         }
         var targets = new ArrayList<IGridNode>();
         for (int index = 0; index < state.towerEndpoints.size(); index++) targets.add(TaskThirtyThreeWorldFixture.outerNode(context));

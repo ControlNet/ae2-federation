@@ -94,7 +94,8 @@ final class ProviderTargetLifecycle implements AutoCloseable {
                 endpointBinding = new EndpointTargetBinding(helper.getLevel(), provider.endpointTargetPosition(),
                         ENDPOINT_SIDE, fixtureClaims, targetNode);
             }
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), SyntheticEndpointDomain.providerFace(
+                    FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow()), provider.composition(),
                     providerIdentity, new ProviderOrientation(ProviderFace.EAST), request::get, domains);
             runtime.settle();
             provider.installPatterns(1);

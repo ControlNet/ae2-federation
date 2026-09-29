@@ -47,11 +47,11 @@ import space.controlnet.ae2federation.router.RouterRegistration;
  */
 @PrefixGameTestTemplate(false)
 public final class EndpointFederationFaceGameTests {
-    private static final BlockPos MEMBER_ENERGY = new BlockPos(1, 1, 3);
-    private static final BlockPos MEMBER_CHEST = new BlockPos(2, 1, 3);
-    private static final BlockPos HUB = new BlockPos(3, 1, 3);
-    private static final BlockPos NEAR = new BlockPos(4, 1, 3);
-    private static final BlockPos FAR = new BlockPos(5, 1, 3);
+    static final BlockPos MEMBER_ENERGY = new BlockPos(1, 1, 3);
+    static final BlockPos MEMBER_CHEST = new BlockPos(2, 1, 3);
+    static final BlockPos HUB = new BlockPos(3, 1, 3);
+    static final BlockPos NEAR = new BlockPos(4, 1, 3);
+    static final BlockPos FAR = new BlockPos(5, 1, 3);
 
     private EndpointFederationFaceGameTests() {
     }
@@ -117,7 +117,8 @@ public final class EndpointFederationFaceGameTests {
 
     /**
      * Claiming, activating and releasing an Endpoint change its state, not its Federation link: the domain it is a node
-     * of keeps its generation, so workspaces open on that domain stay current.
+     * of keeps its generation, so workspaces open on that domain stay current. Here the Endpoint's Federation face is on
+     * a Federation Cable.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
@@ -127,12 +128,39 @@ public final class EndpointFederationFaceGameTests {
         helper.setBlock(HUB, RouterRegistration.ROUTER.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         scene.endpoint(FAR, Direction.WEST);
+        assertClaimKeepsDomain(helper, scene, FAR);
+    }
+
+    /** As {@link #endpointFederationFaceClaimKeepsDomain}, with the Federation face directly on a Router face. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void endpointFederationFaceClaimKeepsRouterDomain(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.member();
+        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        scene.endpoint(NEAR, Direction.WEST);
+        assertClaimKeepsDomain(helper, scene, NEAR);
+    }
+
+    /** As {@link #endpointFederationFaceClaimKeepsDomain}, with the Federation face directly on a Provider front. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void endpointFederationFaceClaimKeepsProviderDomain(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.place(MEMBER_CHEST, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(), scene.member);
+        scene.place(HUB, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.EAST), scene.member);
+        scene.endpoint(NEAR, Direction.WEST);
+        assertClaimKeepsDomain(helper, scene, NEAR);
+    }
+
+    private static void assertClaimKeepsDomain(GameTestHelper helper, Scene scene, BlockPos endpointPosition) {
         var owner = new EndpointOwnerIdentity(ProviderIdentity.create());
         // The settled generation, the tick it was first seen, and the tick of the release (-1 before it).
         var seen = new long[] {-1, 0, -1};
         helper.succeedWhen(() -> {
-            scene.assertEndpointJoins(HUB, FAR);
-            var endpoint = helper.<EndpointBlockEntity>getBlockEntity(FAR);
+            scene.assertEndpointJoins(HUB, endpointPosition);
+            var endpoint = helper.<EndpointBlockEntity>getBlockEntity(endpointPosition);
             var generation = scene.domainOf(HUB).orElseThrow().generation();
             if (seen[2] < 0) {
                 if (generation != seen[0]) {
@@ -143,8 +171,11 @@ public final class EndpointFederationFaceGameTests {
                 helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), endpoint.claimState().epoch(),
                         owner)) instanceof ClaimResult.Acquired, "A Federated Endpoint must accept a Claim");
                 helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
+                // Still the same tick: the claim must not have withdrawn the domain.
+                var claimed = scene.domainOf(HUB).map(FederationDomainSnapshot::generation).orElse(-1L);
                 helper.assertTrue(endpoint.releaseClaim(owner, endpoint.claimState().epoch()), "The owner must release its Claim");
                 seen[2] = helper.getTick();
+                helper.assertValueEqual(claimed, seen[0], "Claiming must not withdraw the Endpoint's domain");
                 helper.fail("claimed and released; waiting");
             }
             helper.assertValueEqual(generation, seen[0], "Claim and release must not republish the Endpoint's domain");
@@ -241,10 +272,10 @@ public final class EndpointFederationFaceGameTests {
         });
     }
 
-    private static final class Scene {
+    static final class Scene {
         private final GameTestHelper helper;
-        private final NetworkId member = NetworkId.create();
-        private final NetworkId subnet = NetworkId.create();
+        final NetworkId member = NetworkId.create();
+        final NetworkId subnet = NetworkId.create();
 
         Scene(GameTestHelper helper) {
             this.helper = helper;

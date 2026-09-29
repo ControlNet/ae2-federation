@@ -142,7 +142,8 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
                 "H1 must have a real WEST in-world edge on the exact source Grid");
         if (stage == 2) {
             remote.register();
-            runtime = new ProviderRuntime(helper.getLevel(), remote.managedNode(), remote.composition(), identity,
+            runtime = new ProviderRuntime(helper.getLevel(), remote.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), remote.composition(), identity,
                     new ProviderOrientation(ProviderFace.EAST), lane -> request, new NativeTargetDomainRegistry());
             runtime.settle();
             index = 0;

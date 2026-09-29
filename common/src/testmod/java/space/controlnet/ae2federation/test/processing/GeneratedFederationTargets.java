@@ -71,7 +71,8 @@ final class GeneratedFederationTargets implements AutoCloseable {
         }
         if (runtime == null) {
             claimTargets();
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), SyntheticEndpointDomain.providerFace(
+                    FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow()), provider.composition(),
                     providerIdentity, new ProviderOrientation(ProviderFace.EAST), requests::get, domains);
             runtime.settle();
         }

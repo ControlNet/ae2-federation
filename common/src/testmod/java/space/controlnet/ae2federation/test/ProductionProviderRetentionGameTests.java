@@ -161,11 +161,13 @@ public final class ProductionProviderRetentionGameTests {
                 case 5 -> {
                     var second = scene.secondProvider();
                     helper.assertTrue(second.runtime().isPresent(), "Waiting for the second Provider");
-                    var remainder = second.getTerminalPatternInventory().insertItem(0,
-                            scene.provider().getTerminalPatternInventory().getStackInSlot(0).copy(), false);
-                    helper.assertTrue(remainder.isEmpty(), "Second Provider takes a Pattern");
+                    if (second.getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+                        var remainder = second.getTerminalPatternInventory().insertItem(0,
+                                scene.provider().getTerminalPatternInventory().getStackInSlot(0).copy(), false);
+                        helper.assertTrue(remainder.isEmpty(), "Second Provider takes a Pattern");
+                    }
                     var status = scene.map(second, 0, Target.A);
-                    helper.assertTrue(status.startsWith("rejected-"), "A retained Endpoint cannot be claimed: " + status);
+                    helper.assertValueEqual(status, "rejected-owner_conflict", "A retained Endpoint cannot be claimed");
                     requireOwned(helper, scene, scene.provider(), "The competing claim leaves the Claim unchanged");
                     facts.put("competingClaim", status);
                     phase[0] = 6;
@@ -261,10 +263,7 @@ public final class ProductionProviderRetentionGameTests {
                         var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                         player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                         var session = FederationDomainPolicySession.forRouter(player, router);
-                        for (int attempt = 0; attempt < 4 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
-                            session.releaseEndpoint();
-                            if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
-                        }
+                        prepareRelease(session);
                         helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Confirm old binding");
                         ClaimState protectedClaim = null;
                         if (testId.equals("productionproviderreplacedcleanup")) {
@@ -299,13 +298,7 @@ public final class ProductionProviderRetentionGameTests {
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);
-                    for (int attempt = 0; attempt < 3 && !"confirm-release".equals(session.mappingStatusCode());
-                            attempt++) {
-                        session.releaseEndpoint();
-                        if (!"confirm-release".equals(session.mappingStatusCode())) {
-                            session.nextMappingLane();
-                        }
-                    }
+                    prepareRelease(session);
                     helper.assertValueEqual(session.mappingStatusCode(), "confirm-release",
                             "The first release press only asks for confirmation");
                     requireOwned(helper, scene, provider, "An unconfirmed release changes nothing");
@@ -335,10 +328,7 @@ public final class ProductionProviderRetentionGameTests {
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);
-                    for (int attempt = 0; attempt < 5 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
-                        session.releaseEndpoint();
-                        if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
-                    }
+                    prepareRelease(session);
                     helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Select offline retained identity");
                     helper.assertTrue(provider.retained(endpoint), "Unconfirmed cleanup retains binding");
                     session.releaseEndpoint();
@@ -555,6 +545,20 @@ public final class ProductionProviderRetentionGameTests {
 
     private static void accepted(GameTestHelper helper, String status, String action) {
         helper.assertTrue(status.startsWith("accepted-"), action + ": " + status);
+    }
+
+    /**
+     * Presses Release on each Lane of each Provider the Router's domain lists until one asks for confirmation: the
+     * competing second Provider is in the same domain, and the order of the two is not fixed.
+     */
+    private static void prepareRelease(FederationDomainPolicySession session) {
+        for (int provider = 0; provider < 2 && !"confirm-release".equals(session.mappingStatusCode()); provider++) {
+            for (int lane = 0; lane < 5 && !"confirm-release".equals(session.mappingStatusCode()); lane++) {
+                session.releaseEndpoint();
+                if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
+            }
+            if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingProvider();
+        }
     }
 
     private static void requireOwned(GameTestHelper helper, ProductionProviderScene scene,

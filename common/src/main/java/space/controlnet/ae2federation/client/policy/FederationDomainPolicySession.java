@@ -122,8 +122,9 @@ public final class FederationDomainPolicySession {
                 : Optional.<space.controlnet.ae2federation.identity.NetworkId>empty();
         var nodeId = FederationDomainRegistryAccess.nodeId(level, position);
         List<FederationDomainSnapshot> candidates;
-        if (entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity) {
-            // An Endpoint belongs to the domain its Federation face joins; its own subnet is not a member of it.
+        if (entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity || provider) {
+            // An Endpoint or a Provider belongs to the domain its Federation face joins; an Endpoint's own subnet is not
+            // a member of it, and a Provider's network may be a member of other domains too.
             candidates = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
                     .filter(domain -> domain.nodes().contains(nodeId) && !domain.memberships().isEmpty()).toList();
         } else {

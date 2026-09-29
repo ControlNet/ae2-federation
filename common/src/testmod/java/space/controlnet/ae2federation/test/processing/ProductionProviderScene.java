@@ -59,8 +59,11 @@ public final class ProductionProviderScene {
     public static final BlockPos CABLE_NEAR = new BlockPos(5, 1, 3);
     public static final BlockPos CABLE_FAR = new BlockPos(6, 1, 3);
     public static final BlockPos ROUTER = new BlockPos(7, 1, 3);
-    /** Isolated position for a second production Provider that competes for an Endpoint Claim. */
-    public static final BlockPos SECOND_PROVIDER = new BlockPos(2, 1, 6);
+    /**
+     * A second production Provider that competes for an Endpoint Claim: on its own network, its Federation face on the
+     * near Federation Cable, so it is in the Router's domain as a Provider must be to map that domain's Endpoints.
+     */
+    public static final BlockPos SECOND_PROVIDER = new BlockPos(5, 1, 4);
     private static final Map<Target, BlockPos[]> SUBNETS = new EnumMap<>(Map.of(
             Target.A, new BlockPos[] { new BlockPos(7, 1, 4), new BlockPos(7, 1, 5), new BlockPos(7, 1, 6) },
             Target.B, new BlockPos[] { new BlockPos(8, 1, 3), new BlockPos(8, 2, 3), new BlockPos(8, 3, 3) },
@@ -395,7 +398,8 @@ public final class ProductionProviderScene {
     }
 
     public FederationPatternProviderBlockEntity placeSecondProvider() {
-        helper.setBlock(SECOND_PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState());
+        helper.setBlock(SECOND_PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH));
         return secondProvider();
     }
 

@@ -81,7 +81,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         }
         boundaryNode.create(serverLevel, routerPosition);
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
-                face.getOpposite(), () -> boundaryNode.isReady(), this::invalidate);
+                face.getOpposite(), () -> boundaryNode.isReady(), this::recheck);
         invalidate();
     }
 
@@ -100,6 +100,15 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         binding = RouterPortBinding.Disconnected.INSTANCE;
         dirty = true;
         topologyInvalidator.run();
+    }
+
+    /**
+     * Some capability of the neighbour changed, such as an Endpoint's item handlers when it is claimed: resolve the
+     * binding again on the next tick, which reports a change only when it differs. Dropping the binding here would
+     * republish the whole domain although the link is the same; a changed neighbour block reaches {@link #invalidate()}.
+     */
+    private void recheck() {
+        dirty = true;
     }
 
     public void destroy() {

@@ -92,7 +92,8 @@ final class ScaleLargeFederationTarget implements AutoCloseable {
         if (stage == 2) {
             if (!target.connectExportBus() || !target.exportBusReady() || !target.busLineage()
                     || !target.onlyAnchorClaim()) return false;
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(), identity,
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), provider.composition(), identity,
                     new ProviderOrientation(ProviderFace.EAST), lane -> request, new NativeTargetDomainRegistry());
             runtime.settle();
             ports.placeCable(upper, AEColor.RED);

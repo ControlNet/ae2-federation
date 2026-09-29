@@ -56,10 +56,12 @@ public final class ProviderTargetAuthorization {
         if (overlap != ProviderTargetState.ACTIVE) {
             return paused(overlap);
         }
-        // No rule: every Provider whose network is a member of the domain the Endpoint's Federation face joins may use it.
+        // No rule: a Provider may use every Endpoint of the domain its own Federation face joins. Its network being a
+        // member of that domain through another route is not enough.
         var domain = FederationDomainRegistryAccess.get(level)
                 .federationDomainOf(FederationDomainRegistryAccess.nodeId(level, position));
-        if (domain.isEmpty() || !domain.orElseThrow().memberships().containsKey(sourceId.orElseThrow())) {
+        if (domain.isEmpty() || !domain.orElseThrow().nodes().contains(context.federationFace())
+                || !domain.orElseThrow().memberships().containsKey(sourceId.orElseThrow())) {
             return paused(ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED);
         }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,

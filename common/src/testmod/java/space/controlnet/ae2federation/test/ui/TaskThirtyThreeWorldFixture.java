@@ -601,6 +601,7 @@ final class TaskThirtyThreeWorldFixture {
     /**
      * A second production Federation Pattern Provider with one real processing pattern. It is placed against the
      * first one, so AE2 joins it to the main network as a player's placement would, keeping that network's identity.
+     * A Federation Cable from its Federation face to the first Provider's cable puts it in the Router's domain.
      */
     static void placeSecondProvider(ServerContext context) {
         var position = state(context).hostPosition().east();
@@ -610,6 +611,9 @@ final class TaskThirtyThreeWorldFixture {
                 FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).orElseThrow().toString());
         context.level().setBlockAndUpdate(position, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                 .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
+        require(context.level().isEmptyBlock(position.above()), "Second Provider cable position must be empty");
+        context.level().setBlockAndUpdate(position.above(),
+                space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
     }
 
     static boolean secondProviderReady(ServerContext context) {
@@ -619,6 +623,8 @@ final class TaskThirtyThreeWorldFixture {
             return false;
         }
         if (second.getMainNode().getGrid() != state(context).existing.getGrid()) return false;
+        var router = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
+        if (second.federationDomain().filter(domain -> domain.nodes().contains(router)).isEmpty()) return false;
         var network = FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).map(Object::toString);
         if (network.isEmpty()) return false;
         require(network.get().equals(context.get("task33.mainNetworkBeforeSecondProvider")),
@@ -636,6 +642,7 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     static void removeSecondProvider(ServerContext context) {
+        context.level().removeBlock(context.<BlockPos>get("task33.secondProvider").above(), false);
         context.level().removeBlock(context.<BlockPos>get("task33.secondProvider"), false);
     }
 

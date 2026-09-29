@@ -31,7 +31,7 @@ final class MappingFeedbackTest {
     @Test
     void refusalReasonsRetainTheirSpecificMeaning() {
         for (var code : List.of("rejected-pending-send", "rejected-pending-return", "rejected-owner_conflict",
-                "rejected-stale-slot", "rejected-session", "rejected-claim-changed")) {
+                "rejected-stale-slot", "rejected-session", "rejected-claim-changed", "rejected-domain-disconnected")) {
             assertEquals(code, MappingFeedback.fromCode(code).key());
             assertEquals("error", MappingFeedback.fromCode(code).tone());
         }

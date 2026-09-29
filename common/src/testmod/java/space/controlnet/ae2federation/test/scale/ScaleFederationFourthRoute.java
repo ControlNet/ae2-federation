@@ -132,7 +132,8 @@ public final class ScaleFederationFourthRoute implements AutoCloseable {
                 "H2 must join the source through its own physical WEST edge");
         if (stage == 2) {
             remote.register();
-            runtime = new ProviderRuntime(helper.getLevel(), remote.managedNode(), remote.composition(), identity,
+            runtime = new ProviderRuntime(helper.getLevel(), remote.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), remote.composition(), identity,
                     new ProviderOrientation(ProviderFace.EAST), lane -> request, new NativeTargetDomainRegistry());
             runtime.settle();
             placeCable(RED, AEColor.RED);

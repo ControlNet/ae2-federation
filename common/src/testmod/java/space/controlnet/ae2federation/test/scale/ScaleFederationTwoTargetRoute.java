@@ -99,7 +99,8 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
             helper.assertTrue(edge.isPresent() && !edge.orElseThrow().isInWorld(),
                     "Source storage must have the fixture-created non-world edge before physical handoff");
             edge.orElseThrow().destroy();
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), provider.composition(),
                      identity, new ProviderOrientation(ProviderFace.EAST), lane -> requests[lane],
                     new NativeTargetDomainRegistry());
             runtime.settle();

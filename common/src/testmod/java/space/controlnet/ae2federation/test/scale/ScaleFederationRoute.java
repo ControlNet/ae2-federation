@@ -140,7 +140,8 @@ public final class ScaleFederationRoute implements AutoCloseable {
             helper.assertTrue(oldEdge.isPresent() && !oldEdge.orElseThrow().isInWorld(),
                     "Fixture source-storage edge must be the earlier explicit native connection");
             oldEdge.orElseThrow().destroy();
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), provider.composition(),
                     providerIdentity, new ProviderOrientation(ProviderFace.EAST), () -> request,
                     new NativeTargetDomainRegistry());
             runtime.settle();
