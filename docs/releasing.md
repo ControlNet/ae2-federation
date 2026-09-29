@@ -4,7 +4,7 @@ This repository follows the same branch convention as `ControlNet/minecraft-matr
 
 | Branch | Purpose | CI |
 | --- | --- | --- |
-| `master` | Published versions | Build, test, and publish a new version to GitHub Releases |
+| `master` | Published versions | Build, test, and publish a new version to GitHub Releases, Modrinth, and CurseForge |
 | `dev` | Integration for the next version | Build and test |
 | `feature/*` | Changes based on `dev`; merge back into `dev` | Build and test |
 | `release/vX.Y.Z` | Release preparation based on `dev`; merge into `master` and back into `dev` | Build and test |
@@ -30,7 +30,7 @@ GitHub Release. Published versions remain available from GitHub Releases.
 
 The first version is **0.0.1**, targeting Minecraft **1.21.1 / NeoForge**.
 
-Set `mod_version` in `gradle.properties`. Gradle expands it into production and testmod metadata; archive verification also reads this property. Do not edit generated files. Development branches may use a suffix such as `0.0.2-dev`, but a release on `master` must use `MAJOR.MINOR.PATCH`.
+Set `mod_version` in `gradle.properties`, and set `release_channel` to `alpha`, `beta`, or `release` for Modrinth and CurseForge. Gradle expands it into production and testmod metadata; archive verification also reads this property. Do not edit generated files. Development branches may use a suffix such as `0.0.2-dev`, but a release on `master` must use `MAJOR.MINOR.PATCH`.
 
 The release workflow creates `vX.Y.Z` automatically. Do not manually tag as part of the normal release flow. Versions must increase numerically. A later commit with the same published version runs checks without publishing again.
 
@@ -60,7 +60,7 @@ Expected: `BUILD SUCCESSFUL`, passing Python tests, successful archive inspectio
 
 ## Publish
 
-**Pushing the release merge to `master` publishes to GitHub automatically once CI passes.** Run these commands when the release is ready:
+**Pushing the release merge to `master` publishes to GitHub, Modrinth, and CurseForge automatically once CI passes.** Run these commands when the release is ready:
 
 ```bash
 git switch master
@@ -76,7 +76,21 @@ For subsequent releases, use the same sequence with the next version. For hotfix
 
 ## Release automation
 
-The **Release** workflow runs on pushes to `master` and can be rerun manually on `master`. It uses the built-in `GITHUB_TOKEN`; no publishing credentials need to be added. Only the publishing job receives `contents: write`.
+The **Release** workflow runs on pushes to `master` and can be rerun manually on `master`. GitHub publication uses the built-in `GITHUB_TOKEN`; only that job receives `contents: write`. Modrinth and CurseForge need these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `MODRINTH_TOKEN` | Modrinth personal access token with *Read projects*, *Read versions*, and *Create versions* |
+| `MODRINTH_PROJECT_ID` | Modrinth project ID (`orso4Dml`) |
+| `CURSEFORGE_TOKEN` | CurseForge upload API token |
+| `CURSEFORGE_PROJECT_ID` | CurseForge project ID (`1713078`) |
+
+Set them from an ignored local `.env` file with the same names:
+
+```bash
+gh secret set -f .env -R ControlNet/ae2-federation
+gh secret list -R ControlNet/ae2-federation
+```
 
 The required manifest GameTests run in eight parallel groups, with each test assigned exactly once. Publication waits for every group to succeed.
 
@@ -86,9 +100,24 @@ After the build, unit tests, archive validation, and all required manifest GameT
 - `ae2federation-neoforge-1.21.1-0.0.1-sources.jar` — source code for developers.
 - `SHA256SUMS.txt` — checksums for both files.
 
+After the GitHub Release is published, the same binary JAR is uploaded to Modrinth and CurseForge with the tags of the manually published 0.0.1 files, plus the Java 21 tag on CurseForge:
+
+| | Modrinth | CurseForge |
+| --- | --- | --- |
+| Channel | `release_channel` | `release_channel` |
+| Minecraft | `1.21.1` | `1.21.1` (Minecraft 1.21 type) |
+| Loader | NeoForge | NeoForge |
+| Environment | Client and server | Client, Server |
+| Java | — | Java 21 |
+| Dependencies | Applied Energistics 2, LDLib (required) | — |
+
+The `platform-preflight` job resolves and validates every tag before a tag or release is created; a missing secret or an ambiguous or missing CurseForge tag stops the release. It uses `tools/platform_release.py`. Run `python3 tools/platform_release.py plan` to print the planned metadata, or `preflight` with the four variables set to check it against the live platforms without uploading. The Modrinth upload is read back and verified. CurseForge moderation may delay the file becoming public.
+
+Before uploading, each platform job checks whether that platform already has this version: Modrinth by version number (authenticated, so versions under review count), CurseForge by file name in the public file list. An existing version is skipped, so a re-run or a manual dispatch on `master` only uploads what is missing. If the CurseForge list cannot be read, the job fails instead of uploading. A newly uploaded CurseForge file may stay out of the public list until moderation finishes, so prefer **Re-run failed jobs** over a full re-run shortly after an upload.
+
 Release notes are generated by GitHub. The workflow uploads to a draft first, then publishes it after all uploads succeed. If publishing fails, rerun the failed workflow: it can reuse a tag at the same commit and resume a draft. Existing published releases are left unchanged, and tags are never moved. Do not delete or move a release tag to retry.
 
-An unchanged version on a later commit does not repair an earlier incomplete release; rerun the original failed run. A manually dispatched run on a branch other than `master` is skipped. No Modrinth or CurseForge publishing is configured.
+An unchanged version on a later commit does not repair an earlier incomplete release; rerun the original failed run. A manually dispatched run on a branch other than `master` is skipped.
 
 ## CI scope
 
