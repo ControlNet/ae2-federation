@@ -247,7 +247,7 @@ final class TaskThirtyThreeShowcaseFixture {
 
     private static void placeEndpoint(ServerContext context, BlockPos position, NetworkId network) {
         require(context.level().isEmptyBlock(position), "Showcase Endpoint position must be empty: " + position);
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         endpoint(context, position).getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
     }
 

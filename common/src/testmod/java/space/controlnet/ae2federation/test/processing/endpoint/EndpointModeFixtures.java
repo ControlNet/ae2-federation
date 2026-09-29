@@ -46,7 +46,7 @@ public final class EndpointModeFixtures implements AutoCloseable {
 
     public EndpointModeFixtures(GameTestHelper helper, boolean secondProvider) {
         this.helper = helper;
-        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get());
+        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
                 .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.EAST));
         helper.setBlock(PROVIDER_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
@@ -188,7 +188,7 @@ public final class EndpointModeFixtures implements AutoCloseable {
         var saved = endpoint.saveWithFullMetadata(helper.getLevel().registryAccess());
         var state = new SavedState(endpoint.endpointIdentity(), endpoint.claimState(), binding().runtime().generation());
         helper.setBlock(ENDPOINT, Blocks.AIR);
-        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get());
+        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         endpoint().loadWithComponents(saved, helper.getLevel().registryAccess());
         endpoint().setChanged();
         binding = null;

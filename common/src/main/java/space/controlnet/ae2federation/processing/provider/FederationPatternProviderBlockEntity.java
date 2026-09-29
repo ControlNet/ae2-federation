@@ -71,8 +71,16 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
 public final class FederationPatternProviderBlockEntity extends AENetworkedBlockEntity
         implements PatternProviderLogicHost, ProviderMappingController {
     public static final int PATTERN_SLOTS = 9;
-    /** Side of an Endpoint through which Lanes reach its Subnet; any non-Federation Endpoint face is equivalent. */
-    public static final Direction ENDPOINT_ACCESS_SIDE = EndpointBlockEntity.FEDERATION_FACE.getOpposite();
+    /**
+     * Side of an Endpoint through which Lanes reach its Subnet: the face opposite its Federation face. Any
+     * non-Federation face is equivalent; an Endpoint that is gone yields a side the authorization then rejects.
+     */
+    public static Direction endpointAccessSide(net.minecraft.world.level.Level level, BlockPos endpointPosition) {
+        var state = level.isLoaded(endpointPosition) ? level.getBlockState(endpointPosition) : null;
+        return state != null && state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING)
+                ? state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING).getOpposite()
+                : Direction.DOWN;
+    }
     private static final String SCHEMA_TAG = "federationProviderSchema";
     private static final int SCHEMA = 1;
     private static final String IDENTITY_TAG = "providerIdentity";
@@ -614,7 +622,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             return null;
         }
         return new ProviderTargetRequest(identity, binding.endpoint, binding.epoch, binding.position,
-                ENDPOINT_ACCESS_SIDE, true);
+                endpointAccessSide(level, binding.position), true);
     }
 
     // ---- Domain (Federation Domain) port on the front face

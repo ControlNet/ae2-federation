@@ -102,7 +102,7 @@ public final class ProductionProviderScene {
         helper.setBlock(CABLE_FAR, RouterRegistration.FEDERATION_CABLE.get());
         for (var target : Target.values()) {
             var positions = SUBNETS.get(target);
-            placeNative(positions[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
+            placeNative(positions[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST),
                     targetNetworks.get(target));
             placeNative(positions[1], AEBlocks.ME_CHEST.block().defaultBlockState(), targetNetworks.get(target));
             helper.<MEChestBlockEntity>getBlockEntity(positions[1]).setCell(AEItems.ITEM_CELL_1K.stack());
@@ -360,14 +360,14 @@ public final class ProductionProviderScene {
     }
 
     public void reloadEndpoint(Target target, CompoundTag tag) {
-        helper.setBlock(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        helper.setBlock(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         endpoint(target).loadWithComponents(tag, helper.getLevel().registryAccess());
     }
 
     /** Removes the Endpoint and places a brand-new one, with a new Endpoint identity, in the same Subnet. */
     public void replaceEndpoint(Target target) {
         helper.setBlock(SUBNETS.get(target)[0], Blocks.AIR);
-        placeNative(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
+        placeNative(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST),
                 targetNetworks.get(target));
     }
 

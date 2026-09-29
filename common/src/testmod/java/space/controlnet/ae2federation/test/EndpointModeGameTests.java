@@ -173,7 +173,7 @@ public final class EndpointModeGameTests {
                 fixture.clearReturn(fixture.provider());
                 facts.put("face." + face.getSerializedName(), "node-storage-item-fluid");
             }
-            var federation = EndpointBlockEntity.FEDERATION_FACE;
+            var federation = fixture.endpoint().federationFace();
             helper.assertTrue(fixture.exposedNode(federation) == null && fixture.storageCapability(federation) == null
                     && fixture.itemCapability(federation) == null && fixture.fluidCapability(federation) == null,
                     "Federation face must expose no native logistics capability");

@@ -1,8 +1,27 @@
 {
   "variants": {
-    "": {
+    "facing=south": {
+      "model": "ae2federation:block/processing_endpoint"
+    },
+    "facing=west": {
+      "model": "ae2federation:block/processing_endpoint",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "ae2federation:block/processing_endpoint",
+      "y": 180
+    },
+    "facing=east": {
       "model": "ae2federation:block/processing_endpoint",
       "y": 270
+    },
+    "facing=up": {
+      "model": "ae2federation:block/processing_endpoint",
+      "x": 90
+    },
+    "facing=down": {
+      "model": "ae2federation:block/processing_endpoint",
+      "x": 270
     }
   }
 }

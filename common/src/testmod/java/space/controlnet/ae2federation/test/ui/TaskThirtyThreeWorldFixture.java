@@ -681,7 +681,7 @@ final class TaskThirtyThreeWorldFixture {
         var position = state(context).endpointPosition().east(2);
         require(context.level().isEmptyBlock(position), "Second Endpoint fixture position must be empty");
         var network = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         context.put("endpoint.secondPosition", position);
         var endpoint = (EndpointBlockEntity) context.level().getBlockEntity(position);
         endpoint.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
@@ -711,7 +711,7 @@ final class TaskThirtyThreeWorldFixture {
         require(context.level().isEmptyBlock(position) && context.level().isEmptyBlock(position.west()),
                 "Isolated Endpoint fixture positions must be empty");
         context.put("endpoint.isolatedPosition", position);
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         context.level().setBlockAndUpdate(position.west(),
                 appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
         positionCamera(context, position.south(3), position);
@@ -787,7 +787,7 @@ final class TaskThirtyThreeWorldFixture {
         // The production ME Federation Pattern Provider block; its Federation face points away from the Endpoint.
         context.level().setBlockAndUpdate(hostPosition, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                 .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
-        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         // Connect the Provider's upward Federation port to the Router's physical domain.
         for (int north = 0; north <= 2; north++) {
             context.level().setBlockAndUpdate(hostPosition.above().north(north),

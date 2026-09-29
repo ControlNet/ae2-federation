@@ -21,9 +21,10 @@ public final class CableVisualConnections {
             var direction = DIRECTIONS[bit];
             var neighbor = level.getBlockState(position.relative(direction));
             var block = neighbor.getBlock();
-            // Endpoint and Bridge do not expose FederationPortCapability and must not grow a cable arm.
+            // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
             if (block instanceof FederationCableBlock || block instanceof RouterBlock
-                    || block instanceof FederationPatternProviderBlock
+                    || (block instanceof FederationPatternProviderBlock
+                            || block instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlock)
                     && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
                 mask |= 1 << bit;
             }

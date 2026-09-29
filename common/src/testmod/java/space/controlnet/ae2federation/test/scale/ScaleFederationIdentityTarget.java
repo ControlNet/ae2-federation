@@ -84,7 +84,7 @@ public final class ScaleFederationIdentityTarget implements AutoCloseable {
     }
 
     public void placeEndpoint() {
-        helper.setBlock(endpointPosition, ProcessingRegistration.ENDPOINT.get());
+        helper.setBlock(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         endpoint().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", anchorId()));
     }
 
