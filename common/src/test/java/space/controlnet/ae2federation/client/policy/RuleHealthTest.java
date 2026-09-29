@@ -6,9 +6,8 @@ import org.junit.jupiter.api.Test;
 
 class RuleHealthTest {
     @Test
-    void publishedAndDispatchedRulesAreActive() {
+    void publishedRulesAreActive() {
         assertEquals(RuleHealth.ACTIVE, RuleHealth.of(true, "published", ""));
-        assertEquals(RuleHealth.ACTIVE, RuleHealth.of(true, "on_dispatch", ""));
     }
 
     @Test

@@ -80,7 +80,6 @@ public final class ProviderObservationRegistry {
         var pendingBefore = amounts(before);
         var pendingAfter = amounts(after);
         var root = OperationEventId.create();
-        var flowKey = processingKey(entry);
         var laneKey = new LevelObservabilityService.LaneKey(entry.identity().toString(), entry.laneIndex(), false);
         offered.forEach((resource, amount) -> {
             var remainder = Math.max(0L, pendingAfter.getOrDefault(resource, 0L)
@@ -91,7 +90,6 @@ public final class ProviderObservationRegistry {
                         (root.value() + ":" + resource.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
                 LevelObservabilityService.get(entry.level()).recordAccepted(scopes(entry), child,
                         resource.getId().toString(), accepted, unit(resource), FlowState.Attribution.EXACT_OPERATION);
-                flowKey.ifPresent(key -> LevelObservabilityService.get(entry.level()).recordPairFlow(key, accepted));
                 LevelObservabilityService.get(entry.level()).recordLaneFlow(laneKey, accepted);
             }
         });
@@ -117,24 +115,6 @@ public final class ProviderObservationRegistry {
         var result = new java.util.HashMap<AEKey, Long>();
         stacks.forEach(stack -> result.merge(stack.what(), stack.amount(), Math::addExact));
         return result;
-    }
-
-    /** The processing rule a lane's send used: the Provider's network uses the network of the lane's Endpoint. */
-    private static java.util.Optional<space.controlnet.ae2federation.policy.PolicyKey> processingKey(LaneEntry entry) {
-        java.util.Optional<ProviderMappingController> controller;
-        synchronized (ProviderObservationRegistry.class) {
-            var registered = ENTRIES.getOrDefault(entry.level(), Map.of()).get(entry.provider());
-            controller = registered == null ? java.util.Optional.empty() : registered.controller();
-        }
-        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid());
-        var endpoint = controller.flatMap(value -> value.laneEndpoint(entry.laneIndex()));
-        if (consumer.isEmpty() || endpoint.isEmpty()) return java.util.Optional.empty();
-        return space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding.entries(entry.level()).stream()
-                .filter(binding -> binding.endpointIdentity().equals(endpoint.get())).findFirst()
-                .flatMap(binding -> FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid()))
-                .filter(provider -> !provider.equals(consumer.get()))
-                .map(provider -> new space.controlnet.ae2federation.policy.PolicyKey(consumer.get(), provider,
-                        space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING));
     }
 
     private static List<space.controlnet.ae2federation.domain.FederationDomainReference> scopes(LaneEntry entry) {

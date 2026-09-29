@@ -32,9 +32,6 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
                 .step("select the new wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "0"))
                 .waitForTextContains("#processing_detail_title", "#0 ")
-                .serverGet("read the wire's real processing rule", "task33.wireRule", TaskThirtyThreeWorldFixture::expectedWireRule)
-                .waitUntil("the wire names the processing rule it dispatches under", context ->
-                        context.el("#processing_fact_value_rule").text().equals(context.get("task33.wireRule")))
                 .check("a mapped wire can be unlinked", context -> context.el("#processing_unlink").isActive())
                 .screenshot("ui-processing-wire-selected")
                 .hover("#processing_unlink")
@@ -177,7 +174,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("native navigation returns to mapping", context -> context.el("#page_mapping").isVisible())
                 .screenshot("ui-provider-mapping")
                 .waitUntilServer("native lane sends a real processing input", TaskThirtyThreeWorldFixture::dispatchRealWork)
-                .checkServer("the send was recorded against its processing rule", TaskThirtyThreeWorldFixture::processingFlowObserved)
+                .checkServer("the send was recorded against the Endpoint's lane", TaskThirtyThreeWorldFixture::processingFlowObserved)
                 .waitUntil("dots travel along the busy wire", context ->
                         space.controlnet.ae2federation.client.menu.FederationProcessingGraph.drawnWireDots() > 0)
                 .step("select the busy wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "1"))
@@ -190,13 +187,13 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && context.el("#processing_to_label").text().startsWith("Endpoint @ "))
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")
-                .waitUntil("the pair editor is shown", context -> context.el("#pair_editor").isVisible())
-                .waitUntil("the processing rule shows the real delivery", context ->
-                        TaskThirtyThreeScenarioSupport.ruleState(context, "processing").contains("Delivered 1× in the last 5 s"))
-                .waitUntil("teal dots travel along the delivering link", context -> context.el("#graph_flow_pulses")
+                .waitUntil("the Endpoint is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 1)
+                .waitUntil("the Endpoint's node shows the real delivery", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Delivered 1× in the last 5 s"))
+                .waitUntil("teal dots travel along the Endpoint's link", context -> context.el("#graph_flow_pulses")
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() > 0)
                 .waitForTextContains("#graph_throughput", "Flow · last 5 s: delivered 1×")
-                .step("reveal the processing rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "processing"))
+                .hover("#domain_title")
                 .frames(2).screenshot("ui-flow-processing")
                 // Dots move and skip the link's label, so a single frame may draw none; record one that draws them.
                 .waitUntil("dots are drawn when the evidence is recorded", context -> {
@@ -207,7 +204,9 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .step("record flow evidence", context -> {
                     context.attach("evidenceFor", "ui.mapping");
-                    context.attach("processingFlow", TaskThirtyThreeScenarioSupport.ruleState(context, "processing"));
+                    context.attach("processingFlow", context.el(".graph-node-endpoint").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                            .getStyle().tooltips().asList().stream().map(net.minecraft.network.chat.Component::getString)
+                            .collect(java.util.stream.Collectors.joining("\n")));
                     context.attach("flowDots", context.get("task33.flowDots"));
                 })
                 .click("#graph_flow_toggle")
@@ -301,13 +300,14 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                             <= scroller.viewPort.getContentY() + scroller.viewPort.getContentHeight() + 0.01f;
                 })
                 .screenshot("ui-release-complete")
-                .server("change selected policy outside this menu", TaskThirtyThreeWorldFixture::changeStoragePolicyExternally)
+                // Mapping needs no rule: a rule changed elsewhere does not make the mapping request stale.
+                .server("change a rule outside this menu", TaskThirtyThreeWorldFixture::changeStoragePolicyExternally)
                 .hover("#mapping_toggle")
-                .step("submit against externally changed policy", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_toggle"))
-                .waitForTextContains("#request_status", "policy changed elsewhere")
-                .check("rejected request replaces waiting with its reason", context -> context.el("#request_status").isVisible())
-                .checkServer("rejected stale edit leaves endpoint unclaimed", TaskThirtyThreeWorldFixture::endpointReleased)
-                .screenshot("ui-request-rejected")
+                .step("map after a rule changed elsewhere", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_toggle"))
+                .waitUntilServer("the mapping claims the Endpoint for the host", TaskThirtyThreeWorldFixture::endpointClaimedByHost)
+                .waitUntil("the request completes without waiting", context -> !context.el("#request_status").isVisible())
+                .waitForTextContains("#processing_status", "Mapping updated")
+                .screenshot("ui-request-after-external-rule")
                 .step("restore English window", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
                 .waitUntil("English window restored", context -> context.mc().getWindow().getWidth() == 1600)
@@ -332,6 +332,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click("#graph_fit").frames(3)
                 .step("showcase: select Main Base", context -> showcaseSelect(context, "Main Base"))
                 .waitUntil("showcase: Main Base details", context -> context.el("#network_detail").isVisible())
+                .check("showcase: five Endpoint nodes, four beside the network that maps them", context ->
+                        context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
                 .step("showcase: open the busiest link", TaskThirtyThreeMappingScenario::showcaseBusiestPair)

@@ -15,7 +15,7 @@ public enum RuleHealth {
 
     public static RuleHealth of(boolean enabled, String code, String backend) {
         if (!enabled) return OFF;
-        if (code.equals("published") || code.equals("on_dispatch")) return ACTIVE;
+        if (code.equals("published")) return ACTIVE;
         if (code.equals("operation_missing") || BLOCKING_BACKENDS.contains(backend)) return ERROR;
         return WAITING;
     }

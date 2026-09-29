@@ -160,7 +160,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (!(evidence('ui.mapping', 'processingFlow') ?: '').contains('Delivered 1× in the last 5 s')
             || !((evidence('ui.mapping', 'flowDots') ?: '0') as Integer > 0)
             || !captures.any { it.path.contains('ui-flow-processing') }) {
-        throw new GradleException('Task 33 processing rule did not show its real delivery')
+        throw new GradleException('Task 33 Endpoint node did not show its real delivery')
     }
     if (!(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Merge pending')
             || !(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Contains: ')

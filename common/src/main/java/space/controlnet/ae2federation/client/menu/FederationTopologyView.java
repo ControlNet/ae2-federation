@@ -31,6 +31,7 @@ import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
+import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
 import space.controlnet.ae2federation.client.policy.NetworkIdentityState;
 import space.controlnet.ae2federation.client.policy.NetworkRenameTarget;
@@ -51,6 +52,7 @@ final class FederationTopologyView {
     static final float CARD_HEIGHT = 88;
     private static final float THUMBNAIL_WIDTH = 44;
     private static final float THUMBNAIL_HEIGHT = 30;
+    private static final float ENDPOINT_HEIGHT = 16;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
@@ -110,7 +112,14 @@ final class FederationTopologyView {
     private final Map<String, Long> revisions = new HashMap<>();
     private final Map<String, String> memberStatus = new HashMap<>();
     private final Map<String, List<String>> providersByMember = new HashMap<>();
-    private final Map<String, List<String>> endpointsByMember = new HashMap<>();
+    /** The domain's Processing Endpoints, drawn as small nodes beside the network whose Provider maps them. */
+    private final List<EndpointNode> endpointNodes = new ArrayList<>();
+    private final Map<String, EndpointNodeLayout.Placed> endpointPlaces = new HashMap<>();
+    private final Map<String, Button> endpointButtons = new HashMap<>();
+    /** What each Endpoint's owner sent it and got back over the flow window, by Endpoint. */
+    private final Map<String, JsonObject> endpointFlows = new HashMap<>();
+    /** The related domains each shown network is in; networks that share no domain do not discover each other. */
+    private final Map<String, java.util.Set<String>> networkDomains = new HashMap<>();
     private final Map<String, Vector2f> positions = new LinkedHashMap<>();
     private final Map<String, Button> cards = new HashMap<>();
     private final Map<String, Label[]> cardLines = new HashMap<>();
@@ -299,16 +308,15 @@ final class FederationTopologyView {
         var snapshot = FederationDomainGraphSnapshot.decode(encoded);
         memberStatus.clear();
         providersByMember.clear();
-        endpointsByMember.clear();
         var kinds = new HashMap<String, FederationDomainGraphNodeKind>();
         for (var node : snapshot.nodes()) {
             kinds.put(node.id(), node.kind());
             if (node.kind() == FederationDomainGraphNodeKind.MEMBER) memberStatus.put(node.id(), node.status());
         }
         for (var edge : snapshot.edges()) {
-            if (edge.layer() != FederationDomainGraphLayer.PHYSICAL) continue;
-            var target = kinds.get(edge.to()) == FederationDomainGraphNodeKind.PROVIDER ? providersByMember : endpointsByMember;
-            target.computeIfAbsent(edge.from(), key -> new ArrayList<>()).add(edge.to());
+            // An Endpoint is drawn beside the network that maps it, not the one its subnet may also be.
+            if (edge.layer() != FederationDomainGraphLayer.PHYSICAL || kinds.get(edge.to()) != FederationDomainGraphNodeKind.PROVIDER) continue;
+            providersByMember.computeIfAbsent(edge.from(), key -> new ArrayList<>()).add(edge.to());
         }
         refresh();
     }
@@ -319,12 +327,14 @@ final class FederationTopologyView {
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
         via = root.has("via") ? root.getAsJsonObject("via") : null;
         networks.clear();
+        networkDomains.clear();
         if (root.has("networks")) {
             var index = 0;
             for (var value : root.getAsJsonArray("networks")) {
                 var json = value.getAsJsonObject();
                 networks.add(new Network(json.get("id").getAsString(), json.get("member").getAsString(), index++,
                         json.has("name") ? json.get("name").getAsString() : "", ""));
+                networkDomains.put(json.get("id").getAsString(), domains(json));
             }
         }
         related.clear();
@@ -335,7 +345,17 @@ final class FederationTopologyView {
                 var id = json.get("id").getAsString();
                 related.add(new Network(id, "related_" + id, index++, json.has("name") ? json.get("name").getAsString() : "",
                         json.get("domain").getAsString()));
+                networkDomains.put(id, domains(json));
             }
+        }
+        endpointNodes.clear();
+        if (root.has("endpoint")) for (var value : root.getAsJsonArray("endpoint")) {
+            var json = value.getAsJsonObject();
+            endpointNodes.add(new EndpointNode(json.get("id").getAsString(),
+                    json.has("position") ? json.get("position").getAsString() : "",
+                    json.has("ownerNetwork") ? json.get("ownerNetwork").getAsString() : "",
+                    json.has("runtimeMode") ? json.get("runtimeMode").getAsString() : "UNBOUND",
+                    json.has("nodeReady") && json.get("nodeReady").getAsBoolean()));
         }
         relatedRules.clear();
         if (root.has("relatedRules")) for (var value : root.getAsJsonArray("relatedRules")) {
@@ -397,14 +417,20 @@ final class FederationTopologyView {
     /** Recent accepted deliveries per rule; an edge animates only while its rule actually moved something. */
     void acceptFlows(JsonArray values) {
         flows.clear();
+        endpointFlows.clear();
         for (var value : values) {
             var flow = value.getAsJsonObject();
+            if (flow.has("endpoint")) {
+                endpointFlows.put(flow.get("endpoint").getAsString(), flow);
+                continue;
+            }
             flows.put(key(flow.get("consumer").getAsString(), flow.get("provider").getAsString(),
                     flow.get("capability").getAsString()), flow);
         }
         asideSignature = "";
         renderAside();
         updateThroughput();
+        updateEndpointNodes();
     }
 
     /** Deliveries of the shown networks' rules over the server's flow window. */
@@ -421,6 +447,10 @@ final class FederationTopologyView {
             if (shownIds.contains(flow.get("consumer").getAsString()) && shownIds.contains(flow.get("provider").getAsString())) {
                 events += flow.get("events").getAsLong();
             }
+        }
+        for (var endpoint : endpointNodes) {
+            var flow = endpointFlows.get(endpoint.id());
+            if (flow != null && shownIds.contains(endpoint.owner())) events += flow.get("events").getAsLong();
         }
         throughput.setText(events == 0 ? tr("throughput.idle")
                 : tr("throughput", events).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
@@ -460,27 +490,25 @@ final class FederationTopologyView {
         refresh();
     }
 
-    /** Selects the network that hosts the given Provider or Endpoint and centres it. */
+    /**
+     * Selects the network that hosts the given Provider, or maps the given Endpoint, and centres it; an Endpoint no
+     * network maps is centred alone.
+     */
     boolean focusObject(String objectId) {
+        var endpoint = endpointNodes.stream().filter(node -> node.id().equals(objectId)).findFirst().orElse(null);
         for (var network : networks) {
             if (providersByMember.getOrDefault(network.member(), List.of()).contains(objectId)
-                    || endpointsByMember.getOrDefault(network.member(), List.of()).contains(objectId)) {
+                    || endpoint != null && endpoint.owner().equals(network.id())) {
                 selectNetwork(network.id());
                 pendingCenter = network.id();
                 focusApplied = true;
                 return true;
             }
         }
-        return false;
-    }
-
-    /** Opens the pair editor for a relationship the server has just selected, for example from diagnostics. */
-    void selectPair(String consumer, String provider) {
-        if (network(consumer) == null || network(provider) == null || consumer.equals(provider)) return;
-        selectedPair = pair(consumer, provider);
-        selectedNetwork = "";
+        if (endpoint == null) return false;
+        pendingCenter = endpoint.id();
         focusApplied = true;
-        refresh();
+        return true;
     }
 
     private void refresh() {
@@ -491,11 +519,13 @@ final class FederationTopologyView {
         shownRules().forEach(rule -> signature.append(rule.get("capability").getAsString())
                 .append(rule.get("enabled").getAsBoolean()).append(ruleState(rule).code()));
         memberStatus.forEach((member, status) -> signature.append(member).append('=').append(status));
+        endpointNodes.forEach(endpoint -> signature.append(endpoint).append(';'));
         if (!signature.toString().equals(structure)) {
             structure = signature.toString();
             rebuildGraph();
         }
         updateCards();
+        updateEndpointNodes();
         renderAside();
         applySearch();
     }
@@ -507,16 +537,30 @@ final class FederationTopologyView {
         cardState.clear();
         cardThumbnails.clear();
         pillHalfSizes.clear();
+        endpointButtons.clear();
         layout();
         graph.addContentChild(new Links());
         // Above the lines but below the link labels and cards, so dots never cover text.
         var pulses = new FederationFlowPulses(this::flows);
-        float width = positions.values().stream().map(point -> point.x + CARD_WIDTH).max(Float::compare).orElse(1f);
-        float height = positions.values().stream().map(point -> point.y + CARD_HEIGHT).max(Float::compare).orElse(1f);
-        pulses.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(width + 8).height(height + 8));
+        var extent = extent();
+        pulses.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(extent.x + 8).height(extent.y + 8));
         graph.addContentChild(pulses);
         for (var pair : pairsWithRules()) graph.addContentChild(edgePill(pair));
         for (var network : shown()) graph.addContentChild(card(network));
+        for (var endpoint : endpointNodes) {
+            if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
+        }
+    }
+
+    /** The bottom-right corner of everything on the canvas: cards and Endpoint nodes. */
+    private Vector2f extent() {
+        float width = positions.values().stream().map(point -> point.x + CARD_WIDTH).max(Float::compare).orElse(1f);
+        float height = positions.values().stream().map(point -> point.y + CARD_HEIGHT).max(Float::compare).orElse(1f);
+        for (var place : endpointPlaces.values()) {
+            width = Math.max(width, place.x() + place.width());
+            height = Math.max(height, place.y() + ENDPOINT_HEIGHT);
+        }
+        return new Vector2f(width, height);
     }
 
     /** Links, provider to consumer, of every rule that delivered something in the flow window. */
@@ -531,6 +575,14 @@ final class FederationTopologyView {
             // Resources travel from the providing network to the consumer: from the link's end when the first network consumes.
             if (flowing(ends[0], ends[1])) flows.add(new FederationFlowPulses.Flow(link, true, label.x, label.y));
             if (flowing(ends[1], ends[0])) flows.add(new FederationFlowPulses.Flow(link, false, label.x, label.y));
+        }
+        // Inputs travel from the owner's network to its Endpoint, and results come back.
+        for (var place : endpointPlaces.values()) {
+            var flow = endpointFlows.get(place.id());
+            if (flow == null || place.link() == null) continue;
+            var link = new TopologyLink(place.link(), 0.5f);
+            if (flow.get("events").getAsLong() > 0) flows.add(new FederationFlowPulses.Flow(link, false, 0, 0));
+            if (flow.get("returnedEvents").getAsLong() > 0) flows.add(new FederationFlowPulses.Flow(link, true, 0, 0));
         }
         return flows;
     }
@@ -583,11 +635,23 @@ final class FederationTopologyView {
         }
         float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
         raw.forEach(point -> point.mul(spread));
+        // Endpoints beside the network that maps them, on its outer side; the others wait below.
+        var cardCorners = new ArrayList<EndpointNodeLayout.Card>();
+        for (int i = 0; i < count; i++) cardCorners.add(new EndpointNodeLayout.Card(ordered.get(i).id(), raw.get(i).x, raw.get(i).y));
+        var nodes = endpointNodes.stream().map(endpoint -> new EndpointNodeLayout.Node(endpoint.id(),
+                index.containsKey(endpoint.owner()) ? endpoint.owner() : "", endpointWidth(endpoint, font))).toList();
+        var endpointsPlaced = EndpointNodeLayout.place(cardCorners, CARD_WIDTH, CARD_HEIGHT, nodes, ENDPOINT_HEIGHT);
         float minX = raw.stream().map(point -> point.x).min(Float::compare).orElse(0f);
         float minY = raw.stream().map(point -> point.y).min(Float::compare).orElse(0f);
+        for (var place : endpointsPlaced) {
+            minX = Math.min(minX, place.x());
+            minY = Math.min(minY, place.y());
+        }
         for (int i = 0; i < count; i++) {
             positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + 8, raw.get(i).y - minY + 8));
         }
+        endpointPlaces.clear();
+        for (var place : endpointsPlaced) endpointPlaces.put(place.id(), place.moved(-minX + 8, -minY + 8));
         // Links that cross, such as a diamond's diagonals, would stack their labels in the middle; move one along.
         var placed = new float[count][];
         for (int i = 0; i < count; i++) placed[i] = new float[] {raw.get(i).x, raw.get(i).y};
@@ -666,6 +730,71 @@ final class FederationTopologyView {
         cards.put(network.id(), button);
         cardLines.put(network.id(), new Label[] {stateLine, storageValue, positionLine, heading, energyValue, cpus, channels});
         return button;
+    }
+
+    /**
+     * A Processing Endpoint as a small node, "Endpoint · 12, 64, -3" after a dot in its state colour; its border lights
+     * with the network that maps it. A click opens its diagnostics.
+     */
+    private Button endpointNode(EndpointNode endpoint) {
+        var place = endpointPlaces.get(endpoint.id());
+        var button = new Button();
+        button.noText();
+        button.addClass("graph-node-endpoint");
+        button.setId("graph_endpoint_" + sanitize(endpoint.id()));
+        boolean selected = !selectedNetwork.isEmpty() && endpoint.owner().equals(selectedNetwork);
+        var face = GuiTextureGroup.of(FederationTheme.WELL_RECT,
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, selected ? FederationTheme.SELECT : 0xff47434f));
+        var hover = GuiTextureGroup.of(FederationTheme.WELL_RECT,
+                new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.SELECT));
+        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
+        button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(place.x()).top(place.y()).width(place.width())
+                .height(ENDPOINT_HEIGHT).paddingLeft(4).paddingRight(4).gapAll(3).flexDirection(FlexDirection.ROW)
+                .alignItems(AlignItems.CENTER));
+        var dot = new UIElement();
+        int color = endpointColor(endpoint);
+        dot.layout(style -> style.width(5).height(5).flexShrink(0));
+        dot.style(style -> style.backgroundTexture(FederationTheme.solid(color)));
+        var label = text(endpointLabel(endpoint), FederationTheme.DARK_TEXT);
+        label.layout(style -> style.flex(1).minWidth(0).widthAuto().height(9));
+        button.addChildren(dot, label);
+        button.setOnClick(event -> openObject.accept("endpoint", endpoint.id()));
+        endpointButtons.put(endpoint.id(), button);
+        return button;
+    }
+
+    private static Component endpointLabel(EndpointNode endpoint) {
+        return FederationWorkspace.tr("endpoint_at", endpoint.position());
+    }
+
+    private static float endpointWidth(EndpointNode endpoint, net.minecraft.client.gui.Font font) {
+        return font.width(endpointLabel(endpoint)) + 4 + 5 + 3 + 4 + 2;
+    }
+
+    /** Mapped and ready in the OK colour; waiting for its ME node in warning; Local or free in muted. */
+    private int endpointColor(EndpointNode endpoint) {
+        if (!endpoint.ready()) return FederationTheme.WARN;
+        return !endpoint.mode().equals("LOCAL") && network(endpoint.owner()) != null ? FederationTheme.OK : FederationTheme.DARK_MUTED;
+    }
+
+    /** Each node's tooltip: where it is, who maps it, and what its owner sent it over the flow window. */
+    private void updateEndpointNodes() {
+        for (var endpoint : endpointNodes) {
+            var button = endpointButtons.get(endpoint.id());
+            if (button == null) continue;
+            var lines = new ArrayList<Component>();
+            lines.add(endpointLabel(endpoint));
+            var owner = network(endpoint.owner());
+            lines.add(!endpoint.ready() ? tr("endpoint_node.not_ready") : endpoint.mode().equals("LOCAL") ? tr("endpoint_node.local")
+                    : owner != null ? tr("endpoint_node.mapped", name(owner)) : tr("endpoint_node.unmapped"));
+            var flow = endpointFlows.get(endpoint.id());
+            if (flow != null && flow.get("events").getAsLong() > 0) lines.add(tr("flow", flow.get("events").getAsLong()));
+            if (flow != null && flow.get("returnedEvents").getAsLong() > 0) {
+                lines.add(tr("endpoint_node.returned", flow.get("returnedEvents").getAsLong()));
+            }
+            lines.add(tr("endpoint_node.open").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+            button.style(style -> style.tooltips(lines.toArray(Component[]::new)));
+        }
     }
 
     /** "Energy [bar] 98%": a muted label, an optional bar and the value on the right. */
@@ -886,7 +1015,7 @@ final class FederationTopologyView {
 
     private void renderAside() {
         var signature = scope + "|" + selectedNetwork + "|" + selectedPair + "|" + editable + "|" + rules + "|" + revisions + "|"
-                + memberStatus + "|" + providersByMember + "|" + endpointsByMember + "|" + networks + "|" + overview + "|" + renaming + "|" + showRelated + related + relatedRules + "|" + flows;
+                + memberStatus + "|" + providersByMember + "|" + endpointNodes + "|" + networks + "|" + overview + "|" + renaming + "|" + showRelated + related + relatedRules + "|" + flows;
         if (signature.equals(asideSignature)) return;
         asideSignature = signature;
         var pairEnds = selectedPair.isEmpty() ? null : selectedPair.split("\\|");
@@ -966,7 +1095,7 @@ final class FederationTopologyView {
         devices.style(style -> style.tooltips(tr("devices_help", providers(network).size(), endpoints(network).size())));
         devices.setActive(!providers(network).isEmpty() || !endpoints(network).isEmpty());
         // Linked networks first, as the design's "Connections (N)"; the others follow so rules can still be created.
-        var others = shown().stream().filter(other -> !other.id().equals(network.id())).toList();
+        var others = shown().stream().filter(other -> !other.id().equals(network.id()) && discovers(network, other)).toList();
         var linked = others.stream().filter(other -> !linkSummary(network, other).getString().isEmpty()).toList();
         var unlinked = others.stream().filter(other -> !linked.contains(other)).toList();
         linksHeading.setText(tr("connections", linked.size()));
@@ -1305,15 +1434,6 @@ final class FederationTopologyView {
         stateLabel.setId("policy_state_" + suffix);
         head.addChildren(name, stateLabel);
         boolean on = rule != null && rule.get("enabled").getAsBoolean();
-        if (capability == PolicyCapability.PROCESSING && on) {
-            var mapping = new Button();
-            mapping.addClass("policy-link");
-            mapping.setId("policy_mapping_" + suffix);
-            mapping.setText(tr("mapping_link"));
-            mapping.setOnClick(event -> openProviders(consumer));
-            mapping.setActive(!providers(consumer).isEmpty());
-            head.addChild(mapping);
-        }
         var toggle = new Button();
         toggle.noText();
         toggle.addClass("policy-switch");
@@ -1430,7 +1550,7 @@ final class FederationTopologyView {
         var code = runtime == null ? "unobserved" : runtime.get("code").getAsString();
         var backend = runtime != null && runtime.has("backend") ? runtime.get("backend").getAsString() : "";
         return switch (space.controlnet.ae2federation.client.policy.RuleHealth.of(true, code, backend)) {
-            case ACTIVE -> new RuleState(code.equals("on_dispatch") ? "dispatch" : "active", FederationTheme.OK, false);
+            case ACTIVE -> new RuleState("active", FederationTheme.OK, false);
             case ERROR -> new RuleState("error", FederationTheme.ERROR, true);
             default -> new RuleState("waiting", FederationTheme.WARN, true);
         };
@@ -1509,10 +1629,6 @@ final class FederationTopologyView {
         else if (!endpoints(network).isEmpty()) openObject.accept("endpoint", endpoints(network).getFirst());
     }
 
-    private void openProviders(Network network) {
-        if (!providers(network).isEmpty()) openObject.accept("mapping_provider", providers(network).getFirst());
-    }
-
     private List<String> pairsWithRules() {
         var pairs = new java.util.TreeSet<String>();
         for (var rule : shownRules()) {
@@ -1538,11 +1654,32 @@ final class FederationTopologyView {
         return providersByMember.getOrDefault(network.member(), List.of());
     }
 
+    /** The Endpoints this network's Providers map. */
     private List<String> endpoints(Network network) {
-        return endpointsByMember.getOrDefault(network.member(), List.of());
+        return endpointNodes.stream().filter(endpoint -> endpoint.owner().equals(network.id())).map(EndpointNode::id).toList();
+    }
+
+    /**
+     * Whether two shown networks discover each other: members of this domain always do; otherwise they must share a
+     * related domain. Only such pairs get a link or a place in each other's connection list.
+     */
+    private boolean discovers(Network a, Network b) {
+        if (a == null || b == null) return false;
+        if (!a.foreign() && !b.foreign()) return true;
+        var shared = new java.util.HashSet<>(networkDomains.getOrDefault(a.id(), java.util.Set.of()));
+        shared.retainAll(networkDomains.getOrDefault(b.id(), java.util.Set.of()));
+        return !shared.isEmpty();
+    }
+
+    private static java.util.Set<String> domains(JsonObject network) {
+        var domains = new java.util.HashSet<String>();
+        if (network.has("domains")) network.getAsJsonArray("domains").forEach(value -> domains.add(value.getAsString()));
+        return domains;
     }
 
     private Vector2f center(String id) {
+        var place = endpointPlaces.get(id);
+        if (place != null) return new Vector2f(place.x() + place.width() / 2, place.y() + ENDPOINT_HEIGHT / 2);
         var position = positions.get(id);
         return new Vector2f(position.x + CARD_WIDTH / 2, position.y + CARD_HEIGHT / 2);
     }
@@ -1610,12 +1747,15 @@ final class FederationTopologyView {
     private record RuleState(String code, int color, boolean explain) {
     }
 
+    /** {@code owner} is the id of the network whose Provider maps the Endpoint, or empty. */
+    private record EndpointNode(String id, String position, String owner, String mode, boolean ready) {
+    }
+
     /** Relationship lines behind the cards: configured pairs solid, unconfigured pairs of the selection dashed. */
     private final class Links extends UIElement {
         Links() {
-            float width = positions.values().stream().map(point -> point.x + CARD_WIDTH).max(Float::compare).orElse(1f);
-            float height = positions.values().stream().map(point -> point.y + CARD_HEIGHT).max(Float::compare).orElse(1f);
-            layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(width + 8).height(height + 8));
+            var extent = extent();
+            layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(extent.x + 8).height(extent.y + 8));
             // It spans every card; taking hits would steal the press GraphView pans on.
             setAllowHitTest(false);
         }
@@ -1634,7 +1774,7 @@ final class FederationTopologyView {
                 fittedWidth = graph.getContentWidth();
                 fittedHeight = graph.getContentHeight();
             }
-            if (!pendingCenter.isEmpty() && positions.containsKey(pendingCenter)) {
+            if (!pendingCenter.isEmpty() && (positions.containsKey(pendingCenter) || endpointPlaces.containsKey(pendingCenter))) {
                 var point = center(pendingCenter);
                 float halfWidth = graph.getContentWidth() / graph.getScale() / 2;
                 float halfHeight = graph.getContentHeight() / graph.getScale() / 2;
@@ -1661,9 +1801,19 @@ final class FederationTopologyView {
             }
             if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
                 for (var other : shown()) {
-                    if (other.id().equals(selectedNetwork) || configured.contains(pair(selectedNetwork, other.id()))) continue;
+                    if (other.id().equals(selectedNetwork) || configured.contains(pair(selectedNetwork, other.id()))
+                            || !discovers(network(selectedNetwork), other)) continue;
                     line(context, link(selectedNetwork, other.id()), 0x668b83a0, 1.5f, true);
                 }
+            }
+            for (var endpoint : endpointNodes) {
+                var place = endpointPlaces.get(endpoint.id());
+                if (place == null || place.link() == null) continue;
+                var owner = network(endpoint.owner());
+                boolean selected = endpoint.owner().equals(selectedNetwork);
+                line(context, new TopologyLink(place.link(), 0.5f), selected ? FederationTheme.SELECT : FederationTheme.EDGE,
+                        selected ? 2f : 1.5f, false);
+                if (owner != null) endMark(context, new float[] {place.link().fromX(), place.link().fromY()}, owner.accent());
             }
             pose.popPose();
         }

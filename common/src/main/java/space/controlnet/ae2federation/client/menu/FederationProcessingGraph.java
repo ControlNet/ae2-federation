@@ -802,7 +802,6 @@ public final class FederationProcessingGraph {
                     : Component.literal("#" + selection.slot() + " ").append(patternName.apply(slot)),
                     endpoint == null ? Component.literal(selection.endpoint()) : endpointName(endpoint)));
             if (endpoint != null) {
-                fact("rule", ruleLine(endpoint));
                 fact("ownership", tr("ownership", providerPosition.isEmpty() ? "-" : providerPosition,
                         endpoint.has("claimEpoch") ? endpoint.get("claimEpoch").getAsLong() : 0L));
             }
@@ -977,7 +976,7 @@ public final class FederationProcessingGraph {
         var endpoint = endpoint(endpointId);
         if (hintSlot.isEmpty() || endpoint == null) return null;
         return space.controlnet.ae2federation.client.policy.DropHint.of(claim(endpoint).code(),
-                wires.contains(new Wire(hintSlot, endpointId)), ruleOn(endpoint));
+                wires.contains(new Wire(hintSlot, endpointId)));
     }
 
     private static int hintColor(space.controlnet.ae2federation.client.policy.DropHint hint) {
@@ -989,25 +988,12 @@ public final class FederationProcessingGraph {
         };
     }
 
-    /** Whether the server reports an enabled processing rule from this Provider's network to the Endpoint's. */
-    private static boolean ruleOn(JsonObject endpoint) {
-        return endpoint.has("rule") && endpoint.get("rule").getAsString().equals("on");
-    }
-
     public static int drawnWireDots() {
         return drawnWireDots;
     }
 
     private static long laneAmount(JsonObject endpoint, String field) {
         return endpoint != null && endpoint.has(field) ? endpoint.get(field).getAsLong() : 0L;
-    }
-
-    /** The wire's rule line: the processing rule it dispatches under, or why it will pause. */
-    private static Component ruleLine(JsonObject endpoint) {
-        var rule = endpoint.has("rule") ? endpoint.get("rule").getAsString() : "none";
-        var revision = endpoint.has("ruleRevision") ? endpoint.get("ruleRevision").getAsLong() : 0L;
-        return tr("wire_rule." + rule, revision).withStyle(Style.EMPTY.withColor(
-                (rule.equals("on") ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff));
     }
 
     private static Claim claim(JsonObject endpoint) {

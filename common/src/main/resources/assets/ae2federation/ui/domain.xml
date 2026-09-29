@@ -154,7 +154,6 @@
                 </element>
                 <element class="compact-actions diagnostic-navigation">
                     <button id="endpoint_mapping" text="ae2federation.ui.workspace.endpoint_mapping"/>
-                    <button id="endpoint_policy" text="ae2federation.ui.workspace.endpoint_policy"/>
                 </element>
             </element>
             <element class="domain-footer">

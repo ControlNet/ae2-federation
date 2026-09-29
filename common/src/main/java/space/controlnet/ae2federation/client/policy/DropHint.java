@@ -7,8 +7,6 @@ package space.controlnet.ae2federation.client.policy;
 public enum DropHint {
     CLAIM("claim", Tone.OK),
     ACCEPT("accept", Tone.OK),
-    /** Mapping is allowed, but the server pauses dispatch until a processing rule allows it. */
-    NO_RULE("no_rule", Tone.WARN),
     EXISTING("existing", Tone.MUTED),
     OCCUPIED("occupied", Tone.ERROR),
     LOCAL("local", Tone.MUTED),
@@ -24,20 +22,16 @@ public enum DropHint {
         this.tone = tone;
     }
 
-    /**
-     * {@code claim} is the card's claim code: free, in_use, retained, occupied, local or unobserved.
-     * {@code ruleEnabled} is whether a processing rule from the Provider's network to the Endpoint's is on.
-     */
-    public static DropHint of(String claim, boolean alreadyWired, boolean ruleEnabled) {
+    /** {@code claim} is the card's claim code: free, in_use, retained, occupied, local or unobserved. */
+    public static DropHint of(String claim, boolean alreadyWired) {
         if (alreadyWired) return EXISTING;
-        var hint = switch (claim) {
+        return switch (claim) {
             case "free" -> CLAIM;
             case "in_use", "retained" -> ACCEPT;
             case "occupied" -> OCCUPIED;
             case "local" -> LOCAL;
             default -> UNLOADED;
         };
-        return hint.accepts() && !ruleEnabled ? NO_RULE : hint;
     }
 
     public String code() {

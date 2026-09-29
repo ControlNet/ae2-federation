@@ -116,6 +116,78 @@ public final class EndpointFederationFaceGameTests {
     }
 
     /**
+     * Claiming, activating and releasing an Endpoint change its state, not its Federation link: the domain it is a node
+     * of keeps its generation, so workspaces open on that domain stay current.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void endpointFederationFaceClaimKeepsDomain(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.member();
+        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
+        scene.endpoint(FAR, Direction.WEST);
+        var owner = new EndpointOwnerIdentity(ProviderIdentity.create());
+        // The settled generation, the tick it was first seen, and the tick of the release (-1 before it).
+        var seen = new long[] {-1, 0, -1};
+        helper.succeedWhen(() -> {
+            scene.assertEndpointJoins(HUB, FAR);
+            var endpoint = helper.<EndpointBlockEntity>getBlockEntity(FAR);
+            var generation = scene.domainOf(HUB).orElseThrow().generation();
+            if (seen[2] < 0) {
+                if (generation != seen[0]) {
+                    seen[0] = generation;
+                    seen[1] = helper.getTick();
+                }
+                helper.assertTrue(helper.getTick() - seen[1] >= 20, "waiting for the domain to settle");
+                helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), endpoint.claimState().epoch(),
+                        owner)) instanceof ClaimResult.Acquired, "A Federated Endpoint must accept a Claim");
+                helper.assertTrue(endpoint.activateFederated(), "The claimed Endpoint must activate Federated mode");
+                helper.assertTrue(endpoint.releaseClaim(owner, endpoint.claimState().epoch()), "The owner must release its Claim");
+                seen[2] = helper.getTick();
+                helper.fail("claimed and released; waiting");
+            }
+            helper.assertValueEqual(generation, seen[0], "Claim and release must not republish the Endpoint's domain");
+            helper.assertTrue(helper.getTick() - seen[2] >= 20, "waiting 20 ticks after the release");
+        });
+    }
+
+    /**
+     * The Endpoint's subnet may itself be a member of the domain through another route, here the Router's south face,
+     * while its Federation face joins the same domain through a cable. The domain must settle instead of republishing.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void endpointFederationFaceSubnetMember(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.member();
+        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
+        var endpoint = NEAR.south();
+        scene.place(endpoint, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH), scene.subnet);
+        scene.place(HUB.south(), AEBlocks.ME_CHEST.block().defaultBlockState(), scene.subnet);
+        helper.<MEChestBlockEntity>getBlockEntity(HUB.south()).setCell(AEItems.ITEM_CELL_1K.stack());
+        scene.place(endpoint.above(), AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(), scene.subnet);
+        // The generation last seen and the tick it was first seen.
+        var settled = new long[] {-1, 0};
+        helper.succeedWhen(() -> {
+            var found = scene.domainOf(HUB);
+            helper.assertTrue(found.isPresent(), "the Router must be in a domain");
+            var domain = found.get();
+            helper.assertTrue(domain.nodes().contains(scene.nodeId(endpoint)), "the Endpoint must be a node of the Router's domain");
+            helper.assertTrue(domain.memberships().containsKey(scene.member) && domain.memberships().containsKey(scene.subnet),
+                    "both networks on the Router's faces must be members");
+            if (settled[0] != domain.generation()) {
+                settled[0] = domain.generation();
+                settled[1] = helper.getTick();
+            }
+            helper.assertTrue(helper.getTick() - settled[1] >= 40,
+                    "the domain must keep one generation for 40 ticks; now " + domain.generation());
+        });
+    }
+
+    /**
      * A native AE2 Pattern Provider belongs to another network, so it sits on the Federation face: the Endpoint turns
      * Local, takes the Provider's input into its subnet and refuses Federated Claims. When the native Provider leaves,
      * the Endpoint is Federated again and can be claimed; when it returns, Local takes over and releases that Claim.

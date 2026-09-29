@@ -101,18 +101,13 @@ final class TaskThirtyThreeShowcaseFixture {
                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withEnabled(false));
         rule(context, new PolicyKey(mine, main, PolicyCapability.ME_POWER), PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
         rule(context, new PolicyKey(hall, main, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
-        rule(context, new PolicyKey(main, hall, PolicyCapability.PROCESSING),
-                PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)));
-        rule(context, new PolicyKey(mine, hall, PolicyCapability.PROCESSING),
-                PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)));
-        rule(context, new PolicyKey(mine, outer, PolicyCapability.PROCESSING),
-                PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)));
     }
 
     /**
      * Two more Providers (one beside the host on the main network, one on the Mine's energy cell) and four more
      * Endpoints: three on the Automation Tower and one on the Storage Hall. None touches another AE2 block, so each
-     * joins its network through a grid connection, as a wireless link would.
+     * joins its network through a grid connection, as a wireless link would. Every Endpoint faces up, its Federation
+     * face on a Federation Cable that runs from the first Endpoint's, so all are nodes of the Router's domain.
      */
     static void placeDevices(ServerContext context) {
         var state = state(context);
@@ -126,6 +121,18 @@ final class TaskThirtyThreeShowcaseFixture {
             context.level().setBlockAndUpdate(position, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                     .setValue(BlockStateProperties.FACING, Direction.UP));
         }
+        var cables = new ArrayList<BlockPos>();
+        for (int east = 1; east <= 4; east++) cables.add(first.above().east(east));
+        for (int north = 1; north <= 2; north++) {
+            cables.add(first.east(2).above().north(north));
+            cables.add(first.east(4).above().north(north));
+        }
+        for (var cable : cables) {
+            require(context.level().isEmptyBlock(cable), "Showcase cable position must be empty: " + cable);
+            context.level().setBlockAndUpdate(cable, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get()
+                    .defaultBlockState());
+        }
+        state.cables = List.copyOf(cables);
         for (var position : state.towerEndpoints) placeEndpoint(context, position, state.networks.get(1));
         placeEndpoint(context, state.hallEndpoint, state.networks.get(3));
     }
@@ -209,6 +216,7 @@ final class TaskThirtyThreeShowcaseFixture {
         for (var network : state.networks) names.rename(network, "");
         var blocks = new ArrayList<BlockPos>();
         blocks.addAll(state.providers);
+        blocks.addAll(state.cables);
         blocks.addAll(state.towerEndpoints);
         if (state.hallEndpoint != null) blocks.add(state.hallEndpoint);
         blocks.addAll(List.of(state.mine, state.mine.east(), state.hall, state.hall.below()));
@@ -247,7 +255,7 @@ final class TaskThirtyThreeShowcaseFixture {
 
     private static void placeEndpoint(ServerContext context, BlockPos position, NetworkId network) {
         require(context.level().isEmptyBlock(position), "Showcase Endpoint position must be empty: " + position);
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(BlockStateProperties.FACING, Direction.UP));
         endpoint(context, position).getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
     }
 
@@ -294,6 +302,7 @@ final class TaskThirtyThreeShowcaseFixture {
         private List<NetworkId> networks = List.of();
         private List<BlockPos> providers = List.of();
         private List<BlockPos> towerEndpoints = List.of();
+        private List<BlockPos> cables = List.of();
         private BlockPos hallEndpoint;
         private boolean stocked;
 

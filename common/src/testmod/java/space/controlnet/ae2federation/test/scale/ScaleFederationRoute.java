@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -20,17 +19,6 @@ import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
-import space.controlnet.ae2federation.policy.BackendStatus;
-import space.controlnet.ae2federation.policy.PolicyActivationState;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyDelete;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
 import space.controlnet.ae2federation.processing.claim.ClaimResult;
@@ -47,6 +35,7 @@ import space.controlnet.ae2federation.processing.provider.ProviderTargetResoluti
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 import space.controlnet.ae2federation.test.port.NativePortFixtures;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
+import space.controlnet.ae2federation.test.processing.SyntheticEndpointDomain;
 
 public final class ScaleFederationRoute implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScaleFederationRoute.class);
@@ -61,12 +50,11 @@ public final class ScaleFederationRoute implements AutoCloseable {
     private final IGrid targetGrid;
     private final NetworkId sourceId;
     private final NetworkId targetId;
-    private final PolicyKey policyKey;
     private final boolean directProbe;
     private final ProviderIdentity providerIdentity = ProviderIdentity.create();
     private MultipartBridgePart bridge;
     private ProviderRuntime runtime;
-    private boolean policyConfigured;
+    private boolean endpointDomainJoined;
     private boolean pushAccepted;
     private int stage;
 
@@ -82,15 +70,14 @@ public final class ScaleFederationRoute implements AutoCloseable {
         targetGrid = target.grid();
         sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetId = target.anchorId();
-        policyKey = new PolicyKey(sourceId, targetId, PolicyCapability.PROCESSING);
     }
 
     public boolean tick() {
         if (stage == 0) {
-            helper.assertTrue(!commonFederationDomain() && PolicyService.get(helper.getLevel()).configured(policyKey).isEmpty()
+            helper.assertTrue(!commonFederationDomain() && !endpointDomainPresent()
                     && target.endpoint().claimState() instanceof ClaimState.Unclaimed,
-                    "Route must start without Federation Domain, Processing Policy, or Endpoint Claim");
-            receipt("absent-domain-policy-claim");
+                    "Route must start without Federation Domain, Endpoint domain, or Endpoint Claim");
+            receipt("absent-domain-endpoint-claim");
             ports.placeCable(BRIDGE, AEColor.RED);
             stage = 1;
             return false;
@@ -119,17 +106,15 @@ public final class ScaleFederationRoute implements AutoCloseable {
                     "Physical Bridge must join only source and target Federation Domain domains");
             assertSeparated();
             receipt("physical-domain-active");
-            var policies = PolicyService.get(helper.getLevel());
-            helper.assertTrue(policies.edit(new PolicyEdit(policyKey, policies.revision(policyKey),
-                    PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))))
-                    instanceof PolicyMutationResult.Accepted, "Production Processing Policy edit must be accepted");
-            policyConfigured = true;
+            // TEST-ONLY synthetic hub: a Bridge domain has no nodes, so the Endpoint joins the source's domain this way.
+            endpointDomainJoined = true;
+            helper.assertTrue(endpointInSourceDomain(), "The Endpoint must join a domain of the source network");
             stage = 6;
             return false;
         }
         if (stage == 6) {
-            helper.assertTrue(policyActive(), "Directional Processing Policy must activate over the physical Federation Domain");
-            receipt("processing-policy-active");
+            helper.assertTrue(endpointInSourceDomain(), "The Endpoint must stay in a domain of the source network");
+            receipt("endpoint-domain-active");
             var endpoint = target.endpoint();
             helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), ClaimEpoch.NONE,
                     new EndpointOwnerIdentity(providerIdentity))) instanceof ClaimResult.Acquired,
@@ -170,7 +155,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
         }
         if (stage == 8) {
             bridge.onNeighborChanged(helper.getLevel(), helper.absolutePos(BRIDGE), helper.absolutePos(TARGET_START));
-            if (!commonFederationDomain() || !policyActive()) return false;
+            if (!commonFederationDomain() || !endpointInSourceDomain()) return false;
             receipt("post-wiring-domain-active");
             if (!directProbe) {
                 helper.assertValueEqual(target.targetCobble(), 0L,
@@ -217,14 +202,14 @@ public final class ScaleFederationRoute implements AutoCloseable {
                 "CPU-submitted native Provider must resolve the claimed physical Endpoint: "
                         + runtime.lastResolution().state());
         assertSeparated();
-        helper.assertTrue(commonFederationDomain() && policyActive() && target.onlyAnchorClaim() && target.settled(),
+        helper.assertTrue(commonFederationDomain() && endpointInSourceDomain() && target.onlyAnchorClaim() && target.settled(),
                 "Completed native job must retain the authorized physical Federation route");
         receipt("planner-native-job-complete");
     }
 
     public void assertNativeJobRouteIfSubmitted(int completedJobs) {
         assertSeparated();
-        helper.assertTrue(commonFederationDomain() && policyActive() && target.onlyAnchorClaim() && target.settled(),
+        helper.assertTrue(commonFederationDomain() && endpointInSourceDomain() && target.onlyAnchorClaim() && target.settled(),
                 "Physical Federation route must remain active throughout the native catalog replay");
         if (completedJobs > 0) {
             helper.assertTrue(!directProbe && runtime.lastResolution() instanceof ProviderTargetResolution.Authorized authorized
@@ -255,9 +240,14 @@ public final class ScaleFederationRoute implements AutoCloseable {
         return source.stream().anyMatch(destination::contains);
     }
 
-    private boolean policyActive() {
-        return PolicyService.get(helper.getLevel()).activation(policyKey,
-                new PolicyRuntimeEndpoints(sourceGrid, targetGrid, BackendStatus.READY)) == PolicyActivationState.ACTIVE;
+    /** Whether the Endpoint is in a domain of the source network; the Endpoint republishes its node when it reloads. */
+    private boolean endpointInSourceDomain() {
+        return SyntheticEndpointDomain.ensure(helper.getLevel(), helper.absolutePos(target.endpointPosition()), sourceId);
+    }
+
+    private boolean endpointDomainPresent() {
+        return SyntheticEndpointDomain.domain(helper.getLevel(), helper.absolutePos(target.endpointPosition()), sourceId)
+                .isPresent();
     }
 
     private void assertSeparated() {
@@ -273,7 +263,6 @@ public final class ScaleFederationRoute implements AutoCloseable {
 
     private void receipt(String phase) {
         var registry = FederationDomainRegistryAccess.get(helper.getLevel());
-        var policies = PolicyService.get(helper.getLevel());
         var line = "AE2F_SCALE_ROUTE phase=" + phase + " sourceGrid=" + identity(sourceGrid)
                 + " sourceId=" + sourceId + " targetGrid=" + identity(targetGrid) + " targetId=" + targetId
                 + " bridgeReason=" + (bridge == null ? "absent" : bridge.operationalReason())
@@ -283,7 +272,7 @@ public final class ScaleFederationRoute implements AutoCloseable {
                         : identity(bridge.getExternalFacingNode().getGrid()))
                 + " sourceFederationDomains=" + registry.federationdomainsFor(sourceId)
                 + " targetFederationDomains=" + registry.federationdomainsFor(targetId)
-                + " policy=" + policies.configured(policyKey)
+                + " endpointDomain=" + endpointDomainPresent()
                 + " claim=" + target.endpoint().claimState()
                 + " binding=" + (target.endpoint().binding() != null)
                 + " resolution=" + (runtime == null ? "absent" : runtime.lastResolution().state())
@@ -309,10 +298,8 @@ public final class ScaleFederationRoute implements AutoCloseable {
 
     @Override
     public void close() {
-        if (policyConfigured) {
-            var policies = PolicyService.get(helper.getLevel());
-            helper.assertTrue(policies.delete(new PolicyDelete(policyKey, policies.revision(policyKey)))
-                    instanceof PolicyMutationResult.Accepted, "Processing Policy must be removed with the fixture");
+        if (endpointDomainJoined) {
+            SyntheticEndpointDomain.remove(helper.getLevel(), helper.absolutePos(target.endpointPosition()), true);
         }
         if (bridge != null) {
             helper.assertTrue(bridge.getHost().removePart(bridge), "Physical Bridge part must be removed from its host");

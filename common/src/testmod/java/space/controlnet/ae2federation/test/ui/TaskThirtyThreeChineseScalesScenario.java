@@ -156,8 +156,8 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                             <= scroller.viewPort.getContentY() + scroller.viewPort.getContentHeight() + 0.01f;
                 })
                 .check("narrow diagnostic navigation controls fit", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(context,
-                        "#endpoint_next", "#endpoint_browse", "#endpoint_locate", "#endpoint_mapping", "#endpoint_policy")
-                        && TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#endpoint_browse", "#endpoint_locate", "#endpoint_mapping", "#endpoint_policy"))
+                        "#endpoint_next", "#endpoint_browse", "#endpoint_locate", "#endpoint_mapping")
+                        && TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#endpoint_browse", "#endpoint_locate", "#endpoint_mapping"))
                 .screenshot("ui-chinese-narrow-diagnostics")
                 .hover("#endpoint_browse")
                 .step("open narrow Chinese endpoint table", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_browse"))
@@ -182,7 +182,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .step("return the aside to the top", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .frames(2)
                 .check("narrow pair editor fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_0_processing"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_0_me_power"))
                 .check("narrow pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-chinese-narrow-policy")
@@ -191,16 +191,16 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         "#network_identity", "#network_stat_energy", "#network_stat_types"))
                 .screenshot("ui-chinese-narrow-overview")
                 .closeScreen()
-                .server("open local Endpoint in compact Chinese viewport", TaskThirtyThreeWorldFixture::openEndpoint)
+                // The Endpoint's own entrance opens the domain its Federation face joins.
+                .server("open the Endpoint in compact Chinese viewport", TaskThirtyThreeWorldFixture::openEndpoint)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .waitForTextContains("#ack_status", "有多个候选联邦域")
-                .checkTextContains("#endpoint_local", "本地端点 · 10, -57, 13")
-                .check("compact Chinese local identity and explanation fit", context ->
-                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#endpoint_local", "#diagnostics_description", "#ack_status"))
-                .check("compact Chinese local label replaces the selector", context ->
-                        context.el("#endpoint_local").isVisible() && !context.el("#endpoint_next").isVisible())
-                .screenshot("ui-chinese-narrow-local-endpoint")
+                .waitForTextContains("#endpoint_detail", "配置模式：联邦")
+                .check("compact Chinese endpoint explanation fits", context ->
+                        TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#diagnostics_description", "#ack_status"))
+                .check("compact Chinese domain endpoint keeps its selector", context ->
+                        !context.el("#endpoint_local").isVisible() && context.el("#endpoint_next").isVisible())
+                .screenshot("ui-chinese-narrow-device-endpoint")
                 .closeScreen()
                 .server("disconnect real Bridge in Chinese viewport", TaskThirtyThreeWorldFixture::disconnectBridgeOuterSide)
                 .waitUntilServer("Chinese fixture loses outer attachment", TaskThirtyThreeWorldFixture::bridgeOuterSideMissing)

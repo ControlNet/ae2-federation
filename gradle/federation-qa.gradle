@@ -9233,7 +9233,7 @@ tasks.register('federationTaskSeventeenEvidenceSelfTest') {
                                 'Task 17 missing production runtime binding')),
                 taskSevenEvidenceProbeRejects(sourceResult, 'task17-wrong-authorization-state',
                         'Task 17 Provider orientation semantics are incomplete',
-                        mutateFact('providerorientation', 'authorizationState', 'ACTIVE', 'POLICY_DENIED',
+                        mutateFact('providerorientation', 'authorizationState', 'ACTIVE', 'CLAIM_MISMATCH',
                                 'Task 17 wrong authorization state')),
                 taskSevenEvidenceProbeRejects(sourceResult, 'task17-skipped-native-target',
                         'Task 17 Provider orientation semantics are incomplete',

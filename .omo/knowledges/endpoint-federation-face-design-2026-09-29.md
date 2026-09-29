@@ -29,3 +29,52 @@ and Provider → Endpoint needed a `PROCESSING` pair rule. The user's intended d
    domain (the server already enforces this in `FederationDomainPolicySession.setPolicy`); related-domain pairs stay
    read-only. Before this change the selection drew dashed candidates to every shown network, including related
    networks that share no domain with it.
+
+## How it is implemented (steps 1–3)
+
+- **Authorization** (`ProviderTargetAuthorization`, `EndpointClaimAuthority`): the Provider's network must be a member
+  of `federationDomainOf(endpoint node)`. A cut Federation face reports `FEDERATION_DOMAIN_DISCONNECTED`.
+- **PROCESSING removed**:
+  - `PolicyCapability` is STORAGE / CRAFTING / ME_POWER. `PolicyCapability.persisted(name)` drops a saved
+    `"PROCESSING"` rule on load (`PolicyStateCodec`); any other unknown name is still malformed.
+  - `PolicyOperation.EXECUTE`, `ProviderTargetState.POLICY_DENIED`, `DropHint.NO_RULE`, the wire's "rule" fact and
+    the Endpoint's "Processing policy" button are gone.
+- **Device entrance** (`FederationDomainPolicySession.forDevice`): an Endpoint opens the domain its Federation face
+  node is in, provided the domain has at least one member. Its subnet's memberships don't count, so an Endpoint is
+  never ambiguous. Other devices still match by their network.
+- **Topology Endpoint nodes**:
+  - Server: each `endpoint` choice carries `ownerNetwork`, the network of the owning Provider. `pairFlowText()` adds
+    rows `{endpoint, events, amount, returnedEvents, returned}` summed from the owner's lane flows (`laneTotals`).
+  - Client: `FederationTopologyView` draws `.graph-node-endpoint` buttons (`#graph_endpoint_<id>`, label
+    "Endpoint · x, y, z", a click opens diagnostics). Placement is `client/policy/EndpointNodeLayout` (pure,
+    unit-tested): on the outer side of the owner card, with unmapped Endpoints in a free row below and unlinked.
+  - Pulses run along the card→node link; sends and returns also count in the throughput line.
+  - `focusObject(endpoint)` selects the owner network. "Devices" counts the Endpoints its Providers map.
+- **Rule 9**: every `networks` / `relatedNetworks` row carries `domains`, the related domains it is in.
+  `FederationTopologyView.discovers(a, b)` is true for two members, or when the domain sets intersect. Dashed
+  candidates and the connection list use it.
+- **Test fixtures**:
+  - T33 Endpoints face UP and reach the Router domain through real Federation Cable on the layer above
+    (`TaskThirtyThreeWorldFixture.ENDPOINT_CABLES`, showcase `state.cables`).
+  - Scale routes use TEST-ONLY `SyntheticEndpointDomain`.
+
+## Pitfalls found while wiring the real Endpoint into the domain (2026-09-30)
+
+- **A claim change republished the whole domain.**
+  - Cause: `EndpointRuntime` calls `level.invalidateCapabilities(endpointPos)` whenever its item handlers change: Claim,
+    activate, release, mode. The Federation Cable's `BlockCapabilityCache` listener used
+    `CableFacePort.invalidate()`, which drops the cable's domain node at once. The node came back on the next tick, so
+    the domain got a new generation. Every open workspace then went stale: "No live Endpoint", "Providers 0".
+  - Fix: the cache listener calls `recheck()`. It only marks the port dirty, and `tick()` reports a change only when
+    the peer differs. `neighborChanged` still uses the hard `invalidate()`. A removed or unloaded peer removes its own
+    node.
+  - Regression test: GameTest `endpointfederationfaceclaimkeepsdomain`.
+- **A new domain republishes a few times before it settles.** T33 `ready()` now waits until the Router domain's
+  generation holds for 20 ticks (log line `TASK33_DOMAIN`) before any workspace opens.
+- **Mapping no longer depends on rule revisions** (step 2). The T33 step that expected "policy changed elsewhere"
+  after an external Storage edit now expects the mapping to be accepted and the Endpoint to be claimed by the host.
+- **The Endpoint's own entrance never reports "ambiguous".** Its Federation face is in exactly one domain, even when
+  its subnet is a member of several.
+- **Not in the manifest:** the Federation-face GameTests (`endpointfederationface*`) are `manualOnly` and not in
+  `tests/scenarios/manifest.json`. Run them explicitly:
+  `python3 tools/dev_gametests.py endpointfederationfacecable endpointfederationfacerouter endpointfederationfaceprovider endpointfederationfacerotate endpointfederationfacelocal endpointfederationfacesubnetmember endpointfederationfaceclaimkeepsdomain`

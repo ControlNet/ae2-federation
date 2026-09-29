@@ -7,7 +7,6 @@ import appeng.api.util.AEColor;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.networking.CreativeEnergyCellBlockEntity;
 import java.util.List;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -17,17 +16,6 @@ import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
-import space.controlnet.ae2federation.policy.BackendStatus;
-import space.controlnet.ae2federation.policy.PolicyActivationState;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyDelete;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
 import space.controlnet.ae2federation.processing.claim.ClaimResult;
@@ -44,6 +32,7 @@ import space.controlnet.ae2federation.processing.provider.ProviderTargetResoluti
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 import space.controlnet.ae2federation.test.port.NativePortFixtures;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
+import space.controlnet.ae2federation.test.processing.SyntheticEndpointDomain;
 
 public final class ScaleFederationThirdRoute implements AutoCloseable {
     public static final BlockPos HOST = new BlockPos(9, 2, 3);
@@ -63,7 +52,6 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
     private final NetworkId targetId;
     private final NativePortFixtures ports;
     private final ProviderIdentity identity = ProviderIdentity.create();
-    private final PolicyKey policyKey;
     private final boolean catalogReplay;
     private final boolean fourTargetReplay;
     private NativeProviderLaneFixtures remote;
@@ -96,7 +84,6 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
         targetGrid = target.grid();
         sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetId = target.anchorId();
-        policyKey = new PolicyKey(sourceId, targetId, PolicyCapability.PROCESSING);
         ports = new NativePortFixtures(helper);
     }
 
@@ -184,39 +171,33 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
         if (stage == 6) {
             bridge.onNeighborChanged(helper.getLevel(), helper.absolutePos(RED), helper.absolutePos(BLUE));
             if (!bridgeReady()) return false;
-            var policies = PolicyService.get(helper.getLevel());
-            helper.assertTrue(policies.edit(new PolicyEdit(policyKey, policies.revision(policyKey),
-                    PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))))
-                    instanceof PolicyMutationResult.Accepted, "C directional Policy must be accepted");
+            // TEST-ONLY synthetic hub: a Bridge domain has no nodes, so the C Endpoint joins the source's domain this way.
+            helper.assertTrue(endpointInSourceDomain(), "C Endpoint must join a domain of the source network");
             stage = 7;
         }
-        if (stage == 7 && policyActive()) {
+        if (stage == 7 && endpointInSourceDomain()) {
             var endpoint = target.endpoint();
             helper.assertTrue(endpoint.claim(new ClaimRequest(endpoint.endpointIdentity(), ClaimEpoch.NONE,
                     new EndpointOwnerIdentity(identity))) instanceof ClaimResult.Acquired
                     && endpoint.activateFederated(), "H1 alone must acquire C Claim");
             request = new ProviderTargetRequest(identity, endpoint.endpointIdentity(),
                     endpoint.claimState().epoch(), helper.absolutePos(target.endpointPosition()), Direction.WEST, true);
-            var policies = PolicyService.get(helper.getLevel());
-            helper.assertTrue(policies.delete(new PolicyDelete(policyKey, policies.revision(policyKey)))
-                    instanceof PolicyMutationResult.Accepted, "Temporarily withdraw C Policy for negative gate");
+            SyntheticEndpointDomain.remove(helper.getLevel(), helper.absolutePos(target.endpointPosition()), true);
             var thirdInput = appeng.api.stacks.AEItemKey.of(ScaleProcessingCatalog.recipes().get(2).input());
-            helper.assertTrue(!policyActive() && !remote.push(0, 0)
-                            && runtime.lastResolution().state() == ProviderTargetState.POLICY_DENIED
+            helper.assertTrue(!endpointDomainPresent() && !remote.push(0, 0)
+                            && runtime.lastResolution().state() == ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED
                             && target.inputAmount(thirdInput) == 0,
-                    "Missing C Policy must deny H1's real native Lane push before C input/export");
+                    "A C Endpoint outside the source's domain must deny H1's real native Lane push before C input/export");
             org.slf4j.LoggerFactory.getLogger(getClass()).info(
-                    "AE2F_SCALE_FEDERATION_C_NEGATIVE policy=ABSENT resolution={} targetInput={} pushAccepted=false",
+                    "AE2F_SCALE_FEDERATION_C_NEGATIVE endpointDomain=ABSENT resolution={} targetInput={} pushAccepted=false",
                     runtime.lastResolution().state(), target.inputAmount(thirdInput));
-            helper.assertTrue(policies.edit(new PolicyEdit(policyKey, policies.revision(policyKey),
-                    PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))))
-                    instanceof PolicyMutationResult.Accepted, "Restore C Policy after negative gate");
+            helper.assertTrue(endpointInSourceDomain(), "C Endpoint must rejoin the source's domain after the negative gate");
             stage = 8;
         }
-        if (stage == 8 && policyActive()) {
+        if (stage == 8 && endpointInSourceDomain()) {
             assertReady();
             org.slf4j.LoggerFactory.getLogger(getClass()).info(
-                    "AE2F_SCALE_FEDERATION_THIRD_ROUTE source={} targetC={} sourceGrid={} targetCGrid={} bridge={} policy=ACTIVE claim={} h1West=true",
+                    "AE2F_SCALE_FEDERATION_THIRD_ROUTE source={} targetC={} sourceGrid={} targetCGrid={} bridge={} endpointDomain=ACTIVE claim={} h1West=true",
                     sourceId.value(), targetId.value(), System.identityHashCode(sourceGrid),
                     System.identityHashCode(targetGrid), bridge.operationalReason(), target.endpoint().claimState());
             stage = 9;
@@ -231,14 +212,14 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
     public void assertReady() {
         var endpoint = target.endpoint();
         var h1 = helper.<PatternProviderBlockEntity>getBlockEntity(HOST).getMainNode().getNode();
-        helper.assertTrue(bridgeReady() && policyActive() && target.grid() == targetGrid
+        helper.assertTrue(bridgeReady() && endpointInSourceDomain() && target.grid() == targetGrid
                         && h1.getGrid() == sourceGrid && h1.getInWorldConnections().containsKey(Direction.WEST)
                         && h1.getInWorldConnections().get(Direction.WEST).getOtherSide(h1).getGrid() == sourceGrid
                         && target.onlyAnchorClaim() && target.settled()
                         && endpoint.claimState().owner().filter(new EndpointOwnerIdentity(identity)::equals).isPresent()
                         && helper.getLevel().getCapability(EndpointTargetCapability.BLOCK,
                                 helper.absolutePos(target.endpointPosition()), Direction.WEST) == endpoint.binding(),
-                "Third physical Bridge/Federation Domain/Policy and H1-owned C Claim must remain active");
+                "Third physical Bridge/Federation Domain, C Endpoint domain and H1-owned C Claim must remain active");
     }
 
     public void assertNativeJobLane(AuthorizedLaneIdentity owner) {
@@ -277,17 +258,19 @@ public final class ScaleFederationThirdRoute implements AutoCloseable {
                         connection.getOtherSide(bridge.getMainNode().getNode()) == bridge.getExternalFacingNode());
     }
 
-    private boolean policyActive() {
-        return PolicyService.get(helper.getLevel()).activation(policyKey,
-                new PolicyRuntimeEndpoints(sourceGrid, targetGrid, BackendStatus.READY))
-                == PolicyActivationState.ACTIVE;
+    /** Whether the C Endpoint is in a domain of the source network; the Endpoint republishes its node when it reloads. */
+    private boolean endpointInSourceDomain() {
+        return SyntheticEndpointDomain.ensure(helper.getLevel(), helper.absolutePos(target.endpointPosition()), sourceId);
+    }
+
+    private boolean endpointDomainPresent() {
+        return SyntheticEndpointDomain.domain(helper.getLevel(), helper.absolutePos(target.endpointPosition()), sourceId)
+                .isPresent();
     }
 
     @Override
     public void close() {
-        var policies = PolicyService.get(helper.getLevel());
-        helper.assertTrue(policies.delete(new PolicyDelete(policyKey, policies.revision(policyKey)))
-                instanceof PolicyMutationResult.Accepted, "C Policy removal");
+        SyntheticEndpointDomain.remove(helper.getLevel(), helper.absolutePos(target.endpointPosition()), true);
         if (bridge != null) helper.assertTrue(bridge.getHost().removePart(bridge), "C Bridge removal");
         for (var position : List.of(RED, BLUE)) helper.setBlock(position, Blocks.AIR);
         for (var position : EXTENSION) helper.setBlock(position, Blocks.AIR);

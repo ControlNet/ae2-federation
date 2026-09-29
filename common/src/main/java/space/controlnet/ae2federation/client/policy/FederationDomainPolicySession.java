@@ -120,13 +120,20 @@ public final class FederationDomainPolicySession {
                 && networked.getMainNode().getNode() != null
                 ? FederationDomainRegistryAccess.confirmedNetworkId(networked.getMainNode().getNode().getGrid())
                 : Optional.<space.controlnet.ae2federation.identity.NetworkId>empty();
-        var domains = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
-                // A device may also have a singleton topology record; it cannot host this domain editor.
-                .filter(domain -> domain.memberships().size() >= 2)
-                .filter(domain -> network.filter(domain.memberships()::containsKey).isPresent()).toList();
         var nodeId = FederationDomainRegistryAccess.nodeId(level, position);
-        var attached = domains.stream().filter(domain -> domain.nodes().contains(nodeId)).toList();
-        var candidates = attached.isEmpty() ? domains : attached;
+        List<FederationDomainSnapshot> candidates;
+        if (entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity) {
+            // An Endpoint belongs to the domain its Federation face joins; its own subnet is not a member of it.
+            candidates = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                    .filter(domain -> domain.nodes().contains(nodeId) && !domain.memberships().isEmpty()).toList();
+        } else {
+            var domains = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+                    // A device may also have a singleton topology record; it cannot host this domain editor.
+                    .filter(domain -> domain.memberships().size() >= 2)
+                    .filter(domain -> network.filter(domain.memberships()::containsKey).isPresent()).toList();
+            var attached = domains.stream().filter(domain -> domain.nodes().contains(nodeId)).toList();
+            candidates = attached.isEmpty() ? domains : attached;
+        }
         var session = new FederationDomainPolicySession(player, new DevicePolicyEntrance(position, provider),
                 candidates.size() == 1 ? Optional.of(candidates.getFirst()) : Optional.empty(), PolicyEditorSessionState.Status.DISABLED);
         session.deviceDomainAvailability = DeviceDomainAvailability.classify(network.isPresent(), candidates.size());
@@ -212,10 +219,10 @@ public final class FederationDomainPolicySession {
         var group = target.substring(0, split);
         var id = target.substring(split + 1);
         boolean ruleSelection = group.equals("policy") || group.equals("consumer") || group.equals("provider")
-                || group.equals("capability") || group.equals("endpoint_policy");
+                || group.equals("capability");
         if (!(ruleSelection ? authorizeAction() : authorizeMappingAction())) return false;
-        if (group.equals("endpoint_mapping") || group.equals("endpoint_policy")) {
-            return navigateEndpoint(group, id, target);
+        if (group.equals("endpoint_mapping")) {
+            return navigateEndpoint(id, target);
         } else if (group.equals("policy")) {
             var fields = id.split("/", -1);
             if (fields.length != 3) return false;
@@ -419,12 +426,6 @@ public final class FederationDomainPolicySession {
                     choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
                     choice.addProperty("claimEpoch", binding.claimState().epoch().value());
                     addLaneFlow(choice, entry, endpoint);
-                    // The processing rule this wire would dispatch under; mapping works without one, dispatch pauses.
-                    endpointPolicySelection(entry, binding).map(PolicyEditorSelection::key).ifPresent(key -> {
-                        var rule = PolicyService.get(level).configured(key);
-                        choice.addProperty("rule", rule.map(record -> record.rule().enabled() ? "on" : "off").orElse("none"));
-                        rule.ifPresent(record -> choice.addProperty("ruleRevision", record.revision().value()));
-                    });
                     binding.claimState().owner().ifPresent(owner -> {
                         choice.addProperty("owner", owner.provider().id().value().toString());
                         choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
@@ -449,7 +450,6 @@ public final class FederationDomainPolicySession {
             choice.addProperty("position", endpoint.runtime().position().toShortString());
             var navigationOwner = navigationOwner(endpoint);
             choice.addProperty("mappingNavigation", navigationOwner.isPresent());
-            choice.addProperty("policyNavigation", navigationOwner.flatMap(entry -> endpointPolicySelection(entry, endpoint)).isPresent());
             choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
             choice.addProperty("configuredMode", endpoint.runtime().configuredMode().name());
             choice.addProperty("runtimeMode", endpoint.runtime().mode().map(mode ->
@@ -460,6 +460,10 @@ public final class FederationDomainPolicySession {
             endpoint.claimState().owner().ifPresent(owner -> {
                 choice.addProperty("owner", owner.provider().id().value().toString());
                 choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
+                // The network of the owning Provider: the topology draws the Endpoint beside it.
+                currentProviders().stream().filter(entry -> entry.identity().equals(owner.provider())).findFirst()
+                        .flatMap(entry -> FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid()))
+                        .ifPresent(network -> choice.addProperty("ownerNetwork", network.value().toString()));
             });
         }
         if (!endpoints.isEmpty()) selected.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context,
@@ -473,20 +477,7 @@ public final class FederationDomainPolicySession {
                 .filter(entry -> entry.controller().isPresent() && entry.identity().equals(identity.provider())).findFirst());
     }
 
-    private Optional<PolicyEditorSelection> endpointPolicySelection(ProviderObservationRegistry.Entry owner,
-            EndpointTargetBinding endpoint) {
-        if (selection == null) return Optional.empty();
-        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(owner.provider().getGrid()).orElse(null);
-        var provider = FederationDomainRegistryAccess.confirmedNetworkId(endpoint.subnetNode().getGrid()).orElse(null);
-        if (consumer == null || provider == null) return Optional.empty();
-        int consumerIndex = selection.members().indexOf(consumer);
-        int providerIndex = selection.members().indexOf(provider);
-        if (consumerIndex < 0 || providerIndex < 0 || consumerIndex == providerIndex) return Optional.empty();
-        return Optional.of(new PolicyEditorSelection(selection.members(), consumerIndex, providerIndex,
-                PolicyCapability.PROCESSING.ordinal()));
-    }
-
-    private boolean navigateEndpoint(String group, String id, String receipt) {
+    private boolean navigateEndpoint(String id, String receipt) {
         int separator = id.lastIndexOf('/');
         if (separator < 1) return false;
         try { java.util.UUID.fromString(id.substring(separator + 1)); }
@@ -498,23 +489,17 @@ public final class FederationDomainPolicySession {
         if (endpoint == null) return false;
         var owner = navigationOwner(endpoint).orElse(null);
         if (owner == null) return false;
-        if (group.equals("endpoint_policy")) {
-            var replacement = endpointPolicySelection(owner, endpoint).orElse(null);
-            if (replacement == null) return false;
-            changeSelection(old -> replacement);
-        } else {
-            var providers = currentProviders();
-            int index = providers.indexOf(owner);
-            if (index < 0) return false;
-            int slot = java.util.stream.IntStream.range(0, owner.provider().patternInventory().size())
-                    .filter(candidate -> owner.controller().orElseThrow().endpointsForSlot(candidate).contains(endpoint.endpointIdentity()))
-                    .findFirst().orElse(0);
-            mappingProviderIndex = index;
-            mappingProviderIdentity = null;
-            mappingSlotIndex = slot;
-            mappingEndpointSelection = endpoint.endpointIdentity();
-            mappingLaneIndex = 0;
-        }
+        var providers = currentProviders();
+        int index = providers.indexOf(owner);
+        if (index < 0) return false;
+        int slot = java.util.stream.IntStream.range(0, owner.provider().patternInventory().size())
+                .filter(candidate -> owner.controller().orElseThrow().endpointsForSlot(candidate).contains(endpoint.endpointIdentity()))
+                .findFirst().orElse(0);
+        mappingProviderIndex = index;
+        mappingProviderIdentity = null;
+        mappingSlotIndex = slot;
+        mappingEndpointSelection = endpoint.endpointIdentity();
+        mappingLaneIndex = 0;
         navigationReceipt = receipt;
         mappingAcknowledgment = "ready";
         return true;
@@ -768,6 +753,16 @@ public final class FederationDomainPolicySession {
                         rulesOut.add(row);
                     });
         }
+        // The related domains each shown network is in: the canvas links only networks that share a domain.
+        for (var rows : List.of(root.getAsJsonArray("networks"), networksOut)) {
+            rows.forEach(value -> {
+                var row = value.getAsJsonObject();
+                var in = new com.google.gson.JsonArray();
+                registry.federationdomainsFor(space.controlnet.ae2federation.identity.NetworkId.parse(row.get("id").getAsString()))
+                        .stream().filter(domains::contains).sorted().forEach(domainId -> in.add(domainId.value()));
+                row.add("domains", in);
+            });
+        }
         relatedNetworks = java.util.Set.copyOf(seen);
     }
 
@@ -802,6 +797,23 @@ public final class FederationDomainPolicySession {
                     row.addProperty("age", summary.ticksSinceLast());
                     out.add(row);
                 });
+        // What each Endpoint's owner sent it and got back, for the link from the owner's network to its node.
+        for (var endpoint : currentEndpoints()) {
+            var owner = endpoint.claimState().owner().orElse(null);
+            if (owner == null) continue;
+            var entry = currentProviders().stream().filter(candidate -> candidate.identity().equals(owner.provider()))
+                    .findFirst().orElse(null);
+            if (entry == null) continue;
+            var totals = laneTotals(entry, endpoint.endpointIdentity());
+            if (totals[0] == 0 && totals[2] == 0) continue;
+            var row = new com.google.gson.JsonObject();
+            row.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context, endpoint));
+            row.addProperty("events", totals[0]);
+            row.addProperty("amount", totals[1]);
+            row.addProperty("returnedEvents", totals[2]);
+            row.addProperty("returned", totals[3]);
+            out.add(row);
+        }
         flowText = out.toString();
         return flowText;
     }
@@ -896,7 +908,7 @@ public final class FederationDomainPolicySession {
             return;
         }
         ProviderTargetState targetState = entry.runtime().lastResolution().state();
-        if (targetState == ProviderTargetState.POLICY_DENIED || targetState == ProviderTargetState.CLAIM_MISMATCH) {
+        if (targetState == ProviderTargetState.CLAIM_MISMATCH) {
             mappingAcknowledgment = "rejected-" + targetState.name().toLowerCase(java.util.Locale.ROOT);
             return;
         }
@@ -1150,7 +1162,6 @@ public final class FederationDomainPolicySession {
         if (!rule.enabled()) return new RuntimeObservation("off", "", "", "");
         var required = switch (key.capability()) {
             case CRAFTING -> List.of(PolicyOperation.REQUEST);
-            case PROCESSING -> List.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY);
             case ME_POWER -> List.of(PolicyOperation.SUPPLY);
             case STORAGE -> List.<PolicyOperation>of();
         };
@@ -1159,14 +1170,10 @@ public final class FederationDomainPolicySession {
                 return new RuntimeObservation("operation_missing", operation.name().toLowerCase(java.util.Locale.ROOT), "", "");
             }
         }
-        if (key.capability() == PolicyCapability.PROCESSING) {
-            return new RuntimeObservation("on_dispatch", "", "", "");
-        }
         boolean published = switch (key.capability()) {
             case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
             case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.hasPublishedBinding(level, key);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergyBindingService.hasPublishedBinding(level, key);
-            case PROCESSING -> throw new IllegalStateException("Processing has no persistent capability binding");
         };
         if (published) return new RuntimeObservation("published", "", "", "");
         var backendDiagnostic = switch (key.capability()) {
@@ -1256,21 +1263,32 @@ public final class FederationDomainPolicySession {
     /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window. */
     private void addLaneFlow(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry,
             space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
+        var totals = laneTotals(entry, endpoint);
+        if (totals[1] > 0) choice.addProperty("laneSent", totals[1]);
+        if (totals[3] > 0) choice.addProperty("laneReturned", totals[3]);
+    }
+
+    /**
+     * What the Provider's lanes to {@code endpoint} moved over the flow window: sent events and amount, then returned
+     * events and amount.
+     */
+    private long[] laneTotals(ProviderObservationRegistry.Entry entry,
+            space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
+        var totals = new long[4];
         var controller = entry.controller().orElse(null);
-        if (controller == null) return;
+        if (controller == null) return totals;
         var observability = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level);
-        long sent = 0;
-        long returned = 0;
+        var provider = entry.identity().toString();
         for (int lane = 0; lane < entry.provider().lanes().size(); lane++) {
             if (!controller.laneEndpoint(lane).filter(endpoint::equals).isPresent()) continue;
-            var provider = entry.identity().toString();
-            sent += observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
-                    .LaneKey(provider, lane, false)).amount();
-            returned += observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
-                    .LaneKey(provider, lane, true)).amount();
+            for (int returned = 0; returned <= 1; returned++) {
+                var summary = observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
+                        .LaneKey(provider, lane, returned == 1));
+                totals[returned * 2] += summary.events();
+                totals[returned * 2 + 1] += summary.amount();
+            }
         }
-        if (sent > 0) choice.addProperty("laneSent", sent);
-        if (returned > 0) choice.addProperty("laneReturned", returned);
+        return totals;
     }
 
     /** What links this domain's networks: its Router group or its Bridge, with the device positions. */
@@ -1406,9 +1424,6 @@ public final class FederationDomainPolicySession {
         return switch (capability) {
             case STORAGE -> PolicyRule.storageDefaults();
             case CRAFTING -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.REQUEST));
-            case PROCESSING -> PolicyRule.enabled(java.util.Set.of(
-                    space.controlnet.ae2federation.policy.PolicyOperation.EXECUTE,
-                    space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY));
             case ME_POWER -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY));
         };
     }

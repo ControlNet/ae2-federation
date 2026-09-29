@@ -77,9 +77,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("network detail replaces the pair editor", context -> context.el("#network_detail").isVisible()
                         && context.el("#network_title").text().equals(TaskThirtyThreeScenarioSupport.networkName(
                                 context.get("net.providerHost"))))
-                .check("the devices button counts the network's devices", context ->
-                        context.el("#graph_open").text().equals("Devices (1)")
-                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern providers: 1"))
+                .check("the devices button counts its Provider and the Endpoint that Provider maps", context ->
+                        context.el("#graph_open").text().equals("Devices (2)")
+                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern providers: 1")
+                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Processing endpoints: 1"))
                 .waitForTextContains("#network_stat_energy", " AE")
                 .check("figures are the design's five rows", context -> context.all(".stat-row").size() == 5
                         && context.el("#network_stat_cpus").text().matches("\\d+/\\d+ busy")
@@ -180,13 +181,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("open the network's devices", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#graph_open"))
                 .waitUntil("Provider network opens mapping", context -> context.el("#page_mapping").isVisible())
                 .click("#tab_overview")
-                .step("select the Endpoint network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
-                        context, context.get("net.endpoint")))
-                .waitUntil("Endpoint network detail is shown", context -> context.el("#network_title").text()
-                        .equals(TaskThirtyThreeScenarioSupport.networkName(context.get("net.endpoint"))))
-                .hover("#graph_open")
-                .step("open the network's devices", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#graph_open"))
-                .waitUntil("Endpoint network opens diagnostics", context -> context.el("#page_diagnostics").isVisible())
+                .check("the Endpoint is a node beside the network whose Provider maps it", context ->
+                        context.all(".graph-node-endpoint").size() == 1
+                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Mapped by a Provider of "))
+                .hover(".graph-node-endpoint")
+                .step("open the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
+                .waitUntil("the Endpoint node opens diagnostics", context -> context.el("#page_diagnostics").isVisible())
                 .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
                 .click("#tab_overview")
                 .hover(".network-link")

@@ -42,7 +42,6 @@ final class FederationWorkspace {
     private String navigationGroup;
     private String navigationId;
     private String endpointNavigationReceipt;
-    private String endpointNavigationPage;
     private FederationTopologyView topology;
     private FederationProcessingGraph processing;
     private boolean authorityAllowsNavigation;
@@ -53,8 +52,7 @@ final class FederationWorkspace {
         this.ui = ui;
         this.select = select;
         endpointBrowser = new FederationEndpointBrowser(ui, select);
-        element("endpoint_mapping", Button.class).setOnClick(event -> navigateEndpoint("mapping"));
-        element("endpoint_policy", Button.class).setOnClick(event -> navigateEndpoint("policy"));
+        element("endpoint_mapping", Button.class).setOnClick(event -> navigateEndpoint());
         element("endpoint_browse", Button.class).setOnClick(event -> endpointBrowser.open());
         // The design's title is bold; the tab name after it is not.
         element("domain_title", Label.class).setText(Component.translatable("ae2federation.ui.domain.title")
@@ -118,20 +116,17 @@ final class FederationWorkspace {
         var id = confirmedSelections.get("endpoint");
         var endpoint = choices.getOrDefault("endpoint", List.of()).stream()
                 .filter(choice -> choice.get("id").getAsString().equals(id)).findFirst().orElse(null);
-        for (var destination : List.of("mapping", "policy")) {
-            boolean available = endpoint != null && endpoint.has(destination + "Navigation")
-                    && endpoint.get(destination + "Navigation").getAsBoolean();
-            var button = element("endpoint_" + destination, Button.class);
-            button.setActive(authorityAllowsNavigation && available);
-            button.style(style -> style.tooltips(tr(available ? "endpoint_navigation_help" : "endpoint_navigation_unavailable")));
-        }
+        boolean available = endpoint != null && endpoint.has("mappingNavigation")
+                && endpoint.get("mappingNavigation").getAsBoolean();
+        var button = element("endpoint_mapping", Button.class);
+        button.setActive(authorityAllowsNavigation && available);
+        button.style(style -> style.tooltips(tr(available ? "endpoint_navigation_help" : "endpoint_navigation_unavailable")));
     }
 
-    private void navigateEndpoint(String destination) {
+    private void navigateEndpoint() {
         var endpoint = confirmedSelections.get("endpoint");
         if (!authorityAllowsNavigation || endpoint == null) return;
-        endpointNavigationReceipt = "endpoint_" + destination + ":" + endpoint + "/" + java.util.UUID.randomUUID();
-        endpointNavigationPage = destination;
+        endpointNavigationReceipt = "endpoint_mapping:" + endpoint + "/" + java.util.UUID.randomUUID();
         select.accept(endpointNavigationReceipt);
     }
 
@@ -227,18 +222,10 @@ final class FederationWorkspace {
         updateEndpointNavigation();
         if (endpointNavigationReceipt != null && root.has("navigationReceipt")
                 && endpointNavigationReceipt.equals(root.get("navigationReceipt").getAsString())) {
-            if (endpointNavigationPage.equals("policy")) {
-                // The server selected the owner's processing rule; show that pair in the topology editor.
-                if (topology != null && selected.has("consumer") && selected.has("provider")) {
-                    topology.selectPair(selected.get("consumer").getAsString(), selected.get("provider").getAsString());
-                }
-                show("overview");
-            } else {
-                // The server selected the owner, its mapped slot and this Endpoint; the wires view selects them too.
-                if (endpointNavigationPage.equals("mapping") && processing != null) processing.focus(
-                        confirmedSelections.get("target"), selected.has("slot") ? selected.get("slot").getAsString() : "");
-                show(endpointNavigationPage);
-            }
+            // The server selected the owner, its mapped slot and this Endpoint; the wires view selects them too.
+            if (processing != null) processing.focus(
+                    confirmedSelections.get("target"), selected.has("slot") ? selected.get("slot").getAsString() : "");
+            show("mapping");
             endpointNavigationReceipt = null;
         }
         if (navigationGroup != null && navigationId.equals(confirmedSelections.get(navigationGroup))) {
