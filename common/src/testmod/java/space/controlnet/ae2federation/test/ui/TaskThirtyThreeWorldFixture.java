@@ -858,6 +858,32 @@ final class TaskThirtyThreeWorldFixture {
         return true;
     }
 
+    static BlockPos hostPosition(ServerContext context) {
+        return state(context).hostPosition();
+    }
+
+    static BlockPos endpointPosition(ServerContext context) {
+        return state(context).endpointPosition();
+    }
+
+    static FederationPatternProviderBlockEntity hostProvider(ServerContext context) {
+        return provider(context);
+    }
+
+    static EndpointBlockEntity firstEndpoint(ServerContext context) {
+        return endpoint(context);
+    }
+
+    /** A node of the Router's main network, which the Provider host joins. */
+    static appeng.api.networking.IGridNode mainNode(ServerContext context) {
+        return state(context).existing();
+    }
+
+    /** A node of the Router's outer network, which the first Endpoint joins. */
+    static appeng.api.networking.IGridNode outerNode(ServerContext context) {
+        return state(context).targetExisting();
+    }
+
     private static EndpointBlockEntity endpoint(ServerContext context) {
         var state = state(context);
         return context.level().getBlockEntity(state.endpointPosition()) instanceof EndpointBlockEntity endpoint
@@ -880,6 +906,7 @@ final class TaskThirtyThreeWorldFixture {
 
     private static void cleanup(ServerContext context) {
         var state = context.<State>get(STATE);
+        TaskThirtyThreeShowcaseFixture.cleanup(context);
         // An aborted scope check must not leave the related domain in the shared world.
         removeRelatedDomain(context);
         separateMemberNetworks(context);

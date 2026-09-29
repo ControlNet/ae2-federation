@@ -141,6 +141,8 @@ final class FederationTopologyView {
     private boolean fitted;
     /** Half sizes of the link labels, which hide the middle of their link. */
     private final Map<String, Vector2f> pillHalfSizes = new HashMap<>();
+    /** Where each link's label sits along it, by pair; the middle unless crossing links would stack their labels. */
+    private final Map<String, Float> labelSpots = new HashMap<>();
     private int fitDelay;
     /** The graph viewport's size at the last fit; a resized window fits again so the cards stay in view. */
     private float fittedWidth;
@@ -522,13 +524,19 @@ final class FederationTopologyView {
         for (var pair : pairsWithRules()) {
             var ends = pair.split("\\|");
             if (!positions.containsKey(ends[0]) || !positions.containsKey(ends[1])) continue;
-            var link = link(ends[0], ends[1]);
+            var link = pairLink(pair);
             var label = pillHalfSizes.getOrDefault(pair, new Vector2f());
             // Resources travel from the providing network to the consumer: from the link's end when the first network consumes.
             if (flowing(ends[0], ends[1])) flows.add(new FederationFlowPulses.Flow(link, true, label.x, label.y));
             if (flowing(ends[1], ends[0])) flows.add(new FederationFlowPulses.Flow(link, false, label.x, label.y));
         }
         return flows;
+    }
+
+    /** The link of a pair with rules, its label where the layout placed it. */
+    private TopologyLink pairLink(String pair) {
+        var ends = pair.split("\\|");
+        return link(ends[0], ends[1]).withLabelAt(labelSpots.getOrDefault(pair, 0.5f));
     }
 
     /** The curve from the first network's card to the second's. */
@@ -561,6 +569,7 @@ final class FederationTopologyView {
             index.put(ordered.get(i).id(), i);
         }
         var labels = new ArrayList<space.controlnet.ae2federation.client.policy.TopologySpacing.Label>();
+        var labelled = new ArrayList<String>();
         var font = net.minecraft.client.Minecraft.getInstance().font;
         for (var pair : pairsWithRules()) {
             var ends = pair.split("\\|");
@@ -568,6 +577,7 @@ final class FederationTopologyView {
             var half = pillHalfSize(network(ends[0]), network(ends[1]), font);
             labels.add(new space.controlnet.ae2federation.client.policy.TopologySpacing.Label(index.get(ends[0]),
                     index.get(ends[1]), half.x, half.y));
+            labelled.add(pair);
         }
         float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
         raw.forEach(point -> point.mul(spread));
@@ -576,6 +586,12 @@ final class FederationTopologyView {
         for (int i = 0; i < count; i++) {
             positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + 8, raw.get(i).y - minY + 8));
         }
+        // Links that cross, such as a diamond's diagonals, would stack their labels in the middle; move one along.
+        var placed = new float[count][];
+        for (int i = 0; i < count; i++) placed[i] = new float[] {raw.get(i).x, raw.get(i).y};
+        var spots = space.controlnet.ae2federation.client.policy.TopologySpacing.labelSpots(placed, labels, CARD_WIDTH, CARD_HEIGHT, 4);
+        labelSpots.clear();
+        for (int i = 0; i < labelled.size(); i++) labelSpots.put(labelled.get(i), spots[i]);
     }
 
     /**
@@ -624,6 +640,8 @@ final class FederationTopologyView {
         var stateLine = text(Component.empty(), FederationTheme.DARK_TEXT);
         positionLine.setId("graph_node_position_" + sanitize(network.member()));
         stateLine.setId("graph_node_state_" + sanitize(network.member()));
+        // A long state ("Waiting for domain status · Identity confirmed") keeps to the card, at a word boundary.
+        stateLine.textStyle(style -> style.textWrap(TextWrap.HIDE));
         info.addChildren(head, positionLine, stateLine);
         top.addChildren(thumbnail, info);
         var energy = cardEnergy.computeIfAbsent(network.id(), ignored -> new float[] {-1});
@@ -740,7 +758,7 @@ final class FederationTopologyView {
         var ends = pair.split("\\|");
         var a = network(ends[0]);
         var b = network(ends[1]);
-        var middle = link(a.id(), b.id()).middle();
+        var middle = pairLink(pair).label();
         var button = new Button();
         button.noText();
         button.setId("graph_pair_" + sanitize(a.member()) + "_" + sanitize(b.member()));
@@ -968,7 +986,8 @@ final class FederationTopologyView {
             link.style(style -> style.tooltips(name(other).copy().append("\n").append(summary.getString().isEmpty()
                     ? tr("no_rules") : summary)));
             link.layout(style -> style.widthPercent(100).height(18));
-            link.textStyle(style -> style.textWrap(TextWrap.NONE).textAlignHorizontal(
+            // A long summary keeps to its row, cut at a word; the tooltip has all of it.
+            link.textStyle(style -> style.textWrap(TextWrap.HIDE).textAlignHorizontal(
                     com.lowdragmc.lowdraglib2.gui.ui.data.Horizontal.LEFT));
             var open = text(Component.literal("›"), FederationTheme.TEXT_MUTED);
             open.setAllowHitTest(false);
@@ -983,7 +1002,10 @@ final class FederationTopologyView {
         }
     }
 
-    /** Both directions of a pair as chips: "▸ Storage · Crafting ◂ ME power", what this network uses first. */
+    /**
+     * Both directions of a pair as chips: "▸ Storage · Crafting ◂ ME power", what this network uses first. The rows
+     * sit on the light aside, so the state colours are their darker counterparts.
+     */
     private MutableComponent linkSummary(Network network, Network other) {
         var summary = Component.empty();
         for (var direction : List.of(new Network[] {network, other}, new Network[] {other, network})) {
@@ -991,13 +1013,22 @@ final class FederationTopologyView {
             if (chips.isEmpty()) continue;
             if (!summary.getString().isEmpty()) summary.append(" ");
             summary.append(Component.literal(direction[0] == network ? "▸ " : "◂ ")
-                    .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+                    .withStyle(Style.EMPTY.withColor(FederationTheme.TEXT_MUTED & 0xffffff)));
             for (int index = 0; index < chips.size(); index++) {
-                if (index > 0) summary.append(Component.literal(" · ").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-                summary.append(chips.get(index).text().withStyle(Style.EMPTY.withColor(chips.get(index).color() & 0xffffff)));
+                if (index > 0) summary.append(Component.literal(" · ").withStyle(Style.EMPTY.withColor(FederationTheme.TEXT_MUTED & 0xffffff)));
+                summary.append(chips.get(index).text().withStyle(Style.EMPTY.withColor(onPaper(chips.get(index).color()) & 0xffffff)));
             }
         }
         return summary;
+    }
+
+    /** A rule state colour made for the dark canvas, as it reads on the light aside. */
+    private static int onPaper(int color) {
+        if (color == FederationTheme.OK) return 0xff17803a;
+        if (color == FederationTheme.WARN) return 0xff9a6700;
+        if (color == FederationTheme.ERROR) return 0xffb3261e;
+        if (color == FederationTheme.TEAL) return 0xff136f80;
+        return color == FederationTheme.DARK_MUTED ? FederationTheme.TEXT_MUTED : FederationTheme.TEXT;
     }
 
     private static Label sectionNote(Component text) {

@@ -174,7 +174,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the two sections are the two directions", context -> !context.el("#policy_section_title_0").text()
                         .equals(context.el("#policy_section_title_1").text()))
                 .check("the pair names the Routers that link it, with their positions", context -> context.el("#pair_title").text()
-                        .matches("(?s).*Via (\\d+ Routers · first at|the Router at) -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
+                        .matches("(?s).*Via the Router at -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
                 .screenshot("ui-policy-direction")
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("real policy revision advances", context ->

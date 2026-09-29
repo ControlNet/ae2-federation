@@ -527,7 +527,10 @@ public final class FederationDomainPolicySession {
         if (mapped) return "mapped";
         if (retained) return "retained";
         if (owner.isPresent()) return "owned";
-        if (binding.runtime().configuredMode() != space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode.FEDERATED)
+        // Every Endpoint starts in Local mode and a claim switches it to Federated, so only one that really serves an
+        // adjacent native Provider is "local"; an unbound one is free to map.
+        if (binding.runtime().configuredMode() != space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode.FEDERATED
+                && binding.runtime().mode().filter(space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local.class::isInstance).isPresent())
             return "local";
         return "unclaimed";
     }
@@ -1294,10 +1297,14 @@ public final class FederationDomainPolicySession {
     /** What links this domain's networks: its Router group or its Bridge, with the device positions. */
     private com.google.gson.JsonObject viaJson(FederationDomainSnapshot domain) {
         var json = new com.google.gson.JsonObject();
-        json.addProperty("kind", RelatedDomainLabel.of(domain.federationDomainId().value()).kind());
-        json.addProperty("count", domain.nodes().size());
+        var kind = RelatedDomainLabel.of(domain.federationDomainId().value()).kind();
+        json.addProperty("kind", kind);
+        // A Router group's nodes also hold its Federation cables and device ports; it is named by its Routers.
+        var shown = kind.equals("router") ? domain.nodes().stream().filter(node -> !cableOrPort(node)).toList()
+                : List.copyOf(domain.nodes());
+        json.addProperty("count", shown.size());
         var nodes = new com.google.gson.JsonArray();
-        domain.nodes().stream().limit(MAX_VIA_NODES).forEach(node -> {
+        shown.stream().limit(MAX_VIA_NODES).forEach(node -> {
             var position = net.minecraft.core.BlockPos.of(node.blockPosition());
             var row = new com.google.gson.JsonObject();
             row.addProperty("dimension", node.dimension());
@@ -1306,6 +1313,16 @@ public final class FederationDomainPolicySession {
         });
         json.add("nodes", nodes);
         return json;
+    }
+
+    /** Whether a loaded domain node is a Federation cable or a device port rather than a Router; unloaded ones count. */
+    private boolean cableOrPort(space.controlnet.ae2federation.domain.FederationDomainNodeId node) {
+        var dimension = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                net.minecraft.resources.ResourceLocation.parse(node.dimension()));
+        var world = level.getServer().getLevel(dimension);
+        var position = net.minecraft.core.BlockPos.of(node.blockPosition());
+        return world != null && world.isLoaded(position)
+                && !(world.getBlockEntity(position) instanceof space.controlnet.ae2federation.router.RouterBlockEntity);
     }
 
     private Optional<FederationDomainSnapshot> currentFederationDomain() {

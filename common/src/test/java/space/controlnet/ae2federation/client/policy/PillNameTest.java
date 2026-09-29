@@ -13,11 +13,16 @@ class PillNameTest {
     }
 
     @Test
-    void aNamedNetworkUsesItsFirstWordCappedToEightCharacters() {
+    void aNamedNetworkUsesItsFirstWordCappedToTenCharacters() {
         assertEquals("Main", PillName.of("Main", ID));
         assertEquals("North", PillName.of("North Storage", ID));
-        assertEquals("Automati", PillName.of("Automation hub", ID));
+        assertEquals("Automation", PillName.of("Automation Tower", ID));
         assertEquals("矿场", PillName.of("矿场 地下", ID));
+    }
+
+    @Test
+    void aLongerWordIsCutWithAnEllipsis() {
+        assertEquals("Constructi…", PillName.of("Construction yard", ID));
     }
 
     @Test

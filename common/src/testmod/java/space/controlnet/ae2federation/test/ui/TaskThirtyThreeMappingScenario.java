@@ -315,6 +315,69 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("restore English window", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
                 .waitUntil("English window restored", context -> context.mc().getWindow().getWidth() == 1600)
+                // A fuller domain for design review: four named networks, rules of every kind, three Providers mapped
+                // many-to-many onto five Endpoints. The names, rules and patterns are test-world data.
+                .server("showcase: two more networks on the Router", TaskThirtyThreeShowcaseFixture::placeNetworks)
+                .serverTicks(4)
+                .waitUntilServer("showcase: four networks join the Router's domain", TaskThirtyThreeShowcaseFixture::networksReady)
+                .server("showcase: name the networks and link them", TaskThirtyThreeShowcaseFixture::installNamesAndRules)
+                .server("showcase: place Providers and Endpoints", TaskThirtyThreeShowcaseFixture::placeDevices)
+                .serverTicks(4)
+                .waitUntilServer("showcase: devices join their networks", TaskThirtyThreeShowcaseFixture::devicesReady)
+                .server("showcase: map patterns many-to-many", TaskThirtyThreeShowcaseFixture::mapDevices)
+                .waitUntilServer("showcase: mappings installed", TaskThirtyThreeShowcaseFixture::mapped)
+                // The domain gained members, so the open workspace is out of date: reopen it, as a player would.
+                .closeScreen()
+                .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: four named network cards", context -> context.all(".graph-node-member").size() == 4
+                        && context.all(".card-name").stream().anyMatch(name -> name.text().equals("Storage Hall")))
+                .click("#graph_fit").frames(3)
+                .step("showcase: select Main Base", context -> showcaseSelect(context, "Main Base"))
+                .waitUntil("showcase: Main Base details", context -> context.el("#network_detail").isVisible())
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-topology")
+                .step("showcase: open the busiest link", TaskThirtyThreeMappingScenario::showcaseBusiestPair)
+                .waitUntil("showcase: pair editor", context -> context.el("#pair_editor").isVisible())
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-pair")
+                .click("#tab_mapping").frames(2)
+                .click("#mapping_view_graph")
+                .waitUntil("showcase: three Providers and five Endpoints", context ->
+                        context.all(".processing-provider-card").size() == 3 && context.all(".processing-endpoint").size() == 5)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-processing")
+                .step("showcase: edit the Mine's Provider", context -> {
+                    var headers = context.all(".processing-provider");
+                    var bounds = headers.get(headers.size() - 1).bounds();
+                    context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+                    context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+                })
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-processing-other")
                 .closeScreen();
+    }
+
+    private static void showcaseSelect(com.lowdragmc.lowdraglib2.uitest.TestContext context, String name) {
+        var card = context.all(".graph-node-member").stream()
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                        .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                        .anyMatch(text -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) text).getText().getString().equals(name)))
+                .findFirst().orElseThrow(() -> new IllegalStateException("No card named " + name));
+        var bounds = card.bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    /** The link label with the most rule chips, the one whose editor has the most to show. */
+    private static void showcaseBusiestPair(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var pill = context.all(".graph-pair").stream()
+                .max(java.util.Comparator.comparingLong(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                        .allChildrenStream().filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance).count()))
+                .orElseThrow(() -> new IllegalStateException("No link labels"));
+        var bounds = pill.bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }
 }

@@ -3,12 +3,12 @@ package space.controlnet.ae2federation.client.policy;
 import java.util.Locale;
 
 /**
- * The short network names on a link's pill ("Main▸Mine"): the first word of the player's name for the network, or
- * its identity tag when it has none. Two names that would read the same fall back to the tags, so a pill never
- * shows an ambiguous direction.
+ * The short network names on a link's pill ("Main▸Mine"): the first word of the player's name for the network, cut
+ * with an ellipsis past ten characters, or its identity tag when it has none. Two names that would read the same fall
+ * back to the tags, so a pill never shows an ambiguous direction.
  */
 public final class PillName {
-    private static final int MAX_LENGTH = 8;
+    private static final int MAX_LENGTH = 10;
 
     private PillName() {
     }
@@ -20,7 +20,7 @@ public final class PillName {
         var trimmed = name == null ? "" : name.strip();
         if (trimmed.isEmpty()) return tag(id);
         var word = trimmed.split("\\s+", 2)[0];
-        return word.length() <= MAX_LENGTH ? word : word.substring(0, MAX_LENGTH);
+        return word.length() <= MAX_LENGTH ? word : word.substring(0, MAX_LENGTH) + "…";
     }
 
     public static Pair pair(String consumerName, String consumerId, String providerName, String providerId) {

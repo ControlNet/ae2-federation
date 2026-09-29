@@ -42,4 +42,24 @@ class TopologySpacingTest {
         float[][] cards = {{0, 0}, {0, 0}};
         assertEquals(TopologySpacing.MAX_FACTOR, TopologySpacing.factor(cards, List.of(), WIDTH, HEIGHT, 6));
     }
+
+    @Test
+    void labelsOfLinksThatCrossMoveApartAlongTheirLinks() {
+        // Four networks in a diamond: the two diagonals cross in the middle, where both labels would sit.
+        float[][] cards = {{-500, 0}, {0, -300}, {500, 0}, {0, 300}};
+        var labels = List.of(new TopologySpacing.Label(0, 2, 60, 12), new TopologySpacing.Label(1, 3, 60, 12));
+        var spots = TopologySpacing.labelSpots(cards, labels, WIDTH, HEIGHT, 6);
+        assertEquals(0.5f, spots[0]);
+        assertTrue(spots[1] != 0.5f);
+        var first = TopologyLink.between(-500, 0, 500, 0, WIDTH, HEIGHT).withLabelAt(spots[0]).label();
+        var second = TopologyLink.between(0, -300, 0, 300, WIDTH, HEIGHT).withLabelAt(spots[1]).label();
+        assertTrue(Math.abs(first[0] - second[0]) >= 120 + 6 || Math.abs(first[1] - second[1]) >= 24 + 6);
+    }
+
+    @Test
+    void aLabelWithRoomStaysInTheMiddle() {
+        float[][] cards = {{-400, 0}, {400, 0}};
+        var spots = TopologySpacing.labelSpots(cards, List.of(new TopologySpacing.Label(0, 1, 60, 12)), WIDTH, HEIGHT, 6);
+        assertEquals(0.5f, spots[0]);
+    }
 }

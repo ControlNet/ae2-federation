@@ -723,15 +723,21 @@ public final class FederationProcessingGraph {
             var endpoint = endpoint(id);
             var hint = hint(id);
             var claim = endpoint == null ? Claim.UNOBSERVED : claim(endpoint);
+            // Owned by another Provider shown here is the normal many-Provider case, not a fault: it reads as mapped,
+            // its owner's wires lead to it and its detail names it. Only a drop onto it is refused, as the drag hint says.
+            long elsewhere = claim == Claim.OCCUPIED ? otherWires.stream().filter(value -> value.endpoint().equals(id)).count() : 0;
             endpointRings.get(id)[0] = hint != null ? hintColor(hint)
-                    : claim == Claim.OCCUPIED ? FederationTheme.ERROR
+                    : claim == Claim.OCCUPIED && elsewhere == 0 ? FederationTheme.ERROR
                     : selected ? FederationTheme.SELECT : 0xffd8d3e4;
-            endpointInsets.get(id)[0] = claim.color();
+            endpointInsets.get(id)[0] = elsewhere > 0 ? FederationTheme.OK : claim.color();
             var state = endpointStates.get(id);
             if (state != null && endpoint != null) {
                 long mapped = wires.stream().filter(value -> value.endpoint().equals(id)).count();
-                state.setText(hint == null ? (claim == Claim.IN_USE && mapped > 0 ? tr("endpoint_mapped", mapped) : tr("claim." + claim.code()))
-                        .withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff))
+                var claimText = elsewhere > 0 ? tr("endpoint_mapped", elsewhere)
+                        .withStyle(Style.EMPTY.withColor(FederationTheme.OK & 0xffffff))
+                        : (claim == Claim.IN_USE && mapped > 0 ? tr("endpoint_mapped", mapped) : tr("claim." + claim.code()))
+                                .withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff));
+                state.setText(hint == null ? claimText
                         : tr("drop_hint." + hint.code(), owner(endpoint)).withStyle(Style.EMPTY.withColor(hintColor(hint) & 0xffffff)));
             }
             card.removeClass("drop-accepts");

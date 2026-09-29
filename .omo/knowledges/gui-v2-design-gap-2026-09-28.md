@@ -258,3 +258,29 @@ A side-by-side review after the window grew found the layout, not the features, 
   in the selected slot, which made the step fail intermittently.
 - Kept deviations: zoom/fit/legend buttons in the canvas, the 5 s flow window label top-left, Minecraft font, revision
   numbers, very narrow (320 px) header crowding when "Back to provider" is shown.
+
+## Phase 15: a many-network, many-device showcase (2026-09-29)
+
+- `TaskThirtyThreeShowcaseFixture` (end of `ui.mapping`) builds a fuller domain from production blocks: ME Chest +
+  4k cell + creative cell networks on the Router's free east and down faces, names (Main Base, Automation Tower,
+  Mine, Storage Hall) via `NetworkNames`, seven rules of all four capabilities (one off), two more Providers
+  (`H.east()` on main; one on the Mine's energy cell) and four more Endpoints (grid connections, no adjacency), mapped
+  many-to-many (7 mappings, one Endpoint free). Its cleanup runs first in `TaskThirtyThreeWorldFixture.cleanup` and
+  deletes rules and clears names (both persist). `ServerContext.put(key, null)` throws: do not use it to clear state.
+  Screenshots: `ui-showcase-topology`, `-pair`, `-processing`, `-processing-other`. The data is test-world data.
+- Adding members makes the open workspace "Out of date" (policy changed elsewhere); reopen the Router before looking.
+- Found and fixed with it:
+  - "Via 5 Routers": a Router group's domain nodes include Federation cables and device ports; `viaJson` now counts
+    loaded Router block entities only (unloaded nodes still count).
+  - Networks reached only through a Router face had no position or thumbnail: the grid pivot can be the face port,
+    which has no block; `NetworkOverview.location` falls back to any node with a block.
+  - Every new Endpoint is `EndpointMode.LOCAL` until a claim switches it to Federated, so a fresh one showed "Local
+    mode" and refused drops the server accepts. "local" now needs a live `EndpointModeGeneration.Local` (an adjacent
+    native Provider actually bound); otherwise "Available · not claimed".
+  - Endpoints owned by another Provider in the view read "Patterns mapped: N" with a green inset, not a red fault;
+    only a drop onto them is refused. A foreign owner with no wires here (claim conflict) keeps "Owned by another".
+  - Crossing links (a diamond's diagonals) stacked their labels in the middle: `TopologySpacing.labelSpots` moves a
+    label along its link (0.5, 0.35, 0.65, …) until it clears cards and placed labels; `TopologyLink.labelAt`/`label()`
+    carry it, and flow dots hide under the moved label.
+  - Card state lines and the aside's connection rows clip at a word (`TextWrap.HIDE`) instead of running out; the
+    connection rows use darker state colours (`onPaper`) on the light aside. Pill names allow 10 characters, then "…".

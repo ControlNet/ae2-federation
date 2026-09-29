@@ -179,14 +179,21 @@ public final class NetworkOverview {
     private record Located(ServerLevel level, BlockPos pos) {
     }
 
-    /** The first controller, or any node, as a place players recognize the network by. */
+    /** The first controller, else the pivot or any node with a block, as a place players recognize the network by. */
     private static Optional<Located> location(IGrid grid) {
         for (var node : grid.getMachineNodes(ControllerBlockEntity.class)) {
             var located = located(node);
             if (located.isPresent()) return located;
         }
         var pivot = grid.getPivot();
-        return pivot == null ? Optional.empty() : located(pivot);
+        var located = pivot == null ? Optional.<Located>empty() : located(pivot);
+        if (located.isPresent()) return located;
+        // The pivot may be a Router face port, which has no block of its own.
+        for (var node : grid.getNodes()) {
+            located = located(node);
+            if (located.isPresent()) return located;
+        }
+        return Optional.empty();
     }
 
     private static Optional<Located> located(IGridNode node) {
