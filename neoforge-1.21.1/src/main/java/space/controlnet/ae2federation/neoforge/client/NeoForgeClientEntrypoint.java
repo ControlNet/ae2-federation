@@ -27,6 +27,8 @@ public final class NeoForgeClientEntrypoint {
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.WorldHighlight::render);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onOpening);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onFrame);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationScreenSwitch::onClosing);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationScreenSwitch::onInit);
     }
 
     @SuppressWarnings("unchecked")

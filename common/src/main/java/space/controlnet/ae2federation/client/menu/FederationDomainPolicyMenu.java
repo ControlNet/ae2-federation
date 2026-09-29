@@ -14,7 +14,6 @@ import space.controlnet.ae2federation.client.policy.FederationDomainPolicySessio
 
 public final class FederationDomainPolicyMenu {
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "domain_policy");
-    private static final ResourceLocation ENDPOINT_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "endpoint_inspection");
     private static final ResourceLocation BRIDGE_DIAGNOSTIC_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "bridge_diagnostic");
     private static final Map<UUID, FederationDomainPolicySession> PENDING = new ConcurrentHashMap<>();
 
@@ -26,8 +25,6 @@ public final class FederationDomainPolicyMenu {
                 player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null,
                 space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_WIDTH,
                 space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_HEIGHT));
-        PlayerUIMenuType.register(ENDPOINT_ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 440, 280));
         PlayerUIMenuType.register(BRIDGE_DIAGNOSTIC_ID, player -> new FederationDomainPolicyMenuHolder(
                 player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 360, 160));
     }
@@ -36,10 +33,9 @@ public final class FederationDomainPolicyMenu {
         return open(player, FederationDomainPolicySession.forRouter(player, position));
     }
 
+    /** A Provider or Endpoint opens the same full-size workspace as a Router, on the domain its Federation face joins. */
     public static boolean openDevice(ServerPlayer player, BlockPos position) {
-        var endpoint = player.serverLevel().getBlockEntity(position)
-                instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
-        return open(player, FederationDomainPolicySession.forDevice(player, position), endpoint ? ENDPOINT_ID : ID);
+        return open(player, FederationDomainPolicySession.forDevice(player, position));
     }
 
     public static boolean openBridge(ServerPlayer player, BridgeRightClickContext bridge) {

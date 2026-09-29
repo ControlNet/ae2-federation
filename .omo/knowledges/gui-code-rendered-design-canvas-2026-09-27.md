@@ -6,7 +6,8 @@ Bridge diagnostic, Policies (+ rules dialog), Pattern mapping (+ release dialog)
 
 ## Mapping from code to HTML (1 GUI unit = 2 px)
 
-- Root size comes from `FederationDomainPolicyMenu.register`: Router/device 640×400, endpoint 440×280, bridge
+- Root size comes from `FederationDomainPolicyMenu.register`: Router/Provider/Endpoint use `WorkspaceSize.MAX_WIDTH`×
+  `MAX_HEIGHT` (the Endpoint's own 440×280 `endpoint_inspection` menu was removed on 2026-09-30), bridge
   diagnostic 360×160, clamped to `screen - 8`; `compact` class when screen height < 280. The 396×236 in `domain.lss`
   is overwritten at init. Screenshots at 1600×960 / GUI scale 4 are therefore the compact variant, not the default.
 - Bevels (`FederationTheme.bevel`): 1 px `#535669` outline, 1 px light top/left, 1 px shadow bottom/right, fill.

@@ -78,17 +78,19 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
                 .check("device entrance selects diagnostics", context -> context.el("#page_diagnostics").isVisible())
-                .check("direct inspector opens compact and centered", context -> {
+                .check("direct Endpoint opens at the full workspace size, centered", context -> {
                     var bounds = context.el("#domain_root").bounds();
                     var window = net.minecraft.client.Minecraft.getInstance().getWindow();
-                    return bounds.width() <= 440 && bounds.height() <= 280
+                    var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(
+                            window.getGuiScaledWidth(), window.getGuiScaledHeight());
+                    return Math.abs(bounds.width() - size.width()) <= 1 && Math.abs(bounds.height() - size.height()) <= 1
                             && Math.abs(bounds.centerX() - window.getGuiScaledWidth() / 2f) <= 1
                             && Math.abs(bounds.centerY() - window.getGuiScaledHeight() / 2f) <= 1;
                 })
                 .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
                 .check("direct inspection preserves native network identity", context ->
                         context.el("#endpoint_detail").text().contains(context.<String>get("task33.nativeNetwork")))
-                .check("compact inspector retains its controls and explanation", context ->
+                .check("the Endpoint workspace retains its controls and explanation", context ->
                         TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#endpoint_next", "#endpoint_mapping",
                                 "#ack_status", "#diagnostics_description"))
                 .check("the domain's Endpoint offers its domain actions", context ->
