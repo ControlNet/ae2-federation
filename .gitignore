@@ -23,6 +23,7 @@ __pycache__/
 
 # Local development environments
 .pixi/
+.env
 .env.local
 
 # Downloaded visual reference website and its original archives.
