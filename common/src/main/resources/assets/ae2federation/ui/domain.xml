@@ -100,19 +100,29 @@
                         <scroller-view id="processing_scroll" class="processing-scroll"/>
                         <label id="processing_legend" class="processing-legend"/>
                     </element>
-                    <scroller-view id="processing_detail" class="dark-panel processing-detail">
-                        <label id="processing_detail_title" class="processing-title"/>
-                        <label id="processing_preview_caption" class="panel-caption"/>
-                        <element id="processing_preview" class="map-preview"/>
-                        <label id="processing_detail_text" class="panel-text"/>
-                        <element id="processing_facts" class="processing-facts"/>
-                        <element class="compact-actions">
-                            <button id="processing_unlink" class="danger-action" text="ae2federation.ui.processing.unlink"/>
-                            <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
-                            <button id="processing_highlight" text="ae2federation.ui.location.highlight"/>
-                        </element>
-                        <label id="processing_note" class="processing-note"/>
-                    </scroller-view>
+                    <element class="processing-aside">
+                        <scroller-view id="processing_detail" class="processing-detail">
+                            <label id="processing_detail_title" class="processing-title"/>
+                            <element id="processing_ends" class="processing-ends">
+                                <element id="processing_end_from" class="processing-end">
+                                    <element id="processing_preview_from" class="processing-thumb"/>
+                                    <label id="processing_from_label" class="processing-end-label"/>
+                                </element>
+                                <element id="processing_end_to" class="processing-end">
+                                    <element id="processing_preview_to" class="processing-thumb"/>
+                                    <label id="processing_to_label" class="processing-end-label"/>
+                                </element>
+                            </element>
+                            <label id="processing_detail_text" class="processing-help"/>
+                            <element id="processing_facts" class="dark-panel processing-facts"/>
+                            <element class="compact-actions">
+                                <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
+                                <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
+                                <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                            </element>
+                        </scroller-view>
+                        <label id="processing_note" class="paper-note processing-note"/>
+                    </element>
                 </element>
                 <element id="mapping_list" class="mapping-body">
                     <element class="pattern-column">

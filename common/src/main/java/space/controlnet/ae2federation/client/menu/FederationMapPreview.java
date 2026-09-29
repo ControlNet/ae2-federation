@@ -20,10 +20,15 @@ public final class FederationMapPreview extends UIElement {
     private static final int RESAMPLE_FRAMES = 40;
     /** Blocks below the network's lowest block that still count as the ground it stands on. */
     private static final int SLICE_DEPTH = 6;
+    /** Blocks around the device a card's thumbnail shows along its short side, so the device stays a visible cell. */
+    private static final int THUMBNAIL_RADIUS = 5;
 
     private String dimension = "";
     private BlockMarks.Mark center;
     private int radius = MIN_RADIUS;
+    /** Columns and rows sampled: a square of {@code 2 * radius + 1}, widened to fill a thumbnail's box. */
+    private int columns = MIN_RADIUS * 2 + 1;
+    private int rows = MIN_RADIUS * 2 + 1;
     private List<BlockMarks.Mark> mask = List.of();
     private int maskColor;
     private List<BlockMarks.Mark> marks = List.of();
@@ -112,7 +117,8 @@ public final class FederationMapPreview extends UIElement {
         var all = new java.util.ArrayList<BlockMarks.Mark>(mask);
         all.addAll(marks);
         var newCenter = BlockMarks.center(marks.isEmpty() ? all : marks).orElse(null);
-        int newRadius = newCenter == null ? MIN_RADIUS : BlockMarks.radius(newCenter, all, MIN_RADIUS, MAX_RADIUS);
+        int newRadius = thumbnail ? THUMBNAIL_RADIUS
+                : newCenter == null ? MIN_RADIUS : BlockMarks.radius(newCenter, all, MIN_RADIUS, MAX_RADIUS);
         boolean moved = !dimension.equals(this.dimension) || !java.util.Objects.equals(newCenter, center) || newRadius != radius;
         this.dimension = dimension;
         this.center = newCenter;
@@ -145,9 +151,23 @@ public final class FederationMapPreview extends UIElement {
         return level != null && level.dimension().location().toString().equals(dimension);
     }
 
+    /** A thumbnail widens its square to the box's shape; a preview stays square. */
+    private void fitGrid() {
+        int side = radius * 2 + 1;
+        int newColumns = side;
+        int newRows = side;
+        if (thumbnail && getSizeWidth() > 0 && getSizeHeight() > 0) {
+            float ratio = getSizeWidth() / getSizeHeight();
+            if (ratio > 1) newColumns = Math.round(side * ratio) | 1;
+            else newRows = Math.round(side / ratio) | 1;
+        }
+        if (newColumns != columns || newRows != rows) frames = 0;
+        columns = newColumns;
+        rows = newRows;
+    }
+
     private void sample() {
-        int size = radius * 2 + 1;
-        colors = new int[size * size];
+        colors = new int[columns * rows];
         sampledCells = 0;
         var level = Minecraft.getInstance().level;
         if (level == null || center == null || !inPlayerDimension()) return;
@@ -157,12 +177,12 @@ public final class FederationMapPreview extends UIElement {
         var slice = BlockMarks.slice(all, SLICE_DEPTH).orElse(null);
         var cursor = new BlockPos.MutableBlockPos();
         // One extra row to the north, for the height shading of the first row.
-        int[] heights = new int[size * (size + 1)];
+        int[] heights = new int[columns * (rows + 1)];
         java.util.Arrays.fill(heights, Integer.MIN_VALUE);
-        for (int dz = -1; dz < size; dz++) {
-            for (int dx = 0; dx < size; dx++) {
-                int x = center.x() - radius + dx;
-                int z = center.z() - radius + dz;
+        for (int dz = -1; dz < rows; dz++) {
+            for (int dx = 0; dx < columns; dx++) {
+                int x = center.x() - columns / 2 + dx;
+                int z = center.z() - rows / 2 + dz;
                 if (!level.hasChunk(x >> 4, z >> 4)) continue;
                 int surface = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
                 int top = slice == null ? surface : Math.min(surface, slice.top());
@@ -171,19 +191,28 @@ public final class FederationMapPreview extends UIElement {
                     cursor.set(x, y, z);
                     var color = level.getBlockState(cursor).getMapColor(level, cursor);
                     if (color == MapColor.NONE) continue;
-                    heights[(dz + 1) * size + dx] = y;
+                    heights[(dz + 1) * columns + dx] = y;
                     if (dz >= 0) {
-                        int north = heights[dz * size + dx];
+                        int north = heights[dz * columns + dx];
                         // Shade by height relative to the northern neighbour, as vanilla maps do.
                         var brightness = north == Integer.MIN_VALUE || y == north ? MapColor.Brightness.NORMAL
                                 : y > north ? MapColor.Brightness.HIGH : MapColor.Brightness.LOW;
-                        colors[dz * size + dx] = 0xff000000 | abgrToRgb(color.calculateRGBColor(brightness));
+                        int rgb = abgrToRgb(color.calculateRGBColor(brightness));
+                        // A thumbnail keeps the ground dark so the network's blocks read in its accent.
+                        colors[dz * columns + dx] = 0xff000000 | (thumbnail ? mix(rgb, 0x15131b, 0.62f) : rgb);
                         sampledCells++;
                     }
                     break;
                 }
             }
         }
+    }
+
+    private static int mix(int from, int to, float amount) {
+        int r = Math.round((from >> 16 & 0xff) * (1 - amount) + (to >> 16 & 0xff) * amount);
+        int g = Math.round((from >> 8 & 0xff) * (1 - amount) + (to >> 8 & 0xff) * amount);
+        int b = Math.round((from & 0xff) * (1 - amount) + (to & 0xff) * amount);
+        return r << 16 | g << 8 | b;
     }
 
     private static int abgrToRgb(int abgr) {
@@ -201,24 +230,24 @@ public final class FederationMapPreview extends UIElement {
         }
         if (scene != null && scene.isDisplayed()) applyMode();
         if (center == null) return;
+        fitGrid();
         if (frames-- <= 0) {
             sample();
             frames = RESAMPLE_FRAMES;
         }
-        int size = radius * 2 + 1;
-        float cell = Math.min(getSizeWidth(), getSizeHeight()) / size;
-        float left = getPositionX() + (getSizeWidth() - cell * size) / 2;
-        float top = getPositionY() + (getSizeHeight() - cell * size) / 2;
+        float cell = Math.min(getSizeWidth() / columns, getSizeHeight() / rows);
+        float left = getPositionX() + (getSizeWidth() - cell * columns) / 2;
+        float top = getPositionY() + (getSizeHeight() - cell * rows) / 2;
         var graphics = context.graphics;
         var pose = graphics.pose();
         pose.pushPose();
         pose.translate(left, top, 0);
         pose.scale(cell, cell, 1);
-        graphics.fill(0, 0, size, size, FederationTheme.WELL);
+        graphics.fill(0, 0, columns, rows, FederationTheme.WELL);
         for (int index = 0; index < colors.length; index++) {
-            if (colors[index] != 0) graphics.fill(index % size, index / size, index % size + 1, index / size + 1, colors[index]);
+            if (colors[index] != 0) graphics.fill(index % columns, index / columns, index % columns + 1, index / columns + 1, colors[index]);
         }
-        int tint = 0x99000000 | (maskColor & 0xffffff);
+        int tint = (thumbnail ? 0xc8000000 : 0x99000000) | (maskColor & 0xffffff);
         for (var block : mask) cell(graphics, block, tint, 0);
         for (var mark : marks) {
             cell(graphics, mark, 0xff000000, -1);
@@ -228,10 +257,9 @@ public final class FederationMapPreview extends UIElement {
     }
 
     private void cell(net.minecraft.client.gui.GuiGraphics graphics, BlockMarks.Mark block, int color, int grow) {
-        int x = block.x() - center.x() + radius;
-        int z = block.z() - center.z() + radius;
-        int size = radius * 2 + 1;
-        if (x < 0 || z < 0 || x >= size || z >= size) return;
+        int x = block.x() - center.x() + columns / 2;
+        int z = block.z() - center.z() + rows / 2;
+        if (x < 0 || z < 0 || x >= columns || z >= rows) return;
         graphics.fill(x + grow, z + grow, x + 1 - grow, z + 1 - grow, color);
     }
 }

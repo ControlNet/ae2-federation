@@ -359,6 +359,16 @@ final class FederationTopologyView {
         refresh();
     }
 
+    /** The network's blocks from its overview when it is in {@code dimension}; empty otherwise or before one arrives. */
+    List<space.controlnet.ae2federation.client.policy.BlockMarks.Mark> networkBlocks(String networkId, String dimension) {
+        var facts = overview.get(networkId);
+        if (facts == null || !facts.has("blocks") || !facts.has("dimension")
+                || !facts.get("dimension").getAsString().equals(dimension)) return List.of();
+        var blocks = new ArrayList<Integer>();
+        facts.getAsJsonArray("blocks").forEach(value -> blocks.add(value.getAsInt()));
+        return space.controlnet.ae2federation.client.policy.BlockMarks.fromFlat(blocks);
+    }
+
     /** Recent accepted deliveries per rule; an edge animates only while its rule actually moved something. */
     void acceptFlows(JsonArray values) {
         flows.clear();

@@ -296,6 +296,9 @@ final class FederationWorkspace {
                     .map(choice -> choice.get("position").getAsString()).findFirst().orElse("");
             var names = objects(root, "networks").stream().map(network -> FederationTopologyView.displayName(
                     network.get("id").getAsString(), network.has("name") ? network.get("name").getAsString() : "").getString()).toList();
+            var networkIds = objects(root, "networks").stream().map(network -> network.get("id").getAsString()).toList();
+            processing.setNetworkBlocks((index, dimension) -> topology == null || index < 0 || index >= networkIds.size()
+                    ? List.of() : topology.networkBlocks(networkIds.get(index), dimension));
             processing.accept(choices.getOrDefault("slot", List.of()), choices.getOrDefault("target", List.of()),
                     confirmedSelections.get("target"), providerAt, objects(root, "processingProviders"), names);
             element("processing_summary", Label.class).setText(processing.summary());

@@ -108,23 +108,23 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                 .waitUntil("the wires view stacks both Providers", context -> context.all(".processing-provider-text").size() == 2
                         && context.all(".processing-provider-text").stream().anyMatch(header -> header.text().contains(
                                 context.<String>get("task33.secondProviderAt")) && header.text().contains("1/9 slots")))
-                .check("exactly one Provider is being edited", context -> context.all(".processing-provider-text").stream()
-                        .filter(header -> header.text().endsWith(" · editing")).count() == 1
-                        && context.all(".processing-provider-text").stream()
-                                .filter(header -> header.text().endsWith(" · open")).count() == 1)
+                .check("exactly one Provider is being edited", context -> context.all(".processing-provider").stream()
+                        .filter(header -> header.hasClass("selected")).count() == 1
+                        && context.all(".processing-provider.selected .processing-provider-text").size() == 1)
                 .screenshot("ui-processing-two-providers")
                 .step("select the other Provider from its header", context -> {
                     var header = context.all(".processing-provider").stream()
                             .filter(candidate -> !candidate.hasClass("selected")).findFirst().orElseThrow();
+                    var editing = context.el(".processing-provider.selected .processing-provider-text").text();
                     context.put("task33.otherProviderHeader", context.all(".processing-provider-text").stream()
-                            .filter(text -> text.text().endsWith(" · open")).findFirst().orElseThrow().text()
-                            .replace(" · open", ""));
+                            .map(text -> text.text()).filter(text -> !text.equals(editing)).findFirst().orElseThrow());
                     var bounds = header.bounds();
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitUntil("the other Provider becomes the one being edited", context -> context.all(".processing-provider-text")
-                        .stream().anyMatch(header -> header.text().equals(context.get("task33.otherProviderHeader") + " · editing")))
+                .waitUntil("the other Provider becomes the one being edited", context ->
+                        context.all(".processing-provider.selected .processing-provider-text").stream()
+                                .anyMatch(header -> header.text().equals(context.get("task33.otherProviderHeader"))))
                 .check("its patterns now have editable ports", context -> context.elOpt("#processing_port_0").isPresent())
                 .closeScreen()
                 .server("remove the second Provider", TaskThirtyThreeWorldFixture::removeSecondProvider);

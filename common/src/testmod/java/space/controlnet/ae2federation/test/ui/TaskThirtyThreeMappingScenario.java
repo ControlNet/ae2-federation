@@ -26,7 +26,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && !context.all("#processing_port_1").isEmpty())
                 .check("empty slots have no port", context -> context.all("#processing_port_2").isEmpty())
                 .check("the mapped Endpoint is shown as used by this Provider", context ->
-                        context.el(".processing-endpoint-state").text().equals("In use by this Provider"))
+                        context.el(".processing-endpoint-state").text().equals("Patterns mapped: 1"))
                 .screenshot("ui-processing-wires")
                 .drag("#processing_port_0", ".processing-endpoint")
                 .waitUntilServer("dropping a port maps the pattern", TaskThirtyThreeWorldFixture::mappingAccepted)
@@ -49,7 +49,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         .matches("(?s).*Claim epoch \\d+.*"))
                 .check("an Endpoint still in use offers no release", context -> !context.el("#processing_release").isActive()
                         && !context.el("#processing_release").isVisible())
-                .waitUntil("the Endpoint location map samples loaded terrain", context -> context.el("#processing_preview .map-preview-tile")
+                .waitUntil("the Endpoint thumbnail samples loaded terrain", context -> context.el("#processing_preview_to .map-thumbnail")
                         .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
                 .click("#processing_highlight")
                 .check("the selected Endpoint is outlined in the world", context ->
@@ -185,20 +185,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntil("the wire reports what its lane really sent", context -> context.el("#processing_fact_value_lane").text()
                         .matches("last 5 s: sent [1-9]\\d* · returned \\d+"))
                 .screenshot("ui-processing-lane-flow")
-                .click("#processing_preview .map-mode-toggle")
-                .waitUntil("the 3D preview draws the loaded blocks around the wire", context -> {
-                    var preview = context.el("#processing_preview .map-preview-tile")
-                            .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class);
-                    return space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
-                            && preview.sceneView() != null && preview.sceneView().isDisplayed()
-                            && preview.sceneView().renderedBlocks() > 0;
-                })
-                .checkTextContains("#processing_preview .map-mode-toggle", "Map")
-                .frames(10)
-                .screenshot("ui-processing-preview-3d")
-                .click("#processing_preview .map-mode-toggle")
-                .check("the map is back", context -> !space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
-                        && !context.el("#processing_preview .map-preview-scene").isVisible())
+                .check("the wire detail shows both ends", context -> context.el("#processing_end_from").isVisible()
+                        && context.el("#processing_end_to").isVisible()
+                        && context.el("#processing_from_label").text().startsWith("Provider @ ")
+                        && context.el("#processing_to_label").text().startsWith("Endpoint @ "))
                 .click("#mapping_view_list")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")
@@ -210,11 +200,17 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitForTextContains("#graph_throughput", "Flow · last 5 s: delivered 1×")
                 .step("reveal the processing rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "processing"))
                 .frames(2).screenshot("ui-flow-processing")
+                // Dots move and skip the link's label, so a single frame may draw none; record one that draws them.
+                .waitUntil("dots are drawn when the evidence is recorded", context -> {
+                    int dots = context.el("#graph_flow_pulses")
+                            .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots();
+                    if (dots > 0) context.put("task33.flowDots", Integer.toString(dots));
+                    return dots > 0;
+                })
                 .step("record flow evidence", context -> {
                     context.attach("evidenceFor", "ui.mapping");
                     context.attach("processingFlow", TaskThirtyThreeScenarioSupport.ruleState(context, "processing"));
-                    context.attach("flowDots", Integer.toString(context.el("#graph_flow_pulses")
-                            .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots()));
+                    context.attach("flowDots", context.get("task33.flowDots"));
                 })
                 .click("#graph_flow_toggle")
                 .waitForText("#graph_throughput", "Live flow off")

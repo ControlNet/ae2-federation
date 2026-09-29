@@ -37,10 +37,27 @@ import space.controlnet.ae2federation.client.policy.MappingWireTarget;
  * request that the server checks against live ownership.
  */
 public final class FederationProcessingGraph {
-    private static final float ROW_HEIGHT = 22;
-    private static final float HEADER_HEIGHT = 32;
-    private static final float ENDPOINT_HEIGHT = 46;
-    private static final float THUMBNAIL = 26;
+    private static final float ROW_HEIGHT = 18;
+    private static final float HEADER_HEIGHT = 30;
+    private static final float ENDPOINT_HEIGHT = 38;
+    /** Card thumbnails are 16:10, as the network's footprint is drawn in the overview. */
+    private static final float THUMBNAIL_WIDTH = 32;
+    private static final float THUMBNAIL_HEIGHT = 20;
+    /** Radius of the round ports on the cards' edges. */
+    private static final int PORT = 5;
+    /** Width of a pattern row's port, whose ring is centred on the card's right edge. */
+    private static final float PORT_WIDTH = 12;
+    private static final int CARD_FACE = 0xff2c2735;
+    private static final int CARD_RING = 0xffd8d3e4;
+    private static final int CARD_SHADOW = 0xff121016;
+    private static final int PORT_FILL = 0xff17141e;
+    /** Refusals are written on the light aside, where the dark theme's red is too pale. */
+    private static final int REFUSAL = 0xff922e42;
+    /** Card thumbnails refresh their network's blocks this often, as the overview arrives about once a second. */
+    private static final int THUMBNAIL_REFRESH_TICKS = 40;
+    /** Share of the canvas each column takes; the gap between them is left for the wires. */
+    private static final float PROVIDER_COLUMN = 39;
+    private static final float ENDPOINT_COLUMN = 39;
     /** Endpoint cards beyond this many carry no map tile; each tile samples the world. */
     private static final int MAX_ENDPOINT_THUMBNAILS = 12;
     /** A dropped wire the server has not confirmed within this long is no longer drawn as pending. */
@@ -63,8 +80,21 @@ public final class FederationProcessingGraph {
     private final Button unlink;
     private final Button releaseButton;
     private final Canvas canvas = new Canvas();
-    private final FederationMapPreview preview = new FederationMapPreview();
+    /** Both ends of the selected wire, or the selected Endpoint alone, as the cards draw them but larger. */
+    private final FederationMapPreview fromPreview = new FederationMapPreview(true);
+    private final FederationMapPreview toPreview = new FederationMapPreview(true);
+    private final UIElement fromEnd;
+    private final UIElement toEnd;
+    private final Label fromLabel;
+    private final Label toLabel;
     private final Button highlight;
+    /** The blocks of the network at a choice's {@code networkIndex} in a dimension, from the overview. */
+    private java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> networkBlocks = (index, dimension) -> List.of();
+    private final List<Runnable> thumbnailRefresh = new ArrayList<>();
+    private final Label legend;
+    /** The legend is measured on the first client frame: the UI tree is also built on the server, which has no font. */
+    private boolean legendMeasured;
+    private int refreshTicks;
     private String providerPosition = "";
 
     private final List<JsonObject> slots = new ArrayList<>();
@@ -113,9 +143,14 @@ public final class FederationProcessingGraph {
         unlink = element(ui, "processing_unlink", Button.class);
         releaseButton = element(ui, "processing_release", Button.class);
         scroll.addScrollViewChild(canvas);
-        element(ui, "processing_preview", UIElement.class).addChild(preview);
-        preview.setCaption(element(ui, "processing_preview_caption", Label.class));
-        element(ui, "processing_legend", Label.class).setText(tr("legend"));
+        element(ui, "processing_preview_from", UIElement.class).addChild(fromPreview);
+        element(ui, "processing_preview_to", UIElement.class).addChild(toPreview);
+        fromEnd = element(ui, "processing_end_from", UIElement.class);
+        toEnd = element(ui, "processing_end_to", UIElement.class);
+        fromLabel = element(ui, "processing_from_label", Label.class);
+        toLabel = element(ui, "processing_to_label", Label.class);
+        legend = element(ui, "processing_legend", Label.class);
+        legend(legend);
         element(ui, "processing_note", Label.class).setText(tr("drop_note"));
         highlight = element(ui, "processing_highlight", Button.class);
         highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
@@ -138,6 +173,22 @@ public final class FederationProcessingGraph {
 
     UIElement root() {
         return root;
+    }
+
+    /** Where the cards' thumbnails read each network's blocks; the overview keeps them current. */
+    void setNetworkBlocks(java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> source) {
+        networkBlocks = source;
+    }
+
+    /** The boxed legend in the canvas corner: the many-to-many rule, then the one-owner rule in warning yellow. */
+    private static void legend(Label legend) {
+        var rule = tr("legend");
+        var owner = tr("legend_owner").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff));
+        legend.setText(rule.copy().append("\n").append(owner));
+        legend.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, 0xff47434f);
+            pen.rect(x + 1, y + 1, width - 2, height - 2, 0xeb17141e);
+        })));
     }
 
     void setEditable(boolean value) {
@@ -220,16 +271,17 @@ public final class FederationProcessingGraph {
         endpointRings.clear();
         endpointInsets.clear();
         endpointStates.clear();
+        thumbnailRefresh.clear();
         hintSlot = "";
         var headings = new UIElement();
         headings.layout(style -> style.widthPercent(100).height(10).flexDirection(FlexDirection.ROW)
                 .justifyContent(AlignContent.SPACE_BETWEEN).flexShrink(0));
-        headings.addChildren(heading(tr("column.providers"), 54), heading(tr("column.endpoints"), 40));
+        headings.addChildren(heading(tr("column.providers"), 100 - ENDPOINT_COLUMN - 2), heading(tr("column.endpoints"), ENDPOINT_COLUMN));
         var body = new UIElement();
         body.layout(style -> style.widthPercent(100).flexDirection(FlexDirection.ROW).justifyContent(AlignContent.SPACE_BETWEEN)
                 .alignItems(AlignItems.FLEX_START));
-        var left = column(44);
-        var right = column(40);
+        var left = column(PROVIDER_COLUMN, 10);
+        var right = column(ENDPOINT_COLUMN, 6);
         left.setId("processing_patterns");
         right.setId("processing_endpoints");
         boolean selectedShown = false;
@@ -255,14 +307,14 @@ public final class FederationProcessingGraph {
         var label = new Label();
         label.addClass("processing-heading");
         label.setText(text);
-        label.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(FederationTheme.DARK_MUTED));
+        label.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(FederationTheme.DARK_TITLE));
         label.layout(style -> style.widthPercent(percent).height(10));
         return label;
     }
 
-    private static UIElement column(float percent) {
+    private static UIElement column(float percent, float gap) {
         var column = new UIElement();
-        column.layout(style -> style.widthPercent(percent).flexDirection(FlexDirection.COLUMN).gapAll(6));
+        column.layout(style -> style.widthPercent(percent).flexDirection(FlexDirection.COLUMN).gapAll(gap));
         return column;
     }
 
@@ -286,8 +338,13 @@ public final class FederationProcessingGraph {
     private UIElement providerCard(JsonObject provider, boolean current) {
         var card = new UIElement();
         card.addClass("processing-provider-card");
-        card.layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(2).paddingAll(3).paddingRight(0));
-        card.style(style -> style.backgroundTexture(current ? FederationTheme.CARD_SELECTED : FederationTheme.CARD));
+        card.layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).paddingAll(2).paddingBottom(3));
+        int ring = current ? FederationTheme.SELECT : CARD_RING;
+        card.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
+            pen.rect(x - 1, y - 1, width + 2, height + 2, CARD_SHADOW);
+            pen.rect(x, y, width, height, ring);
+            pen.rect(x + 1, y + 1, width - 2, height - 2, CARD_FACE);
+        })));
         card.addChild(providerHeader(provider, current));
         if (current) {
             for (var slot : slots) card.addChild(patternRow(slot));
@@ -305,13 +362,10 @@ public final class FederationProcessingGraph {
         header.addClass("processing-provider");
         if (current) header.addClass("selected");
         header.setId("processing_provider_" + sanitize(id));
-        header.layout(style -> style.widthPercent(100).height(HEADER_HEIGHT).paddingAll(2).paddingRight(5).gapAll(5)
-                .flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
+        header.layout(style -> style.widthPercent(100).height(HEADER_HEIGHT).paddingAll(4).paddingRight(5).gapAll(4)
+                .marginBottom(1).flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
         var where = provider.has("position") ? provider.get("position").getAsString() : id.substring(0, Math.min(8, id.length()));
-        var thumbnail = new FederationMapPreview(true);
-        thumbnail.layout(style -> style.width(THUMBNAIL).height(THUMBNAIL).flexShrink(0));
-        position(where).ifPresent(mark -> thumbnail.show(playerDimension(), List.of(), 0, List.of(mark), accent(provider)));
-        thumbnail.setDisplay(provider.has("position"));
+        var thumbnail = deviceThumbnail(provider, where);
         var lines = new UIElement();
         lines.layout(style -> style.flex(1).minWidth(0).gapAll(2).flexDirection(FlexDirection.COLUMN));
         var name = new UIElement();
@@ -324,15 +378,19 @@ public final class FederationProcessingGraph {
         name.addChildren(swatch, nameText);
         var text = new Label();
         text.addClass("processing-provider-text");
-        text.setText(tr("provider_header", where, provider.get("slotsUsed").getAsInt(), provider.get("slotsTotal").getAsInt())
-                .append(" · ").append(tr(current ? "provider_editing" : "provider_open")));
-        text.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(current ? FederationTheme.TEAL : FederationTheme.DARK_MUTED));
+        // The card's lit ring says which Provider is edited; the line keeps to where it is and its slots.
+        text.setText(tr("provider_header", where, provider.get("slotsUsed").getAsInt(), provider.get("slotsTotal").getAsInt()));
+        text.textStyle(style -> style.textWrap(TextWrap.HIDE).textColor(FederationTheme.DARK_MUTED));
         text.layout(style -> style.widthPercent(100).height(9));
         lines.addChildren(name, text);
         header.addChildren(thumbnail, lines);
-        var clear = FederationTheme.solid(0x00000000);
-        header.buttonStyle(style -> style.baseTexture(clear).hoverTexture(current ? clear : FederationTheme.solid(0x229cd3ff))
-                .pressedTexture(clear));
+        // A line under the header separates it from the patterns, as the card's divider.
+        var base = FederationTheme.painted((pen, x, y, width, height) -> pen.rect(x - 2, y + height, width + 4, 1, CARD_SHADOW));
+        var hover = FederationTheme.painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, 0x229cd3ff);
+            pen.rect(x - 2, y + height, width + 4, 1, CARD_SHADOW);
+        });
+        header.buttonStyle(style -> style.baseTexture(base).hoverTexture(current ? base : hover).pressedTexture(base));
         header.style(style -> style.tooltips(tr(current ? "provider_editing_help" : "provider_open_help")));
         if (!current) header.setOnClick(event -> select.accept("mapping_provider:" + id));
         return header;
@@ -348,7 +406,7 @@ public final class FederationProcessingGraph {
         var stack = patternIcon.apply(slot);
         if (!stack.isEmpty()) {
             var icon = new UIElement();
-            icon.layout(style -> style.width(16).height(16).flexShrink(0));
+            icon.layout(style -> style.width(14).height(14).flexShrink(0));
             icon.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture(stack)));
             row.addChild(icon);
         }
@@ -364,10 +422,11 @@ public final class FederationProcessingGraph {
         var port = new UIElement();
         port.addClass("processing-port");
         port.setId("processing_port_" + id);
-        port.layout(style -> style.width(14).height(ROW_HEIGHT).flexShrink(0));
+        port.layout(style -> style.width(PORT_WIDTH).height(ROW_HEIGHT).flexShrink(0));
+        // The ring sits on the card's right edge, half outside it, as the Endpoint's does on its left edge.
         port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
             boolean dragged = id.equals(hintSlot);
-            round(pen, x + width - 7, y + height / 2, 5, wireAccent, dragged ? FederationTheme.DARK_TITLE : 0xff1f1d26);
+            round(pen, x + width + 2, y + height / 2, PORT, wireAccent, dragged ? FederationTheme.DARK_TITLE : PORT_FILL);
         })).tooltips(tr("port_help")));
         // A drag starts when the pressed pointer leaves the port, as LDLib2 drag sources do.
         port.addEventListener(UIEvents.MOUSE_LEAVE, event -> {
@@ -380,12 +439,10 @@ public final class FederationProcessingGraph {
         return row;
     }
 
-    /** The row's well, outlined while its pattern is being dragged. */
+    /** Rows sit on the card itself; the dragged one is lit. */
     private IGuiTexture rowFace(String slot) {
         return FederationTheme.painted((pen, x, y, width, height) -> {
-            boolean dragged = slot.equals(hintSlot);
-            pen.rect(x, y, width - 7, height, dragged ? FederationTheme.SELECT : 0xff0d0d11);
-            pen.rect(x + 1, y + 1, width - 9, height - 2, dragged ? 0xff262a3a : FederationTheme.WELL);
+            if (slot.equals(hintSlot)) pen.rect(x, y, width, height, 0x2e9cd3ff);
         });
     }
 
@@ -395,12 +452,12 @@ public final class FederationProcessingGraph {
         var row = new UIElement();
         row.addClass("processing-pattern-other");
         row.setId("processing_pattern_" + sanitize(key));
-        row.layout(style -> style.widthPercent(100).height(ROW_HEIGHT - 4).flexDirection(FlexDirection.ROW)
+        row.layout(style -> style.widthPercent(100).height(ROW_HEIGHT).flexDirection(FlexDirection.ROW)
                 .alignItems(AlignItems.CENTER).gapAll(4).paddingLeft(3));
         var stack = patternIcon.apply(slot);
         if (!stack.isEmpty()) {
             var icon = new UIElement();
-            icon.layout(style -> style.width(12).height(12).flexShrink(0));
+            icon.layout(style -> style.width(14).height(14).flexShrink(0));
             icon.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture(stack)));
             row.addChild(icon);
         }
@@ -416,13 +473,12 @@ public final class FederationProcessingGraph {
         }
         var port = new UIElement();
         port.setId("processing_port_" + sanitize(key));
-        port.layout(style -> style.width(14).height(ROW_HEIGHT - 4).flexShrink(0));
+        port.layout(style -> style.width(PORT_WIDTH).height(ROW_HEIGHT).flexShrink(0));
         int portColor = accent(provider);
         port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) ->
-                round(pen, x + width - 7, y + height / 2, 4, portColor & 0x88ffffff, 0xff1f1d26))));
+                round(pen, x + width + 2, y + height / 2, PORT, portColor, PORT_FILL))));
         row.addChild(port);
-        row.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) ->
-                pen.rect(x, y, width - 7, height, 0xff221f2a))).tooltips(tr("provider_open_help")));
+        row.style(style -> style.tooltips(tr("provider_open_help")));
         var id = provider.get("id").getAsString();
         row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             select.accept("mapping_provider:" + id);
@@ -444,6 +500,50 @@ public final class FederationProcessingGraph {
         return index >= 0 && index < networkNames.size() ? Component.literal(networkNames.get(index)) : tr("network_unknown");
     }
 
+    /** A card's name line: the network's accent swatch, then the name. */
+    private static UIElement titled(JsonObject choice, Component value) {
+        var line = new UIElement();
+        line.layout(style -> style.widthPercent(100).height(9).gapAll(3).flexShrink(0).flexDirection(FlexDirection.ROW)
+                .alignItems(AlignItems.CENTER));
+        var swatch = new UIElement();
+        swatch.layout(style -> style.width(5).height(5).flexShrink(0));
+        swatch.style(style -> style.backgroundTexture(FederationTheme.solid(accent(choice))));
+        var name = text(value, FederationTheme.DARK_TITLE);
+        name.layout(style -> style.flex(1).minWidth(0));
+        line.addChildren(swatch, name);
+        return line;
+    }
+
+    /**
+     * A 16:10 tile of the device's surroundings: the ground darkened, its network's blocks in the network's accent
+     * and the device itself in white, as the overview draws a network. It follows the overview as it arrives.
+     */
+    private FederationMapPreview deviceThumbnail(JsonObject choice, String where) {
+        var tile = new FederationMapPreview(true);
+        tile.layout(style -> style.width(THUMBNAIL_WIDTH).height(THUMBNAIL_HEIGHT).flexShrink(0));
+        Runnable show = () -> showDevice(tile, choice, where);
+        show.run();
+        thumbnailRefresh.add(show);
+        tile.setDisplay(position(where).isPresent());
+        return tile;
+    }
+
+    private void showDevice(FederationMapPreview tile, JsonObject choice, String where) {
+        var mark = position(where);
+        if (mark.isEmpty()) {
+            tile.clear();
+            return;
+        }
+        int index = choice != null && choice.has("networkIndex") ? choice.get("networkIndex").getAsInt() : -1;
+        var dimension = playerDimension();
+        tile.show(dimension, networkBlocks.apply(index, dimension), choice == null ? FederationTheme.EDGE : accent(choice),
+                List.of(mark.get()), 0xffffffff);
+    }
+
+    private JsonObject currentProvider() {
+        return providers.stream().filter(FederationProcessingGraph::selected).findFirst().orElse(null);
+    }
+
     private static boolean selected(JsonObject provider) {
         return provider.has("selected") && provider.get("selected").getAsBoolean();
     }
@@ -462,30 +562,25 @@ public final class FederationProcessingGraph {
         card.noText();
         card.addClass("processing-endpoint");
         card.setId("processing_endpoint_" + sanitize(id));
-        card.layout(style -> style.widthPercent(100).height(ENDPOINT_HEIGHT).paddingAll(4).paddingLeft(9).paddingBottom(6)
-                .gapAll(5).flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
-        var ring = new int[] {0xffd8d3e4};
+        card.layout(style -> style.widthPercent(100).height(ENDPOINT_HEIGHT).paddingAll(4).paddingLeft(8).paddingBottom(5)
+                .gapAll(4).flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
+        var ring = new int[] {CARD_RING};
         var inset = new int[] {FederationTheme.DARK_MUTED};
         endpointRings.put(id, ring);
         endpointInsets.put(id, inset);
+        int portColor = accent(endpoint);
         var face = FederationTheme.painted((pen, x, y, width, height) -> {
-            pen.rect(x, y, width, height, 0xff121016);
-            pen.rect(x + 1, y + 1, width - 2, height - 2, ring[0]);
-            pen.rect(x + 2, y + 2, width - 4, height - 4, 0xff2c2735);
-            pen.rect(x + 2, y + height - 4, width - 4, 2, inset[0]);
-            round(pen, x, y + height / 2, 5, wireAccent, 0xff1f1d26);
+            pen.rect(x - 1, y - 1, width + 2, height + 2, CARD_SHADOW);
+            pen.rect(x, y, width, height, ring[0]);
+            pen.rect(x + 1, y + 1, width - 2, height - 2, CARD_FACE);
+            pen.rect(x + 1, y + height - 2, width - 2, 1, inset[0]);
+            round(pen, x - 1, y + height / 2, PORT, portColor, PORT_FILL);
         });
         card.buttonStyle(style -> style.baseTexture(face).hoverTexture(face).pressedTexture(face));
-        if (withThumbnail && endpoint.has("position")) {
-            var thumbnail = new FederationMapPreview(true);
-            thumbnail.layout(style -> style.width(THUMBNAIL + 4).height(THUMBNAIL + 4).flexShrink(0));
-            position(endpoint.get("position").getAsString()).ifPresent(mark ->
-                    thumbnail.show(playerDimension(), List.of(), 0, List.of(mark), accent(endpoint)));
-            card.addChild(thumbnail);
-        }
+        if (withThumbnail && endpoint.has("position")) card.addChild(deviceThumbnail(endpoint, endpoint.get("position").getAsString()));
         var lines = new UIElement();
-        lines.layout(style -> style.flex(1).minWidth(0).gapAll(2).flexDirection(FlexDirection.COLUMN));
-        var name = text(tr("endpoint_title", networkName(endpoint)), FederationTheme.DARK_TITLE);
+        lines.layout(style -> style.flex(1).minWidth(0).gapAll(1).flexDirection(FlexDirection.COLUMN));
+        var name = titled(endpoint, tr("endpoint_title", networkName(endpoint)));
         var where = text(endpoint.has("position") ? Component.literal(endpoint.get("position").getAsString())
                 : Component.literal(endpoint.get("label").getAsString()), FederationTheme.DARK_MUTED);
         var state = new Label();
@@ -589,7 +684,10 @@ public final class FederationProcessingGraph {
             var endpoint = endpoint(selection.endpoint());
             if (endpoint != null) {
                 var claim = claim(endpoint);
-                title.setText(endpointName(endpoint));
+                title.setText(Component.empty()
+                        .append(Component.literal("■ ").withStyle(Style.EMPTY.withColor(accent(endpoint) & 0xffffff)))
+                        .append(tr("endpoint_title", networkName(endpoint)))
+                        .append(endpoint.has("position") ? " @ " + endpoint.get("position").getAsString() : ""));
                 fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
@@ -606,7 +704,7 @@ public final class FederationProcessingGraph {
         title.setDisplay(wire || endpointSelected);
         if (!rejection.getString().isEmpty()) {
             if (!text.getString().isEmpty()) text.append("\n");
-            text.append(rejection.copy().withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
+            text.append(rejection.copy().withStyle(Style.EMPTY.withColor(REFUSAL & 0xffffff)));
         }
         detail.setText(text);
         detail.setDisplay(!text.getString().isEmpty());
@@ -619,7 +717,7 @@ public final class FederationProcessingGraph {
         boolean releasable = endpointSelected && releasable(selection.endpoint());
         releaseButton.setDisplay(releasable);
         releaseButton.setActive(editable && releasable);
-        renderLocation();
+        renderEnds(wire, endpointSelected);
         endpointCards.forEach((id, card) -> {
             boolean selected = (endpointSelected || wire) && id.equals(selection.endpoint());
             var endpoint = endpoint(id);
@@ -631,7 +729,9 @@ public final class FederationProcessingGraph {
             endpointInsets.get(id)[0] = claim.color();
             var state = endpointStates.get(id);
             if (state != null && endpoint != null) {
-                state.setText(hint == null ? tr("claim." + claim.code()).withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff))
+                long mapped = wires.stream().filter(value -> value.endpoint().equals(id)).count();
+                state.setText(hint == null ? (claim == Claim.IN_USE && mapped > 0 ? tr("endpoint_mapped", mapped) : tr("claim." + claim.code()))
+                        .withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff))
                         : tr("drop_hint." + hint.code(), owner(endpoint)).withStyle(Style.EMPTY.withColor(hintColor(hint) & 0xffffff)));
             }
             card.removeClass("drop-accepts");
@@ -666,18 +766,23 @@ public final class FederationProcessingGraph {
     }
 
     /**
-     * Map of the Provider and its Endpoints: the selected Endpoint (or both ends of the selected wire) is marked, the
-     * rest are tinted. Devices of one Provider session are in the player's dimension.
+     * The selected wire's two ends side by side, the Provider and the Endpoint, or the selected Endpoint alone; each
+     * drawn like its card's thumbnail. Devices of one Provider session are in the player's dimension.
      */
-    private void renderLocation() {
-        var others = new ArrayList<BlockMarks.Mark>();
-        position(providerPosition).ifPresent(others::add);
-        for (var endpoint : endpoints) {
-            if (endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(others::add);
+    private void renderEnds(boolean wire, boolean endpointSelected) {
+        var endpoint = wire || endpointSelected ? endpoint(selection.endpoint()) : null;
+        fromEnd.setDisplay(wire && !providerPosition.isEmpty());
+        toEnd.setDisplay(endpoint != null && endpoint.has("position"));
+        if (wire) {
+            showDevice(fromPreview, currentProvider(), providerPosition);
+            fromLabel.setText(tr("end_provider", providerPosition));
         }
-        var focus = focusMarks();
-        preview.show(playerDimension(), others, FederationTheme.TEAL, focus, FederationTheme.SELECT);
-        highlight.setActive(!focus.isEmpty());
+        if (endpoint != null && endpoint.has("position")) {
+            var where = endpoint.get("position").getAsString();
+            showDevice(toPreview, endpoint, where);
+            toLabel.setText(tr("end_endpoint", where));
+        }
+        highlight.setActive(!focusMarks().isEmpty());
     }
 
     /** The selected Endpoint, both ends of the selected wire, or the Provider when nothing is selected. */
@@ -806,11 +911,12 @@ public final class FederationProcessingGraph {
     private Vector2f[] ends(UIElement port, Wire wire) {
         var card = endpointCards.get(wire.endpoint());
         if (port == null || card == null) return null;
-        return new Vector2f[] {portPoint(port), new Vector2f(card.getPositionX(), card.getPositionY() + card.getSizeHeight() / 2)};
+        return new Vector2f[] {portPoint(port), new Vector2f(card.getPositionX() - 1, card.getPositionY() + card.getSizeHeight() / 2)};
     }
 
+    /** The centre of the port's ring, on the card's right edge. */
     private static Vector2f portPoint(UIElement port) {
-        return new Vector2f(port.getPositionX() + port.getSizeWidth() - 7, port.getPositionY() + port.getSizeHeight() / 2);
+        return new Vector2f(port.getPositionX() + port.getSizeWidth() + 2, port.getPositionY() + port.getSizeHeight() / 2);
     }
 
     /** Two dots travelling along the wire, from the port when {@code returning} is false and back when it is true. */
@@ -904,14 +1010,24 @@ public final class FederationProcessingGraph {
     private final class Canvas extends UIElement {
         Canvas() {
             setId("processing_canvas");
-            layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(5).paddingAll(8)
-                    .paddingBottom(24));
+            layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(7).paddingAll(6)
+                    .paddingLeft(8).paddingRight(9).paddingBottom(34));
         }
 
         /** Cards switch to drop hints when a drag starts and back to their claim when it ends. */
         @Override
         public void screenTick() {
             super.screenTick();
+            if (!legendMeasured) {
+                legendMeasured = true;
+                var font = net.minecraft.client.Minecraft.getInstance().font;
+                int width = Math.max(font.width(tr("legend")), font.width(tr("legend_owner")));
+                legend.layout(style -> style.width(width + 10));
+            }
+            if (refreshTicks-- <= 0) {
+                refreshTicks = THUMBNAIL_REFRESH_TICKS;
+                thumbnailRefresh.forEach(Runnable::run);
+            }
             var drag = dragged();
             var slot = drag == null ? "" : drag.slot();
             if (!slot.equals(hintSlot)) {
@@ -939,7 +1055,7 @@ public final class FederationProcessingGraph {
                 // Wires take the colour of the Provider's network, as its card does in the overview.
                 int color = selected || related ? FederationTheme.SELECT : wireAccent;
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), polyline(curve(ends)), color, color,
-                        selected ? 4f : 3f);
+                        selected ? 3f : 2f);
             }
             long now = System.currentTimeMillis();
             int dots = 0;

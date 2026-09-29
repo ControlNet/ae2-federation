@@ -197,3 +197,25 @@ A side-by-side review after the window grew found the layout, not the features, 
 - Rendering unloaded chunks.
 - "Return buffer empty, can be released": Endpoint returns are handed back synchronously and there is no pending
   buffer to report. Release eligibility already follows the real retained state.
+
+## Phase 12: processing tab rebuilt against the V2Processing board (2026-09-29)
+
+- Cause of the miss: phase 11 compared the game against the design's source and the code-rendered `BuiltProcessing`
+  board, never against a rendered image of `V2Processing.dc.html`. Render the design itself before comparing:
+  copy the canvas `project/*.dc.html`, save `artifact-type/dc-runtime.js` as `support.js` next to them, serve the
+  folder (`python3 -m http.server`) and run
+  `google-chrome --headless=new --hide-scrollbars --window-size=1330,800 --virtual-time-budget=8000 --screenshot=... URL`.
+- Matched: columns 39% / 39% with the gap for wires; Provider cards with a 16:10 device thumbnail, a divider under the
+  header and 18px rows; round ports centred on the cards' edges; Endpoint cards with "Patterns mapped: N"; wires 2px
+  (3px selected); boxed two-line legend with the one-owner rule in yellow.
+- The aside is on the light frame, not a dark panel: title, the wire's two ends side by side ("Provider @" /
+  "Endpoint @"), facts in a dark inset, grey Unlink + blue Highlight, and a light note pinned at the bottom. The
+  Map/3D switch left the processing aside (the design has none there); its test moved to the topology location map.
+- Thumbnails (`FederationMapPreview(true)`) darken the ground, draw the network's blocks in its accent and the device
+  in white, around a fixed radius of 5, widened to the box's shape. Blocks come from the topology overview through
+  `FederationTopologyView.networkBlocks` and refresh every 40 ticks.
+- Never call `Minecraft.getInstance()` while the UI tree is built: the dedicated server builds it too and crashes
+  (T34 "clients timed out"). Measure fonts on the first `screenTick` instead.
+- The editing Provider is shown by its lit ring and the header's `selected` class, not a " · editing" suffix.
+- Flow dots flicker frame to frame (dots in the label box are skipped), so evidence records the count seen inside the
+  same `waitUntil` that observed it.

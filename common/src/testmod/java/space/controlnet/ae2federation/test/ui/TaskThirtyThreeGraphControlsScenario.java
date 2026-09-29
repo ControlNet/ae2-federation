@@ -96,6 +96,20 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the network's blocks are outlined", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
                 .checkTextContains("#network_location_note", "for 10 s")
+                .click("#network_preview .map-mode-toggle")
+                .waitUntil("the 3D preview draws the network's loaded blocks", context -> {
+                    var preview = context.el("#network_preview .map-preview-tile")
+                            .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class);
+                    return space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
+                            && preview.sceneView() != null && preview.sceneView().isDisplayed()
+                            && preview.sceneView().renderedBlocks() > 0;
+                })
+                .checkTextContains("#network_preview .map-mode-toggle", "Map")
+                .frames(10)
+                .screenshot("ui-network-preview-3d")
+                .click("#network_preview .map-mode-toggle")
+                .check("the map is back", context -> !space.controlnet.ae2federation.client.menu.FederationMapPreview.threeDimensional()
+                        && !context.el("#network_preview .map-preview-scene").isVisible())
                 .step("record highlight evidence", context -> context.put("task33.highlightBlocks",
                         Integer.toString(space.controlnet.ae2federation.client.WorldHighlight.activeBlocks())))
                 .screenshot("ui-network-location")
