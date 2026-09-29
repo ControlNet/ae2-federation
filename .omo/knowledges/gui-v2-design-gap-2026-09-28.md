@@ -312,3 +312,13 @@ Gotchas found on the way:
 - In LSS `flex: 0` sets a zero basis and lets a fixed-height button collapse (to 6px here); use `flex-grow: 0` plus
   `flex-shrink: 0`.
 - `federationUiTest` accepts only the exact case sets (T3/T15/T33/T34), not a subset.
+
+## Phase 17: left-drag panning on the topology graph (2026-09-29)
+
+- LDLib `GraphView` starts a left-button pan only when `event.target == this` (the middle button pans anywhere).
+  Any full-size child that takes hits steals the press. The topology's `Links` layer spans every card, so after
+  "fit" it covered almost the whole canvas and a left drag never panned. Layers that only draw (`Links`,
+  `FederationFlowPulses`, legends) must call `setAllowHitTest(false)`.
+- In UI tests a drag must use `input().dragTo(x, y, button)` after `mouseDown`; `moveTo` is a plain move and never
+  updates a drag. The graph-controls scenario now left-drags between two cards and asserts `GraphView.getOffsetX()`
+  moved (verified red without the fix, green with it).

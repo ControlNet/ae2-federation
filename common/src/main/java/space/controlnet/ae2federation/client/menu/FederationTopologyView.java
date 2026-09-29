@@ -1616,6 +1616,8 @@ final class FederationTopologyView {
             float width = positions.values().stream().map(point -> point.x + CARD_WIDTH).max(Float::compare).orElse(1f);
             float height = positions.values().stream().map(point -> point.y + CARD_HEIGHT).max(Float::compare).orElse(1f);
             layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(width + 8).height(height + 8));
+            // It spans every card; taking hits would steal the press GraphView pans on.
+            setAllowHitTest(false);
         }
 
         @Override

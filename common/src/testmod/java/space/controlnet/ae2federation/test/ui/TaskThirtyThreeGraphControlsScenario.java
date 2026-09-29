@@ -23,6 +23,32 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("graph remains visible after controls", context -> context.el("#domain_graph").isVisible())
                 .check("both member networks are drawn", context -> context.all(".graph-node-member").size() == 2)
                 .check("two-member domain opens the pair editor", context -> context.el("#pair_editor").isVisible())
+                // Empty canvas between the cards lies under the link layer; a left drag there must still pan.
+                .step("press the left button between the two cards", context -> {
+                    var cards = context.all(".graph-node-member").stream().map(card -> card.bounds())
+                            .sorted(java.util.Comparator.comparingDouble(bounds -> bounds.x())).toList();
+                    var point = new float[] {(cards.get(0).x() + cards.get(0).width() + cards.get(1).x()) / 2f,
+                            cards.get(0).centerY()};
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    context.put("graph.panPoint", point);
+                    context.put("graph.panStart", new float[] {graph.getOffsetX(), graph.getOffsetY()});
+                    context.input().moveTo(point[0], point[1]);
+                    context.input().mouseDown(point[0], point[1], 0);
+                })
+                .repeat(6, steps -> steps.step("drag the canvas", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    point[0] += 10;
+                    context.input().dragTo(point[0], point[1], 0);
+                }).frames(1))
+                .step("release the canvas", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    context.input().mouseUp(point[0], point[1], 0);
+                })
+                .check("a left drag on empty canvas pans the graph", context -> {
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    return graph.getOffsetX() < context.<float[]>get("graph.panStart")[0] - 1f;
+                })
+                .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
                         context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()))
                 .typeInto("#graph_search", "not an existing network")
