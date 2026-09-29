@@ -312,11 +312,11 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("restore English window", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
                 .waitUntil("English window restored", context -> context.mc().getWindow().getWidth() == 1600)
-                // A fuller domain for design review: four named networks, rules of every kind, three Providers mapped
-                // many-to-many onto five Endpoints. The names, rules and patterns are test-world data.
-                .server("showcase: two more networks on the Router", TaskThirtyThreeShowcaseFixture::placeNetworks)
+                // A fuller domain for design review: eight named networks on two Routers, rules of every kind, three
+                // Providers mapped many-to-many onto five Endpoints. The names, rules and patterns are test-world data.
+                .server("showcase: six more networks on two Routers", TaskThirtyThreeShowcaseFixture::placeNetworks)
                 .serverTicks(4)
-                .waitUntilServer("showcase: four networks join the Router's domain", TaskThirtyThreeShowcaseFixture::networksReady)
+                .waitUntilServer("showcase: eight networks join the Router's domain", TaskThirtyThreeShowcaseFixture::networksReady)
                 .server("showcase: name the networks and link them", TaskThirtyThreeShowcaseFixture::installNamesAndRules)
                 .server("showcase: place Providers and Endpoints", TaskThirtyThreeShowcaseFixture::placeDevices)
                 .serverTicks(4)
@@ -328,8 +328,9 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().awaitElement("#domain_graph")
-                .waitUntil("showcase: four named network cards", context -> context.all(".graph-node-member").size() == 4
-                        && context.all(".card-name").stream().anyMatch(name -> name.text().equals("Storage Hall")))
+                .waitUntil("showcase: eight named network cards", context -> context.all(".graph-node-member").size() == 8
+                        && context.all(".card-name").stream().anyMatch(name -> name.text().equals("Storage Hall"))
+                        && context.all(".card-name").stream().anyMatch(name -> name.text().equals("Sky Lab")))
                 .click("#graph_fit").frames(3)
                 .step("showcase: select Main Base", context -> showcaseSelect(context, "Main Base"))
                 .waitUntil("showcase: Main Base details", context -> context.el("#network_detail").isVisible())
@@ -337,6 +338,18 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
+                .step("showcase: select a network on the second Router", context -> showcaseSelect(context, "Sky Lab"))
+                .waitForTextContains("#network_title", "Sky Lab")
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-topology-remote")
+                .typeInto("#graph_search", "Smeltery")
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-search")
+                .typeInto("#graph_search", "").blur()
+                .click("#graph_zoom_in").click("#graph_zoom_in").frames(3)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-zoom")
+                .click("#graph_fit").frames(3)
                 .step("showcase: open the busiest link", TaskThirtyThreeMappingScenario::showcaseBusiestPair)
                 .waitUntil("showcase: pair editor", context -> context.el("#pair_editor").isVisible())
                 .hover("#domain_title").frames(5)

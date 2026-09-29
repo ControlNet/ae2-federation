@@ -38,8 +38,8 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 
 /**
- * A fuller Federation Domain for design review: four real ME networks on the Router's faces, named and linked by
- * real rules, with three Pattern Providers mapped many-to-many onto five Endpoints. Everything is placed through
+ * A fuller Federation Domain for design review: eight real ME networks on the faces of two Routers joined by Federation
+ * Cable, named and linked by real rules, with three Pattern Providers mapped many-to-many onto five Endpoints. Everything is placed through
  * production blocks and services; the names, rules and patterns are test-world data chosen to look like a base.
  */
 final class TaskThirtyThreeShowcaseFixture {
@@ -48,25 +48,50 @@ final class TaskThirtyThreeShowcaseFixture {
     private TaskThirtyThreeShowcaseFixture() {
     }
 
-    /** Two more networks, each an ME Chest with a storage cell and its own energy cell, on the Router's free faces. */
+    /**
+     * Six more networks, each an ME Chest with a storage cell and its own energy cell: two on the Router's free faces
+     * and four on a second Router. That Router sits at the end of the Federation Cable run on the first Router's top
+     * (which the Mine's Provider joins later), so both Routers are one domain. No two networks touch.
+     */
     static void placeNetworks(ServerContext context) {
         var router = TaskFifteenWorldFixture.routerPosition(context);
         var state = new State(router.east(), router.below());
         context.put(STATE, state);
         placeChestNetwork(context, state.mine, state.mine.east());
         placeChestNetwork(context, state.hall, state.hall.below());
+        state.remoteRouter = router.above().east(4);
+        var remote = state.remoteRouter;
+        state.remoteNetworks = List.of(
+                new BlockPos[] {remote.north(), remote.north(2)},
+                new BlockPos[] {remote.south(), remote.south().below()},
+                new BlockPos[] {remote.east(), remote.east().below()},
+                new BlockPos[] {remote.above(), remote.above(2)});
+        var cables = new ArrayList<BlockPos>();
+        for (int east = 1; east <= 3; east++) cables.add(router.above().east(east));
+        for (var position : cables) {
+            require(context.level().isEmptyBlock(position), "Showcase cable position must be empty: " + position);
+            context.level().setBlockAndUpdate(position, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get()
+                    .defaultBlockState());
+        }
+        state.cables = List.copyOf(cables);
+        require(context.level().isEmptyBlock(remote), "Showcase second Router position must be empty");
+        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+                .defaultBlockState());
+        for (var network : state.remoteNetworks) placeChestNetwork(context, network[0], network[1]);
     }
 
-    /** Whether the Router's domain holds all four networks, each with a confirmed identity. */
+    /** Whether the Router's domain holds all eight networks, each with a confirmed identity. */
     static boolean networksReady(ServerContext context) {
         var state = state(context);
         var main = TaskThirtyThreeWorldFixture.mainNode(context);
         var outer = TaskThirtyThreeWorldFixture.outerNode(context);
-        var mine = chestNode(context, state.mine);
-        var hall = chestNode(context, state.hall);
-        if (mine == null || hall == null || !mine.isActive() || !hall.isActive()) return false;
+        var nodes = new ArrayList<>(List.of(main, outer));
+        nodes.add(chestNode(context, state.mine));
+        nodes.add(chestNode(context, state.hall));
+        for (var network : state.remoteNetworks) nodes.add(chestNode(context, network[0]));
+        if (nodes.stream().anyMatch(node -> node == null || !node.isActive())) return false;
         var ids = new ArrayList<NetworkId>();
-        for (var node : List.of(main, outer, mine, hall)) {
+        for (var node : nodes) {
             var id = node.getGrid() == null ? null : FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid()).orElse(null);
             if (id == null || ids.contains(id)) return false;
             ids.add(id);
@@ -79,6 +104,10 @@ final class TaskThirtyThreeShowcaseFixture {
         if (!state.stocked) {
             stock(context, state.mine, mineStock());
             stock(context, state.hall, hallStock());
+            var remoteStock = List.of(farmStock(), outpostStock(), smelteryStock(), labStock());
+            for (int index = 0; index < remoteStock.size(); index++) {
+                stock(context, state.remoteNetworks.get(index)[0], remoteStock.get(index));
+            }
             state.stocked = true;
         }
         return true;
@@ -96,6 +125,20 @@ final class TaskThirtyThreeShowcaseFixture {
         names.rename(outer, "Automation Tower");
         names.rename(mine, "Mine");
         names.rename(hall, "Storage Hall");
+        var farm = state.networks.get(4);
+        var outpost = state.networks.get(5);
+        var smeltery = state.networks.get(6);
+        var lab = state.networks.get(7);
+        names.rename(farm, "Farm");
+        names.rename(outpost, "Nether Outpost");
+        names.rename(smeltery, "Smeltery");
+        names.rename(lab, "Sky Lab");
+        rule(context, new PolicyKey(main, farm, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        rule(context, new PolicyKey(smeltery, mine, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        rule(context, new PolicyKey(main, smeltery, PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
+        rule(context, new PolicyKey(lab, main, PolicyCapability.ME_POWER), PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
+        rule(context, new PolicyKey(outpost, hall, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        rule(context, new PolicyKey(lab, outpost, PolicyCapability.STORAGE), PolicyRule.storageDefaults().withEnabled(false));
         rule(context, new PolicyKey(main, mine, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(main, mine, PolicyCapability.CRAFTING),
                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withEnabled(false));
@@ -123,10 +166,8 @@ final class TaskThirtyThreeShowcaseFixture {
         }
         var cables = new ArrayList<BlockPos>();
         // Each Provider's Federation face joins the Router's domain: the smelter's through the host's cable column,
-        // the Mine's through a cable run to the one on the Router's top.
+        // the Mine's through the cable run to the second Router, placed with the networks.
         cables.add(host.east().above());
-        var router = TaskFifteenWorldFixture.routerPosition(context);
-        for (int east = 1; east <= 3; east++) cables.add(router.above().east(east));
         for (int east = 1; east <= 4; east++) cables.add(first.above().east(east));
         for (int north = 1; north <= 2; north++) {
             cables.add(first.east(2).above().north(north));
@@ -137,6 +178,7 @@ final class TaskThirtyThreeShowcaseFixture {
             context.level().setBlockAndUpdate(cable, space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get()
                     .defaultBlockState());
         }
+        cables.addAll(state.cables);
         state.cables = List.copyOf(cables);
         for (var position : state.towerEndpoints) placeEndpoint(context, position, state.networks.get(1));
         placeEndpoint(context, state.hallEndpoint, state.networks.get(3));
@@ -227,6 +269,8 @@ final class TaskThirtyThreeShowcaseFixture {
         blocks.addAll(state.towerEndpoints);
         if (state.hallEndpoint != null) blocks.add(state.hallEndpoint);
         blocks.addAll(List.of(state.mine, state.mine.east(), state.hall, state.hall.below()));
+        for (var network : state.remoteNetworks) blocks.addAll(List.of(network));
+        if (state.remoteRouter != null) blocks.add(state.remoteRouter);
         for (var position : blocks) context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
     }
 
@@ -236,6 +280,24 @@ final class TaskThirtyThreeShowcaseFixture {
         context.level().setBlockAndUpdate(chest, AEBlocks.ME_CHEST.block().defaultBlockState());
         ((MEChestBlockEntity) context.level().getBlockEntity(chest)).setCell(AEItems.ITEM_CELL_4K.stack());
         context.level().setBlockAndUpdate(cell, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+    }
+
+    private static Map<Item, Long> farmStock() {
+        return Map.of(Items.WHEAT, 4_096L, Items.CARROT, 1_830L, Items.POTATO, 2_204L, Items.SUGAR_CANE, 960L,
+                Items.PUMPKIN, 144L);
+    }
+
+    private static Map<Item, Long> outpostStock() {
+        return Map.of(Items.NETHERRACK, 12_800L, Items.QUARTZ, 2_048L, Items.GLOWSTONE_DUST, 640L,
+                Items.BLAZE_ROD, 48L);
+    }
+
+    private static Map<Item, Long> smelteryStock() {
+        return Map.of(Items.IRON_INGOT, 3_200L, Items.COPPER_INGOT, 1_152L, Items.GOLD_INGOT, 256L, Items.COAL, 4_600L);
+    }
+
+    private static Map<Item, Long> labStock() {
+        return Map.of(Items.REDSTONE, 2_880L, Items.LAPIS_LAZULI, 512L, Items.ENDER_PEARL, 32L, Items.AMETHYST_SHARD, 210L);
     }
 
     private static Map<Item, Long> mineStock() {
@@ -310,6 +372,8 @@ final class TaskThirtyThreeShowcaseFixture {
         private List<BlockPos> providers = List.of();
         private List<BlockPos> towerEndpoints = List.of();
         private List<BlockPos> cables = List.of();
+        private BlockPos remoteRouter;
+        private List<BlockPos[]> remoteNetworks = List.of();
         private BlockPos hallEndpoint;
         private boolean stocked;
 
