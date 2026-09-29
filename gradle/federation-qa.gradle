@@ -2357,7 +2357,7 @@ verifyTaskSeventeenEvidence = { File attempt, List requested, List<String> decla
     if (!requested.any { it in taskSeventeenCases }) return
     if (requested != taskSeventeenCases) throw new GradleException('Task 17 evidence must select the exact canonical case set')
     def expected = [providerorientation: 12, claimcompete: 8, claimofflineowner: 6, claimoverlap: 6,
-            providerrotatepending: 8, providerrejectsamegrid: 17]
+            providerrotatepending: 8, providerrejectsamegrid: 11]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.collect { new File(it).name }.findAll {
         it.startsWith('native-') && it.endsWith('.properties')
@@ -2461,12 +2461,11 @@ verifyTaskSeventeenEvidence = { File attempt, List requested, List<String> decla
     if (sameGrid.getProperty('sameGridAccepted') != 'false' || sameGrid.getProperty('separatedAccepted') != 'true'
             || sameGrid.getProperty('offlineRetargeted') != 'false' || sameGrid.getProperty('targetMutation') != '0'
             || sameGrid.getProperty('runtimeBinding') != 'true'
-            || sameGrid.getProperty('policyDeniedAttempts') != '2'
             || sameGrid.getProperty('federationDomainDeniedAttempts') != '1'
             || sameGrid.getProperty('unloadedDeniedAttempts') != '1'
             || sameGrid.getProperty('unloadedCapabilityLookupDelta') != '0'
             || sameGrid.getProperty('sameGridDeniedAttempts') != '1'
-            || sameGrid.getProperty('mixinLookups') != '5'
+            || sameGrid.getProperty('mixinLookups') != '3'
             || sameGrid.getProperty('nativeTargetLookups') != '0') {
         throw new GradleException('Task 17 source-target separation semantics are incomplete')
     }
@@ -2630,12 +2629,12 @@ verifyTaskEighteenEvidence = { File attempt, List requested, List<String> declar
         throw new GradleException('Task 18 owned Federated persistence lifecycle is incomplete')
     }
     def faces = parsed.endpointfivefacereturns as Properties
-    def expectedFaces = ['down', 'up', 'north', 'south', 'west']
+    def expectedFaces = ['down', 'up', 'north', 'south', 'east']
     if (faces.getProperty('logisticsFaces') != '5' || faces.getProperty('federationFaceExcluded') != 'true'
             || faces.getProperty('itemAdapter') != 'GenericStackItemStorage'
             || faces.getProperty('fluidAdapter') != 'GenericStackFluidStorage'
             || faces.getProperty('typedReturnContexts') != 'true'
-            || expectedFaces.any { faces.getProperty("face.${it}") != 'node-storage-item-fluid' }) {
+            || expectedFaces.any { faces.getProperty("face.${it}") != 'node-item-fluid' }) {
         throw new GradleException('Task 18 five-face native capability semantics are incomplete')
     }
     def pressure = parsed.endpointreturnbackpressure as Properties
@@ -2670,7 +2669,7 @@ verifyTaskEighteenEvidence = { File attempt, List requested, List<String> declar
             || pressureInventoryTrace['1.after']?.identity?.toString() != candidate1Identity
             || pressureInventoryTrace['1.after']?.slots?.toString() != '9'
             || pressureInventoryTrace['1.after']?.snapshot?.toString() != candidate1After
-            || pressure.getProperty('duplicateOwnersRejected') != 'true'
+            || pressure.getProperty('subnetProviderIgnored') != 'true'
             || pressure.getProperty('candidateOwnerCount') != '2'
             || pressure.getProperty('candidate0Unchanged') != 'true'
             || pressure.getProperty('candidate1Unchanged') != 'true'
@@ -9490,10 +9489,10 @@ tasks.register('federationTaskEighteenEvidenceSelfTest') {
                         'Task 18 owned Federated persistence lifecycle is incomplete',
                         mutateFact('endpointfederated', 'runtimeReferencesSerialized', 'false', 'true',
                                 'Task 18 serialized runtime reference acceptance')),
-                taskSevenEvidenceProbeRejects(sourceResult, 'task18-duplicate-local-owners',
+                taskSevenEvidenceProbeRejects(sourceResult, 'task18-subnet-local-owner',
                         'Task 18 return backpressure or native acceptance semantics are incomplete',
-                        mutateFact('endpointreturnbackpressure', 'duplicateOwnersRejected', 'true', 'false',
-                                'Task 18 duplicate Local owner acceptance')),
+                        mutateFact('endpointreturnbackpressure', 'subnetProviderIgnored', 'true', 'false',
+                                'Task 18 subnet-face Local owner acceptance')),
                 taskSevenEvidenceProbeRejects(sourceResult, 'task18-wrong-grid',
                         'Task 18 Local ownership or native binding semantics are incomplete',
                         mutateFact('endpointlocal', 'sourceGridSeparated', 'true', 'false',

@@ -20,6 +20,12 @@ public final class EndpointClaimAuthority {
         }
     }
 
+    /** Rejects a request for a reason outside the Claim itself, recording it like any other result. */
+    public synchronized ClaimResult reject(ClaimRejection reason) {
+        lastResultCode = reason.name();
+        return new ClaimResult.Rejected(state, reason);
+    }
+
     public synchronized ClaimResult compareAndSet(ClaimRequest request) {
         ClaimResult result;
         if (!request.endpoint().equals(endpoint)) {

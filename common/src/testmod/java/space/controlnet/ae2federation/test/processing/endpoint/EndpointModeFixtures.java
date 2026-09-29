@@ -30,8 +30,9 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 
 public final class EndpointModeFixtures implements AutoCloseable {
+    /** The native Provider (another network) sits on the Federation face, west; the other five faces are the subnet's. */
     public static final List<Direction> LOGISTICS_FACES = List.of(Direction.DOWN, Direction.UP, Direction.NORTH,
-            Direction.SOUTH, Direction.WEST);
+            Direction.SOUTH, Direction.EAST);
     private static final BlockPos ENDPOINT = new BlockPos(5, 3, 5);
     private static final BlockPos PROVIDER = ENDPOINT.west();
     private static final BlockPos PROVIDER_ENERGY = PROVIDER.west();
@@ -46,7 +47,7 @@ public final class EndpointModeFixtures implements AutoCloseable {
 
     public EndpointModeFixtures(GameTestHelper helper, boolean secondProvider) {
         this.helper = helper;
-        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
+        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.WEST));
         helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
                 .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.EAST));
         helper.setBlock(PROVIDER_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
@@ -178,6 +179,12 @@ public final class EndpointModeFixtures implements AutoCloseable {
         }
     }
 
+    /** Turns the Federation-face Provider towards the Endpoint (Local) or up, away from it and its energy (no Local owner). */
+    public void pushProviderAtEndpoint(boolean atEndpoint) {
+        helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState()
+                .setValue(PatternProviderBlock.PUSH_DIRECTION, atEndpoint ? PushDirection.EAST : PushDirection.UP));
+    }
+
     public void removeSecondProvider() {
         helper.setBlock(SECOND_PROVIDER, Blocks.AIR);
         helper.setBlock(SECOND_ENERGY, Blocks.AIR);
@@ -188,7 +195,7 @@ public final class EndpointModeFixtures implements AutoCloseable {
         var saved = endpoint.saveWithFullMetadata(helper.getLevel().registryAccess());
         var state = new SavedState(endpoint.endpointIdentity(), endpoint.claimState(), binding().runtime().generation());
         helper.setBlock(ENDPOINT, Blocks.AIR);
-        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
+        helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.WEST));
         endpoint().loadWithComponents(saved, helper.getLevel().registryAccess());
         endpoint().setChanged();
         binding = null;

@@ -10,7 +10,6 @@ import appeng.helpers.externalstorage.GenericStackFluidStorage;
 import appeng.helpers.externalstorage.GenericStackItemStorage;
 import appeng.helpers.patternprovider.PatternProviderReturnInventory;
 import java.util.EnumSet;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -86,13 +85,12 @@ public final class EndpointCapabilityComposition {
         if (mode != EndpointMode.LOCAL || localProvider != null) {
             return false;
         }
-        var targetStorage = storageLookup.apply(candidate.targetSide().getOpposite());
-        if (!candidate.providerPosition().relative(candidate.targetSide()).equals(endpointPosition)
+        if (candidate.targetSide().getOpposite() != federationFace
+                || !candidate.providerPosition().relative(candidate.targetSide()).equals(endpointPosition)
                 || !(level.getBlockEntity(candidate.providerPosition()) instanceof PatternProviderBlockEntity provider)
                 || provider.getLogic() != candidate.logic()
                 || !provider.getTargets().contains(candidate.targetSide())
-                || GridHelper.getExposedNode(level, endpointPosition, candidate.targetSide().getOpposite()) != subnetNode
-                || targetStorage != subnetNode.getGrid().getStorageService().getInventory()
+                || localInputStorage().isEmpty()
                 || candidate.sourceNode().getGrid() == subnetNode.getGrid()
                 || candidate.sourceNode().getInWorldConnections().containsKey(candidate.targetSide())) {
             return false;
@@ -102,22 +100,22 @@ public final class EndpointCapabilityComposition {
         return true;
     }
 
+    /**
+     * The native AE2 Pattern Provider on the Federation face that pushes into it. It belongs to another network, so it
+     * sits on the face that carries no subnet connection; a Provider on a subnet face would be part of the subnet.
+     */
     private List<NativeLocalProvider> adjacentProviders() {
-        var providers = new ArrayList<NativeLocalProvider>();
-        for (var endpointSide : Direction.values()) {
-            var providerPosition = endpointPosition.relative(endpointSide);
-            if (!level.isLoaded(providerPosition)
-                    || !(level.getBlockEntity(providerPosition) instanceof PatternProviderBlockEntity provider)) {
-                continue;
-            }
-            var targetSide = endpointSide.getOpposite();
-            var sourceNode = provider.getMainNode().getNode();
-            if (sourceNode != null && provider.getTargets().contains(targetSide)) {
-                providers.add(new NativeLocalProvider(provider.getLogic(), sourceNode, providerPosition,
-                        targetSide, provider.getLogic().getReturnInv()));
-            }
+        var providerPosition = endpointPosition.relative(federationFace);
+        if (!level.isLoaded(providerPosition)
+                || !(level.getBlockEntity(providerPosition) instanceof PatternProviderBlockEntity provider)) {
+            return List.of();
         }
-        return List.copyOf(providers);
+        var targetSide = federationFace.getOpposite();
+        var sourceNode = provider.getMainNode().getNode();
+        return sourceNode != null && provider.getTargets().contains(targetSide)
+                ? List.of(new NativeLocalProvider(provider.getLogic(), sourceNode, providerPosition, targetSide,
+                        provider.getLogic().getReturnInv()))
+                : List.of();
     }
 
     public void setMode(EndpointMode mode) {
@@ -157,23 +155,30 @@ public final class EndpointCapabilityComposition {
         return new EndpointCallContext(EndpointCallContext.Purpose.FLUID_RETURN, generation);
     }
 
+    /**
+     * Local input enters through the Federation face, where the native Provider sits; Federated input enters through a
+     * subnet face. Return contexts never resolve input storage.
+     */
     public Optional<MEStorage> targetStorage(Direction face, EndpointCallContext context) {
-        var faceStorage = faceStorage(face);
-        if (faceStorage.isEmpty() || !valid(face, context)
-                || context.purpose() == EndpointCallContext.Purpose.ITEM_RETURN
-                || context.purpose() == EndpointCallContext.Purpose.FLUID_RETURN) {
+        if (context.generation() != generation) {
             return Optional.empty();
         }
-        if (mode == EndpointMode.LOCAL
-                && context.purpose() == EndpointCallContext.Purpose.LOCAL_INPUT
-                && localProvider != null) {
-            return faceStorage;
+        if (mode == EndpointMode.LOCAL && context.purpose() == EndpointCallContext.Purpose.LOCAL_INPUT
+                && localProvider != null && face == federationFace) {
+            return localInputStorage();
         }
-        if (mode == EndpointMode.FEDERATED
-                && context.purpose() == EndpointCallContext.Purpose.FEDERATED_INPUT) {
-            return faceStorage;
+        if (mode == EndpointMode.FEDERATED && context.purpose() == EndpointCallContext.Purpose.FEDERATED_INPUT
+                && valid(face, context)) {
+            return faceStorage(face);
         }
         return Optional.empty();
+    }
+
+    private Optional<MEStorage> localInputStorage() {
+        var storage = storageLookup.apply(federationFace);
+        return subnetNode.getGrid() != null && storage == subnetNode.getGrid().getStorageService().getInventory()
+                ? Optional.of(storage)
+                : Optional.empty();
     }
 
     public Optional<GenericInternalInventory> returnInventory(Direction face, EndpointCallContext context) {

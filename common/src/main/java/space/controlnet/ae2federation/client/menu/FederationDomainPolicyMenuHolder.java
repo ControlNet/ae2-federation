@@ -224,10 +224,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             menuSequence = Math.incrementExact(menuSequence);
             return FederationDomainPolicyActionResult.ACCEPTED;
         }
-        if (!session.expectedRevision().equals(request.expectedRevision())) {
+        if (mappingAction(request.action())) {
+            // Provider mapping is not a rule edit: a domain with one ME network still maps its Endpoints.
+            if (!session.matchesMappingContext(player, request.context())) {
+                return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
+                        : FederationDomainPolicyActionResult.WRONG_MENU;
+            }
+        } else if (!session.expectedRevision().equals(request.expectedRevision())) {
             return FederationDomainPolicyActionResult.STALE_REVISION;
-        }
-        if (!session.matchesAuthority(player, request.context(), request.expectedRevision())) {
+        } else if (!session.matchesAuthority(player, request.context(), request.expectedRevision())) {
             if (session.rejectStaleContext(player)) {
                 return FederationDomainPolicyActionResult.STALE_CONTEXT;
             }
@@ -264,6 +269,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         }
         menuSequence = Math.incrementExact(menuSequence);
         return FederationDomainPolicyActionResult.ACCEPTED;
+    }
+
+    private static boolean mappingAction(FederationDomainPolicyAction action) {
+        return switch (action) {
+            case PREPARE_RELEASE, CANCEL_RELEASE, SELECT_TARGET, NEXT_MAPPING_PROVIDER, NEXT_MAPPING_SLOT,
+                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT -> true;
+            case SET_POLICY, RENAME_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
+        };
     }
 
     java.util.Optional<FederationDomainPolicyActionRequest> currentRequest(ModularUIContainerMenu menu,

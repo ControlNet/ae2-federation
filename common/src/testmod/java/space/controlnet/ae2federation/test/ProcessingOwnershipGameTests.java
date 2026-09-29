@@ -16,7 +16,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.test.mixin.PatternProviderLogicReturnAccess;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
@@ -37,9 +36,8 @@ public final class ProcessingOwnershipGameTests {
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.initialize(), "Waiting for Federation dismantle context");
             if (!state.configured) {
-                helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
-                        PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-                fixture.connectFederationDomain();
+                helper.assertTrue(fixture.connectFederationDomain(),
+                        "The Endpoint must join a domain of the Provider network");
                 fixture.leaveOneSharedTargetSlot();
                 state.targetBeforePush = fixture.targetAmount(AEItemKey.of(Items.COBBLESTONE));
                 ProcessingNativeObservation.recordTarget("push-head", fixture.providerLogic(),

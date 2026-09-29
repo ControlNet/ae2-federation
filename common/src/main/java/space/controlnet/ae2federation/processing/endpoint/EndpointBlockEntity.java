@@ -78,6 +78,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             closeBinding();
             bind(serverLevel);
             openFederationPort(serverLevel);
+            reconcileMode();
         }
         if (level != null) {
             level.invalidateCapabilities(worldPosition);
@@ -90,13 +91,54 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         if (changed || endpoint.federationDomainDirty) {
             endpoint.publishFederationDomainTopology();
         }
+        // A native Provider whose node was not ready when it was placed is picked up once it is.
+        if (endpoint.configuredMode == EndpointMode.LOCAL && endpoint.binding != null
+                && endpoint.binding.runtime().mode().isEmpty() && level.getGameTime() % 20 == 0) {
+            endpoint.reconcileMode();
+        }
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
         if (federationPort != null && worldPosition.relative(federationFace()).equals(neighborPosition)) {
             federationPort.invalidate();
         }
-        refreshLocal();
+        reconcileMode();
+    }
+
+    /** A native AE2 Pattern Provider (another network) on the Federation face that pushes into this Endpoint. */
+    public boolean nativeProviderOnFederationFace() {
+        if (level == null) {
+            return false;
+        }
+        var front = worldPosition.relative(federationFace());
+        return level.isLoaded(front)
+                && level.getBlockEntity(front) instanceof appeng.blockentity.crafting.PatternProviderBlockEntity provider
+                && provider.getTargets().contains(federationFace().getOpposite());
+    }
+
+    /**
+     * What touches the Federation face selects the mode: a native AE2 Pattern Provider selects Local, anything else
+     * (Federation Cable, Router, Federation Pattern Provider front, nothing) Federated. Local takes over by releasing a
+     * Federated Claim first, so the owning Lane stops and its return path closes.
+     */
+    private void reconcileMode() {
+        if (binding == null) {
+            return;
+        }
+        if (nativeProviderOnFederationFace()) {
+            if (configuredMode != EndpointMode.LOCAL) {
+                if (claims.state() instanceof ClaimState.Owned owned) {
+                    releaseClaim(owned.ownerIdentity(), owned.epoch());
+                }
+                activateLocal();
+            } else {
+                refreshLocal();
+            }
+        } else if (configuredMode == EndpointMode.LOCAL) {
+            binding.closeLocal();
+            snapshotRuntime();
+            setChanged();
+        }
     }
 
     @Override
@@ -118,6 +160,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         bind(serverLevel);
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         openFederationPort(serverLevel);
+        reconcileMode();
     }
 
     private void bind(ServerLevel serverLevel) {
@@ -221,6 +264,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     }
 
     public ClaimResult claim(ClaimRequest request) {
+        if (nativeProviderOnFederationFace()) {
+            return claims.reject(space.controlnet.ae2federation.processing.claim.ClaimRejection.LOCAL_MODE);
+        }
         var result = claims.compareAndSet(request);
         if (!(result instanceof ClaimResult.Rejected)) {
             setChanged();
@@ -242,7 +288,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     }
 
     public boolean activateFederated() {
-        if (!(claims.state() instanceof ClaimState.Owned)) {
+        if (!(claims.state() instanceof ClaimState.Owned) || nativeProviderOnFederationFace()) {
             return false;
         }
         configuredMode = EndpointMode.FEDERATED;

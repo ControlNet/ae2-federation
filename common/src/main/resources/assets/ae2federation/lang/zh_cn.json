@@ -116,6 +116,7 @@
   "ae2federation.ui.workspace.claim_result.RETAINED": "已保留现有归属",
   "ae2federation.ui.workspace.claim_result.RELEASED": "已解除归属",
   "ae2federation.ui.workspace.claim_result.OWNER_CONFLICT": "此端点已归属另一台供应器",
+  "ae2federation.ui.workspace.claim_result.LOCAL_MODE": "联邦面上贴着原版样板供应器，此端点处于本地模式",
   "ae2federation.ui.workspace.claim_result.STALE_EPOCH": "归属世代已变化，请刷新后重试",
   "ae2federation.ui.workspace.claim_result.WRONG_ENDPOINT": "请求指向其他端点",
   "ae2federation.ui.workspace.claim_result.RELEASE_REJECTED": "归属或世代已变化，释放请求已拒绝",

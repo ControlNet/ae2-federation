@@ -78,7 +78,8 @@ public final class FederationDomainGraphProjection {
     static List<EndpointTargetBinding> endpointEntries(ServerLevel level,
             space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain) {
         return EndpointTargetBinding.entries(level).stream()
-                .filter(binding -> memberOf(federationDomain, binding.subnetNode().getGrid()))
+                .filter(binding -> federationDomain.nodes().contains(
+                        FederationDomainRegistryAccess.nodeId(level, binding.runtime().position())))
                 .sorted(Comparator.comparing(binding -> endpointId(federationDomain.reference(), binding))).toList();
     }
 

@@ -116,6 +116,7 @@
   "ae2federation.ui.workspace.claim_result.RETAINED": "Existing ownership retained",
   "ae2federation.ui.workspace.claim_result.RELEASED": "Ownership released",
   "ae2federation.ui.workspace.claim_result.OWNER_CONFLICT": "Another Provider owns this endpoint",
+  "ae2federation.ui.workspace.claim_result.LOCAL_MODE": "A native Pattern Provider on the Federation face uses this endpoint (Local mode)",
   "ae2federation.ui.workspace.claim_result.STALE_EPOCH": "The claim epoch has changed; refresh before retrying",
   "ae2federation.ui.workspace.claim_result.WRONG_ENDPOINT": "The request refers to a different endpoint",
   "ae2federation.ui.workspace.claim_result.RELEASE_REJECTED": "Ownership or claim epoch changed; release was rejected",

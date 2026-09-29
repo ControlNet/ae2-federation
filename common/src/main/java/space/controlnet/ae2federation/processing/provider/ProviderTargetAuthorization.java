@@ -2,23 +2,12 @@ package space.controlnet.ae2federation.processing.provider;
 
 import appeng.api.AECapabilities;
 import appeng.api.networking.GridHelper;
-import java.util.Set;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.policy.BackendStatus;
-import space.controlnet.ae2federation.policy.PolicyActivationState;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.NativeTargetSeparation;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapability;
 
 public final class ProviderTargetAuthorization {
-    private static final Set<PolicyOperation> REQUIRED_OPERATIONS = Set.of(PolicyOperation.EXECUTE,
-            PolicyOperation.SUPPLY);
-
     private ProviderTargetAuthorization() {
     }
 
@@ -60,25 +49,17 @@ public final class ProviderTargetAuthorization {
             return paused(separated);
         }
         var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid);
-        var targetId = FederationDomainRegistryAccess.confirmedNetworkId(targetGrid);
-        if (sourceId.isEmpty() || targetId.isEmpty()) {
+        if (sourceId.isEmpty()) {
             return paused(ProviderTargetState.IDENTITY_UNSETTLED);
         }
         var overlap = context.domains().observe(request.endpoint(), targetGrid).state(request.endpoint());
         if (overlap != ProviderTargetState.ACTIVE) {
             return paused(overlap);
         }
-        var key = new PolicyKey(sourceId.orElseThrow(), targetId.orElseThrow(), PolicyCapability.PROCESSING);
-        var service = PolicyService.get(level);
-        var configured = service.configured(key);
-        if (configured.isEmpty() || !configured.orElseThrow().rule().operations().containsAll(REQUIRED_OPERATIONS)) {
-            return paused(ProviderTargetState.POLICY_DENIED);
-        }
-        var activation = service.activation(key, new PolicyRuntimeEndpoints(sourceGrid, targetGrid, BackendStatus.READY));
-        if (activation == PolicyActivationState.OFF || activation == PolicyActivationState.UNCONFIGURED) {
-            return paused(ProviderTargetState.POLICY_DENIED);
-        }
-        if (activation != PolicyActivationState.ACTIVE) {
+        // No rule: every Provider whose network is a member of the domain the Endpoint's Federation face joins may use it.
+        var domain = FederationDomainRegistryAccess.get(level)
+                .federationDomainOf(FederationDomainRegistryAccess.nodeId(level, position));
+        if (domain.isEmpty() || !domain.orElseThrow().memberships().containsKey(sourceId.orElseThrow())) {
             return paused(ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED);
         }
         return new ProviderTargetResolution.Authorized(new AuthorizedNativeTarget(level, position,

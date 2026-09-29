@@ -59,6 +59,7 @@ public final class FederationDomainPolicySession {
     private DeviceDomainAvailability deviceDomainAvailability;
     private space.controlnet.ae2federation.processing.claim.EndpointIdentity mappingEndpointSelection;
     private String mappingAcknowledgment = "ready";
+    private boolean mappingAllowed;
     private String overviewText = "";
     private static final long FLOW_INTERVAL_TICKS = 10;
     private static final int MAX_VIA_NODES = 3;
@@ -84,6 +85,8 @@ public final class FederationDomainPolicySession {
         selection = members.size() >= 2 ? PolicyEditorSelection.initial(members) : null;
         var initialState = selection == null ? emptyState : PolicyEditorSessionState.Status.READY;
         state = new PolicyEditorSessionState(initialState, selection != null && entrance.enabled());
+        // Mapping needs no rule pair: a domain may hold one ME network and its Endpoints.
+        mappingAllowed = context != null && entrance.enabled();
         refreshExpectedRevision();
     }
 
@@ -204,11 +207,13 @@ public final class FederationDomainPolicySession {
 
     /** Resolves a direct selection against the live, authorized domain rather than a client list index. */
     public boolean selectTarget(String target) {
-        if (!authorizeAction()) return false;
         var split = target.indexOf(':');
         if (split < 1) return false;
         var group = target.substring(0, split);
         var id = target.substring(split + 1);
+        boolean ruleSelection = group.equals("policy") || group.equals("consumer") || group.equals("provider")
+                || group.equals("capability") || group.equals("endpoint_policy");
+        if (!(ruleSelection ? authorizeAction() : authorizeMappingAction())) return false;
         if (group.equals("endpoint_mapping") || group.equals("endpoint_policy")) {
             return navigateEndpoint(group, id, target);
         } else if (group.equals("policy")) {
@@ -380,7 +385,7 @@ public final class FederationDomainPolicySession {
             }
         }
         root.add("processingProviders", processingProvidersJson());
-        if (pendingRelease != null && state.editingAllowed()) {
+        if (pendingRelease != null && mappingAllowed) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
             release.addProperty("epoch", pendingRelease.epoch().value());
@@ -821,7 +826,7 @@ public final class FederationDomainPolicySession {
     }
 
     public void nextMappingProvider() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             mappingAcknowledgment = "rejected-session";
             return;
         }
@@ -834,7 +839,7 @@ public final class FederationDomainPolicySession {
     }
 
     public void nextMappingSlot() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             mappingAcknowledgment = "rejected-session";
             return;
         }
@@ -845,7 +850,7 @@ public final class FederationDomainPolicySession {
     }
 
     public void nextMappingLane() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             mappingAcknowledgment = "rejected-session";
             return;
         }
@@ -865,7 +870,7 @@ public final class FederationDomainPolicySession {
     }
 
     public void toggleMapping() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             mappingAcknowledgment = "rejected-session";
             return;
         }
@@ -915,7 +920,7 @@ public final class FederationDomainPolicySession {
      * repeated request cannot reverse it. Ownership is checked by the Provider exactly as for the list view.
      */
     public boolean setMapping(String encoded) {
-        if (!authorizeAction()) return false;
+        if (!authorizeMappingAction()) return false;
         var target = MappingWireTarget.parse(encoded).orElse(null);
         var entry = selectedProvider().orElse(null);
         if (target == null || entry == null || entry.controller().isEmpty()) return false;
@@ -938,7 +943,7 @@ public final class FederationDomainPolicySession {
 
     /** Prepares a target-specific confirmation or executes the matching, still-current prepared release. */
     public void releaseEndpoint() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             mappingAcknowledgment = "rejected-session";
             return;
         }
@@ -974,7 +979,7 @@ public final class FederationDomainPolicySession {
     /** A prepared confirmation must disappear when another action changes its binding or authority. */
     private void refreshPreparedRelease() {
         if (pendingRelease == null) return;
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             pendingRelease = null;
             mappingAcknowledgment = "rejected-session";
             return;
@@ -988,7 +993,7 @@ public final class FederationDomainPolicySession {
     }
 
     public void nextEndpoint() {
-        if (!authorizeAction()) {
+        if (!authorizeMappingAction()) {
             return;
         }
         endpointIndex = nextIndex(endpointIndex, currentEndpoints().size());
@@ -1332,6 +1337,25 @@ public final class FederationDomainPolicySession {
         }
         acknowledgmentId = "";
         refreshExpectedRevision();
+    }
+
+    /** Session, distance and domain authority for Provider mapping; it does not depend on a selected rule. */
+    private boolean authorizeMappingAction() {
+        if (!mappingAllowed) {
+            return false;
+        }
+        if (!isStillValid(player) || context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+            mappingAllowed = false;
+            reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
+            return false;
+        }
+        return true;
+    }
+
+    /** Whether a mapping request still matches this session's live domain; no rule revision is involved. */
+    public boolean matchesMappingContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
+        return mappingAllowed && isStillValid(candidate) && context != null && context.equals(requestedContext)
+                && FederationDomainRegistryAccess.get(level).isCurrent(context);
     }
 
     private boolean authorizeAction() {

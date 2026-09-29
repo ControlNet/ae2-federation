@@ -20,7 +20,6 @@ import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
 import space.controlnet.ae2federation.test.processing.ProcessingRegressionEvidence;
@@ -62,9 +61,8 @@ public final class ProcessingRegressionGameTests {
             var fixture = state.federationFixture;
             helper.assertTrue(fixture.initialize(), "Waiting for Federation Provider and Endpoint");
             if (!state.federationConfigured) {
-                helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
-                        PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-                fixture.connectFederationDomain();
+                helper.assertTrue(fixture.connectFederationDomain(),
+                        "The Endpoint must join a domain of the Provider network");
                 fixture.installPattern(List.of(item(Items.COBBLESTONE, 1)),
                         List.of(item(Items.DIAMOND, 4), item(Items.GOLD_INGOT, 2)));
                 state.federationConfigured = true;
@@ -153,9 +151,8 @@ public final class ProcessingRegressionGameTests {
         var fixture = state.federationFixture;
         helper.assertTrue(fixture.initialize(), "Waiting for Federation return context");
         if (!state.federationConfigured) {
-            helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE,
-                    PolicyOperation.SUPPLY)), "Federation Processing policy must activate");
-            fixture.connectFederationDomain();
+            helper.assertTrue(fixture.connectFederationDomain(),
+                    "The Endpoint must join a domain of the Provider network");
             helper.assertTrue(fixture.pushOnce(), "Federation must issue the authentic native return context");
             state.federationConfigured = true;
         }

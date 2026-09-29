@@ -90,8 +90,8 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy A must be accepted");
-                    helper.assertTrue(scene.setPolicy(Target.B, true), "Processing Policy B must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint A must connect to the domain");
+                    helper.assertTrue(scene.setAccess(Target.B, true), "Endpoint B must connect to the domain");
                     scene.installPattern(0);
                     scene.installPattern(1, AEItemKey.of(Items.EMERALD));
                     // Idle Endpoint: mapped and unmapped before any work was sent.
@@ -372,7 +372,7 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     accepted(helper, scene.map(0, Target.A), "Mapping A");
                     scene.provider().getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
@@ -469,7 +469,7 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     accepted(helper, scene.map(0, Target.A), "Mapping A");
                     scene.provider().getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
@@ -497,11 +497,11 @@ public final class ProductionProviderRetentionGameTests {
                         helper.fail("Letting maintenance settle the return binding");
                     }
                     helper.assertTrue(scene.returnAvailable(Target.A), "The return path is bound before the reload");
-                    helper.assertTrue(scene.setPolicy(Target.A, false), "Revoking Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, false), "Endpoint must disconnect from the domain");
                     scene.reloadEndpoint(Target.A, scene.unloadEndpoint(Target.A));
                     waited[0] = 0;
                     phase[0] = 3;
-                    helper.fail("Revoked Policy and reloaded the Endpoint");
+                    helper.fail("Disconnected and reloaded the Endpoint");
                 }
                 case 3 -> {
                     helper.assertTrue(scene.binding(Target.A) != null, "Waiting for the reloaded Endpoint");
@@ -509,18 +509,18 @@ public final class ProductionProviderRetentionGameTests {
                         helper.fail("Letting maintenance run");
                     }
                     helper.assertTrue(!scene.returnAvailable(Target.A),
-                            "Without Policy the return path is not rebound to the Lane");
+                            "A disconnected Endpoint does not rebind the return path to the Lane");
                     helper.assertValueEqual(scene.held(Target.A), 1L, "The product stays in the machine");
                     facts.put("revokedReturnRebound", "false");
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Restoring Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must reconnect to the domain");
                     phase[0] = 4;
-                    helper.fail("Restored Policy");
+                    helper.fail("Reconnected the Endpoint");
                 }
                 case 4 -> {
                     helper.assertValueEqual(scene.finishHeld(Target.A), 1L,
                             "Waiting for the authorized return path to be restored");
                     phase[0] = 5;
-                    helper.fail("Returned after Policy was restored");
+                    helper.fail("Returned after the Endpoint reconnected");
                 }
                 case 5 -> {
                     helper.assertTrue(!scene.cpuBusy(), "Waiting for the native CPU to finish");

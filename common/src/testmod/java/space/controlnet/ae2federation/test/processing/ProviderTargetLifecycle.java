@@ -1,20 +1,11 @@
 package space.controlnet.ae2federation.test.processing;
 
 import appeng.api.networking.GridHelper;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.domain.FederationDomainSourceId;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
@@ -43,7 +34,6 @@ final class ProviderTargetLifecycle implements AutoCloseable {
     private final boolean productionEndpoint;
     private final NativeTargetDomainRegistry domains = new NativeTargetDomainRegistry();
     private final AtomicReference<ProviderTargetRequest> request;
-    private final FederationDomainSourceId federationDomainSource;
     private EndpointTargetBinding endpointBinding;
     private ProviderRuntime runtime;
     private boolean registered;
@@ -72,7 +62,6 @@ final class ProviderTargetLifecycle implements AutoCloseable {
         }
         request = new AtomicReference<>(new ProviderTargetRequest(providerIdentity, endpointIdentity,
                 claimState().epoch(), provider.endpointTargetPosition(), ENDPOINT_SIDE, true));
-        federationDomainSource = new FederationDomainSourceId("task17:" + endpointIdentity.id().value());
     }
 
     boolean initialize() {
@@ -114,6 +103,7 @@ final class ProviderTargetLifecycle implements AutoCloseable {
             provider.register();
             registered = true;
         }
+        maintainFederationDomain();
         var ready = helper.getLevel().getCapability(EndpointTargetCapability.BLOCK,
                 provider.endpointTargetPosition(), ENDPOINT_SIDE) == endpointBinding;
         status = ready ? "ready" : "endpoint-capability-missing";
@@ -122,21 +112,30 @@ final class ProviderTargetLifecycle implements AutoCloseable {
 
     String status() { return status; }
 
-    boolean enablePolicy(Set<PolicyOperation> operations) {
-        var service = PolicyService.get(helper.getLevel());
-        var key = new PolicyKey(sourceNetwork(), targetNetwork(), PolicyCapability.PROCESSING);
-        return service.edit(new PolicyEdit(key, service.revision(key), PolicyRule.enabled(operations)))
-                instanceof PolicyMutationResult.Accepted;
-    }
-
-    void connectFederationDomain() {
-        FederationDomainRegistryAccess.get(helper.getLevel()).upsertDirectBridge(federationDomainSource, sourceNetwork(), targetNetwork());
+    /** TEST-ONLY synthetic Federation link of the Endpoint to the source network; see {@link SyntheticEndpointDomain}. */
+    boolean connectFederationDomain() {
         federationDomainConnected = true;
+        maintainFederationDomain();
+        return federationDomain().isPresent();
     }
 
     void disconnectFederationDomain() {
-        FederationDomainRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(federationDomainSource);
+        SyntheticEndpointDomain.remove(helper.getLevel(), provider.endpointTargetPosition(), productionEndpoint);
         federationDomainConnected = false;
+    }
+
+    /** The domain the Endpoint's node is in, when it also has the source network as a member. */
+    java.util.Optional<space.controlnet.ae2federation.domain.FederationDomainSnapshot> federationDomain() {
+        return FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).flatMap(source ->
+                SyntheticEndpointDomain.domain(helper.getLevel(), provider.endpointTargetPosition(), source));
+    }
+
+    /** A reloaded production Endpoint republishes its own (unconnected) evidence; restore the synthetic link. */
+    private void maintainFederationDomain() {
+        if (federationDomainConnected) {
+            FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).ifPresent(source ->
+                    SyntheticEndpointDomain.ensure(helper.getLevel(), provider.endpointTargetPosition(), source));
+        }
     }
 
     ProviderRuntime runtime() { return runtime; }
@@ -222,14 +221,6 @@ final class ProviderTargetLifecycle implements AutoCloseable {
     private appeng.api.networking.IGrid sourceGrid() { return provider.managedNode().getGrid(); }
 
     private appeng.api.networking.IGrid targetGrid() { return provider.endpointTargetNode().getGrid(); }
-
-    private space.controlnet.ae2federation.identity.NetworkId sourceNetwork() {
-        return FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
-    }
-
-    private space.controlnet.ae2federation.identity.NetworkId targetNetwork() {
-        return FederationDomainRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow();
-    }
 
     @Override
     public void close() {

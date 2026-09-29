@@ -51,6 +51,27 @@ final class FederationDomainRegistryTest {
     }
 
     @Test
+    void membershipFreeNodeResolvesToTheDomainItsFederationPortJoins() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var member = node(1);
+        var endpoint = node(2);
+        registry.upsertNode(evidence(member, Map.of("east",
+                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(endpoint, "west"))), NETWORK_A));
+        registry.upsertNode(new FederationDomainNodeEvidence(endpoint, Map.of("west",
+                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(member, "east")))));
+
+        var domain = registry.federationDomainOf(endpoint).orElseThrow();
+        assertTrue(domain.memberships().containsKey(NETWORK_A));
+        assertFalse(domain.memberships().containsKey(NETWORK_B));
+        assertTrue(registry.federationDomainOf(node(3)).isEmpty());
+
+        registry.upsertNode(new FederationDomainNodeEvidence(endpoint, Map.of()));
+        registry.upsertNode(evidence(member, Map.of(), NETWORK_A));
+        assertFalse(registry.federationDomainOf(endpoint)
+                .map(federationDomain -> federationDomain.memberships().containsKey(NETWORK_A)).orElse(false));
+    }
+
+    @Test
     void redundantAttachmentsDeduplicateNetworkMembershipAndRetainSources() {
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
         var node = node(1);

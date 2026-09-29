@@ -78,15 +78,25 @@ public final class ProcessingRegistration {
                 FederationPatternProviderBlockEntity::federationPort);
         event.registerBlockEntity(FederationPortCapability.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 EndpointBlockEntity::federationPort);
+        // Local input arrives on the Federation face from a native Provider; the runtime gates every face.
         event.registerBlockEntity(AECapabilities.ME_STORAGE, ENDPOINT_BLOCK_ENTITY.get(),
-                (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
-                        : endpointRuntime(endpoint, side).inputStorage(side).orElse(null));
+                (endpoint, side) -> side == null || endpointRuntime(endpoint) == null ? null
+                        : endpointRuntime(endpoint).inputStorage(side).orElse(null));
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).itemReturn(side).orElse(null));
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).fluidReturn(side).orElse(null));
+    }
+
+    private static space.controlnet.ae2federation.processing.endpoint.EndpointRuntime endpointRuntime(
+            EndpointBlockEntity endpoint) {
+        if (!(endpoint.getLevel() instanceof ServerLevel level)) {
+            return null;
+        }
+        var binding = EndpointTargetBinding.findEndpoint(level, endpoint.getBlockPos());
+        return binding == null ? null : binding.runtime();
     }
 
     private static space.controlnet.ae2federation.processing.endpoint.EndpointRuntime endpointRuntime(
