@@ -31,7 +31,8 @@ public final class CableFacePort {
     }
 
     public boolean tick() {
-        if (!dirty) {
+        // A destroyed port's cache is invalid: a neighbour change may mark it dirty before the cable initializes again.
+        if (!dirty || !active) {
             return false;
         }
         dirty = false;
