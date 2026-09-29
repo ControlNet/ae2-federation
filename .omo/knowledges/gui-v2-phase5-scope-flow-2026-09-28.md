@@ -2,11 +2,18 @@
 
 ## Scope toggle (`#graph_scope`)
 
-- "Scope: domain" shows only member networks. "Scope: related" also shows the networks of other domains that share
-  a member network with this one.
-- The server side is `FederationDomainPolicySession.addRelated`. It finds those domains through
-  `registry.federationdomainsFor(member)` and caps them at 24 networks. It writes `relatedNetworks` (id, domain, name)
-  and `relatedRules`, and each rule carries its domain.
+- "Scope: domain" shows only member networks. "Scope: related" also shows the networks of every domain *connected*
+  to this one through shared networks, however far (updated 2026-09-30). Before that it was depth 1: only domains that
+  share a member network directly.
+- The server side is `FederationDomainPolicySession.addRelated`.
+  - It uses `ConnectedDomains.reach(members, current, domainsOf, membersOf)`, a pure breadth-first search (unit test
+    `ConnectedDomainsTest`), so the result is nearest first.
+  - It caps the result at `MAX_RELATED_NETWORKS = 64` networks and writes `relatedTotal`, the uncapped count.
+  - It writes `relatedNetworks` (id, domain, name) and `relatedRules`. Each rule carries its domain.
+  - Domains that are not connected are never shown.
+- Truncation (`FederationTopologyView.updateScopeButton`): when `relatedTotal > related.size()` the caption appends
+  `scope.truncated` ("showing N of M networks" / "已显示 N / 共 M 个网络"), and the tooltip switches to
+  `scope.help_truncated`.
 - Foreign networks are `Network.foreign()`. Their card has class `related-network`, and their `member` is `related_<id>`.
   - They cannot be renamed.
   - A pair that includes one has "Read-only: this pair belongs to domain %s" in its title, and the row's `inDomain`
@@ -49,7 +56,10 @@
 
 - `PairFlowWindowTest` is a unit test.
 - `ui.graph-controls`:
-  - Installs a real second Bridge, which gives a related domain, plus a STORAGE rule.
+  - Installs two real Bridges in a chain, which give a near and a far related domain, each with a STORAGE rule.
+    - The far Bridge's cable sits on the near chest (`cable.east(2)`).
+    - It expects 2 `.related-network`, 4 `.graph-node-member` and 2 `.related-pair`.
+    - This proves the depth-2 domain and its rule reach the canvas.
   - Toggles the scope and checks that the refit brings the related card into view, that the pair is read-only and
     that its switches are disabled.
   - Captures `ui-scope-related`, and writes an `evidenceFor` record with `scope=related-read-only`.

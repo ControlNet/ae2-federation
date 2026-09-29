@@ -65,7 +65,7 @@ public final class FederationDomainPolicySession {
     private static final int MAX_VIA_NODES = 3;
     /** Providers stacked on the processing canvas; more would push the selected one out of reach. */
     private static final int MAX_PROCESSING_PROVIDERS = 6;
-    private static final int MAX_RELATED_NETWORKS = 24;
+    private static final int MAX_RELATED_NETWORKS = 64;
     private String flowText = "";
     private long flowTick;
     /** Networks of other domains that share a member with this one, from the last choices build; read-only here. */
@@ -687,10 +687,6 @@ public final class FederationDomainPolicySession {
         return overviewText;
     }
 
-    /**
-     * Networks and rules of the other domains that share a member network with this one. The workspace shows them
-     * read-only: editing stays with the Router or Bridge of the domain that owns the pair.
-     */
     private static com.google.gson.JsonObject termsJson(space.controlnet.ae2federation.policy.PolicyRule rule) {
         var terms = RuleTerms.of(rule);
         var json = new com.google.gson.JsonObject();
@@ -703,6 +699,12 @@ public final class FederationDomainPolicySession {
         return json;
     }
 
+    /**
+     * Networks and rules of every other domain connected to this one through shared networks, however far (a domain
+     * that shares a network with a connected domain is connected too). The workspace shows them read-only: editing
+     * stays with the Router or Bridge of the domain that owns the pair. At most {@link #MAX_RELATED_NETWORKS} networks
+     * are sent, nearest domains first; {@code relatedTotal} says how many there are.
+     */
     private void addRelated(com.google.gson.JsonObject root) {
         var registry = FederationDomainRegistryAccess.get(level);
         var members = new java.util.HashSet<>(selection.members());
@@ -710,9 +712,14 @@ public final class FederationDomainPolicySession {
         var rulesOut = new com.google.gson.JsonArray();
         root.add("relatedNetworks", networksOut);
         root.add("relatedRules", rulesOut);
-        var domains = new java.util.TreeSet<space.controlnet.ae2federation.domain.FederationDomainId>();
-        members.forEach(member -> domains.addAll(registry.federationdomainsFor(member)));
-        domains.remove(context.federationDomainId());
+        java.util.Comparator<space.controlnet.ae2federation.identity.NetworkId> byId =
+                java.util.Comparator.comparing(network -> network.value().toString());
+        var reach = ConnectedDomains.reach(selection.members(), context.federationDomainId(),
+                network -> registry.federationdomainsFor(network).stream().sorted().toList(),
+                domainId -> registry.federationDomain(domainId).map(domain -> domain.memberships().keySet().stream()
+                        .sorted(byId).toList()).orElse(List.of()));
+        root.addProperty("relatedTotal", reach.networks().size());
+        var domains = new java.util.LinkedHashSet<>(reach.domains());
         var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
         var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
         var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);
@@ -721,7 +728,7 @@ public final class FederationDomainPolicySession {
             var domain = registry.federationDomain(domainId).orElse(null);
             if (domain == null) continue;
             var domainMembers = domain.memberships().keySet();
-            domainMembers.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
+            domainMembers.stream().sorted(byId)
                     .filter(network -> !members.contains(network) && seen.size() < MAX_RELATED_NETWORKS)
                     .filter(seen::add).forEach(network -> {
                         var row = new com.google.gson.JsonObject();

@@ -286,23 +286,25 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(2).screenshot("ui-policy-runtime-energy-source-missing")
                 .click("#tab_overview").frames(2)
                 .screenshot("ui-graph-controls")
-                .server("add a real Bridge domain that shares the outer network", TaskThirtyThreeWorldFixture::installRelatedDomain)
-                .waitUntilServer("the related domain settles", TaskThirtyThreeWorldFixture::relatedDomainReady)
-                .server("configure a rule inside the related domain", TaskThirtyThreeWorldFixture::installRelatedRule)
+                .server("add a real Bridge domain that shares the outer network, and one more beyond it",
+                        TaskThirtyThreeWorldFixture::installRelatedDomain)
+                .waitUntilServer("the related domains settle", TaskThirtyThreeWorldFixture::relatedDomainReady)
+                .server("configure a rule inside each related domain", TaskThirtyThreeWorldFixture::installRelatedRule)
                 .serverGet("record the related network", "related.id", TaskThirtyThreeWorldFixture::relatedNetwork)
+                .serverGet("record the far related network", "related.far.id", TaskThirtyThreeWorldFixture::relatedFarNetwork)
                 .waitForTextContains("#scope_caption", "this domain")
                 .check("the domain segment is selected", context -> context.all("#graph_scope_domain.selected").size() == 1)
                 .check("the domain scope shows only members", context -> context.all(".graph-node-member").size() == 2
                         && context.all(".related-network").isEmpty())
                 .click("#graph_scope")
-                .waitUntil("all related shows the related network read-only", context ->
-                        context.all(".related-network").size() == 1 && context.all(".graph-node-member").size() == 3)
-                .waitUntil("the graph refits so the related card is in view", context -> {
+                .waitUntil("all related shows both related networks read-only, however far", context ->
+                        context.all(".related-network").size() == 2 && context.all(".graph-node-member").size() == 4)
+                .waitUntil("the graph refits so the related cards are in view", context -> {
                     var viewport = context.el("#domain_graph").bounds();
-                    var card = context.el(".related-network").bounds();
-                    return card.x() >= viewport.x() && card.y() >= viewport.y()
-                            && card.x() + card.width() <= viewport.x() + viewport.width()
-                            && card.y() + card.height() <= viewport.y() + viewport.height();
+                    return context.all(".related-network").stream().map(element -> element.bounds()).allMatch(card ->
+                            card.x() >= viewport.x() && card.y() >= viewport.y()
+                                    && card.x() + card.width() <= viewport.x() + viewport.width()
+                                    && card.y() + card.height() <= viewport.y() + viewport.height());
                 })
                 .step("select the related network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("related.id")))
@@ -325,20 +327,26 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
                 .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
-                .checkTextContains("#scope_caption", "with related domains (read-only)")
-                .check("the related domain's link is drawn as read-only", context -> context.all(".related-pair").size() == 1)
+                .checkTextContains("#scope_caption", "with connected domains (read-only)")
+                .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
+                .check("both related domains' links are drawn as read-only, the far one too", context ->
+                        context.all(".related-pair").size() == 2)
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
                     // A separate record: the case record above already holds the accepted-edit status.
                     context.attach("evidenceFor", "ui.graph-controls");
                     context.attach("scope", "related-read-only");
                     context.attach("relatedNetwork", context.get("related.id"));
+                    context.attach("farRelatedNetwork", context.get("related.far.id"));
                 })
                 .click("#graph_scope_domain")
                 .waitUntil("the domain scope hides the related network again", context -> context.all(".related-network").isEmpty())
                 .server("remove the related domain", TaskThirtyThreeWorldFixture::removeRelatedDomain)
-                .checkServer("the related domain's rule is gone with it", context -> space.controlnet.ae2federation.policy.PolicyService
-                        .get(context.level()).configured(context.get("related.rule")).isEmpty())
+                .checkServer("the related domains' rules are gone with them", context -> {
+                    var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+                    return policies.configured(context.get("related.rule")).isEmpty()
+                            && policies.configured(context.get("related.far.rule")).isEmpty();
+                })
                 .check("the legend is shown in the canvas corner", context -> context.el("#graph_legend").isVisible()
                         && context.el("#graph_legend").text().contains("A▸B = A uses B's capability"))
                 .click("#graph_legend_toggle")

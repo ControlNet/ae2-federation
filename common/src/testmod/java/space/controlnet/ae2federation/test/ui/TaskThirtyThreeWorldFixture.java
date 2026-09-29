@@ -128,50 +128,84 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     /**
-     * A second, real ME Federation Bridge from the Router's outer network to a fresh ME Chest network. Its domain
-     * shares the outer network with the Router's domain, so it is a related domain there.
+     * Two real ME Federation Bridges in a chain. The first goes from the Router's outer network to a fresh ME Chest
+     * network; its domain shares the outer network with the Router's domain, so it is a related domain there. The
+     * second goes from that chest's network to another chest; its domain shares nothing with the Router's domain and
+     * is connected only through the first, two domains away.
      */
     static void installRelatedDomain(ServerContext context) {
         var cable = TaskFifteenWorldFixture.routerPosition(context).north().east();
         context.put("related.cable", cable);
+        installBridgeToChest(context, cable, "Related domain");
+        var farCable = cable.east(2);
+        context.put("related.far.cable", farCable);
+        installBridgeToChest(context, farCable, "Far related domain");
+    }
+
+    /** A cable at {@code cable}, a Bridge on its EAST face and an ME Chest in front of the Bridge. */
+    private static void installBridgeToChest(ServerContext context, BlockPos cable, String what) {
+        require(context.level().isEmptyBlock(cable) && context.level().isEmptyBlock(cable.east()), what + " needs free space");
         require(appeng.api.parts.PartHelper.setPart(context.level(), cable, null, null,
                 appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.BLUE)) != null,
-                "Related domain cable must be placed");
+                what + " cable must be placed");
         require(appeng.api.parts.PartHelper.setPart(context.level(), cable, Direction.EAST, null,
                 space.controlnet.ae2federation.bridge.BridgeRegistration.BRIDGE.get()) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart,
-                "Related domain Bridge must be placed");
+                what + " Bridge must be placed");
         context.level().setBlockAndUpdate(cable.east(), appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState());
     }
 
     static boolean relatedDomainReady(ServerContext context) {
-        BlockPos cable = context.get("related.cable");
-        var host = appeng.api.parts.PartHelper.getPartHost(context.level(), cable);
-        if (!(host != null && host.getPart(Direction.EAST) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart bridge)
-                || bridge.operationalReason() != space.controlnet.ae2federation.bridge.BridgeOperationalReason.VALID) return false;
-        var candidate = bridge.membershipCandidate().orElse(null);
-        if (candidate == null) return false;
-        var inner = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
-        var outer = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
-        if (inner == null || outer == null || inner.equals(outer)) return false;
-        var registry = FederationDomainRegistryAccess.get(context.level());
-        var related = registry.federationdomainsFor(outer).stream().map(registry::federationDomain)
-                .flatMap(java.util.Optional::stream).anyMatch(domain -> domain.memberships().containsKey(inner));
-        if (!related) return false;
-        context.put("related.shared", inner);
-        context.put("related.network", outer);
+        var near = bridgedPair(context, context.get("related.cable"));
+        var far = bridgedPair(context, context.get("related.far.cable"));
+        // The far Bridge's cable sits on the near chest, so its inner network is the near chest's network.
+        if (near == null || far == null || !far[0].equals(near[1])) return false;
+        context.put("related.shared", near[0]);
+        context.put("related.network", near[1]);
+        context.put("related.far.network", far[1]);
         return true;
     }
 
-    /** The chest network uses the shared network's storage: a rule of the related domain only. */
+    /** The inner and outer network of the VALID Bridge on {@code cable}'s EAST face, once its domain holds both. */
+    private static space.controlnet.ae2federation.identity.NetworkId[] bridgedPair(ServerContext context, BlockPos cable) {
+        var host = appeng.api.parts.PartHelper.getPartHost(context.level(), cable);
+        if (!(host != null && host.getPart(Direction.EAST) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart bridge)
+                || bridge.operationalReason() != space.controlnet.ae2federation.bridge.BridgeOperationalReason.VALID) return null;
+        var candidate = bridge.membershipCandidate().orElse(null);
+        if (candidate == null) return null;
+        var inner = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+        var outer = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+        if (inner == null || outer == null || inner.equals(outer)) return null;
+        var registry = FederationDomainRegistryAccess.get(context.level());
+        var related = registry.federationdomainsFor(outer).stream().map(registry::federationDomain)
+                .flatMap(java.util.Optional::stream).anyMatch(domain -> domain.memberships().containsKey(inner));
+        return related ? new space.controlnet.ae2federation.identity.NetworkId[] {inner, outer} : null;
+    }
+
+    /**
+     * The chest network uses the shared network's storage: a rule of the related domain only. The far chest uses the
+     * near chest's storage: a rule of the far domain, shown only because related domains are followed however far.
+     */
     static void installRelatedRule(ServerContext context) {
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(context.get("related.network"), context.get("related.shared"),
+        context.put("related.rule", storageRule(context, context.get("related.network"), context.get("related.shared"),
+                "Related domain rule must be accepted"));
+        context.put("related.far.rule", storageRule(context, context.get("related.far.network"), context.get("related.network"),
+                "Far related domain rule must be accepted"));
+    }
+
+    private static space.controlnet.ae2federation.policy.PolicyKey storageRule(ServerContext context,
+            space.controlnet.ae2federation.identity.NetworkId consumer, space.controlnet.ae2federation.identity.NetworkId provider,
+            String what) {
+        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, provider,
                 space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
-        context.put("related.rule", key);
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
         var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
                 space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()));
-        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
-                "Related domain rule must be accepted");
+        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted, what);
+        return key;
+    }
+
+    static String relatedFarNetwork(ServerContext context) {
+        return context.<space.controlnet.ae2federation.identity.NetworkId>get("related.far.network").value().toString();
     }
 
     static String relatedNetwork(ServerContext context) {
@@ -179,9 +213,10 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     static void removeRelatedDomain(ServerContext context) {
-        space.controlnet.ae2federation.policy.PolicyKey rule = context.get("related.rule");
-        if (rule != null) {
-            // The rule belongs to the related domain only; later cases must not see it.
+        for (var name : List.of("related.rule", "related.far.rule")) {
+            space.controlnet.ae2federation.policy.PolicyKey rule = context.get(name);
+            if (rule == null) continue;
+            // The rules belong to the related domains only; later cases must not see them.
             var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
             if (policies.configured(rule).isPresent()) {
                 require(policies.delete(new space.controlnet.ae2federation.policy.PolicyDelete(rule, policies.revision(rule)))
@@ -189,10 +224,12 @@ final class TaskThirtyThreeWorldFixture {
                         "Related domain rule must be removed");
             }
         }
-        BlockPos cable = context.get("related.cable");
-        if (cable == null) return;
-        context.level().setBlockAndUpdate(cable.east(), Blocks.AIR.defaultBlockState());
-        context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+        for (var name : List.of("related.far.cable", "related.cable")) {
+            BlockPos cable = context.get(name);
+            if (cable == null) continue;
+            context.level().setBlockAndUpdate(cable.east(), Blocks.AIR.defaultBlockState());
+            context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+        }
     }
 
     /**

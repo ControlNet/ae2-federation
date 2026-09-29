@@ -96,8 +96,12 @@ final class FederationTopologyView {
     private long highlightedUntil;
 
     private final List<Network> networks = new ArrayList<>();
-    /** Networks of related domains (sharing a member with this one); shown read-only in the "all related" scope. */
+    /**
+     * Networks of the domains connected to this one through shared networks, however far; shown read-only in the "all
+     * related" scope. The server sends at most a cap of them, nearest first, and says how many there are.
+     */
     private final List<Network> related = new ArrayList<>();
+    private int relatedTotal;
     private final Map<String, JsonObject> relatedRules = new HashMap<>();
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
@@ -338,6 +342,7 @@ final class FederationTopologyView {
             }
         }
         related.clear();
+        relatedTotal = root.has("relatedTotal") ? root.get("relatedTotal").getAsInt() : 0;
         if (root.has("relatedNetworks")) {
             var index = networks.size();
             for (var value : root.getAsJsonArray("relatedNetworks")) {
@@ -457,8 +462,12 @@ final class FederationTopologyView {
     }
 
     private void updateScopeButton() {
-        scopeCaption.setText(Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain")));
-        scopeButton.style(style -> style.tooltips(tr("scope.help", related.size())));
+        var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
+        boolean truncated = relatedTotal > related.size();
+        if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
+        scopeCaption.setText(caption);
+        scopeButton.style(style -> style.tooltips(truncated
+                ? tr("scope.help_truncated", related.size(), relatedTotal) : tr("scope.help", related.size())));
         scopeButton.removeClass("selected");
         domainScopeButton.removeClass("selected");
         (showRelated ? scopeButton : domainScopeButton).addClass("selected");
