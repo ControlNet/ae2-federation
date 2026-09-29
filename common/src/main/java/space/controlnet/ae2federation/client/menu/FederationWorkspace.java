@@ -233,8 +233,14 @@ final class FederationWorkspace {
         var root = JsonParser.parseString(encoded).getAsJsonObject();
         endpointBrowser.accept(root);
         if (!entranceApplied) {
+            boolean fromProvider = root.has("returnProvider") && root.get("returnProvider").getAsBoolean();
+            // Opening a Provider shows its wires; other entrances keep the view the player last chose.
+            if (fromProvider && processingList) {
+                processingList = false;
+                updateProcessingView();
+            }
             if (root.has("initialPage")) show(root.get("initialPage").getAsString());
-            element("return_provider", Button.class).setDisplay(root.has("returnProvider") && root.get("returnProvider").getAsBoolean());
+            element("return_provider", Button.class).setDisplay(fromProvider);
             entranceApplied = true;
         }
         boolean bridgeUnavailable = root.has("bridgeUnavailable") && root.get("bridgeUnavailable").getAsBoolean();

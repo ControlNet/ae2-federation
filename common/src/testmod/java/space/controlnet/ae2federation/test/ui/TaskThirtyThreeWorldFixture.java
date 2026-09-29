@@ -86,7 +86,28 @@ final class TaskThirtyThreeWorldFixture {
         require(session.context().isPresent(), "Device entrance requires a unique domain; network="
                 + FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid())
                 + "; domains=" + FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains());
-        space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(context.player(), state(context).hostPosition());
+        rightClickProvider(context, false);
+    }
+
+    /** Uses the Provider block with an empty hand, as a player does; {@code sneaking} is a sneak-use. */
+    static void rightClickProvider(ServerContext context, boolean sneaking) {
+        var player = context.player();
+        var position = state(context).hostPosition();
+        require(player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty(), "Provider use needs empty hands");
+        player.setShiftKeyDown(sneaking);
+        try {
+            var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(position),
+                    net.minecraft.core.Direction.UP, position, false);
+            var result = player.gameMode.useItemOn(player, context.level(), player.getMainHandItem(),
+                    net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+            require(result.consumesAction(), "Provider use was not consumed: " + result);
+        } finally {
+            player.setShiftKeyDown(false);
+        }
+    }
+
+    static void sneakRightClickProvider(ServerContext context) {
+        rightClickProvider(context, true);
     }
 
     static boolean mappingAccepted(ServerContext context) {

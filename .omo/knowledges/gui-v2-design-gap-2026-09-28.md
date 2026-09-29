@@ -219,3 +219,14 @@ A side-by-side review after the window grew found the layout, not the features, 
 - The editing Provider is shown by its lit ring and the header's `selected` class, not a " · editing" suffix.
 - Flow dots flicker frame to frame (dots in the label box are skipped), so evidence records the count seen inside the
   same `waitUntil` that observed it.
+
+## Phase 13: Provider right-click opens its wires (2026-09-29)
+
+- `FederationPatternProviderBlock.useWithoutItem`: a plain empty-hand use opens `FederationDomainPolicyMenu.openDevice`,
+  whose `forDevice` session already selects this Provider (`mappingProviderIndex`) and starts on the mapping page. A
+  sneak-use, or a use while the workspace cannot open (a session already pending), opens AE2's own Pattern Provider
+  screen, which players still need to insert patterns. **Back to provider** and AE2's "Federation mapping" button remain.
+- The wires/list choice is a static preference; a Provider entrance resets it to wires in
+  `FederationWorkspace.acceptChoices`, while Router and Bridge entrances keep the last choice.
+- Test: `TaskThirtyThreeWorldFixture.rightClickProvider` drives `player.gameMode.useItemOn` with empty hands and
+  `setShiftKeyDown`, so the real interaction path (including the sneak branch) is exercised, not `openDevice` directly.

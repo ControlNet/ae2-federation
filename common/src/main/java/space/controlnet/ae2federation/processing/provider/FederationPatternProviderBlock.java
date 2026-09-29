@@ -33,6 +33,10 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
         return getOrientationStrategy().setFacing(defaultBlockState(), context.getClickedFace().getOpposite());
     }
 
+    /**
+     * Opens the domain workspace on its processing wires with this Provider selected; a sneak-use opens AE2's own
+     * Provider screen for its patterns, as does a use while the workspace cannot open.
+     */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos position, Player player,
             BlockHitResult hit) {
@@ -41,7 +45,9 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
             return InteractionResult.PASS;
         }
         if (!level.isClientSide()) {
-            provider.openMenu(player, MenuLocators.forBlockEntity(provider));
+            boolean workspace = !player.isShiftKeyDown() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                    && space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(serverPlayer, position);
+            if (!workspace) provider.openMenu(player, MenuLocators.forBlockEntity(provider));
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }

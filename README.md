@@ -39,7 +39,7 @@ Version **0.0.1** is an early release with no survival crafting recipes; try the
 3. Right-click the Router or Bridge, select the source and target networks, and enable the sharing permissions you need. Permissions apply in one direction; configure the reverse direction separately if needed.
 4. Use your normal ME terminal to access the storage and crafting you enabled.
 
-For remote processing, add an **ME Federation Pattern Provider** to the source network and an **ME Federation Processing Endpoint** beside the target machines. Connect their Federation faces to the Federation network, insert encoded processing patterns into the Provider, then map them to Endpoints in the Router or Bridge screen and enable processing permissions.
+For remote processing, add an **ME Federation Pattern Provider** to the source network and an **ME Federation Processing Endpoint** beside the target machines. Connect their Federation faces to the Federation network, insert encoded processing patterns into the Provider, then map them to Endpoints and enable processing permissions. Right-clicking the Provider opens its domain's Processing wires with that Provider selected; sneak-right-click opens AE2's own Pattern Provider screen for its patterns. The Router and Bridge screens offer the same mapping.
 
 ## Feedback
 

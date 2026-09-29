@@ -138,10 +138,20 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#domain_title").frames(3)
                 .screenshot("ui-generic-patterns")
                 .closeScreen()
-                .server("open Provider mapping entrance", TaskThirtyThreeWorldFixture::openProviderMapping)
+                .server("sneak-right-click the Provider block", TaskThirtyThreeWorldFixture::sneakRightClickProvider)
+                .awaitScreen(appeng.client.gui.implementations.PatternProviderScreen.class)
+                .screenshot("ui-provider-sneak-native")
+                .closeScreen()
+                .serverGet("read the Provider's position", "task33.providerAt", TaskThirtyThreeWorldFixture::providerPositionQuery)
+                .server("right-click the Provider block", TaskThirtyThreeWorldFixture::openProviderMapping)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
                 .check("device entrance selects mapping", context -> context.el("#page_mapping").isVisible())
+                .waitUntil("right-click opens the wires view editing this Provider", context ->
+                        context.el("#processing_graph").isVisible()
+                        && context.all(".processing-provider.selected .processing-provider-text").stream()
+                                .anyMatch(header -> header.text().startsWith(context.<String>get("task33.providerAt") + " ")))
+                .screenshot("ui-provider-right-click")
                 .hover("#return_provider")
                 .step("press Provider return navigation", context -> {
                     var bounds = context.el("#return_provider").bounds();
