@@ -8,6 +8,8 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.LongSupplier;
 
 public final class StorageSubscriptionService implements AutoCloseable {
     private static final int SNAPSHOT_RACE_LIMIT = 256;
@@ -18,6 +20,17 @@ public final class StorageSubscriptionService implements AutoCloseable {
             deliveriesByRelationship = new HashMap<>();
     private int listenerRegistrations;
     private int listenerRemovals;
+    private final LongSupplier clock;
+    /**
+     * Sources whose subscription failed while starting (a source with more keys than discovery retains), with the tick
+     * it failed in. Starting enumerates the whole source, so a failed start is retried by the next tick's reconcile
+     * rather than by every reconcile of the same tick.
+     */
+    private final Map<SourceSubscriptionKey, FailedStart> failedStarts = new HashMap<>();
+
+    public StorageSubscriptionService(LongSupplier clock) {
+        this.clock = Objects.requireNonNull(clock);
+    }
 
     public void reconcile(List<SourceSubscriptionPlan> plans) {
         var desired = new LinkedHashMap<SourceSubscriptionKey, SourceSubscriptionPlan>();
@@ -29,16 +42,32 @@ public final class StorageSubscriptionService implements AutoCloseable {
         List.copyOf(bindings.entrySet()).stream()
                 .filter(entry -> !matches(entry.getValue(), desired.get(entry.getKey())))
                 .forEach(entry -> remove(entry.getKey()));
+        var now = clock.getAsLong();
+        failedStarts.entrySet().removeIf(entry -> entry.getValue().tick() != now
+                || !entry.getValue().matches(desired.get(entry.getKey())));
         desired.forEach((key, plan) -> {
             var binding = bindings.get(key);
             if (binding == null) {
+                if (failedStarts.containsKey(key)) {
+                    return;
+                }
                 binding = new SourceBinding(plan);
                 bindings.put(key, binding);
                 binding.start();
+                if (bindings.get(key) != binding) {
+                    failedStarts.put(key, new FailedStart(plan.source(), plan.nativeStorageService(), now));
+                }
             } else {
                 binding.updateTargets(plan.targets());
             }
         });
+    }
+
+    private record FailedStart(appeng.api.storage.MEStorage source,
+            appeng.api.networking.storage.IStorageService nativeStorageService, long tick) {
+        private boolean matches(SourceSubscriptionPlan plan) {
+            return plan != null && plan.source() == source && plan.nativeStorageService() == nativeStorageService;
+        }
     }
 
     public int activeListenerCount() {
@@ -98,6 +127,7 @@ public final class StorageSubscriptionService implements AutoCloseable {
 
     @Override
     public void close() {
+        failedStarts.clear();
         List.copyOf(bindings.keySet()).forEach(this::remove);
     }
 

@@ -25,13 +25,14 @@ public final class StorageMountService implements AutoCloseable {
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final StorageFederationDomainObserver federationDomains;
     private final StorageDependencyIndex dependencies;
-    private final StorageSubscriptionService subscriptions = new StorageSubscriptionService();
+    private final StorageSubscriptionService subscriptions;
     private final StorageSubscriptionPlanner subscriptionPlanner;
     private final LevelObservabilityService observability;
     private int removedProviderCount;
     private long sourceValidations;
 
     private StorageMountService(ServerLevel level) {
+        subscriptions = new StorageSubscriptionService(level::getGameTime);
         federationDomains = new StorageFederationDomainObserver(level);
         dependencies = new StorageDependencyIndex(level, federationDomains, provenance);
         subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
@@ -142,8 +143,10 @@ public final class StorageMountService implements AutoCloseable {
     public void reconcileAll() {
         dependencies.refresh();
         var desired = dependencies.relationships();
+        var desiredPolicies = new java.util.HashSet<PolicyKey>();
+        desired.keySet().forEach(effective -> desiredPolicies.add(effective.policyKey()));
         List.copyOf(mounts.keySet()).stream()
-                .filter(key -> desired.keySet().stream().noneMatch(effective -> effective.policyKey().equals(key)))
+                .filter(key -> !desiredPolicies.contains(key))
                 .forEach(this::removeMount);
         desired.values().forEach(this::reconcileEffective);
         subscriptionPlanner.reconcile(mounts, mountGenerations);

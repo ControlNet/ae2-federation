@@ -26,5 +26,10 @@ interface StorageProjectionAuthorization {
     @FunctionalInterface
     interface ResourceAuthorization {
         boolean permits(PolicyOperation operation, AEKey key);
+
+        /** Whether {@link #permits} holds for every key of {@code operation}. */
+        default boolean permitsAll(PolicyOperation operation) {
+            return false;
+        }
     }
 }

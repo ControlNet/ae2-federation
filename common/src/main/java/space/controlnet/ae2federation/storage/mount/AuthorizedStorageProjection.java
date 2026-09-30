@@ -52,9 +52,14 @@ final class AuthorizedStorageProjection implements
     @Override
     public void getAvailableStacks(KeyCounter output) {
         // Source validity and relationship currency are evaluated once per enumeration; only the Policy resource
-        // filter runs per key. Quantities come straight from the native delegate.
+        // filter runs per key, and not at all when it allows every key. Quantities come straight from the native
+        // delegate.
         var ready = authorization.readyAuthorization();
         if (ready == null) {
+            return;
+        }
+        if (ready.permitsAll(PolicyOperation.VIEW)) {
+            delegate.getAvailableStacks(output);
             return;
         }
         var available = delegate.getAvailableStacks();

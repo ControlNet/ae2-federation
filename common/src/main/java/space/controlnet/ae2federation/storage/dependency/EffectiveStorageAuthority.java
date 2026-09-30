@@ -60,6 +60,12 @@ public final class EffectiveStorageAuthority {
         return filter != null && permits(filter, resource);
     }
 
+    /** Whether {@code operation} is permitted for every resource, so a caller may skip the per-resource check. */
+    public boolean permitsAll(PolicyOperation operation) {
+        var filter = filters.get(operation);
+        return filter != null && filter.mode() == PolicyFilterMode.ALL;
+    }
+
     public EffectiveStorageAuthority intersect(EffectiveStorageAuthority other) {
         var result = new EnumMap<PolicyOperation, PolicyFilter>(PolicyOperation.class);
         filters.forEach((operation, filter) -> {

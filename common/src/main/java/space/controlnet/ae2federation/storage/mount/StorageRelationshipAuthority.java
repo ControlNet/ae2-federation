@@ -48,7 +48,18 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
             return null;
         }
         var authority = candidate.authority();
-        return (operation, key) -> authority.permits(operation, new PolicyResource(key.getType().getId(), key.getId()));
+        return new ResourceAuthorization() {
+            @Override
+            public boolean permits(PolicyOperation operation, AEKey key) {
+                return authority.permitsAll(operation)
+                        || authority.permits(operation, new PolicyResource(key.getType().getId(), key.getId()));
+            }
+
+            @Override
+            public boolean permitsAll(PolicyOperation operation) {
+                return authority.permitsAll(operation);
+            }
+        };
     }
 
     @Override
