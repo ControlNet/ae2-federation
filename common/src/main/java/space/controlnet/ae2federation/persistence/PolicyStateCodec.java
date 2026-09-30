@@ -46,6 +46,8 @@ final class PolicyStateCodec {
         var highWatermark = new PolicyRevision(tag.getLong("highWatermark"));
         var entries = new HashMap<PolicyKey, PolicyRecord>();
         for (var raw : tag.getList("entries", Tag.TAG_COMPOUND)) {
+            // A rule of the removed Processing capability is dropped; Endpoints no longer need one.
+            if (PolicyCapability.persisted(((CompoundTag) raw).getString("capability")).isEmpty()) continue;
             var record = loadRecord((CompoundTag) raw, highWatermark);
             if (entries.put(record.key(), record) != null) {
                 throw new IllegalArgumentException("Duplicate persisted policy key");
@@ -85,7 +87,7 @@ final class PolicyStateCodec {
             throw new IllegalArgumentException("Malformed persisted policy identity or revision");
         }
         var key = new PolicyKey(new NetworkId(tag.getUUID("consumer")), new NetworkId(tag.getUUID("provider")),
-                PolicyCapability.valueOf(tag.getString("capability")));
+                PolicyCapability.persisted(tag.getString("capability")).orElseThrow());
         var revision = new PolicyRevision(tag.getLong("revision"));
         if (revision.compareTo(highWatermark) > 0) {
             throw new IllegalArgumentException("Persisted policy revision exceeds its high watermark");

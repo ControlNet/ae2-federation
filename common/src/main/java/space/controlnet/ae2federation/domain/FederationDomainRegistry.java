@@ -81,6 +81,11 @@ public final class FederationDomainRegistry {
         return Optional.ofNullable(federationDomains.get(federationDomainId));
     }
 
+    /** The domain that contains a node, e.g. a Processing Endpoint that joins through its Federation face only. */
+    public Optional<FederationDomainSnapshot> federationDomainOf(FederationDomainNodeId nodeId) {
+        return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
+    }
+
     public FederationDomainRegistrySnapshot snapshot() {
         var copiedIndex = new HashMap<NetworkId, Set<FederationDomainId>>();
         networkIndex.forEach((network, indexedFederationDomains) -> copiedIndex.put(network, Set.copyOf(indexedFederationDomains)));

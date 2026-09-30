@@ -12,7 +12,6 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
-import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration;
@@ -86,9 +85,8 @@ public final class EndpointModeGameTests {
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.initialize(), "Waiting for production Provider and Endpoint runtime");
             if (saved[0] == null) {
-                helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
-                        "Federated mode requires Processing Policy");
-                fixture.connectFederationDomain();
+                helper.assertTrue(fixture.connectFederationDomain(),
+                        "The Endpoint must join a domain of the Provider network");
                 helper.assertTrue(fixture.pushOnce(), "Authorized Claim must accept federated native input");
                 helper.assertValueEqual(fixture.state(), ProviderTargetState.ACTIVE, "Federated target must be active");
                 helper.assertTrue(fixture.endpointBinding().runtime().mode().orElseThrow()
@@ -161,8 +159,9 @@ public final class EndpointModeGameTests {
             helper.assertTrue(fixture.bindLocal(), "Local return owner must bind");
             var facts = new LinkedHashMap<String, String>();
             for (var face : EndpointModeFixtures.LOGISTICS_FACES) {
+                // Local input enters only through the Federation face; the logistics faces carry the subnet and returns.
                 helper.assertTrue(fixture.exposedNode(face) == fixture.endpointNode()
-                        && fixture.storageCapability(face) != null
+                        && fixture.storageCapability(face) == null
                         && fixture.itemCapability(face) != null
                         && fixture.fluidCapability(face) != null, "Every logistics face must expose typed native paths");
                 helper.assertTrue(fixture.itemCapability(face).insertItem(0,
@@ -171,12 +170,13 @@ public final class EndpointModeGameTests {
                 helper.assertValueEqual(fixture.fluidCapability(face).fill(new FluidStack(Fluids.WATER, 125),
                         IFluidHandler.FluidAction.EXECUTE), 125, "Fluid return must accept on every face");
                 fixture.clearReturn(fixture.provider());
-                facts.put("face." + face.getSerializedName(), "node-storage-item-fluid");
+                facts.put("face." + face.getSerializedName(), "node-item-fluid");
             }
-            var federation = EndpointBlockEntity.FEDERATION_FACE;
-            helper.assertTrue(fixture.exposedNode(federation) == null && fixture.storageCapability(federation) == null
+            var federation = fixture.endpoint().federationFace();
+            helper.assertTrue(fixture.exposedNode(federation) == null
+                    && fixture.storageCapability(federation) == fixture.endpointNode().getGrid().getStorageService().getInventory()
                     && fixture.itemCapability(federation) == null && fixture.fluidCapability(federation) == null,
-                    "Federation face must expose no native logistics capability");
+                    "Federation face must expose only the Local input: no node and no return path");
             facts.put("logisticsFaces", "5");
             facts.put("federationFaceExcluded", "true");
             facts.put("itemAdapter", "GenericStackItemStorage");

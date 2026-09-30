@@ -18,11 +18,11 @@ public final class TaskFifteenRouterScenario implements UIScenario {
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
                 .checkText("#entrance_value", "Opened from ME Federation Router")
-                .checkTextContains("#members_value", "2 members")
-                .click("#policy_toggle")
+                .checkTextContains("#members_value", "2 networks · ")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
-                .waitForTextContains("#ack_status", "Server accepted revision")
+                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
                 .server("observe production Router mutation", context ->
                         TaskFifteenWorldFixture.observe(context, "ACCEPTED"))
                 .step("record Router policy outcome", context -> TaskFifteenScenarioSupport.attachPolicy(context, "ui.router"))

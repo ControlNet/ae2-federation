@@ -6,12 +6,7 @@ import appeng.api.networking.GridHelper;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import java.util.Objects;
-import java.util.Set;
 import net.minecraft.gametest.framework.GameTestHelper;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyDelete;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.claim.EndpointClaimAuthority;
@@ -82,11 +77,12 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
 
     public String status() { return lifecycle.status(); }
 
-    public boolean enablePolicy(Set<PolicyOperation> operations) {
-        return lifecycle.enablePolicy(operations);
-    }
+    /** TEST-ONLY synthetic link of the Endpoint's Federation face to a domain of the source network; see the lifecycle. */
+    public boolean connectFederationDomain() { return lifecycle.connectFederationDomain(); }
 
-    public void connectFederationDomain() { lifecycle.connectFederationDomain(); }
+    public java.util.Optional<space.controlnet.ae2federation.domain.FederationDomainSnapshot> federationDomain() {
+        return lifecycle.federationDomain();
+    }
 
     public void disconnectFederationDomain() { lifecycle.disconnectFederationDomain(); }
 
@@ -103,15 +99,6 @@ public final class ProviderTargetRuntimeFixtures implements AutoCloseable {
             GridHelper.createConnection(target, node);
         }
         return true;
-    }
-
-    public boolean deletePolicy() {
-        var service = PolicyService.get(provider.helper().getLevel());
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(
-                space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
-                space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(targetGrid()).orElseThrow(),
-                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
-        return service.delete(new PolicyDelete(key, service.revision(key))) instanceof PolicyMutationResult.Accepted;
     }
 
     public boolean push() { return provider.push(0, 0); }

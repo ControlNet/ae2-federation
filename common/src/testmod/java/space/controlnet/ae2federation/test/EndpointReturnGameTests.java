@@ -19,29 +19,63 @@ public final class EndpointReturnGameTests {
     private EndpointReturnGameTests() {
     }
 
+    /**
+     * Only the native Provider on the Federation face is a Local owner; another one on a subnet face is not. With the
+     * Federation-face Provider turned away there is no sink: a return accepts nothing and leaves both Providers' return
+     * inventories untouched. Turned back, Local returns take only what the native inventory accepts.
+     */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 240, required = true, manualOnly = true)
     public static void endpointReturnBackpressure(GameTestHelper helper) {
         var fixture = new EndpointModeFixtures(helper, true);
+        var phase = new int[1];
+        var subnetProviderIgnored = new boolean[1];
+        var observed = new EndpointModeEvidence.InventoryObservation[4];
+        var noSinkPresent = new boolean[1];
+        var noSinkResult = new EndpointItemReturnAttempt[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Endpoint fixture");
-            var duplicateOwnersRejected = !fixture.bindLocal();
-            helper.assertTrue(duplicateOwnersRejected, "Two adjacent Providers must leave Local mode unbound");
-            var candidate0 = fixture.provider().getLogic().getReturnInv();
-            var candidate1 = fixture.secondProvider().getLogic().getReturnInv();
-            candidate0.setStack(0, new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1));
-            candidate1.setStack(0, new GenericStack(AEItemKey.of(Items.IRON_INGOT), 2));
-            var candidate0Before = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 0, "before",
-                    candidate0);
-            var candidate1Before = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 1, "before",
-                    candidate1);
-            var noSinkHandler = fixture.itemCapability(Direction.NORTH);
-            helper.assertTrue(noSinkHandler == null, "No permitted sink must expose no accepting handler");
-            var noSink = EndpointItemReturnAttempt.insert(noSinkHandler, 0, new ItemStack(Items.IRON_INGOT, 10), false);
-            var candidate0After = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 0, "after",
-                    candidate0);
-            var candidate1After = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 1, "after",
-                    candidate1);
+            if (phase[0] == 0) {
+                // The subnet-face Provider is attached too, yet the Federation-face one alone decides Local mode.
+                helper.assertTrue(fixture.bindLocal(), "A native Provider on a subnet face must not block Local mode");
+                subnetProviderIgnored[0] = true;
+                fixture.pushProviderAtEndpoint(false);
+                phase[0] = 1;
+                helper.fail("turned the Federation-face Provider away");
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(fixture.binding().runtime().mode().isEmpty(),
+                        "Waiting for the Endpoint to leave Local mode");
+                var candidate0 = fixture.provider().getLogic().getReturnInv();
+                var candidate1 = fixture.secondProvider().getLogic().getReturnInv();
+                candidate0.setStack(0, new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1));
+                candidate1.setStack(0, new GenericStack(AEItemKey.of(Items.IRON_INGOT), 2));
+                observed[0] = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 0, "before",
+                        candidate0);
+                observed[1] = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 1, "before",
+                        candidate1);
+                var noSinkHandler = fixture.itemCapability(Direction.NORTH);
+                noSinkPresent[0] = noSinkHandler != null;
+                helper.assertTrue(noSinkHandler == null, "No permitted sink must expose no accepting handler");
+                noSinkResult[0] = EndpointItemReturnAttempt.insert(noSinkHandler, 0,
+                        new ItemStack(Items.IRON_INGOT, 10), false);
+                observed[2] = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 0, "after",
+                        candidate0);
+                observed[3] = EndpointModeEvidence.observeInventory("endpointreturnbackpressure", 1, "after",
+                        candidate1);
+                fixture.clearReturn(fixture.provider());
+                fixture.removeSecondProvider();
+                fixture.pushProviderAtEndpoint(true);
+                phase[0] = 2;
+                helper.fail("turned the Federation-face Provider back");
+            }
+            helper.assertTrue(fixture.bindLocal(), "The Federation-face Provider must bind Local mode again");
+            var noSink = noSinkResult[0];
+            var candidate0Before = observed[0];
+            var candidate1Before = observed[1];
+            var candidate0After = observed[2];
+            var candidate1After = observed[3];
+            var subnetProviderStaysOut = subnetProviderIgnored[0];
             helper.assertValueEqual(noSink.acceptedAmount(), 0, "No permitted sink must accept zero items");
             helper.assertValueEqual(noSink.remainder().getCount(), 10,
                     "Zero acceptance must return the complete caller-owned remainder");
@@ -51,8 +85,6 @@ public final class EndpointReturnGameTests {
                     "No-sink return must not mutate the first candidate inventory");
             helper.assertValueEqual(candidate1After.snapshot(), candidate1Before.snapshot(),
                     "No-sink return must not mutate the second candidate inventory");
-            fixture.removeSecondProvider();
-            helper.assertTrue(fixture.binding().activateLocal(List.of()), "One remaining adjacent Provider must bind");
             var inventory = fixture.provider().getLogic().getReturnInv();
             for (int slot = 0; slot < inventory.size(); slot++) {
                 inventory.setStack(slot, new GenericStack(AEItemKey.of(Items.IRON_INGOT), slot == 8 ? 60 : 64));
@@ -71,7 +103,7 @@ public final class EndpointReturnGameTests {
                     "Caller must retain the unaccepted partial remainder");
             helper.assertValueEqual(inventory.getAmount(8), 64L, "Only the native accepted amount may transfer");
             EndpointModeEvidence.write("endpointreturnbackpressure", 8, Map.ofEntries(
-                    Map.entry("duplicateOwnersRejected", Boolean.toString(duplicateOwnersRejected)),
+                    Map.entry("subnetProviderIgnored", Boolean.toString(subnetProviderStaysOut)),
                     Map.entry("candidateOwnerCount", "2"),
                     Map.entry("candidate0InventoryIdentity", candidate0Before.identity()),
                     Map.entry("candidate1InventoryIdentity", candidate1Before.identity()),
@@ -85,7 +117,7 @@ public final class EndpointReturnGameTests {
                             candidate0Before.snapshot().equals(candidate0After.snapshot()))),
                     Map.entry("candidate1Unchanged", Boolean.toString(
                             candidate1Before.snapshot().equals(candidate1After.snapshot()))),
-                    Map.entry("noSinkHandlerPresent", Boolean.toString(noSinkHandler != null)),
+                    Map.entry("noSinkHandlerPresent", Boolean.toString(noSinkPresent[0])),
                     Map.entry("noSinkRequested", Integer.toString(noSink.requestedAmount())),
                     Map.entry("noSinkAccepted", Integer.toString(noSink.acceptedAmount())),
                     Map.entry("noSinkRemainder", Integer.toString(noSink.remainder().getCount())),

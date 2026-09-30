@@ -50,6 +50,10 @@ public final class MultiClientClientHarness {
     private static String staleContextRenderedText = "";
     private static String refreshedRenderedStatus = "";
     private static String refreshedRenderedMembers = "";
+    /** The pair editor's first section is the first member using the second, which is the server's Policy key. */
+    private static final String STORAGE_SWITCH = "policy_switch_0_storage";
+    /** Client B's switch as rendered before Client A's edit; pressing it later is a genuinely concurrent edit. */
+    private static UIElement preEditSwitch;
 
     private MultiClientClientHarness() {
     }
@@ -78,7 +82,6 @@ public final class MultiClientClientHarness {
         minecraft.getTutorial().stop();
         minecraft.gui.getChat().clearMessages(true);
         if (minecraft.screen instanceof ModularUIContainerScreen screen) {
-            if (element(screen, "page_overview").isDisplayed() && screenTicks >= 5) click(screen, "tab_policy");
             if (!firstMenuClosed) {
                 screenTicks++;
                 firstScreen(minecraft, screen);
@@ -95,13 +98,21 @@ public final class MultiClientClientHarness {
     }
 
     private static void firstScreen(Minecraft minecraft, ModularUIContainerScreen screen) {
-        if (ROLE.equals("A") && !firstClickSent && screenTicks >= 20 && element(screen, "policy_toggle").isActive()) {
-            click(screen, "policy_toggle");
-            firstClickSent = true;
+        var storageSwitch = find(screen, STORAGE_SWITCH);
+        if (ROLE.equals("B") && preEditSwitch == null && storageSwitch != null && storageSwitch.isActive()
+                && !storageSwitch.hasClass("on")) {
+            preEditSwitch = storageSwitch;
+            signal("client-b-switch.ready");
         }
-        if (ROLE.equals("B") && !conflictClickSent && Files.isRegularFile(marker("revision-one.ready"))
-                && element(screen, "policy_toggle").isActive()) {
-            click(screen, "policy_toggle");
+        if (ROLE.equals("A") && !firstClickSent && screenTicks >= 20 && Files.isRegularFile(marker("client-b-switch.ready"))
+                && storageSwitch != null && storageSwitch.isActive()) {
+            click(storageSwitch);
+            firstClickSent = true;
+            consumeMarker("client-b-switch.ready");
+        }
+        if (ROLE.equals("B") && !conflictClickSent && preEditSwitch != null
+                && Files.isRegularFile(marker("revision-one.ready"))) {
+            click(preEditSwitch);
             conflictClickSent = true;
             consumeMarker("revision-one.ready");
         }
@@ -110,12 +121,12 @@ public final class MultiClientClientHarness {
             firstAccepted |= status.hasClass("accepted");
         }
         if (ROLE.equals("B") && conflictClickSent) {
-            staleRevision |= status.hasClass("stale_revision");
+            staleRevision |= status.hasClass("conflict");
         }
         if (ROLE.equals("A") && !splitClickSent && firstAccepted
                 && Files.isRegularFile(marker("domain-split.ready"))
-                && element(screen, "policy_toggle").isActive()) {
-            click(screen, "policy_toggle");
+                && storageSwitch != null && storageSwitch.isActive()) {
+            click(storageSwitch);
             splitClickSent = true;
             consumeMarker("domain-split.ready");
         }
@@ -144,8 +155,8 @@ public final class MultiClientClientHarness {
         var status = element(screen, "ack_status");
         var renderedText = text(screen, "ack_status");
         if (ROLE.equals("B") && staleRevision && !staleRevisionCaptured) {
-            var expectedText = Component.translatable("ae2federation.ui.domain.status.stale_revision", 1).getString();
-            staleRevisionStableFrames = status.hasClass("stale_revision") && renderedText.equals(expectedText)
+            var expectedText = Component.translatable("ae2federation.ui.domain.status.conflict", 1).getString();
+            staleRevisionStableFrames = status.hasClass("conflict") && renderedText.equals(expectedText)
                     ? staleRevisionStableFrames + 1
                     : 0;
             if (staleRevisionStableFrames >= 3) {
@@ -179,16 +190,16 @@ public final class MultiClientClientHarness {
         var expectedStatus = Component.translatable("ae2federation.ui.domain.status.ready").getString();
         var expectedMembers = Component.translatable("ae2federation.ui.domain.members", 2).getString();
         var expectedEntrance = Component.translatable("ae2federation.ui.domain.entrance.router").getString();
-        var membersCurrent = renderedMembers.equals(expectedMembers);
+        var membersCurrent = renderedMembers.startsWith(expectedMembers + " · ");
         var current = status.hasClass("ready") && renderedStatus.equals(expectedStatus)
                 && membersCurrent
                 && text(screen, "entrance_value").equals(expectedEntrance)
-                && element(screen, "policy_toggle").isActive();
+                && find(screen, STORAGE_SWITCH) != null && find(screen, STORAGE_SWITCH).isActive();
         refreshedStableFrames = current ? refreshedStableFrames + 1 : 0;
         if (refreshedStableFrames >= 3) {
             refreshed = true;
             refreshedRenderedStatus = renderedStatus;
-            refreshedRenderedMembers = renderedMembers;
+            refreshedRenderedMembers = renderedMembers.substring(0, renderedMembers.indexOf(" · "));
             capture("client-" + ROLE.toLowerCase(java.util.Locale.ROOT) + "-refreshed.png");
             refreshedCaptured = true;
         }
@@ -203,8 +214,7 @@ public final class MultiClientClientHarness {
         }
     }
 
-    private static void click(ModularUIContainerScreen screen, String id) {
-        var element = element(screen, id);
+    private static void click(UIElement element) {
         var click = UIEvent.create(UIEvents.MOUSE_DOWN);
         click.target = element;
         click.button = 0;
@@ -214,6 +224,10 @@ public final class MultiClientClientHarness {
     private static String text(ModularUIContainerScreen screen, String id) {
         var element = element(screen, id);
         return element instanceof TextElement text ? text.getText().getString() : element.toString();
+    }
+
+    private static UIElement find(ModularUIContainerScreen screen, String id) {
+        return screen.getMenu().modularUI.getElementById(id);
     }
 
     private static UIElement element(ModularUIContainerScreen screen, String id) {

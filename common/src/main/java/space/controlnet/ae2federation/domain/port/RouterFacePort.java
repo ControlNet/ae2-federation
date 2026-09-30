@@ -13,11 +13,32 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.energy.DirectionalEnergySource;
 
-public final class RouterFacePort {
-    private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = (owner, node) -> owner.invalidate();
+public final class RouterFacePort implements IdentityNeutralNodeOwner {
+    /**
+     * A newly placed native neighbor (e.g. a cable bus) creates its node on a later tick than the block update that
+     * dirtied this face, so the face must also re-resolve when the in-world connection or Grid actually changes. Those
+     * events fire inside AE2 Grid propagation, so they only mark the face dirty; the Router tick resolves and publishes.
+     */
+    private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = new IGridNodeListener<>() {
+        @Override
+        public void onSaveChanges(RouterFacePort owner, IGridNode node) {
+            owner.invalidate();
+        }
+
+        @Override
+        public void onInWorldConnectionChanged(RouterFacePort owner, IGridNode node) {
+            owner.dirty = true;
+        }
+
+        @Override
+        public void onGridChanged(RouterFacePort owner, IGridNode node) {
+            owner.dirty = true;
+        }
+    };
 
     private final BlockPos routerPosition;
     private final Direction face;
@@ -60,7 +81,7 @@ public final class RouterFacePort {
         }
         boundaryNode.create(serverLevel, routerPosition);
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
-                face.getOpposite(), () -> boundaryNode.isReady(), this::invalidate);
+                face.getOpposite(), () -> boundaryNode.isReady(), this::recheck);
         invalidate();
     }
 
@@ -79,6 +100,15 @@ public final class RouterFacePort {
         binding = RouterPortBinding.Disconnected.INSTANCE;
         dirty = true;
         topologyInvalidator.run();
+    }
+
+    /**
+     * Some capability of the neighbour changed, such as an Endpoint's item handlers when it is claimed: resolve the
+     * binding again on the next tick, which reports a change only when it differs. Dropping the binding here would
+     * republish the whole domain although the link is the same; a changed neighbour block reaches {@link #invalidate()}.
+     */
+    private void recheck() {
+        dirty = true;
     }
 
     public void destroy() {

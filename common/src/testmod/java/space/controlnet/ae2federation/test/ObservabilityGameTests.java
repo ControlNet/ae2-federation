@@ -95,7 +95,8 @@ public final class ObservabilityGameTests {
             helper.assertValueEqual(snapshotReceipt.player(), scene.player().getUUID().toString(),
                     "Snapshot receipt must bind the real menu player");
             helper.assertValueEqual(snapshot.providers().size(), 1, "Snapshot must include the real Provider");
-            helper.assertValueEqual(snapshot.endpoints().size(), 1, "Snapshot must include the real Endpoint");
+            helper.assertValueEqual(LevelObservabilityService.get(helper.getLevel()).snapshot(scene.processingScope())
+                    .endpoints().size(), 1, "The Endpoint's own domain snapshot must include the real Endpoint");
             helper.assertTrue(!snapshot.locks().isEmpty() && !snapshot.tasks().isEmpty(),
                     "Snapshot must include native Lane lock and task state");
             var topology = snapshot.topologyRevision();

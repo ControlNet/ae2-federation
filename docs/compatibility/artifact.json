@@ -8,8 +8,8 @@
   "modRanges": {
     "minecraft": "[1.21.1]",
     "neoforge": "[21.1.250]",
-    "ae2": "[19.2.17]",
-    "ldlib2": "[2.2.34]"
+    "ae2": "[19.2.9,)",
+    "ldlib2": "[2.2.34,)"
   },
   "manifest": {
     "Built-For-Minecraft": "1.21.1",

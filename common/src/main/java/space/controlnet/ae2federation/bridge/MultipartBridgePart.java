@@ -28,13 +28,14 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 import space.controlnet.ae2federation.domain.FederationDomainSourceId;
+import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.energy.DirectionalEnergySource;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
 
-public final class MultipartBridgePart extends AEBasePart {
+public final class MultipartBridgePart extends AEBasePart implements IdentityNeutralNodeOwner {
     @PartModels
     public static final ResourceLocation MODEL = ResourceLocation.fromNamespaceAndPath(
             "ae2federation", "part/bridge");

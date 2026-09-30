@@ -37,6 +37,35 @@ final class PolicyEditorSelectionTest {
     }
 
     @Test
+    void twoMemberCyclingSwapsTheDirection() {
+        var selection = PolicyEditorSelection.initial(List.of(FIRST, SECOND));
+
+        var consumerCycled = selection.nextConsumer();
+        var providerCycled = selection.nextProvider();
+
+        assertEquals(SECOND, consumerCycled.key().consumerNetworkId());
+        assertEquals(FIRST, consumerCycled.key().providerNetworkId());
+        assertEquals(SECOND, providerCycled.key().consumerNetworkId());
+        assertEquals(FIRST, providerCycled.key().providerNetworkId());
+    }
+
+    @Test
+    void choosingTheOppositeEndpointSwapsTheDirection() {
+        var selection = PolicyEditorSelection.initial(List.of(FIRST, SECOND, THIRD));
+
+        var consumerSwapped = selection.withConsumer(1);
+        var providerSwapped = selection.withProvider(0);
+        var consumerMoved = selection.withConsumer(2);
+
+        assertEquals(SECOND, consumerSwapped.key().consumerNetworkId());
+        assertEquals(FIRST, consumerSwapped.key().providerNetworkId());
+        assertEquals(SECOND, providerSwapped.key().consumerNetworkId());
+        assertEquals(FIRST, providerSwapped.key().providerNetworkId());
+        assertEquals(THIRD, consumerMoved.key().consumerNetworkId());
+        assertEquals(SECOND, consumerMoved.key().providerNetworkId());
+    }
+
+    @Test
     void capabilityCyclingIsBoundedByTheProductionEnum() {
         var selection = PolicyEditorSelection.initial(List.of(FIRST, SECOND));
 

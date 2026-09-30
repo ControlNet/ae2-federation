@@ -8,13 +8,9 @@ import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.BindableValue;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.VirtualScrollerView;
 import com.lowdragmc.lowdraglib2.utils.XmlUtils;
 import java.util.Objects;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -24,25 +20,24 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
 import space.controlnet.ae2federation.client.policy.FederationDomainPolicySession;
 
-final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder {
+final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerUIHolder, FederationMenuHolder {
     private static final ResourceLocation XML = ResourceLocation.fromNamespaceAndPath(
             "ae2federation", "ui/domain.xml");
     private final @Nullable FederationDomainPolicySession session;
-    private final @Nullable UUID menuNonce;
-    private long menuSequence;
-    private @Nullable ClientAuthority clientAuthority;
-    private final ActionRequestProgress requestProgress = new ActionRequestProgress();
+    private final FederationMenuAuthority authority;
     private UI currentUi;
     private FederationWorkspace currentWorkspace;
+    private FederationTopologyView currentTopology;
     private String serverStatus = "pending";
-    private final int preferredWidth;
-    private final int preferredHeight;
+    /** The largest size this screen grows to; it fills the screen up to it. */
+    private final int maxWidth;
+    private final int maxHeight;
 
-    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, int preferredWidth, int preferredHeight) {
+    FederationDomainPolicyMenuHolder(@Nullable FederationDomainPolicySession session, int maxWidth, int maxHeight) {
         this.session = session;
-        this.preferredWidth = preferredWidth;
-        this.preferredHeight = preferredHeight;
-        menuNonce = session == null ? null : UUID.randomUUID();
+        this.maxWidth = maxWidth;
+        this.maxHeight = maxHeight;
+        authority = new FederationMenuAuthority(session);
     }
 
     @Override
@@ -60,20 +55,17 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         currentUi = ui;
         bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
-        bind(ui, "consumer_value", this::consumerText);
-        bind(ui, "provider_value", this::providerText);
-        bind(ui, "rule_value", this::ruleText);
         bind(ui, "ack_status", this::statusText);
-        bind(ui, "mapping_provider_value", this::mappingProviderText);
-        bind(ui, "mapping_selection_value", this::mappingSelectionText);
-        bind(ui, "mapping_status", this::mappingStatusText);
+        bind(ui, "revision_status", () -> session == null ? Component.empty() : session.revisionsText());
+        bind(ui, "processing_status", this::mappingStatusText);
         var mappingFeedback = new BindableValue<String>("pending");
         mappingFeedback.bind(DataBindingBuilder.stringS2C(this::currentMappingStatus).initialValue("pending")
                 .remoteSetter(code -> {
-                    var label = element(ui, "mapping_status", Label.class);
+                    var label = element(ui, "processing_status", Label.class);
                     label.style(style -> style.tooltips(Component.literal(code)));
                     for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
                     label.addClass("feedback-" + space.controlnet.ae2federation.client.policy.MappingFeedback.fromCode(code).tone());
+                    if (currentWorkspace != null) currentWorkspace.updateFeedback();
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
@@ -84,42 +76,24 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
         currentWorkspace = workspace;
-        var consumer = element(ui, "consumer_next", UIElement.class);
-        var provider = element(ui, "provider_next", UIElement.class);
-        var capability = element(ui, "capability_next", UIElement.class);
-        var toggle = element(ui, "policy_toggle", Button.class);
-        toggle.setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_POLICY));
-        element(ui, "mapping_toggle", Button.class).setOnClick(event -> send(FederationDomainPolicyAction.TOGGLE_MAPPING));
-        element(ui, "mapping_release", Button.class).setOnClick(event -> {
-            if (clientAuthority != null) {
-                releaseDialog.prepare(clientAuthority.menuSequence());
+        Runnable prepareRelease = () -> {
+            if (authority.authorized()) {
+                releaseDialog.prepare(authority.clientSequence());
                 send(FederationDomainPolicyAction.PREPARE_RELEASE);
             }
-        });
+        };
+        workspace.bindProcessing(target -> send(FederationDomainPolicyAction.SET_MAPPING, target), prepareRelease);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
-        var graph = element(ui, "domain_graph", GraphView.class);
-        var graphState = new FederationGraphPresenter(graph, element(ui, "graph_selection", Label.class), virtualList(ui, "member_list"),
-                element(ui, "graph_open", Button.class), element(ui, "graph_search", com.lowdragmc.lowdraglib2.gui.ui.elements.TextField.class),
-                element(ui, "graph_search_empty", Label.class), workspace::openObject);
+        var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
+                target -> send(FederationDomainPolicyAction.RENAME_NETWORK, target), workspace::openObject);
+        currentTopology = graphState;
         workspace.bindGraph(graphState);
-        for (var zoomId : new String[] {"graph_zoom_in", "graph_zoom_out"}) {
-            element(ui, zoomId, Button.class).layout(style -> style.flexGrow(0).flexShrink(0).width(22));
-        }
-        element(ui, "graph_zoom_in", Button.class).setOnClick(event -> graph.setScale(graph.getScale() * 1.25f));
-        element(ui, "graph_zoom_out", Button.class).setOnClick(event -> graph.setScale(graph.getScale() / 1.25f));
-        element(ui, "graph_fit", Button.class).setOnClick(event -> graph.fitToChildren(12, 0.25f));
-        var physical = element(ui, "physical_layer_toggle", Button.class);
-        var ownership = element(ui, "capability_layer_toggle", Button.class);
-        FederationGraphPresenter.mark(physical, true);
-        FederationGraphPresenter.mark(ownership, true);
-        physical.setOnClick(event -> graphState.togglePhysical(physical));
-        ownership.setOnClick(event -> graphState.toggleCapability(ownership));
         var choices = new BindableValue<String>("");
         choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.workspaceChoices())
                 .initialValue("").remoteSetter(value -> {
                     workspace.acceptChoices(value);
-                    graphState.acceptChoices(value);
+                    if (!value.isEmpty()) graphState.acceptChoices(com.google.gson.JsonParser.parseString(value).getAsJsonObject());
                     releaseDialog.acceptChoices(value);
                 }).build());
         choices.addClass("state-sync");
@@ -135,18 +109,17 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 .build());
         state.addClass("state-sync");
         ui.rootElement.addChild(state);
-        var authority = new BindableValue<String>("");
-        authority.bind(DataBindingBuilder.stringS2C(() -> authorityText(player))
+        var authoritySync = new BindableValue<String>("");
+        authoritySync.bind(DataBindingBuilder.stringS2C(() -> authority.encode(this, player))
                 .initialValue("")
                 .remoteSetter(value -> {
-                    acceptAuthority(value);
-                    releaseDialog.acceptAuthority(clientAuthority == null ? -1 : clientAuthority.menuSequence());
-                    if (clientAuthority != null) requestProgress.observe(clientAuthority.menuSequence());
+                    authority.accept(value);
+                    releaseDialog.acceptAuthority(authority.clientSequence());
                     renderRequestProgress();
                 })
                 .build());
-        authority.addClass("authority-sync");
-        ui.rootElement.addChild(authority);
+        authoritySync.addClass("authority-sync");
+        ui.rootElement.addChild(authoritySync);
         var graphBinding = new BindableValue<String>("");
         graphBinding.bind(DataBindingBuilder.stringS2C(this::graphSnapshotText)
                 .initialValue("")
@@ -154,16 +127,38 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 .build());
         graphBinding.addClass("state-sync");
         ui.rootElement.addChild(graphBinding);
+        var overview = new BindableValue<String>("");
+        overview.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.networkOverviewText())
+                .initialValue("")
+                .remoteSetter(value -> {
+                    if (!value.isEmpty()) graphState.acceptOverview(com.google.gson.JsonParser.parseString(value).getAsJsonArray());
+                })
+                .build());
+        overview.addClass("state-sync");
+        ui.rootElement.addChild(overview);
+        var flows = new BindableValue<String>("");
+        flows.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.pairFlowText())
+                .initialValue("")
+                .remoteSetter(value -> {
+                    if (!value.isEmpty()) graphState.acceptFlows(com.google.gson.JsonParser.parseString(value).getAsJsonArray());
+                })
+                .build());
+        flows.addClass("state-sync");
+        ui.rootElement.addChild(flows);
         var observation = session == null ? java.util.Optional
                 .<space.controlnet.ae2federation.observability.subscription.ObservationSubscription>empty()
                 : session.openObservation();
-        return new ModularUI(ui, player) {
+        final class FederationModularUI extends ModularUI implements space.controlnet.ae2federation.client.FederationGuiScale.Fixed {
+            FederationModularUI(UI document, Player viewer) {
+                super(document, viewer);
+            }
+
             @Override
             public void init(int screenWidth, int screenHeight) {
                 ui.rootElement.removeClass("compact");
                 if (screenHeight < 280) ui.rootElement.addClass("compact");
-                ui.rootElement.layout(style -> style.width(Math.min(preferredWidth, screenWidth - 8))
-                        .height(Math.min(preferredHeight, screenHeight - 8)));
+                var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(screenWidth, screenHeight, maxWidth, maxHeight);
+                ui.rootElement.layout(style -> style.width(size.width()).height(size.height()));
                 super.init(screenWidth, screenHeight);
             }
 
@@ -172,7 +167,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 observation.ifPresent(value -> session.closeObservation(value));
                 super.onRemoved();
             }
-        };
+        }
+        return new FederationModularUI(ui, player);
     }
 
     @Override
@@ -184,32 +180,44 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         element(ui, id, Label.class).bind(DataBindingBuilder.componentS2C(value).build());
     }
 
-    void returnToProvider() {
-        if (session != null) session.returnToProvider();
+    @Override
+    public java.util.Optional<net.minecraft.core.BlockPos> returnProvider() {
+        return session == null ? java.util.Optional.empty()
+                : session.providerEntity().map(net.minecraft.world.level.block.entity.BlockEntity::getBlockPos);
     }
 
-    FederationDomainPolicyActionResult dispatch(ServerPlayer player, ModularUIContainerMenu menu,
+    @Override
+    public FederationDomainPolicyActionResult dispatch(ServerPlayer player, ModularUIContainerMenu menu,
             FederationDomainPolicyActionRequest request) {
-        if (menu.uiHolder != this || session == null || menuNonce == null) {
-            return FederationDomainPolicyActionResult.WRONG_MENU;
+        var refused = authority.reject(this, menu, request);
+        if (refused != null) {
+            return refused;
         }
-        if (request.containerId() != menu.containerId) {
-            return FederationDomainPolicyActionResult.STALE_CONTAINER;
+        if (request.action() == FederationDomainPolicyAction.SET_POLICY
+                || request.action() == FederationDomainPolicyAction.RENAME_NETWORK) {
+            // Switches carry the revision of their own rule and names are not rules: the selected rule does not gate them.
+            if (!session.matchesContext(player, request.context())) {
+                return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
+                        : FederationDomainPolicyActionResult.WRONG_MENU;
+            }
+            session.clearPendingRelease();
+            var applied = request.action() == FederationDomainPolicyAction.SET_POLICY
+                    ? session.setPolicy(request.target()) : session.renameNetwork(request.target());
+            if (!applied) {
+                return FederationDomainPolicyActionResult.INVALID_TARGET;
+            }
+            authority.advance();
+            return FederationDomainPolicyActionResult.ACCEPTED;
         }
-        if (!menuNonce.equals(request.menuNonce())) {
-            return FederationDomainPolicyActionResult.STALE_SESSION;
-        }
-        if (request.menuSequence() != menuSequence) {
-            return FederationDomainPolicyActionResult.STALE_SEQUENCE;
-        }
-        var context = session.context().orElse(null);
-        if (context == null || !context.equals(request.context())) {
-            return FederationDomainPolicyActionResult.STALE_CONTEXT;
-        }
-        if (!session.expectedRevision().equals(request.expectedRevision())) {
+        if (mappingAction(request.action())) {
+            // Provider mapping is not a rule edit: a domain with one ME network still maps its Endpoints.
+            if (!session.matchesMappingContext(player, request.context())) {
+                return session.rejectStaleContext(player) ? FederationDomainPolicyActionResult.STALE_CONTEXT
+                        : FederationDomainPolicyActionResult.WRONG_MENU;
+            }
+        } else if (!session.expectedRevision().equals(request.expectedRevision())) {
             return FederationDomainPolicyActionResult.STALE_REVISION;
-        }
-        if (!session.matchesAuthority(player, request.context(), request.expectedRevision())) {
+        } else if (!session.matchesAuthority(player, request.context(), request.expectedRevision())) {
             if (session.rejectStaleContext(player)) {
                 return FederationDomainPolicyActionResult.STALE_CONTEXT;
             }
@@ -222,6 +230,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         switch (request.action()) {
             case PREPARE_RELEASE -> session.releaseEndpoint();
             case CANCEL_RELEASE -> session.cancelRelease();
+            case SET_POLICY, RENAME_NETWORK -> throw new IllegalStateException("Dispatched before selection authority");
             case SELECT_TARGET -> {
                 if (!session.selectTarget(request.target())) {
                     return FederationDomainPolicyActionResult.INVALID_TARGET;
@@ -235,60 +244,40 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             case NEXT_MAPPING_SLOT -> session.nextMappingSlot();
             case NEXT_MAPPING_LANE -> session.nextMappingLane();
             case TOGGLE_MAPPING -> session.toggleMapping();
+            case SET_MAPPING -> {
+                if (!session.setMapping(request.target())) {
+                    return FederationDomainPolicyActionResult.INVALID_TARGET;
+                }
+            }
             case NEXT_ENDPOINT -> session.nextEndpoint();
             case RELEASE_ENDPOINT -> session.releaseEndpoint();
         }
-        menuSequence = Math.incrementExact(menuSequence);
+        authority.advance();
         return FederationDomainPolicyActionResult.ACCEPTED;
     }
 
-    java.util.Optional<FederationDomainPolicyActionRequest> currentRequest(ModularUIContainerMenu menu,
+    private static boolean mappingAction(FederationDomainPolicyAction action) {
+        return switch (action) {
+            case PREPARE_RELEASE, CANCEL_RELEASE, SELECT_TARGET, NEXT_MAPPING_PROVIDER, NEXT_MAPPING_SLOT,
+                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT -> true;
+            case SET_POLICY, RENAME_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
+        };
+    }
+
+    @Override
+    public java.util.Optional<FederationDomainPolicyActionRequest> currentRequest(ModularUIContainerMenu menu,
             FederationDomainPolicyAction action) {
-        if (session == null || menuNonce == null || menu.uiHolder != this) {
-            return java.util.Optional.empty();
-        }
-        return session.context().map(context -> new FederationDomainPolicyActionRequest(action, menu.containerId, menuNonce,
-                menuSequence, context, session.expectedRevision()));
+        return authority.currentRequest(this, menu, action);
     }
 
-    long currentSequence() {
-        return menuSequence;
+    @Override
+    public long currentSequence() {
+        return authority.sequence();
     }
 
-    String currentMappingStatus() {
+    @Override
+    public String currentMappingStatus() {
         return session == null ? "pending" : session.mappingStatusCode();
-    }
-
-    private String authorityText(Player player) {
-        if (session == null || menuNonce == null || !(player.containerMenu instanceof ModularUIContainerMenu menu)
-                || menu.uiHolder != this) {
-            return "";
-        }
-        var context = session.context().orElse(null);
-        if (context == null) {
-            return "";
-        }
-        var encodedFederationDomain = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(context.federationDomainId().value().getBytes(StandardCharsets.UTF_8));
-        return menu.containerId + ":" + menuNonce + ":" + menuSequence + ":" + context.generation() + ":"
-                + session.expectedRevision().value() + ":" + encodedFederationDomain;
-    }
-
-    private void acceptAuthority(String encoded) {
-        if (encoded.isEmpty()) {
-            clientAuthority = null;
-            return;
-        }
-        var fields = encoded.split(":", 6);
-        if (fields.length != 6) {
-            throw new IllegalArgumentException("Malformed Federation Domain policy authority");
-        }
-        var federationDomainId = new String(Base64.getUrlDecoder().decode(fields[5]), StandardCharsets.UTF_8);
-        clientAuthority = new ClientAuthority(Integer.parseInt(fields[0]), UUID.fromString(fields[1]),
-                Long.parseLong(fields[2]),
-                new space.controlnet.ae2federation.domain.FederationDomainReference(
-                        new space.controlnet.ae2federation.domain.FederationDomainId(federationDomainId), Long.parseLong(fields[3])),
-                new space.controlnet.ae2federation.policy.PolicyRevision(Long.parseLong(fields[4])));
     }
 
     private void send(FederationDomainPolicyAction action) {
@@ -296,35 +285,25 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     }
 
     private void send(FederationDomainPolicyAction action, String target) {
-        var authority = clientAuthority;
-        if (authority != null && !requestProgress.pending()) {
-            var requestId = UUID.randomUUID();
-            requestProgress.begin(requestId, authority.menuSequence());
-            renderRequestProgress();
-            if (!FederationDomainPolicyActionSink.send(new FederationDomainPolicyActionRequest(action, authority.containerId(),
-                    authority.menuNonce(), authority.menuSequence(), authority.context(), authority.expectedRevision(), target), requestId)) {
-                requestProgress.reply(requestId, authority.menuSequence(), FederationDomainPolicyActionResult.WRONG_MENU);
-                renderRequestProgress();
-            }
-        }
+        if (authority.send(action, target)) renderRequestProgress();
     }
 
-    void acceptReply(UUID nonce, UUID requestId, long sequence, FederationDomainPolicyActionResult result) {
-        if (clientAuthority == null || !clientAuthority.menuNonce().equals(nonce)) return;
-        requestProgress.reply(requestId, sequence, result);
-        renderRequestProgress();
+    @Override
+    public void acceptReply(UUID nonce, UUID requestId, long sequence, FederationDomainPolicyActionResult result) {
+        if (authority.acceptReply(nonce, requestId, sequence, result)) renderRequestProgress();
     }
 
     private void renderRequestProgress() {
         if (currentUi == null) return;
-        var pending = requestProgress.pending();
-        applyState(pending ? "pending" : serverStatus, currentUi,
-                element(currentUi, "consumer_next", UIElement.class), element(currentUi, "provider_next", UIElement.class),
-                element(currentUi, "capability_next", UIElement.class), element(currentUi, "policy_toggle", Button.class));
+        var pending = authority.pending();
+        var active = applyState(pending ? "pending" : serverStatus, currentUi);
+        if (currentTopology != null) currentTopology.setEditable(active && authority.authorized());
+        if (currentWorkspace != null) currentWorkspace.setProcessingEditable(active && authority.authorized());
         var message = element(currentUi, "request_status", Label.class);
-        var rejection = requestProgress.rejection();
-        if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && clientAuthority != null
-                && (serverStatus.equals("ready") || serverStatus.equals("accepted")), rejection != null);
+        var rejection = authority.rejection();
+        if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && authority.authorized()
+                && (serverStatus.equals("ready") || serverStatus.equals("accepted") || serverStatus.equals("conflict")),
+                rejection != null);
         boolean visible = pending || rejection != null;
         message.setDisplay(visible);
         element(currentUi, "ack_status", Label.class).setDisplay(!visible);
@@ -339,11 +318,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         }
     }
 
-    private record ClientAuthority(int containerId, UUID menuNonce, long menuSequence,
-            space.controlnet.ae2federation.domain.FederationDomainReference context,
-            space.controlnet.ae2federation.policy.PolicyRevision expectedRevision) {
-    }
-
     private Component entranceText() {
         return session == null ? Component.translatable("ae2federation.ui.domain.status.pending") : session.entranceText();
     }
@@ -352,28 +326,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? Component.translatable("ae2federation.ui.domain.members.pending") : session.membersText();
     }
 
-    private Component consumerText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.consumer", "-") : session.consumerText();
-    }
-
-    private Component providerText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.provider", "-") : session.providerText();
-    }
-
-    private Component ruleText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.rule.unavailable") : session.ruleText();
-    }
-
     private Component statusText() {
         return session == null ? Component.translatable("ae2federation.ui.domain.status.pending") : session.statusText();
-    }
-
-    private Component mappingProviderText() {
-        return session == null ? Component.literal("-") : session.mappingProviderText();
-    }
-
-    private Component mappingSelectionText() {
-        return session == null ? Component.literal("-") : session.mappingSelectionText();
     }
 
     private Component mappingStatusText() {
@@ -393,32 +347,29 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? "pending" : session.statusCode();
     }
 
-    private static void applyState(String code, UI ui, UIElement consumer, UIElement provider, UIElement capability,
-            Button toggle) {
+    private static boolean applyState(String code, UI ui) {
         var status = element(ui, "ack_status", Label.class);
-        for (var state : new String[] { "ready", "pending", "disabled", "accepted", "stale_context",
+        for (var state : new String[] { "ready", "pending", "disabled", "accepted", "conflict", "stale_context",
                 "stale_revision" }) {
             status.removeClass(state);
         }
         status.addClass(code);
         var active = !code.equals("pending") && !code.equals("disabled")
                 && !code.equals("stale_context") && !code.equals("stale_revision");
-        consumer.setActive(active);
-        provider.setActive(active);
-        capability.setActive(active);
-        toggle.setActive(active);
-        for (var id : new String[] {"mapping_provider_next", "mapping_slot_next", "mapping_lane_next", "mapping_toggle", "mapping_release", "endpoint_next", "pattern_list"}) {
-            element(ui, id, UIElement.class).setActive(active);
-        }
+        var lamp = element(ui, "sync_lamp", UIElement.class);
+        int tone = active ? FederationTheme.OK : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR;
+        lamp.style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
+        // The lamp's word, in a darker shade of its colour so it reads on the light frame.
+        var sync = element(ui, "sync_text", Label.class);
+        sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
+        sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
+        element(ui, "endpoint_next", UIElement.class).setActive(active);
+        return active;
     }
 
     private static <T> T element(UI ui, String id, Class<T> type) {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
-    @SuppressWarnings("unchecked")
-    private static VirtualScrollerView<String> virtualList(UI ui, String id) {
-        return (VirtualScrollerView<String>) (VirtualScrollerView<?>) element(ui, id, VirtualScrollerView.class);
-    }
 
 }

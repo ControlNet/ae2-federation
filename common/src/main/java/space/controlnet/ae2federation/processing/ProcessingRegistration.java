@@ -34,8 +34,11 @@ public final class ProcessingRegistration {
     public static final DeferredItem<BlockItem> ENDPOINT_ITEM = ITEMS.registerSimpleBlockItem(ENDPOINT,
             new Item.Properties());
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EndpointBlockEntity>> ENDPOINT_BLOCK_ENTITY =
-            BLOCK_ENTITY_TYPES.register("processing_endpoint",
-                    () -> BlockEntityType.Builder.of(EndpointBlockEntity::new, ENDPOINT.get()).build(null));
+            BLOCK_ENTITY_TYPES.register("processing_endpoint", () -> {
+                var type = BlockEntityType.Builder.of(EndpointBlockEntity::new, ENDPOINT.get()).build(null);
+                ENDPOINT.get().setBlockEntity(EndpointBlockEntity.class, type, null, EndpointBlockEntity::serverTick);
+                return type;
+            });
 
     public static final DeferredBlock<FederationPatternProviderBlock> PROVIDER = BLOCKS.registerBlock(
             "pattern_provider", FederationPatternProviderBlock::new,
@@ -73,9 +76,12 @@ public final class ProcessingRegistration {
                 (provider, context) -> provider);
         event.registerBlockEntity(FederationPortCapability.BLOCK, PROVIDER_BLOCK_ENTITY.get(),
                 FederationPatternProviderBlockEntity::federationPort);
+        event.registerBlockEntity(FederationPortCapability.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
+                EndpointBlockEntity::federationPort);
+        // Local input arrives on the Federation face from a native Provider; the runtime gates every face.
         event.registerBlockEntity(AECapabilities.ME_STORAGE, ENDPOINT_BLOCK_ENTITY.get(),
-                (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
-                        : endpointRuntime(endpoint, side).inputStorage(side).orElse(null));
+                (endpoint, side) -> side == null || endpointRuntime(endpoint) == null ? null
+                        : endpointRuntime(endpoint).inputStorage(side).orElse(null));
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).itemReturn(side).orElse(null));
@@ -85,9 +91,18 @@ public final class ProcessingRegistration {
     }
 
     private static space.controlnet.ae2federation.processing.endpoint.EndpointRuntime endpointRuntime(
+            EndpointBlockEntity endpoint) {
+        if (!(endpoint.getLevel() instanceof ServerLevel level)) {
+            return null;
+        }
+        var binding = EndpointTargetBinding.findEndpoint(level, endpoint.getBlockPos());
+        return binding == null ? null : binding.runtime();
+    }
+
+    private static space.controlnet.ae2federation.processing.endpoint.EndpointRuntime endpointRuntime(
             EndpointBlockEntity endpoint, net.minecraft.core.Direction side) {
         if (!(endpoint.getLevel() instanceof ServerLevel level) || side == null
-                || side == EndpointBlockEntity.FEDERATION_FACE) {
+                || side == endpoint.federationFace()) {
             return null;
         }
         var binding = EndpointTargetBinding.findEndpoint(level, endpoint.getBlockPos());

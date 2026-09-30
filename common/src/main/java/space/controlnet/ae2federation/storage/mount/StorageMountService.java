@@ -301,7 +301,10 @@ public final class StorageMountService implements AutoCloseable {
                 candidate -> dependencies.current(candidate, domain),
                 () -> holder[0] != null && sourceCurrent(holder[0]));
         var projection = new AuthorizedStorageProjection(delegate, authority,
-                operation -> observability.recordAcceptedStorage(authority.scopes(), operation));
+                operation -> {
+                    observability.recordAcceptedStorage(authority.scopes(), operation);
+                    observability.recordPairFlow(key, operation.amount());
+                });
         var priority = domain.sources().stream().mapToInt(source -> source.priority()).max().orElse(0);
         var provider = new RelationshipStorageProvider(projection, priority);
         var next = new MountedStorageRelationship(relationship, domain,

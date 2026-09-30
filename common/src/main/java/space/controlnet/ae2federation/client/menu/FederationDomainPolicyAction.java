@@ -13,7 +13,13 @@ public enum FederationDomainPolicyAction {
     RELEASE_ENDPOINT(9),
     SELECT_TARGET(10),
     PREPARE_RELEASE(11),
-    CANCEL_RELEASE(12);
+    CANCEL_RELEASE(12),
+    /** Sets one directional rule to an explicit state; the target carries the rule revision the client observed. */
+    SET_POLICY(13),
+    /** Names a member network; the target is the network id and the new name. */
+    RENAME_NETWORK(14),
+    /** Sets one pattern-to-Endpoint wire to an explicit state; the target is a {@code MappingWireTarget}. */
+    SET_MAPPING(15);
 
     private final int wireId;
 
@@ -23,6 +29,10 @@ public enum FederationDomainPolicyAction {
 
     public int wireId() {
         return wireId;
+    }
+
+    public boolean takesTarget() {
+        return this == SELECT_TARGET || this == SET_POLICY || this == RENAME_NETWORK || this == SET_MAPPING;
     }
 
     public static FederationDomainPolicyAction fromWireId(int wireId) {

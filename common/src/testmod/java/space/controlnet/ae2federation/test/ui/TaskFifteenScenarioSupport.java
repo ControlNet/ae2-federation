@@ -6,6 +6,9 @@ import java.util.Objects;
 import org.lwjgl.opengl.GL11;
 
 final class TaskFifteenScenarioSupport {
+    /** The pair editor's first section is the first member using the second, which is the fixture's Policy key. */
+    static final String STORAGE_SWITCH = "#policy_switch_0_storage";
+    static final String STORAGE_STATE = "#policy_state_0_storage";
     enum Entrance {
         ROUTER,
         BRIDGE
@@ -25,8 +28,8 @@ final class TaskFifteenScenarioSupport {
                 })
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .awaitElement("#tab_policy").frames(3).click("#tab_policy")
-                .awaitElement("#policy_toggle");
+                .awaitElement(STORAGE_SWITCH).frames(3)
+                .waitUntil("pair editor accepts edits", context -> context.el(STORAGE_SWITCH).isActive());
     }
 
     static void attachPolicy(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
@@ -39,8 +42,12 @@ final class TaskFifteenScenarioSupport {
         context.attach("mutationStatus", observation.mutationStatus());
         context.attach("previousRevision", Long.toString(observation.previousRevision()));
         context.attach("visibleStatus", context.el("#ack_status").text());
-        context.attach("visibleRule", context.el("#rule_value").text());
-        context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
+        context.attach("visibleRule", context.el(STORAGE_STATE).text().lines().findFirst().orElse(""));
+        context.attach("visibleSwitch", context.el(STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                .hasClass("on") ? "on" : "off");
+        // The player's option, and the scale the Federation screen actually uses (fixed by window size).
+        context.attach("guiScale", Double.toString(context.mc().options.guiScale().get()));
+        context.attach("effectiveGuiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));
         context.attach("framebufferWidth", Integer.toString(context.mc().getWindow().getWidth()));

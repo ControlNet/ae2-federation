@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.processing.endpoint;
 
 import appeng.api.orientation.BlockOrientation;
+import appeng.api.orientation.RelativeSide;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
 import java.util.EnumSet;
 import java.util.Set;
@@ -12,6 +13,17 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
+import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeId;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainPortId;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.port.CableFacePort;
+import space.controlnet.ae2federation.domain.port.FederationPort;
+import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
@@ -22,8 +34,12 @@ import space.controlnet.ae2federation.processing.claim.ClaimStateCodec;
 import space.controlnet.ae2federation.processing.claim.EndpointClaimAuthority;
 import space.controlnet.ae2federation.processing.claim.EndpointIdentity;
 
+/**
+ * The Endpoint's FRONT is its Federation face: it joins a Federation Domain through a Federation Cable, a Router or a
+ * Federation Pattern Provider's front, and joins no ME Grid. The other five faces carry its subnet, which stays outside
+ * the domain: every Federation Provider of the domain may send processing work into it.
+ */
 public final class EndpointBlockEntity extends AENetworkedBlockEntity {
-    public static final Direction FEDERATION_FACE = Direction.EAST;
     private static final String CLAIM_TAG = "endpointClaim";
     private static final String MODE_TAG = "endpointMode";
     private static final String GENERATION_TAG = "endpointModeGeneration";
@@ -31,15 +47,98 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     private EndpointMode configuredMode = EndpointMode.LOCAL;
     private long generation;
     private @Nullable EndpointTargetBinding binding;
+    private @Nullable FederationDomainNodeId federationDomainNodeId;
+    private @Nullable CableFacePort federationPort;
+    private boolean federationDomainDirty = true;
 
     public EndpointBlockEntity(BlockPos position, BlockState state) {
         super(space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT_BLOCK_ENTITY.get(),
                 position, state);
     }
 
+    public Direction federationFace() {
+        return getOrientation().getSide(RelativeSide.FRONT);
+    }
+
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
-        return EnumSet.complementOf(EnumSet.of(FEDERATION_FACE));
+        return EnumSet.complementOf(EnumSet.of(orientation.getSide(RelativeSide.FRONT)));
+    }
+
+    /** The Federation port capability exists only on the front face. */
+    public @Nullable FederationPort federationPort(@Nullable Direction face) {
+        return face != null && face == federationFace() ? new FederationPort(worldPosition, face) : null;
+    }
+
+    @Override
+    protected void onOrientationChanged(BlockOrientation orientation) {
+        super.onOrientationChanged(orientation);
+        if (level instanceof ServerLevel serverLevel && binding != null) {
+            // The binding and the Federation port are both built for one face; rebuild them for the new front.
+            closeBinding();
+            bind(serverLevel);
+            openFederationPort(serverLevel);
+            reconcileMode();
+        }
+        if (level != null) {
+            level.invalidateCapabilities(worldPosition);
+        }
+    }
+
+    public static void serverTick(net.minecraft.world.level.Level level, BlockPos position, BlockState state,
+            EndpointBlockEntity endpoint) {
+        var changed = endpoint.federationPort != null && endpoint.federationPort.tick();
+        if (changed || endpoint.federationDomainDirty) {
+            endpoint.publishFederationDomainTopology();
+        }
+        // A native Provider whose node was not ready when it was placed is picked up once it is.
+        if (endpoint.configuredMode == EndpointMode.LOCAL && endpoint.binding != null
+                && endpoint.binding.runtime().mode().isEmpty() && level.getGameTime() % 20 == 0) {
+            endpoint.reconcileMode();
+        }
+    }
+
+    public void neighborChanged(BlockPos neighborPosition) {
+        if (federationPort != null && worldPosition.relative(federationFace()).equals(neighborPosition)) {
+            federationPort.invalidate();
+        }
+        reconcileMode();
+    }
+
+    /** A native AE2 Pattern Provider (another network) on the Federation face that pushes into this Endpoint. */
+    public boolean nativeProviderOnFederationFace() {
+        if (level == null) {
+            return false;
+        }
+        var front = worldPosition.relative(federationFace());
+        return level.isLoaded(front)
+                && level.getBlockEntity(front) instanceof appeng.blockentity.crafting.PatternProviderBlockEntity provider
+                && provider.getTargets().contains(federationFace().getOpposite());
+    }
+
+    /**
+     * What touches the Federation face selects the mode: a native AE2 Pattern Provider selects Local, anything else
+     * (Federation Cable, Router, Federation Pattern Provider front, nothing) Federated. Local takes over by releasing a
+     * Federated Claim first, so the owning Lane stops and its return path closes.
+     */
+    private void reconcileMode() {
+        if (binding == null) {
+            return;
+        }
+        if (nativeProviderOnFederationFace()) {
+            if (configuredMode != EndpointMode.LOCAL) {
+                if (claims.state() instanceof ClaimState.Owned owned) {
+                    releaseClaim(owned.ownerIdentity(), owned.epoch());
+                }
+                activateLocal();
+            } else {
+                refreshLocal();
+            }
+        } else if (configuredMode == EndpointMode.LOCAL) {
+            binding.closeLocal();
+            snapshotRuntime();
+            setChanged();
+        }
     }
 
     @Override
@@ -58,10 +157,77 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             // The owning Provider was removed while this Endpoint was unloaded.
             claims.release(owned.ownerIdentity(), owned.epoch());
         }
-        binding = new EndpointTargetBinding(serverLevel, worldPosition, FEDERATION_FACE, claims, node, configuredMode,
+        bind(serverLevel);
+        federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
+        openFederationPort(serverLevel);
+        reconcileMode();
+    }
+
+    private void bind(ServerLevel serverLevel) {
+        var node = getMainNode().getNode();
+        if (node == null) {
+            return;
+        }
+        claims.withOnline(true);
+        binding = new EndpointTargetBinding(serverLevel, worldPosition, federationFace(), claims, node, configuredMode,
                 generation);
         snapshotRuntime();
         setChanged();
+    }
+
+    // ---- Federation Domain node on the front face
+
+    private void openFederationPort(ServerLevel serverLevel) {
+        if (federationPort != null) {
+            federationPort.destroy();
+        }
+        federationPort = new CableFacePort(worldPosition, federationFace(), this::invalidateFederationDomainTopology);
+        federationPort.initialize(serverLevel);
+    }
+
+    private void invalidateFederationDomainTopology() {
+        federationDomainDirty = true;
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
+            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
+                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
+            StorageMountService.topologyChangedIfPresent(serverLevel);
+            CraftingBindingService.topologyChangedIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
+        }
+    }
+
+    /** Only the Federation link is published: the subnet on the other faces is no domain member. */
+    private void publishFederationDomainTopology() {
+        if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
+            return;
+        }
+        var evidence = new java.util.TreeMap<String, FederationDomainPortEvidence>();
+        var peer = federationPort == null ? null : federationPort.peer();
+        if (peer != null) {
+            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+            evidence.put(federationFace().getSerializedName(), new FederationDomainPortEvidence.Federation(
+                    new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
+        }
+        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId,
+                evidence));
+        StorageMountService.topologyChangedIfPresent(serverLevel);
+        CraftingBindingService.topologyChangedIfPresent(serverLevel);
+        EnergyBindingService.reconcileIfPresent(serverLevel);
+        federationDomainDirty = false;
+    }
+
+    private void closeFederationPort() {
+        if (federationPort != null) {
+            federationPort.destroy();
+            federationPort = null;
+        }
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            StorageMountService.topologyChangedIfPresent(serverLevel);
+            CraftingBindingService.topologyChangedIfPresent(serverLevel);
+            EnergyBindingService.reconcileIfPresent(serverLevel);
+        }
+        federationDomainDirty = true;
     }
 
     @Override
@@ -98,6 +264,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     }
 
     public ClaimResult claim(ClaimRequest request) {
+        if (nativeProviderOnFederationFace()) {
+            return claims.reject(space.controlnet.ae2federation.processing.claim.ClaimRejection.LOCAL_MODE);
+        }
         var result = claims.compareAndSet(request);
         if (!(result instanceof ClaimResult.Rejected)) {
             setChanged();
@@ -119,7 +288,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     }
 
     public boolean activateFederated() {
-        if (!(claims.state() instanceof ClaimState.Owned)) {
+        if (!(claims.state() instanceof ClaimState.Owned) || nativeProviderOnFederationFace()) {
             return false;
         }
         configuredMode = EndpointMode.FEDERATED;
@@ -152,12 +321,14 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     @Override
     public void onChunkUnloaded() {
         closeBinding();
+        closeFederationPort();
         super.onChunkUnloaded();
     }
 
     @Override
     public void setRemoved() {
         closeBinding();
+        closeFederationPort();
         super.setRemoved();
     }
 

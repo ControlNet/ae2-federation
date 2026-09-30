@@ -7,7 +7,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 import space.controlnet.ae2federation.test.processing.ProviderRuntimeReplayControl;
 import space.controlnet.ae2federation.test.processing.ProviderTargetRuntimeFixtures;
@@ -27,9 +26,8 @@ public final class EndpointAuthorizationGameTests {
 
     private static void runTakeoverAssertions(GameTestHelper helper, ProviderTargetRuntimeFixtures fixture) {
         helper.assertTrue(fixture.initialize(), "Waiting for production Provider and Endpoint runtime");
-        helper.assertTrue(fixture.enablePolicy(java.util.Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
-                "Federated mode requires Processing Policy");
-        fixture.connectFederationDomain();
+        helper.assertTrue(fixture.connectFederationDomain(),
+                "The Endpoint must join a domain of the Provider network");
         helper.assertTrue(fixture.pushOnce(0), "The first native Lane must bind through production authorization");
         var oldContext = fixture.endpointBinding().runtime().itemReturnContext().orElseThrow();
         var oldMode = oldContext.owner().mode();

@@ -142,7 +142,11 @@ final class NativeProviderTargets {
 
     private void installEndpointTarget(BlockPos endpointPosition, net.minecraft.world.level.block.Block endpointBlock,
             Direction backendSide) {
-        helper.setBlock(endpointPosition, endpointBlock);
+        var state = endpointBlock.defaultBlockState();
+        if (endpointBlock instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlock) {
+            state = state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.EAST);
+        }
+        helper.setBlock(endpointPosition, state);
         var backendPosition = endpointPosition.relative(backendSide);
         helper.setBlock(backendPosition, AEBlocks.ME_CHEST.block());
         helper.setBlock(backendPosition.below(), AEBlocks.CREATIVE_ENERGY_CELL.block());

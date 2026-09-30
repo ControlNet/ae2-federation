@@ -100,7 +100,7 @@ def uiAllScenarioNames = uiTaskThreeScenarioNames + uiTaskFifteenScenarioNames +
 def verifyTaskFifteenReport = { List attachments, List controls, List captures, String runId ->
     def outcomes = attachments.findAll { it.caseId != null }.collectEntries { [(it.caseId): it] }
     if (outcomes.keySet() as Set != uiTaskFifteenScenarioNames || captures.size() < 5
-            || controls.count { it.selector == '#policy_toggle' } < 5) {
+            || controls.count { it.selector == '#policy_switch_0_storage' } < 5) {
         throw new GradleException('Task 15 control, screenshot, or scenario outcome accounting is incomplete')
     }
     if (outcomes.values().any { it.recordIdentity == null || it.recordIdentity.isBlank()
@@ -110,7 +110,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     ['ui.router', 'ui.bridge'].each { caseId ->
         def outcome = outcomes[caseId]
         def revision = outcome.policyRevision as long
-        def expectedStatus = "Server accepted revision ${revision} - acknowledgment policy-${revision}"
+        def expectedStatus = "Server confirmed: Storage rule enabled · revision ${revision}"
         if (outcome.mutationStatus != 'ACCEPTED' || revision <= 0L || outcome.policyEnabled != 'true'
                 || outcome.visibleStatus != expectedStatus) {
             throw new GradleException("Task 15 server acknowledgment is invalid for ${caseId}")
@@ -119,7 +119,8 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     def shared = outcomes['ui.shared-policy']
     if (shared.mutationStatus != 'SHARED' || shared.policyEnabled != 'true'
             || (shared.policyRevision as long) <= 0L
-            || shared.visibleRule != "STORAGE: enabled (revision ${shared.policyRevision})") {
+            || shared.visibleSwitch != 'on' || shared.visibleRule.startsWith('Off')
+            || !shared.visibleRule.endsWith("revision ${shared.policyRevision}")) {
         throw new GradleException('Task 15 Router edit was not observed as the same Bridge policy record')
     }
     if (!attachments.any { it.bridgeDiagnosticOnly == 'true' }) {
@@ -135,7 +136,7 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     if (closed.menuClosedBeforeMutation != 'true' || closed.sharingContinues != 'true'
             || closed.mutationStatus != 'POST_CLOSE_ACCEPTED' || closed.policyEnabled != 'false'
             || (closed.policyRevision as long) != (closed.previousRevision as long) + 1L
-            || closed.visibleRule != "STORAGE: disabled (revision ${closed.policyRevision})") {
+            || closed.visibleSwitch != 'off' || closed.visibleRule != "Off · revision ${closed.policyRevision}") {
         throw new GradleException('Task 15 menu closure lifecycle or continued sharing is invalid')
     }
 }
@@ -151,10 +152,43 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (outcomes.values().any { it.graphVisited != 'true' || it.workspaceVisible != 'true' || it.glRenderer == null || it.glRenderer.isBlank() }) {
         throw new GradleException('Task 33 actual-client graph or renderer evidence is missing')
     }
+    def evidence = { String caseId, String field -> attachments.find { it.evidenceFor == caseId && it[field] != null }?.getAt(field) }
+    if (evidence('ui.graph-controls', 'scope') != 'related-read-only'
+            || !captures.any { it.path.contains('ui-scope-related') }) {
+        throw new GradleException('Task 33 related-domain scope was not shown read-only')
+    }
+    if (!(evidence('ui.mapping', 'processingFlow') ?: '').contains('Delivered 1× in the last 5 s')
+            || !((evidence('ui.mapping', 'flowDots') ?: '0') as Integer > 0)
+            || !captures.any { it.path.contains('ui-flow-processing') }) {
+        throw new GradleException('Task 33 Endpoint node did not show its real delivery')
+    }
+    if (!(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Merge pending')
+            || !(evidence('ui.graph-controls', 'identityMerge') ?: '').contains('Contains: ')
+            || evidence('ui.graph-controls', 'identityMergeGroups') != '2'
+            || !captures.any { it.path.contains('ui-identity-merge') }) {
+        throw new GradleException('Task 33 merge identity state was not explained with both parts')
+    }
+    // Right-click opens the Provider's own screen: its nine real slots take clicks and quick moves, and its AE2
+    // settings and priority reach the Provider.
+    if (evidence('ui.mapping', 'providerScreen') != 'slots-9;blocking-toggled;priority-7;slot-click;quick-move'
+            || !captures.any { it.path.contains('ui-provider-screen') }
+            || !captures.any { it.path.contains('ui-provider-slot-filled') }
+            || !captures.any { it.path.contains('ui-provider-return') }) {
+        throw new GradleException('Task 33 Provider screen slots, settings or navigation evidence is missing')
+    }
+    // In the showcase domain the host's Provider screen shows its own Endpoints, two other Providers' and a free one.
+    if (evidence('ui.mapping', 'showcaseProviderClaims') != 'free-1;in_use-2;occupied-2'
+            || !['ui-showcase-provider', 'ui-showcase-provider-own', 'ui-showcase-provider-other'].every { name ->
+                captures.any { it.path.endsWith("_${name}.png") } }) {
+        throw new GradleException('Task 33 showcase Provider screen evidence is missing')
+    }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
+            || mapping.processingWire != 'mapped-unlinked'
+            || !captures.any { it.path.contains('ui-processing-wire-selected') }
             || mapping.mappingAck != 'Mapping updated for pattern slot 0.'
-            || mapping.mappingAckCode != 'accepted-0-0'
+            // The wires view maps and unlinks slot 0 first, so the list toggle sees mapping generation 2.
+            || mapping.mappingAckCode != 'accepted-0-2'
             || mapping.providerId == null || mapping.providerId.isBlank()) {
         throw new GradleException('Task 33 authoritative Provider mapping acknowledgment is invalid')
     }
@@ -174,11 +208,15 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     def chinese = outcomes['ui.chinese-scales']
     def exercisedScales = outcomes.values().collect { it.guiScale as double } as Set
     if (chinese.language != 'zh_cn' || chinese.guiScale as double != 4d
-            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)) {
+            || !chinese.largeQuantity.contains('4,000,000,000') || exercisedScales != ([2d, 3d, 4d] as Set)
+            // Whatever the option, a Federation screen at 1600x960 uses the one fixed scale.
+            || (outcomes.values().collect { it.effectiveGuiScale as double } as Set) != ([2d] as Set)) {
         throw new GradleException('Task 33 Chinese text, large quantity, or GUI scale evidence is invalid')
     }
     def conflict = outcomes['ui.reject-claim-conflict']
     if (conflict.claimConflict != 'Rejected'
+            || conflict.processingOccupiedDrop != 'refused'
+            || !captures.any { it.path.contains('ui-processing-drop-occupied') }
             || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')
             || !conflict.endpointIdentity?.contains('OWNER_CONFLICT')
             || !conflict.endpointIdentity?.contains('Claim epoch: 1')) {
@@ -186,7 +224,12 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def controlsOutcome = outcomes['ui.graph-controls']
     if ((controlsOutcome.policyRevision as long) <= 0L || controlsOutcome.policyEnabled != 'true'
-            || !controlsOutcome.visibleStatus.startsWith('Server accepted revision ')
+            || controlsOutcome.networkRename != 'North Storage'
+            || !((controlsOutcome.highlightBlocks ?: '0') as int > 1)
+            || !captures.any { it.path.contains('ui-network-location') }
+            || !captures.any { it.path.contains('world-network-highlight') }
+            || !captures.any { it.path.contains('ui-graph-network-renamed') }
+            || !controlsOutcome.visibleStatus.startsWith('Server confirmed: Storage rule ')
             || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
             || !captures.any { it.path.contains('world-router-overview') }
             || !captures.any { it.path.contains('world-multipart-bridge-north') }
@@ -357,7 +400,7 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 || clientA.getProperty('singleplayer') != 'false' || clientB.getProperty('singleplayer') != 'false'
                 || clientA.getProperty('firstAccepted') != 'true' || clientB.getProperty('staleRevision') != 'true'
                 || clientA.getProperty('staleContext') != 'true'
-                || clientB.getProperty('staleRevisionRenderedText') != 'Rejected by server: policy revision is now 1'
+                || clientB.getProperty('staleRevisionRenderedText') != 'Rule changed elsewhere (revision 1). The switch now shows its current state.'
                 || (clientB.getProperty('staleRevisionStableFrames') as int) < 3
                 || clientA.getProperty('staleContextRenderedText') != 'Rejected by server: Federation Domain topology changed; reopen this editor'
                 || (clientA.getProperty('staleContextStableFrames') as int) < 3
@@ -365,8 +408,8 @@ verifyUiPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
                 || !report.screenshots.any { it.path == 'clients/client-a-domain-split.png' }
                 || clientA.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
                 || clientB.getProperty('refreshedRenderedStatus') != 'Ready - changes require server confirmation'
-                || clientA.getProperty('refreshedRenderedMembers') != '2 members'
-                || clientB.getProperty('refreshedRenderedMembers') != '2 members'
+                || clientA.getProperty('refreshedRenderedMembers') != '2 networks'
+                || clientB.getProperty('refreshedRenderedMembers') != '2 networks'
                 || (clientA.getProperty('refreshedStableFrames') as int) < 3
                 || (clientB.getProperty('refreshedStableFrames') as int) < 3
                 || !report.screenshots.any { it.path == 'clients/client-a-refreshed.png' }
@@ -823,7 +866,7 @@ tasks.register('federationUiTest') {
                         window: [width: clientFactsA.windowWidth as int, height: clientFactsA.windowHeight as int,
                                 framebufferWidth: clientFactsA.framebufferWidth as int,
                                 framebufferHeight: clientFactsA.framebufferHeight as int],
-                        controls: [[selector: '#policy_toggle', clients: ['A', 'B']]],
+                        controls: [[selector: '#policy_switch_0_storage', clients: ['A', 'B']]],
                         controlAttachments: attachments, screenshots: screenshots,
                         upstreamReportRunId: null, artifacts: artifacts]
                 def resultFile = new File(attempt, 'result.json')
@@ -858,6 +901,11 @@ tasks.register('federationUiTest') {
         }
         if (child.exit != 0 || child.timedOut) {
             throw new GradleException("Actual Minecraft client failed or timed out; exit=${child.exit}, log=${clientLog}")
+        }
+        // LDLib2 logs "may be attacks" when a side refuses a binding's data; in a menu's initial data that also
+        // garbles every later binding, so the Provider screen's settings and choices would silently go missing.
+        if (requested.contains('ui.mapping') && clientLog.text.contains('may be attacks')) {
+            throw new GradleException("A Federation menu refused sync data (LDLib2 'may be attacks'); log=${clientLog}")
         }
         def verified = verifyLdlibReport(new File(ldlibOutput, 'report.json'), ldlibOutput, selectedScenarioNames, runId)
         def assertionMap = requested.collect { caseId -> [caseId: caseId, status: 'passed'] }

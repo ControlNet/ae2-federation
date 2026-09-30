@@ -32,10 +32,104 @@ final class TaskThirtyThreeScenarioSupport {
                 .step("record visible overview", context -> context.put("task33.graphVisited", Boolean.toString(context.el("#domain_graph").isVisible())));
     }
 
+    /** Clicks the middle of the wire from a pattern port to the only Endpoint card of the processing view. */
+    static void clickWire(com.lowdragmc.lowdraglib2.uitest.TestContext context, String slot) {
+        var port = context.el("#processing_port_" + slot).bounds();
+        var card = context.el(".processing-endpoint").bounds();
+        float x = (port.x() + port.width() - 2 + card.x()) / 2;
+        float y = (port.centerY() + card.centerY()) / 2;
+        context.input().mouseDown(x, y, 0);
+        context.input().mouseUp(x, y, 0);
+    }
+
     static void activateNavigation(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
         var bounds = context.el(selector).bounds();
         context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
         context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    /** The workspace names an unnamed network by the first four hex digits of its identity, its card badge. */
+    static String networkTag(String networkUuid) {
+        return networkUuid.substring(0, 4).toUpperCase(java.util.Locale.ROOT);
+    }
+
+    static String networkName(String networkUuid) {
+        return "Network " + networkTag(networkUuid);
+    }
+
+    static com.lowdragmc.lowdraglib2.uitest.ElementRef networkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context,
+            String networkUuid) {
+        var tag = networkTag(networkUuid);
+        // A card names its network and carries the full identity in its tooltip, which holds after a rename.
+        return context.all(".graph-node-member").stream()
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips()
+                        .asList().stream().anyMatch(line -> line.getString().equals(networkUuid)))
+                .findFirst().orElseThrow(() -> new IllegalStateException("No topology card for network " + tag));
+    }
+
+    /** The texts a network's card shows, such as its name, position and state line. */
+    static java.util.List<String> cardTexts(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        return networkCard(context, networkUuid).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                .map(child -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) child).getText().getString())
+                .toList();
+    }
+
+    /** Selects the topology card of one network through its rendered name. */
+    static void selectNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        var bounds = networkCard(context, networkUuid).bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    static void selectFirstNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var bounds = context.all(".graph-node-member").getFirst().bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    static boolean networkCardCentered(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        var viewport = context.el("#domain_graph").bounds();
+        var card = networkCard(context, networkUuid).bounds();
+        return viewport.width() > 0 && viewport.height() > 0
+                && Math.abs(viewport.centerX() - card.centerX()) < 1
+                && Math.abs(viewport.centerY() - card.centerY()) < 1;
+    }
+
+    /**
+     * A pair-editor control for the rule {@code consumer uses the other network's capability}. Section titles name the
+     * consumer first in every language, so its tag sits right after the short localized "Network" prefix.
+     */
+    static String ruleControl(com.lowdragmc.lowdraglib2.uitest.TestContext context, String kind, String consumerUuid,
+            String capability) {
+        var index = context.el("#policy_section_title_0").text().indexOf(networkTag(consumerUuid));
+        var section = index >= 0 && index <= 12 ? 0 : 1;
+        return "#policy_" + kind + "_" + section + "_" + capability;
+    }
+
+    /** Whether any tooltip line of the element contains {@code text}, such as the device counts on "Devices (N)". */
+    static boolean tooltipContains(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector, String text) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList()
+                .stream().anyMatch(line -> line.getString().contains(text));
+    }
+
+    static String ruleState(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
+        return context.el(ruleControl(context, "state", context.get("net.providerHost"), capability)).text();
+    }
+
+    /** Scrolls the topology aside so a pair-editor row is in view for screenshots. */
+    static void revealRule(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
+        revealInAside(context, ruleControl(context, "row", context.get("net.providerHost"), capability));
+    }
+
+    /** Scrolls the topology aside so the element matching {@code selector} is at the top of the viewport. */
+    static void revealInAside(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        var row = context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+        var aside = context.el("#topology_aside").as(com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView.class);
+        // The vertical scroller is normalized over the overflow between the content and its viewport.
+        float overflow = aside.viewContainer.getSizeHeight() - aside.viewPort.getContentHeight();
+        float top = row.getPositionY() - aside.viewContainer.getPositionY();
+        aside.verticalScroller.setValue(overflow <= 0 ? 0f : Math.min(1f, Math.max(0f, top / overflow)));
     }
 
     static void configure(com.lowdragmc.lowdraglib2.uitest.ScenarioOptions options, int guiScale) {
@@ -45,15 +139,17 @@ final class TaskThirtyThreeScenarioSupport {
 
     static void attach(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
         context.attach("caseId", caseId);
-        context.attach("mappingAck", context.el("#mapping_status").text());
-        context.attach("mappingAckCode", context.el("#mapping_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+        context.attach("mappingAck", context.el("#processing_status").text());
+        context.attach("mappingAckCode", context.el("#processing_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                 .getStyle().tooltips().asList().getFirst().getString());
         context.attach("endpointDetail", context.el("#endpoint_detail").text());
         context.attach("endpointIdentity", context.el("#endpoint_identity").text());
         context.attach("visibleStatus", context.el("#ack_status").text());
         context.attach("graphVisited", context.get("task33.graphVisited"));
         context.attach("workspaceVisible", Boolean.toString(context.el("#domain_root").isVisible()));
-        context.attach("guiScale", Double.toString(context.mc().getWindow().getGuiScale()));
+        // The player's option, and the scale the Federation screen actually uses (fixed by window size).
+        context.attach("guiScale", Double.toString(context.mc().options.guiScale().get()));
+        context.attach("effectiveGuiScale", Double.toString(context.mc().getWindow().getGuiScale()));
         context.attach("windowWidth", Integer.toString(context.mc().getWindow().getScreenWidth()));
         context.attach("windowHeight", Integer.toString(context.mc().getWindow().getScreenHeight()));
         context.attach("framebufferWidth", Integer.toString(context.mc().getWindow().getWidth()));
@@ -121,10 +217,5 @@ final class TaskThirtyThreeScenarioSupport {
             }
         }
         return true;
-    }
-
-    static String renderedVirtualRows(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
-        return context.all(".virtual-row").stream().map(com.lowdragmc.lowdraglib2.uitest.ElementRef::text)
-                .collect(java.util.stream.Collectors.joining("\n"));
     }
 }

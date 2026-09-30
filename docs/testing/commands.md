@@ -27,6 +27,22 @@ Expected signals include `Enabled Gametest Namespaces: [ae2federation_test]`, na
 The bounded fixture places an AE2 creative energy cell and ME chest, waits for the real Grid node to boot, then
 modulates a real ME storage insert and extraction.
 
+## Fast development runs
+
+One server runs many GameTests, one after another, each with a cleared area and no leftover players:
+
+```bash
+python3 tools/dev_gametests.py endpointlocal claimcompete productionproviderthreeway
+python3 tools/dev_gametests.py --manifest                       # every required manifest GameTest, about 2.5 min
+python3 tools/dev_gametests.py --manifest --match productionprovider
+```
+
+Expected signal: one `PASS`, `FAIL`, `CRASH` or `MISSING` line per test, then `N/N passed`. The exit code is 0 only when
+every test passed. The combined log is written to `build/dev-gametest.log`. Level SavedData such as rules and identities
+outlives each test, so every batch failure runs again alone: `SHARED` means it passes alone, while `(also fails alone)`
+is a real failure. `--no-isolate` skips that rerun. This runner is for iteration only. The required gate is
+`python3 -B tools/required_gametests.py`, which runs one server per test.
+
 ## Evidence verification
 
 Task 40 documentation QA selects exactly four registered IDs. Run this from the repository root against the current

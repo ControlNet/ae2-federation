@@ -27,14 +27,36 @@ public record PolicyEditorSelection(List<NetworkId> members, int consumerIndex, 
         return new PolicyEditorSelection(ordered, 0, 1, 0);
     }
 
+    /** Cycles the consumer; with no other distinct member (two-member domain) the direction is swapped. */
     public PolicyEditorSelection nextConsumer() {
-        return new PolicyEditorSelection(members, nextDistinct(consumerIndex, providerIndex), providerIndex,
-                capabilityIndex);
+        var next = nextDistinct(consumerIndex, providerIndex);
+        return next == consumerIndex ? swapped() : withConsumer(next);
     }
 
+    /** Cycles the provider; with no other distinct member (two-member domain) the direction is swapped. */
     public PolicyEditorSelection nextProvider() {
-        return new PolicyEditorSelection(members, consumerIndex, nextDistinct(providerIndex, consumerIndex),
-                capabilityIndex);
+        var next = nextDistinct(providerIndex, consumerIndex);
+        return next == providerIndex ? swapped() : withProvider(next);
+    }
+
+    /** Selects a consumer; choosing the current provider swaps the direction instead of being rejected. */
+    public PolicyEditorSelection withConsumer(int index) {
+        if (index == providerIndex) {
+            return swapped();
+        }
+        return new PolicyEditorSelection(members, index, providerIndex, capabilityIndex);
+    }
+
+    /** Selects a provider; choosing the current consumer swaps the direction instead of being rejected. */
+    public PolicyEditorSelection withProvider(int index) {
+        if (index == consumerIndex) {
+            return swapped();
+        }
+        return new PolicyEditorSelection(members, consumerIndex, index, capabilityIndex);
+    }
+
+    public PolicyEditorSelection swapped() {
+        return new PolicyEditorSelection(members, providerIndex, consumerIndex, capabilityIndex);
     }
 
     public PolicyEditorSelection nextCapability() {

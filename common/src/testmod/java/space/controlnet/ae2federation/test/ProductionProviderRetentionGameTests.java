@@ -90,8 +90,8 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy A must be accepted");
-                    helper.assertTrue(scene.setPolicy(Target.B, true), "Processing Policy B must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint A must connect to the domain");
+                    helper.assertTrue(scene.setAccess(Target.B, true), "Endpoint B must connect to the domain");
                     scene.installPattern(0);
                     scene.installPattern(1, AEItemKey.of(Items.EMERALD));
                     // Idle Endpoint: mapped and unmapped before any work was sent.
@@ -161,11 +161,13 @@ public final class ProductionProviderRetentionGameTests {
                 case 5 -> {
                     var second = scene.secondProvider();
                     helper.assertTrue(second.runtime().isPresent(), "Waiting for the second Provider");
-                    var remainder = second.getTerminalPatternInventory().insertItem(0,
-                            scene.provider().getTerminalPatternInventory().getStackInSlot(0).copy(), false);
-                    helper.assertTrue(remainder.isEmpty(), "Second Provider takes a Pattern");
+                    if (second.getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+                        var remainder = second.getTerminalPatternInventory().insertItem(0,
+                                scene.provider().getTerminalPatternInventory().getStackInSlot(0).copy(), false);
+                        helper.assertTrue(remainder.isEmpty(), "Second Provider takes a Pattern");
+                    }
                     var status = scene.map(second, 0, Target.A);
-                    helper.assertTrue(status.startsWith("rejected-"), "A retained Endpoint cannot be claimed: " + status);
+                    helper.assertValueEqual(status, "rejected-owner_conflict", "A retained Endpoint cannot be claimed");
                     requireOwned(helper, scene, scene.provider(), "The competing claim leaves the Claim unchanged");
                     facts.put("competingClaim", status);
                     phase[0] = 6;
@@ -261,10 +263,7 @@ public final class ProductionProviderRetentionGameTests {
                         var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                         player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                         var session = FederationDomainPolicySession.forRouter(player, router);
-                        for (int attempt = 0; attempt < 4 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
-                            session.releaseEndpoint();
-                            if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
-                        }
+                        prepareRelease(session);
                         helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Confirm old binding");
                         ClaimState protectedClaim = null;
                         if (testId.equals("productionproviderreplacedcleanup")) {
@@ -299,13 +298,7 @@ public final class ProductionProviderRetentionGameTests {
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);
-                    for (int attempt = 0; attempt < 3 && !"confirm-release".equals(session.mappingStatusCode());
-                            attempt++) {
-                        session.releaseEndpoint();
-                        if (!"confirm-release".equals(session.mappingStatusCode())) {
-                            session.nextMappingLane();
-                        }
-                    }
+                    prepareRelease(session);
                     helper.assertValueEqual(session.mappingStatusCode(), "confirm-release",
                             "The first release press only asks for confirmation");
                     requireOwned(helper, scene, provider, "An unconfirmed release changes nothing");
@@ -335,10 +328,7 @@ public final class ProductionProviderRetentionGameTests {
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);
-                    for (int attempt = 0; attempt < 5 && !"confirm-release".equals(session.mappingStatusCode()); attempt++) {
-                        session.releaseEndpoint();
-                        if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
-                    }
+                    prepareRelease(session);
                     helper.assertValueEqual(session.mappingStatusCode(), "confirm-release", "Select offline retained identity");
                     helper.assertTrue(provider.retained(endpoint), "Unconfirmed cleanup retains binding");
                     session.releaseEndpoint();
@@ -372,7 +362,7 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     accepted(helper, scene.map(0, Target.A), "Mapping A");
                     scene.provider().getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
@@ -469,7 +459,7 @@ public final class ProductionProviderRetentionGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     accepted(helper, scene.map(0, Target.A), "Mapping A");
                     scene.provider().getConfigManager().putSetting(Settings.LOCK_CRAFTING_MODE,
@@ -497,11 +487,11 @@ public final class ProductionProviderRetentionGameTests {
                         helper.fail("Letting maintenance settle the return binding");
                     }
                     helper.assertTrue(scene.returnAvailable(Target.A), "The return path is bound before the reload");
-                    helper.assertTrue(scene.setPolicy(Target.A, false), "Revoking Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, false), "Endpoint must disconnect from the domain");
                     scene.reloadEndpoint(Target.A, scene.unloadEndpoint(Target.A));
                     waited[0] = 0;
                     phase[0] = 3;
-                    helper.fail("Revoked Policy and reloaded the Endpoint");
+                    helper.fail("Disconnected and reloaded the Endpoint");
                 }
                 case 3 -> {
                     helper.assertTrue(scene.binding(Target.A) != null, "Waiting for the reloaded Endpoint");
@@ -509,18 +499,18 @@ public final class ProductionProviderRetentionGameTests {
                         helper.fail("Letting maintenance run");
                     }
                     helper.assertTrue(!scene.returnAvailable(Target.A),
-                            "Without Policy the return path is not rebound to the Lane");
+                            "A disconnected Endpoint does not rebind the return path to the Lane");
                     helper.assertValueEqual(scene.held(Target.A), 1L, "The product stays in the machine");
                     facts.put("revokedReturnRebound", "false");
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Restoring Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must reconnect to the domain");
                     phase[0] = 4;
-                    helper.fail("Restored Policy");
+                    helper.fail("Reconnected the Endpoint");
                 }
                 case 4 -> {
                     helper.assertValueEqual(scene.finishHeld(Target.A), 1L,
                             "Waiting for the authorized return path to be restored");
                     phase[0] = 5;
-                    helper.fail("Returned after Policy was restored");
+                    helper.fail("Returned after the Endpoint reconnected");
                 }
                 case 5 -> {
                     helper.assertTrue(!scene.cpuBusy(), "Waiting for the native CPU to finish");
@@ -555,6 +545,20 @@ public final class ProductionProviderRetentionGameTests {
 
     private static void accepted(GameTestHelper helper, String status, String action) {
         helper.assertTrue(status.startsWith("accepted-"), action + ": " + status);
+    }
+
+    /**
+     * Presses Release on each Lane of each Provider the Router's domain lists until one asks for confirmation: the
+     * competing second Provider is in the same domain, and the order of the two is not fixed.
+     */
+    private static void prepareRelease(FederationDomainPolicySession session) {
+        for (int provider = 0; provider < 2 && !"confirm-release".equals(session.mappingStatusCode()); provider++) {
+            for (int lane = 0; lane < 5 && !"confirm-release".equals(session.mappingStatusCode()); lane++) {
+                session.releaseEndpoint();
+                if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingLane();
+            }
+            if (!"confirm-release".equals(session.mappingStatusCode())) session.nextMappingProvider();
+        }
     }
 
     private static void requireOwned(GameTestHelper helper, ProductionProviderScene scene,

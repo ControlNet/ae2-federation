@@ -30,6 +30,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p test_release_metadata.py -v
           python3 -m unittest discover -s tests -p test_required_gametests.py -v
+          python3 -m unittest discover -s tests -p test_platform_release.py -v
           python3 tools/release_metadata.py
       - uses: actions/setup-java@v4
         with:
@@ -110,8 +111,33 @@ jobs:
           path: gametest.log
           if-no-files-found: error
 
+  platform-preflight:
+    needs: build
+    if: needs.build.outputs.should_release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      channel: ${{ steps.plan.outputs.channel }}
+      name: ${{ steps.plan.outputs.name }}
+      filename: ${{ steps.plan.outputs.filename }}
+      changelog: ${{ steps.plan.outputs.changelog }}
+      environment: ${{ steps.plan.outputs.environment }}
+      game_versions: ${{ steps.plan.outputs.game_versions }}
+      dependencies: ${{ steps.plan.outputs.dependencies }}
+      curseforge_ids: ${{ steps.plan.outputs.curseforge_ids }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Modrinth and CurseForge tags before tagging
+        id: plan
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CURSEFORGE_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+        run: python3 -B tools/platform_release.py preflight
+
   publish:
-    needs: [build, gametests]
+    needs: [build, gametests, platform-preflight]
     if: needs.build.outputs.should_release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -156,3 +182,94 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" build/release/*.jar build/release/SHA256SUMS.txt --clobber
           gh release edit "$RELEASE_TAG" --draft=false
+
+  # Each platform upload is skipped when that platform already has this version,
+  # so re-runs and manual dispatches only fill in missing uploads.
+  publish-modrinth:
+    needs: [build, platform-preflight, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      MODRINTH_PROJECT_ID: ${{ secrets.MODRINTH_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: build/release
+      - name: Verify downloaded assets
+        working-directory: build/release
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Check for an existing Modrinth version
+        id: existing
+        run: python3 -B tools/platform_release.py modrinth-exists
+      - name: Publish to Modrinth
+        id: modrinth
+        if: steps.existing.outputs.exists == 'false'
+        uses: cloudnode-pro/modrinth-publish@v2
+        with:
+          token: ${{ env.MODRINTH_TOKEN }}
+          project: ${{ env.MODRINTH_PROJECT_ID }}
+          name: ${{ needs.platform-preflight.outputs.name }}
+          version: ${{ needs.build.outputs.version }}
+          channel: ${{ needs.platform-preflight.outputs.channel }}
+          changelog: ${{ needs.platform-preflight.outputs.changelog }}
+          loaders: neoforge
+          game-versions: ${{ needs.platform-preflight.outputs.game_versions }}
+          environment: ${{ needs.platform-preflight.outputs.environment }}
+          dependencies: ${{ needs.platform-preflight.outputs.dependencies }}
+          files: build/release/${{ needs.platform-preflight.outputs.filename }}
+          primary-file: ${{ needs.platform-preflight.outputs.filename }}
+      - name: Verify published Modrinth version
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          VERSION_ID: ${{ steps.modrinth.outputs.version-id }}
+        run: |
+          printf 'Modrinth version ID: `%s`\n' "$VERSION_ID" >> "$GITHUB_STEP_SUMMARY"
+          python3 -B tools/platform_release.py verify-modrinth "$VERSION_ID"
+      - name: Report skipped Modrinth upload
+        if: steps.existing.outputs.exists == 'true'
+        run: echo "Modrinth already has version ${{ needs.build.outputs.version }}; nothing uploaded." >> "$GITHUB_STEP_SUMMARY"
+
+  publish-curseforge:
+    needs: [build, platform-preflight, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: build/release
+      - name: Verify downloaded assets
+        working-directory: build/release
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Check for an existing CurseForge file
+        id: existing
+        env:
+          CURSEFORGE_PROJECT_ID: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+        run: python3 -B tools/platform_release.py curseforge-exists
+      - name: Publish to CurseForge
+        id: curseforge
+        if: steps.existing.outputs.exists == 'false'
+        uses: itsmeow/curseforge-upload@v3
+        with:
+          token: ${{ secrets.CURSEFORGE_TOKEN }}
+          project_id: ${{ secrets.CURSEFORGE_PROJECT_ID }}
+          game_endpoint: minecraft
+          file_path: build/release/${{ needs.platform-preflight.outputs.filename }}
+          game_versions: ${{ needs.platform-preflight.outputs.curseforge_ids }}
+          release_type: ${{ needs.platform-preflight.outputs.channel }}
+          changelog: ${{ needs.platform-preflight.outputs.changelog }}
+          changelog_type: markdown
+      - name: Record uploaded file ID
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          FILE_ID: ${{ steps.curseforge.outputs.id }}
+        run: |
+          [[ "$FILE_ID" =~ ^[0-9]+$ ]]
+          printf 'CurseForge file ID: `%s` (moderation may be pending)\n' "$FILE_ID" >> "$GITHUB_STEP_SUMMARY"
+      - name: Report skipped CurseForge upload
+        if: steps.existing.outputs.exists == 'true'
+        run: echo "CurseForge already has ${{ needs.platform-preflight.outputs.filename }}; nothing uploaded." >> "$GITHUB_STEP_SUMMARY"

@@ -57,7 +57,7 @@ public final class ProductionProviderGameTests {
                 case 0 -> {
                     requireReady(helper, scene);
                     for (var target : Target.values()) {
-                        helper.assertTrue(scene.setPolicy(target, true), "Processing Policy must be accepted");
+                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
                     }
                     scene.installPattern(0);
                     for (var target : Target.values()) {
@@ -171,34 +171,34 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     var status = scene.map(0, Target.A);
                     helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
-                    helper.assertTrue(scene.setPolicy(Target.A, false), "Disabling Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, false), "Endpoint must disconnect from the domain");
                     scene.insertSourceInput(1);
                     scene.beginCraft(1);
                     phase[0] = 1;
-                    helper.fail("Planning with the Policy disabled");
+                    helper.fail("Planning with the Endpoint disconnected");
                 }
                 case 1 -> {
                     helper.assertTrue(scene.submitWhenPlanned(), "Waiting for the native plan");
                     phase[0] = 2;
-                    helper.fail("Submitted while the Policy is disabled");
+                    helper.fail("Submitted while the Endpoint is disconnected");
                 }
                 case 2 -> {
                     if (++waited[0] < 40) {
                         helper.assertValueEqual(scene.targetAmount(Target.A, ProductionProviderScene.INPUT), 0L,
-                                "A disabled Policy must stop native delivery");
-                        helper.fail("Holding with the Policy disabled");
+                                "A disconnected Endpoint must stop native delivery");
+                        helper.fail("Holding with the Endpoint disconnected");
                     }
                     helper.assertTrue(scene.cpuBusy(), "The native job must stay pending, not fall back");
-                    helper.assertValueEqual(laneState(scene), ProviderTargetState.POLICY_DENIED,
-                            "The Lane must report the denied Policy");
-                    facts.put("policyDisabledState", laneState(scene).name());
+                    helper.assertValueEqual(laneState(scene), ProviderTargetState.FEDERATION_DOMAIN_DISCONNECTED,
+                            "The Lane must report the disconnected Endpoint");
+                    facts.put("endpointDisconnectedState", laneState(scene).name());
                     // Replace the Federation Cable with a real local inventory on the Provider's Federation face.
                     helper.setBlock(ProductionProviderScene.CABLE_NEAR, Blocks.CHEST);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Re-enabling Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must reconnect to the domain");
                     waited[0] = 0;
                     phase[0] = 3;
                     helper.fail("Disconnected the Domain and placed a local chest");
@@ -247,7 +247,7 @@ public final class ProductionProviderGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     requireReady(helper, scene);
-                    helper.assertTrue(scene.setPolicy(Target.A, true), "Processing Policy must be accepted");
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
                     scene.installPattern(0);
                     var status = scene.map(0, Target.A);
                     helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
@@ -343,7 +343,9 @@ public final class ProductionProviderGameTests {
                     ((appeng.me.service.CraftingService) scene.sourceGrid().getCraftingService())
                             .getProviders(pattern).forEach(ignored -> mediums[0]++);
                     helper.assertValueEqual(mediums[0], 0, "Removed Lanes are unpublished");
-                    helper.assertTrue(ProviderObservationRegistry.entries(helper.getLevel()).isEmpty(),
+                    // Only this Provider's entry: other tests' Providers may share the level.
+                    helper.assertTrue(ProviderObservationRegistry.entries(helper.getLevel()).stream()
+                                    .noneMatch(entry -> entry.identity().equals(saved[0])),
                             "Removed Provider leaves no observation entry");
                     facts.put("patternDrops", Integer.toString(patterns));
                     facts.put("claimReleased", "true");

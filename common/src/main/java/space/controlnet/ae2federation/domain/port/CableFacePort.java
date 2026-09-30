@@ -26,12 +26,13 @@ public final class CableFacePort {
         level = serverLevel;
         active = true;
         cache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel,
-                cablePosition.relative(face), face.getOpposite(), () -> active, this::invalidate);
+                cablePosition.relative(face), face.getOpposite(), () -> active, this::recheck);
         invalidate();
     }
 
     public boolean tick() {
-        if (!dirty) {
+        // A destroyed port's cache is invalid: a neighbour change may mark it dirty before the cable initializes again.
+        if (!dirty || !active) {
             return false;
         }
         dirty = false;
@@ -41,10 +42,22 @@ public final class CableFacePort {
         return changed;
     }
 
+    /** The neighbouring block changed: drop the link now and resolve it again on the next tick. */
     public void invalidate() {
         peer = null;
         dirty = true;
         topologyInvalidator.run();
+    }
+
+    /**
+     * Some capability of the neighbour changed, such as an Endpoint's item handlers when it is claimed: resolve the
+     * port again on the next tick, which reports a change only when the peer differs. Dropping the link here would
+     * republish the whole domain, and so stale every workspace open on it, although the Federation link is the same.
+     * A removed or unloaded neighbour removes its own domain node, and its block removal also reaches
+     * {@link #invalidate()}.
+     */
+    private void recheck() {
+        dirty = true;
     }
 
     public void destroy() {

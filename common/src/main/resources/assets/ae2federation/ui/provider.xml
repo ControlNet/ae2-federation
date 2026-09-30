@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ldlib2-ui>
+    <stylesheet location="ldlib2:lss/modern.lss"/>
+    <stylesheet location="ae2federation:lss/domain.lss"/>
+    <stylesheet location="ae2federation:lss/provider.lss"/>
+    <root id="provider_root" class="domain-shell provider-shell">
+        <element id="provider_window" class="domain-panel">
+            <element class="domain-header">
+                <element class="header-titles">
+                    <element class="title-row">
+                        <label id="provider_title" class="domain-title"><lang key="ae2federation.ui.provider.title"/></label>
+                        <label id="provider_where" class="domain-tab"/>
+                    </element>
+                    <element class="header-status">
+                        <element id="sync_lamp" class="sync-lamp"/>
+                        <label id="sync_text" class="sync-text"/>
+                        <label class="domain-caption status-separator"><lang key="ae2federation.ui.workspace.separator"/></label>
+                        <label id="provider_summary" class="domain-caption"/>
+                    </element>
+                </element>
+                <element class="provider-settings">
+                    <button id="setting_blocking" class="header-icon" text=""/>
+                    <button id="setting_lock" class="header-icon" text=""/>
+                    <button id="setting_terminal" class="header-icon" text=""/>
+                </element>
+                <label class="priority-label"><lang key="ae2federation.ui.provider.priority"/></label>
+                <text-field id="provider_priority" mode="string" value=""/>
+            </element>
+            <element class="provider-body">
+                <element class="provider-main">
+                    <element id="processing_graph" class="processing-area provider-canvas">
+                        <scroller-view id="processing_scroll" class="processing-scroll"/>
+                        <label id="processing_legend" class="processing-legend"/>
+                        <element id="provider_noface" class="provider-noface">
+                            <label id="provider_noface_title" class="provider-noface-title"><lang key="ae2federation.ui.provider.noface.title"/></label>
+                            <label id="provider_noface_text" class="provider-noface-text"/>
+                            <label id="provider_noface_kept" class="provider-noface-kept"/>
+                        </element>
+                    </element>
+                    <element class="provider-lower">
+                        <element class="provider-inventory">
+                            <label class="domain-heading"><lang key="ae2federation.ui.provider.inventory"/></label>
+                            <inventory-slots id="player_inventory"/>
+                        </element>
+                        <element class="provider-returns">
+                            <label class="domain-heading"><lang key="ae2federation.ui.provider.returns"/></label>
+                            <scroller-view id="provider_return_list" class="dark-panel provider-return-list"/>
+                            <label class="paper-note provider-returns-note"><lang key="ae2federation.ui.provider.returns_note"/></label>
+                        </element>
+                    </element>
+                </element>
+                <element class="processing-aside">
+                    <scroller-view id="processing_detail" class="processing-detail">
+                        <label id="processing_detail_title" class="processing-title"/>
+                        <element id="processing_ends" class="processing-ends">
+                            <element id="processing_end_from" class="processing-end">
+                                <element id="processing_preview_from" class="processing-thumb"/>
+                                <label id="processing_from_label" class="processing-end-label"/>
+                            </element>
+                            <element id="processing_end_to" class="processing-end">
+                                <element id="processing_preview_to" class="processing-thumb"/>
+                                <label id="processing_to_label" class="processing-end-label"/>
+                            </element>
+                        </element>
+                        <label id="processing_detail_text" class="processing-help"/>
+                        <element id="processing_facts" class="dark-panel processing-facts"/>
+                        <button id="mapping_toggle" class="primary-action processing-toggle" text=""/>
+                        <element class="processing-actions">
+                            <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
+                            <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
+                            <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                        </element>
+                    </scroller-view>
+                    <label id="processing_note" class="paper-note processing-note"/>
+                </element>
+            </element>
+            <element class="domain-footer">
+                <label id="ack_status" class="domain-status pending"/>
+                <label id="processing_status" class="domain-status mapping-status"/>
+                <label id="request_status" class="domain-status request-status"/>
+                <label id="provider_count" class="domain-status revision-status"/>
+            </element>
+        </element>
+        <element id="pattern_slots" class="pattern-slot-store"/>
+    </root>
+</ldlib2-ui>

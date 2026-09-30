@@ -19,12 +19,16 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
         ClientStartup.start(LOGGER);
-        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::registerCommands);
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onArtifactJoin);
         }
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onLoggingOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onScreenInit);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.WorldHighlight::render);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onOpening);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onFrame);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationScreenSwitch::onClosing);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationScreenSwitch::onInit);
     }
 
     @SuppressWarnings("unchecked")

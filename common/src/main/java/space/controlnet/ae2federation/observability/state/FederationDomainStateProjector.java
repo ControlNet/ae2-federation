@@ -70,8 +70,10 @@ public final class FederationDomainStateProjector {
                     return new TaskState(scope, TaskId.of(scope.federationDomainId(), providerKey(entry) + ":lane:" + index),
                             status);
                 })).toList();
+        // An Endpoint belongs to the domain its Federation face joins; its subnet is not a member.
         var endpoints = EndpointTargetBinding.entries(level).stream()
-                .filter(binding -> memberOf(federationDomain, binding.subnetNode().getGrid()))
+                .filter(binding -> federationDomain.nodes().contains(
+                        FederationDomainRegistryAccess.nodeId(level, binding.runtime().position())))
                 .map(binding -> new EndpointState(scope,
                         EndpointId.of(scope.federationDomainId(), endpointKey(binding)),
                         binding.runtime().configuredMode().name().toLowerCase(java.util.Locale.ROOT)))

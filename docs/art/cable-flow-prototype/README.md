@@ -1,29 +1,24 @@
-# Standard-shader cable flow prototype
+# Standard-shader cable flow rendering
 
-Date: 2026-09-27. This is an opt-in world-rendering prototype for visual review.
+Date: 2026-09-27. Current development builds enable this world renderer by default.
 It uses Minecraft's existing `entityTranslucentEmissive` shader, with no custom
 GLSL, post-processing, dynamic world lighting, or new runtime dependencies.
 
-## Try it
+## Current behavior
 
-The reviewed artifact is
+Place a Federation Cable to see the animated interior, including curved elbows
+and shared junction centers. No chat command or JVM option is required, and the
+preview command has been removed. Items retain their V07 appearance.
+
+Published version 0.0.1 still has the original opt-in behavior. The captures,
+benchmarks, and reviewed artifact below predate the default-on change.
+
+The historically reviewed artifact is
 `build/visual-flow-prototype/ae2federation-cable-junction-refined.jar`.
 Its identity and client/server match are recorded in [artifact.json](artifact.json).
 Use it as the AE2 Federation JAR in a Minecraft 1.21.1 / NeoForge 21.1.250
 installation with the project's existing dependencies. Keep only one Federation
 JAR in that installation's mods directory.
-
-The default appearance is V07. Run these **client chat commands** to switch
-without restarting; neither command requires server operator permissions:
-
-```mcfunction
-/ae2f_cable_preview on
-/ae2f_cable_preview off
-```
-
-The choice is session-only. The optional JVM argument
-`-Dae2federation.cableFlowPrototype=true` enables the preview at startup.
-Switching modes requests a chunk rebuild; allow it to settle before comparing.
 
 ## Visual evidence
 
@@ -58,7 +53,7 @@ image is used as gameplay evidence.
 ## Implementation
 
 - Existing collars and glass remain chunk-baked, retaining their V07 assets.
-  The world model omits only its old opaque cutout core when preview is enabled.
+  The world model always omits its old opaque cutout core in favor of the BER interior.
   Item models retain their original V07 appearance.
 - Straight runs retain their original pair of double-sided interior ribbons.
   L-shaped connections use a four-facet quarter bend joining the two arms.
@@ -143,15 +138,16 @@ not establish a speedup, general performance equivalence, or hardware GPU cost.
 - The interior is a ribbon approximation of volume; apparent thickness varies
   with the camera. Glass/BER transparency has only been checked in the pictured
   scenes. Water, stacked transparent blocks and all graphics modes need further
-  coverage before adopting this as the default renderer.
-- Effects have a 256-block BER view limit. Beyond it, preview mode retains only
+  coverage; enabling the renderer by default does not expand that evidence.
+- Effects have a 256-block BER view limit. Beyond it, world rendering retains only
   the baked enclosure; no distant interior LOD has been implemented.
 - No Sodium, Embeddium, Iris or shader pack was installed in this run. Standard
   shaders reduce integration complexity but do not prove compatibility.
 
 ## Repeat the isolated preview
 
-From the repository root, use the already prepared test installation:
+From the repository root, use the already prepared test installation with a
+current development JAR installed on both client and server while they are stopped:
 
 ```bash
 (cd build/visual-flow-prototype/server && ./run.sh nogui)
@@ -168,7 +164,7 @@ Xvfb :81 -screen 0 1280x720x24 +extension GLX
 DISPLAY=:81 LIBGL_ALWAYS_SOFTWARE=1 pixi run --manifest-path tools/visual/pixi.toml portablemc \
   --main-dir build/ae2f-work/prod-client --work-dir build/visual-flow-prototype/client \
   start --jvm /usr/bin/java --resolution 1280x720 \
-  --jvm-args='-Xmx2G -Dae2federation.cableFlowPrototype=true' \
+  --jvm-args='-Xmx2G' \
   -u VisualProbe -s 127.0.0.1 -p 25581 neoforge:21.1.250
 ```
 
@@ -189,9 +185,8 @@ tp VisualProbe 40.8 3.0 12.5 146.976 25.152
 tp VisualProbe 60.8 3.0 37.5 146.976 25.152
 ```
 
-Real keyboard input can toggle the client mode and capture F2 screenshots:
+Real keyboard input can capture F2 screenshots:
 
 ```bash
-DISPLAY=:81 pixi run --manifest-path tools/visual/pixi.toml python tools/visual/game_input.py command 'ae2f_cable_preview on'
 DISPLAY=:81 pixi run --manifest-path tools/visual/pixi.toml python tools/visual/game_input.py shot build/visual-flow-prototype/client/screenshots build/visual-flow-prototype/review.png
 ```

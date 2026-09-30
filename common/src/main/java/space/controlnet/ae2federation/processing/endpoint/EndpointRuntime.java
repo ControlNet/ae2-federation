@@ -106,6 +106,17 @@ public final class EndpointRuntime {
         invalidateCapabilities();
     }
 
+    /** The native Provider left the Federation face: Local mode ends and its return path closes. */
+    public void closeLocal() {
+        if (composition.mode() != EndpointMode.LOCAL) {
+            return;
+        }
+        composition.setMode(EndpointMode.FEDERATED);
+        clearCurrentReturns();
+        mode = null;
+        invalidateCapabilities();
+    }
+
     public Optional<EndpointModeGeneration.Federated> federatedMode(ProviderIdentity provider, ClaimEpoch claimEpoch) {
         if (mode instanceof EndpointModeGeneration.Federated federated
                 && federated.endpoint().equals(claims.endpoint())

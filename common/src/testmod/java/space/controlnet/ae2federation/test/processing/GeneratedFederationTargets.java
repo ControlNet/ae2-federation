@@ -15,14 +15,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.domain.FederationDomainSourceId;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
 import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
@@ -43,7 +35,6 @@ final class GeneratedFederationTargets implements AutoCloseable {
     private final NativeTargetDomainRegistry domains = new NativeTargetDomainRegistry();
     private final List<BlockPos> positions;
     private final List<ProviderTargetRequest> requests = new ArrayList<>();
-    private final List<FederationDomainSourceId> federationDomainSources = new ArrayList<>();
     private ProviderRuntime runtime;
     private boolean registered;
     private boolean relationshipsActive;
@@ -80,7 +71,8 @@ final class GeneratedFederationTargets implements AutoCloseable {
         }
         if (runtime == null) {
             claimTargets();
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), SyntheticEndpointDomain.providerFace(
+                    FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow()), provider.composition(),
                     providerIdentity, new ProviderOrientation(ProviderFace.EAST), requests::get, domains);
             runtime.settle();
         }
@@ -88,8 +80,11 @@ final class GeneratedFederationTargets implements AutoCloseable {
             provider.register();
             registered = true;
         }
+        if (!activateRelationships()) {
+            status = "endpoint-domain-pending";
+            return false;
+        }
         if (!relationshipsActive) {
-            activateRelationships();
             relationshipsActive = true;
             return false;
         }
@@ -193,21 +188,14 @@ final class GeneratedFederationTargets implements AutoCloseable {
         }
     }
 
-    private void activateRelationships() {
+    /** TEST-ONLY: links every generated Endpoint to the source network's domain; see {@link SyntheticEndpointDomain}. */
+    private boolean activateRelationships() {
         var sourceNetwork = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow();
-        var policies = PolicyService.get(helper.getLevel());
-        for (int laneIndex = 0; laneIndex < positions.size(); laneIndex++) {
-            var targetNetwork = FederationDomainRegistryAccess.confirmedNetworkId(targetGrids().get(laneIndex)).orElseThrow();
-            var key = new PolicyKey(sourceNetwork, targetNetwork, PolicyCapability.PROCESSING);
-            var result = policies.edit(new PolicyEdit(key, policies.revision(key),
-                    PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))));
-            if (!(result instanceof PolicyMutationResult.Accepted)) {
-                throw new IllegalStateException("Generated target Policy did not activate");
-            }
-            var source = new FederationDomainSourceId("task20:" + endpoint(positions.get(laneIndex)).endpointIdentity().id().value());
-            FederationDomainRegistryAccess.get(helper.getLevel()).upsertDirectBridge(source, sourceNetwork, targetNetwork);
-            federationDomainSources.add(source);
+        var joined = true;
+        for (var position : positions) {
+            joined &= SyntheticEndpointDomain.ensure(helper.getLevel(), helper.absolutePos(position), sourceNetwork);
         }
+        return joined;
     }
 
     private EndpointBlockEntity endpoint(BlockPos position) {
@@ -216,7 +204,7 @@ final class GeneratedFederationTargets implements AutoCloseable {
 
     @Override
     public void close() {
-        federationDomainSources.forEach(source -> FederationDomainRegistryAccess.get(helper.getLevel()).invalidateDirectBridge(source));
+        positions.forEach(position -> SyntheticEndpointDomain.remove(helper.getLevel(), helper.absolutePos(position), true));
         provider.close();
         positions.forEach(position -> {
             helper.setBlock(position, Blocks.AIR);

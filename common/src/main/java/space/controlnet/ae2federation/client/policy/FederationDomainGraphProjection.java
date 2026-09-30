@@ -70,15 +70,17 @@ public final class FederationDomainGraphProjection {
 
     static List<ProviderObservationRegistry.Entry> providerEntries(ServerLevel level,
             space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain) {
+        // A Provider belongs to the domain its Federation face joins, not to every domain its network is a member of.
         return ProviderObservationRegistry.entries(level).stream()
-                .filter(entry -> memberOf(federationDomain, entry.provider().getGrid()))
+                .filter(entry -> federationDomain.nodes().contains(entry.runtime().federationFace()))
                 .sorted(Comparator.comparing(entry -> providerId(federationDomain.reference(), entry))).toList();
     }
 
     static List<EndpointTargetBinding> endpointEntries(ServerLevel level,
             space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain) {
         return EndpointTargetBinding.entries(level).stream()
-                .filter(binding -> memberOf(federationDomain, binding.subnetNode().getGrid()))
+                .filter(binding -> federationDomain.nodes().contains(
+                        FederationDomainRegistryAccess.nodeId(level, binding.runtime().position())))
                 .sorted(Comparator.comparing(binding -> endpointId(federationDomain.reference(), binding))).toList();
     }
 
@@ -90,11 +92,6 @@ public final class FederationDomainGraphProjection {
     static String endpointId(FederationDomainReference scope, EndpointTargetBinding binding) {
         var identity = binding.endpointIdentity();
         return EndpointId.of(scope.federationDomainId(), identity.id().value() + ":" + identity.instanceEpoch().value()).value();
-    }
-
-    private static boolean memberOf(space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain,
-            appeng.api.networking.IGrid grid) {
-        return FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(federationDomain.memberships()::containsKey).isPresent();
     }
 
     private static List<String> patterns(ServerLevel level, ProviderObservationRegistry.Entry entry) {

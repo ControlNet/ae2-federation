@@ -28,7 +28,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 })
                 .check("diagnostics display the full live endpoint identity", context ->
                         context.el("#endpoint_identity").text().contains(context.<String>get("task33.endpointId")))
-                .checkTextContains("#endpoint_detail", "Federation face: East")
+                .checkTextContains("#endpoint_detail", "Federation face: Up")
                 .checkTextContains("#endpoint_detail", "Runtime mode:")
                 .check("diagnostics display the actual native network and owner instance", context ->
                         context.el("#endpoint_detail").text().contains(context.<String>get("task33.nativeNetwork"))
@@ -43,19 +43,12 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .hover("#endpoint_mapping")
                 .step("open owner mapping relationship", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_mapping"))
                 .waitUntil("server-confirmed navigation opens mappings", context -> context.el("#page_mapping").isVisible())
-                .check("mapping selects the actual endpoint and mapped slot", context -> context.el("#mapping_lane_next").value().equals(context.get("navigation.target"))
-                        && context.el("#mapping_slot_next").value().equals("1"))
+                .waitUntil("mapping selects the actual endpoint with its mapped slot", context -> context.el(
+                        "#processing_endpoint_" + context.<String>get("navigation.target").replaceAll("[^a-zA-Z0-9_-]", "_"))
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("selected")
+                        && context.el("#mapping_toggle").text().equals("Unmap #1"))
                 .screenshot("ui-diagnostic-owner-mapping")
-                .click("#tab_diagnostics")
-                .hover("#endpoint_policy")
-                .step("open endpoint processing policy", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_policy"))
-                .waitUntil("server-confirmed navigation opens processing policy", context -> context.el("#page_policy").isVisible())
-                .check("policy selects the actual directional network pair", context ->
-                        context.el("#consumer_next").value().equals(context.get("navigation.consumer"))
-                                && context.el("#provider_next").value().equals(context.get("navigation.provider"))
-                                && context.el("#capability_next").value().equals("PROCESSING"))
-                .checkServer("contextual navigation does not mutate policy mappings or claim", TaskThirtyThreeWorldFixture::endpointNavigationReadOnly)
-                .screenshot("ui-diagnostic-processing-policy")
+                .checkServer("contextual navigation does not mutate mappings or claim", TaskThirtyThreeWorldFixture::endpointNavigationReadOnly)
                 .click("#tab_diagnostics")
                 .hover("#endpoint_browse")
                 .step("open endpoint observations", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_browse"))
@@ -80,31 +73,29 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .waitUntil("endpoint browser returns to inspector", context -> context.all("#endpoint_browser_close").isEmpty())
                 .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
                 .closeScreen()
-                .checkServer("direct Endpoint matches multiple real domains and has no edit authority", TaskThirtyThreeWorldFixture::endpointHasAmbiguousDomains)
+                .checkServer("direct Endpoint opens the domain its Federation face joins", TaskThirtyThreeWorldFixture::endpointOpensItsFaceDomain)
                 .server("open direct Endpoint inspection", TaskThirtyThreeWorldFixture::openEndpoint)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
                 .check("device entrance selects diagnostics", context -> context.el("#page_diagnostics").isVisible())
-                .check("direct inspector opens compact and centered", context -> {
+                .check("direct Endpoint opens at the full workspace size, centered", context -> {
                     var bounds = context.el("#domain_root").bounds();
                     var window = net.minecraft.client.Minecraft.getInstance().getWindow();
-                    return bounds.width() <= 440 && bounds.height() <= 280
+                    var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(
+                            window.getGuiScaledWidth(), window.getGuiScaledHeight());
+                    return Math.abs(bounds.width() - size.width()) <= 1 && Math.abs(bounds.height() - size.height()) <= 1
                             && Math.abs(bounds.centerX() - window.getGuiScaledWidth() / 2f) <= 1
                             && Math.abs(bounds.centerY() - window.getGuiScaledHeight() / 2f) <= 1;
                 })
                 .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
                 .check("direct inspection preserves native network identity", context ->
                         context.el("#endpoint_detail").text().contains(context.<String>get("task33.nativeNetwork")))
-                .waitForTextContains("#ack_status", "Multiple domains match")
-                .checkTextContains("#endpoint_local", "Local endpoint • 10, -57, 13")
-                .checkTextContains("#diagnostics_description", "Read-only details")
-                .check("compact inspector retains its controls and explanation", context ->
-                        TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#endpoint_local", "#endpoint_mapping",
-                                "#endpoint_policy", "#ack_status", "#diagnostics_description"))
-                .check("ambiguous local view has no misleading selector or domain actions", context ->
-                        !context.el("#endpoint_next").isVisible() && context.el("#endpoint_local").isVisible()
-                                && !context.el("#endpoint_browse").isActive() && !context.el("#endpoint_locate").isActive()
-                                && !context.el("#endpoint_mapping").isActive() && !context.el("#endpoint_policy").isActive())
+                .check("the Endpoint workspace retains its controls and explanation", context ->
+                        TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#endpoint_next", "#endpoint_mapping",
+                                "#ack_status", "#diagnostics_description"))
+                .check("the domain's Endpoint offers its domain actions", context ->
+                        context.el("#endpoint_next").isVisible() && !context.el("#endpoint_local").isVisible()
+                                && context.el("#endpoint_browse").isActive() && context.el("#endpoint_mapping").isActive())
                 .screenshot("ui-endpoint-direct").closeScreen()
                 .server("place another production Endpoint", TaskThirtyThreeWorldFixture::placeSecondObservedEndpoint)
                 .serverTicks(4)
@@ -133,8 +124,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                         .contains(context.<String>get("endpoint.secondId")))
                 .checkTextContains("#endpoint_detail", "Position: 12, -57, 13")
                 .checkTextContains("#endpoint_identity", "Unclaimed")
-                .check("unclaimed endpoint has no invented owner navigation", context -> !context.el("#endpoint_mapping").isActive()
-                        && !context.el("#endpoint_policy").isActive())
+                .check("unclaimed endpoint has no invented owner navigation", context -> !context.el("#endpoint_mapping").isActive())
                 .screenshot("ui-endpoint-second-selected")
                 .hover("#endpoint_browse")
                 .step("reopen observations for the new selection", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_browse"))
@@ -147,23 +137,24 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .step("return to the original endpoint", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".endpoint-table-row"))
                 .waitUntil("original identity is restored by server selection", context -> context.el("#endpoint_identity").text()
                         .contains(context.<String>get("task33.endpointId")))
-                .step("record confirmed endpoint graph identity", context -> context.put("endpoint.graphId", context.el("#endpoint_next").value()))
                 .hover("#endpoint_locate")
                 .step("locate inspected endpoint on graph", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_locate"))
                 .waitUntil("diagnostic navigation opens graph", context -> context.el("#page_overview").isVisible())
-                .waitUntil("graph selects the exact inspected endpoint", context -> context.el("#graph_selection")
-                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).collectHoverTooltips().tooltipTexts().stream()
-                        .anyMatch(line -> line.getString().replace("\n", "").equals(context.<String>get("endpoint.graphId"))))
-                .checkTextContains("#graph_selection", "10, -57, 13")
-                .waitUntil("located node is centered in screen space", context -> TaskThirtyThreeScenarioSupport.graphNodeCentered(
-                        context, context.get("endpoint.graphId")))
+                .waitUntil("graph selects the network whose Provider maps the endpoint", context -> context.el("#network_detail").isVisible()
+                        && context.el("#network_title").text().contains(TaskThirtyThreeScenarioSupport.networkTag(
+                                context.get("navigation.consumer"))))
+                .check("the network's devices name its endpoints", context ->
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Processing endpoints: 1"))
+                .check("each endpoint of the domain is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 2)
+                .waitUntil("located network is centered in screen space", context -> TaskThirtyThreeScenarioSupport.networkCardCentered(
+                        context, context.get("navigation.consumer")))
                 .screenshot("ui-diagnostics-locate-endpoint")
                 .click("#graph_zoom_in")
                 .click("#tab_diagnostics")
                 .hover("#endpoint_locate")
                 .step("locate after returning from a hidden graph", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#endpoint_locate"))
-                .waitUntil("repeated locate centers the node after layout", context -> TaskThirtyThreeScenarioSupport.graphNodeCentered(
-                        context, context.get("endpoint.graphId")))
+                .waitUntil("repeated locate centers the network after layout", context -> TaskThirtyThreeScenarioSupport.networkCardCentered(
+                        context, context.get("navigation.consumer")))
                 .closeScreen()
                 .server("open a real Endpoint before its first network tick", TaskThirtyThreeWorldFixture::openNewEndpointBeforeIdentitySettles)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
@@ -172,7 +163,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .checkTextContains("#endpoint_local", "Local endpoint • 14, -57, 16")
                 .check("unconfirmed entry is explicitly local and read-only", context ->
                         !context.el("#endpoint_next").isVisible() && !context.el("#endpoint_browse").isActive()
-                                && !context.el("#endpoint_mapping").isActive() && !context.el("#endpoint_policy").isActive())
+                                && !context.el("#endpoint_mapping").isActive())
                 .screenshot("ui-endpoint-unconfirmed")
                 .closeScreen()
                 .waitUntilServer("isolated network confirms without an editable domain", TaskThirtyThreeWorldFixture::isolatedEndpointReady)
@@ -187,15 +178,14 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                         context.el("#endpoint_identity").text().contains(context.<String>get("endpoint.isolatedId"))
                                 && context.el("#endpoint_detail").text().contains(context.<String>get("endpoint.isolatedNetwork")))
                 .check("domain-only actions are unavailable without a unique domain", context ->
-                        !context.el("#endpoint_browse").isActive() && !context.el("#endpoint_mapping").isActive()
-                                && !context.el("#endpoint_policy").isActive())
+                        !context.el("#endpoint_browse").isActive() && !context.el("#endpoint_mapping").isActive())
                 .screenshot("ui-endpoint-no-domain")
                 .click("#tab_overview").frames(3)
-                .checkTextContains("#graph_selection", "No editable domain")
+                .checkTextContains("#network_title", "No editable domain")
+                .checkTextContains("#graph_selection", "No domain with two networks")
                 .screenshot("ui-endpoint-no-domain-graph")
-                .click("#tab_policy")
-                .check("isolated device cannot edit a policy", context -> !context.el("#policy_toggle").isActive()
-                        && !context.el("#policy_browse").isActive())
+                .check("isolated device cannot edit a policy", context -> context.all(".policy-switch").isEmpty()
+                        && !context.el("#pair_editor").isVisible())
                 .closeScreen();
     }
 }

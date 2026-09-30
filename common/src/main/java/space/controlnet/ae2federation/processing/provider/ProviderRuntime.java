@@ -5,11 +5,13 @@ import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import net.minecraft.server.level.ServerLevel;
+import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
 
 public final class ProviderRuntime {
     private final ServerLevel level;
     private final IManagedGridNode sourceNode;
+    private final FederationDomainNodeId federationFace;
     private final IntFunction<ProviderTargetRequest> requestSupplier;
     private final NativeTargetDomainRegistry domains;
     private final ProviderNodeWiring wiring;
@@ -17,17 +19,22 @@ public final class ProviderRuntime {
     private ProviderTargetResolution lastResolution = new ProviderTargetResolution.Paused(
             ProviderTargetState.ROTATION_PENDING);
 
-    public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, MappedPatternProvider provider,
-            ProviderIdentity identity, ProviderOrientation orientation, Supplier<ProviderTargetRequest> requestSupplier,
-            NativeTargetDomainRegistry domains) {
-        this(level, sourceNode, provider, identity, orientation, ignored -> requestSupplier.get(), domains);
+    public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, FederationDomainNodeId federationFace,
+            MappedPatternProvider provider, ProviderIdentity identity, ProviderOrientation orientation,
+            Supplier<ProviderTargetRequest> requestSupplier, NativeTargetDomainRegistry domains) {
+        this(level, sourceNode, federationFace, provider, identity, orientation, ignored -> requestSupplier.get(), domains);
     }
 
-    public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, MappedPatternProvider provider,
-            ProviderIdentity identity, ProviderOrientation orientation, IntFunction<ProviderTargetRequest> requestSupplier,
-            NativeTargetDomainRegistry domains) {
+    /**
+     * {@code federationFace} is the domain node of the Provider's Federation face: its Lanes may reach only Endpoints of
+     * the domain that node is in.
+     */
+    public ProviderRuntime(ServerLevel level, IManagedGridNode sourceNode, FederationDomainNodeId federationFace,
+            MappedPatternProvider provider, ProviderIdentity identity, ProviderOrientation orientation,
+            IntFunction<ProviderTargetRequest> requestSupplier, NativeTargetDomainRegistry domains) {
         this.level = Objects.requireNonNull(level);
         this.sourceNode = Objects.requireNonNull(sourceNode);
+        this.federationFace = Objects.requireNonNull(federationFace);
         this.requestSupplier = Objects.requireNonNull(requestSupplier);
         this.domains = Objects.requireNonNull(domains);
         wiring = new ProviderNodeWiring(sourceNode, Objects.requireNonNull(identity), Objects.requireNonNull(orientation));
@@ -52,6 +59,11 @@ public final class ProviderRuntime {
         var provenance = new ProviderLogicProvenance(provider.nativeLane(laneIndex),
                 new ProviderLaneIdentity(wiring.identity(), laneIndex, revision));
         provider.bindTarget(laneIndex, provenance, () -> resolveTarget(provenance));
+    }
+
+    /** The domain node of the Provider's Federation face. */
+    public FederationDomainNodeId federationFace() {
+        return federationFace;
     }
 
     public ProviderNodeWiring wiring() {
@@ -87,7 +99,7 @@ public final class ProviderRuntime {
                         supplied.endpointPosition(), supplied.endpointSide(),
                         supplied.rotationSettled() && wiring.settled());
                 lastResolution = ProviderTargetAuthorization.resolve(
-                        new ProviderAuthorizationContext(level, nativeNode, current, domains, provenance));
+                        new ProviderAuthorizationContext(level, nativeNode, federationFace, current, domains, provenance));
             }
         }
         return lastResolution;

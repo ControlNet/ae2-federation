@@ -12,7 +12,14 @@ import net.minecraft.world.phys.Vec3;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyDelete;
+import space.controlnet.ae2federation.policy.PolicyEdit;
+import space.controlnet.ae2federation.policy.PolicyKey;
+import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyOperation;
+import space.controlnet.ae2federation.policy.PolicyRule;
+import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.processing.ProviderTargetRuntimeFixtures;
 
@@ -92,6 +99,10 @@ final class RealObservationScene implements AutoCloseable {
             status = "processing-" + processing.status();
             return false;
         }
+        if (!processing.connectFederationDomain()) {
+            status = "processing-domain";
+            return false;
+        }
         var ready = processing.sourceGrid() == first.mainGrid() && processing.targetGrid() == first.outerGrid();
         status = ready ? "ready" : "processing-grid-merge";
         return ready;
@@ -102,8 +113,7 @@ final class RealObservationScene implements AutoCloseable {
     }
 
     void mutateObservedState() {
-        helper.assertTrue(processing.enablePolicy(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)),
-                "Processing policy must activate");
+        helper.assertTrue(editObservedPolicy(false), "A Crafting rule addition must be accepted");
         helper.assertTrue(processing.pushOnce(), "Native Processing send must accept");
         var handler = processing.endpointBinding().runtime().itemReturn(Direction.NORTH).orElseThrow();
         helper.assertTrue(handler.insertItem(0, new ItemStack(Items.GOLD_INGOT), false).isEmpty(),
@@ -111,7 +121,25 @@ final class RealObservationScene implements AutoCloseable {
     }
 
     boolean removePolicy() {
-        return processing.deletePolicy();
+        return editObservedPolicy(true);
+    }
+
+    /** The domain the Endpoint's Federation face joins; a Bridge's direct domain has no nodes to hold an Endpoint. */
+    FederationDomainReference processingScope() {
+        return processing.federationDomain().orElseThrow().reference();
+    }
+
+    /**
+     * Adds or deletes a disabled Crafting rule between the Bridge's two networks: a policy change that is visible in the
+     * scoped snapshot but starts no binding. Processing needs no rule.
+     */
+    private boolean editObservedPolicy(boolean delete) {
+        var service = PolicyService.get(helper.getLevel());
+        var key = new PolicyKey(first.mainNetwork(), first.outerNetwork(), PolicyCapability.CRAFTING);
+        var result = delete ? service.delete(new PolicyDelete(key, service.revision(key)))
+                : service.edit(new PolicyEdit(key, service.revision(key),
+                        PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withEnabled(false)));
+        return result instanceof PolicyMutationResult.Accepted;
     }
 
     FederationDomainReference firstScope() {

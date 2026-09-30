@@ -7,7 +7,6 @@ import appeng.api.parts.PartHelper;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.util.AEColor;
 import java.util.List;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -18,17 +17,6 @@ import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
-import space.controlnet.ae2federation.policy.BackendStatus;
-import space.controlnet.ae2federation.policy.PolicyActivationState;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyDelete;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
 import space.controlnet.ae2federation.processing.claim.ClaimResult;
@@ -44,6 +32,7 @@ import space.controlnet.ae2federation.processing.provider.ProviderTargetRequest;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetResolution;
 import space.controlnet.ae2federation.test.port.NativePortFixtures;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
+import space.controlnet.ae2federation.test.processing.SyntheticEndpointDomain;
 
 public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ScaleFederationTwoTargetRoute.class);
@@ -60,7 +49,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
     private final NetworkId sourceId;
     private final List<IGrid> targetGrids;
     private final List<NetworkId> targetIds;
-    private final List<PolicyKey> policyKeys;
+    private final boolean[] endpointDomainJoined = new boolean[2];
     private final ProviderIdentity identity = ProviderIdentity.create();
     private final MultipartBridgePart[] bridges = new MultipartBridgePart[2];
     private final ProviderTargetRequest[] requests = new ProviderTargetRequest[2];
@@ -79,15 +68,14 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         sourceId = FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid).orElseThrow();
         targetGrids = targets.stream().map(ScaleFederationIdentityTarget::grid).toList();
         targetIds = targets.stream().map(ScaleFederationIdentityTarget::anchorId).toList();
-        policyKeys = targetIds.stream().map(id -> new PolicyKey(sourceId, id, PolicyCapability.PROCESSING)).toList();
     }
 
     public boolean tick() {
         assertSeparated();
         if (stage == 0) {
             for (int lane = 0; lane < 2; lane++) {
-                helper.assertTrue(!commonFederationDomain(lane) && PolicyService.get(helper.getLevel())
-                        .configured(policyKeys.get(lane)).isEmpty(), "Each route starts without Federation Domain or Policy");
+                helper.assertTrue(!commonFederationDomain(lane) && !endpointDomainPresent(lane),
+                        "Each route starts without Federation Domain or Endpoint domain");
             }
             ports.placeCable(BRIDGES[0], AEColor.RED);
             stage++;
@@ -100,10 +88,10 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         } else if (stage == 3) {
             refresh(0);
             if (bridgeReady(0)) {
-                configurePolicy(0);
+                joinEndpointDomain(0);
                 stage++;
             }
-        } else if (stage == 4 && policyActive(0)) {
+        } else if (stage == 4 && endpointInSourceDomain(0)) {
             for (int lane = 0; lane < 2; lane++) claim(lane);
             var sourceNode = provider.managedNode().getNode();
             var edge = sourceNode.getConnections().stream()
@@ -111,7 +99,8 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
             helper.assertTrue(edge.isPresent() && !edge.orElseThrow().isInWorld(),
                     "Source storage must have the fixture-created non-world edge before physical handoff");
             edge.orElseThrow().destroy();
-            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(), provider.composition(),
+            runtime = new ProviderRuntime(helper.getLevel(), provider.managedNode(),
+                    SyntheticEndpointDomain.providerFace(sourceId), provider.composition(),
                      identity, new ProviderOrientation(ProviderFace.EAST), lane -> requests[lane],
                     new NativeTargetDomainRegistry());
             runtime.settle();
@@ -121,7 +110,7 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
             stage++;
         } else if (stage == 5) {
             refresh(0);
-            if (!bridgeReady(0) || !policyActive(0)) return false;
+            if (!bridgeReady(0) || !endpointInSourceDomain(0)) return false;
             ports.placeCable(SOURCE_EXTENSION[0], AEColor.RED);
             stage = 6;
         } else if (stage == 6 && cableReady(SOURCE_EXTENSION[extensionIndex], sourceGrid, sourceId)) {
@@ -141,16 +130,16 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         } else if (stage == 9) {
             refresh(1);
             if (bridgeReady(1)) {
-                configurePolicy(1);
+                joinEndpointDomain(1);
                 stage++;
             }
         } else if (stage == 10) {
             refresh(0);
             refresh(1);
-            if (!bridgeReady(0) || !bridgeReady(1) || !policyActive(0) || !policyActive(1)) return false;
+            if (!bridgeReady(0) || !bridgeReady(1) || !endpointInSourceDomain(0) || !endpointInSourceDomain(1)) return false;
             assertReady();
             LOGGER.info("AE2F_SCALE_FEDERATION_TWO_ROUTE sourceId={} targetA={} targetB={} "
-                            + "bridgeA={} bridgeB={} policyA=ACTIVE policyB=ACTIVE claimA={} claimB={}",
+                            + "bridgeA={} bridgeB={} endpointDomainA=ACTIVE endpointDomainB=ACTIVE claimA={} claimB={}",
                     sourceId.value(), targetIds.get(0).value(), targetIds.get(1).value(),
                     bridges[0].operationalReason(), bridges[1].operationalReason(),
                     targets.get(0).endpoint().claimState(), targets.get(1).endpoint().claimState());
@@ -163,13 +152,13 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         assertSeparated();
         for (int lane = 0; lane < 2; lane++) {
             var endpoint = targets.get(lane).endpoint();
-            helper.assertTrue(bridgeReady(lane) && policyActive(lane) && targets.get(lane).onlyAnchorClaim()
+            helper.assertTrue(bridgeReady(lane) && endpointInSourceDomain(lane) && targets.get(lane).onlyAnchorClaim()
                             && targets.get(lane).settled()
                             && endpoint.claimState().owner().filter(new EndpointOwnerIdentity(identity)::equals).isPresent()
                             && helper.getLevel().getCapability(EndpointTargetCapability.BLOCK,
                                     helper.absolutePos(targets.get(lane).endpointPosition()), Direction.WEST)
                                     == endpoint.binding(),
-                    "Each distinct physical Federation Domain, directional Policy and owned Endpoint must remain active: " + lane);
+                    "Each distinct physical Federation Domain, Endpoint domain and owned Endpoint must remain active: " + lane);
         }
     }
 
@@ -199,8 +188,8 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
     public String status() {
         return "stage=" + stage + " bridgeA=" + (bridges[0] == null ? "absent" : bridges[0].operationalReason())
                 + " bridgeB=" + (bridges[1] == null ? "absent" : bridges[1].operationalReason())
-                + " routeA=" + commonFederationDomain(0) + "/" + policyActive(0)
-                + " routeB=" + commonFederationDomain(1) + "/" + policyActive(1);
+                + " routeA=" + commonFederationDomain(0) + "/" + endpointDomainPresent(0)
+                + " routeB=" + commonFederationDomain(1) + "/" + endpointDomainPresent(1);
     }
 
     private void claim(int lane) {
@@ -236,12 +225,10 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
                                 == bridges[lane].getExternalFacingNode());
     }
 
-    private void configurePolicy(int lane) {
-        var policies = PolicyService.get(helper.getLevel());
-        var key = policyKeys.get(lane);
-        helper.assertTrue(policies.edit(new PolicyEdit(key, policies.revision(key),
-                PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY))))
-                instanceof PolicyMutationResult.Accepted, "Directional EXECUTE/SUPPLY Policy must be accepted");
+    /** TEST-ONLY synthetic hub: a Bridge domain has no nodes, so the Endpoint joins the source's domain this way. */
+    private void joinEndpointDomain(int lane) {
+        endpointDomainJoined[lane] = true;
+        helper.assertTrue(endpointInSourceDomain(lane), "The Endpoint must join a domain of the source network: " + lane);
     }
 
     private boolean cableReady(BlockPos position, IGrid grid, NetworkId id) {
@@ -255,10 +242,15 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
         return registry.federationdomainsFor(sourceId).stream().anyMatch(registry.federationdomainsFor(targetIds.get(lane))::contains);
     }
 
-    private boolean policyActive(int lane) {
-        return PolicyService.get(helper.getLevel()).activation(policyKeys.get(lane),
-                new PolicyRuntimeEndpoints(sourceGrid, targetGrids.get(lane), BackendStatus.READY))
-                == PolicyActivationState.ACTIVE;
+    /** Whether the lane's Endpoint is in a domain of the source network; the Endpoint republishes its node when it reloads. */
+    private boolean endpointInSourceDomain(int lane) {
+        return endpointDomainJoined[lane] && SyntheticEndpointDomain.ensure(helper.getLevel(),
+                helper.absolutePos(targets.get(lane).endpointPosition()), sourceId);
+    }
+
+    private boolean endpointDomainPresent(int lane) {
+        return SyntheticEndpointDomain.domain(helper.getLevel(), helper.absolutePos(targets.get(lane).endpointPosition()),
+                sourceId).isPresent();
     }
 
     private void assertSeparated() {
@@ -277,10 +269,9 @@ public final class ScaleFederationTwoTargetRoute implements AutoCloseable {
 
     @Override
     public void close() {
-        var policies = PolicyService.get(helper.getLevel());
-        for (var key : policyKeys) {
-            helper.assertTrue(policies.delete(new PolicyDelete(key, policies.revision(key)))
-                    instanceof PolicyMutationResult.Accepted, "Both Processing Policies must be removed");
+        for (int lane = 0; lane < 2; lane++) {
+            if (endpointDomainJoined[lane]) SyntheticEndpointDomain.remove(helper.getLevel(),
+                    helper.absolutePos(targets.get(lane).endpointPosition()), true);
         }
         for (var bridge : bridges) {
             if (bridge != null) helper.assertTrue(bridge.getHost().removePart(bridge), "Physical Bridge removal");

@@ -22,13 +22,13 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().awaitElement("#domain_graph").frames(5)
                 .step("record visible overview", context -> context.put("task33.graphVisited", Boolean.toString(context.el("#domain_graph").isVisible())))
-                .waitUntil("Bridge initially selects its actual host network", context -> {
-                    var label = context.el("#graph_selection").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
-                    return label.collectHoverTooltips().tooltipTexts().stream().anyMatch(line ->
-                            line.getString().replace("\n", "").equals(context.<String>get("bridge.focus")));
+                .waitUntil("Bridge lays out its actual host network first", context -> {
+                    var focus = context.elOpt("#graph_node_" + context.<String>get("bridge.focus").replaceAll("[^a-zA-Z0-9_-]", "_"));
+                    return focus.isPresent() && context.all(".graph-node-member").stream()
+                            .allMatch(card -> card.bounds().x() >= focus.get().bounds().x());
                 })
                 .checkText("#entrance_value", "ME Federation Bridge - side North / type bridge / cable extension 5.0")
-                .checkTextContains("#members_value", "2 members")
+                .checkTextContains("#members_value", "2 networks · ")
                 .server("record real multipart attachment", context ->
                         context.put("task33.multipart", TaskThirtyThreeWorldFixture.multipartAttachment(context)))
                 .step("record multipart evidence", context -> {
@@ -37,15 +37,16 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                     context.attach("visibleAttachment", context.el("#entrance_value").text());
                 })
                 .screenshot("ui-multipart-attachments")
-                .click(".graph-node-provider").click("#graph_zoom_in")
+                .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).click("#graph_zoom_in")
                 .step("record user-selected graph view", context -> {
-                    context.put("bridge.userSelection", context.el("#graph_selection").text());
+                    context.put("bridge.userSelection", context.el("#network_title").text());
                     context.put("bridge.userZoom", context.el("#domain_graph")
                             .as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale());
                 })
                 .serverTicks(3).frames(5)
                 .check("Bridge refresh preserves user's selection and zoom", context ->
-                        context.el("#graph_selection").text().equals(context.get("bridge.userSelection"))
+                        context.el("#network_detail").isVisible()
+                                && context.el("#network_title").text().equals(context.get("bridge.userSelection"))
                                 && Math.abs(context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()
                                         - context.<Float>get("bridge.userZoom")) < 0.0001f)
                 .closeScreen()
@@ -57,10 +58,11 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                 .waitForTextContains("#ack_status", "Connect a network to the bridge outer side.")
                 .check("disconnected Bridge presents diagnostics instead of empty editors", context ->
                         context.el("#bridge_unavailable").isVisible() && !context.el("#workspace_tabs").isVisible()
-                                && !context.el("#page_overview").isVisible() && !context.el("#page_policy").isVisible())
+                                && !context.el("#page_overview").isVisible() && !context.el("#page_mapping").isVisible())
                 .check("Bridge diagnostic is compact", context -> context.el("#domain_root").bounds().width() <= 360
                         && context.el("#domain_root").bounds().height() <= 160)
-                .check("disconnected Bridge cannot edit policies", context -> !context.el("#policy_toggle").isActive())
+                .check("disconnected Bridge cannot edit policies", context -> context.all(".policy-switch").stream()
+                        .noneMatch(toggle -> toggle.isActive() && toggle.isVisible()))
                 .check("unavailable explanation fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#ack_status"))
                 .screenshot("ui-bridge-disconnected").closeScreen();
     }

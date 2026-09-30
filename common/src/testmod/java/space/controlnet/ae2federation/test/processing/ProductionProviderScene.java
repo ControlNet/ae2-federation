@@ -36,13 +36,6 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyEdit;
-import space.controlnet.ae2federation.policy.PolicyKey;
-import space.controlnet.ae2federation.policy.PolicyMutationResult;
-import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyRule;
-import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
@@ -66,12 +59,20 @@ public final class ProductionProviderScene {
     public static final BlockPos CABLE_NEAR = new BlockPos(5, 1, 3);
     public static final BlockPos CABLE_FAR = new BlockPos(6, 1, 3);
     public static final BlockPos ROUTER = new BlockPos(7, 1, 3);
-    /** Isolated position for a second production Provider that competes for an Endpoint Claim. */
-    public static final BlockPos SECOND_PROVIDER = new BlockPos(2, 1, 6);
+    /**
+     * A second production Provider that competes for an Endpoint Claim: on its own network, its Federation face on the
+     * near Federation Cable, so it is in the Router's domain as a Provider must be to map that domain's Endpoints.
+     */
+    public static final BlockPos SECOND_PROVIDER = new BlockPos(5, 1, 4);
     private static final Map<Target, BlockPos[]> SUBNETS = new EnumMap<>(Map.of(
             Target.A, new BlockPos[] { new BlockPos(7, 1, 4), new BlockPos(7, 1, 5), new BlockPos(7, 1, 6) },
             Target.B, new BlockPos[] { new BlockPos(8, 1, 3), new BlockPos(8, 2, 3), new BlockPos(8, 3, 3) },
             Target.C, new BlockPos[] { new BlockPos(7, 1, 2), new BlockPos(7, 1, 1), new BlockPos(7, 1, 0) }));
+    /** Each Endpoint's Federation face looks at the Router; turning it away takes the Endpoint out of the domain. */
+    private static final Map<Target, Direction> FRONT = new EnumMap<>(Map.of(
+            Target.A, Direction.NORTH, Target.B, Direction.WEST, Target.C, Direction.SOUTH));
+    private static final Map<Target, Direction> AWAY = new EnumMap<>(Map.of(
+            Target.A, Direction.EAST, Target.B, Direction.NORTH, Target.C, Direction.EAST));
     private static final Map<Target, Direction> RETURN_SIDE = new EnumMap<>(Map.of(
             Target.A, Direction.SOUTH, Target.B, Direction.UP, Target.C, Direction.NORTH));
     public static final AEItemKey INPUT = AEItemKey.of(Items.COBBLESTONE);
@@ -83,6 +84,8 @@ public final class ProductionProviderScene {
     private final Map<Target, Long> consumed = new EnumMap<>(Target.class);
     private final Set<Target> stalled = java.util.EnumSet.noneOf(Target.class);
     private final Map<Target, Long> held = new EnumMap<>(Target.class);
+    private final Map<Target, net.minecraft.world.level.block.state.BlockState> unloadedStates =
+            new EnumMap<>(Target.class);
     private Future<ICraftingPlan> planFuture;
     private boolean routerPlaced;
 
@@ -102,8 +105,7 @@ public final class ProductionProviderScene {
         helper.setBlock(CABLE_FAR, RouterRegistration.FEDERATION_CABLE.get());
         for (var target : Target.values()) {
             var positions = SUBNETS.get(target);
-            placeNative(positions[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
-                    targetNetworks.get(target));
+            placeNative(positions[0], endpointState(target), targetNetworks.get(target));
             placeNative(positions[1], AEBlocks.ME_CHEST.block().defaultBlockState(), targetNetworks.get(target));
             helper.<MEChestBlockEntity>getBlockEntity(positions[1]).setCell(AEItems.ITEM_CELL_1K.stack());
             placeNative(positions[2], AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(),
@@ -157,13 +159,14 @@ public final class ProductionProviderScene {
             routerPlaced = true;
             return "router-placed";
         }
-        var networks = new ArrayList<NetworkId>();
-        networks.add(FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow());
-        for (var target : Target.values()) {
-            networks.add(FederationDomainRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow());
-        }
+        // The source network is a domain member; each Endpoint is a domain node through its Federation face, while
+        // its subnet stays outside the domain.
+        var sourceNetwork = FederationDomainRegistryAccess.confirmedNetworkId(source.getGrid()).orElseThrow();
+        var endpointNodes = java.util.Arrays.stream(Target.values()).map(target -> FederationDomainRegistryAccess
+                .nodeId(helper.getLevel(), helper.absolutePos(SUBNETS.get(target)[0]))).toList();
         var domain = FederationDomainRegistryAccess.get(helper.getLevel()).snapshot().federationDomains().values().stream()
-                .anyMatch(federationDomain -> federationDomain.memberships().keySet().containsAll(networks));
+                .anyMatch(federationDomain -> federationDomain.memberships().containsKey(sourceNetwork)
+                        && federationDomain.nodes().containsAll(endpointNodes));
         if (!domain) {
             return "domain-pending";
         }
@@ -173,19 +176,25 @@ public final class ProductionProviderScene {
         return "ready";
     }
 
-    // ---- policy and mapping
+    // ---- domain access and mapping
 
-    public boolean setPolicy(Target target, boolean enabled) {
-        var service = PolicyService.get(helper.getLevel());
-        var key = policyKey(target);
-        var rule = PolicyRule.enabled(Set.of(PolicyOperation.EXECUTE, PolicyOperation.SUPPLY)).withEnabled(enabled);
-        return service.edit(new PolicyEdit(key, service.revision(key), rule)) instanceof PolicyMutationResult.Accepted;
+    private static net.minecraft.world.level.block.state.BlockState endpointState(Target target) {
+        return ProcessingRegistration.ENDPOINT.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, FRONT.get(target));
     }
 
-    private PolicyKey policyKey(Target target) {
-        return new PolicyKey(FederationDomainRegistryAccess.confirmedNetworkId(sourceGrid()).orElseThrow(),
-                FederationDomainRegistryAccess.confirmedNetworkId(targetGrid(target)).orElseThrow(),
-                PolicyCapability.PROCESSING);
+    /**
+     * Connects or disconnects an Endpoint's Federation face by turning it toward or away from the Router. No rule is
+     * involved: every Federation Provider of the domain may use a connected Endpoint.
+     */
+    public boolean setAccess(Target target, boolean connected) {
+        var level = helper.getLevel();
+        var position = helper.absolutePos(SUBNETS.get(target)[0]);
+        var state = level.getBlockState(position);
+        if (!state.hasProperty(BlockStateProperties.FACING)) return false;
+        level.setBlockAndUpdate(position, state.setValue(BlockStateProperties.FACING,
+                connected ? FRONT.get(target) : AWAY.get(target)));
+        return true;
     }
 
     public void installPattern(int slot) {
@@ -355,20 +364,22 @@ public final class ProductionProviderScene {
         var endpoint = endpoint(target);
         endpoint.onChunkUnloaded();
         var tag = endpoint.saveWithFullMetadata(helper.getLevel().registryAccess());
+        // The orientation is block state, not block entity data: keep it so a disconnected Endpoint reloads disconnected.
+        unloadedStates.put(target, helper.getLevel().getBlockState(helper.absolutePos(SUBNETS.get(target)[0])));
         helper.setBlock(SUBNETS.get(target)[0], Blocks.AIR);
         return tag;
     }
 
     public void reloadEndpoint(Target target, CompoundTag tag) {
-        helper.setBlock(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        var state = unloadedStates.remove(target);
+        helper.setBlock(SUBNETS.get(target)[0], state != null ? state : endpointState(target));
         endpoint(target).loadWithComponents(tag, helper.getLevel().registryAccess());
     }
 
     /** Removes the Endpoint and places a brand-new one, with a new Endpoint identity, in the same Subnet. */
     public void replaceEndpoint(Target target) {
         helper.setBlock(SUBNETS.get(target)[0], Blocks.AIR);
-        placeNative(SUBNETS.get(target)[0], ProcessingRegistration.ENDPOINT.get().defaultBlockState(),
-                targetNetworks.get(target));
+        placeNative(SUBNETS.get(target)[0], endpointState(target), targetNetworks.get(target));
     }
 
     public CompoundTag unloadProvider() {
@@ -387,7 +398,8 @@ public final class ProductionProviderScene {
     }
 
     public FederationPatternProviderBlockEntity placeSecondProvider() {
-        helper.setBlock(SECOND_PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState());
+        helper.setBlock(SECOND_PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH));
         return secondProvider();
     }
 

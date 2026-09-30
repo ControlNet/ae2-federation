@@ -134,6 +134,10 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         }
     }
 
+    public void closeLocal() {
+        runtime.closeLocal();
+    }
+
     @Override
     public void close() {
         synchronized (BINDINGS) {

@@ -33,6 +33,10 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
         return getOrientationStrategy().setFacing(defaultBlockState(), context.getClickedFace().getOpposite());
     }
 
+    /**
+     * Opens the Provider's own screen, sneaking or not: its patterns, AE2 settings, priority and the wires of this
+     * Provider to the Endpoints of the domain its Federation face joins. AE2's Provider screen opens only if it cannot.
+     */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos position, Player player,
             BlockHitResult hit) {
@@ -41,7 +45,9 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
             return InteractionResult.PASS;
         }
         if (!level.isClientSide()) {
-            provider.openMenu(player, MenuLocators.forBlockEntity(provider));
+            boolean opened = player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                    && space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openProvider(serverPlayer, position);
+            if (!opened) provider.openMenu(player, MenuLocators.forBlockEntity(provider));
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }

@@ -14,7 +14,8 @@ import space.controlnet.ae2federation.client.policy.FederationDomainPolicySessio
 
 public final class FederationDomainPolicyMenu {
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "domain_policy");
-    private static final ResourceLocation ENDPOINT_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "endpoint_inspection");
+    /** The Federation Pattern Provider's own screen: its patterns, settings and wires. */
+    public static final ResourceLocation PROVIDER_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "pattern_provider");
     private static final ResourceLocation BRIDGE_DIAGNOSTIC_ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "bridge_diagnostic");
     private static final Map<UUID, FederationDomainPolicySession> PENDING = new ConcurrentHashMap<>();
 
@@ -23,9 +24,11 @@ public final class FederationDomainPolicyMenu {
 
     public static void register() {
         PlayerUIMenuType.register(ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 640, 400));
-        PlayerUIMenuType.register(ENDPOINT_ID, player -> new FederationDomainPolicyMenuHolder(
-                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 440, 280));
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null,
+                space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_WIDTH,
+                space.controlnet.ae2federation.client.policy.WorkspaceSize.MAX_HEIGHT));
+        PlayerUIMenuType.register(PROVIDER_ID, player -> new FederationProviderMenuHolder(
+                player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null));
         PlayerUIMenuType.register(BRIDGE_DIAGNOSTIC_ID, player -> new FederationDomainPolicyMenuHolder(
                 player instanceof ServerPlayer serverPlayer ? PENDING.remove(serverPlayer.getUUID()) : null, 360, 160));
     }
@@ -34,10 +37,21 @@ public final class FederationDomainPolicyMenu {
         return open(player, FederationDomainPolicySession.forRouter(player, position));
     }
 
+    /** A Provider or Endpoint opens the same full-size workspace as a Router, on the domain its Federation face joins. */
     public static boolean openDevice(ServerPlayer player, BlockPos position) {
-        var endpoint = player.serverLevel().getBlockEntity(position)
-                instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
-        return open(player, FederationDomainPolicySession.forDevice(player, position), endpoint ? ENDPOINT_ID : ID);
+        return open(player, FederationDomainPolicySession.forDevice(player, position));
+    }
+
+    /**
+     * The Provider's own screen, on the domain its Federation face joins; it opens with no domain too, when only its
+     * patterns and settings can be used.
+     */
+    public static boolean openProvider(ServerPlayer player, BlockPos position) {
+        if (!(player.serverLevel().getBlockEntity(position)
+                instanceof space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity)) {
+            return false;
+        }
+        return open(player, FederationDomainPolicySession.forDevice(player, position), PROVIDER_ID);
     }
 
     public static boolean openBridge(ServerPlayer player, BridgeRightClickContext bridge) {
@@ -63,8 +77,8 @@ public final class FederationDomainPolicyMenu {
     public static void returnToProvider(ServerPlayer player, int containerId) {
         if (player.getServer().isSameThread() && player.containerMenu.containerId == containerId
                 && player.containerMenu instanceof ModularUIContainerMenu menu
-                && menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder) {
-            holder.returnToProvider();
+                && menu.uiHolder instanceof FederationMenuHolder holder) {
+            holder.returnProvider().ifPresent(position -> openProvider(player, position));
         }
     }
 
@@ -73,7 +87,7 @@ public final class FederationDomainPolicyMenu {
             return FederationDomainPolicyActionResult.WRONG_THREAD;
         }
         if (!(player.containerMenu instanceof ModularUIContainerMenu menu)
-                || !(menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder)) {
+                || !(menu.uiHolder instanceof FederationMenuHolder holder)) {
             return FederationDomainPolicyActionResult.WRONG_MENU;
         }
         return holder.dispatch(player, menu, request);
@@ -81,7 +95,7 @@ public final class FederationDomainPolicyMenu {
 
     public static Optional<FederationDomainPolicyActionRequest> currentRequest(ServerPlayer player, FederationDomainPolicyAction action) {
         if (player.containerMenu instanceof ModularUIContainerMenu menu
-                && menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder) {
+                && menu.uiHolder instanceof FederationMenuHolder holder) {
             return holder.currentRequest(menu, action);
         }
         return Optional.empty();
@@ -89,7 +103,7 @@ public final class FederationDomainPolicyMenu {
 
     public static Receipt currentReceipt(ServerPlayer player) {
         if (player.containerMenu instanceof ModularUIContainerMenu menu
-                && menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder) {
+                && menu.uiHolder instanceof FederationMenuHolder holder) {
             return new Receipt(menu.containerId, holder.currentSequence(), holder.currentMappingStatus());
         }
         throw new IllegalStateException("Federation Domain policy menu is not current");
@@ -99,7 +113,7 @@ public final class FederationDomainPolicyMenu {
             UUID requestId, long sequence, FederationDomainPolicyActionResult result) {
         if (player.level().isClientSide() && player.containerMenu.containerId == containerId
                 && player.containerMenu instanceof ModularUIContainerMenu menu
-                && menu.uiHolder instanceof FederationDomainPolicyMenuHolder holder) {
+                && menu.uiHolder instanceof FederationMenuHolder holder) {
             holder.acceptReply(nonce, requestId, sequence, result);
         }
     }

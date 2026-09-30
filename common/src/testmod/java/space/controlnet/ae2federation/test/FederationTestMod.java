@@ -36,10 +36,10 @@ public final class FederationTestMod {
     private void registerGameTests(RegisterGameTestsEvent event) {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
-        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class,
+        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
 					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class,
 					 LegacySaveImportGameTests.class,
-					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointModeGameTests.class,
+					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
 					 StorageProvenanceGameTests.class, StorageChainGameTests.class,
@@ -77,15 +77,34 @@ public final class FederationTestMod {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.PrettyPipesFluidsCompatibilityGameTests"));
         } catch (ClassNotFoundException ignored) {
         }
+        var registered = new java.util.HashSet<String>();
         testClasses.stream()
                 .flatMap(testClass -> Arrays.stream(testClass.getDeclaredMethods()))
                 .filter(method -> selected(selection, testId, method))
-                .forEach(event::register);
+                .forEach(method -> {
+                    registered.add(method.getName().toLowerCase(java.util.Locale.ROOT));
+                    event.register(method);
+                });
+        if (selection.equals("batch")) {
+            var missing = new java.util.ArrayList<>(batchIds(testId));
+            missing.removeAll(registered);
+            if (!missing.isEmpty()) throw new IllegalArgumentException("Unknown GameTest ids in batch: " + missing);
+        }
+    }
+
+    /**
+     * Development-only: the lower-cased ids of a comma-separated batch, in the requested order. One server runs them one
+     * after another; CI and evidence runs keep one server per test ({@code positive}).
+     */
+    public static java.util.List<String> batchIds(String testIds) {
+        return Arrays.stream(testIds.split(",")).map(String::trim).filter(id -> !id.isEmpty())
+                .map(id -> id.toLowerCase(java.util.Locale.ROOT)).distinct().toList();
     }
 
     private static boolean selected(String selection, String testId, Method method) {
         return switch (selection) {
             case "positive", "benchmark" -> method.getName().equalsIgnoreCase(testId);
+            case "batch" -> batchIds(testId).contains(method.getName().toLowerCase(java.util.Locale.ROOT));
             case "required-failure" -> method.getName().equals("harnessRequiredFailure");
             case "timeout" -> method.getName().equals("harnessTimeout");
             case "none" -> false;

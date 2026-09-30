@@ -19,14 +19,14 @@ public final class TaskFifteenStaleContextScenario implements UIScenario {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
                 .server("invalidate opened Federation Domain generation", TaskFifteenWorldFixture::invalidateRouterContext)
                 .waitUntilServer("real Federation Domain generation invalidated", TaskFifteenWorldFixture::routerContextInvalidated)
-                .click("#policy_toggle")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("stale generation rejected", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0)
                 .waitForText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
-                .check("stale selector is inactive", context -> !context.el("#consumer_next").isActive())
-                .click("#consumer_next")
+                .check("other switches are inactive", context -> !context.el("#policy_switch_0_crafting").isActive())
+                .click("#policy_switch_0_crafting")
                 .checkText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
-                .check("stale submit remains inactive", context -> !context.el("#policy_toggle").isActive())
+                .check("stale submit remains inactive", context -> !context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).isActive())
                 .checkServer("stale edit did not mutate policy", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0
                                 && !TaskFifteenWorldFixture.policyConfigured(context))

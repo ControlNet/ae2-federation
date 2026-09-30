@@ -62,19 +62,22 @@ final class TaskThirtyThreeWorldFixture {
         TaskFifteenWorldFixture.openBridge(context);
     }
 
-    static boolean endpointHasAmbiguousDomains(ServerContext context) {
+    /**
+     * The Endpoint's subnet is the outer network, a member of both the Router's and the Bridge's domain; the direct
+     * entrance still opens exactly the Router's domain, the one its Federation face joins.
+     */
+    static boolean endpointOpensItsFaceDomain(ServerContext context) {
         var position = state(context).endpointPosition();
         var network = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
+        var registry = FederationDomainRegistryAccess.get(context.level());
+        require(registry.snapshot().federationDomains().values().stream()
+                        .filter(domain -> domain.memberships().size() >= 2 && domain.memberships().containsKey(network)).count() >= 2,
+                "The Endpoint's subnet must be a member of several real domains");
         var nodeId = FederationDomainRegistryAccess.nodeId(context.level(), position);
-        var candidates = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains().values().stream()
-                .filter(domain -> domain.memberships().size() >= 2 && domain.memberships().containsKey(network)).toList();
-        require(candidates.size() >= 2 && candidates.stream().noneMatch(domain -> domain.nodes().contains(nodeId)),
-                "Direct Endpoint must match multiple real domains without a physical domain attachment");
+        var routerNode = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
         var session = space.controlnet.ae2federation.client.policy.FederationDomainPolicySession.forDevice(context.player(), position);
-        var choices = com.google.gson.JsonParser.parseString(session.workspaceChoices()).getAsJsonObject();
-        return session.context().isEmpty() && !session.canSubmit() && !session.selectTarget("capability:CRAFTING")
-                && choices.get("scope").getAsString().equals("ambiguous")
-                && choices.get("localEndpointPosition").getAsString().equals(position.toShortString());
+        return session.context().flatMap(scope -> registry.federationDomain(scope.federationDomainId()))
+                .filter(domain -> domain.nodes().contains(nodeId) && domain.nodes().contains(routerNode)).isPresent();
     }
 
     static void openEndpoint(ServerContext context) {
@@ -86,12 +89,325 @@ final class TaskThirtyThreeWorldFixture {
         require(session.context().isPresent(), "Device entrance requires a unique domain; network="
                 + FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid())
                 + "; domains=" + FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains());
-        space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(context.player(), state(context).hostPosition());
+        rightClickProvider(context, false);
+    }
+
+    /** Uses the Provider block with an empty hand, as a player does; {@code sneaking} is a sneak-use. */
+    static void rightClickProvider(ServerContext context, boolean sneaking) {
+        var player = context.player();
+        var position = state(context).hostPosition();
+        // Earlier cases may leave something in the selected hotbar slot; an empty-hand use picks an empty slot first.
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < net.minecraft.world.entity.player.Inventory.getSelectionSize()
+                && !player.getMainHandItem().isEmpty(); slot++) {
+            if (!inventory.getItem(slot).isEmpty()) continue;
+            inventory.selected = slot;
+            player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket(slot));
+        }
+        require(player.getMainHandItem().isEmpty() && player.getOffhandItem().isEmpty(), "Provider use needs empty hands; main="
+                + player.getMainHandItem() + " off=" + player.getOffhandItem());
+        player.setShiftKeyDown(sneaking);
+        try {
+            var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(position),
+                    net.minecraft.core.Direction.UP, position, false);
+            var result = player.gameMode.useItemOn(player, context.level(), player.getMainHandItem(),
+                    net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+            require(result.consumesAction(), "Provider use was not consumed: " + result);
+        } finally {
+            player.setShiftKeyDown(false);
+        }
+    }
+
+    static void sneakRightClickProvider(ServerContext context) {
+        rightClickProvider(context, true);
+    }
+
+    /** The domain workspace on the Provider's processing wires, as its API still opens it; right-click opens its own screen. */
+    static void openProviderWorkspace(ServerContext context) {
+        require(space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(context.player(),
+                state(context).hostPosition()), "The Provider's workspace did not open");
+    }
+
+    static boolean providerBlocking(ServerContext context) {
+        return provider(context).getConfigManager().getSetting(appeng.api.config.Settings.BLOCKING_MODE)
+                == appeng.api.config.YesNo.YES;
+    }
+
+    /** Blocking also reaches every Lane, which applies it with AE2's own semantics. */
+    static boolean providerLanesBlocking(ServerContext context) {
+        var provider = provider(context);
+        for (int lane = 0; lane < provider.laneCount(); lane++) {
+            if (provider.lane(lane).getConfigManager().getSetting(appeng.api.config.Settings.BLOCKING_MODE)
+                    != appeng.api.config.YesNo.YES) return false;
+        }
+        return provider.laneCount() > 0;
+    }
+
+    static boolean providerNotBlocking(ServerContext context) {
+        return !providerBlocking(context);
+    }
+
+    static boolean providerPriorityTwelve(ServerContext context) {
+        return provider(context).getPriority() == 12;
+    }
+
+    static boolean providerPrioritySeven(ServerContext context) {
+        return provider(context).getPriority() == 7;
+    }
+
+    static boolean providerPriorityZero(ServerContext context) {
+        return provider(context).getPriority() == 0;
+    }
+
+    /** A copy of the Provider's first pattern in the player's first main inventory slot, for the screen to place. */
+    static void givePlayerPattern(ServerContext context) {
+        var pattern = provider(context).getTerminalPatternInventory().getStackInSlot(1).copy();
+        require(!pattern.isEmpty(), "The Provider's slot 1 holds no pattern to copy");
+        require(context.player().getInventory().getItem(9).isEmpty(), "The player's first main slot is not empty");
+        context.player().getInventory().setItem(9, pattern);
+        context.player().containerMenu.broadcastChanges();
+    }
+
+    static boolean providerSlotEightFilled(ServerContext context) {
+        return !provider(context).getTerminalPatternInventory().getStackInSlot(8).isEmpty()
+                && context.player().getInventory().getItem(9).isEmpty() && context.player().containerMenu.getCarried().isEmpty();
+    }
+
+    /** Taken back out with two clicks, the pattern is in the player's first main slot again and slot 8 is empty. */
+    static boolean providerSlotEightTakenBack(ServerContext context) {
+        return provider(context).getTerminalPatternInventory().getStackInSlot(8).isEmpty()
+                && PatternDetailsHelper.isEncodedPattern(context.player().getInventory().getItem(9))
+                && context.player().containerMenu.getCarried().isEmpty();
+    }
+
+    /**
+     * A shift-click as the server takes it: vanilla's QUICK_MOVE click on the open menu, which runs LDLib2's quick move
+     * over this screen's slots. UI tests drive input synthetically, and vanilla reads Shift from the real keyboard.
+     */
+    static void quickMovePlayerPattern(ServerContext context) {
+        var menu = context.player().containerMenu;
+        menu.clicked(menuSlot(context, true, 9), 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE, context.player());
+        menu.broadcastChanges();
+    }
+
+    /** Shift-clicked in, the pattern lands in the first empty pattern slot, 4, and leaves the player's inventory. */
+    static boolean providerSlotFourQuickMoved(ServerContext context) {
+        return !provider(context).getTerminalPatternInventory().getStackInSlot(4).isEmpty()
+                && context.player().getInventory().getItem(9).isEmpty();
+    }
+
+    static void quickMoveProviderPattern(ServerContext context) {
+        var menu = context.player().containerMenu;
+        menu.clicked(menuSlot(context, false, 4), 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE, context.player());
+        menu.broadcastChanges();
+    }
+
+    /** Shift-clicked out, slot 4 is empty again and the pattern is back with the player. */
+    static boolean providerSlotFourReturned(ServerContext context) {
+        var inventory = context.player().getInventory();
+        boolean held = false;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            held |= PatternDetailsHelper.isEncodedPattern(inventory.getItem(slot));
+        }
+        return provider(context).getTerminalPatternInventory().getStackInSlot(4).isEmpty() && held;
+    }
+
+    /** The menu index of the player's inventory slot {@code index}, or of the Provider screen's pattern slot {@code index}. */
+    private static int menuSlot(ServerContext context, boolean player, int index) {
+        var menu = context.player().containerMenu;
+        int patterns = 0;
+        for (int slot = 0; slot < menu.slots.size(); slot++) {
+            var candidate = menu.slots.get(slot);
+            boolean playerSlot = candidate.container == context.player().getInventory();
+            if (player && playerSlot && candidate.getContainerSlot() == index) return slot;
+            if (!player && !playerSlot && patterns++ == index) return slot;
+        }
+        throw new IllegalStateException("No " + (player ? "player" : "pattern") + " slot " + index + " in " + menu);
+    }
+
+    /** TEST-ONLY cleanup: the copied pattern leaves the player's inventory so later cases start with empty hands. */
+    static void takePlayerPattern(ServerContext context) {
+        var inventory = context.player().getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (PatternDetailsHelper.isEncodedPattern(inventory.getItem(slot))) inventory.setItem(slot, net.minecraft.world.item.ItemStack.EMPTY);
+        }
+        context.player().containerMenu.broadcastChanges();
     }
 
     static boolean mappingAccepted(ServerContext context) {
         var provider = provider(context);
         return provider != null && provider.mappedProvider().lanesForSlot(0).equals(Set.of(0));
+    }
+
+    /**
+     * Two real ME Federation Bridges in a chain. The first goes from the Router's outer network to a fresh ME Chest
+     * network; its domain shares the outer network with the Router's domain, so it is a related domain there. The
+     * second goes from that chest's network to another chest; its domain shares nothing with the Router's domain and
+     * is connected only through the first, two domains away.
+     */
+    static void installRelatedDomain(ServerContext context) {
+        var cable = TaskFifteenWorldFixture.routerPosition(context).north().east();
+        context.put("related.cable", cable);
+        installBridgeToChest(context, cable, "Related domain");
+        var farCable = cable.east(2);
+        context.put("related.far.cable", farCable);
+        installBridgeToChest(context, farCable, "Far related domain");
+    }
+
+    /** A cable at {@code cable}, a Bridge on its EAST face and an ME Chest in front of the Bridge. */
+    private static void installBridgeToChest(ServerContext context, BlockPos cable, String what) {
+        require(context.level().isEmptyBlock(cable) && context.level().isEmptyBlock(cable.east()), what + " needs free space");
+        require(appeng.api.parts.PartHelper.setPart(context.level(), cable, null, null,
+                appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.BLUE)) != null,
+                what + " cable must be placed");
+        require(appeng.api.parts.PartHelper.setPart(context.level(), cable, Direction.EAST, null,
+                space.controlnet.ae2federation.bridge.BridgeRegistration.BRIDGE.get()) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart,
+                what + " Bridge must be placed");
+        context.level().setBlockAndUpdate(cable.east(), appeng.core.definitions.AEBlocks.ME_CHEST.block().defaultBlockState());
+    }
+
+    static boolean relatedDomainReady(ServerContext context) {
+        var near = bridgedPair(context, context.get("related.cable"));
+        var far = bridgedPair(context, context.get("related.far.cable"));
+        // The far Bridge's cable sits on the near chest, so its inner network is the near chest's network.
+        if (near == null || far == null || !far[0].equals(near[1])) return false;
+        context.put("related.shared", near[0]);
+        context.put("related.network", near[1]);
+        context.put("related.far.network", far[1]);
+        return true;
+    }
+
+    /** The inner and outer network of the VALID Bridge on {@code cable}'s EAST face, once its domain holds both. */
+    private static space.controlnet.ae2federation.identity.NetworkId[] bridgedPair(ServerContext context, BlockPos cable) {
+        var host = appeng.api.parts.PartHelper.getPartHost(context.level(), cable);
+        if (!(host != null && host.getPart(Direction.EAST) instanceof space.controlnet.ae2federation.bridge.MultipartBridgePart bridge)
+                || bridge.operationalReason() != space.controlnet.ae2federation.bridge.BridgeOperationalReason.VALID) return null;
+        var candidate = bridge.membershipCandidate().orElse(null);
+        if (candidate == null) return null;
+        var inner = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid()).orElse(null);
+        var outer = FederationDomainRegistryAccess.confirmedNetworkId(candidate.outerGrid()).orElse(null);
+        if (inner == null || outer == null || inner.equals(outer)) return null;
+        var registry = FederationDomainRegistryAccess.get(context.level());
+        var related = registry.federationdomainsFor(outer).stream().map(registry::federationDomain)
+                .flatMap(java.util.Optional::stream).anyMatch(domain -> domain.memberships().containsKey(inner));
+        return related ? new space.controlnet.ae2federation.identity.NetworkId[] {inner, outer} : null;
+    }
+
+    /**
+     * The chest network uses the shared network's storage: a rule of the related domain only. The far chest uses the
+     * near chest's storage: a rule of the far domain, shown only because related domains are followed however far.
+     */
+    static void installRelatedRule(ServerContext context) {
+        context.put("related.rule", storageRule(context, context.get("related.network"), context.get("related.shared"),
+                "Related domain rule must be accepted"));
+        context.put("related.far.rule", storageRule(context, context.get("related.far.network"), context.get("related.network"),
+                "Far related domain rule must be accepted"));
+    }
+
+    private static space.controlnet.ae2federation.policy.PolicyKey storageRule(ServerContext context,
+            space.controlnet.ae2federation.identity.NetworkId consumer, space.controlnet.ae2federation.identity.NetworkId provider,
+            String what) {
+        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, provider,
+                space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+        var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+        var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
+                space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()));
+        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted, what);
+        return key;
+    }
+
+    static String relatedFarNetwork(ServerContext context) {
+        return context.<space.controlnet.ae2federation.identity.NetworkId>get("related.far.network").value().toString();
+    }
+
+    static String relatedNetwork(ServerContext context) {
+        return context.<space.controlnet.ae2federation.identity.NetworkId>get("related.network").value().toString();
+    }
+
+    static void removeRelatedDomain(ServerContext context) {
+        for (var name : List.of("related.rule", "related.far.rule")) {
+            space.controlnet.ae2federation.policy.PolicyKey rule = context.get(name);
+            if (rule == null) continue;
+            // The rules belong to the related domains only; later cases must not see them.
+            var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+            if (policies.configured(rule).isPresent()) {
+                require(policies.delete(new space.controlnet.ae2federation.policy.PolicyDelete(rule, policies.revision(rule)))
+                        instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                        "Related domain rule must be removed");
+            }
+        }
+        for (var name : List.of("related.far.cable", "related.cable")) {
+            BlockPos cable = context.get(name);
+            if (cable == null) continue;
+            context.level().setBlockAndUpdate(cable.east(), Blocks.AIR.defaultBlockState());
+            context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+        }
+    }
+
+    /**
+     * Cables from the Provider host's energy cell down its column to the Endpoint's west face. They join two
+     * established member networks in one Grid: a real merge, the case the design shows. (A freshly placed node has
+     * no established history and is simply adopted, so it cannot merge.) The Endpoint's own energy cell sat at the
+     * end of that column, but the energy-source check earlier in the scenario has removed it.
+     */
+    static void joinMemberNetworks(ServerContext context) {
+        var hostCell = state(context).hostPosition().west();
+        require(hostCell.south(3).equals(state(context).endpointPosition().west()), "The column must end beside the Endpoint");
+        require(context.level().getBlockState(hostCell.south(3)).isAir(), "The Endpoint's energy cell must be gone");
+        var cables = List.of(hostCell.south(1), hostCell.south(2), hostCell.south(3));
+        context.put("merge.cables", cables);
+        for (var cable : cables) {
+            require(appeng.api.parts.PartHelper.setPart(context.level(), cable, null, null,
+                    appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
+                    "Joining cable must be placed");
+        }
+    }
+
+    static boolean memberNetworksMerged(ServerContext context) {
+        var grid = provider(context).getMainNode().getGrid();
+        return grid != null && grid == endpoint(context).getMainNode().getGrid()
+                && grid.getService(space.controlnet.ae2federation.identity.NetworkIdentityService.class)
+                        .settlement().status() == space.controlnet.ae2federation.identity.IdentityStatus.AMBIGUOUS_MERGE;
+    }
+
+    static boolean memberNetworksRecovered(ServerContext context) {
+        var host = provider(context).getMainNode().getGrid();
+        var endpointGrid = endpoint(context).getMainNode().getGrid();
+        return host != null && endpointGrid != null && host != endpointGrid
+                && FederationDomainRegistryAccess.confirmedNetworkId(host).map(id -> id.value().toString())
+                        .filter(id -> id.equals(context.get("net.providerHost"))).isPresent()
+                && FederationDomainRegistryAccess.confirmedNetworkId(endpointGrid).map(id -> id.value().toString())
+                        .filter(id -> id.equals(context.get("net.endpoint"))).isPresent();
+    }
+
+    static void separateMemberNetworks(ServerContext context) {
+        List<BlockPos> cables = context.get("merge.cables");
+        if (cables == null) return;
+        for (var cable : cables) context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState());
+    }
+
+    /** Whether the host's lane to the first Endpoint recorded an accepted send in the last five seconds. */
+    static boolean processingFlowObserved(ServerContext context) {
+        var provider = provider(context);
+        var lane = provider.laneFor(endpoint(context).endpointIdentity()).orElse(-1);
+        return lane >= 0 && space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level())
+                .laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService.LaneKey(
+                        provider.providerIdentity().toString(), lane, false)).active();
+    }
+
+    static boolean endpointOwnedByProvider(ServerContext context) {
+        return !provider(context).retained(endpoint(context).endpointIdentity())
+                && !provider(context).mappedProvider().lanesForSlot(1).isEmpty()
+                && endpoint(context).claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned;
+    }
+
+    static String slotZeroLanes(ServerContext context) {
+        return provider(context).mappedProvider().lanesForSlot(0).toString();
+    }
+
+    static boolean slotZeroUnmapped(ServerContext context) {
+        var provider = provider(context);
+        return provider != null && provider.mappedProvider().lanesForSlot(0).isEmpty();
     }
 
     static void installRichPatterns(ServerContext context) {
@@ -228,21 +544,42 @@ final class TaskThirtyThreeWorldFixture {
                 "Disabled rule must not retain its prior backend failure");
         context.put("runtime.disabledRevision", policies.revision(key).value());
         context.put("runtime.disabledKey", key);
-        context.put("runtime.expectedRevision", space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(
-                context.player(), space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY)
-                .orElseThrow().expectedRevision());
     }
 
+    /** A switch observed before the latest revision is refused instead of overwriting the newer rule. */
     static boolean displayedRevisionDoesNotGrantAuthority(ServerContext context) {
-        var request = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(context.player(),
-                space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY).orElseThrow();
-        require(request.expectedRevision().equals(context.get("runtime.expectedRevision")),
-                "Rendering the current revision must not silently refresh submission authority");
-        var result = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.dispatch(context.player(), request);
         var key = context.<space.controlnet.ae2federation.policy.PolicyKey>get("runtime.disabledKey");
+        long disabledRevision = context.get("runtime.disabledRevision");
+        var current = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.currentRequest(context.player(),
+                space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.TOGGLE_POLICY).orElseThrow();
+        var outdated = new space.controlnet.ae2federation.client.policy.PolicySwitchTarget(key, true,
+                new space.controlnet.ae2federation.policy.PolicyRevision(disabledRevision - 1));
+        var result = space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.dispatch(context.player(),
+                new space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionRequest(
+                        space.controlnet.ae2federation.client.menu.FederationDomainPolicyAction.SET_POLICY,
+                        current.containerId(), current.menuNonce(), current.menuSequence(), current.context(),
+                        current.expectedRevision(), outdated.encode()));
         var configured = space.controlnet.ae2federation.policy.PolicyService.get(context.level()).configured(key).orElseThrow();
-        return result == space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionResult.STALE_REVISION
-                && !configured.rule().enabled() && configured.revision().value() == context.<Long>get("runtime.disabledRevision");
+        return result == space.controlnet.ae2federation.client.menu.FederationDomainPolicyActionResult.ACCEPTED
+                && !configured.rule().enabled() && configured.revision().value() == disabledRevision;
+    }
+
+    /** The Provider's position as a player would type it, for example "10, -57, 10". */
+    static String providerPositionQuery(ServerContext context) {
+        return state(context).hostPosition().toShortString();
+    }
+
+    static void recordNetworks(ServerContext context) {
+        context.put("net.providerHost", FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid())
+                .orElseThrow().value().toString());
+        context.put("net.endpoint", FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid())
+                .orElseThrow().value().toString());
+    }
+
+    /** The persisted display name of the Provider host network, or empty when it uses its default name. */
+    static String providerHostName(ServerContext context) {
+        var network = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
+        return space.controlnet.ae2federation.persistence.NetworkNames.get(context.level()).name(network).orElse("");
     }
 
     static void removeEndpointEnergySource(ServerContext context) {
@@ -293,17 +630,6 @@ final class TaskThirtyThreeWorldFixture {
             return target.getMainNode().getGrid().getStorageService().getInventory().extract(AEItemKey.of(Items.IRON_INGOT),
                     1, appeng.api.config.Actionable.SIMULATE, new appeng.me.helpers.BaseActionSource()) == 1;
         }
-        var sourceId = FederationDomainRegistryAccess.confirmedNetworkId(provider.getMainNode().getGrid()).orElseThrow();
-        var targetId = FederationDomainRegistryAccess.confirmedNetworkId(target.getMainNode().getGrid()).orElseThrow();
-        var service = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(sourceId, targetId,
-                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
-        if (service.configured(key).isEmpty()) {
-            service.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, service.revision(key),
-                    space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of(
-                            space.controlnet.ae2federation.policy.PolicyOperation.EXECUTE,
-                            space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY))));
-        }
         var pattern = PatternDetailsHelper.decodePattern(provider.getTerminalPatternInventory().getStackInSlot(1), context.level());
         var counter = new appeng.api.stacks.KeyCounter();
         counter.add(AEItemKey.of(Items.IRON_INGOT), 1);
@@ -331,6 +657,11 @@ final class TaskThirtyThreeWorldFixture {
     static boolean endpointRetained(ServerContext context) {
         return provider(context).retained(endpoint(context).endpointIdentity())
                 && endpoint(context).claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned;
+    }
+
+    static boolean endpointClaimedByHost(ServerContext context) {
+        return endpoint(context).claimState().owner()
+                .filter(owner -> owner.provider().equals(provider(context).providerIdentity())).isPresent();
     }
 
     static boolean endpointReleased(ServerContext context) {
@@ -416,6 +747,54 @@ final class TaskThirtyThreeWorldFixture {
         context.put("target.competitor", competitor.id().value().toString());
     }
 
+    /**
+     * A second production Federation Pattern Provider with one real processing pattern. It is placed against the
+     * first one, so AE2 joins it to the main network as a player's placement would, keeping that network's identity.
+     * A Federation Cable from its Federation face to the first Provider's cable puts it in the Router's domain.
+     */
+    static void placeSecondProvider(ServerContext context) {
+        var position = state(context).hostPosition().east();
+        require(context.level().isEmptyBlock(position), "Second Provider fixture position must be empty");
+        context.put("task33.secondProvider", position);
+        context.put("task33.mainNetworkBeforeSecondProvider",
+                FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).orElseThrow().toString());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
+        require(context.level().isEmptyBlock(position.above()), "Second Provider cable position must be empty");
+        context.level().setBlockAndUpdate(position.above(),
+                space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+    }
+
+    static boolean secondProviderReady(ServerContext context) {
+        var position = context.<BlockPos>get("task33.secondProvider");
+        if (!(context.level().getBlockEntity(position) instanceof FederationPatternProviderBlockEntity second)
+                || second.getMainNode().getNode() == null || second.runtime().isEmpty()) {
+            return false;
+        }
+        if (second.getMainNode().getGrid() != state(context).existing.getGrid()) return false;
+        var router = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
+        if (second.federationDomain().filter(domain -> domain.nodes().contains(router)).isEmpty()) return false;
+        var network = FederationDomainRegistryAccess.confirmedNetworkId(state(context).existing.getGrid()).map(Object::toString);
+        if (network.isEmpty()) return false;
+        require(network.get().equals(context.get("task33.mainNetworkBeforeSecondProvider")),
+                "Joining the second Provider must keep the main network's identity");
+        if (second.getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+            second.getTerminalPatternInventory().insertItem(0, PatternDetailsHelper.encodeProcessingPattern(
+                    List.of(new GenericStack(AEItemKey.of(Items.SAND), 1)),
+                    List.of(new GenericStack(AEItemKey.of(Items.GLASS), 1))), false);
+        }
+        return true;
+    }
+
+    static String secondProviderPosition(ServerContext context) {
+        return context.<BlockPos>get("task33.secondProvider").toShortString();
+    }
+
+    static void removeSecondProvider(ServerContext context) {
+        context.level().removeBlock(context.<BlockPos>get("task33.secondProvider").above(), false);
+        context.level().removeBlock(context.<BlockPos>get("task33.secondProvider"), false);
+    }
+
     static void recordEndpointNavigation(ServerContext context) {
         var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
         var source = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
@@ -423,19 +802,10 @@ final class TaskThirtyThreeWorldFixture {
         context.put("navigation.provider", source.value().toString());
         context.put("navigation.target", endpoint(context).endpointIdentity().id().value() + ":"
                 + endpoint(context).endpointIdentity().instanceEpoch().value());
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, source,
-                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
-        context.put("navigation.policyRevision", space.controlnet.ae2federation.policy.PolicyService.get(context.level()).revision(key).value());
     }
 
     static boolean endpointNavigationReadOnly(ServerContext context) {
-        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
-        var source = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, source,
-                space.controlnet.ae2federation.policy.PolicyCapability.PROCESSING);
-        return space.controlnet.ae2federation.policy.PolicyService.get(context.level()).revision(key).value()
-                == context.<Long>get("navigation.policyRevision")
-                && provider(context).endpointsForSlot(1).contains(endpoint(context).endpointIdentity())
+        return provider(context).endpointsForSlot(1).contains(endpoint(context).endpointIdentity())
                 && endpoint(context).claimState().epoch().value() == 1;
     }
 
@@ -443,8 +813,16 @@ final class TaskThirtyThreeWorldFixture {
         var position = state(context).endpointPosition().east(2);
         require(context.level().isEmptyBlock(position), "Second Endpoint fixture position must be empty");
         var network = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
         context.put("endpoint.secondPosition", position);
+        // Its Federation face joins the first Endpoint's cable, so it is a node of the same Router domain.
+        var cables = List.of(position.above().west(), position.above());
+        for (var cable : cables) {
+            require(context.level().isEmptyBlock(cable), "Second Endpoint cable position must be empty: " + cable);
+            context.level().setBlockAndUpdate(cable,
+                    space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+        }
+        context.put("endpoint.secondCables", cables);
         var endpoint = (EndpointBlockEntity) context.level().getBlockEntity(position);
         endpoint.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
     }
@@ -473,7 +851,7 @@ final class TaskThirtyThreeWorldFixture {
         require(context.level().isEmptyBlock(position) && context.level().isEmptyBlock(position.west()),
                 "Isolated Endpoint fixture positions must be empty");
         context.put("endpoint.isolatedPosition", position);
-        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+        context.level().setBlockAndUpdate(position, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
         context.level().setBlockAndUpdate(position.west(),
                 appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
         positionCamera(context, position.south(3), position);
@@ -535,6 +913,9 @@ final class TaskThirtyThreeWorldFixture {
                 + (int) bridge.getCableConnectionLength(AECableType.GLASS);
     }
 
+    /** Federation Cable from above the host to above the Endpoint, three blocks south. */
+    private static final int ENDPOINT_CABLES = 3;
+
     private static void place(ServerContext context) {
         var hostPosition = TaskFifteenWorldFixture.routerPosition(context).south(2);
         var endpointPosition = hostPosition.south(3);
@@ -549,10 +930,16 @@ final class TaskThirtyThreeWorldFixture {
         // The production ME Federation Pattern Provider block; its Federation face points away from the Endpoint.
         context.level().setBlockAndUpdate(hostPosition, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                 .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
-        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState());
-        // Connect the Provider's upward Federation port to the Router's physical domain.
+        context.level().setBlockAndUpdate(endpointPosition, ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, Direction.UP));
+        // Connect the Provider's upward Federation port to the Router's physical domain, and the Endpoint's
+        // Federation face on its top to the same cable, so it is a node of the Router's domain.
         for (int north = 0; north <= 2; north++) {
             context.level().setBlockAndUpdate(hostPosition.above().north(north),
+                    space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
+        }
+        for (int south = 1; south <= ENDPOINT_CABLES; south++) {
+            require(context.level().isEmptyBlock(hostPosition.above().south(south)), "Task 33 Endpoint cable position must be empty");
+            context.level().setBlockAndUpdate(hostPosition.above().south(south),
                     space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
         }
         var endpoint = context.level().getBlockEntity(endpointPosition) instanceof EndpointBlockEntity value
@@ -605,11 +992,13 @@ final class TaskThirtyThreeWorldFixture {
                 .orElse(null);
         var routerNode = FederationDomainRegistryAccess.nodeId(context.level(),
                 TaskFifteenWorldFixture.routerPosition(context));
+        var endpointNode = FederationDomainRegistryAccess.nodeId(context.level(), state.endpointPosition());
         var federationDomains = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains()
                 .values();
+        // The Provider's network is a member of the Router's domain and the Endpoint's Federation face one of its nodes.
         if (providerNetwork == null || endpointNetwork == null || providerNetwork.equals(endpointNetwork) || !federationDomains.stream()
-                .anyMatch(domain -> domain.nodes().contains(routerNode)
-                        && domain.memberships().containsKey(providerNetwork) && domain.memberships().containsKey(endpointNetwork))) {
+                .anyMatch(domain -> domain.nodes().contains(routerNode) && domain.nodes().contains(endpointNode)
+                        && domain.memberships().containsKey(providerNetwork))) {
             return false;
         }
         if (!(endpoint.claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned)) {
@@ -617,7 +1006,44 @@ final class TaskThirtyThreeWorldFixture {
             var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(1), binding);
             require(status.startsWith("accepted-"), "Task 33 Endpoint mapping must be accepted: " + status);
         }
-        return true;
+        // A workspace opened on a domain that is still being republished would go stale at once.
+        var domain = federationDomains.stream().filter(candidate -> candidate.nodes().contains(routerNode)).findFirst().orElseThrow();
+        var tick = context.level().getGameTime();
+        Long seen = context.get("task33.domainGeneration");
+        if (seen == null || seen != domain.generation()) {
+            com.mojang.logging.LogUtils.getLogger().info("TASK33_DOMAIN generation={} nodes={} members={}", domain.generation(),
+                    domain.nodes().size(), domain.memberships().keySet());
+            context.put("task33.domainGeneration", domain.generation());
+            context.put("task33.domainSince", tick);
+            return false;
+        }
+        return tick - context.<Long>get("task33.domainSince") >= 20;
+    }
+
+    static BlockPos hostPosition(ServerContext context) {
+        return state(context).hostPosition();
+    }
+
+    static BlockPos endpointPosition(ServerContext context) {
+        return state(context).endpointPosition();
+    }
+
+    static FederationPatternProviderBlockEntity hostProvider(ServerContext context) {
+        return provider(context);
+    }
+
+    static EndpointBlockEntity firstEndpoint(ServerContext context) {
+        return endpoint(context);
+    }
+
+    /** A node of the Router's main network, which the Provider host joins. */
+    static appeng.api.networking.IGridNode mainNode(ServerContext context) {
+        return state(context).existing();
+    }
+
+    /** A node of the Router's outer network, which the first Endpoint joins. */
+    static appeng.api.networking.IGridNode outerNode(ServerContext context) {
+        return state(context).targetExisting();
     }
 
     private static EndpointBlockEntity endpoint(ServerContext context) {
@@ -642,6 +1068,10 @@ final class TaskThirtyThreeWorldFixture {
 
     private static void cleanup(ServerContext context) {
         var state = context.<State>get(STATE);
+        TaskThirtyThreeShowcaseFixture.cleanup(context);
+        // An aborted scope check must not leave the related domain in the shared world.
+        removeRelatedDomain(context);
+        separateMemberNetworks(context);
         if (state == null) {
             return;
         }
@@ -654,8 +1084,13 @@ final class TaskThirtyThreeWorldFixture {
         }
         var secondEndpoint = context.<BlockPos>get("endpoint.secondPosition");
         if (secondEndpoint != null) context.level().setBlockAndUpdate(secondEndpoint, Blocks.AIR.defaultBlockState());
+        List<BlockPos> secondCables = context.get("endpoint.secondCables");
+        if (secondCables != null) secondCables.forEach(cable -> context.level().setBlockAndUpdate(cable, Blocks.AIR.defaultBlockState()));
         for (int north = 0; north <= 2; north++) {
             context.level().setBlockAndUpdate(state.hostPosition().above().north(north), Blocks.AIR.defaultBlockState());
+        }
+        for (int south = 1; south <= ENDPOINT_CABLES; south++) {
+            context.level().setBlockAndUpdate(state.hostPosition().above().south(south), Blocks.AIR.defaultBlockState());
         }
         context.level().setBlockAndUpdate(state.hostPosition().west(), Blocks.AIR.defaultBlockState());
         context.level().setBlockAndUpdate(state.endpointPosition().west(), Blocks.AIR.defaultBlockState());

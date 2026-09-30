@@ -85,8 +85,10 @@ final class CrossFederationDomainObservationProbe {
         var secondState = ObservationRuntimeEvidence.clientState(secondSession).orElseThrow();
         var clientBefore = firstState.snapshot().orElseThrow();
         var secondClientBefore = secondState.snapshot().orElseThrow();
+        // A Bridge's direct domain has no nodes, so it never lists an Endpoint: the Endpoint is in the domain its
+        // Federation face joins.
         helper.assertTrue(!clientBefore.members().isEmpty() && !clientBefore.providers().isEmpty()
-                && !clientBefore.endpoints().isEmpty() && !clientBefore.policies().isEmpty()
+                && !clientBefore.policies().isEmpty()
                 && !clientBefore.locks().isEmpty() && !clientBefore.tasks().isEmpty(),
                 "Federation Domain A baseline must contain the full live projection");
         helper.assertTrue(!secondClientBefore.members().isEmpty(), "Federation Domain B baseline must contain projected records");

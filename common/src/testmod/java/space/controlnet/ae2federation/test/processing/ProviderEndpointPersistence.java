@@ -30,7 +30,7 @@ final class ProviderEndpointPersistence {
         endpoint.onChunkUnloaded();
         helper.getLevel().setBlockAndUpdate(provider.endpointTargetPosition(), Blocks.AIR.defaultBlockState());
         helper.getLevel().setBlockAndUpdate(provider.endpointTargetPosition(),
-                ProcessingRegistration.ENDPOINT.get().defaultBlockState());
+                ProcessingRegistration.ENDPOINT.get().defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING, net.minecraft.core.Direction.EAST));
         var replacement = (EndpointBlockEntity) helper.getLevel().getBlockEntity(provider.endpointTargetPosition());
         replacement.loadWithComponents(savedTag, helper.getLevel().registryAccess());
         replacement.setChanged();

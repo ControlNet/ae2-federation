@@ -144,7 +144,7 @@ public final class EndpointGameTests {
             var accepted = composition.claimLocal(List.of(fixture.nativeProvider(), fixture.secondNativeProvider()));
             helper.assertTrue(!accepted, "Two adjacent native Providers must fail closed");
             helper.assertTrue(composition.nativeReturnInventory().isEmpty(), "Rejected owners must install no return target");
-            helper.assertTrue(composition.targetStorage(Direction.EAST, composition.openLocalInput()).isEmpty(),
+            helper.assertTrue(composition.targetStorage(EndpointFixtures.FEDERATION_FACE, composition.openLocalInput()).isEmpty(),
                     "Rejected ownership must expose no Local input target");
             writeEvidence("endpointrejecttwoupstreams", 4, Map.of(
                     "candidateUpstreamCount", "2", "verifiedUpstreamCount", "0",
@@ -167,7 +167,8 @@ public final class EndpointGameTests {
             helper.assertTrue(composition.targetStorage(Direction.EAST, itemReturnContext).isEmpty()
                     && composition.targetStorage(Direction.EAST, fluidReturnContext).isEmpty(),
                     "Return context cannot resolve subnet target storage");
-            var target = composition.targetStorage(Direction.EAST, inputContext).orElseThrow();
+            // Local input enters through the Federation face, where the native Provider sits.
+            var target = composition.targetStorage(EndpointFixtures.FEDERATION_FACE, inputContext).orElseThrow();
             helper.assertValueEqual(target.insert(AEItemKey.of(Items.IRON_INGOT), 1, Actionable.MODULATE, IActionSource.empty()),
                     1L, "Capability-aware Local input must reach only subnet storage");
             helper.assertTrue(composition.nativeReturnInventory().orElseThrow().isEmpty(),
@@ -188,16 +189,16 @@ public final class EndpointGameTests {
             var staleLocal = composition.openLocalInput();
             var staleReturn = composition.openItemReturn();
             composition.setMode(EndpointMode.FEDERATED);
-            helper.assertTrue(composition.targetStorage(Direction.EAST, staleLocal).isEmpty(),
+            helper.assertTrue(composition.targetStorage(EndpointFixtures.FEDERATION_FACE, staleLocal).isEmpty(),
                     "Mode change must invalidate outstanding Local input contexts");
             helper.assertTrue(composition.returnInventory(Direction.EAST, staleReturn).isEmpty(),
                     "Mode change must invalidate outstanding return contexts");
-            helper.assertTrue(composition.targetStorage(Direction.EAST, composition.openLocalInput()).isEmpty(),
+            helper.assertTrue(composition.targetStorage(EndpointFixtures.FEDERATION_FACE, composition.openLocalInput()).isEmpty(),
                     "Federated mode must reject new Local upstream input");
             helper.assertTrue(composition.targetStorage(Direction.EAST, composition.openFederatedInput()).isPresent(),
                     "Federated mode must retain its distinct target context");
             composition.setMode(EndpointMode.LOCAL);
-            helper.assertTrue(composition.targetStorage(Direction.EAST, composition.openLocalInput()).isEmpty(),
+            helper.assertTrue(composition.targetStorage(EndpointFixtures.FEDERATION_FACE, composition.openLocalInput()).isEmpty(),
                     "Returning to Local mode must require a fresh verified owner");
             writeEvidence("endpointmodeisolation", 7, Map.of(
                     "localModeAccepted", "true", "federatedTargetAccepted", "true",

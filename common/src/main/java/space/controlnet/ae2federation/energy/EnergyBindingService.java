@@ -144,6 +144,13 @@ public final class EnergyBindingService implements AutoCloseable {
                 var accepted = binding.extract(amount - extracted, mode);
                 extracted += accepted;
                 if (outermost && mode == Actionable.MODULATE && accepted > 0) {
+                    var consumerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.consumerGrid());
+                    var providerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.providerGrid());
+                    if (consumerNetwork.isPresent() && providerNetwork.isPresent()) {
+                        LevelObservabilityService.get(level).recordPairFlow(new PolicyKey(consumerNetwork.get(),
+                                providerNetwork.get(), space.controlnet.ae2federation.policy.PolicyCapability.ME_POWER),
+                                nanoAe(accepted));
+                    }
                     LevelObservabilityService.get(level).recordAccepted(binding.revision().federationDomains(),
                             space.controlnet.ae2federation.observability.meter.OperationEventId.create(), "ae2:energy",
                             nanoAe(accepted), ResourceUnit.NANO_AE,

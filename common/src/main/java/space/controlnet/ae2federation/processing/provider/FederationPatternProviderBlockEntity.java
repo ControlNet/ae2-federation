@@ -45,6 +45,7 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.FederationDomainSnapshot;
 import space.controlnet.ae2federation.domain.port.FederationPort;
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
@@ -71,8 +72,16 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
 public final class FederationPatternProviderBlockEntity extends AENetworkedBlockEntity
         implements PatternProviderLogicHost, ProviderMappingController {
     public static final int PATTERN_SLOTS = 9;
-    /** Side of an Endpoint through which Lanes reach its Subnet; any non-Federation Endpoint face is equivalent. */
-    public static final Direction ENDPOINT_ACCESS_SIDE = EndpointBlockEntity.FEDERATION_FACE.getOpposite();
+    /**
+     * Side of an Endpoint through which Lanes reach its Subnet: the face opposite its Federation face. Any
+     * non-Federation face is equivalent; an Endpoint that is gone yields a side the authorization then rejects.
+     */
+    public static Direction endpointAccessSide(net.minecraft.world.level.Level level, BlockPos endpointPosition) {
+        var state = level.isLoaded(endpointPosition) ? level.getBlockState(endpointPosition) : null;
+        return state != null && state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING)
+                ? state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING).getOpposite()
+                : Direction.DOWN;
+    }
     private static final String SCHEMA_TAG = "federationProviderSchema";
     private static final int SCHEMA = 1;
     private static final String IDENTITY_TAG = "providerIdentity";
@@ -166,7 +175,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (!(level instanceof ServerLevel serverLevel) || runtime != null) {
             return;
         }
-        runtime = new ProviderRuntime(serverLevel, getMainNode(), provider, identity,
+        federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
+        runtime = new ProviderRuntime(serverLevel, getMainNode(), federationDomainNodeId, provider, identity,
                 new ProviderOrientation(ProviderNodeWiring.face(federationFace())), this::laneRequest, domains);
         for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
             runtime.bindLane(laneIndex, lanes.get(laneIndex).revision);
@@ -176,7 +186,6 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (getMainNode().getGrid() != null && !provider.registered()) {
             provider.register();
         }
-        federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         rebuildFederationCache();
         invalidateFederationDomainTopology();
     }
@@ -360,6 +369,13 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (provider.mappingHandle(slot).generation() != handle.generation()) {
             return "rejected-stale-slot";
         }
+        // Only a slot with a pattern gains Endpoints; unmapping above stays allowed for a slot emptied since.
+        if (getTerminalPatternInventory().getStackInSlot(slot).isEmpty()) {
+            return "rejected-invalid-selection";
+        }
+        if (!reaches(serverLevel, endpoint.runtime().position())) {
+            return "rejected-domain-disconnected";
+        }
         int laneIndex;
         if (existing.isPresent()) {
             laneIndex = existing.get();
@@ -378,6 +394,18 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         lanes.get(laneIndex).mappingRevision++;
         saveChanges();
         return "accepted-" + slot + "-" + handle.generation();
+    }
+
+    /** The domain this Provider's Federation face is a node of; its Lanes may use only that domain's Endpoints. */
+    public Optional<FederationDomainSnapshot> federationDomain() {
+        return level instanceof ServerLevel serverLevel && federationDomainNodeId != null
+                ? FederationDomainRegistryAccess.get(serverLevel).federationDomainOf(federationDomainNodeId)
+                : Optional.empty();
+    }
+
+    private boolean reaches(ServerLevel serverLevel, BlockPos endpointPosition) {
+        var endpointNode = FederationDomainRegistryAccess.nodeId(serverLevel, endpointPosition);
+        return federationDomain().filter(domain -> domain.nodes().contains(endpointNode)).isPresent();
     }
 
     @Override
@@ -614,7 +642,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             return null;
         }
         return new ProviderTargetRequest(identity, binding.endpoint, binding.epoch, binding.position,
-                ENDPOINT_ACCESS_SIDE, true);
+                endpointAccessSide(level, binding.position), true);
     }
 
     // ---- Domain (Federation Domain) port on the front face
@@ -626,7 +654,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         var face = federationFace();
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel,
-                worldPosition.relative(face), face.getOpposite(), () -> !isRemoved(), this::invalidateFederationDomainTopology);
+                worldPosition.relative(face), face.getOpposite(), () -> !isRemoved(), this::recheckFederationPeer);
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -635,6 +663,15 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (worldPosition.relative(federationFace()).equals(neighborPosition)) {
             invalidateFederationDomainTopology();
         }
+    }
+
+    /**
+     * Some capability of the front neighbour changed, such as an Endpoint's item handlers when it is claimed: publish
+     * the evidence again on the next tick, which leaves the domain as it is when the link is the same. A changed
+     * neighbour block reaches {@link #neighborChanged}, which invalidates the node.
+     */
+    private void recheckFederationPeer() {
+        federationDomainDirty = true;
     }
 
     private void invalidateFederationDomainTopology() {

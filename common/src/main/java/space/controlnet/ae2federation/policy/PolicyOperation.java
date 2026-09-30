@@ -5,6 +5,5 @@ public enum PolicyOperation {
     INSERT,
     EXTRACT,
     REQUEST,
-    EXECUTE,
     SUPPLY
 }

@@ -10,9 +10,9 @@ public record MappingFeedback(String key, List<String> arguments, String tone) {
     private static final Pattern RELEASED = Pattern.compile("released-[0-9]+");
     private static final Pattern CLEARED = Pattern.compile("cleared-stale-[0-9]+");
     private static final Set<String> REJECTIONS = Set.of("session", "no-provider", "no-endpoint", "invalid-selection",
-            "policy_denied", "claim_mismatch", "stale-slot", "provider-offline", "not-retained", "still-mapped",
+            "claim_mismatch", "stale-slot", "provider-offline", "not-retained", "still-mapped",
             "pending-send", "pending-return", "endpoint-unloaded", "claim-changed", "owner_conflict", "stale_epoch",
-            "wrong_endpoint");
+            "wrong_endpoint", "domain-disconnected");
 
     public static MappingFeedback fromCode(String code) {
         if ("ready".equals(code)) return simple("ready", "neutral");
