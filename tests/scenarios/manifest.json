@@ -123,6 +123,7 @@
     {"id":"domain.partial-unload","backend":"gametest","testId":"federationdomainpartialunload","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.reject-stale-route","backend":"gametest","testId":"federationdomainrejectstaleroute","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"topology.placement-keeps-power","backend":"gametest","testId":"topologyplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"topology.player-placement-keeps-power","backend":"gametest","testId":"topologyplayerplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"topology.break-cuts-power","backend":"gametest","testId":"topologybreakcutspower","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"topology.unsettled-attach-keeps-domain","backend":"gametest","testId":"topologyunsettledattachkeepsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"policy.lifecycle-matrix","backend":"gametest-restart","testId":"policylifecyclematrix","structure":"ae2federation_test:harness_native_smoke","assertions":12},

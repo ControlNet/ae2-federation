@@ -14,8 +14,16 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainReference;
@@ -32,6 +40,7 @@ import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.domain.FederationDomainEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
@@ -68,6 +77,42 @@ public final class TopologyContinuityGameTests {
                 // The Provider's own network joins the domain, which is a new member and so a new generation.
                 new Placement("Federation Pattern Provider facing the path", false,
                         () -> helper.setBlock(new BlockPos(8, 4, 7), provider)));
+        samplePlacements(helper, scene, placements, "topologyplacementkeepspower", Map.of());
+    }
+
+    /**
+     * The same changes made the way a player makes them: {@code BlockItem.useOn} on a face of the domain, so the block
+     * takes its orientation from the clicked face and AE2 sets its owner, which saves the node again after placement.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void topologyPlayerPlacementKeepsPower(GameTestHelper helper) {
+        var scene = new PoweredDomain(helper);
+        var player = helper.makeMockServerPlayerInLevel();
+        player.setPos(Vec3.atCenterOf(helper.absolutePos(new BlockPos(6, 8, 2))));
+        var placements = List.<Placement>of(
+                new Placement("Federation Cable placed by a player", true, () -> scene.use(player,
+                        RouterRegistration.FEDERATION_CABLE_ITEM.get(), PATH_CABLE, Direction.SOUTH, null)),
+                new Placement("plain block placed by a player", true, () -> scene.use(player, Items.STONE,
+                        new BlockPos(5, 4, 6), Direction.NORTH, null)),
+                new Placement("Router placed by a player", true, () -> scene.use(player,
+                        RouterRegistration.ROUTER_ITEM.get(), new BlockPos(7, 4, 6), Direction.SOUTH, null)),
+                // Clicking the cable's south face turns the new block's front north, onto the cable.
+                new Placement("Processing Endpoint placed by a player", true, () -> scene.use(player,
+                        ProcessingRegistration.ENDPOINT_ITEM.get(), new BlockPos(4, 4, 6), Direction.SOUTH,
+                        Direction.NORTH)),
+                new Placement("Federation Pattern Provider placed by a player", false, () -> scene.use(player,
+                        ProcessingRegistration.PROVIDER_ITEM.get(), new BlockPos(8, 4, 6), Direction.SOUTH,
+                        Direction.NORTH)));
+        samplePlacements(helper, scene, placements, "topologyplayerplacementkeepspower", Map.of("placedBy", "player"));
+    }
+
+    /**
+     * Runs each placement in its own tick, checks the link in that tick, then samples B's power for
+     * {@link #SAMPLE_TICKS} ticks; a placement that adds no member network must not rebuild the energy binding.
+     */
+    private static void samplePlacements(GameTestHelper helper, PoweredDomain scene, List<Placement> placements,
+            String testId, Map<String, String> extraFacts) {
         var violations = new ArrayList<String>();
         var step = new int[] { -1 };
         var samples = new int[1];
@@ -105,10 +150,12 @@ public final class TopologyContinuityGameTests {
                 throw new GameTestAssertException("Sampling B's power after each domain change");
             }
             helper.assertTrue(violations.isEmpty(), String.join("; ", violations));
-            FederationDomainEvidence.write("topologyplacementkeepspower", 6, Map.of(
+            var facts = new java.util.LinkedHashMap<String, String>(Map.of(
                     "placements", Integer.toString(placements.size()), "sampledTicks", Integer.toString(SAMPLE_TICKS),
                     "bindingWithdrawn", "false", "consumerUnpowered", "false", "referenceKept", "true",
                     "worldScan", "false"));
+            facts.putAll(extraFacts);
+            FederationDomainEvidence.write(testId, facts.size(), facts);
             scene.close();
         });
     }
@@ -250,6 +297,23 @@ public final class TopologyContinuityGameTests {
             }
             if (consumerAvailable() <= 0) {
                 violations.add("B could reach no power on the " + change);
+            }
+        }
+
+        /** Places {@code item} as {@code player} by clicking {@code face} of {@code clicked}, and checks the result. */
+        void use(ServerPlayer player, Item item, BlockPos clicked, Direction face, Direction expectedFacing) {
+            var stack = new ItemStack(item);
+            player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+            var absolute = helper.absolutePos(clicked);
+            var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(face, 0.5), face, absolute, false);
+            var result = stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND, hit));
+            helper.assertTrue(result.consumesAction(), "The player must place " + item + " on " + clicked + " " + face);
+            var placed = helper.getBlockState(clicked.relative(face));
+            helper.assertTrue(placed.is(((net.minecraft.world.item.BlockItem) item).getBlock()),
+                    item + " must stand beside " + clicked);
+            if (expectedFacing != null) {
+                helper.assertValueEqual(placed.getValue(BlockStateProperties.FACING), expectedFacing,
+                        item + " must face the block it was placed against");
             }
         }
 
