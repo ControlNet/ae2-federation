@@ -85,6 +85,7 @@ public final class NeoForgeEntrypoint {
             EnergyBindingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
+            space.controlnet.ae2federation.policy.PolicyService.closeLevel(level);
             LOGGER.info("AE2F_STORAGE_LEVEL_CLOSED dimension={} servicePresentBefore={} mountedProvidersBefore={} "
                             + "mountedProvidersRemoved={} serviceRemoved={} registryPresentBefore={} registryRemoved={} "
                             + "registryAbsentAfter={}", level.dimension().location(), receipt.servicePresentBefore(),

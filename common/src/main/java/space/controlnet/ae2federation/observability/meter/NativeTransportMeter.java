@@ -36,9 +36,13 @@ public final class NativeTransportMeter {
         if (amount == 0) {
             return false;
         }
-        var flow = new FlowState(scope, FlowId.forEvent(scope.federationDomainId(), eventId.value()), eventId,
-                resource, amount, unit, attribution, false);
         var state = windows.computeIfAbsent(scope, ignored -> new WindowState());
+        var receipts = ObservationRuntimeReceiptSink.wantsFlows();
+        // A window that already overflowed keeps no events until its next snapshot; without a receipt listener its
+        // flow, with the hashed id, would be built for nobody.
+        var flow = state.resnapshotRequired && !receipts ? null : new FlowState(scope,
+                FlowId.forEvent(scope.federationDomainId(), eventId.value()), eventId, resource, amount, unit,
+                attribution, false);
         if (!state.eventIds.add(eventId)) {
             return false;
         }
@@ -47,6 +51,9 @@ public final class NativeTransportMeter {
             state.eventIds.remove(state.eventOrder.removeFirst());
         }
         state.dataRevision = Math.incrementExact(state.dataRevision);
+        if (flow == null) {
+            return true;
+        }
         if (!state.resnapshotRequired) {
             state.events.add(flow);
             if (state.events.size() > eventLimit) {
@@ -54,7 +61,9 @@ public final class NativeTransportMeter {
                 state.resnapshotRequired = true;
             }
         }
-        ObservationRuntimeReceiptSink.flow(scope, flow);
+        if (receipts) {
+            ObservationRuntimeReceiptSink.flow(scope, flow);
+        }
         return true;
     }
 

@@ -56,6 +56,11 @@ public final class ObservationRuntimeEvidence {
             }
 
             @Override
+            public boolean wantsFlows() {
+                return !testId.isEmpty();
+            }
+
+            @Override
             public void flow(FederationDomainReference scope, FlowState flow) {
                 record(new Receipt("flow", "", "", scope, flow.eventId().value().toString(), flow.amount(), 0,
                         flow.resource(), flow.attribution().name(), flow.exactBatchCompletion()));

@@ -140,6 +140,18 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         return bridges.nativePorts().createStorageProvider(Direction.EAST, firstPosition.north().west(), provider);
     }
 
+    /**
+     * The native AE2 alternative to a Bridge: an ME Storage Bus on the consumer (main) cable facing an ME Interface on
+     * the provider (outer) cable, where the first Bridge would go.
+     */
+    public void placeNativeStorageBusToInterface() {
+        var bus = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(firstPosition),
+                Direction.NORTH, null, appeng.core.definitions.AEParts.STORAGE_BUS.asItem());
+        var face = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(firstPosition.north()),
+                Direction.SOUTH, null, appeng.core.definitions.AEParts.INTERFACE.asItem());
+        helper.assertTrue(bus != null && face != null, "Native Storage Bus and Interface parts must be placeable");
+    }
+
     public InvalidSecondCallbackProvider callbackProbe() {
         return callbackProbe;
     }

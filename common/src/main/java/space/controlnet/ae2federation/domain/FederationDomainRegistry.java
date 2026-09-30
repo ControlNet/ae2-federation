@@ -113,6 +113,13 @@ public final class FederationDomainRegistry {
         return Set.copyOf(networkIndex.getOrDefault(networkId, Set.of()));
     }
 
+    /** Whether two networks are members of a common Federation Domain, without copying either membership set. */
+    public boolean shareFederationDomain(NetworkId first, NetworkId second) {
+        flush();
+        return !java.util.Collections.disjoint(networkIndex.getOrDefault(first, Set.of()),
+                networkIndex.getOrDefault(second, Set.of()));
+    }
+
     public boolean isCurrent(FederationDomainReference reference) {
         flush();
         var current = federationDomains.get(reference.federationDomainId());

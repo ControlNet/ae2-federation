@@ -54,7 +54,10 @@ final class PolicyContractTest {
         var script = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
         assertTrue(service.contains("NetworkIdentityService.class"));
         assertTrue(service.contains("FederationDomainRegistryAccess.get(level)"));
-        assertTrue(activation.contains("Collections.disjoint"));
+        assertTrue(activation.contains("shareFederationDomain(request.key().consumerNetworkId()"));
+        assertTrue(Files.readString(ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/domain/FederationDomainRegistry.java"))
+                .contains("Collections.disjoint(networkIndex.getOrDefault(first"));
         assertFalse(activation.contains("getGrid() =="));
         assertTrue(script.contains("verifyTaskFourteenEvidence"));
         assertTrue(script.contains("federationTaskFourteenEvidenceSelfTest"));

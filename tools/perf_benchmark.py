@@ -9,6 +9,10 @@ against an earlier result. Numbers are wall-clock and host dependent: compare on
     python3 tools/perf_benchmark.py --remote user@example.org --key ~/.ssh/id --label fix1 --compare baseline
     python3 tools/perf_benchmark.py --tests perfenergymesh -P federationPerfMeshSize=4 --label mesh4
 
+``perfnativeenergy`` and ``perfnativestorage`` (not in the default set) build the same scenes as ``perfenergymesh`` and
+``perfstorageprojection`` with native AE2 Quartz Fibers and a Storage Bus on an ME Interface, under the same metric
+names, as the baseline Federation is compared against.
+
 ``--tree`` benchmarks another checkout, such as ``git worktree add`` of an earlier commit. ``--remote`` copies the
 working tree (tracked plus untracked, non-ignored files) to ``<remote-root>/src`` and runs
 Gradle there with HOME, GRADLE_USER_HOME, TMPDIR and XDG_CACHE_HOME inside ``<remote-root>``.

@@ -127,17 +127,21 @@ final class StorageDependencyIndex {
 
     boolean current(EffectiveSourceRelationship relationship, NativeSourceDomain domain) {
         if (compilation.relationships().get(relationship.key()) != relationship
-                || domains.get(domain.origin()) != domain
-                || !relationship.revision().isCurrent(domain.generation(),
-                        key -> PolicyService.get(level).revision(key),
-                        reference -> FederationDomainRegistryAccess.get(level).isCurrent(reference))) {
+                || domains.get(domain.origin()) != domain) {
             return false;
         }
         var policies = PolicyService.get(level);
-        return relationship.revision().policyRevisions().keySet().stream().allMatch(key -> {
+        var registry = FederationDomainRegistryAccess.get(level);
+        if (!relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)) {
+            return false;
+        }
+        for (var key : relationship.revision().policyRevisions().keySet()) {
             var direct = directRelationships.get(key);
-            return direct != null && directActive(policies, direct);
-        });
+            if (direct == null || !directActive(policies, direct)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     boolean sourceCurrent(NativeSourceDomain domain) {

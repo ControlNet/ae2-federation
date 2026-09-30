@@ -158,16 +158,13 @@ public final class EnergyBindingService implements AutoCloseable {
                 var accepted = binding.extract(amount - extracted, mode);
                 extracted += accepted;
                 if (outermost && mode == Actionable.MODULATE && accepted > 0) {
-                    var consumerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.consumerGrid());
-                    var providerNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.providerGrid());
-                    if (consumerNetwork.isPresent() && providerNetwork.isPresent()) {
-                        LevelObservabilityService.get(level).recordPairFlow(new PolicyKey(consumerNetwork.get(),
-                                providerNetwork.get(), space.controlnet.ae2federation.policy.PolicyCapability.ME_POWER),
-                                nanoAe(accepted));
-                    }
-                    LevelObservabilityService.get(level).recordAccepted(binding.revision().federationDomains(),
+                    var observability = LevelObservabilityService.get(level);
+                    var acceptedNanoAe = nanoAe(accepted);
+                    // The binding's key is the ordered (consumer, provider, ME_POWER) Policy key of its two Grids.
+                    observability.recordPairFlow(binding.key(), acceptedNanoAe);
+                    observability.recordAccepted(binding.revision().federationDomains(),
                             space.controlnet.ae2federation.observability.meter.OperationEventId.create(), "ae2:energy",
-                            nanoAe(accepted), ResourceUnit.NANO_AE,
+                            acceptedNanoAe, ResourceUnit.NANO_AE,
                             space.controlnet.ae2federation.observability.state.FlowState.Attribution.EXACT_OPERATION);
                 }
                 if (extracted >= amount) {
@@ -178,6 +175,16 @@ public final class EnergyBindingService implements AutoCloseable {
         } finally {
             demandDepth--;
         }
+    }
+
+    private static boolean anyCurrent(Iterable<space.controlnet.ae2federation.domain.FederationDomainReference> references,
+            space.controlnet.ae2federation.domain.FederationDomainRegistry registry) {
+        for (var reference : references) {
+            if (registry.isCurrent(reference)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static long nanoAe(double amount) {
@@ -286,7 +293,7 @@ public final class EnergyBindingService implements AutoCloseable {
             return false;
         }
         var registry = FederationDomainRegistryAccess.get(level);
-        if (binding.revision().federationDomains().stream().noneMatch(registry::isCurrent)) {
+        if (!anyCurrent(binding.revision().federationDomains(), registry)) {
             remove(binding.key());
             return false;
         }

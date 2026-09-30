@@ -317,11 +317,15 @@ public final class StorageMountService implements AutoCloseable {
         mounts.put(key, next);
     }
 
+    /**
+     * The mount's provider Grid is its domain's runtime Grid, so {@link StorageDependencyIndex#sourceCurrent} covers
+     * the source nodes' readiness on that Grid.
+     */
     private boolean sourceCurrent(MountedStorageRelationship mounted) {
         sourceValidations++;
         if (mounts.get(mounted.relationship().key()) != mounted
                 || !mounted.generation().equals(mountGenerations.get(mounted.relationship().key()))
-                || !mounted.sourceReady() || !dependencies.sourceCurrent(mounted.domain())) {
+                || !dependencies.sourceCurrent(mounted.domain())) {
             removeIfCurrent(mounted);
             return false;
         }

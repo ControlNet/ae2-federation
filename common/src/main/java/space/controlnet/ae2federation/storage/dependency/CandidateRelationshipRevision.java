@@ -31,8 +31,19 @@ public record CandidateRelationshipRevision(long compilationRevision, long feder
      */
     public boolean isCurrent(SourceGeneration currentSourceGeneration,
             Function<PolicyKey, PolicyRevision> policyLookup, Predicate<FederationDomainReference> federationDomainLookup) {
-        return sourceGeneration.equals(currentSourceGeneration)
-                && policyRevisions.entrySet().stream().allMatch(entry -> entry.getValue().equals(policyLookup.apply(entry.getKey())))
-                && federationDomainReferences.stream().allMatch(federationDomainLookup);
+        if (!sourceGeneration.equals(currentSourceGeneration)) {
+            return false;
+        }
+        for (var entry : policyRevisions.entrySet()) {
+            if (!entry.getValue().equals(policyLookup.apply(entry.getKey()))) {
+                return false;
+            }
+        }
+        for (var reference : federationDomainReferences) {
+            if (!federationDomainLookup.test(reference)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

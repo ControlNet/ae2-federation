@@ -246,6 +246,7 @@ neoForge {
             systemProperty('ae2federation.perf.padding', providers.gradleProperty('federationPerfPadding').getOrElse('256'))
             systemProperty('ae2federation.perf.storageTypes', providers.gradleProperty('federationPerfStorageTypes').getOrElse('1000'))
             systemProperty('ae2federation.perf.plane', providers.gradleProperty('federationPerfPlane').getOrElse('30'))
+            systemProperty('ae2federation.perf.opsScale', providers.gradleProperty('federationPerfOpsScale').getOrElse('1'))
             systemProperty('ae2federation.identityPhase', providers.gradleProperty('federationIdentityPhase').getOrElse(''))
             systemProperty('ae2federation.identityStateFile', providers.gradleProperty('federationIdentityStateFile').getOrElse(''))
             systemProperty('ae2federation.policyPhase', providers.gradleProperty('federationPolicyPhase').getOrElse(''))

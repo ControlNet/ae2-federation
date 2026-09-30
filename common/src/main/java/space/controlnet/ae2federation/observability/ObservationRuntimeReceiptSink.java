@@ -40,6 +40,12 @@ public final class ObservationRuntimeReceiptSink {
         }
     }
 
+    /** Whether a listener takes flow receipts; without one, a meter need not build a flow nobody reads. */
+    public static boolean wantsFlows() {
+        var current = listener;
+        return current != null && current.wantsFlows();
+    }
+
     public static void flow(FederationDomainReference scope, FlowState flow) {
         var current = listener;
         if (current != null) {
@@ -64,6 +70,10 @@ public final class ObservationRuntimeReceiptSink {
         }
 
         default void flow(FederationDomainReference scope, FlowState flow) {
+        }
+
+        default boolean wantsFlows() {
+            return true;
         }
     }
 }

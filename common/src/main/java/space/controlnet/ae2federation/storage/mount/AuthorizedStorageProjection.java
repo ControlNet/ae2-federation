@@ -26,7 +26,8 @@ final class AuthorizedStorageProjection implements
 
     @Override
     public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        return authorization.permits(PolicyOperation.INSERT, what) && delegate.isPreferredStorageFor(what, source);
+        // The native preference is checked first: most sources prefer nothing, and the insert itself validates again.
+        return delegate.isPreferredStorageFor(what, source) && authorization.permits(PolicyOperation.INSERT, what);
     }
 
     @Override

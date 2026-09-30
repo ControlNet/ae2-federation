@@ -17,6 +17,8 @@ public final class PerfMeasure {
     private static final Logger LOGGER = LoggerFactory.getLogger("ae2federation-perf");
     private static final int WARMUP_ROUNDS = 2;
     private static final int ROUNDS = 5;
+    /** Multiplies every metric's operation count and time budget, so a profiler run collects enough samples. */
+    private static final int OPS_SCALE = Integer.getInteger("ae2federation.perf.opsScale", 1);
 
     private final String testId;
     private final Map<String, String> results = new LinkedHashMap<>();
@@ -29,11 +31,12 @@ public final class PerfMeasure {
     public double nanosPerOp(String metric, int maxOps, long budgetMillis, Runnable operation) {
         var medians = new ArrayList<Double>();
         for (var round = 0; round < WARMUP_ROUNDS + ROUNDS; round++) {
-            var budget = budgetMillis * 1_000_000L;
+            var budget = budgetMillis * 1_000_000L * OPS_SCALE;
+            var limit = (long) maxOps * OPS_SCALE;
             var start = System.nanoTime();
             var ops = 0;
             var now = start;
-            while (ops < maxOps && now - start < budget) {
+            while (ops < limit && now - start < budget) {
                 operation.run();
                 ops++;
                 now = System.nanoTime();

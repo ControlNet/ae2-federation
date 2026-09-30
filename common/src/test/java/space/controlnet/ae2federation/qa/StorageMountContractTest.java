@@ -44,8 +44,8 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("Map<PolicyKey, MountedStorageRelationship>"));
         var dependencies = source("storage/mount/StorageDependencyIndex.java");
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
-        assertTrue(dependencies.contains("PolicyService.get(level).revision"));
-        assertTrue(dependencies.contains("FederationDomainRegistryAccess.get(level).isCurrent"));
+        assertTrue(dependencies.contains(
+                "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
         assertTrue(mounts.contains("sourceCurrent(holder[0])"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));

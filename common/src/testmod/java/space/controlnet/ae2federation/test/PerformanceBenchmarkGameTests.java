@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.test;
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
+import appeng.api.storage.MEStorage;
 import appeng.me.helpers.PlayerSource;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -29,6 +30,7 @@ import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.test.perf.BulkItemStorage;
 import space.controlnet.ae2federation.test.perf.EnergyMeshScene;
 import space.controlnet.ae2federation.test.perf.MenuBroadcasts;
+import space.controlnet.ae2federation.test.perf.NativeEnergyMeshScene;
 import space.controlnet.ae2federation.test.perf.PerfMeasure;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -94,6 +96,47 @@ public final class PerformanceBenchmarkGameTests {
         });
     }
 
+    /**
+     * Native AE2 baseline for {@link #perfEnergyMesh}: the same Grids share energy through Quartz Fibers instead of
+     * Federation, and the same demand is measured.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 2400, required = true, manualOnly = true)
+    public static void perfNativeEnergy(GameTestHelper helper) {
+        var scene = new NativeEnergyMeshScene(helper, MESH_SIZE, MESH_PADDING);
+        var perf = new PerfMeasure("perfnativeenergy");
+        var state = new int[] {0};
+        var window = new PerfMeasure.TickWindow[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(scene.ready(), "Waiting for native energy mesh: " + scene.status());
+            if (state[0] == 0) {
+                scene.chargeProviders(1.0e9);
+                scene.drainConsumer();
+                state[0] = 1;
+                window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
+                helper.assertTrue(false, "Letting the consumer drain settle");
+            }
+            if (state[0] == 1) {
+                helper.assertTrue(window[0].ticks() >= 40, "Letting the consumer drain settle");
+                perf.count("consumerNodes", scene.consumerNodeCount());
+                var before = scene.providersStored();
+                helper.assertValueEqual(scene.extractConsumer(1, Actionable.MODULATE), 1.0,
+                        "Consumer demand must be supplied through the fibers");
+                helper.assertTrue(scene.consumerCellStored() < 1, "Consumer cell must stay drained");
+                helper.assertTrue(before - scene.providersStored() > 0.5, "Provider cells must pay for the demand");
+                perf.nanosPerOp("extractModulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.MODULATE));
+                perf.nanosPerOp("extractSimulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.SIMULATE));
+                state[0] = 2;
+                window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
+                helper.assertTrue(false, "Measuring idle ticks");
+            }
+            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
+            helper.assertTrue(scene.consumerCellStored() < 1, "Consumer idle drain must still come from the fibers");
+            scene.close();
+        });
+    }
+
     /** Storage read through a mounted projection of a large native source, plus the reconcile paths that rebuild it. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 1200, required = true, manualOnly = true)
@@ -144,6 +187,7 @@ public final class PerformanceBenchmarkGameTests {
                 var consumer = fixtures.mainGrid().getStorageService().getInventory();
                 perf.nanosPerOp("consumerSimulateExtract", 5000, 300,
                         () -> consumer.extract(iron, 1, Actionable.SIMULATE, source));
+                measureNetworkStorage(helper, perf, consumer, source, bulk);
                 perf.nanosPerOp("reconcileAll", 500, 300, () -> {
                     mounts.reconcileAll();
                     CraftingBindingService.get(helper.getLevel()).reconcileAll();
@@ -160,6 +204,71 @@ public final class PerformanceBenchmarkGameTests {
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark insert must be extracted again");
             fixtures.close();
         });
+    }
+
+    /**
+     * Native AE2 baseline for {@link #perfStorageProjection}: the consumer Grid reaches the same bulk source through an
+     * ME Storage Bus facing an ME Interface of the provider Grid instead of a Bridge.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void perfNativeStorage(GameTestHelper helper) {
+        var fixtures = new PolicyBridgeFixtures(helper, new BlockPos(5, 3, 5));
+        fixtures.installStorageCells();
+        var bulk = new BulkItemStorage(STORAGE_TYPES, 1_000_000L);
+        var perf = new PerfMeasure("perfnativestorage");
+        var state = new int[] {0};
+        var window = new PerfMeasure.TickWindow[1];
+        var iron = AEItemKey.of(Items.IRON_INGOT);
+        helper.succeedWhen(() -> {
+            if (state[0] == 0) {
+                helper.assertTrue(fixtures.networksSettled(), "Waiting for storage networks");
+                fixtures.addOuterStorageProvider(bulk);
+                fixtures.placeNativeStorageBusToInterface();
+                state[0] = 1;
+                helper.assertTrue(false, "Waiting for the Storage Bus");
+            }
+            var consumer = fixtures.mainGrid().getStorageService().getInventory();
+            var source = new PlayerSource(helper.makeMockPlayer(GameType.CREATIVE));
+            if (state[0] == 1) {
+                helper.assertValueEqual(consumer.extract(iron, 1, Actionable.SIMULATE, source), 1L,
+                        "Waiting for the Storage Bus to reach the bulk source");
+                perf.nanosPerOp("consumerSimulateExtract", 5000, 300,
+                        () -> consumer.extract(iron, 1, Actionable.SIMULATE, source));
+                measureNetworkStorage(helper, perf, consumer, source, bulk);
+                state[0] = 2;
+                window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
+                helper.assertTrue(false, "Measuring idle ticks");
+            }
+            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
+            helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark extract must be inserted again");
+            fixtures.close();
+        });
+    }
+
+    /**
+     * Metrics shared by the Federation and native storage benchmarks, both taken through the consumer Grid's own
+     * network inventory: listing every stack, and one item extracted from and put back into the bulk source.
+     */
+    private static void measureNetworkStorage(GameTestHelper helper, PerfMeasure perf, MEStorage consumer,
+            PlayerSource source, BulkItemStorage bulk) {
+        var iron = AEItemKey.of(Items.IRON_INGOT);
+        var listed = new KeyCounter();
+        consumer.getAvailableStacks(listed);
+        helper.assertTrue(listed.size() >= STORAGE_TYPES, "The consumer network must list every bulk type, saw "
+                + listed.size());
+        perf.nanosPerOp("networkAvailableStacks", 2000, 300, () -> consumer.getAvailableStacks(new KeyCounter()));
+        helper.assertValueEqual(consumer.extract(iron, 1, Actionable.MODULATE, source), 1L,
+                "The consumer network must extract from the bulk source");
+        helper.assertValueEqual(consumer.insert(iron, 1, Actionable.MODULATE, source), 1L,
+                "The consumer network must insert into the bulk source");
+        helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "The insert must return to the bulk source");
+        perf.nanosPerOp("networkExtractInsert", 5000, 300, () -> {
+            consumer.extract(iron, 1, Actionable.MODULATE, source);
+            consumer.insert(iron, 1, Actionable.MODULATE, source);
+        });
+        helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark extract must return to the bulk source");
     }
 
     /** A plane of Federation Cables: first publication, idle ticking, and a cable toggled at the edge every tick. */
@@ -257,9 +366,18 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(scene.openFirstMenu() && scene.openSecondMenu(), "Both Domain menus must open");
                 window[0] = new PerfMeasure.TickWindow(level.getServer());
                 state[0] = 2;
-                helper.assertTrue(false, "Measuring open-menu ticks");
+                helper.assertTrue(false, "Warming up open menus");
             }
             if (state[0] == 2) {
+                // The open-menu paths (domain projection, menu bindings) run only while a menu is open; without a
+                // warm-up the window would measure them before the JIT compiled them.
+                tickMenus(scene, level.getServer().getTickCount());
+                helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Warming up open menus");
+                window[0] = new PerfMeasure.TickWindow(level.getServer());
+                state[0] = 3;
+                helper.assertTrue(false, "Measuring open-menu ticks");
+            }
+            if (state[0] == 3) {
                 tickMenus(scene, level.getServer().getTickCount());
                 helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring open-menu ticks");
                 perf.record("openTick", window[0].medianTickNanos(), "ns/tick");
