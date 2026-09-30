@@ -2,46 +2,69 @@ package space.controlnet.ae2federation.domain;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import space.controlnet.ae2federation.identity.NetworkId;
 
+/**
+ * Physical Federation Domains follow AE2's Grid model. A link exists only while both ports name each other; a
+ * declaration the other side does not return yet is pending, links nothing and leaves the rest of the domain alone. A
+ * change recomputes only the components it touches, and each recomputed component inherits the id of the old domain it
+ * resembles most, so a domain keeps its id while nodes join, leave, merge or split off. Its generation advances only when
+ * the set of member networks changes, which is what bindings and sessions hold on to: a cable or Endpoint joining or
+ * leaving leaves every reference current, while a split that separates members makes them stale at once.
+ */
 public final class FederationDomainRegistry {
+    private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
+            .thenComparing(Comparator.comparingInt(Candidate::memberOverlap).reversed())
+            .thenComparing(Comparator.comparingInt(Candidate::nodeOverlap).reversed())
+            .thenComparingLong(Candidate::sequence)
+            .thenComparingInt(Candidate::component);
+
     private final FederationDomainRecomputeBudget budget;
     private final Map<FederationDomainNodeId, FederationDomainNodeEvidence> nodes = new HashMap<>();
     private final Map<FederationDomainNodeId, Set<FederationDomainPortId>> incomingFederation = new HashMap<>();
     private final Map<FederationDomainNodeId, FederationDomainId> nodeToFederationDomain = new HashMap<>();
     private final Map<FederationDomainId, FederationDomainSnapshot> federationDomains = new HashMap<>();
+    private final Map<FederationDomainId, Long> physicalSequences = new HashMap<>();
     private final Map<NetworkId, Set<FederationDomainId>> networkIndex = new HashMap<>();
     private final Map<FederationDomainNodeId, FederationDomainInvalidationReason> invalidations = new HashMap<>();
     private final Map<FederationDomainSourceId, FederationDomainId> directBridges = new HashMap<>();
     private long topologyRevision;
+    private long physicalSequence;
 
     public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
         this.budget = budget;
     }
 
     public void upsertDirectBridge(FederationDomainSourceId source, NetworkId mainNetwork, NetworkId outerNetwork) {
-        removeDirectBridge(source, FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
         if (mainNetwork.equals(outerNetwork)) {
+            removeDirectBridge(source);
             return;
         }
         var memberships = new LinkedHashMap<NetworkId, Set<FederationDomainSourceId>>();
         memberships.computeIfAbsent(mainNetwork, ignored -> new TreeSet<>()).add(source.child("main"));
         memberships.computeIfAbsent(outerNetwork, ignored -> new TreeSet<>()).add(source.child("outer"));
         var federationDomainId = FederationDomainId.direct(source);
+        var current = federationDomains.get(federationDomainId);
+        if (current != null && directBridges.containsKey(source) && current.memberships().equals(memberships)) {
+            return;
+        }
+        removeDirectBridge(source);
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
-        removeDirectBridge(source, FederationDomainInvalidationReason.INVALID_BRIDGE);
+        removeDirectBridge(source);
     }
 
     public void upsertNode(FederationDomainNodeEvidence evidence) {
@@ -53,14 +76,16 @@ public final class FederationDomainRegistry {
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
-        recompute(seeds, FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
+        recompute(seeds);
     }
 
     public void invalidateNode(FederationDomainNodeId nodeId, FederationDomainInvalidationReason reason) {
         var previous = nodes.remove(nodeId);
-        var seeds = affectedBy(nodeId, previous, null);
-        removeIncoming(previous);
-        recompute(seeds, reason);
+        if (previous != null) {
+            var seeds = affectedBy(nodeId, previous, null);
+            removeIncoming(previous);
+            recompute(seeds);
+        }
         invalidations.put(nodeId, reason);
     }
 
@@ -102,105 +127,179 @@ public final class FederationDomainRegistry {
         return affected;
     }
 
-    private void recompute(Set<FederationDomainNodeId> initial, FederationDomainInvalidationReason reason) {
-        topologyRevision++;
-        var affected = invalidateComponents(initial, reason);
+    /**
+     * Rebuilds the components that contain the seeds and every node of the domains they belonged to, then replaces those
+     * domains in one step. Nothing changes, not even the topology revision, when the rebuilt components equal them.
+     */
+    private void recompute(Set<FederationDomainNodeId> seeds) {
+        var previous = new TreeSet<FederationDomainId>();
+        seeds.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(previous::add);
+        var affected = new TreeSet<>(seeds);
+        previous.forEach(federationDomainId -> affected.addAll(federationDomains.get(federationDomainId).nodes()));
         var visited = new HashSet<FederationDomainNodeId>();
         var counters = new int[2];
-        for (var seed : new TreeSet<>(affected)) {
+        var components = new ArrayList<Component>();
+        for (var seed : affected) {
             if (!nodes.containsKey(seed) || visited.contains(seed)) {
                 continue;
             }
             var component = collectComponent(seed, visited, counters);
-            if (component.budgetExhausted()) {
-                affected.forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
-                component.nodes().forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
+            if (component == null) {
+                exhaustBudget(affected, visited, previous);
                 return;
             }
-            if (component.reason() != null) {
-                component.nodes().forEach(node -> invalidations.put(node, component.reason()));
-                continue;
+            components.add(component);
+        }
+        // A component can reach a domain none of the seeds belonged to only through an edge that is already mutual, so
+        // this is a safeguard: every domain a component overlaps is replaced with it.
+        components.forEach(component -> component.nodes().stream().map(nodeToFederationDomain::get)
+                .filter(Objects::nonNull).forEach(previous::add));
+        var old = new LinkedHashMap<FederationDomainId, FederationDomainSnapshot>();
+        previous.forEach(federationDomainId -> old.put(federationDomainId, federationDomains.get(federationDomainId)));
+        var inherited = inherit(components, old);
+        if (!changes(components, inherited, old)) {
+            components.forEach(this::recordDiagnostics);
+            return;
+        }
+        topologyRevision++;
+        var sequences = new HashMap<FederationDomainId, Long>();
+        old.keySet().forEach(federationDomainId -> sequences.put(federationDomainId, physicalSequences.get(federationDomainId)));
+        old.keySet().forEach(this::removeFederationDomain);
+        for (var index = 0; index < components.size(); index++) {
+            var component = components.get(index);
+            var federationDomainId = inherited.get(index);
+            var before = federationDomainId == null ? null : old.get(federationDomainId);
+            if (federationDomainId == null) {
+                federationDomainId = FederationDomainId.physical(++physicalSequence);
             }
-            installPhysical(component.nodes());
+            physicalSequences.put(federationDomainId, before == null ? physicalSequence : sequences.get(federationDomainId));
+            var generation = before != null && before.memberships().keySet().equals(component.memberships().keySet())
+                    ? before.generation() : ++topologyRevision;
+            installPhysical(new FederationDomainSnapshot(federationDomainId, generation, component.nodes(),
+                    component.memberships()));
+            recordDiagnostics(component);
         }
     }
 
-    private Set<FederationDomainNodeId> invalidateComponents(Set<FederationDomainNodeId> initial, FederationDomainInvalidationReason reason) {
-        var affected = new TreeSet<>(initial);
-        var oldFederationDomains = new TreeSet<FederationDomainId>();
-        initial.stream().map(nodeToFederationDomain::get).filter(java.util.Objects::nonNull).forEach(oldFederationDomains::add);
-        for (var federationDomainId : oldFederationDomains) {
-            var snapshot = removeFederationDomain(federationDomainId);
-            if (snapshot != null) {
-                affected.addAll(snapshot.nodes());
-                snapshot.nodes().forEach(node -> invalidations.put(node, reason));
+    /**
+     * Gives each component at most one old id and each old id to at most one component, preferring the old domain with
+     * the same member networks, then the most shared members, the most shared nodes and finally the older domain: a split
+     * leaves the id with the side that keeps the members, and a merge with the domain that already had most of them.
+     */
+    private Map<Integer, FederationDomainId> inherit(List<Component> components,
+            Map<FederationDomainId, FederationDomainSnapshot> old) {
+        var candidates = new ArrayList<Candidate>();
+        for (var index = 0; index < components.size(); index++) {
+            var component = components.get(index);
+            for (var before : old.values()) {
+                var nodeOverlap = (int) component.nodes().stream().filter(before.nodes()::contains).count();
+                if (nodeOverlap == 0) {
+                    continue;
+                }
+                var memberOverlap = (int) component.memberships().keySet().stream()
+                        .filter(before.memberships()::containsKey).count();
+                candidates.add(new Candidate(index, before.federationDomainId(),
+                        component.memberships().keySet().equals(before.memberships().keySet()), memberOverlap, nodeOverlap,
+                        physicalSequences.getOrDefault(before.federationDomainId(), Long.MAX_VALUE)));
             }
         }
-        return affected;
+        candidates.sort(INHERITANCE_ORDER);
+        var inherited = new HashMap<Integer, FederationDomainId>();
+        var taken = new HashSet<FederationDomainId>();
+        for (var candidate : candidates) {
+            if (!inherited.containsKey(candidate.component()) && taken.add(candidate.federationDomainId())) {
+                inherited.put(candidate.component(), candidate.federationDomainId());
+            }
+        }
+        return inherited;
     }
 
-    private ComponentResult collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited, int[] counters) {
+    private static boolean changes(List<Component> components, Map<Integer, FederationDomainId> inherited,
+            Map<FederationDomainId, FederationDomainSnapshot> old) {
+        if (inherited.size() != components.size() || inherited.size() != old.size()) {
+            return true;
+        }
+        for (var index = 0; index < components.size(); index++) {
+            var before = old.get(inherited.get(index));
+            var component = components.get(index);
+            if (!before.nodes().equals(component.nodes()) || !before.memberships().equals(component.memberships())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void exhaustBudget(Set<FederationDomainNodeId> affected, Set<FederationDomainNodeId> visited,
+            Set<FederationDomainId> previous) {
+        visited.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(previous::add);
+        previous.forEach(this::removeFederationDomain);
+        affected.stream().filter(nodes::containsKey)
+                .forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
+        visited.forEach(node -> invalidations.put(node, FederationDomainInvalidationReason.BUDGET_EXHAUSTED));
+        topologyRevision++;
+    }
+
+    /** Walks mutual links only; returns null when the budget runs out, so no partial component is ever installed. */
+    private Component collectComponent(FederationDomainNodeId seed, Set<FederationDomainNodeId> visited, int[] counters) {
         var queue = new ArrayDeque<FederationDomainNodeId>();
         var component = new TreeSet<FederationDomainNodeId>();
+        var memberships = new LinkedHashMap<NetworkId, Set<FederationDomainSourceId>>();
+        var pending = new HashSet<FederationDomainNodeId>();
+        var unsettled = new HashSet<FederationDomainNodeId>();
         queue.add(seed);
-        FederationDomainInvalidationReason reason = null;
         while (!queue.isEmpty()) {
             var current = queue.removeFirst();
             if (!visited.add(current)) {
                 continue;
             }
             if (++counters[0] > budget.maxNodeVisits()) {
-                return new ComponentResult(component, FederationDomainInvalidationReason.BUDGET_EXHAUSTED, true);
+                return null;
             }
             component.add(current);
-            var evidence = nodes.get(current);
-            for (var entry : evidence.ports().entrySet()) {
+            for (var entry : nodes.get(current).ports().entrySet()) {
                 if (++counters[1] > budget.maxPortVisits()) {
-                    return new ComponentResult(component, FederationDomainInvalidationReason.BUDGET_EXHAUSTED, true);
+                    return null;
                 }
-                if (entry.getValue() instanceof FederationDomainPortEvidence.Unsettled) {
-                    reason = FederationDomainInvalidationReason.IDENTITY_UNSETTLED;
-                } else if (entry.getValue() instanceof FederationDomainPortEvidence.Federation federation) {
-                    var peer = nodes.get(federation.peer().node());
-                    var reciprocal = new FederationDomainPortId(current, entry.getKey());
-                    if (peer == null || !(peer.port(federation.peer().port()) instanceof FederationDomainPortEvidence.Federation back)
-                            || !back.peer().equals(reciprocal)) {
-                        reason = FederationDomainInvalidationReason.NON_RECIPROCAL_EDGE;
-                    } else {
+                if (entry.getValue() instanceof FederationDomainPortEvidence.Federation federation) {
+                    if (linked(current, entry.getKey(), federation)) {
                         queue.addLast(federation.peer().node());
+                    } else {
+                        pending.add(current);
                     }
-                }
-            }
-            for (var source : incomingFederation.getOrDefault(current, Set.of())) {
-                var sourceEvidence = nodes.get(source.node());
-                var outgoing = sourceEvidence == null ? null : sourceEvidence.port(source.port());
-                if (!(outgoing instanceof FederationDomainPortEvidence.Federation target)
-                        || !target.peer().node().equals(current)
-                        || !(evidence.port(target.peer().port()) instanceof FederationDomainPortEvidence.Federation back)
-                        || !back.peer().equals(source)) {
-                    reason = FederationDomainInvalidationReason.NON_RECIPROCAL_EDGE;
-                }
-            }
-        }
-        return new ComponentResult(component, reason, false);
-    }
-
-    private void installPhysical(Set<FederationDomainNodeId> component) {
-        var memberships = new LinkedHashMap<NetworkId, Set<FederationDomainSourceId>>();
-        for (var nodeId : component) {
-            for (var port : nodes.get(nodeId).ports().values()) {
-                if (port instanceof FederationDomainPortEvidence.Native nativeEvidence) {
+                } else if (entry.getValue() instanceof FederationDomainPortEvidence.Native nativeEvidence) {
                     memberships.computeIfAbsent(nativeEvidence.networkId(), ignored -> new TreeSet<>())
                             .add(nativeEvidence.source());
+                } else if (entry.getValue() instanceof FederationDomainPortEvidence.Unsettled) {
+                    unsettled.add(current);
                 }
             }
         }
-        var federationDomainId = FederationDomainId.physical(component.iterator().next());
-        install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, component, memberships));
-        component.forEach(node -> {
-            nodeToFederationDomain.put(node, federationDomainId);
-            invalidations.remove(node);
-        });
+        return new Component(component, memberships, pending, unsettled);
+    }
+
+    private boolean linked(FederationDomainNodeId node, String port, FederationDomainPortEvidence.Federation federation) {
+        var peer = nodes.get(federation.peer().node());
+        return peer != null && !federation.peer().node().equals(node)
+                && peer.port(federation.peer().port()) instanceof FederationDomainPortEvidence.Federation back
+                && back.peer().equals(new FederationDomainPortId(node, port));
+    }
+
+    /** A pending edge (NON_RECIPROCAL_EDGE) or an unsettled native port is reported on its node, not on the domain. */
+    private void recordDiagnostics(Component component) {
+        for (var node : component.nodes()) {
+            if (component.pending().contains(node)) {
+                invalidations.put(node, FederationDomainInvalidationReason.NON_RECIPROCAL_EDGE);
+            } else if (component.unsettled().contains(node)) {
+                invalidations.put(node, FederationDomainInvalidationReason.IDENTITY_UNSETTLED);
+            } else {
+                invalidations.remove(node);
+            }
+        }
+    }
+
+    private void installPhysical(FederationDomainSnapshot snapshot) {
+        install(snapshot);
+        snapshot.nodes().forEach(node -> nodeToFederationDomain.put(node, snapshot.federationDomainId()));
     }
 
     private void install(FederationDomainSnapshot snapshot) {
@@ -214,7 +313,8 @@ public final class FederationDomainRegistry {
         if (removed == null) {
             return null;
         }
-        removed.nodes().forEach(nodeToFederationDomain::remove);
+        physicalSequences.remove(federationDomainId);
+        removed.nodes().forEach(node -> nodeToFederationDomain.remove(node, federationDomainId));
         removed.memberships().keySet().forEach(network -> {
             var indexed = networkIndex.get(network);
             indexed.remove(federationDomainId);
@@ -225,7 +325,7 @@ public final class FederationDomainRegistry {
         return removed;
     }
 
-    private void removeDirectBridge(FederationDomainSourceId source, FederationDomainInvalidationReason reason) {
+    private void removeDirectBridge(FederationDomainSourceId source) {
         var federationDomainId = directBridges.remove(source);
         if (federationDomainId != null) {
             removeFederationDomain(federationDomainId);
@@ -267,7 +367,11 @@ public final class FederationDomainRegistry {
         }
     }
 
-    private record ComponentResult(Set<FederationDomainNodeId> nodes, FederationDomainInvalidationReason reason,
-            boolean budgetExhausted) {
+    private record Component(Set<FederationDomainNodeId> nodes, Map<NetworkId, Set<FederationDomainSourceId>> memberships,
+            Set<FederationDomainNodeId> pending, Set<FederationDomainNodeId> unsettled) {
+    }
+
+    private record Candidate(int component, FederationDomainId federationDomainId, boolean membersEqual, int memberOverlap,
+            int nodeOverlap, long sequence) {
     }
 }
