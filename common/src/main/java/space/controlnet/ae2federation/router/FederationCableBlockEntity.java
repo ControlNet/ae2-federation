@@ -10,7 +10,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
@@ -30,7 +29,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
-            ports.put(face, new CableFacePort(position, face, this::invalidateFederationDomainTopology));
+            ports.put(face, new CableFacePort(position, face));
         }
     }
 
@@ -50,7 +49,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     public void neighborChanged(BlockPos neighborPosition) {
         for (var face : Direction.values()) {
             if (worldPosition.relative(face).equals(neighborPosition)) {
-                ports.get(face).invalidate();
+                if (ports.get(face).revalidate()) {
+                    publishFederationDomainTopology();
+                }
                 return;
             }
         }
@@ -75,17 +76,6 @@ public final class FederationCableBlockEntity extends BlockEntity {
         initialized = true;
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         ports.values().forEach(port -> port.initialize(serverLevel));
-    }
-
-    private void invalidateFederationDomainTopology() {
-        federationDomainDirty = true;
-        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
-                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
-        }
     }
 
     private void publishFederationDomainTopology() {

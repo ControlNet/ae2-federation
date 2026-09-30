@@ -22,11 +22,13 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
      * A newly placed native neighbor (e.g. a cable bus) creates its node on a later tick than the block update that
      * dirtied this face, so the face must also re-resolve when the in-world connection or Grid actually changes. Those
      * events fire inside AE2 Grid propagation, so they only mark the face dirty; the Router tick resolves and publishes.
+     * A saved-data change (a lineage minted for this neutral node, a new owner) leaves the attachment as it is, so it
+     * too only asks for a resolve instead of dropping the face and splitting the domain for a tick.
      */
     private static final IGridNodeListener<RouterFacePort> NODE_LISTENER = new IGridNodeListener<>() {
         @Override
         public void onSaveChanges(RouterFacePort owner, IGridNode node) {
-            owner.invalidate();
+            owner.dirty = true;
         }
 
         @Override
@@ -43,7 +45,6 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final BlockPos routerPosition;
     private final Direction face;
     private final FederationPort routerFederationDomainPort;
-    private final Runnable topologyInvalidator;
     private final IManagedGridNode boundaryNode;
     private final DirectionalEnergySource energySource;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
@@ -52,12 +53,10 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private boolean dirty = true;
     private boolean nodeLoaded;
 
-    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
-            Runnable topologyInvalidator) {
+    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort) {
         this.routerPosition = routerPosition.immutable();
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
-        this.topologyInvalidator = topologyInvalidator;
         energySource = new DirectionalEnergySource();
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
@@ -82,7 +81,8 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         boundaryNode.create(serverLevel, routerPosition);
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
                 face.getOpposite(), () -> boundaryNode.isReady(), this::recheck);
-        invalidate();
+        binding = RouterPortBinding.Disconnected.INSTANCE;
+        dirty = true;
     }
 
     public boolean tick() {
@@ -96,16 +96,24 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         return changed;
     }
 
-    public void invalidate() {
-        binding = RouterPortBinding.Disconnected.INSTANCE;
+    /**
+     * The neighbouring block changed: resolve the face now and report whether its binding differs, so the Router
+     * republishes only a real change. A removed native neighbour has already destroyed its node and so resolves as
+     * disconnected at once; a new one connects later and reaches the face through the node listener. The face also
+     * resolves again on the next tick.
+     */
+    public boolean revalidate() {
+        var resolved = resolve();
+        var changed = !resolved.equals(binding);
+        binding = resolved;
         dirty = true;
-        topologyInvalidator.run();
+        return changed;
     }
 
     /**
      * Some capability of the neighbour changed, such as an Endpoint's item handlers when it is claimed: resolve the
      * binding again on the next tick, which reports a change only when it differs. Dropping the binding here would
-     * republish the whole domain although the link is the same; a changed neighbour block reaches {@link #invalidate()}.
+     * republish the whole domain although the link is the same; a changed neighbour block reaches {@link #revalidate()}.
      */
     private void recheck() {
         dirty = true;

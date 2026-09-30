@@ -131,7 +131,8 @@ public final class RouterGameTests {
                         "Replacement fixture must begin with a native attachment");
                 unaffected[0] = router.binding(Direction.WEST);
                 fixtures.placeFederationCable(CENTER, Direction.EAST);
-                helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.DISCONNECTED,
+                // The face resolves again in the block update, so it may already see the cable, never the old chest.
+                helper.assertTrue(router.binding(Direction.EAST).kind() != RouterPortKind.NATIVE_ME,
                         "Replaced native binding must invalidate immediately");
                 helper.assertTrue(router.binding(Direction.WEST) == unaffected[0],
                         "Unchanged face binding must retain ownership");

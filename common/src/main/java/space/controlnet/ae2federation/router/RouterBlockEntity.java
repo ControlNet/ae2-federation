@@ -25,7 +25,6 @@ import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.energy.EnergyBindingService;
-import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
@@ -38,13 +37,14 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
+    private @Nullable FederationDomainNodeEvidence publishedEvidence;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.ROUTER_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, this::invalidateFederationDomainTopology));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort));
         }
     }
 
@@ -67,13 +67,18 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         var changed = router.facePorts.values().stream().map(RouterFacePort::tick).reduce(false, Boolean::logicalOr);
         if (changed || router.federationDomainDirty) {
             router.publishFederationDomainTopology();
+        } else if (level.getGameTime() % 20 == 0) {
+            // A native network settles its identity without an event on this Router's faces.
+            router.publishIfEvidenceChanged();
         }
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
         for (var face : Direction.values()) {
             if (worldPosition.relative(face).equals(neighborPosition)) {
-                facePorts.get(face).invalidate();
+                if (facePorts.get(face).revalidate()) {
+                    publishFederationDomainTopology();
+                }
                 return;
             }
         }
@@ -150,17 +155,14 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         }
         initialized = false;
         federationDomainDirty = true;
+        publishedEvidence = null;
         facePorts.values().forEach(RouterFacePort::destroy);
     }
 
-    private void invalidateFederationDomainTopology() {
-        federationDomainDirty = true;
-        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
-                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
-            StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingBindingService.reconcileIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+    private void publishIfEvidenceChanged() {
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null
+                && !evidence(serverLevel).equals(publishedEvidence)) {
+            publishFederationDomainTopology();
         }
     }
 
@@ -168,6 +170,15 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
             return;
         }
+        publishedEvidence = evidence(serverLevel);
+        FederationDomainRegistryAccess.get(serverLevel).upsertNode(publishedEvidence);
+        StorageMountService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
+        CraftingBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
+        EnergyBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
+        federationDomainDirty = false;
+    }
+
+    private FederationDomainNodeEvidence evidence(ServerLevel serverLevel) {
         var evidence = new java.util.TreeMap<String, FederationDomainPortEvidence>();
         for (var face : Direction.values()) {
             var portId = new FederationDomainPortId(federationDomainNodeId, face.getSerializedName());
@@ -180,10 +191,6 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId, evidence));
-        StorageMountService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
-        CraftingBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
-        EnergyBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
-        federationDomainDirty = false;
+        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
     }
 }

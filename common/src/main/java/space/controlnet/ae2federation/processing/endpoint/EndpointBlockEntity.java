@@ -14,7 +14,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
@@ -99,8 +98,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
-        if (federationPort != null && worldPosition.relative(federationFace()).equals(neighborPosition)) {
-            federationPort.invalidate();
+        if (federationPort != null && worldPosition.relative(federationFace()).equals(neighborPosition)
+                && federationPort.revalidate()) {
+            publishFederationDomainTopology();
         }
         reconcileMode();
     }
@@ -181,19 +181,12 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         if (federationPort != null) {
             federationPort.destroy();
         }
-        federationPort = new CableFacePort(worldPosition, federationFace(), this::invalidateFederationDomainTopology);
+        federationPort = new CableFacePort(worldPosition, federationFace());
         federationPort.initialize(serverLevel);
-    }
-
-    private void invalidateFederationDomainTopology() {
-        federationDomainDirty = true;
-        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
-                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
-        }
+        // Publish the port for the current front now: after a rotation this withdraws the link of the old front at
+        // once, and it declares the new one, which joins as soon as the peer names this Endpoint back.
+        federationPort.revalidate();
+        publishFederationDomainTopology();
     }
 
     /** Only the Federation link is published: the subnet on the other faces is no domain member. */
