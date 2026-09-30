@@ -28,6 +28,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.test.perf.BulkItemStorage;
 import space.controlnet.ae2federation.test.perf.EnergyMeshScene;
+import space.controlnet.ae2federation.test.perf.MenuBroadcasts;
 import space.controlnet.ae2federation.test.perf.PerfMeasure;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -259,6 +260,7 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(false, "Measuring open-menu ticks");
             }
             if (state[0] == 2) {
+                tickMenus(scene, level.getServer().getTickCount());
                 helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring open-menu ticks");
                 perf.record("openTick", window[0].medianTickNanos(), "ns/tick");
                 perf.nanosPerOp("recordAcceptedOpen", 2000, 300, accepted);
@@ -277,5 +279,14 @@ public final class PerformanceBenchmarkGameTests {
                 return;
             }
         });
+    }
+
+    /**
+     * Gives each open menu its server tick. A mock player ticks its menu only while its chunk is entity-ticking, which
+     * depends on where the test was placed, so without this some runs would measure open menus that never update.
+     */
+    private static void tickMenus(RealObservationScene scene, int tick) {
+        MenuBroadcasts.ensureBroadcast(scene.player().containerMenu, tick);
+        MenuBroadcasts.ensureBroadcast(scene.secondPlayer().containerMenu, tick);
     }
 }

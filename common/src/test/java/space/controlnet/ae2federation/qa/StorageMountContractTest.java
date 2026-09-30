@@ -49,7 +49,7 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("sourceCurrent(holder[0])"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
-        assertTrue(federationDomains.contains("snapshot().federationDomains().values()"));
+        assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));
         assertTrue(federationDomains.contains("federationDomain.memberships().keySet()"));
     }
 

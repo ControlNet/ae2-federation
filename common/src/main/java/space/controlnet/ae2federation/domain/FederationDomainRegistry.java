@@ -130,6 +130,18 @@ public final class FederationDomainRegistry {
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
     }
 
+    /** The revision {@link #snapshot()} would report, without copying the registry. */
+    public long topologyRevision() {
+        flush();
+        return topologyRevision;
+    }
+
+    /** The current domains, like {@code snapshot().federationDomains().values()} without copying the indexes. */
+    public List<FederationDomainSnapshot> federationDomains() {
+        flush();
+        return List.copyOf(federationDomains.values());
+    }
+
     public FederationDomainRegistrySnapshot snapshot() {
         flush();
         var copiedIndex = new HashMap<NetworkId, Set<FederationDomainId>>();

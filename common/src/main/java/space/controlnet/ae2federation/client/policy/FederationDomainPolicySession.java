@@ -98,7 +98,7 @@ public final class FederationDomainPolicySession {
     public static FederationDomainPolicySession forRouter(ServerPlayer player, BlockPos position) {
         var level = player.serverLevel();
         var nodeId = FederationDomainRegistryAccess.nodeId(level, position);
-        var federationDomains = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+        var federationDomains = FederationDomainRegistryAccess.get(level).federationDomains().stream()
                 .filter(snapshot -> snapshot.nodes().contains(nodeId)).toList();
         var current = federationDomains.size() == 1 ? Optional.of(federationDomains.getFirst()) : Optional.<FederationDomainSnapshot>empty();
         return new FederationDomainPolicySession(player, new RouterPolicyEntrance(position), current,
@@ -130,10 +130,10 @@ public final class FederationDomainPolicySession {
         if (entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity || provider) {
             // An Endpoint or a Provider belongs to the domain its Federation face joins; an Endpoint's own subnet is not
             // a member of it, and a Provider's network may be a member of other domains too.
-            candidates = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+            candidates = FederationDomainRegistryAccess.get(level).federationDomains().stream()
                     .filter(domain -> domain.nodes().contains(nodeId) && !domain.memberships().isEmpty()).toList();
         } else {
-            var domains = FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values().stream()
+            var domains = FederationDomainRegistryAccess.get(level).federationDomains().stream()
                     // A device may also have a singleton topology record; it cannot host this domain editor.
                     .filter(domain -> domain.memberships().size() >= 2)
                     .filter(domain -> network.filter(domain.memberships()::containsKey).isPresent()).toList();
@@ -1284,8 +1284,8 @@ public final class FederationDomainPolicySession {
 
     /** The two server counters a stale edit is judged against: the rule store's and the domain topology's. */
     public Component revisionsText() {
-        var policy = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().highWatermark().value();
-        var topology = FederationDomainRegistryAccess.get(level).snapshot().topologyRevision();
+        var policy = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).highWatermark().value();
+        var topology = FederationDomainRegistryAccess.get(level).topologyRevision();
         return Component.translatable("ae2federation.ui.domain.revisions", policy, topology);
     }
 

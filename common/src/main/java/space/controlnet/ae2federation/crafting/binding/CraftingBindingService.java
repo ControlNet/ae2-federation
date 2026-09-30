@@ -55,7 +55,7 @@ public final class CraftingBindingService implements AutoCloseable {
         if (service == null) return Optional.empty();
         var diagnostic = service.diagnostics.get(key);
         return diagnostic != null && diagnostic.matches(PolicyService.get(level).revision(key),
-                FederationDomainRegistryAccess.get(level).snapshot().topologyRevision())
+                FederationDomainRegistryAccess.get(level).topologyRevision())
                 ? Optional.of(diagnostic) : Optional.empty();
     }
 

@@ -29,7 +29,7 @@ final class StorageFederationDomainObserver {
     Map<PolicyKey, StorageRelationship> relationships() {
         discardStaleGrids();
         var relationships = new HashMap<PolicyKey, StorageRelationship>();
-        for (var federationDomain : FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values()) {
+        for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
             var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
                     .filter(java.util.Objects::nonNull).toList();
             for (var consumer : members) {
@@ -61,7 +61,7 @@ final class StorageFederationDomainObserver {
     }
 
     long topologyRevision() {
-        return FederationDomainRegistryAccess.get(level).snapshot().topologyRevision();
+        return FederationDomainRegistryAccess.get(level).topologyRevision();
     }
 
     boolean contains(StorageRelationship relationship) {
