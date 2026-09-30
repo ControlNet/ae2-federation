@@ -13,7 +13,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
@@ -21,8 +21,6 @@ import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
 import space.controlnet.ae2federation.domain.port.FederationPort;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
@@ -201,11 +199,10 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
             evidence.put(federationFace().getSerializedName(), new FederationDomainPortEvidence.Federation(
                     new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
         }
-        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId,
-                evidence));
-        StorageMountService.topologyChangedIfPresent(serverLevel);
-        CraftingBindingService.topologyChangedIfPresent(serverLevel);
-        EnergyBindingService.reconcileIfPresent(serverLevel);
+        if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
+                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+            FederationBindingRefresh.request(serverLevel);
+        }
         federationDomainDirty = false;
     }
 
@@ -216,9 +213,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         }
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = true;
     }

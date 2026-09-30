@@ -19,12 +19,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.port.FederationPort;
 import space.controlnet.ae2federation.domain.port.RouterFacePort;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
@@ -149,9 +147,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
-            StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingBindingService.reconcileIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
         federationDomainDirty = true;
@@ -172,9 +168,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         }
         publishedEvidence = evidence(serverLevel);
         FederationDomainRegistryAccess.get(serverLevel).upsertNode(publishedEvidence);
-        StorageMountService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
-        CraftingBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
-        EnergyBindingService.get(serverLevel).observeFederationDomainMembers(nativeFacesByGrid().keySet());
+        // The Grids are read when the level reconciles, so a merge later in the tick registers the surviving Grid.
+        FederationBindingRefresh.request(serverLevel, () -> nativeFacesByGrid().keySet());
         federationDomainDirty = false;
     }
 

@@ -61,7 +61,12 @@ final class StorageMountContractTest {
         var registries = source("domain/FederationDomainRegistryAccess.java");
         var entrypoint = Files.readString(ROOT.resolve(
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint.java"));
-        assertTrue(cable.contains("StorageMountService.topologyChangedIfPresent"));
+        var refresh = source("domain/FederationBindingRefresh.java");
+        // A Cable's topology change reaches Storage through the coalesced binding refresh, which the level flushes.
+        assertTrue(cable.contains("FederationBindingRefresh.request(serverLevel)"));
+        assertTrue(refresh.contains("StorageMountService.reconcileIfPresent(level)"));
+        assertTrue(entrypoint.contains("FederationBindingRefresh.flush(level)"));
+        assertTrue(entrypoint.contains("FederationBindingRefresh.closeLevel(level)"));
         assertTrue(mounts.contains("SERVICES.remove(level)"));
         assertTrue(mounts.contains("mountedProvidersRemoved"));
         assertTrue(registries.contains("removedRegisteredInstance"));

@@ -10,15 +10,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 public final class FederationCableBlockEntity extends BlockEntity {
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
@@ -91,19 +89,17 @@ public final class FederationCableBlockEntity extends BlockEntity {
                         new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
             }
         });
-        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId, evidence));
-        StorageMountService.topologyChangedIfPresent(serverLevel);
-        CraftingBindingService.topologyChangedIfPresent(serverLevel);
-        EnergyBindingService.reconcileIfPresent(serverLevel);
+        if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
+                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+            FederationBindingRefresh.request(serverLevel);
+        }
         federationDomainDirty = false;
     }
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
         federationDomainDirty = true;

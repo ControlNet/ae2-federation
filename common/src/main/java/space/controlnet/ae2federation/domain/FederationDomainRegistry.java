@@ -21,6 +21,10 @@ import space.controlnet.ae2federation.identity.NetworkId;
  * resembles most, so a domain keeps its id while nodes join, leave, merge or split off. Its generation advances only when
  * the set of member networks changes, which is what bindings and sessions hold on to: a cable or Endpoint joining or
  * leaving leaves every reference current, while a split that separates members makes them stale at once.
+ *
+ * <p>Node changes are applied to the evidence at once and their components are recomputed lazily, together, before the
+ * next read: a chunk of cables publishing in one tick costs one walk of the domain, not one per cable. Every read sees
+ * the same domains an immediate recomputation would give, up to which new id a merged component receives.
  */
 public final class FederationDomainRegistry {
     private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
@@ -40,12 +44,17 @@ public final class FederationDomainRegistry {
     private final Map<FederationDomainSourceId, FederationDomainId> directBridges = new HashMap<>();
     private long topologyRevision;
     private long physicalSequence;
+    /** Nodes whose components changed since the last recomputation; recomputed together before the next read. */
+    private final Set<FederationDomainNodeId> pendingSeeds = new TreeSet<>();
+    /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
+    private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
 
     public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
         this.budget = budget;
     }
 
     public void upsertDirectBridge(FederationDomainSourceId source, NetworkId mainNetwork, NetworkId outerNetwork) {
+        flush();
         if (mainNetwork.equals(outerNetwork)) {
             removeDirectBridge(source);
             return;
@@ -64,27 +73,33 @@ public final class FederationDomainRegistry {
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
+        flush();
         removeDirectBridge(source);
     }
 
-    public void upsertNode(FederationDomainNodeEvidence evidence) {
+    /** Records a node's evidence; returns false when it equals what the node already published. */
+    public boolean upsertNode(FederationDomainNodeEvidence evidence) {
         var previous = nodes.get(evidence.nodeId());
         if (evidence.equals(previous)) {
-            return;
+            return false;
         }
-        var seeds = affectedBy(evidence.nodeId(), previous, evidence);
+        if (pendingRemovals.contains(evidence.nodeId())) {
+            // A node that left and comes back joins a new domain, as it would if the removal had been read.
+            flush();
+        }
+        pendingSeeds.addAll(affectedBy(evidence.nodeId(), previous, evidence));
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
-        recompute(seeds);
+        return true;
     }
 
     public void invalidateNode(FederationDomainNodeId nodeId, FederationDomainInvalidationReason reason) {
         var previous = nodes.remove(nodeId);
         if (previous != null) {
-            var seeds = affectedBy(nodeId, previous, null);
+            pendingSeeds.addAll(affectedBy(nodeId, previous, null));
+            pendingRemovals.add(nodeId);
             removeIncoming(previous);
-            recompute(seeds);
         }
         invalidations.put(nodeId, reason);
     }
@@ -94,27 +109,43 @@ public final class FederationDomainRegistry {
     }
 
     public Set<FederationDomainId> federationdomainsFor(NetworkId networkId) {
+        flush();
         return Set.copyOf(networkIndex.getOrDefault(networkId, Set.of()));
     }
 
     public boolean isCurrent(FederationDomainReference reference) {
+        flush();
         var current = federationDomains.get(reference.federationDomainId());
         return current != null && current.generation() == reference.generation();
     }
 
     public Optional<FederationDomainSnapshot> federationDomain(FederationDomainId federationDomainId) {
+        flush();
         return Optional.ofNullable(federationDomains.get(federationDomainId));
     }
 
     /** The domain that contains a node, e.g. a Processing Endpoint that joins through its Federation face only. */
     public Optional<FederationDomainSnapshot> federationDomainOf(FederationDomainNodeId nodeId) {
+        flush();
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
     }
 
     public FederationDomainRegistrySnapshot snapshot() {
+        flush();
         var copiedIndex = new HashMap<NetworkId, Set<FederationDomainId>>();
         networkIndex.forEach((network, indexedFederationDomains) -> copiedIndex.put(network, Set.copyOf(indexedFederationDomains)));
         return new FederationDomainRegistrySnapshot(federationDomains, copiedIndex, invalidations, topologyRevision);
+    }
+
+    /** Recomputes every component a node change touched since the last read. */
+    private void flush() {
+        if (pendingSeeds.isEmpty()) {
+            return;
+        }
+        var seeds = new TreeSet<>(pendingSeeds);
+        pendingSeeds.clear();
+        pendingRemovals.clear();
+        recompute(seeds);
     }
 
     private Set<FederationDomainNodeId> affectedBy(FederationDomainNodeId nodeId, FederationDomainNodeEvidence previous,
@@ -137,13 +168,14 @@ public final class FederationDomainRegistry {
         var affected = new TreeSet<>(seeds);
         previous.forEach(federationDomainId -> affected.addAll(federationDomains.get(federationDomainId).nodes()));
         var visited = new HashSet<FederationDomainNodeId>();
-        var counters = new int[2];
         var components = new ArrayList<Component>();
         for (var seed : affected) {
             if (!nodes.containsKey(seed) || visited.contains(seed)) {
                 continue;
             }
-            var component = collectComponent(seed, visited, counters);
+            // The budget bounds each component, so recomputing several changes together fails no domain that
+            // recomputing them one by one would keep.
+            var component = collectComponent(seed, visited, new int[2]);
             if (component == null) {
                 exhaustBudget(affected, visited, previous);
                 return;

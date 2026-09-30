@@ -21,6 +21,9 @@ import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
 import space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyActionPayloads;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.bus.api.EventPriority;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 
@@ -50,11 +53,25 @@ public final class NeoForgeEntrypoint {
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);
+        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelTick);
+        // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy through the bindings.
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
     }
 
     private static void onArtifactPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         LOGGER.info("AE2F_ARTIFACT_SERVER_JOIN player={}", event.getEntity().getGameProfile().getName());
+    }
+
+    private static void onLevelTick(LevelTickEvent.Post event) {
+        if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+            FederationBindingRefresh.flush(level);
+        }
+    }
+
+    /** Requests made after the level ticks, by player actions or GameTests. */
+    private static void onServerTickBindings(ServerTickEvent.Post event) {
+        FederationBindingRefresh.flushAll();
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
@@ -63,6 +80,7 @@ public final class NeoForgeEntrypoint {
 
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+            FederationBindingRefresh.closeLevel(level);
             CraftingBindingService.closeLevel(level);
             EnergyBindingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);

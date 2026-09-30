@@ -34,11 +34,10 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.ae2.processing.NativeLaneDispatchListener;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
@@ -60,7 +59,6 @@ import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 /**
  * ME Federation Pattern Provider. The front face is the Federation port; the other five faces expose one native ME
@@ -708,14 +706,10 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         federationDomainDirty = false;
         publishedEvidence = evidence(serverLevel);
         FederationDomainRegistryAccess.get(serverLevel).upsertNode(publishedEvidence);
-        var grid = getMainNode().getGrid();
-        if (grid != null) {
-            StorageMountService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-            CraftingBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-            EnergyBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-        } else {
-            reconcileServices(serverLevel);
-        }
+        FederationBindingRefresh.request(serverLevel, () -> {
+            var grid = getMainNode().getGrid();
+            return grid == null ? List.of() : List.of(grid);
+        });
     }
 
     private FederationDomainNodeEvidence evidence(ServerLevel serverLevel) {
@@ -745,9 +739,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     }
 
     private static void reconcileServices(ServerLevel serverLevel) {
-        StorageMountService.reconcileIfPresent(serverLevel);
-        CraftingBindingService.reconcileIfPresent(serverLevel);
-        EnergyBindingService.reconcileIfPresent(serverLevel);
+        FederationBindingRefresh.request(serverLevel);
     }
 
     // ---- drops and persistence

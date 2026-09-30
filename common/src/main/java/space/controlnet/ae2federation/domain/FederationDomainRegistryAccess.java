@@ -49,8 +49,13 @@ public final class FederationDomainRegistryAccess {
     }
 
     public static FederationDomainNodeId nodeId(ServerLevel level, BlockPos position) {
-        return new FederationDomainNodeId(level.dimension().location().toString(), position.asLong());
+        // One shared string per dimension: node ids compare it on every registry lookup.
+        var dimension = DIMENSION_NAMES.computeIfAbsent(level.dimension(), key -> key.location().toString());
+        return new FederationDomainNodeId(dimension, position.asLong());
     }
+
+    private static final java.util.Map<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>, String>
+            DIMENSION_NAMES = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static FederationDomainPortEvidence nativeEvidence(IGrid grid, FederationDomainPortId port) {
         var settlement = grid.getService(NetworkIdentityService.class).settlement();

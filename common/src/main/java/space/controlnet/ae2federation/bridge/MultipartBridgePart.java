@@ -124,12 +124,25 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
 
     @Override
     public void onNeighborChanged(net.minecraft.world.level.BlockGetter level, BlockPos pos, BlockPos neighbor) {
-        refresh();
+        refreshNeighbor();
     }
 
     @Override
     public void onUpdateShape(Direction side) {
-        refresh();
+        refreshNeighbor();
+    }
+
+    /**
+     * A neighbour update (a machine or redstone clock beside the host fires one every tick) publishes and reconciles
+     * only a Bridge whose status or published evidence it changed.
+     */
+    private void refreshNeighbor() {
+        onlyIfChanged = true;
+        try {
+            refresh();
+        } finally {
+            onlyIfChanged = false;
+        }
     }
 
     @Override
