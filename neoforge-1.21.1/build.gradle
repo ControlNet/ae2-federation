@@ -235,6 +235,7 @@ neoForge {
             systemProperty('neoforge.enabledGameTestNamespaces', providers.gradleProperty('federationGameTestNamespace').getOrElse('ae2federation_test'))
             systemProperty('ae2federation.testSelection', providers.gradleProperty('federationGameTestSelection').getOrElse('positive'))
             systemProperty('ae2federation.testId', providers.gradleProperty('federationGameTestId').getOrElse('harnessnativesmoke'))
+            systemProperty('ae2federation.testOrigin', providers.gradleProperty('federationGameTestOrigin').getOrElse(''))
             systemProperty('ae2federation.nativeEvidenceFile', providers.gradleProperty('federationNativeEvidenceFile').getOrElse(''))
             systemProperty('ae2federation.benchmarkEmpty', providers.gradleProperty('federationBenchmarkEmpty').getOrElse('false'))
     systemProperty('ae2federation.processingBenchmarkProfile', providers.gradleProperty('federationProcessingBenchmarkProfile').getOrElse(''))

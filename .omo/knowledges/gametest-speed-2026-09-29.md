@@ -64,8 +64,32 @@ The required gate remains `python3 tools/required_gametests.py`: one server per 
 - It looks instant ("1 GAME TESTS COMPLETE IN ~0.7 s") but is a real timeout: the idle GameTest server ticks unthrottled,
   and the CI log shows about 200 progress lines (one per 20 ticks) = the 4000-tick `timeoutTicks`. Locally the same test
   passes after about 6 lines (~120 ticks).
-- Every failure hit a different test, never on the code under change, and passed alone locally (automationrejectduplicatedemand
-  11/11 on 2026-09-30). `gh run rerun <id> --failed` has cleared it; the root cause (fixture readiness never reached) is not
-  yet found.
+- Not random: it is decided by the test origin, which vanilla `GameTestServer.startTests` picks at random. Replaying the
+  CI origin fails every time: `-PfederationGameTestOrigin=9734410,2895050` (TEST-ONLY property, read by
+  `CompatibilityGameTestPlacementMixin`). CI origins that reproduced: automationrejectduplicatedemand 9734410,2895050 and
+  608922,-10346086; observenativeflowonce -12807526,2017388; subscriptionrejectstalegeneration 9457322,-8590470.
+- Root cause (confirmed 2026-09-30 with per-node identity logging): the fixture's network straddles chunk borders. AE2's
+  `TickHandler.readyBlockEntities` readies new block entities chunk by chunk, in `Long2ObjectOpenHashMap` key order, so
+  the order depends on the coordinates. A node readied before its neighbours exist forms its own Grid, and
+  `NetworkIdentityGridService.addNode` mints it a durable lineage from that Grid's fresh id. Only nodes inside one
+  `NativeIdentityInitialization` scope (one cable bus) are provisional. When the pieces connect, the Grid holds two
+  network ids, `IdentityReconciler` returns `AMBIGUOUS_MERGE` ("Merge pending"), and `networksSettled()` never holds.
+- Beyond tests, the same thing can happen whenever nodes without saved lineage are readied in separate batches but belong
+  to one network. That follows from the code; no in-game test has shown it yet. Examples: structure or schematic
+  placement across chunk borders, and first load of an existing AE2 world after installing the mod.
+- Fix (user chose "provisional within one tick"): `NetworkIdentityGridService` records the server tick in which each
+  node without saved lineage was minted (weak `MINTED_TICK`, kept when AE2 moves the node between Grids during a merge).
+  Until that tick ends, such nodes can adopt a single NetworkId: the one held by an established node, else a
+  boundary's hint, else one they already carry. Settlement reports are unchanged: a new network is `SETTLED` at once,
+  and a merge of two established networks is still `AMBIGUOUS_MERGE`. Not covered: fragments readied in different
+  ticks, such as an old world loading chunk by chunk.
+- Do not make "only new nodes this tick" report `PARTIAL_LOAD` until the tick ends. Tried and reverted: consumers such
+  as `MultipartBridgePart` refresh only on node events (`onSaveChanges`, `onStateChanged`, `onGridChanged`), and a tick
+  passing fires none. T33 `ui.graph-controls` then timed out on "the related domains settle": both networks were
+  SETTLED, but the Bridge never republished domain membership. A merge inside the tick already fires `onGridChanged`,
+  so consumers republish with the unified id.
+- Regression test: `identitysametickfragments` places chest, chest, then the middle cell in one tick inside one chunk,
+  so AE2 readies the ends first at every origin. It was red before the fix (AMBIGUOUS_MERGE). `identityinitializationorder`
+  now seeds its `stable` node with saved lineage: a node minted in the test's tick no longer counts as established.
 - Read failures from the `required-gametest-log` artifact: `gh run download <id> -n required-gametest-log -D <dir>`, then
   `grep "failed at" <dir>/gametest.log`.

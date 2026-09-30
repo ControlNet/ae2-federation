@@ -116,7 +116,8 @@ public final class IdentityQueryCostGameTests {
         for (int order = 0; order < 4; order++) {
             var created = new ArrayList<IManagedGridNode>();
             try {
-                var stable = node(helper, created, new CompoundTag(), 0);
+                // Established by saved lineage: a node minted in this tick would itself stay open until the tick ends.
+                var stable = node(helper, created, lineageTag(NetworkId.create(), UUID.randomUUID()), 0);
                 var expected = stable.getGrid().getService(NetworkIdentityService.class).lineage(stable.getNode()).networkId();
                 IManagedGridNode first;
                 IManagedGridNode second;
