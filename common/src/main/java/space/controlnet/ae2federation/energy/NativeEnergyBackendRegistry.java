@@ -9,16 +9,21 @@ import space.controlnet.ae2federation.identity.NetworkIdentityService;
 final class NativeEnergyBackendRegistry {
     private final EnergyProviderGenerationLedger<appeng.api.networking.energy.IEnergyService, NativeEnergySource> ledger =
             new EnergyProviderGenerationLedger<>();
+    /**
+     * Per provider Grid, its nodes that carry a native energy storage, as of the Grid's node revision. A node's
+     * services are fixed when it is created, so only a node joining or leaving changes this list; each discovery still
+     * reads every listed node's current state. {@link #retain} drops Grids that no longer provide.
+     */
+    private final java.util.Map<IGrid, StorageNodes> storageNodes = new java.util.IdentityHashMap<>();
 
     NativeEnergyBackend discover(IGrid grid) {
         var origin = FederationDomainRegistryAccess.confirmedNetworkId(grid)
                 .orElseThrow(() -> new EnergyBackendUnavailableException(space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.IDENTITY_UNCONFIRMED));
         var identity = grid.getService(NetworkIdentityService.class);
         var sources = new ArrayList<NativeEnergySource>();
-        for (var node : grid.getNodes()) {
+        for (var node : storageNodes(grid, identity)) {
             var storage = node.getService(IAEPowerStorage.class);
-            if (storage != null && !(storage instanceof DirectionalEnergySource) && node.getGrid() == grid
-                    && node.hasGridBooted() && storage.isAEPublicPowerStorage()
+            if (node.getGrid() == grid && node.hasGridBooted() && storage.isAEPublicPowerStorage()
                     && storage.getPowerFlow().isAllowExtraction()) {
                 sources.add(new NativeEnergySource(identity.lineage(node).nodeId(), node, storage));
             }
@@ -46,6 +51,34 @@ final class NativeEnergyBackendRegistry {
 
     void clear() {
         ledger.clear();
+        storageNodes.clear();
+    }
+
+    /** Forgets the node lists of Grids other than {@code providerGrids}. */
+    void retain(java.util.Collection<IGrid> providerGrids) {
+        var keep = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<IGrid, Boolean>());
+        keep.addAll(providerGrids);
+        storageNodes.keySet().removeIf(grid -> !keep.contains(grid));
+    }
+
+    private java.util.List<appeng.api.networking.IGridNode> storageNodes(IGrid grid, NetworkIdentityService identity) {
+        var revision = identity.nodeRevision();
+        var cached = storageNodes.get(grid);
+        if (cached != null && cached.nodeRevision() == revision) {
+            return cached.nodes();
+        }
+        var nodes = new ArrayList<appeng.api.networking.IGridNode>();
+        for (var node : grid.getNodes()) {
+            var storage = node.getService(IAEPowerStorage.class);
+            if (storage != null && !(storage instanceof DirectionalEnergySource)) {
+                nodes.add(node);
+            }
+        }
+        storageNodes.put(grid, new StorageNodes(revision, java.util.List.copyOf(nodes)));
+        return nodes;
+    }
+
+    private record StorageNodes(long nodeRevision, java.util.List<appeng.api.networking.IGridNode> nodes) {
     }
 
     private static boolean sameSources(java.util.List<NativeEnergySource> first,

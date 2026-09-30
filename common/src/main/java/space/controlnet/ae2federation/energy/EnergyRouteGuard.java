@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.energy;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
@@ -13,31 +14,73 @@ import java.util.function.DoubleSupplier;
  * Grids are compared by identity, like AE2 does.
  */
 final class EnergyRouteGuard {
-    private static final ThreadLocal<Set<Object>> VISITED = new ThreadLocal<>();
+    /** One reusable visit set per thread; every demand is a single call, so allocating one per demand is waste. */
+    private static final ThreadLocal<Demand> DEMAND = ThreadLocal.withInitial(Demand::new);
 
     private EnergyRouteGuard() {
     }
 
     /** Runs a demand of {@code consumer}; a demand already running on this thread joins it. */
     static double demand(Object consumer, DoubleSupplier operation) {
-        var visited = VISITED.get();
-        if (visited != null) {
-            visited.add(consumer);
+        var demand = DEMAND.get();
+        demand.visited.add(consumer);
+        if (demand.running) {
             return operation.getAsDouble();
         }
-        visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        visited.add(consumer);
-        VISITED.set(visited);
+        demand.running = true;
         try {
             return operation.getAsDouble();
         } finally {
-            VISITED.remove();
+            demand.running = false;
+            demand.visited.clear();
         }
     }
 
     /** Whether the running demand may draw on {@code provider}: false when it already visited that Grid. */
     static boolean visit(Object provider) {
-        var visited = VISITED.get();
-        return visited == null || visited.add(provider);
+        var demand = DEMAND.get();
+        return !demand.running || demand.visited.add(provider);
+    }
+
+    /**
+     * The Grids one demand has visited. A demand usually reaches a handful, which an identity scan of a small array
+     * answers faster than hashing, and clearing it touches only the used slots; past {@link #SCAN_LIMIT} Grids an
+     * identity set takes over so a large mesh stays linear.
+     */
+    private static final class Visited {
+        private static final int SCAN_LIMIT = 16;
+        private final Object[] recent = new Object[SCAN_LIMIT];
+        private int size;
+        private Set<Object> overflow;
+
+        /** Adds {@code grid}; false when this demand already visited it. */
+        boolean add(Object grid) {
+            if (overflow != null) {
+                return overflow.add(grid);
+            }
+            for (var index = 0; index < size; index++) {
+                if (recent[index] == grid) {
+                    return false;
+                }
+            }
+            if (size < SCAN_LIMIT) {
+                recent[size++] = grid;
+                return true;
+            }
+            overflow = Collections.newSetFromMap(new IdentityHashMap<>());
+            overflow.addAll(Arrays.asList(recent));
+            return overflow.add(grid);
+        }
+
+        void clear() {
+            Arrays.fill(recent, 0, size, null);
+            size = 0;
+            overflow = null;
+        }
+    }
+
+    private static final class Demand {
+        private final Visited visited = new Visited();
+        private boolean running;
     }
 }

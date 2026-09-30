@@ -15,11 +15,29 @@ public final class FederationDomainRegistryAccess {
     private FederationDomainRegistryAccess() {
     }
 
-    public static synchronized FederationDomainRegistry get(ServerLevel level) {
-        return REGISTRIES.computeIfAbsent(level, ignored -> new FederationDomainRegistry(FederationDomainRecomputeBudget.standard()));
+    /**
+     * The registry {@link #get} returned last, read without the lock: storage, crafting and energy operations look the
+     * registry up on every call, nearly always for the level being ticked. Replaced under the lock, cleared on close.
+     */
+    private static volatile LastRegistry last;
+
+    private record LastRegistry(ServerLevel level, FederationDomainRegistry registry) {
+    }
+
+    public static FederationDomainRegistry get(ServerLevel level) {
+        var cached = last;
+        return cached != null && cached.level() == level ? cached.registry() : getLocked(level);
+    }
+
+    private static synchronized FederationDomainRegistry getLocked(ServerLevel level) {
+        var registry = REGISTRIES.computeIfAbsent(level,
+                ignored -> new FederationDomainRegistry(FederationDomainRecomputeBudget.standard()));
+        last = new LastRegistry(level, registry);
+        return registry;
     }
 
     public static synchronized LevelCloseResult closeLevel(ServerLevel level) {
+        last = null;
         var registered = REGISTRIES.get(level);
         var removed = REGISTRIES.remove(level);
         return new LevelCloseResult(registered != null,

@@ -46,9 +46,8 @@ public final class PolicyStore {
     }
 
     public Optional<PolicyRecord.Configured> configured(PolicyKey key) {
-        return Optional.ofNullable(entries.get(key))
-                .filter(PolicyRecord.Configured.class::isInstance)
-                .map(PolicyRecord.Configured.class::cast);
+        return entries.get(key) instanceof PolicyRecord.Configured configured ? Optional.of(configured)
+                : Optional.empty();
     }
 
     public PolicyRevision revision(PolicyKey key) {

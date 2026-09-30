@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.energy;
 
 import appeng.api.config.Actionable;
 import java.util.function.BooleanSupplier;
+import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
 public final class EnergyCapabilityBinding {
@@ -10,6 +11,11 @@ public final class EnergyCapabilityBinding {
     private final EnergyBindingRevision revision;
     private final DirectionalEnergySource source;
     private final BooleanSupplier current;
+    /** A Grid's services are fixed for its lifetime, so the binding keeps the identity services of its two Grids. */
+    private final NetworkIdentityService consumerIdentity;
+    private final NetworkIdentityService providerIdentity;
+    /** Set once when the service drops this binding; a withdrawn binding is never published again. */
+    private boolean withdrawn;
 
     EnergyCapabilityBinding(EnergyRelationship relationship, NativeEnergyBackend backend,
             EnergyBindingRevision revision, DirectionalEnergySource source, BooleanSupplier current) {
@@ -18,6 +24,24 @@ public final class EnergyCapabilityBinding {
         this.revision = revision;
         this.source = source;
         this.current = current;
+        consumerIdentity = relationship.consumerGrid().getService(NetworkIdentityService.class);
+        providerIdentity = relationship.providerGrid().getService(NetworkIdentityService.class);
+    }
+
+    NetworkIdentityService consumerIdentity() {
+        return consumerIdentity;
+    }
+
+    NetworkIdentityService providerIdentity() {
+        return providerIdentity;
+    }
+
+    boolean withdrawn() {
+        return withdrawn;
+    }
+
+    void withdraw() {
+        withdrawn = true;
     }
 
     public boolean isCurrent() {

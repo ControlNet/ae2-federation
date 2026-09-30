@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.policy;
 import java.util.Optional;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.persistence.PolicySavedData;
@@ -25,12 +26,22 @@ public final class PolicyService {
         data = PolicySavedData.get(level);
     }
 
+    /** The service {@link #get} returned last, checked before the map: nearly every call is for the ticked level. */
+    private static volatile PolicyService last;
+
     public static PolicyService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, PolicyService::new);
+        var cached = last;
+        if (cached != null && cached.level == level) {
+            return cached;
+        }
+        var service = SERVICES.computeIfAbsent(level, PolicyService::new);
+        last = service;
+        return service;
     }
 
     /** Drops the level's service when the level unloads; the service holds the level, so it cannot be weakly held. */
     public static void closeLevel(ServerLevel level) {
+        last = null;
         SERVICES.remove(level);
     }
 
@@ -63,10 +74,40 @@ public final class PolicyService {
     }
 
     public PolicyActivationState activation(PolicyKey key, PolicyRuntimeEndpoints endpoints) {
+        return activation(key, endpoints, FederationDomainRegistryAccess.get(level));
+    }
+
+    /** As {@link #activation(PolicyKey, PolicyRuntimeEndpoints)}, with this level's registry the caller already holds. */
+    public PolicyActivationState activation(PolicyKey key, PolicyRuntimeEndpoints endpoints,
+            FederationDomainRegistry registry) {
+        return activation(data.configured(key), key, endpoints, registry);
+    }
+
+    /**
+     * Activation of a record the caller has just read with {@link #configured}, without looking it up again; the
+     * registry is this level's, which the caller already holds.
+     */
+    public PolicyActivationState activation(PolicyRecord.Configured configured, PolicyRuntimeEndpoints endpoints,
+            FederationDomainRegistry registry) {
+        return activation(Optional.of(configured), configured.key(), endpoints, registry);
+    }
+
+    /**
+     * As {@link #activation(PolicyRecord.Configured, PolicyRuntimeEndpoints, FederationDomainRegistry)}, from the
+     * identity services of the two Grids, which a caller holding them for the Grids' lifetime passes directly.
+     */
+    public PolicyActivationState activation(PolicyRecord.Configured configured, NetworkIdentityService consumerIdentity,
+            NetworkIdentityService providerIdentity, BackendStatus backendStatus, FederationDomainRegistry registry) {
+        return PolicyActivation.classify(new PolicyActivationRequest(Optional.of(configured), configured.key(),
+                consumerIdentity.settlement(), providerIdentity.settlement(), registry, backendStatus));
+    }
+
+    private PolicyActivationState activation(Optional<PolicyRecord.Configured> configured, PolicyKey key,
+            PolicyRuntimeEndpoints endpoints, FederationDomainRegistry registry) {
         var consumer = endpoints.consumerGrid().getService(NetworkIdentityService.class).settlement();
         var provider = endpoints.providerGrid().getService(NetworkIdentityService.class).settlement();
-        return PolicyActivation.classify(new PolicyActivationRequest(data.configured(key), key, consumer, provider,
-                FederationDomainRegistryAccess.get(level), endpoints.backendStatus()));
+        return PolicyActivation.classify(new PolicyActivationRequest(configured, key, consumer, provider, registry,
+                endpoints.backendStatus()));
     }
 
     public int configuredCount() {

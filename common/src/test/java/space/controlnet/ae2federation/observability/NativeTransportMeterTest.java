@@ -40,6 +40,31 @@ class NativeTransportMeterTest {
     }
 
     @Test
+    void aRetainedAwayWindowStartsOverWhenItsScopeRecordsAgain() {
+        var meter = new NativeTransportMeter(4);
+        var other = new FederationDomainReference(new FederationDomainId("physical:other"), 1);
+        meter.recordAccepted(SCOPE, new OperationEventId(new UUID(0, 1)), "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        meter.recordAccepted(SCOPE, new OperationEventId(new UUID(0, 2)), "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+
+        meter.retain(scope -> false);
+        assertEquals(0, meter.window(SCOPE).dataRevision());
+        assertTrue(meter.recordAccepted(SCOPE, new OperationEventId(new UUID(0, 3)), "ae2:energy", 1,
+                ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
+        assertEquals(1, meter.window(SCOPE).dataRevision(), "The dropped window must not keep counting");
+        assertEquals(1, meter.window(SCOPE).events().size());
+
+        // Alternating scopes each keep their own window.
+        meter.recordAccepted(other, new OperationEventId(new UUID(0, 4)), "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        meter.recordAccepted(SCOPE, new OperationEventId(new UUID(0, 5)), "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        assertEquals(2, meter.window(SCOPE).dataRevision());
+        assertEquals(1, meter.window(other).dataRevision());
+    }
+
+    @Test
     void overflowCollapsesToExplicitResnapshot() {
         var meter = new NativeTransportMeter(2);
         for (var index = 0; index < 3; index++) {

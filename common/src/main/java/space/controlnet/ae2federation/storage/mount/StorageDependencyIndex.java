@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.ae2.storage.StorageProvenanceException;
+import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.BackendStatus;
@@ -25,6 +26,7 @@ import space.controlnet.ae2federation.storage.dependency.NativeSourceCandidate;
 import space.controlnet.ae2federation.storage.dependency.StorageDependencyCompiler;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
+import space.controlnet.ae2federation.storage.provenance.NodeActivity;
 import space.controlnet.ae2federation.storage.provenance.OriginNetworkId;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
@@ -137,7 +139,7 @@ final class StorageDependencyIndex {
         }
         for (var key : relationship.revision().policyRevisions().keySet()) {
             var direct = directRelationships.get(key);
-            if (direct == null || !directActive(policies, direct)) {
+            if (direct == null || !directActive(policies, direct, registry)) {
                 return false;
             }
         }
@@ -145,11 +147,15 @@ final class StorageDependencyIndex {
     }
 
     boolean sourceCurrent(NativeSourceDomain domain) {
-        if (!ready(domain) || domains.get(domain.origin()) != domain) {
+        if (domain.sources().isEmpty() || domains.get(domain.origin()) != domain) {
             return false;
         }
         try {
-            return provenance.discover(domain.runtimeGrid()) == domain && provenance.isCurrent(domain);
+            // discover returns only the origin's current domain, so equality also proves provenance.isCurrent. It
+            // returns this domain only while its capture stamp matches, and the stamp holds each source node with the
+            // activity it had when captured (active), so a match re-checks every source node's readiness now; a
+            // separate scan of the same nodes would repeat that.
+            return provenance.discover(domain.runtimeGrid()) == domain;
         } catch (ProvenanceException | StorageProvenanceException exception) {
             return false;
         }
@@ -163,8 +169,13 @@ final class StorageDependencyIndex {
     }
 
     private boolean directActive(PolicyService policies, StorageRelationship relationship) {
+        return directActive(policies, relationship, FederationDomainRegistryAccess.get(level));
+    }
+
+    private static boolean directActive(PolicyService policies, StorageRelationship relationship,
+            FederationDomainRegistry registry) {
         return policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
-                relationship.providerGrid(), BackendStatus.READY)) == PolicyActivationState.ACTIVE;
+                relationship.providerGrid(), BackendStatus.READY), registry) == PolicyActivationState.ACTIVE;
     }
 
     /**
@@ -175,8 +186,14 @@ final class StorageDependencyIndex {
         if (domain.sources().isEmpty()) {
             return false;
         }
-        for (var node : domain.sourceNodes()) {
-            if (!node.isActive() || !node.hasGridBooted() || node.getGrid() != domain.runtimeGrid()) {
+        var nodes = domain.sourceNodes();
+        if (nodes.isEmpty()) {
+            return true;
+        }
+        var grid = domain.runtimeGrid();
+        var booted = NodeActivity.gridBooted(grid);
+        for (var node : nodes) {
+            if (!NodeActivity.activeOn(node, grid, booted)) {
                 return false;
             }
         }

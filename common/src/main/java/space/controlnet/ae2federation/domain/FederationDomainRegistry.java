@@ -40,7 +40,12 @@ public final class FederationDomainRegistry {
     private final Map<FederationDomainId, FederationDomainSnapshot> federationDomains = new HashMap<>();
     private final Map<FederationDomainId, Long> physicalSequences = new HashMap<>();
     private final Map<NetworkId, Set<FederationDomainId>> networkIndex = new HashMap<>();
+    /** Diagnostic records of removed nodes kept at most; older ones are dropped first (every unloaded chunk adds some). */
+    public static final int MAX_UNLOADED_INVALIDATIONS = 4096;
+
     private final Map<FederationDomainNodeId, FederationDomainInvalidationReason> invalidations = new HashMap<>();
+    /** Nodes recorded as {@code SOURCE_UNLOADED}, oldest first; may hold nodes whose record changed since. */
+    private final java.util.LinkedHashSet<FederationDomainNodeId> unloaded = new java.util.LinkedHashSet<>();
     private final Map<FederationDomainSourceId, FederationDomainId> directBridges = new HashMap<>();
     private long topologyRevision;
     private long physicalSequence;
@@ -102,6 +107,13 @@ public final class FederationDomainRegistry {
             removeIncoming(previous);
         }
         invalidations.put(nodeId, reason);
+        if (reason == FederationDomainInvalidationReason.SOURCE_UNLOADED) {
+            unloaded.remove(nodeId);
+            unloaded.add(nodeId);
+            while (unloaded.size() > MAX_UNLOADED_INVALIDATIONS) {
+                invalidations.remove(unloaded.removeFirst(), FederationDomainInvalidationReason.SOURCE_UNLOADED);
+            }
+        }
     }
 
     public void removeNode(FederationDomainNodeId nodeId) {
@@ -116,8 +128,14 @@ public final class FederationDomainRegistry {
     /** Whether two networks are members of a common Federation Domain, without copying either membership set. */
     public boolean shareFederationDomain(NetworkId first, NetworkId second) {
         flush();
-        return !java.util.Collections.disjoint(networkIndex.getOrDefault(first, Set.of()),
-                networkIndex.getOrDefault(second, Set.of()));
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        // Usually each network is in one domain: both sets then hold the same id object, which equals answers at
+        // once, where the sorted set would compare its characters.
+        if (firstDomains.size() == 1 && secondDomains.size() == 1) {
+            return firstDomains.iterator().next().equals(secondDomains.iterator().next());
+        }
+        return !java.util.Collections.disjoint(firstDomains, secondDomains);
     }
 
     public boolean isCurrent(FederationDomainReference reference) {
@@ -344,6 +362,7 @@ public final class FederationDomainRegistry {
                 invalidations.put(node, FederationDomainInvalidationReason.IDENTITY_UNSETTLED);
             } else {
                 invalidations.remove(node);
+                unloaded.remove(node);
             }
         }
     }

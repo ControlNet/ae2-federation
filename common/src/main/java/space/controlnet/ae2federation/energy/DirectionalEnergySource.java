@@ -10,13 +10,26 @@ import appeng.api.networking.events.GridPowerStorageStateChanged;
 import org.jetbrains.annotations.Nullable;
 
 public final class DirectionalEnergySource implements IAEPowerStorage {
+    /**
+     * Runtime classes of the objects that own a node carrying a source. AE2 indexes a Grid's nodes by exactly this class
+     * ({@link appeng.api.networking.IGrid#getMachineNodes}), so a Grid's sources are found without visiting every node.
+     */
+    private static final java.util.Set<Class<?>> NODE_OWNER_CLASSES =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     private @Nullable IManagedGridNode owner;
 
-    public void bind(IManagedGridNode owner) {
+    /** Binds this source to {@code node}, which {@code nodeOwner} created as its own. */
+    public void bind(Object nodeOwner, IManagedGridNode node) {
         if (this.owner != null) {
             throw new IllegalStateException("Directional energy source is already bound");
         }
-        this.owner = java.util.Objects.requireNonNull(owner);
+        NODE_OWNER_CLASSES.add(nodeOwner.getClass());
+        this.owner = java.util.Objects.requireNonNull(node);
+    }
+
+    static Iterable<Class<?>> nodeOwnerClasses() {
+        return NODE_OWNER_CLASSES;
     }
 
     @Override

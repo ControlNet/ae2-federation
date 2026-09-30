@@ -41,6 +41,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     private @Nullable MinecraftServer server;
     private int duplicateLineages;
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
+    private long nodeRevision;
     private @Nullable NetworkIdentityRegistry registry;
 
     public NetworkIdentityGridService(IGrid grid) {
@@ -49,6 +50,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
 
     @Override
     public void addNode(IGridNode gridNode, @Nullable CompoundTag savedData) {
+        nodeRevision++;
         var lineage = read(savedData);
         var neutral = neutral(gridNode);
         var transientNode = !neutral && NativeIdentityInitialization.contains(gridNode);
@@ -183,6 +185,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
 
     @Override
     public void removeNode(IGridNode gridNode) {
+        nodeRevision++;
         provisional.remove(gridNode);
         fresh.remove(gridNode);
         var lineage = nodes.remove(gridNode);
@@ -210,6 +213,11 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         data.putUUID("node", lineage.nodeId());
         data.putLong("revision", lineage.revision());
         savedData.put(DATA_KEY, data);
+    }
+
+    @Override
+    public long nodeRevision() {
+        return nodeRevision;
     }
 
     @Override

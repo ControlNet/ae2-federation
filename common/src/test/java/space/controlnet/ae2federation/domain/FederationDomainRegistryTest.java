@@ -31,6 +31,28 @@ final class FederationDomainRegistryTest {
     }
 
     @Test
+    void sharedDomainAnswersForSingleAndSeveralMemberships() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab"), NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-bc"), NETWORK_B, NETWORK_C);
+
+        // A and C are each in one domain, B in both.
+        assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_B));
+        assertTrue(registry.shareFederationDomain(NETWORK_B, NETWORK_C));
+        assertTrue(registry.shareFederationDomain(NETWORK_C, NETWORK_B));
+        assertFalse(registry.shareFederationDomain(NETWORK_A, NETWORK_C));
+        assertFalse(registry.shareFederationDomain(NETWORK_A, network(9)));
+
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ac"), NETWORK_A, NETWORK_C);
+        assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_C));
+        for (var first : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C)) {
+            for (var second : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C)) {
+                assertEquals(!shared(registry, first, second).isEmpty(), registry.shareFederationDomain(first, second));
+            }
+        }
+    }
+
+    @Test
     void reciprocalTopologyMergesAndSplitsOnlyAffectedComponents() {
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
         var left = node(1);
@@ -112,6 +134,20 @@ final class FederationDomainRegistryTest {
         assertTrue(registry.federationDomainOf(cable).isEmpty());
         assertEquals(FederationDomainInvalidationReason.SOURCE_UNLOADED,
                 registry.snapshot().invalidations().get(cable));
+    }
+
+    @Test
+    void unloadedNodeRecordsAreBoundedToTheMostRecent() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var cap = FederationDomainRegistry.MAX_UNLOADED_INVALIDATIONS;
+        for (var position = 0; position < cap + 10; position++) {
+            registry.removeNode(node(position));
+        }
+
+        var invalidations = registry.snapshot().invalidations();
+        assertEquals(cap, invalidations.size(), "Unloaded node records must not grow without bound");
+        assertFalse(invalidations.containsKey(node(0)), "The oldest unloaded record is dropped first");
+        assertEquals(FederationDomainInvalidationReason.SOURCE_UNLOADED, invalidations.get(node(cap + 9)));
     }
 
     @Test

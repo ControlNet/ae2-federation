@@ -342,10 +342,14 @@ public final class NativeSourceDomainRegistry {
                     || NativeMountLedger.generation(currentService) != mountGeneration) {
                 return false;
             }
-            for (var index = 0; index < providerNodes.length; index++) {
-                var node = providerNodes[index];
-                if (node.isActive() != providerActive[index] || node.getGrid() != grid) {
-                    return false;
+            if (providerNodes.length > 0) {
+                var booted = NodeActivity.gridBooted(grid);
+                for (var index = 0; index < providerNodes.length; index++) {
+                    var node = providerNodes[index];
+                    // activeOn is false for a node on another Grid, which the second test rejects anyway.
+                    if (NodeActivity.activeOn(node, grid, booted) != providerActive[index] || node.getGrid() != grid) {
+                        return false;
+                    }
                 }
             }
             for (var link : delegateLinks) {

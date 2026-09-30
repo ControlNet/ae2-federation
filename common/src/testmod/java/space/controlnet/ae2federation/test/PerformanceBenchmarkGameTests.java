@@ -46,7 +46,13 @@ public final class PerformanceBenchmarkGameTests {
     private static final int MESH_PADDING = Integer.getInteger("ae2federation.perf.padding", 256);
     private static final int STORAGE_TYPES = Integer.getInteger("ae2federation.perf.storageTypes", 1000);
     private static final int PLANE = Integer.getInteger("ae2federation.perf.plane", 30);
-    private static final int WINDOW_TICKS = 100;
+    /** Ticks per measured window; the reported median uses the last 100. A longer window only helps a profiler. */
+    private static final int WINDOW_TICKS = Integer.getInteger("ae2federation.perf.windowTicks", 100);
+    /**
+     * Ticks an idle window lets pass before its median (of the last 100 ticks) counts: the ticks right after a
+     * measured burst of operations still settle what the burst left behind.
+     */
+    private static final int IDLE_SETTLE_TICKS = 100;
 
     private PerformanceBenchmarkGameTests() {
     }
@@ -80,16 +86,37 @@ public final class PerformanceBenchmarkGameTests {
                         "Consumer demand must be supplied through the mesh");
                 helper.assertTrue(scene.consumerCellStored() < 1, "Consumer cell must stay drained");
                 helper.assertTrue(before - scene.providersStored() > 0.5, "Provider cells must pay for the demand");
-                perf.nanosPerOp("extractModulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.MODULATE));
-                perf.nanosPerOp("extractSimulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.SIMULATE));
+                // Resolved once: the scene finds its Grids through block entities, which is not part of a demand.
+                var energy = scene.consumerGrid().getEnergyService();
+                perf.nanosPerOp("extractModulate", 2000, 300,
+                        () -> energy.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
+                perf.nanosPerOp("extractSimulate", 2000, 300,
+                        () -> energy.extractAEPower(1, Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE));
                 var source = scene.consumerSource();
                 helper.assertTrue(source.getAECurrentPower() > 1.0e8, "Stored-power probe must see the mesh cells");
                 perf.nanosPerOp("storedPowerProbe", 500, 300, source::getAECurrentPower);
+                // Parts of one MODULATE demand, for locating its cost: the binding's authority check, the native
+                // extraction from the provider Grid alone, and the accepted-flow bookkeeping.
+                var binding = scene.consumerBinding();
+                helper.assertTrue(binding.isCurrent(), "The mesh binding must be current");
+                perf.nanosPerOp("partBindingCurrent", 2000, 300, binding::isCurrent);
+                var provider = binding.providerService();
+                perf.nanosPerOp("partProviderExtract", 2000, 300,
+                        () -> provider.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
+                perf.nanosPerOp("partSourceSimulate", 2000, 300,
+                        () -> source.extractAEPower(1, Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE));
+                perf.nanosPerOp("partSourceModulate", 2000, 300,
+                        () -> source.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
+                var observability = LevelObservabilityService.get(helper.getLevel());
+                var scopes = binding.revision().federationDomains();
+                perf.nanosPerOp("partRecordFlow", 2000, 300, () -> observability.recordAccepted(scopes,
+                        OperationEventId.create(), "ae2:energy", 1_000_000_000L, ResourceUnit.NANO_AE,
+                        FlowState.Attribution.EXACT_OPERATION));
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
-            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertTrue(scene.consumerCellStored() < 1, "Consumer idle drain must still come from the mesh");
             scene.close();
@@ -124,13 +151,17 @@ public final class PerformanceBenchmarkGameTests {
                         "Consumer demand must be supplied through the fibers");
                 helper.assertTrue(scene.consumerCellStored() < 1, "Consumer cell must stay drained");
                 helper.assertTrue(before - scene.providersStored() > 0.5, "Provider cells must pay for the demand");
-                perf.nanosPerOp("extractModulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.MODULATE));
-                perf.nanosPerOp("extractSimulate", 2000, 300, () -> scene.extractConsumer(1, Actionable.SIMULATE));
+                // Resolved once: the scene finds its Grids through block entities, which is not part of a demand.
+                var energy = scene.consumerGrid().getEnergyService();
+                perf.nanosPerOp("extractModulate", 2000, 300,
+                        () -> energy.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
+                perf.nanosPerOp("extractSimulate", 2000, 300,
+                        () -> energy.extractAEPower(1, Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE));
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
-            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertTrue(scene.consumerCellStored() < 1, "Consumer idle drain must still come from the fibers");
             scene.close();
@@ -199,7 +230,7 @@ public final class PerformanceBenchmarkGameTests {
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
-            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark insert must be extracted again");
             fixtures.close();
@@ -240,7 +271,7 @@ public final class PerformanceBenchmarkGameTests {
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
-            helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+            helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark extract must be inserted again");
             fixtures.close();
@@ -321,7 +352,7 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(false, "Measuring idle ticks");
             }
             if (state[0] == 2) {
-                helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
+                helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
                 perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
                 state[0] = 3;
                 window[0] = new PerfMeasure.TickWindow(level.getServer());
@@ -361,7 +392,7 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(false, "Measuring closed-menu ticks");
             }
             if (state[0] == 1) {
-                helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring closed-menu ticks");
+                helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring closed-menu ticks");
                 perf.record("closedTick", window[0].medianTickNanos(), "ns/tick");
                 helper.assertTrue(scene.openFirstMenu() && scene.openSecondMenu(), "Both Domain menus must open");
                 window[0] = new PerfMeasure.TickWindow(level.getServer());

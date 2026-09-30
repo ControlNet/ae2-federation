@@ -181,6 +181,13 @@ public final class EnergyMeshScene implements AutoCloseable {
         throw new IllegalStateException("Consumer Grid has no Federation energy source");
     }
 
+    /** The binding through which Grid 0 draws on Grid 1. */
+    public space.controlnet.ae2federation.energy.EnergyCapabilityBinding consumerBinding() {
+        var grids = grids();
+        var key = new PolicyKey(network(grids.get(0)), network(grids.get(1)), PolicyCapability.ME_POWER);
+        return EnergyBindingService.get(helper.getLevel()).capability(key).orElseThrow();
+    }
+
     public int consumerNodeCount() {
         return consumerGrid().size();
     }

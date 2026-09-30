@@ -78,8 +78,8 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         super(partItem);
         getMainNode().setIdlePowerUsage(0.0).setFlags(GridFlags.CANNOT_CARRY)
                 .addService(appeng.api.networking.energy.IAEPowerStorage.class, mainEnergySource);
-        mainEnergySource.bind(getMainNode());
-        outerEnergySource.bind(outerNode);
+        mainEnergySource.bind(this, getMainNode());
+        outerEnergySource.bind(this, outerNode);
     }
 
     @Override

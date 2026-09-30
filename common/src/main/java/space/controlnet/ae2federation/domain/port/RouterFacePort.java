@@ -65,7 +65,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
                 .setFlags(GridFlags.CANNOT_CARRY)
                 .setExposedOnSides(EnumSet.of(face))
                 .addService(appeng.api.networking.energy.IAEPowerStorage.class, energySource);
-        energySource.bind(boundaryNode);
+        energySource.bind(this, boundaryNode);
     }
 
     public void initialize(ServerLevel serverLevel) {

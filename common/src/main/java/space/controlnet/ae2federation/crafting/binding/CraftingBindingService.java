@@ -288,9 +288,9 @@ public final class CraftingBindingService implements AutoCloseable {
         var configured = policies.configured(binding.relationship().key()).orElse(null);
         return configured != null && configured.revision().equals(binding.revision().policyRevision())
                 && configured.rule().enabled() && configured.rule().operations().contains(PolicyOperation.REQUEST)
-                && policies.activation(binding.relationship().key(), new PolicyRuntimeEndpoints(
-                        binding.relationship().consumerGrid(), binding.relationship().providerGrid(), BackendStatus.READY))
-                        == PolicyActivationState.ACTIVE;
+                && policies.activation(configured, new PolicyRuntimeEndpoints(
+                        binding.relationship().consumerGrid(), binding.relationship().providerGrid(), BackendStatus.READY),
+                        registry) == PolicyActivationState.ACTIVE;
     }
 
     private void remove(PolicyKey key) {

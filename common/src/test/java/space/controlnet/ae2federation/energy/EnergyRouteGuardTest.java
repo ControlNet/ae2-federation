@@ -51,6 +51,29 @@ final class EnergyRouteGuardTest {
                 "A later demand may use the provider again");
     }
 
+    @Test
+    void largeDemandsStillVisitEachGridOnce() {
+        var consumer = grid();
+        var providers = new Object[40];
+        for (var index = 0; index < providers.length; index++) {
+            providers[index] = grid();
+        }
+
+        EnergyRouteGuard.demand(consumer, () -> {
+            for (var provider : providers) {
+                assertTrue(EnergyRouteGuard.visit(provider), "Each new provider may supply the demand");
+            }
+            for (var provider : providers) {
+                assertFalse(EnergyRouteGuard.visit(provider), "No provider supplies one demand twice");
+            }
+            assertFalse(EnergyRouteGuard.visit(consumer), "The consumer stays visited past the scan limit");
+            return 0.0;
+        });
+
+        assertEquals(1.0, EnergyRouteGuard.demand(consumer, () -> EnergyRouteGuard.visit(providers[39]) ? 1.0 : 0.0),
+                "A later demand starts with nothing visited");
+    }
+
     /** A stand-in Grid: the guard only compares identities. */
     private static Object grid() {
         return new Object();

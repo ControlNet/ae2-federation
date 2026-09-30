@@ -16,6 +16,9 @@ import space.controlnet.ae2federation.observability.ObservationRuntimeReceiptSin
 public final class NativeTransportMeter {
     private final int eventLimit;
     private final Map<FederationDomainReference, WindowState> windows = new HashMap<>();
+    /** The window recorded into last: one binding's operations repeat the same scope object. Cleared by retain. */
+    private FederationDomainReference lastScope;
+    private WindowState lastState;
 
     public NativeTransportMeter(int eventLimit) {
         if (eventLimit < 1) {
@@ -26,6 +29,14 @@ public final class NativeTransportMeter {
 
     public boolean recordAccepted(FederationDomainReference scope, OperationEventId eventId, String resource, long amount,
             ResourceUnit unit, FlowState.Attribution attribution) {
+        Objects.requireNonNull(resource);
+        return recordAccepted(scope, eventId, () -> resource, amount, unit, attribution);
+    }
+
+    /** As above, but names the resource only when the flow is built: a window that keeps no events never needs it. */
+    public boolean recordAccepted(FederationDomainReference scope, OperationEventId eventId,
+            java.util.function.Supplier<String> resource, long amount, ResourceUnit unit,
+            FlowState.Attribution attribution) {
         Objects.requireNonNull(scope);
         Objects.requireNonNull(eventId);
         Objects.requireNonNull(unit);
@@ -36,12 +47,14 @@ public final class NativeTransportMeter {
         if (amount == 0) {
             return false;
         }
-        var state = windows.computeIfAbsent(scope, ignored -> new WindowState());
+        var state = scope == lastScope ? lastState : windows.computeIfAbsent(scope, ignored -> new WindowState());
+        lastScope = scope;
+        lastState = state;
         var receipts = ObservationRuntimeReceiptSink.wantsFlows();
         // A window that already overflowed keeps no events until its next snapshot; without a receipt listener its
         // flow, with the hashed id, would be built for nobody.
         var flow = state.resnapshotRequired && !receipts ? null : new FlowState(scope,
-                FlowId.forEvent(scope.federationDomainId(), eventId.value()), eventId, resource, amount, unit,
+                FlowId.forEvent(scope.federationDomainId(), eventId.value()), eventId, resource.get(), amount, unit,
                 attribution, false);
         if (!state.eventIds.add(eventId)) {
             return false;
@@ -77,6 +90,8 @@ public final class NativeTransportMeter {
     /** Keeps only the windows whose scope {@code keep} accepts. */
     public void retain(java.util.function.Predicate<FederationDomainReference> keep) {
         windows.keySet().removeIf(scope -> !keep.test(scope));
+        lastScope = null;
+        lastState = null;
     }
 
     public void acknowledgeSnapshot(FederationDomainReference scope) {

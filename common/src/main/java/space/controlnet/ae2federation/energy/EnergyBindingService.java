@@ -47,13 +47,36 @@ public final class EnergyBindingService implements AutoCloseable {
         federationDomains = new EnergyFederationDomainObserver(level);
     }
 
-    public static synchronized EnergyBindingService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, EnergyBindingService::new);
+    /**
+     * The service {@link #get} or {@link #find} returned last, read without the lock: every energy demand looks it up.
+     * Replaced under the lock, cleared on close.
+     */
+    private static volatile EnergyBindingService last;
+
+    public static EnergyBindingService get(ServerLevel level) {
+        var cached = last;
+        return cached != null && cached.level == level ? cached : getLocked(level);
+    }
+
+    private static synchronized EnergyBindingService getLocked(ServerLevel level) {
+        var service = SERVICES.computeIfAbsent(level, EnergyBindingService::new);
+        last = service;
+        return service;
     }
 
     @Nullable
-    static synchronized EnergyBindingService find(ServerLevel level) {
-        return SERVICES.get(level);
+    static EnergyBindingService find(ServerLevel level) {
+        var cached = last;
+        return cached != null && cached.level == level ? cached : findLocked(level);
+    }
+
+    @Nullable
+    private static synchronized EnergyBindingService findLocked(ServerLevel level) {
+        var service = SERVICES.get(level);
+        if (service != null) {
+            last = service;
+        }
+        return service;
     }
 
     /** Last reconciliation snapshot only; does not create a service, reconcile, or authorize an operation. */
@@ -86,6 +109,7 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     public static synchronized CloseReceipt closeLevel(ServerLevel level) {
+        last = null;
         var service = SERVICES.remove(level);
         var active = service == null ? 0 : service.bindings.size();
         if (service != null) {
@@ -109,6 +133,7 @@ public final class EnergyBindingService implements AutoCloseable {
         reconciledTick = level.getGameTime();
         diagnostics.clear();
         var desired = federationDomains.relationships();
+        backends.retain(desired.values().stream().map(EnergyRelationship::providerGrid).toList());
         var policies = PolicyService.get(level);
         List.copyOf(bindings.keySet()).stream().filter(key -> !eligible(policies, desired.get(key)))
                 .forEach(this::remove);
@@ -191,6 +216,10 @@ public final class EnergyBindingService implements AutoCloseable {
         if (!Double.isFinite(amount) || amount < 0) {
             throw new ArithmeticException("Energy amount is not exactly representable");
         }
+        // A whole number of AE below 2^53 converts exactly; the decimal path would give the same value.
+        if (amount < 0x1p53 && amount == Math.rint(amount)) {
+            return Math.multiplyExact((long) amount, 1_000_000_000L);
+        }
         return java.math.BigDecimal.valueOf(amount).movePointRight(9).longValueExact();
     }
 
@@ -198,6 +227,7 @@ public final class EnergyBindingService implements AutoCloseable {
     public void close() {
         diagnostics.clear();
         withdrawals += bindings.size();
+        bindings.values().forEach(EnergyCapabilityBinding::withdraw);
         bindings.clear();
         candidates.clear();
         currentBackends.clear();
@@ -283,7 +313,9 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     private boolean current(EnergyCapabilityBinding binding, NativeEnergyBackend backend) {
-        if (binding == null || bindings.get(binding.key()) != binding) {
+        // Every path that drops a binding from the map withdraws it, and a put always follows remove(key), so this is
+        // the map's own answer to whether the binding is still the published one.
+        if (binding == null || binding.withdrawn()) {
             return false;
         }
         if (!binding.revision().providerGeneration().equals(backend.generation())
@@ -302,8 +334,8 @@ public final class EnergyBindingService implements AutoCloseable {
         var configured = policies.configured(key).orElse(null);
         var authorized = configured != null && configured.revision().equals(binding.revision().policyRevision())
                 && configured.rule().enabled() && configured.rule().operations().contains(PolicyOperation.SUPPLY)
-                && policies.activation(key, new PolicyRuntimeEndpoints(binding.consumerGrid(), binding.providerGrid(),
-                        BackendStatus.READY)) == PolicyActivationState.ACTIVE;
+                && policies.activation(configured, binding.consumerIdentity(), binding.providerIdentity(),
+                        BackendStatus.READY, registry) == PolicyActivationState.ACTIVE;
         if (!authorized) {
             remove(binding.key());
         }
@@ -313,17 +345,21 @@ public final class EnergyBindingService implements AutoCloseable {
     @Nullable
     private static DirectionalEnergySource selectSource(IGrid consumerGrid) {
         var candidates = new ArrayList<DirectionalEnergySource>();
-        for (var node : consumerGrid.getNodes()) {
-            var storage = node.getService(IAEPowerStorage.class);
-            if (storage instanceof DirectionalEnergySource source && source.node() == node) {
-                candidates.add(source);
+        for (var ownerClass : DirectionalEnergySource.nodeOwnerClasses()) {
+            for (var node : consumerGrid.getMachineNodes(ownerClass)) {
+                var storage = node.getService(IAEPowerStorage.class);
+                if (storage instanceof DirectionalEnergySource source && source.node() == node) {
+                    candidates.add(source);
+                }
             }
         }
         return candidates.stream().min(Comparator.comparingInt(System::identityHashCode)).orElse(null);
     }
 
     private void remove(PolicyKey key) {
-        if (bindings.remove(key) != null) {
+        var removed = bindings.remove(key);
+        if (removed != null) {
+            removed.withdraw();
             candidates.clear();
             withdrawals++;
         }
