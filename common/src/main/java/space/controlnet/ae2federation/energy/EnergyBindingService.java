@@ -6,6 +6,7 @@ import appeng.api.networking.energy.IAEPowerStorage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +34,13 @@ public final class EnergyBindingService implements AutoCloseable {
     private int publications;
     private int withdrawals;
     private int demandDepth;
+    /** Game tick of the last full reconciliation; a demand reconciles at most once per tick. */
+    private long reconciledTick = Long.MIN_VALUE;
+    /** Each consumer source's bindings in provider-network order, rebuilt after any binding change. */
+    private final Map<DirectionalEnergySource, List<EnergyCapabilityBinding>> candidates = new IdentityHashMap<>();
+    /** Provider backends whose native sources were rediscovered as current in {@link #currencyTick}. */
+    private final Map<NativeEnergyBackend, Boolean> currentBackends = new IdentityHashMap<>();
+    private long currencyTick = Long.MIN_VALUE;
 
     private EnergyBindingService(ServerLevel level) {
         this.level = level;
@@ -98,6 +106,7 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        reconciledTick = level.getGameTime();
         diagnostics.clear();
         var desired = federationDomains.relationships();
         var policies = PolicyService.get(level);
@@ -129,18 +138,23 @@ public final class EnergyBindingService implements AutoCloseable {
         if (!Double.isFinite(amount) || amount < 0) {
             throw new IllegalArgumentException("Energy amount must be finite and nonnegative");
         }
+        return EnergyRouteGuard.demand(consumerGrid, () -> demand(source, consumerGrid, amount, mode));
+    }
+
+    private double demand(DirectionalEnergySource source, IGrid consumerGrid, double amount, Actionable mode) {
         var outermost = demandDepth == 0;
         demandDepth++;
         try {
-            reconcileAll();
-            var candidates = bindings.values().stream()
-                    .filter(binding -> binding.consumerSource() == source && binding.consumerGrid() == consumerGrid)
-                    .sorted(Comparator.comparing(binding -> binding.providerGrid().getService(
-                            space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement()
-                            .networkId().orElseThrow().toString()))
-                    .toList();
+            // Policy edits and topology publications reconcile at once; this catches the rest (a provider Grid that
+            // gained its first energy source, a node that finished booting) within one tick.
+            if (reconciledTick != level.getGameTime()) {
+                reconcileAll();
+            }
             var extracted = 0.0;
-            for (var binding : candidates) {
+            for (var binding : candidates(source)) {
+                if (binding.consumerGrid() != consumerGrid) {
+                    continue;
+                }
                 var accepted = binding.extract(amount - extracted, mode);
                 extracted += accepted;
                 if (outermost && mode == Actionable.MODULATE && accepted > 0) {
@@ -178,6 +192,8 @@ public final class EnergyBindingService implements AutoCloseable {
         diagnostics.clear();
         withdrawals += bindings.size();
         bindings.clear();
+        candidates.clear();
+        currentBackends.clear();
         backends.clear();
         federationDomains.clear();
     }
@@ -235,10 +251,28 @@ public final class EnergyBindingService implements AutoCloseable {
                 () -> current(holder[0], backend));
         holder[0] = binding;
         bindings.put(relationship.key(), binding);
+        candidates.clear();
         publications++;
         if (demandDepth == 0) {
             source.announceAvailability();
         }
+    }
+
+    private List<EnergyCapabilityBinding> candidates(DirectionalEnergySource source) {
+        return candidates.computeIfAbsent(source, ignored -> bindings.values().stream()
+                .filter(binding -> binding.consumerSource() == source)
+                .sorted(Comparator.comparing(binding -> binding.key().providerNetworkId().toString()))
+                .toList());
+    }
+
+    /** Rediscovers a provider's native sources at most once per tick; any change is caught on the next tick. */
+    private boolean backendCurrent(NativeEnergyBackend backend) {
+        var tick = level.getGameTime();
+        if (currencyTick != tick) {
+            currencyTick = tick;
+            currentBackends.clear();
+        }
+        return currentBackends.computeIfAbsent(backend, backends::isCurrent);
     }
 
     private boolean current(EnergyCapabilityBinding binding, NativeEnergyBackend backend) {
@@ -246,7 +280,7 @@ public final class EnergyBindingService implements AutoCloseable {
             return false;
         }
         if (!binding.revision().providerGeneration().equals(backend.generation())
-                || !backends.isCurrent(backend)) {
+                || !backendCurrent(backend)) {
             remove(binding.key());
             reconcileAll();
             return false;
@@ -283,6 +317,7 @@ public final class EnergyBindingService implements AutoCloseable {
 
     private void remove(PolicyKey key) {
         if (bindings.remove(key) != null) {
+            candidates.clear();
             withdrawals++;
         }
     }

@@ -1,23 +1,58 @@
 package space.controlnet.ae2federation.energy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import space.controlnet.ae2federation.identity.NetworkId;
-import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyKey;
 
 final class EnergyRouteGuardTest {
     @Test
-    void rejectsCycleWithoutRetainingOperationState() {
-        var key = new PolicyKey(new NetworkId(UUID.randomUUID()), new NetworkId(UUID.randomUUID()),
-                PolicyCapability.ME_POWER);
+    void visitsEachGridOncePerDemand() {
+        var consumer = grid();
+        var provider = grid();
 
-        var nested = EnergyRouteGuard.call(key, () -> EnergyRouteGuard.call(key, () -> 4.0));
-        var later = EnergyRouteGuard.call(key, () -> 4.0);
+        var result = EnergyRouteGuard.demand(consumer, () -> {
+            assertFalse(EnergyRouteGuard.visit(consumer), "The consumer is visited when its demand starts");
+            assertTrue(EnergyRouteGuard.visit(provider), "An unvisited provider may supply the demand");
+            assertFalse(EnergyRouteGuard.visit(provider), "A provider supplies one demand only once");
+            return 4.0;
+        });
 
-        assertEquals(0.0, nested);
-        assertEquals(4.0, later);
+        assertEquals(4.0, result);
+    }
+
+    @Test
+    void nestedDemandJoinsTheRunningOne() {
+        var first = grid();
+        var second = grid();
+        var third = grid();
+
+        EnergyRouteGuard.demand(first, () -> {
+            assertTrue(EnergyRouteGuard.visit(second));
+            // The provider's own Federation source asks on its behalf: the walk must not come back to the first Grid.
+            return EnergyRouteGuard.demand(second, () -> {
+                assertFalse(EnergyRouteGuard.visit(first));
+                assertTrue(EnergyRouteGuard.visit(third));
+                return 0.0;
+            });
+        });
+    }
+
+    @Test
+    void retainsNoStateBetweenDemands() {
+        var consumer = grid();
+        var provider = grid();
+
+        EnergyRouteGuard.demand(consumer, () -> EnergyRouteGuard.visit(provider) ? 1.0 : 0.0);
+
+        assertTrue(EnergyRouteGuard.visit(provider), "Outside a demand nothing is visited");
+        assertEquals(1.0, EnergyRouteGuard.demand(consumer, () -> EnergyRouteGuard.visit(provider) ? 1.0 : 0.0),
+                "A later demand may use the provider again");
+    }
+
+    /** A stand-in Grid: the guard only compares identities. */
+    private static Object grid() {
+        return new Object();
     }
 }

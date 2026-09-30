@@ -53,10 +53,9 @@ public final class EnergyCapabilityBinding {
     }
 
     double extract(double amount, Actionable mode) {
-        if (!isCurrent()) {
+        if (!isCurrent() || !EnergyRouteGuard.visit(relationship.providerGrid())) {
             return 0;
         }
-        return EnergyRouteGuard.call(relationship.key(), () -> isCurrent()
-                ? DirectionalEnergyTransfer.extract(backend.service(), amount, mode) : 0);
+        return DirectionalEnergyTransfer.extract(backend.service(), amount, mode);
     }
 }
