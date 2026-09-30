@@ -66,8 +66,9 @@ and Provider → Endpoint needed a `PROCESSING` pair rule. The user's intended d
     `CableFacePort.invalidate()`, which drops the cable's domain node at once. The node came back on the next tick, so
     the domain got a new generation. Every open workspace then went stale: "No live Endpoint", "Providers 0".
   - Fix: the cache listener calls `recheck()`. It only marks the port dirty, and `tick()` reports a change only when
-    the peer differs. `neighborChanged` still uses the hard `invalidate()`. A removed or unloaded peer removes its own
-    node.
+    the peer differs. A removed or unloaded peer removes its own node.
+  - Superseded later on 09-30: `neighborChanged` now calls `revalidate()`, which resolves the peer in place and
+    republishes only a change; the hard `invalidate()` is gone (see `domain-placement-power-blackout-2026-09-30.md`).
   - Regression test: GameTest `endpointfederationfaceclaimkeepsdomain`.
 - **A new domain republishes a few times before it settles.** T33 `ready()` now waits until the Router domain's
   generation holds for 20 ticks (log line `TASK33_DOMAIN`) before any workspace opens.

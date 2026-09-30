@@ -54,8 +54,10 @@ Follows the Endpoint redesign in `endpoint-federation-face-design-2026-09-29.md`
   - Open workspaces go stale.
   - Since mapping checks the Provider's domain, mapping a second Endpoint in the same tick fails with
     `rejected-domain-disconnected` (`productionproviderthreeway`).
-- The rule: a listener only marks the port dirty (`recheck()` / `recheckFederationPeer()`). A changed neighbour block
-  still reaches `invalidate()` through `neighborChanged`.
+- The rule: a listener only marks the port dirty (`recheck()` / `recheckFederationPeer()`).
+- Superseded later on 09-30 (see `domain-placement-power-blackout-2026-09-30.md`): `neighborChanged` no longer
+  invalidates either. It resolves the face in place (`revalidate()`, or the Provider's evidence comparison) and
+  republishes only a changed link, and the registry keeps a domain standing while one side of a link is pending.
 - Regression tests:
   - `endpointFederationFaceClaimKeepsDomain` (cable)
   - `...ClaimKeepsRouterDomain`

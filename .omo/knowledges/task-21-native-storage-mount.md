@@ -63,3 +63,11 @@
   per-case runtime traces. The self-test fully rebinds doubled/missing quantity/capacity and false cleanup receipts.
 - Final canonical round-2 evidence is regenerated after all source and documentation edits under
   `.omo/evidence/task-21-repair-round-2-final/`.
+
+## 2026-09-30 topology continuity
+
+- Mounts still appear only after a reciprocal link completes and still fail closed on a real split, but a Federation
+  block placed next to a domain no longer withdraws the domain for a tick, so mounts are not removed and re-added.
+- `CandidateRelationshipRevision.isCurrent` no longer compares the level-wide topology revision; a domain change
+  reaches the relationship through its `FederationDomainReference`, whose generation follows the member networks.
+

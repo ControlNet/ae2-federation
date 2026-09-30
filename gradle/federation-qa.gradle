@@ -2077,7 +2077,7 @@ verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declar
             federationdomainpartialunload: 8, federationdomainrejectstaleroute: 8]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.findAll {
-        new File(it).name.startsWith('native-domain') && new File(it).name.endsWith('.properties')
+        new File(it).name.startsWith('native-federationdomain') && new File(it).name.endsWith('.properties')
     }
     if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
         throw new GradleException('Task 13 native artifact set is duplicated, missing, or substituted')

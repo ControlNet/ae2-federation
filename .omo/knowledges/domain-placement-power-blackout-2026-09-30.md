@@ -48,3 +48,23 @@ the domain; with half-edges ignored, the eager drop of X still splits the domain
   and reinstalls the domain snapshot with a new generation; `FederationDomainId.physical` is the smallest node id in
   the component, so it can change when a node joins; consumers (energy, crafting, storage, UI) compare the
   level-global `topologyRevision`, so any change anywhere in the level invalidates every binding.
+
+## Resolution (2026-09-30, commits 08c4be0, 7d2e084, 8501eb0)
+
+1. Registry: mutual links only, pending half-edges, per-port unsettled exclusion, id inheritance and
+   member-set generations (see `task-13-fabric-registry.md`).
+2. Publishers: `CableFacePort.revalidate()` / `RouterFacePort.revalidate()` resolve on `neighborChanged` and report a
+   change; the Router's `onSaveChanges`, port initialization and the Provider's `GRID_BOOT` only mark dirty; a Provider
+   moved to another Grid upserts its new evidence at once (registry only, inside AE2 propagation); a rotated Endpoint
+   publishes its new front at once; a Router republishes every 20 ticks only if its evidence changed (identity settled).
+3. Consumers: `EnergyBindingRevision.sameAuthority` / `CraftingBindingRevision.sameAuthority` ignore the level-wide
+   revision; the policy session also requires its Router/Endpoint/Provider entrance to stay a node of the domain.
+- Regression: `topology.placement-keeps-power` failed before (B unpowered 32 of 40 ticks after each of cable, plain
+  block, Router, Endpoint and Provider placements; binding withdrawn in the same tick) and passes after, including
+  "binding not rebuilt"; `topology.break-cuts-power` passes throughout; `topology.unsettled-attach-keeps-domain`
+  failed before and passes after.
+- Behaviour change pinned by `router.port-replacement`: a native neighbour replaced by a Federation Cable now resolves
+  to `FEDERATION` in the same block update (previously `DISCONNECTED` for a tick); the stale native binding still
+  never survives the replacement.
+- Not run locally: ldlib2 UI scenarios (`ui.*`) and dedicated multiclient (`multiclient.*`), which need a client.
+
