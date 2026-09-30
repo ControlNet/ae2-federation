@@ -17,7 +17,8 @@ import space.controlnet.ae2federation.client.policy.BlockMarks;
 public final class FederationMapPreview extends UIElement {
     private static final int MIN_RADIUS = 8;
     private static final int MAX_RADIUS = 32;
-    private static final int RESAMPLE_FRAMES = 40;
+    /** Game ticks between samples of the loaded blocks; counted in ticks so a faster client does not sample more. */
+    private static final long RESAMPLE_TICKS = 10;
     /** Blocks below the network's lowest block that still count as the ground it stands on. */
     private static final int SLICE_DEPTH = 6;
     /** Blocks around the device a card's thumbnail shows along its short side, so the device stays a visible cell. */
@@ -35,7 +36,8 @@ public final class FederationMapPreview extends UIElement {
     private int markColor;
     private int[] colors = new int[0];
     private int sampledCells;
-    private int frames;
+    /** Game time of the next sample; {@link Long#MIN_VALUE} samples on the next frame. */
+    private long nextSample = Long.MIN_VALUE;
     /** Map or 3D, shared by every preview so the player's choice holds across pages and screens. */
     private static boolean threeDimensional;
     /** Made on the first client frame: the UI tree is also built on the server, where a Scene cannot be loaded. */
@@ -140,7 +142,7 @@ public final class FederationMapPreview extends UIElement {
         this.maskColor = maskColor;
         this.marks = List.copyOf(marks);
         this.markColor = markColor;
-        if (moved) frames = 0;
+        if (moved) nextSample = Long.MIN_VALUE;
         var sliced = new java.util.ArrayList<BlockMarks.Mark>(mask);
         sliced.addAll(marks);
         var newSlice = BlockMarks.slice(sliced, SLICE_DEPTH).orElse(null);
@@ -182,7 +184,7 @@ public final class FederationMapPreview extends UIElement {
             if (ratio > 1) newColumns = Math.round(side * ratio) | 1;
             else newRows = Math.round(side / ratio) | 1;
         }
-        if (newColumns != columns || newRows != rows) frames = 0;
+        if (newColumns != columns || newRows != rows) nextSample = Long.MIN_VALUE;
         columns = newColumns;
         rows = newRows;
     }
@@ -252,9 +254,11 @@ public final class FederationMapPreview extends UIElement {
         if (scene != null && scene.isDisplayed()) applyMode();
         if (center == null) return;
         fitGrid();
-        if (frames-- <= 0) {
+        var level = Minecraft.getInstance().level;
+        long now = level == null ? Long.MIN_VALUE : level.getGameTime();
+        if (nextSample == Long.MIN_VALUE || now >= nextSample) {
             sample();
-            frames = RESAMPLE_FRAMES;
+            nextSample = now == Long.MIN_VALUE ? Long.MIN_VALUE : now + RESAMPLE_TICKS;
         }
         float cell = Math.min(getSizeWidth() / columns, getSizeHeight() / rows);
         float left = getPositionX() + (getSizeWidth() - cell * columns) / 2;
@@ -264,16 +268,19 @@ public final class FederationMapPreview extends UIElement {
         pose.pushPose();
         pose.translate(left, top, 0);
         pose.scale(cell, cell, 1);
-        graphics.fill(0, 0, columns, rows, FederationTheme.WELL);
-        for (int index = 0; index < colors.length; index++) {
-            if (colors[index] != 0) graphics.fill(index % columns, index / columns, index % columns + 1, index / columns + 1, colors[index]);
-        }
-        int tint = (thumbnail ? 0xc8000000 : 0xe6000000) | (maskColor & 0xffffff);
-        for (var block : mask) cell(graphics, block, tint, 0);
-        if (thumbnail) for (var mark : marks) {
-            cell(graphics, mark, 0xff000000, -1);
-            cell(graphics, mark, markColor, 0);
-        }
+        // One draw for the whole tile: an unmanaged fill flushes after every cell, thousands of draws per frame.
+        graphics.drawManaged(() -> {
+            graphics.fill(0, 0, columns, rows, FederationTheme.WELL);
+            for (int index = 0; index < colors.length; index++) {
+                if (colors[index] != 0) graphics.fill(index % columns, index / columns, index % columns + 1, index / columns + 1, colors[index]);
+            }
+            int tint = (thumbnail ? 0xc8000000 : 0xe6000000) | (maskColor & 0xffffff);
+            for (var block : mask) cell(graphics, block, tint, 0);
+            if (thumbnail) for (var mark : marks) {
+                cell(graphics, mark, 0xff000000, -1);
+                cell(graphics, mark, markColor, 0);
+            }
+        });
         pose.popPose();
         // The panel marks the controller as the design's legend says: a white outline around its cell.
         if (!thumbnail) for (var mark : marks) {

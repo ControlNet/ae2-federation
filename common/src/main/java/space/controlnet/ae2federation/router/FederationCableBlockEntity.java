@@ -23,6 +23,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
+    /** Client only: the flow renderer's neighbour mask and the game tick it was read in. */
+    private int flowMask;
+    private long flowMaskTick = Long.MIN_VALUE;
 
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
@@ -104,5 +107,18 @@ public final class FederationCableBlockEntity extends BlockEntity {
         initialized = false;
         federationDomainDirty = true;
         ports.values().forEach(CableFacePort::destroy);
+    }
+
+    /**
+     * The neighbour mask the flow renderer draws, read from the level at most once per game tick: the renderer asks
+     * every frame, and six block lookups per cable per frame add up across a base.
+     */
+    public int flowMask() {
+        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
+        if (level != null && flowMaskTick != gameTime) {
+            flowMask = CableVisualConnections.mask(level, worldPosition);
+            flowMaskTick = gameTime;
+        }
+        return flowMask;
     }
 }

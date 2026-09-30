@@ -9,6 +9,10 @@ import com.lowdragmc.lowdraglib2.uitest.UIScenario;
 @LDLRegisterClient(name = "ui.mapping", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
 public final class TaskThirtyThreeMappingScenario implements UIScenario {
+    /** TEST-ONLY: frames timed once the showcase's network detail (graph and map preview) is on screen. */
+    private static final int PERF_FRAMES = 120;
+    private static final long[] FRAME_TIMING = new long[1];
+
     @Override
     public void configure(ScenarioOptions options) {
         TaskThirtyThreeScenarioSupport.configure(options, 3);
@@ -397,6 +401,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click("#graph_fit").frames(3)
                 .step("showcase: select Main Base", context -> showcaseSelect(context, "Main Base"))
                 .waitUntil("showcase: Main Base details", context -> context.el("#network_detail").isVisible())
+                // TEST-ONLY performance evidence: the average frame with the domain graph and the map preview shown.
+                .step("perf: start frame timing", context -> FRAME_TIMING[0] = System.nanoTime())
+                .frames(PERF_FRAMES)
+                .step("perf: report frame timing", context -> org.slf4j.LoggerFactory.getLogger("ae2federation-perf")
+                        .info("AE2F_PERF test=uishowcase metric=frameTime value={} unit=ns/frame",
+                                (System.nanoTime() - FRAME_TIMING[0]) / PERF_FRAMES))
                 .check("showcase: five Endpoint nodes, four beside the network that maps them", context ->
                         context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)

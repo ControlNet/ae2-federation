@@ -101,6 +101,8 @@ final class FederationTopologyView {
      * related" scope. The server sends at most a cap of them, nearest first, and says how many there are.
      */
     private final List<Network> related = new ArrayList<>();
+    /** {@link #shown()} by id, rebuilt after the shown networks change; the canvas looks networks up every frame. */
+    private Map<String, Network> shownById;
     private int relatedTotal;
     private final Map<String, JsonObject> relatedRules = new HashMap<>();
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
@@ -296,6 +298,7 @@ final class FederationTopologyView {
     private void setScope(boolean related) {
         if (showRelated == related) return;
         showRelated = related;
+        shownById = null;
         if (!showRelated && network(selectedNetwork) == null) selectedNetwork = "";
         if (!showRelated && !selectedPair.isEmpty() && java.util.Arrays.stream(selectedPair.split("\\|"))
                 .anyMatch(id -> network(id) == null)) selectedPair = "";
@@ -332,6 +335,7 @@ final class FederationTopologyView {
         via = root.has("via") ? root.getAsJsonObject("via") : null;
         networks.clear();
         networkDomains.clear();
+        shownById = null;
         if (root.has("networks")) {
             var index = 0;
             for (var value : root.getAsJsonArray("networks")) {
@@ -353,6 +357,7 @@ final class FederationTopologyView {
                 networkDomains.put(id, domains(json));
             }
         }
+        shownById = null;
         endpointNodes.clear();
         if (root.has("endpoint")) for (var value : root.getAsJsonArray("endpoint")) {
             var json = value.getAsJsonObject();
@@ -1656,7 +1661,11 @@ final class FederationTopologyView {
     }
 
     private Network network(String id) {
-        return shown().stream().filter(network -> network.id().equals(id)).findFirst().orElse(null);
+        if (shownById == null) {
+            shownById = new HashMap<>();
+            for (var network : shown()) shownById.putIfAbsent(network.id(), network);
+        }
+        return shownById.get(id);
     }
 
     private List<String> providers(Network network) {
