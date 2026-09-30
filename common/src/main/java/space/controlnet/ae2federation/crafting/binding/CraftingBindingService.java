@@ -133,8 +133,7 @@ public final class CraftingBindingService implements AutoCloseable {
         var binding = snapshot.binding();
         if (bindings.get(binding.relationship().key()) != binding
                 || binding.relationship().providerGrid() != snapshot.sourceGrid()
-                || snapshot.sourceGrid().getCraftingService() != snapshot.service()
-                || federationDomains.topologyRevision() != binding.revision().topologyRevision()) {
+                || snapshot.sourceGrid().getCraftingService() != snapshot.service()) {
             return false;
         }
         var registry = FederationDomainRegistryAccess.get(level);
@@ -263,7 +262,7 @@ public final class CraftingBindingService implements AutoCloseable {
         var active = bindings.get(relationship.key());
         if (active != null && active.relationship().consumerGrid() == relationship.consumerGrid()
                 && active.relationship().providerGrid() == relationship.providerGrid()
-                && active.revision().equals(revision) && active.nativeService().orElse(null) == backend.service()) {
+                && active.revision().sameAuthority(revision) && active.nativeService().orElse(null) == backend.service()) {
             return;
         }
         remove(relationship.key());
@@ -277,7 +276,6 @@ public final class CraftingBindingService implements AutoCloseable {
 
     private boolean current(CraftingCapabilityBinding binding, NativeCraftingBackend backend) {
         if (binding == null || bindings.get(binding.relationship().key()) != binding
-                || federationDomains.topologyRevision() != binding.revision().topologyRevision()
                 || !binding.revision().providerGeneration().equals(backend.generation())
                 || !backends.isCurrent(backend)) {
             return false;

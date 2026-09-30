@@ -128,7 +128,7 @@ final class StorageDependencyIndex {
     boolean current(EffectiveSourceRelationship relationship, NativeSourceDomain domain) {
         if (compilation.relationships().get(relationship.key()) != relationship
                 || domains.get(domain.origin()) != domain
-                || !relationship.revision().isCurrent(federationDomains.topologyRevision(), domain.generation(),
+                || !relationship.revision().isCurrent(domain.generation(),
                         key -> PolicyService.get(level).revision(key),
                         reference -> FederationDomainRegistryAccess.get(level).isCurrent(reference))) {
             return false;

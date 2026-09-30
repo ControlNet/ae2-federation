@@ -72,6 +72,7 @@ public final class TopologyContinuityGameTests {
         var step = new int[] { -1 };
         var samples = new int[1];
         var unpowered = new int[1];
+        var publications = new int[1];
         helper.succeedWhen(() -> {
             if (step[0] < 0) {
                 scene.awaitPowered();
@@ -81,12 +82,18 @@ public final class TopologyContinuityGameTests {
                 if (samples[0] == 0) {
                     var placement = placements.get(step[0]);
                     var before = scene.reference();
+                    publications[0] = scene.bindings().publicationCount();
                     placement.action().run();
                     scene.checkLinkNow(placement.name(), placement.keepsGeneration() ? before : null, violations);
                 } else if (!scene.consumerPowered()) {
                     unpowered[0]++;
                 }
                 if (++samples[0] > SAMPLE_TICKS) {
+                    // A member-free node joining must not replace the binding either, only extend the domain.
+                    if (placements.get(step[0]).keepsGeneration()
+                            && scene.bindings().publicationCount() != publications[0]) {
+                        violations.add("the energy binding was rebuilt after the " + placements.get(step[0]).name());
+                    }
                     if (unpowered[0] > 0) {
                         violations.add("B unpowered for " + unpowered[0] + " of " + SAMPLE_TICKS + " ticks after the "
                                 + placements.get(step[0]).name());

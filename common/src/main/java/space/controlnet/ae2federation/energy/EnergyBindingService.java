@@ -226,7 +226,7 @@ public final class EnergyBindingService implements AutoCloseable {
         var active = bindings.get(relationship.key());
         if (active != null && active.consumerGrid() == relationship.consumerGrid()
                 && active.providerGrid() == relationship.providerGrid() && active.providerService() == backend.service()
-                && active.consumerSource() == source && active.revision().equals(revision)) {
+                && active.consumerSource() == source && active.revision().sameAuthority(revision)) {
             return;
         }
         remove(relationship.key());
@@ -245,8 +245,7 @@ public final class EnergyBindingService implements AutoCloseable {
         if (binding == null || bindings.get(binding.key()) != binding) {
             return false;
         }
-        if (federationDomains.topologyRevision() != binding.revision().topologyRevision()
-                || !binding.revision().providerGeneration().equals(backend.generation())
+        if (!binding.revision().providerGeneration().equals(backend.generation())
                 || !backends.isCurrent(backend)) {
             remove(binding.key());
             reconcileAll();

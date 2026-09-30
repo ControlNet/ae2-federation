@@ -43,6 +43,8 @@ public final class FederationDomainPolicySession {
     private final ServerLevel level;
     private final FederationDomainPolicyEntrance entrance;
     private final FederationDomainReference context;
+    /** The entrance's own domain node when the opened domain contained it, else null (a Bridge or a member device). */
+    private final @org.jetbrains.annotations.Nullable space.controlnet.ae2federation.domain.FederationDomainNodeId contextNode;
     private final FederationDomainPolicyObservation observation;
     private PolicyEditorSelection selection;
     private PolicyRevision expectedRevision = PolicyRevision.NONE;
@@ -80,6 +82,9 @@ public final class FederationDomainPolicySession {
         level = player.serverLevel();
         this.entrance = entrance;
         context = federationDomain.map(FederationDomainSnapshot::reference).orElse(null);
+        var entranceNode = FederationDomainRegistryAccess.nodeId(level, entrance.position());
+        contextNode = federationDomain.filter(snapshot -> snapshot.nodes().contains(entranceNode)).map(ignored -> entranceNode)
+                .orElse(null);
         observation = context == null ? null : new FederationDomainPolicyObservation(this, player, context);
         var members = federationDomain.map(snapshot -> List.copyOf(snapshot.memberships().keySet())).orElse(List.of());
         selection = members.size() >= 2 ? PolicyEditorSelection.initial(members) : null;
@@ -175,7 +180,7 @@ public final class FederationDomainPolicySession {
     public boolean matchesAuthority(ServerPlayer candidate, FederationDomainReference requestedContext,
             PolicyRevision requestedRevision) {
         if (!isStillValid(candidate) || context == null || !context.equals(requestedContext)
-                || !FederationDomainRegistryAccess.get(level).isCurrent(context) || !state.editingAllowed() || selection == null
+                || !contextCurrent() || !state.editingAllowed() || selection == null
                 || !expectedRevision.equals(requestedRevision)) {
             return false;
         }
@@ -183,7 +188,7 @@ public final class FederationDomainPolicySession {
     }
 
     public boolean rejectStaleContext(ServerPlayer candidate) {
-        if (isStillValid(candidate) && context != null && FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+        if (isStillValid(candidate) && context != null && contextCurrent()) {
             return false;
         }
         reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
@@ -807,7 +812,7 @@ public final class FederationDomainPolicySession {
     public boolean setPolicy(String encoded) {
         var target = PolicySwitchTarget.parse(encoded).orElse(null);
         if (target == null || selection == null || !state.editingAllowed()) return false;
-        if (!isStillValid(player) || context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+        if (!isStillValid(player) || context == null || !contextCurrent()) {
             reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
             return true;
         }
@@ -1014,7 +1019,7 @@ public final class FederationDomainPolicySession {
     /** Session, distance and domain authority without the selected rule's revision; switches carry their own. */
     public boolean matchesContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
         return isStillValid(candidate) && context != null && context.equals(requestedContext)
-                && FederationDomainRegistryAccess.get(level).isCurrent(context) && state.editingAllowed() && selection != null;
+                && contextCurrent() && state.editingAllowed() && selection != null;
     }
 
     public void nextMappingProvider() {
@@ -1502,8 +1507,22 @@ public final class FederationDomainPolicySession {
                 && !(world.getBlockEntity(position) instanceof space.controlnet.ae2federation.router.RouterBlockEntity);
     }
 
+    /**
+     * The opened domain is still the one this session edits: its generation is unchanged, which holds while its member
+     * networks stay the same, and an entrance that was a node of it (a Router, Endpoint or Provider) still is. A relay
+     * Router cut out of a domain whose members stay connected elsewhere must not keep editing that domain.
+     */
+    private boolean contextCurrent() {
+        var registry = FederationDomainRegistryAccess.get(level);
+        if (context == null || !registry.isCurrent(context)) {
+            return false;
+        }
+        return contextNode == null || registry.federationDomain(context.federationDomainId())
+                .map(snapshot -> snapshot.nodes().contains(contextNode)).orElse(false);
+    }
+
     private Optional<FederationDomainSnapshot> currentFederationDomain() {
-        if (context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+        if (context == null || !contextCurrent()) {
             return Optional.empty();
         }
         return FederationDomainRegistryAccess.get(level).federationDomain(context.federationDomainId());
@@ -1542,7 +1561,7 @@ public final class FederationDomainPolicySession {
         if (!mappingAllowed) {
             return false;
         }
-        if (!isStillValid(player) || context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+        if (!isStillValid(player) || context == null || !contextCurrent()) {
             mappingAllowed = false;
             reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
             return false;
@@ -1553,14 +1572,14 @@ public final class FederationDomainPolicySession {
     /** Whether a mapping request still matches this session's live domain; no rule revision is involved. */
     public boolean matchesMappingContext(ServerPlayer candidate, FederationDomainReference requestedContext) {
         return mappingAllowed && isStillValid(candidate) && context != null && context.equals(requestedContext)
-                && FederationDomainRegistryAccess.get(level).isCurrent(context);
+                && contextCurrent();
     }
 
     private boolean authorizeAction() {
         if (!state.editingAllowed() || selection == null) {
             return false;
         }
-        if (!isStillValid(player) || context == null || !FederationDomainRegistryAccess.get(level).isCurrent(context)) {
+        if (!isStillValid(player) || context == null || !contextCurrent()) {
             reject(PolicyEditorSessionState.Status.STALE_CONTEXT);
             return false;
         }
