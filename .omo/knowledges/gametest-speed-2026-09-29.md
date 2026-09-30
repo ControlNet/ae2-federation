@@ -55,3 +55,17 @@ The required gate remains `python3 tools/required_gametests.py`: one server per 
 ## Real defects batch mode found
 
 `CableFacePort.tick()` queried its `BlockCapabilityCache` after `destroy()`: a neighbour change marked the destroyed port dirty again. NeoForge then throws "Do not call getCapability on an invalid cache", which crashes the server. A destroyed port now skips resolution until the cable initializes again.
+
+## Intermittent CI fixture timeouts (seen 2026-09-28 to 2026-09-30)
+
+- On CI, `tools/required_gametests.py` sometimes fails a required GameTest with its first readiness message, e.g.
+  `automationrejectduplicatedemand ... Waiting for duplicate-demand topology`, `observenativeflowonce ... Waiting for
+  native directional energy fixture`, `subscriptionrejectstalegeneration ... Waiting for stale-generation relationship`.
+- It looks instant ("1 GAME TESTS COMPLETE IN ~0.7 s") but is a real timeout: the idle GameTest server ticks unthrottled,
+  and the CI log shows about 200 progress lines (one per 20 ticks) = the 4000-tick `timeoutTicks`. Locally the same test
+  passes after about 6 lines (~120 ticks).
+- Every failure hit a different test, never on the code under change, and passed alone locally (automationrejectduplicatedemand
+  11/11 on 2026-09-30). `gh run rerun <id> --failed` has cleared it; the root cause (fixture readiness never reached) is not
+  yet found.
+- Read failures from the `required-gametest-log` artifact: `gh run download <id> -n required-gametest-log -D <dir>`, then
+  `grep "failed at" <dir>/gametest.log`.
