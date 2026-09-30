@@ -6,6 +6,7 @@
     {"id":"provider.production-release-cas-failure","backend":"gametest","testId":"productionproviderreleasecasfailure","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"provider.production-cleanup-buffers","backend":"gametest","testId":"productionprovidercleanupbuffers","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"provider.production-replaced-cleanup","backend":"gametest","testId":"productionproviderreplacedcleanup","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"provider.screen-replaced-provider","backend":"gametest","testId":"providerscreenreplacedprovider","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"provider.production-claim-changed-cleanup","backend":"gametest","testId":"productionproviderclaimchangedcleanup","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"identity.single-established-merge","backend":"gametest","testId":"identitysingleestablishedmerge","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"identity.legacy-provisional","backend":"gametest","testId":"identitylegacyprovisional","structure":"ae2federation_test:harness_native_smoke","assertions":6},

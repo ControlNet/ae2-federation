@@ -168,6 +168,20 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || !captures.any { it.path.contains('ui-identity-merge') }) {
         throw new GradleException('Task 33 merge identity state was not explained with both parts')
     }
+    // Right-click opens the Provider's own screen: its nine real slots take clicks and quick moves, and its AE2
+    // settings and priority reach the Provider.
+    if (evidence('ui.mapping', 'providerScreen') != 'slots-9;blocking-toggled;priority-7;slot-click;quick-move'
+            || !captures.any { it.path.contains('ui-provider-screen') }
+            || !captures.any { it.path.contains('ui-provider-slot-filled') }
+            || !captures.any { it.path.contains('ui-provider-return') }) {
+        throw new GradleException('Task 33 Provider screen slots, settings or navigation evidence is missing')
+    }
+    // In the showcase domain the host's Provider screen shows its own Endpoints, two other Providers' and a free one.
+    if (evidence('ui.mapping', 'showcaseProviderClaims') != 'free-1;in_use-2;occupied-2'
+            || !['ui-showcase-provider', 'ui-showcase-provider-own', 'ui-showcase-provider-other'].every { name ->
+                captures.any { it.path.endsWith("_${name}.png") } }) {
+        throw new GradleException('Task 33 showcase Provider screen evidence is missing')
+    }
     def mapping = outcomes['ui.mapping']
     if (mapping.authoritativeMappingLanes != '[0]'
             || mapping.processingWire != 'mapped-unlinked'
@@ -887,6 +901,11 @@ tasks.register('federationUiTest') {
         }
         if (child.exit != 0 || child.timedOut) {
             throw new GradleException("Actual Minecraft client failed or timed out; exit=${child.exit}, log=${clientLog}")
+        }
+        // LDLib2 logs "may be attacks" when a side refuses a binding's data; in a menu's initial data that also
+        // garbles every later binding, so the Provider screen's settings and choices would silently go missing.
+        if (requested.contains('ui.mapping') && clientLog.text.contains('may be attacks')) {
+            throw new GradleException("A Federation menu refused sync data (LDLib2 'may be attacks'); log=${clientLog}")
         }
         def verified = verifyLdlibReport(new File(ldlibOutput, 'report.json'), ldlibOutput, selectedScenarioNames, runId)
         def assertionMap = requested.collect { caseId -> [caseId: caseId, status: 'passed'] }

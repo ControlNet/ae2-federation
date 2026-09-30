@@ -16,12 +16,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
-import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.AEItemKey;
-import appeng.api.stacks.AmountFormat;
 import net.minecraft.network.chat.Component;
 
-import net.minecraft.world.item.ItemStack;
 
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
@@ -29,7 +25,7 @@ final class FederationWorkspace {
     /** The server's choice groups; only the Endpoint diagnostics keep a selector, the wires view is the rest. */
     private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
     private static final Map<String, String> SELECTORS = Map.of("endpoint", "endpoint_next");
-    private final Map<JsonObject, List<GenericStack>> resourceCache = new java.util.IdentityHashMap<>();
+    private final PatternChoices patterns = new PatternChoices();
     private final UI ui;
     private final FederationEndpointBrowser endpointBrowser;
     private final Consumer<String> select;
@@ -131,8 +127,8 @@ final class FederationWorkspace {
     }
 
     void bindProcessing(Consumer<String> setMapping, Runnable release) {
-        processing = new FederationProcessingGraph(ui, setMapping, select, release, this::patternName, this::outputStack,
-                this::patternFacts);
+        processing = new FederationProcessingGraph(ui, setMapping, select, release, patterns::name, patterns::outputStack,
+                patterns::facts);
         if (topology != null) topology.onSearch(processing::filter);
     }
 
@@ -182,7 +178,7 @@ final class FederationWorkspace {
 
     void acceptChoices(String encoded) {
         if (encoded.isEmpty()) return;
-        resourceCache.clear();
+        patterns.reset();
         var root = JsonParser.parseString(encoded).getAsJsonObject();
         endpointBrowser.accept(root);
         if (!entranceApplied) {
@@ -288,7 +284,7 @@ final class FederationWorkspace {
         var choice = choices.getOrDefault(group, List.of()).stream()
                 .filter(value -> value.get("id").getAsString().equals(id)).findFirst().orElse(null);
         if (choice == null) return Component.literal(id);
-        if (group.equals("slot")) return Component.literal("#" + id + " ").append(patternName(choice));
+        if (group.equals("slot")) return Component.literal("#" + id + " ").append(patterns.name(choice));
         if (group.equals("target") && choice.has("state")) return tr("target_choice",
                 tr("target_state." + choice.get("state").getAsString()),
                 choice.has("position") ? choice.get("position").getAsString() : choice.get("label").getAsString());
@@ -297,49 +293,12 @@ final class FederationWorkspace {
         return Component.literal(choice.get("label").getAsString());
     }
 
-    /** A pattern's outputs and inputs with exact amounts, for the wires view's pattern detail and search. */
-    private List<Component> patternFacts(JsonObject value) {
-        var lines = new ArrayList<Component>();
-        for (var output : resources(value, "outputs")) lines.add(tr("output_resource", output.what().getDisplayName(), amount(output)));
-        for (var input : resources(value, "inputs")) lines.add(tr("input_resource", input.what().getDisplayName(), amount(input)));
-        return lines;
-    }
-
-    private List<GenericStack> resources(JsonObject choice, String field) {
-        var array = choice.getAsJsonArray(field);
-        if (array == null || array.isEmpty()) return List.of();
-        // Cache each immutable resource object for the lifetime of this synchronized snapshot.
-        return array.asList().stream().map(value -> resourceCache.computeIfAbsent(value.getAsJsonObject(), resource -> {
-            var level = net.minecraft.client.Minecraft.getInstance().level;
-            if (level == null) return List.of();
-            var ops = level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
-            return GenericStack.CODEC.parse(ops, resource).result().map(List::of).orElseGet(List::of);
-        })).flatMap(List::stream).toList();
-    }
-
-    private static String amount(GenericStack stack) {
-        return stack.what().formatAmount(stack.amount(), AmountFormat.FULL);
-    }
-
     /** The objects of one root array, or none when an older payload leaves it out. */
     private static List<JsonObject> objects(JsonObject root, String field) {
         if (!root.has(field)) return List.of();
         var values = new java.util.ArrayList<JsonObject>();
         root.getAsJsonArray(field).forEach(value -> values.add(value.getAsJsonObject()));
         return values;
-    }
-
-    private ItemStack outputStack(JsonObject choice) {
-        var outputs = resources(choice, "outputs");
-        if (outputs.isEmpty()) return ItemStack.EMPTY;
-        var output = outputs.getFirst();
-        return output.what() instanceof AEItemKey item ? item.toStack() : GenericStack.wrapInItemStack(output);
-    }
-
-    private Component patternName(JsonObject choice) {
-        if (choice.get("empty").getAsBoolean()) return tr("empty_slot");
-        var outputs = resources(choice, "outputs");
-        return outputs.isEmpty() ? Component.literal(choice.get("label").getAsString()) : outputs.getFirst().what().getDisplayName();
     }
 
     static net.minecraft.network.chat.MutableComponent trLocation(String key, Object... arguments) {

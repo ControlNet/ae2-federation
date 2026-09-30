@@ -128,18 +128,95 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("sneak-right-click the Provider block", TaskThirtyThreeWorldFixture::sneakRightClickProvider)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .check("a sneak-use opens the workspace too", context -> context.el("#return_provider").isVisible())
+                .check("a sneak-use opens the Provider screen too", context -> context.el("#provider_window").isVisible())
                 .closeScreen()
                 .serverGet("read the Provider's position", "task33.providerAt", TaskThirtyThreeWorldFixture::providerPositionQuery)
                 .server("right-click the Provider block", TaskThirtyThreeWorldFixture::openProviderMapping)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .check("device entrance selects mapping", context -> context.el("#page_mapping").isVisible())
-                .waitUntil("right-click opens the wires view editing this Provider", context ->
-                        context.el("#processing_graph").isVisible()
+                .waitUntil("right-click opens the Provider's own screen on this Provider", context ->
+                        context.el("#provider_window").isVisible() && context.all("#page_overview").isEmpty()
                         && context.all(".processing-provider.selected .processing-provider-text").stream()
                                 .anyMatch(header -> header.text().startsWith(context.<String>get("task33.providerAt") + " ")))
-                .screenshot("ui-provider-right-click")
+                .waitUntil("every pattern slot has a row holding its real slot", context -> java.util.stream.IntStream.range(0, 9)
+                        .allMatch(slot -> !context.all("#processing_pattern_" + slot + " #pattern_slot_" + slot).isEmpty()))
+                .check("only patterns have a port to wire", context -> !context.all("#processing_port_1").isEmpty()
+                        && context.all("#processing_port_8").isEmpty())
+                .check("the domain's Endpoint is on the canvas", context -> context.all(".processing-endpoint").size() == 1)
+                .check("a pattern slot shows what the pattern makes, as AE2's does", context -> {
+                    var slot = context.el("#pattern_slot_0").as(space.controlnet.ae2federation.client.menu.FederationPatternSlot.class);
+                    return appeng.api.crafting.PatternDetailsHelper.isEncodedPattern(slot.getValue())
+                            && slot.displayStack().is(net.minecraft.world.item.Items.DIAMOND);
+                })
+                .check("a fluid pattern shows its fluid", context -> {
+                    var shown = appeng.api.stacks.GenericStack.unwrapItemStack(context.el("#pattern_slot_3")
+                            .as(space.controlnet.ae2federation.client.menu.FederationPatternSlot.class).displayStack());
+                    return shown != null && shown.what() instanceof appeng.api.stacks.AEFluidKey fluid
+                            && fluid.getFluid() == net.minecraft.world.level.material.Fluids.WATER;
+                })
+                .check("the screen is the workspace's size", context -> {
+                    var window = context.mc().getWindow();
+                    var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(window.getGuiScaledWidth(),
+                            window.getGuiScaledHeight());
+                    var bounds = context.el("#provider_root").bounds();
+                    return Math.round(bounds.width()) == size.width() && Math.round(bounds.height()) == size.height();
+                })
+                .waitUntil("the Lane's return buffer is listed as empty", context -> !context.all("#provider_return_state_0").isEmpty()
+                        && context.el("#provider_return_state_0").text().equals("Empty"))
+                .waitUntil("AE2 settings arrive from the server", context -> context.el("#setting_blocking")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isActive())
+                .screenshot("ui-provider-screen")
+                // AE2's settings live on the screen: Blocking reaches the Provider and each of its Lanes.
+                .click("#setting_blocking")
+                .waitUntilServer("Blocking mode is on", TaskThirtyThreeWorldFixture::providerBlocking)
+                .checkServer("every Lane blocks too", TaskThirtyThreeWorldFixture::providerLanesBlocking)
+                .waitUntil("the Blocking button shows it is on", context -> context.el("#setting_blocking")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("selected"))
+                .click("#setting_blocking")
+                .waitUntilServer("Blocking mode is off again", TaskThirtyThreeWorldFixture::providerNotBlocking)
+                // Requests and the server's value travel separately, so a quick double click and a two-digit
+                // priority settle instead of bouncing between the values in flight.
+                .click("#setting_blocking").click("#setting_blocking")
+                .serverTicks(40)
+                .checkServer("a quick double click settles on off", TaskThirtyThreeWorldFixture::providerNotBlocking)
+                .typeInto("#provider_priority", "12")
+                .waitUntilServer("a two-digit priority reaches the Provider", TaskThirtyThreeWorldFixture::providerPriorityTwelve)
+                .serverTicks(40)
+                .checkServer("the priority stays at 12", TaskThirtyThreeWorldFixture::providerPriorityTwelve)
+                .typeInto("#provider_priority", "7")
+                .waitUntilServer("the typed priority reaches the Provider", TaskThirtyThreeWorldFixture::providerPrioritySeven)
+                .typeInto("#provider_priority", "0").blur()
+                .waitUntilServer("the priority is back to 0", TaskThirtyThreeWorldFixture::providerPriorityZero)
+                // The slots are real menu slots: a pattern goes in with a click and comes back out with a shift-click.
+                .server("give the player a pattern", TaskThirtyThreeWorldFixture::givePlayerPattern)
+                .waitUntil("the pattern is in the player's inventory on the screen", context -> !context.el("#inventory_9")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot.class).getSlot().getItem().isEmpty())
+                .click("#inventory_9")
+                .click("#pattern_slot_8")
+                .waitUntilServer("a click puts the pattern into Provider slot 8", TaskThirtyThreeWorldFixture::providerSlotEightFilled)
+                .waitUntil("slot 8's row gets a port once it holds a pattern", context -> !context.all("#processing_port_8").isEmpty())
+                .screenshot("ui-provider-slot-filled")
+                .click("#pattern_slot_8")
+                .click("#inventory_9")
+                .waitUntilServer("two clicks take the pattern back out", TaskThirtyThreeWorldFixture::providerSlotEightTakenBack)
+                .waitUntil("slot 8's row loses its port again", context -> context.all("#processing_port_8").isEmpty())
+                .server("shift-click the pattern in", TaskThirtyThreeWorldFixture::quickMovePlayerPattern)
+                .waitUntilServer("a shift-click fills the first empty pattern slot",
+                        TaskThirtyThreeWorldFixture::providerSlotFourQuickMoved)
+                .waitUntil("the screen shows it in slot 4", context -> !context.all("#processing_port_4").isEmpty())
+                .server("shift-click the pattern out", TaskThirtyThreeWorldFixture::quickMoveProviderPattern)
+                .waitUntilServer("a shift-click moves it back to the player", TaskThirtyThreeWorldFixture::providerSlotFourReturned)
+                .server("clear the copied pattern", TaskThirtyThreeWorldFixture::takePlayerPattern)
+                .step("record Provider screen evidence", context -> {
+                    context.attach("evidenceFor", "ui.mapping");
+                    context.attach("providerScreen", "slots-9;blocking-toggled;priority-7;slot-click;quick-move");
+                })
+                .closeScreen()
+                // The workspace still opens on this Provider; its Edit patterns button leads to the Provider's screen.
+                .server("open the Provider's workspace", TaskThirtyThreeWorldFixture::openProviderWorkspace)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().frames(5)
+                .check("device entrance selects mapping", context -> context.el("#page_mapping").isVisible())
                 .hover("#return_provider")
                 .step("press Provider return navigation", context -> {
                     var bounds = context.el("#return_provider").bounds();
@@ -150,29 +227,15 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     var point = context.<float[]>get("task33.returnPoint");
                     context.input().mouseUp(point[0], point[1], 0);
                 })
-                .awaitScreen(appeng.client.gui.implementations.PatternProviderScreen.class)
+                .awaitModularUI()
+                .waitUntil("Edit patterns opens the Provider's own screen", context -> !context.all("#provider_window").isEmpty()
+                        && context.el("#provider_window").isVisible())
                 .screenshot("ui-provider-return")
-                .step("use native Provider mapping navigation", context -> {
-                    var button = context.mc().screen.children().stream()
-                            .filter(net.minecraft.client.gui.components.Button.class::isInstance)
-                            .map(net.minecraft.client.gui.components.Button.class::cast)
-                            .filter(candidate -> candidate.getMessage().getString().equals("Federation mapping"))
-                            .findFirst().orElseThrow();
-                    var point = new float[] {button.getX() + button.getWidth() / 2f, button.getY() + button.getHeight() / 2f};
-                    context.put("task33.nativePoint", point);
-                    context.input().moveTo(point[0], point[1]);
-                })
-                .step("press native Provider navigation", context -> {
-                    var point = context.<float[]>get("task33.nativePoint");
-                    context.input().mouseDown(point[0], point[1], 0);
-                })
-                .step("release native navigation", context -> {
-                    var point = context.<float[]>get("task33.nativePoint");
-                    context.input().mouseUp(point[0], point[1], 0);
-                })
+                .closeScreen()
+                .server("open the Provider's workspace again", TaskThirtyThreeWorldFixture::openProviderWorkspace)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .check("native navigation returns to mapping", context -> context.el("#page_mapping").isVisible())
+                .check("the workspace opens on the Provider's wires", context -> context.el("#page_mapping").isVisible())
                 .screenshot("ui-provider-mapping")
                 .waitUntilServer("native lane sends a real processing input", TaskThirtyThreeWorldFixture::dispatchRealWork)
                 .checkServer("the send was recorded against the Endpoint's lane", TaskThirtyThreeWorldFixture::processingFlowObserved)
@@ -367,7 +430,55 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-processing-other")
+                .closeScreen()
+                // The host's own Provider screen in the fuller domain: its two Endpoints, two that other Providers own
+                // (read-only) and one still free.
+                .server("showcase: right-click the host Provider", TaskThirtyThreeWorldFixture::openProviderMapping)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().frames(5)
+                .waitUntil("showcase: the Provider screen shows the domain's five Endpoints", context ->
+                        context.el("#provider_window").isVisible() && showcaseClaims(context).equals("free-1;in_use-2;occupied-2"))
+                .check("showcase: another Provider's Endpoint names its owner and its patterns", context ->
+                        context.all(".processing-endpoint.claim-occupied .processing-endpoint-state").stream()
+                                .allMatch(state -> state.text().startsWith("Provider @ ") && state.text().contains(" · #")))
+                .step("record showcase Provider evidence", context -> {
+                    context.attach("evidenceFor", "ui.mapping");
+                    context.attach("showcaseProviderClaims", showcaseClaims(context));
+                })
+                .hover("#provider_title").frames(5)
+                .screenshot("ui-showcase-provider")
+                .step("showcase: select one of its own Endpoints", context -> showcaseEndpoint(context, "in_use"))
+                .waitUntil("showcase: its own Endpoint's details", context ->
+                        !context.all(".processing-endpoint.claim-in_use.selected").isEmpty())
+                .hover("#provider_title").frames(5)
+                .screenshot("ui-showcase-provider-own")
+                .step("showcase: select an Endpoint another Provider owns", context ->
+                        showcaseEndpoint(context, "occupied"))
+                .waitUntil("showcase: another Provider's Endpoint is shown with its owner", context ->
+                        !context.all(".processing-endpoint.claim-occupied.selected").isEmpty()
+                        && !context.all("#processing_fact_value_owner").isEmpty()
+                        && !context.all("#processing_detail_text.read-only-banner").isEmpty()
+                        && context.el("#processing_detail_text").text().startsWith("Read-only: this Endpoint belongs to Provider @ "))
+                .check("showcase: only the owner edits it, so this screen offers no toggle", context ->
+                        !context.el("#mapping_toggle").isVisible() && !context.el("#processing_unlink").isVisible())
+                .hover("#provider_title").frames(5)
+                .screenshot("ui-showcase-provider-other")
                 .closeScreen();
+    }
+
+    /** The Provider screen's Endpoint cards counted by claim, as {@code claim-count} in claim order. */
+    private static String showcaseClaims(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return java.util.stream.Stream.of("free", "in_use", "occupied", "retained", "local", "unobserved")
+                .map(code -> code + "-" + context.all(".processing-endpoint.claim-" + code).size())
+                .filter(entry -> !entry.endsWith("-0"))
+                .collect(java.util.stream.Collectors.joining(";"));
+    }
+
+    /** Clicks the first Endpoint card with this claim. */
+    private static void showcaseEndpoint(com.lowdragmc.lowdraglib2.uitest.TestContext context, String claim) {
+        var bounds = context.all(".processing-endpoint.claim-" + claim).get(0).bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }
 
     private static void showcaseSelect(com.lowdragmc.lowdraglib2.uitest.TestContext context, String name) {

@@ -34,8 +34,8 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
     }
 
     /**
-     * Opens the domain workspace on its processing wires with this Provider selected, sneaking or not. Its Edit patterns
-     * button leads to AE2's own Provider screen, which also opens directly when the workspace cannot.
+     * Opens the Provider's own screen, sneaking or not: its patterns, AE2 settings, priority and the wires of this
+     * Provider to the Endpoints of the domain its Federation face joins. AE2's Provider screen opens only if it cannot.
      */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos position, Player player,
@@ -45,9 +45,9 @@ public final class FederationPatternProviderBlock extends AEBaseEntityBlock<Fede
             return InteractionResult.PASS;
         }
         if (!level.isClientSide()) {
-            boolean workspace = player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
-                    && space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(serverPlayer, position);
-            if (!workspace) provider.openMenu(player, MenuLocators.forBlockEntity(provider));
+            boolean opened = player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                    && space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openProvider(serverPlayer, position);
+            if (!opened) provider.openMenu(player, MenuLocators.forBlockEntity(provider));
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }

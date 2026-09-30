@@ -77,12 +77,16 @@ record BridgePolicyEntrance(BlockPos position, Direction side, BridgeOperational
     }
 }
 
-record DevicePolicyEntrance(BlockPos position, boolean provider) implements FederationDomainPolicyEntrance {
+/**
+ * A Provider or Endpoint entrance holds the block entity it was opened on, as AE2's own menus do: a device broken and
+ * replaced at the same position is another device, and the screen's slots still point at the removed one.
+ */
+record DevicePolicyEntrance(BlockPos position, boolean provider,
+        @org.jetbrains.annotations.Nullable net.minecraft.world.level.block.entity.BlockEntity entity)
+        implements FederationDomainPolicyEntrance {
     @Override
     public boolean present(ServerLevel level) {
-        var entity = level.getBlockEntity(position);
-        return provider ? entity instanceof space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity
-                : entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
+        return entity != null && !entity.isRemoved() && level.getBlockEntity(position) == entity;
     }
 
     @Override public boolean enabled() { return true; }

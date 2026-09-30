@@ -40,6 +40,32 @@ public final class ProviderFederationFaceGameTests {
     }
 
     /**
+     * A Provider screen belongs to the Provider it was opened on. Broken and replaced by another Provider in one tick,
+     * the old screen must stop: its slots still point at the removed Provider's pattern inventory, which AE2 does not
+     * empty when it drops the patterns, so taking them again would duplicate them.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void providerScreenReplacedProvider(GameTestHelper helper) {
+        helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.SOUTH));
+        var position = helper.absolutePos(PROVIDER);
+        var player = helper.makeMockServerPlayerInLevel();
+        player.setPos(net.minecraft.world.phys.Vec3.atCenterOf(position).add(0, 1, 0));
+        var session = space.controlnet.ae2federation.client.policy.FederationDomainPolicySession.forDevice(player, position);
+        var opened = helper.<FederationPatternProviderBlockEntity>getBlockEntity(PROVIDER);
+        helper.assertTrue(session.isStillValid(player), "the screen must be valid on the Provider it was opened on");
+        helper.assertTrue(session.providerEntity().orElse(null) == opened, "the screen must edit the Provider it was opened on");
+        helper.setBlock(PROVIDER, net.minecraft.world.level.block.Blocks.AIR);
+        helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.SOUTH));
+        helper.assertFalse(helper.getBlockEntity(PROVIDER) == opened, "a new Provider must stand in the old one's place");
+        helper.assertFalse(session.isStillValid(player), "a screen must close when its Provider is replaced");
+        helper.assertTrue(session.providerEntity().isEmpty(), "a screen must not edit a Provider it was not opened on");
+        helper.succeed();
+    }
+
+    /**
      * With its Federation face turned away from the cable, the Provider may not map the Router domain's Endpoint.
      * Turned onto the cable, it maps it and its Lane is authorized. Turned away again, the Lane pauses and keeps its
      * Claim, although the Provider's network is still a member of the domain.

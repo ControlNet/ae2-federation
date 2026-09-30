@@ -135,7 +135,7 @@ public final class FederationDomainPolicySession {
             var attached = domains.stream().filter(domain -> domain.nodes().contains(nodeId)).toList();
             candidates = attached.isEmpty() ? domains : attached;
         }
-        var session = new FederationDomainPolicySession(player, new DevicePolicyEntrance(position, provider),
+        var session = new FederationDomainPolicySession(player, new DevicePolicyEntrance(position, provider, entity),
                 candidates.size() == 1 ? Optional.of(candidates.getFirst()) : Optional.empty(), PolicyEditorSessionState.Status.DISABLED);
         session.deviceDomainAvailability = DeviceDomainAvailability.classify(network.isPresent(), candidates.size());
         if (provider) {
@@ -143,18 +143,14 @@ public final class FederationDomainPolicySession {
             for (int i = 0; i < entries.size(); i++) {
                 if (entries.get(i).controller().orElse(null) == entity) session.mappingProviderIndex = i;
             }
+            // Pinned, so a Provider added or removed elsewhere in the domain before the first sync cannot shift it.
+            session.mappingProviderIdentity = ((space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity) entity)
+                    .providerIdentity();
         } else if (entity instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint) {
             var binding = endpoint.binding();
             session.endpointIndex = binding == null ? 0 : Math.max(0, session.currentEndpoints().indexOf(binding));
         }
         return session;
-    }
-
-    public void returnToProvider() {
-        if (entrance instanceof DevicePolicyEntrance device && device.provider() && isStillValid(player)
-                && level.getBlockEntity(device.position()) instanceof space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity provider) {
-            provider.openMenu(player, appeng.menu.locator.MenuLocators.forBlockEntity(provider));
-        }
     }
 
     public boolean isStillValid(Player candidate) {
@@ -413,35 +409,7 @@ public final class FederationDomainPolicySession {
             }
             selected.addProperty("slot", Integer.toString(mappingSlotIndex));
             var endpoints = mappingEndpoints();
-            for (var endpoint : endpoints) {
-                var id = endpointChoiceId(endpoint);
-                var choice = addChoice(root, "target", id, shortId(endpoint.id().value().toString()));
-                var binding = currentEndpoints().stream().filter(candidate -> candidate.endpointIdentity().equals(endpoint))
-                        .findFirst().orElse(null);
-                choice.addProperty("state", mappingTargetState(entry, endpoint, binding));
-                choice.addProperty("retained", entry.controller().filter(controller -> controller.retained(endpoint)).isPresent());
-                choice.addProperty("ownedHere", binding != null && binding.claimState().owner()
-                        .filter(owner -> owner.provider().equals(entry.identity())).isPresent());
-                if (binding != null) {
-                    choice.addProperty("position", binding.runtime().position().toShortString());
-                    choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
-                    choice.addProperty("claimEpoch", binding.claimState().epoch().value());
-                    addLaneFlow(choice, entry, endpoint);
-                    binding.claimState().owner().ifPresent(owner -> {
-                        choice.addProperty("owner", owner.provider().id().value().toString());
-                        choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
-                        // Where the owner is, so the player can find it; absent when it is not a loaded block.
-                        currentProviders().stream().filter(candidate -> candidate.identity().equals(owner.provider()))
-                                .flatMap(candidate -> candidate.controller().stream())
-                                .filter(net.minecraft.world.level.block.entity.BlockEntity.class::isInstance)
-                                .map(controller -> ((net.minecraft.world.level.block.entity.BlockEntity) controller).getBlockPos())
-                                .findFirst().ifPresent(position -> choice.addProperty("ownerPosition", position.toShortString()));
-                    });
-                    // The same order as the "networks" array, so the canvas names the Endpoint's network as the overview does.
-                    choice.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
-                            .map(network -> selection == null ? -1 : selection.members().indexOf(network)).orElse(-1));
-                }
-            }
+            for (var endpoint : endpoints) targetChoice(root, entry, endpoint, selection.members());
             if (!endpoints.isEmpty()) selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));
         });
         var endpoints = currentEndpoints();
@@ -470,6 +438,204 @@ public final class FederationDomainPolicySession {
         if (!endpoints.isEmpty()) selected.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context,
                 endpoints.get(Math.floorMod(endpointIndex, endpoints.size()))));
         return root.toString();
+    }
+
+    /**
+     * One Endpoint the selected Provider may map, as its wires view shows it: its claim state towards that Provider and,
+     * when it is loaded, where it and its owner are. {@code members} orders the networks the view names.
+     */
+    private com.google.gson.JsonObject targetChoice(com.google.gson.JsonObject root, ProviderObservationRegistry.Entry entry,
+            space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint, List<NetworkId> members) {
+        var id = endpointChoiceId(endpoint);
+        var choice = addChoice(root, "target", id, shortId(endpoint.id().value().toString()));
+        var binding = currentEndpoints().stream().filter(candidate -> candidate.endpointIdentity().equals(endpoint))
+                .findFirst().orElse(null);
+        choice.addProperty("state", mappingTargetState(entry, endpoint, binding));
+        choice.addProperty("retained", entry.controller().filter(controller -> controller.retained(endpoint)).isPresent());
+        choice.addProperty("ownedHere", binding != null && binding.claimState().owner()
+                .filter(owner -> owner.provider().equals(entry.identity())).isPresent());
+        if (binding != null) {
+            choice.addProperty("position", binding.runtime().position().toShortString());
+            choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
+            choice.addProperty("claimEpoch", binding.claimState().epoch().value());
+            addLaneFlow(choice, entry, endpoint);
+            binding.claimState().owner().ifPresent(owner -> {
+                choice.addProperty("owner", owner.provider().id().value().toString());
+                choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
+                // Where the owner is, so the player can find it; absent when it is not a loaded block.
+                currentProviders().stream().filter(candidate -> candidate.identity().equals(owner.provider()))
+                        .flatMap(candidate -> candidate.controller().stream())
+                        .filter(net.minecraft.world.level.block.entity.BlockEntity.class::isInstance)
+                        .map(controller -> ((net.minecraft.world.level.block.entity.BlockEntity) controller).getBlockPos())
+                        .findFirst().ifPresent(position -> choice.addProperty("ownerPosition", position.toShortString()));
+            });
+            // The same order as the "networks" array, so the canvas names the Endpoint's network as the overview does.
+            choice.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
+                    .map(members::indexOf).orElse(-1));
+        }
+        return choice;
+    }
+
+    /**
+     * The Provider screen's state: {@code ready} while its Federation face's domain is current and mapping is allowed,
+     * {@code noface} when the face joined no single domain at opening, and {@code stale_context} once that domain changed.
+     */
+    public String providerStatusCode() {
+        if (context == null) return "noface";
+        return mappingAllowed && currentFederationDomain().isPresent() && isStillValid(player) ? "ready" : "stale_context";
+    }
+
+    /**
+     * Whether the mapping this session edits is the one of the Provider it was opened on: the Provider screen edits
+     * nothing else, even if that Provider has left the domain and another one would be selected in its place.
+     */
+    public boolean editsOpenedProvider() {
+        var provider = providerEntity().orElse(null);
+        return provider != null && selectedProvider().flatMap(ProviderObservationRegistry.Entry::controller)
+                .filter(controller -> controller == provider).isPresent();
+    }
+
+    /** The Provider this session was opened on, while it is still loaded there. */
+    public Optional<space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity> providerEntity() {
+        return entrance instanceof DevicePolicyEntrance device && device.provider() && device.present(level)
+                && device.entity() instanceof space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity provider
+                ? Optional.of(provider) : Optional.empty();
+    }
+
+    /**
+     * What the Provider's own screen shows: its nine pattern slots, read from the Provider itself so they show even when
+     * its Federation face joins no domain; then, when it does, the Endpoints of that domain as its wires view draws them,
+     * each one's return buffer, and the owner's patterns of an Endpoint another Provider holds, for reading only.
+     */
+    public String providerChoices() {
+        refreshPreparedRelease();
+        var root = new com.google.gson.JsonObject();
+        var selected = new com.google.gson.JsonObject();
+        root.add("selected", selected);
+        for (var group : new String[] {"slot", "target", "lanes", "networks", "processingProviders"}) {
+            root.add(group, new com.google.gson.JsonArray());
+        }
+        var provider = providerEntity().orElse(null);
+        var domain = currentFederationDomain().orElse(null);
+        root.addProperty("face", domain != null);
+        // Opened on a domain that has changed since: not "no domain", but a screen to reopen.
+        root.addProperty("stale", domain == null && context != null);
+        root.addProperty("scope", domain != null ? "domain" : deviceDomainAvailability == null ? "unavailable"
+                : deviceDomainAvailability.key());
+        if (provider == null) return root.toString();
+        root.addProperty("position", provider.getBlockPos().toShortString());
+        var inventory = provider.mappedProvider().patternInventory();
+        int used = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            var choice = addChoice(root, "slot", Integer.toString(slot), "");
+            patternSlot(choice, provider.mappedProvider(), Optional.of(provider), slot);
+            if (!inventory.getStackInSlot(slot).isEmpty()) used++;
+        }
+        selected.addProperty("slot", Integer.toString(Math.floorMod(mappingSlotIndex, inventory.size())));
+        // Wires the Provider keeps while its face is off the domain, so the screen can say they are waiting there.
+        int kept = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) kept += provider.endpointsForSlot(slot).size();
+        root.addProperty("mappings", kept);
+        var members = domain == null ? List.<NetworkId>of() : List.copyOf(domain.memberships().keySet());
+        for (var member : members) {
+            var network = new com.google.gson.JsonObject();
+            network.addProperty("id", member.value().toString());
+            space.controlnet.ae2federation.persistence.NetworkNames.get(level).name(member)
+                    .ifPresent(name -> network.addProperty("name", name));
+            root.getAsJsonArray("networks").add(network);
+        }
+        var card = new com.google.gson.JsonObject();
+        card.addProperty("id", provider.providerIdentity().toString());
+        card.addProperty("selected", true);
+        card.addProperty("graph", true);
+        card.addProperty("position", provider.getBlockPos().toShortString());
+        var node = provider.getMainNode().getNode();
+        card.addProperty("networkIndex", node == null ? -1 : FederationDomainRegistryAccess.confirmedNetworkId(node.getGrid())
+                .map(members::indexOf).orElse(-1));
+        card.addProperty("slotsUsed", used);
+        card.addProperty("slotsTotal", inventory.size());
+        card.add("slots", new com.google.gson.JsonArray());
+        root.getAsJsonArray("processingProviders").add(card);
+        var entry = selectedProvider().filter(candidate -> candidate.controller().orElse(null) == provider).orElse(null);
+        var targets = new java.util.HashMap<String, com.google.gson.JsonObject>();
+        var endpoints = domain == null || entry == null || !mappingAllowed
+                ? List.<space.controlnet.ae2federation.processing.claim.EndpointIdentity>of() : mappingEndpoints();
+        for (var endpoint : endpoints) {
+            var choice = targetChoice(root, entry, endpoint, members);
+            if (choice.get("state").getAsString().equals("occupied")) addOwnerPatterns(choice, endpoint);
+            targets.put(choice.get("id").getAsString(), choice);
+        }
+        addReturnBuffers(root, provider, targets);
+        if (endpoints.isEmpty()) return root.toString();
+        selected.addProperty("target", endpointChoiceId(selectedMappingEndpoint(endpoints)));
+        if (pendingRelease != null) {
+            var release = new com.google.gson.JsonObject();
+            release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
+            release.addProperty("epoch", pendingRelease.epoch().value());
+            release.addProperty("lane", pendingRelease.lane());
+            release.addProperty("position", currentEndpoints().stream()
+                    .filter(binding -> binding.endpointIdentity().equals(pendingRelease.endpoint()))
+                    .map(binding -> binding.runtime().position().toShortString()).findFirst().orElse(""));
+            root.add("release", release);
+        }
+        return root.toString();
+    }
+
+    /**
+     * Each bound Lane's return buffer: results that came back through its Endpoint and wait to enter the ME network,
+     * and whether it still has a send in progress. Either one keeps the Endpoint from being released, so the Endpoint's
+     * own choice in {@code targets} carries them too.
+     */
+    private void addReturnBuffers(com.google.gson.JsonObject root,
+            space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity provider,
+            java.util.Map<String, com.google.gson.JsonObject> targets) {
+        var ops = level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+        var endpoints = currentEndpoints();
+        for (int index = 0; index < provider.laneCount(); index++) {
+            var endpoint = provider.laneEndpoint(index).orElse(null);
+            if (endpoint == null) continue;
+            var lane = provider.lane(index);
+            var returns = new java.util.ArrayList<appeng.api.stacks.GenericStack>();
+            var buffer = lane.getReturnInv();
+            for (int slot = 0; slot < buffer.size(); slot++) {
+                var stack = buffer.getStack(slot);
+                if (stack != null) returns.add(stack);
+            }
+            var json = new com.google.gson.JsonObject();
+            json.addProperty("lane", index);
+            json.addProperty("endpoint", endpointChoiceId(endpoint));
+            endpoints.stream().filter(binding -> binding.endpointIdentity().equals(endpoint)).findFirst()
+                    .ifPresent(binding -> json.addProperty("position", binding.runtime().position().toShortString()));
+            json.add("returns", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, returns).getOrThrow());
+            json.addProperty("pendingSend", lane.hasPendingSend());
+            root.getAsJsonArray("lanes").add(json);
+            var target = targets.get(endpointChoiceId(endpoint));
+            if (target != null) {
+                target.addProperty("returnKinds", returns.size());
+                target.addProperty("pendingSend", lane.hasPendingSend());
+            }
+        }
+    }
+
+    /** The patterns another Provider has wired to an Endpoint it holds, so this screen can show them read-only. */
+    private void addOwnerPatterns(com.google.gson.JsonObject choice,
+            space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
+        var owner = currentEndpoints().stream().filter(binding -> binding.endpointIdentity().equals(endpoint)).findFirst()
+                .flatMap(binding -> binding.claimState().owner())
+                .flatMap(identity -> currentProviders().stream().filter(entry -> entry.identity().equals(identity.provider()))
+                        .findFirst())
+                .orElse(null);
+        if (owner == null || owner.controller().isEmpty()) return;
+        var patterns = new com.google.gson.JsonArray();
+        var inventory = owner.provider().patternInventory();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (!owner.controller().orElseThrow().endpointsForSlot(slot).contains(endpoint)) continue;
+            var pattern = new com.google.gson.JsonObject();
+            pattern.addProperty("id", Integer.toString(slot));
+            patternSlot(pattern, owner, slot);
+            patterns.add(pattern);
+        }
+        choice.add("ownerPatterns", patterns);
     }
 
     private Optional<ProviderObservationRegistry.Entry> navigationOwner(EndpointTargetBinding endpoint) {
@@ -528,7 +694,13 @@ public final class FederationDomainPolicySession {
 
     /** One pattern slot of a Provider: its pattern's inputs and outputs and the Endpoints its wires go to. */
     private void patternSlot(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry, int slot) {
-        var stack = entry.provider().patternInventory().getStackInSlot(slot);
+        patternSlot(choice, entry.provider(), entry.controller(), slot);
+    }
+
+    private void patternSlot(com.google.gson.JsonObject choice,
+            space.controlnet.ae2federation.processing.provider.MappedPatternProvider provider,
+            Optional<? extends space.controlnet.ae2federation.processing.provider.ProviderMappingController> mapping, int slot) {
+        var stack = provider.patternInventory().getStackInSlot(slot);
         choice.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
         var details = stack.isEmpty() ? null : appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
         var ops = level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
@@ -540,9 +712,9 @@ public final class FederationDomainPolicySession {
         choice.add("outputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, outputs).getOrThrow());
         choice.add("inputs", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, inputs).getOrThrow());
         choice.addProperty("empty", stack.isEmpty());
-        choice.addProperty("mapped", entry.provider().lanesForSlot(slot).size());
+        choice.addProperty("mapped", provider.lanesForSlot(slot).size());
         var slotEndpoints = new com.google.gson.JsonArray();
-        entry.controller().ifPresent(controller -> controller.endpointsForSlot(slot)
+        mapping.ifPresent(controller -> controller.endpointsForSlot(slot)
                 .forEach(endpoint -> slotEndpoints.add(endpointChoiceId(endpoint))));
         choice.add("endpoints", slotEndpoints);
     }

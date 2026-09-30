@@ -38,6 +38,10 @@ final class TaskThirtyFiveHardeningContractTest {
     void serverActionsUseOwnedPacketWithThreadMenuAndAuthorityValidation() throws IOException {
         var holder = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenuHolder.java"));
+        var providerHolder = Files.readString(ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationProviderMenuHolder.java"));
+        var authority = Files.readString(ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationMenuAuthority.java"));
         var menu = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationDomainPolicyMenu.java"));
         var payload = Files.readString(ROOT.resolve(
@@ -47,9 +51,13 @@ final class TaskThirtyFiveHardeningContractTest {
         assertTrue(holder.contains("target -> send(FederationDomainPolicyAction.SET_MAPPING, target)")
                 && !holder.contains("setOnServerClick"));
         assertTrue(menu.contains("isSameThread()") && menu.contains("player.containerMenu"));
-        assertTrue(holder.contains("request.containerId()") && holder.contains("request.menuNonce()")
-                && holder.contains("request.menuSequence()") && holder.contains("request.context()")
-                && holder.contains("request.expectedRevision()"));
+        // Both menus check the container, nonce, sequence and domain through the shared authority first.
+        assertTrue(authority.contains("request.containerId()") && authority.contains("request.menuNonce()")
+                && authority.contains("request.menuSequence()") && authority.contains("request.context()"));
+        assertTrue(holder.contains("authority.reject(this, menu, request)") && holder.contains("request.expectedRevision()"));
+        assertTrue(providerHolder.contains("authority.reject(this, menu, request)")
+                && providerHolder.contains("target -> send(FederationDomainPolicyAction.SET_MAPPING, target)")
+                && !providerHolder.contains("setOnServerClick"));
         assertTrue(payload.contains("MAX_PAYLOAD_BYTES") && payload.contains("buffer.isReadable()"));
         assertTrue(registration.contains("playToServer") && registration.contains("context.enqueueWork")
                 && registration.contains("FederationDomainPolicyActionPayloads.handle"));

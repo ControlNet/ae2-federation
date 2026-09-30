@@ -369,6 +369,10 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (provider.mappingHandle(slot).generation() != handle.generation()) {
             return "rejected-stale-slot";
         }
+        // Only a slot with a pattern gains Endpoints; unmapping above stays allowed for a slot emptied since.
+        if (getTerminalPatternInventory().getStackInSlot(slot).isEmpty()) {
+            return "rejected-invalid-selection";
+        }
         if (!reaches(serverLevel, endpoint.runtime().position())) {
             return "rejected-domain-disconnected";
         }

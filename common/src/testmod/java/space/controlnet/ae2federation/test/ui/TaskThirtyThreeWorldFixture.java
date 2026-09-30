@@ -122,6 +122,118 @@ final class TaskThirtyThreeWorldFixture {
         rightClickProvider(context, true);
     }
 
+    /** The domain workspace on the Provider's processing wires, as its API still opens it; right-click opens its own screen. */
+    static void openProviderWorkspace(ServerContext context) {
+        require(space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu.openDevice(context.player(),
+                state(context).hostPosition()), "The Provider's workspace did not open");
+    }
+
+    static boolean providerBlocking(ServerContext context) {
+        return provider(context).getConfigManager().getSetting(appeng.api.config.Settings.BLOCKING_MODE)
+                == appeng.api.config.YesNo.YES;
+    }
+
+    /** Blocking also reaches every Lane, which applies it with AE2's own semantics. */
+    static boolean providerLanesBlocking(ServerContext context) {
+        var provider = provider(context);
+        for (int lane = 0; lane < provider.laneCount(); lane++) {
+            if (provider.lane(lane).getConfigManager().getSetting(appeng.api.config.Settings.BLOCKING_MODE)
+                    != appeng.api.config.YesNo.YES) return false;
+        }
+        return provider.laneCount() > 0;
+    }
+
+    static boolean providerNotBlocking(ServerContext context) {
+        return !providerBlocking(context);
+    }
+
+    static boolean providerPriorityTwelve(ServerContext context) {
+        return provider(context).getPriority() == 12;
+    }
+
+    static boolean providerPrioritySeven(ServerContext context) {
+        return provider(context).getPriority() == 7;
+    }
+
+    static boolean providerPriorityZero(ServerContext context) {
+        return provider(context).getPriority() == 0;
+    }
+
+    /** A copy of the Provider's first pattern in the player's first main inventory slot, for the screen to place. */
+    static void givePlayerPattern(ServerContext context) {
+        var pattern = provider(context).getTerminalPatternInventory().getStackInSlot(1).copy();
+        require(!pattern.isEmpty(), "The Provider's slot 1 holds no pattern to copy");
+        require(context.player().getInventory().getItem(9).isEmpty(), "The player's first main slot is not empty");
+        context.player().getInventory().setItem(9, pattern);
+        context.player().containerMenu.broadcastChanges();
+    }
+
+    static boolean providerSlotEightFilled(ServerContext context) {
+        return !provider(context).getTerminalPatternInventory().getStackInSlot(8).isEmpty()
+                && context.player().getInventory().getItem(9).isEmpty() && context.player().containerMenu.getCarried().isEmpty();
+    }
+
+    /** Taken back out with two clicks, the pattern is in the player's first main slot again and slot 8 is empty. */
+    static boolean providerSlotEightTakenBack(ServerContext context) {
+        return provider(context).getTerminalPatternInventory().getStackInSlot(8).isEmpty()
+                && PatternDetailsHelper.isEncodedPattern(context.player().getInventory().getItem(9))
+                && context.player().containerMenu.getCarried().isEmpty();
+    }
+
+    /**
+     * A shift-click as the server takes it: vanilla's QUICK_MOVE click on the open menu, which runs LDLib2's quick move
+     * over this screen's slots. UI tests drive input synthetically, and vanilla reads Shift from the real keyboard.
+     */
+    static void quickMovePlayerPattern(ServerContext context) {
+        var menu = context.player().containerMenu;
+        menu.clicked(menuSlot(context, true, 9), 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE, context.player());
+        menu.broadcastChanges();
+    }
+
+    /** Shift-clicked in, the pattern lands in the first empty pattern slot, 4, and leaves the player's inventory. */
+    static boolean providerSlotFourQuickMoved(ServerContext context) {
+        return !provider(context).getTerminalPatternInventory().getStackInSlot(4).isEmpty()
+                && context.player().getInventory().getItem(9).isEmpty();
+    }
+
+    static void quickMoveProviderPattern(ServerContext context) {
+        var menu = context.player().containerMenu;
+        menu.clicked(menuSlot(context, false, 4), 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE, context.player());
+        menu.broadcastChanges();
+    }
+
+    /** Shift-clicked out, slot 4 is empty again and the pattern is back with the player. */
+    static boolean providerSlotFourReturned(ServerContext context) {
+        var inventory = context.player().getInventory();
+        boolean held = false;
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            held |= PatternDetailsHelper.isEncodedPattern(inventory.getItem(slot));
+        }
+        return provider(context).getTerminalPatternInventory().getStackInSlot(4).isEmpty() && held;
+    }
+
+    /** The menu index of the player's inventory slot {@code index}, or of the Provider screen's pattern slot {@code index}. */
+    private static int menuSlot(ServerContext context, boolean player, int index) {
+        var menu = context.player().containerMenu;
+        int patterns = 0;
+        for (int slot = 0; slot < menu.slots.size(); slot++) {
+            var candidate = menu.slots.get(slot);
+            boolean playerSlot = candidate.container == context.player().getInventory();
+            if (player && playerSlot && candidate.getContainerSlot() == index) return slot;
+            if (!player && !playerSlot && patterns++ == index) return slot;
+        }
+        throw new IllegalStateException("No " + (player ? "player" : "pattern") + " slot " + index + " in " + menu);
+    }
+
+    /** TEST-ONLY cleanup: the copied pattern leaves the player's inventory so later cases start with empty hands. */
+    static void takePlayerPattern(ServerContext context) {
+        var inventory = context.player().getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (PatternDetailsHelper.isEncodedPattern(inventory.getItem(slot))) inventory.setItem(slot, net.minecraft.world.item.ItemStack.EMPTY);
+        }
+        context.player().containerMenu.broadcastChanges();
+    }
+
     static boolean mappingAccepted(ServerContext context) {
         var provider = provider(context);
         return provider != null && provider.mappedProvider().lanesForSlot(0).equals(Set.of(0));
