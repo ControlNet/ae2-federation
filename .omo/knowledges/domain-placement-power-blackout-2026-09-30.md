@@ -66,5 +66,12 @@ the domain; with half-edges ignored, the eager drop of X still splits the domain
 - Behaviour change pinned by `router.port-replacement`: a native neighbour replaced by a Federation Cable now resolves
   to `FEDERATION` in the same block update (previously `DISCONNECTED` for a tick); the stale native binding still
   never survives the replacement.
-- Not run locally: ldlib2 UI scenarios (`ui.*`) and dedicated multiclient (`multiclient.*`), which need a client.
+- `topology.player-placement-keeps-power` repeats the placements the way a player makes them: a mock server player
+  (`helper.makeMockServerPlayerInLevel()`) calls `ItemStack.useOn(new UseOnContext(player, MAIN_HAND,
+  new BlockHitResult(faceCenter, face, absoluteClickedPos, false)))`, so `getStateForPlacement` takes the facing from
+  the clicked face and `setPlacedBy` (AE2 owner) runs. Written after the fix, so it was never red. It replaces the
+  manual in-client power-continuity check.
+- UI and multiclient run headless under `xvfb-run` through `federationUiTest` (a real client, not GameTest); after the
+  rewrite Task 15 (5/5), Task 33 (6/6) and Task 34 (4/4) pass. Do not edit sources while one runs: the result binds
+  the source identity.
 
