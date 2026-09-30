@@ -78,21 +78,35 @@ public final class PerfMeasure {
         }
 
         /**
-         * Mean nanoseconds of the ticks completed after the one that opened the window, at most the last 100. Called
-         * during tick T, the completed ticks are T-1, T-2, ...; the opening tick is excluded.
+         * Median nanoseconds of the ticks completed after the one that opened the window, at most the last 100: the
+         * median keeps a garbage collection or JIT pause from moving the result. Called during tick T, the completed
+         * ticks are T-1, T-2, ...; the opening tick is excluded.
          */
-        public double meanTickNanos() {
+        public double medianTickNanos() {
             var times = server.getTickTimesNanos();
             var end = server.getTickCount();
             var count = Math.min(ticks() - 1, times.length);
             if (count <= 0) {
                 throw new IllegalStateException("Tick window has no completed ticks");
             }
+            var window = new long[count];
+            for (var index = 1; index <= count; index++) {
+                window[index - 1] = times[Math.floorMod(end - index, times.length)];
+            }
+            java.util.Arrays.sort(window);
+            return count % 2 == 1 ? window[count / 2] : (window[count / 2 - 1] + window[count / 2]) / 2.0;
+        }
+
+        /** Sum of the completed ticks after the opening one, at most the last 100. */
+        public double totalTickNanos() {
+            var times = server.getTickTimesNanos();
+            var end = server.getTickCount();
+            var count = Math.min(ticks() - 1, times.length);
             var total = 0L;
             for (var index = 1; index <= count; index++) {
                 total += times[Math.floorMod(end - index, times.length)];
             }
-            return (double) total / count;
+            return total;
         }
     }
 }

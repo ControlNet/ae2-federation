@@ -43,7 +43,7 @@ public final class PerformanceBenchmarkGameTests {
     private static final int MESH_PADDING = Integer.getInteger("ae2federation.perf.padding", 256);
     private static final int STORAGE_TYPES = Integer.getInteger("ae2federation.perf.storageTypes", 1000);
     private static final int PLANE = Integer.getInteger("ae2federation.perf.plane", 30);
-    private static final int WINDOW_TICKS = 60;
+    private static final int WINDOW_TICKS = 100;
 
     private PerformanceBenchmarkGameTests() {
     }
@@ -87,7 +87,7 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(false, "Measuring idle ticks");
             }
             helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
-            perf.record("idleTick", window[0].meanTickNanos(), "ns/tick");
+            perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertTrue(scene.consumerCellStored() < 1, "Consumer idle drain must still come from the mesh");
             scene.close();
         });
@@ -155,7 +155,7 @@ public final class PerformanceBenchmarkGameTests {
                 helper.assertTrue(false, "Measuring idle ticks");
             }
             helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
-            perf.record("idleTick", window[0].meanTickNanos(), "ns/tick");
+            perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark insert must be extracted again");
             fixtures.close();
         });
@@ -205,15 +205,14 @@ public final class PerformanceBenchmarkGameTests {
                         "Waiting for the plane domain");
                 perf.count("domainNodes", domain.get().nodes().size());
                 perf.count("settleTicks", level.getServer().getTickCount() - placedAt[0]);
-                var ticks = Math.min(window[0].ticks() - 1, 100);
-                perf.record("settleTickTotal", window[0].meanTickNanos() * ticks, "ns");
+                perf.record("settleTickTotal", window[0].totalTickNanos(), "ns");
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(level.getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
             if (state[0] == 2) {
                 helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring idle ticks");
-                perf.record("idleTick", window[0].meanTickNanos(), "ns/tick");
+                perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
                 state[0] = 3;
                 window[0] = new PerfMeasure.TickWindow(level.getServer());
                 helper.assertTrue(false, "Measuring edge toggles");
@@ -224,7 +223,7 @@ public final class PerformanceBenchmarkGameTests {
                         : RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
                 helper.assertTrue(false, "Measuring edge toggles");
             }
-            perf.record("toggleTick", window[0].meanTickNanos(), "ns/tick");
+            perf.record("toggleTick", window[0].medianTickNanos(), "ns/tick");
             routers.close();
         });
     }
@@ -253,7 +252,7 @@ public final class PerformanceBenchmarkGameTests {
             }
             if (state[0] == 1) {
                 helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring closed-menu ticks");
-                perf.record("closedTick", window[0].meanTickNanos(), "ns/tick");
+                perf.record("closedTick", window[0].medianTickNanos(), "ns/tick");
                 helper.assertTrue(scene.openFirstMenu() && scene.openSecondMenu(), "Both Domain menus must open");
                 window[0] = new PerfMeasure.TickWindow(level.getServer());
                 state[0] = 2;
@@ -261,7 +260,7 @@ public final class PerformanceBenchmarkGameTests {
             }
             if (state[0] == 2) {
                 helper.assertTrue(window[0].ticks() > WINDOW_TICKS, "Measuring open-menu ticks");
-                perf.record("openTick", window[0].meanTickNanos(), "ns/tick");
+                perf.record("openTick", window[0].medianTickNanos(), "ns/tick");
                 perf.nanosPerOp("recordAcceptedOpen", 2000, 300, accepted);
                 var session = FederationDomainPolicySession.forBridge(scene.player(), scene.firstBridgeContext());
                 helper.assertTrue(!session.workspaceChoices().isEmpty() && !session.graphSnapshotText().isEmpty(),
