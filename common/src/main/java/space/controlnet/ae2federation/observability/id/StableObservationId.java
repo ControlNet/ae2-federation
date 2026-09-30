@@ -8,6 +8,15 @@ import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.observability.ObservationLimits;
 
 final class StableObservationId {
+    /** One digest per thread: {@link MessageDigest#getInstance} is a provider lookup, and ids are made per operation. */
+    private static final ThreadLocal<MessageDigest> SHA_256 = ThreadLocal.withInitial(() -> {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    });
+
     private StableObservationId() {
     }
 
@@ -15,13 +24,9 @@ final class StableObservationId {
         ObservationLimits.boundedString(federationDomainId.value(), "Federation Domain ID");
         ObservationLimits.boundedString(kind, "Observation ID kind");
         ObservationLimits.boundedString(nativeKey, "Observation native key");
-        try {
-            var input = federationDomainId.value() + '\u0000' + kind + '\u0000' + nativeKey;
-            var digest = MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
-            return kind + ":" + HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        var input = federationDomainId.value() + '\u0000' + kind + '\u0000' + nativeKey;
+        var digest = SHA_256.get().digest(input.getBytes(StandardCharsets.UTF_8));
+        return kind + ":" + HexFormat.of().formatHex(digest);
     }
 
     static void validate(FederationDomainId federationDomainId, String kind, String value) {

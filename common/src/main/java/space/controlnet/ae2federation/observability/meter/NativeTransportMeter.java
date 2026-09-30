@@ -65,6 +65,11 @@ public final class NativeTransportMeter {
                 : new NativeTransportWindow(state.dataRevision, state.resnapshotRequired, state.events);
     }
 
+    /** Keeps only the windows whose scope {@code keep} accepts. */
+    public void retain(java.util.function.Predicate<FederationDomainReference> keep) {
+        windows.keySet().removeIf(scope -> !keep.test(scope));
+    }
+
     public void acknowledgeSnapshot(FederationDomainReference scope) {
         var state = windows.get(Objects.requireNonNull(scope));
         if (state != null) {

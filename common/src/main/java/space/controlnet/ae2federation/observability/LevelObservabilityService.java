@@ -29,6 +29,9 @@ public final class LevelObservabilityService implements AutoCloseable {
     public static final long PAIR_FLOW_WINDOW_TICKS = 100;
     private final java.util.Map<LaneKey, space.controlnet.ae2federation.observability.meter.PairFlowWindow> laneFlows =
             new java.util.HashMap<>();
+    /** Scopes that accepted a flow since the last sweep; only subscribed ones are projected, once per tick. */
+    private final java.util.Set<FederationDomainReference> flowedScopes = new java.util.HashSet<>();
+    private static final long PRUNE_INTERVAL_TICKS = 100;
 
     private LevelObservabilityService(ServerLevel level) {
         this.level = level;
@@ -63,9 +66,26 @@ public final class LevelObservabilityService implements AutoCloseable {
     }
 
     public void sweep() {
-        subscriptions.activeScopes().forEach(this::snapshot);
+        for (var scope : subscriptions.activeScopes()) {
+            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
+                    flowedScopes.contains(scope) && transportMeter.window(scope).resnapshotRequired());
+        }
+        flowedScopes.clear();
         var recovered = subscriptions.recoverRequired(this::snapshot);
         recovered.forEach(transportMeter::acknowledgeSnapshot);
+        if (level.getGameTime() % PRUNE_INTERVAL_TICKS == 0) {
+            prune();
+        }
+    }
+
+    /** Drops meter windows of domain generations that no longer exist and flow windows that went quiet. */
+    private void prune() {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(level);
+        var active = subscriptions.activeScopes();
+        transportMeter.retain(scope -> active.contains(scope) || registry.isCurrent(scope));
+        var now = level.getGameTime();
+        pairFlows.values().removeIf(window -> !window.summarize(now).active());
+        laneFlows.values().removeIf(window -> !window.summarize(now).active());
     }
 
     public FederationDomainStateSnapshot snapshot(FederationDomainReference scope) {
@@ -77,13 +97,12 @@ public final class LevelObservabilityService implements AutoCloseable {
         if (amount <= 0) {
             return;
         }
+        // The meter records every accepted operation at once; subscribers see it in the tick's sweep, which projects
+        // each subscribed scope once however many operations it accepted.
         for (var scope : scopes) {
-            if (!transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution)) {
-                continue;
+            if (transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution)) {
+                flowedScopes.add(scope);
             }
-            var window = transportMeter.window(scope);
-            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
-                    window.resnapshotRequired());
         }
     }
 
