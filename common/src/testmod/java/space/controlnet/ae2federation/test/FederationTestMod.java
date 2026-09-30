@@ -59,7 +59,7 @@ public final class FederationTestMod {
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
-							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class,
+							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class, PerformanceBenchmarkGameTests.class,
 							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
