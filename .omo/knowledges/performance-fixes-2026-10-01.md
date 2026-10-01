@@ -353,3 +353,8 @@ runs entirely in AE2: MODULATE 45.0 vs native 39.8 ns (1.13x, was 3.07x), SIMULA
   insertExtract 290.9/308.2/260.3 -> 251.0/252.1/242.4 ns.
 - Remote full mode at ccdcfe1 (before this change): simulate 155.9 vs native 121.0 ns (1.29x), extract+insert
   408.2 vs 398.2 ns (1.03x).
+- Remote full mode at 4df1a09 (3 rounds, against ccdcfe1 on the same host): simulate 155.9 -> 138.3 ns vs native
+  121.5 (1.14x), extract+insert 408.2 -> 365.6 ns vs native 394.8 (0.93x, faster than the native Storage Bus on an
+  ME Interface), projection insertExtract 256.9 -> 233.8 ns; network listing 90.5 vs native 297.2 us; idle tick and
+  the idle epoch/dependency counters unchanged (both 0). What is left on simulate (~17 ns) is the call chain through
+  the projection, the authority supplier and the delegate-link check.
