@@ -33,6 +33,7 @@ import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 
 public final class CraftingBindingFixture implements AutoCloseable {
     private static final BlockPos BASE = new BlockPos(5, 3, 5);
+    private static final BlockPos CONSUMER_CPU = BASE.south(2);
 
     private final GameTestHelper helper;
     private final PolicyBridgeFixtures bridge;
@@ -318,6 +319,72 @@ public final class CraftingBindingFixture implements AutoCloseable {
             return false;
         }
         return cpuNode != null && sourceNode != null && cpuNode.getGrid() == sourceNode.getGrid();
+    }
+
+    /** A crafting CPU on the consumer Grid, south of its chest, so the consumer can run its own native jobs. */
+    public void addConsumerCpu() {
+        helper.setBlock(CONSUMER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
+        helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode()
+                .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", key().consumerNetworkId()));
+    }
+
+    public boolean consumerCpuReady() {
+        var cpuNode = helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode().getNode();
+        var chestNode = consumerChest().getMainNode().getNode();
+        if (cpuNode == null || chestNode == null) {
+            return false;
+        }
+        if (cpuNode.getGrid() != chestNode.getGrid()) {
+            GridHelper.createConnection(cpuNode, chestNode);
+            return false;
+        }
+        return !consumerService().getCpus().isEmpty();
+    }
+
+    public appeng.api.networking.crafting.ICraftingService consumerService() {
+        return consumerGrid().getCraftingService();
+    }
+
+    /** Plans {@code amount} of the output on the consumer's own crafting service, as its ME Terminal does. */
+    public void beginOnConsumer(long amount) {
+        var node = consumerChest().getMainNode().getNode();
+        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
+            @Override
+            public IActionSource getActionSource() {
+                return IActionSource.empty();
+            }
+
+            @Override
+            public appeng.api.networking.IGridNode getGridNode() {
+                return node;
+            }
+        };
+        plan = null;
+        planFuture = consumerService().beginCraftingCalculation(helper.getLevel(), requester, outputKey(), amount,
+                CalculationStrategy.REPORT_MISSING_ITEMS);
+    }
+
+    public ICraftingPlan plan() {
+        return plan;
+    }
+
+    public boolean submitOnConsumer() {
+        return consumerService().submitJob(plan, null, null, true, IActionSource.empty()).successful();
+    }
+
+    public long consumerPhysicalOutputAmount() {
+        return java.util.Objects.requireNonNull(consumerChest().getOriginalCellInventory(0))
+                .extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    /** Cancels the consumer's running job, as a player does from its CPU's status screen. */
+    public void cancelConsumerJob() {
+        consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).map(CraftingCPUCluster.class::cast)
+                .forEach(CraftingCPUCluster::cancelJob);
+    }
+
+    public long busyConsumerCpuCount() {
+        return consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
     }
 
     public appeng.api.storage.MEStorage sourcePhysicalStorage() {

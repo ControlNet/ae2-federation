@@ -66,6 +66,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.flush(level);
+            space.controlnet.ae2federation.crafting.remote.RemoteCraftingService.tick(level);
         }
     }
 
@@ -82,6 +83,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.closeLevel(level);
+            space.controlnet.ae2federation.crafting.remote.RemoteCraftingService.closeLevel(level);
             CraftingBindingService.closeLevel(level);
             EnergySharingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);

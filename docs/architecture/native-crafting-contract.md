@@ -25,6 +25,41 @@ The binding fails closed when Policy is disabled or deleted, a held revision bec
 the provider generation changes, source identity is no longer settled, or native provider/CPU readiness disappears.
 Reconciliation withdraws the old binding before a subsequent capability access can use it.
 
+## Consumer-Side Use
+
+A published binding is used from the consumer's own ME crafting service, so its terminals, crafting monitors and
+automation see and request the provider's craftables as AE2 normally does (`crafting.remote-*` GameTests).
+`RemoteCraftingService` does this with public AE2 API only:
+
+- For each current binding it registers one emit-only `ICraftingProvider` on the consumer Grid
+  (`addGlobalCraftingProvider`). It has no patterns; `getEmitableItems` returns what the provider Grid can craft,
+  as the rule's filter permits, minus keys the consumer crafts with its own patterns (AE2 plans an emitable key without
+  looking at patterns, so the consumer's own patterns keep priority). The set is refreshed every 20 ticks
+  (`refreshGlobalCraftingProvider`).
+- AE2 plans such a key on the consumer as an emitted item: the consumer's CPU waits for it. Every 5 ticks the service
+  reads `getRequestedAmount` on the consumer, subtracts what provider jobs already have in flight, and plans the rest on
+  the provider with `REPORT_MISSING_ITEMS`. A plan that is missing materials or finds no CPU is not submitted and is
+  tried again after 40 ticks; the consumer's CPU keeps waiting, as for a vanilla crafting emitter.
+- An executable plan is submitted on the provider with a `RemoteCraftingRequester` as its requester. The requester is
+  an `ICraftingRequester` node service on a Federation node of the provider Grid (each Bridge side and each Router face
+  port). AE2 hands it the job's final output; it inserts what the consumer's job asked for into the consumer Grid, whose
+  `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus of the pattern (one log makes four planks)
+  stays in the provider Grid's storage.
+- When the consumer stops waiting for a key on two looks in a row (its job ended or was cancelled), the provider jobs
+  for it are cancelled through their links, and the provider's CPU returns their materials.
+- The requester's links are saved with the host of its node and reloaded with `StorageHelper.loadCraftingLink`; AE2
+  calls `getRequestedJobs` when the node joins its Grid, which reconnects running jobs. No GameTest covers this
+  reload path yet.
+
+The provider's own plan sees its own projections, so a request recurses along Crafting rules: with rules consumer →
+middle and middle → source only, the consumer's sticks are crafted by the middle from planks the source crafts from
+logs (`crafting.remote-chain`). `CraftingDependencyCycleGuard` keeps the Crafting rule graph acyclic
+(`crafting.reject-cycle`), so the recursion always ends, and no Crafting cycle is needed to reach a network further
+away.
+
+A binding still requires the provider Grid to have its own native patterns and CPU; a network with neither cannot
+provide Crafting, even if it could pass on another network's craftables.
+
 ## Pinned Sources
 
 All source links refer to AE2 commit `79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a`.
@@ -134,7 +169,8 @@ physical cell insertion rather than accepting a public aggregate quantity increa
 The discovery fixture publishes two genuine native patterns from the same bound provider: sticks are explicitly allow-listed
 and a crafting table is forbidden. An independent discovery receipt scans the source and consumer crafting services, exact
 provider pattern objects, discovered key set, and configured filter. It proves that only the original allowed pattern is
-visible, with no copied pattern, alternate provider, or consumer-side projection recursion.
+visible, with no copied pattern or alternate provider. (The consumer-side emit-only projection described under
+Consumer-Side Use carries no patterns, so it adds no pattern object to either service.)
 
 Before submission, result authority captures the exact physical cell delegate selected as the destination. Independent
 submission, callback, and insertion receipts then correlate that object with the native link UUID, selected CPU,

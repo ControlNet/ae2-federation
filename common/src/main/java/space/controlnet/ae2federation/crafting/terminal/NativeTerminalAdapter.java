@@ -10,11 +10,8 @@ import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
-import space.controlnet.ae2federation.policy.PolicyFilter;
-import space.controlnet.ae2federation.policy.PolicyFilterMode;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyOperation;
-import space.controlnet.ae2federation.policy.PolicyResource;
 import space.controlnet.ae2federation.policy.PolicyService;
 
 public final class NativeTerminalAdapter {
@@ -45,17 +42,8 @@ public final class NativeTerminalAdapter {
             return Optional.empty();
         }
         var filter = configured.orElseThrow().rule().filter();
-        Set<AEKey> craftables = snapshot.orElseThrow().service().getCraftables(keyToCheck -> permits(filter, keyToCheck));
+        Set<AEKey> craftables = snapshot.orElseThrow().service().getCraftables(keyToCheck -> space.controlnet.ae2federation.crafting.binding.CraftingPolicyFilter.permits(filter, keyToCheck));
         var authority = CraftingBindingService.get(level);
         return Optional.of(new NativeTerminalSession(level, authority, snapshot.orElseThrow(), actionSource, craftables));
-    }
-
-    private static boolean permits(PolicyFilter filter, AEKey key) {
-        var resource = new PolicyResource(key.getType().getId(), key.getId());
-        return switch (filter.mode()) {
-            case ALL -> true;
-            case ALLOW_LIST -> filter.entries().contains(resource);
-            case DENY_LIST -> !filter.entries().contains(resource);
-        };
     }
 }

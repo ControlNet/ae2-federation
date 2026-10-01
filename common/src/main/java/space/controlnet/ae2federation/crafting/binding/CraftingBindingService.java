@@ -206,6 +206,22 @@ public final class CraftingBindingService implements AutoCloseable {
         return nativeRequests.linkOwnerCount();
     }
 
+    /** The bindings published by the last reconciliation, without reconciling; each says itself whether it is current. */
+    public static synchronized List<CraftingCapabilityBinding> publishedBindingsIfPresent(ServerLevel level) {
+        var service = SERVICES.get(level);
+        return service == null ? List.of() : List.copyOf(service.bindings.values());
+    }
+
+    /**
+     * The loaded Grid of a network the Crafting observer has seen, whether or not any rule still involves it: a job
+     * already running for a consumer still delivers there.
+     */
+    public static synchronized Optional<IGrid> gridIfPresent(ServerLevel level,
+            space.controlnet.ae2federation.identity.NetworkId networkId) {
+        var service = SERVICES.get(level);
+        return service == null ? Optional.empty() : service.federationDomains.grid(networkId);
+    }
+
     public int relationshipCount() {
         return bindings.size();
     }

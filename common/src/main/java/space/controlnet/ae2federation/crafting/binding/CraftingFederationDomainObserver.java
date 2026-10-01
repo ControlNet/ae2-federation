@@ -27,6 +27,13 @@ final class CraftingFederationDomainObserver {
         grids.forEach(this::register);
     }
 
+    /** The loaded Grid that currently carries {@code networkId}, if any. */
+    java.util.Optional<IGrid> grid(NetworkId networkId) {
+        var grid = loadedGrids.get(networkId);
+        return grid != null && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(networkId::equals).isPresent()
+                ? java.util.Optional.of(grid) : java.util.Optional.empty();
+    }
+
     Map<PolicyKey, CraftingRelationship> relationships() {
         discardStaleGrids();
         var result = new HashMap<PolicyKey, CraftingRelationship>();

@@ -42,7 +42,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, this::setChanged));
         }
     }
 
@@ -123,13 +123,13 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        facePorts.values().forEach(port -> port.loadFromNBT(tag));
+        facePorts.values().forEach(port -> port.loadFromNBT(tag, registries));
     }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        facePorts.values().forEach(port -> port.managedNode().saveToNBT(tag));
+        facePorts.values().forEach(port -> port.saveToNBT(tag, registries));
     }
 
     @Override
