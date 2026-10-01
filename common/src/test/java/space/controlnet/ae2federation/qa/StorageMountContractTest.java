@@ -46,13 +46,20 @@ final class StorageMountContractTest {
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
         assertTrue(dependencies.contains(
                 "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
-        // Every operation re-evaluates its authority: in full, or, while nothing Federation-side changed since a full
-        // pass (AuthorityEpoch), by matching the source Grid's native state again.
+        // Every operation re-evaluates its authority: in full, or, while nothing it reads changed since a full pass
+        // (AuthorityEpoch, which AE2's mount table and Grid power and booting events also advance), by matching the
+        // source's delegate links again.
         assertTrue(mounts.contains("sourceCurrent(mounted, check)"));
         assertTrue(mounts.contains("dependencies.current(candidate, domain, check)"));
         assertTrue(mounts.contains("check.stillAuthorized(provenance)"));
         assertTrue(dependencies.contains("authorizedEpoch == AuthorityEpoch.current() && provenance.stillMatches(probe)"));
-        assertTrue(provenance.contains("cached.stamp().matches(probe.grid, probe.service)"));
+        assertTrue(provenance.contains("cached.stamp().linksCurrent()"));
+        var ledger = source("ae2/storage/NativeMountLedger.java");
+        assertTrue(ledger.contains("ledger.ae2federation$markMountChanged();\n            AuthorityEpoch.advance();"));
+        var gridEvents = source("ae2/storage/NativeGridStateEvents.java");
+        assertTrue(gridEvents.contains("addEventHandler(GridPowerStatusChange.class"));
+        assertTrue(gridEvents.contains("addEventHandler(GridBootingStatusChange.class"));
+        assertTrue(source("CommonStartup.java").contains("NativeGridStateEvents.register();"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
         assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));

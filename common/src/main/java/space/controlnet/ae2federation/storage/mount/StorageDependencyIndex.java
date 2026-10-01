@@ -212,8 +212,8 @@ final class StorageDependencyIndex {
         private EffectiveStorageAuthority authorized;
 
         /**
-         * The authority the last passing check returned, while nothing it read on the Federation side changed
-         * ({@link AuthorityEpoch}) and the source Grid's native state still matches the stamp it passed with.
+         * The authority the last passing check returned, while nothing it read changed ({@link AuthorityEpoch}) and
+         * the source's storage wrappers still forward to the delegates they passed with.
          */
         @org.jetbrains.annotations.Nullable EffectiveStorageAuthority stillAuthorized(NativeSourceDomainRegistry provenance) {
             return authorizedEpoch == AuthorityEpoch.current() && provenance.stillMatches(probe) ? authorized : null;

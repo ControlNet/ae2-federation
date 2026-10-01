@@ -311,6 +311,8 @@ runs entirely in AE2: MODULATE 45.0 vs native 39.8 ns (1.13x, was 3.07x), SIMULA
 - This is an invalidation-driven memo of the last pass's `EffectiveStorageAuthority`, the same kind `CurrentCheck`
   already kept per revision (its staleness window is the same while every writer advances the epoch), not a check
   that recomputes everything per operation. A writer of check input added later must advance `AuthorityEpoch`.
+  The user approved keeping it on 2026-10-01, and then replacing the native stamp poll with AE2's public Grid events
+  (below) instead of the node-notification mixins first proposed.
 - Across ticks: `perfstorageprojection` does one simulate per idle tick and records `idleAuthorityEpochs` and
   `idleDependencyRefreshes` over the 100-tick window; both are 0 in the static scene, so the fast path holds for
   automation that does a few operations per tick, not only inside the benchmark's one-tick bursts.
@@ -323,3 +325,31 @@ runs entirely in AE2: MODULATE 45.0 vs native 39.8 ns (1.13x, was 3.07x), SIMULA
   ones (Federation simulate reads ~15 ns higher without the listings' warm-up before it, native is unchanged), so
   compare quick runs only with quick runs: epoch A/B, 2 interleaved rounds x 3 runs, simulate 175.5/176.2 ->
   162.0/164.8 ns, extract+insert 418.1/431.4 -> 396.4/387.4 ns (native 122.3 / 392.7).
+
+## Storage native state through AE2 Grid events (local opsScale 100)
+- The fast path no longer polls the source Grid's native stamp (power, booting, channels, node membership, mount
+  generation). What changes it advances `AuthorityEpoch` instead, with no new mixin: AE2's public
+  `GridPowerStatusChange` and `GridBootingStatusChange` (`ae2/storage/NativeGridStateEvents`, subscribed once in
+  `CommonStartup` via `GridHelper.addEventHandler`), the mount ledger's `recordChange` (only for non-Federation
+  providers, like the generation itself), and node joins/leaves through `NetworkIdentityGridService` -> `IdentityEpoch`.
+  Channels are covered by the booting event: AE2 assigns them only in `PathingService.onServerEndTick`, where
+  `ChannelFinalizer` runs right before it posts the end of booting, and `getUsedChannels()` reads only the finalized
+  count. Only delegate links stay polled (`Stamp.linksCurrent`): a Storage Bus on another network's monitor swaps its
+  delegate with no event and no remount. The full check (`Stamp.matches`) and `discover` are unchanged.
+- The events also ask for a tick-end reconcile (`NativeMountLedger.requestReconcile`, the existing ledger mixin's
+  flag). Before, a provider that never remounts on its own (third-party style) lost its relationship on a power loss
+  and never got it back, because only mount changes, topology and policy edits reconciled; ME Chests and Storage
+  Buses hid it by remounting on every online change. Deferred to the tick end because AE2 posts the start and the end
+  of a reboot within one tick.
+- Before this change the per-tick storage subscription `discover` (full stamp) already caught a power loss on the
+  next tick; what the events close is the window inside the tick, e.g. node listeners AE2 notifies right after the
+  event. `storageheldnativestate` checks it with TEST-ONLY `GridEventProbe`, which acts inside AE2's event dispatch:
+  with polling removed and no events, an operation during a reboot was accepted (red); with the events it is refused.
+  The provider Grid holds no ME Chest (and no Storage Bus until the last phase), whose remount would hide a missing
+  event. After a refused in-reboot operation the relationship can be dropped and comes back through the reconcile,
+  so the test checks the current projection, not the held one, after the reboot.
+- Quick-mode A/B, 3 interleaved rounds against ccdcfe1: simulate 172.8/147.6/163.4 -> 135.1/132.9/135.9 ns
+  (native quick 122.3), extract+insert 383.6/387.5/406.5 -> 372.5/375.1/364.0 ns (native 392.7), projection
+  insertExtract 290.9/308.2/260.3 -> 251.0/252.1/242.4 ns.
+- Remote full mode at ccdcfe1 (before this change): simulate 155.9 vs native 121.0 ns (1.29x), extract+insert
+  408.2 vs 398.2 ns (1.03x).

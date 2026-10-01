@@ -62,6 +62,11 @@ public abstract class StorageServiceMountLedgerMixin implements NativeMountLedge
     }
 
     @Override
+    public void ae2federation$requestReconcile() {
+        ae2federation$mountChanged = true;
+    }
+
+    @Override
     public Map<IGridNode, ?> ae2federation$nodeProviderStates() {
         return nodeProviders;
     }

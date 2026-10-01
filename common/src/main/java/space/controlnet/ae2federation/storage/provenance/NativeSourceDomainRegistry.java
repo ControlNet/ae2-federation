@@ -75,12 +75,13 @@ public final class NativeSourceDomainRegistry {
 
     /**
      * Whether the domain {@code probe}'s last {@link #discover(IGrid, Probe)} returned still matches its Grid's native
-     * state, for a caller that knows this registry did not change since (every change advances
-     * {@link space.controlnet.ae2federation.policy.AuthorityEpoch}): then {@code discover} would return it again.
+     * state, for a caller that knows {@link space.controlnet.ae2federation.policy.AuthorityEpoch} did not change since:
+     * neither this registry nor the Grid's membership, mount table, power or booting state did, so of the stamp only
+     * the delegate links, which change without any event, are read again. Then {@code discover} would return it again.
      */
     public boolean stillMatches(Probe probe) {
         var cached = probe.cached;
-        return cached != null && cached.domain() != null && cached.stamp().matches(probe.grid, probe.service);
+        return cached != null && cached.domain() != null && cached.stamp().linksCurrent();
     }
 
     /** One caller's memo of the last {@link #discover(IGrid, Probe)} answer; owned by that caller. */
@@ -413,6 +414,10 @@ public final class NativeSourceDomainRegistry {
                     }
                 }
             }
+            return linksCurrent();
+        }
+
+        boolean linksCurrent() {
             for (var link : delegateLinks) {
                 if (!link.current()) {
                     return false;
