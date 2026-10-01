@@ -38,9 +38,15 @@ public final class EnergyBindingService implements AutoCloseable {
     private long reconciledTick = Long.MIN_VALUE;
     /** Each consumer source's bindings in provider-network order, rebuilt after any binding change. */
     private final Map<DirectionalEnergySource, List<EnergyCapabilityBinding>> candidates = new IdentityHashMap<>();
+    /** The source {@link #candidates} answered last and its entry; null whenever the map is cleared. */
+    private DirectionalEnergySource lastCandidateSource;
+    private List<EnergyCapabilityBinding> lastCandidates;
     /** Provider backends whose native sources were rediscovered as current in {@link #currencyTick}. */
     private final Map<NativeEnergyBackend, Boolean> currentBackends = new IdentityHashMap<>();
     private long currencyTick = Long.MIN_VALUE;
+    /** The backend {@link #backendCurrent} answered last and its entry in {@link #currentBackends}; null when cleared. */
+    private NativeEnergyBackend lastBackend;
+    private boolean lastBackendCurrent;
 
     private EnergyBindingService(ServerLevel level) {
         this.level = level;
@@ -187,8 +193,7 @@ public final class EnergyBindingService implements AutoCloseable {
                     var acceptedNanoAe = nanoAe(accepted);
                     // The binding's key is the ordered (consumer, provider, ME_POWER) Policy key of its two Grids.
                     observability.recordPairFlow(binding.key(), acceptedNanoAe);
-                    observability.recordAccepted(binding.revision().federationDomains(),
-                            space.controlnet.ae2federation.observability.meter.OperationEventId.create(), "ae2:energy",
+                    observability.recordAccepted(binding.revision().federationDomains(), "ae2:energy",
                             acceptedNanoAe, ResourceUnit.NANO_AE,
                             space.controlnet.ae2federation.observability.state.FlowState.Attribution.EXACT_OPERATION);
                 }
@@ -230,7 +235,9 @@ public final class EnergyBindingService implements AutoCloseable {
         bindings.values().forEach(EnergyCapabilityBinding::withdraw);
         bindings.clear();
         candidates.clear();
+        lastCandidateSource = null;
         currentBackends.clear();
+        lastBackend = null;
         backends.clear();
         federationDomains.clear();
     }
@@ -289,6 +296,7 @@ public final class EnergyBindingService implements AutoCloseable {
         holder[0] = binding;
         bindings.put(relationship.key(), binding);
         candidates.clear();
+        lastCandidateSource = null;
         publications++;
         if (demandDepth == 0) {
             source.announceAvailability();
@@ -296,10 +304,16 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     private List<EnergyCapabilityBinding> candidates(DirectionalEnergySource source) {
-        return candidates.computeIfAbsent(source, ignored -> bindings.values().stream()
+        if (source == lastCandidateSource) {
+            return lastCandidates;
+        }
+        var list = candidates.computeIfAbsent(source, ignored -> bindings.values().stream()
                 .filter(binding -> binding.consumerSource() == source)
                 .sorted(Comparator.comparing(binding -> binding.key().providerNetworkId().toString()))
                 .toList());
+        lastCandidateSource = source;
+        lastCandidates = list;
+        return list;
     }
 
     /** Rediscovers a provider's native sources at most once per tick; any change is caught on the next tick. */
@@ -308,8 +322,14 @@ public final class EnergyBindingService implements AutoCloseable {
         if (currencyTick != tick) {
             currencyTick = tick;
             currentBackends.clear();
+            lastBackend = null;
+        } else if (backend == lastBackend) {
+            return lastBackendCurrent;
         }
-        return currentBackends.computeIfAbsent(backend, backends::isCurrent);
+        var current = currentBackends.computeIfAbsent(backend, backends::isCurrent);
+        lastBackend = backend;
+        lastBackendCurrent = current;
+        return current;
     }
 
     private boolean current(EnergyCapabilityBinding binding, NativeEnergyBackend backend) {
@@ -325,19 +345,35 @@ public final class EnergyBindingService implements AutoCloseable {
             return false;
         }
         var registry = FederationDomainRegistryAccess.get(level);
-        if (!anyCurrent(binding.revision().federationDomains(), registry)) {
-            remove(binding.key());
+        var topology = registry.topologyRevision();
+        var policies = PolicyService.get(level);
+        var watermark = policies.highWatermark();
+        var key = binding.key();
+        if (binding.passedAt(registry, topology, policies, watermark)) {
+            // No rule and no domain changed since the full check below passed, so its rule, domain-reference and
+            // shared-domain parts still hold; the Grids' identities are read again.
+            var epoch = space.controlnet.ae2federation.identity.IdentityEpoch.current();
+            if (binding.matchedAt(epoch)
+                    || policies.identitiesMatch(key, binding.consumerIdentity(), binding.providerIdentity())) {
+                binding.matched(epoch);
+                return true;
+            }
+            remove(key);
             return false;
         }
-        var policies = PolicyService.get(level);
-        var key = binding.key();
+        if (!anyCurrent(binding.revision().federationDomains(), registry)) {
+            remove(key);
+            return false;
+        }
         var configured = policies.configured(key).orElse(null);
         var authorized = configured != null && configured.revision().equals(binding.revision().policyRevision())
                 && configured.rule().enabled() && configured.rule().operations().contains(PolicyOperation.SUPPLY)
                 && policies.activation(configured, binding.consumerIdentity(), binding.providerIdentity(),
                         BackendStatus.READY, registry) == PolicyActivationState.ACTIVE;
-        if (!authorized) {
-            remove(binding.key());
+        if (authorized) {
+            binding.passed(registry, topology, policies, watermark);
+        } else {
+            remove(key);
         }
         return authorized;
     }
@@ -361,6 +397,7 @@ public final class EnergyBindingService implements AutoCloseable {
         if (removed != null) {
             removed.withdraw();
             candidates.clear();
+            lastCandidateSource = null;
             withdrawals++;
         }
     }

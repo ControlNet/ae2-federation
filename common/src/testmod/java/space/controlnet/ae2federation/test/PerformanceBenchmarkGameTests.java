@@ -109,9 +109,9 @@ public final class PerformanceBenchmarkGameTests {
                         () -> source.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
                 var observability = LevelObservabilityService.get(helper.getLevel());
                 var scopes = binding.revision().federationDomains();
+                // The overload a MODULATE demand records through, which makes the operation's event id itself.
                 perf.nanosPerOp("partRecordFlow", 2000, 300, () -> observability.recordAccepted(scopes,
-                        OperationEventId.create(), "ae2:energy", 1_000_000_000L, ResourceUnit.NANO_AE,
-                        FlowState.Attribution.EXACT_OPERATION));
+                        "ae2:energy", 1_000_000_000L, ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");

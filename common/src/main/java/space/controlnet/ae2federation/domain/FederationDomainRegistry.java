@@ -133,9 +133,15 @@ public final class FederationDomainRegistry {
         // Usually each network is in one domain: both sets then hold the same id object, which equals answers at
         // once, where the sorted set would compare its characters.
         if (firstDomains.size() == 1 && secondDomains.size() == 1) {
-            return firstDomains.iterator().next().equals(secondDomains.iterator().next());
+            return sole(firstDomains).equals(sole(secondDomains));
         }
         return !java.util.Collections.disjoint(firstDomains, secondDomains);
+    }
+
+    /** The one id of a single-domain membership; the index's sorted sets give it without an iterator. */
+    private static FederationDomainId sole(Set<FederationDomainId> domains) {
+        return domains instanceof java.util.SortedSet<FederationDomainId> sorted ? sorted.first()
+                : domains.iterator().next();
     }
 
     public boolean isCurrent(FederationDomainReference reference) {

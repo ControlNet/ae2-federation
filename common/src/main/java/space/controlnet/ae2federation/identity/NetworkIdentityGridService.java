@@ -43,6 +43,12 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     private IdentitySettlement settlement = new IdentitySettlement(IdentityStatus.NEW_NETWORK, java.util.Optional.empty());
     private long nodeRevision;
     private @Nullable NetworkIdentityRegistry registry;
+    /**
+     * The registry and claim revision {@link #settlement} was last read at: policy activation reads it on every storage,
+     * crafting and energy operation, and while no claim changed the registry would return the same settlement.
+     */
+    private @Nullable NetworkIdentityRegistry settledRegistry;
+    private long settledRevision;
 
     public NetworkIdentityGridService(IGrid grid) {
         this.grid = grid;
@@ -74,9 +80,11 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
         // Saved provisional flags are legacy durable evidence. Only the original live node in this call scope
         // is transient; copied NBT never carries this authority, and node UUIDs are never regenerated on transfer.
         registry = NetworkIdentityRegistry.get(gridNode.getLevel());
+        IdentityEpoch.advance();
         put(gridNode, lineage);
         if (transientNode) {
             provisional.add(gridNode);
+            IdentityEpoch.advance();
         }
         if (!neutral && Integer.valueOf(server.getTickCount()).equals(MINTED_TICK.get(gridNode))) {
             freshNodes().add(gridNode);
@@ -162,12 +170,14 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
 
     void finishInitialization(IGridNode node) {
         if (provisional.remove(node)) {
+            IdentityEpoch.advance();
             ((GridNode) node).callListener(IGridNodeListener::onSaveChanges);
         }
     }
 
     private void put(IGridNode gridNode, NodeLineage lineage) {
         var previous = nodes.put(gridNode, lineage);
+        IdentityEpoch.advance();
         if (neutral(gridNode)) {
             // Boundary nodes are never identity evidence: no claim, so no merge, split, or copy conflict.
             return;
@@ -186,6 +196,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     @Override
     public void removeNode(IGridNode gridNode) {
         nodeRevision++;
+        IdentityEpoch.advance();
         provisional.remove(gridNode);
         fresh.remove(gridNode);
         var lineage = nodes.remove(gridNode);
@@ -196,6 +207,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             duplicateLineages = 0;
             registry.release(grid);
             settlement = IdentityReconciler.reconcile(nodes.values(), false, false, true);
+            settledRegistry = null;
         } else if (lineage != null && !neutral(gridNode)) {
             release(lineage);
         }
@@ -229,7 +241,12 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
             return new IdentitySettlement(IdentityStatus.CONFLICTING_NODE_DATA, java.util.Optional.empty());
         }
         if (registry != null && !nodes.isEmpty()) {
-            settlement = registry.settle(grid);
+            var revision = registry.claimIndex().revision();
+            if (settledRegistry != registry || settledRevision != revision) {
+                settlement = registry.settle(grid);
+                settledRegistry = registry;
+                settledRevision = revision;
+            }
         }
         return settlement;
     }
@@ -253,6 +270,7 @@ public final class NetworkIdentityGridService implements NetworkIdentityService,
     }
 
     private void release(NodeLineage lineage) {
+        IdentityEpoch.advance();
         if (networkCounts.merge(lineage.networkId(), -1, Integer::sum) == 0) {
             networkCounts.remove(lineage.networkId());
         }

@@ -46,7 +46,7 @@ final class StorageMountContractTest {
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
         assertTrue(dependencies.contains(
                 "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
-        assertTrue(mounts.contains("sourceCurrent(holder[0])"));
+        assertTrue(mounts.contains("sourceCurrent(holder[0], check)"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
         assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));

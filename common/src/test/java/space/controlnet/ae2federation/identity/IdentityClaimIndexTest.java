@@ -40,6 +40,49 @@ final class IdentityClaimIndexTest {
     }
 
     @Test
+    void revisionAdvancesOnEveryClaimChangeAndOnlyThen() {
+        var registry = new IdentityClaimIndex<Object>();
+        var grid = grid();
+        var other = grid();
+        var start = registry.revision();
+        registry.add(grid, lineage(NETWORK_A, 1));
+        var added = registry.revision();
+        assertTrue(added > start, "A new claim advances the revision");
+        registry.add(grid, lineage(NETWORK_A, 1));
+        registry.settle(grid, ignored -> { });
+        assertEquals(added, registry.revision(), "A repeated claim or a read changes nothing");
+        registry.add(other, lineage(NETWORK_A, 1));
+        var copied = registry.revision();
+        assertTrue(copied > added, "Another Grid's claim can change this Grid's settlement");
+        registry.remove(other, lineage(NETWORK_A, 1));
+        var removed = registry.revision();
+        assertTrue(removed > copied, "A removed claim advances the revision");
+        registry.remove(other, lineage(NETWORK_A, 1));
+        assertEquals(removed, registry.revision(), "Removing an absent claim changes nothing");
+        registry.release(grid);
+        assertTrue(registry.revision() > removed, "Releasing a Grid advances the revision");
+    }
+
+    @Test
+    void theIdentityEpochFollowsEveryClaimChangeOfEveryIndex() {
+        var first = new IdentityClaimIndex<Object>();
+        var second = new IdentityClaimIndex<Object>();
+        var grid = grid();
+        var start = IdentityEpoch.current();
+        first.add(grid, lineage(NETWORK_A, 1));
+        var added = IdentityEpoch.current();
+        assertTrue(added > start, "A claim in one index advances the epoch");
+        first.settle(grid, ignored -> { });
+        first.add(grid, lineage(NETWORK_A, 1));
+        assertEquals(added, IdentityEpoch.current(), "A read or a repeated claim leaves it");
+        second.add(grid(), lineage(NETWORK_A, 1));
+        var other = IdentityEpoch.current();
+        assertTrue(other > added, "A claim in another level's index advances it too");
+        first.release(grid);
+        assertTrue(IdentityEpoch.current() > other, "Releasing a Grid advances it");
+    }
+
+    @Test
     void settlementCostScalesWithOwnLineagesNotWithOtherGrids() {
         var registry = new IdentityClaimIndex<Object>();
         var grid = grid();

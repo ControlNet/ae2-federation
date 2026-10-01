@@ -110,6 +110,23 @@ public final class PolicyService {
                 endpoints.backendStatus()));
     }
 
+    /**
+     * Advances on every rule edit and deletion: while it and this service are unchanged, every rule reads as it did.
+     */
+    public long highWatermark() {
+        return data.highWatermark().value();
+    }
+
+    /**
+     * The identity part of {@link #activation}: whether both Grids are settled on {@code key}'s networks. A caller
+     * whose rule and domains are unchanged since an {@code ACTIVE} activation needs only this part again.
+     */
+    public boolean identitiesMatch(PolicyKey key, NetworkIdentityService consumerIdentity,
+            NetworkIdentityService providerIdentity) {
+        return PolicyActivation.matches(consumerIdentity.settlement(), key.consumerNetworkId())
+                && PolicyActivation.matches(providerIdentity.settlement(), key.providerNetworkId());
+    }
+
     public int configuredCount() {
         return data.configuredCount();
     }

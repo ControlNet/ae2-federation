@@ -39,6 +39,9 @@ public final class LevelObservabilityService implements AutoCloseable {
     private space.controlnet.ae2federation.policy.PolicyKey lastPairKey;
     private space.controlnet.ae2federation.observability.meter.PairFlowWindow lastPairWindow;
     private static final long PRUNE_INTERVAL_TICKS = 100;
+    /** The key type a storage record named last and its unit; a type's id never changes. */
+    private appeng.api.stacks.AEKeyType lastKeyType;
+    private ResourceUnit lastKeyUnit;
 
     private LevelObservabilityService(ServerLevel level) {
         this.level = level;
@@ -118,21 +121,37 @@ public final class LevelObservabilityService implements AutoCloseable {
 
     public void recordAccepted(Iterable<FederationDomainReference> scopes, OperationEventId eventId, String resource, long amount,
             ResourceUnit unit, FlowState.Attribution attribution) {
+        java.util.Objects.requireNonNull(eventId);
         java.util.Objects.requireNonNull(resource);
         recordAccepted(scopes, eventId, () -> resource, amount, unit, attribution);
     }
 
-    private void recordAccepted(Iterable<FederationDomainReference> scopes, OperationEventId eventId,
-            java.util.function.Supplier<String> resource, long amount, ResourceUnit unit,
-            FlowState.Attribution attribution) {
+    /** Records one accepted operation that no other record repeats; its event id is made only if a flow needs it. */
+    public void recordAccepted(Iterable<FederationDomainReference> scopes, String resource, long amount,
+            ResourceUnit unit, FlowState.Attribution attribution) {
+        java.util.Objects.requireNonNull(resource);
+        recordAccepted(scopes, null, () -> resource, amount, unit, attribution);
+    }
+
+    /** {@code eventId} null: the operation is new, and each scope's record shares the id the first one made. */
+    private void recordAccepted(Iterable<FederationDomainReference> scopes,
+            @org.jetbrains.annotations.Nullable OperationEventId eventId, java.util.function.Supplier<String> resource,
+            long amount, ResourceUnit unit, FlowState.Attribution attribution) {
         if (amount <= 0) {
             return;
         }
+        var created = eventId == null;
         // The meter records every accepted operation at once; subscribers see it in the tick's sweep, which projects
         // each subscribed scope once however many operations it accepted.
         for (var scope : scopes) {
-            if (transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution)
-                    && scope != lastFlowedScope) {
+            boolean recorded;
+            if (created) {
+                eventId = transportMeter.recordNew(scope, eventId, resource, amount, unit, attribution);
+                recorded = true;
+            } else {
+                recorded = transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution);
+            }
+            if (recorded && scope != lastFlowedScope) {
                 flowedScopes.add(scope);
                 lastFlowedScope = scope;
             }
@@ -185,10 +204,14 @@ public final class LevelObservabilityService implements AutoCloseable {
 
     public void recordAcceptedStorage(Iterable<FederationDomainReference> scopes, AcceptedStorageOperation operation) {
         var key = operation.resource();
-        var typePath = key.getType().getId().getPath();
-        var unit = typePath.contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
+        var type = key.getType();
+        if (type != lastKeyType) {
+            lastKeyUnit = type.getId().getPath().contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
+            lastKeyType = type;
+        }
+        var unit = lastKeyUnit;
         // The resource id is a registry lookup and a new string; only a kept or reported flow needs it.
-        recordAccepted(scopes, operation.eventId(), () -> key.getId().toString(), operation.amount(), unit,
+        recordAccepted(scopes, null, () -> key.getId().toString(), operation.amount(), unit,
                 FlowState.Attribution.EXACT_OPERATION);
     }
 

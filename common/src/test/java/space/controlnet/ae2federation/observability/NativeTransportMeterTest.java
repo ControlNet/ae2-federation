@@ -65,6 +65,47 @@ class NativeTransportMeterTest {
     }
 
     @Test
+    void newEventsSkipTheDuplicateCheckButStillAgeTheWindow() {
+        var meter = new NativeTransportMeter(2);
+        var replayed = new OperationEventId(new UUID(0, 1));
+        assertTrue(meter.recordAccepted(SCOPE, replayed, "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION));
+        var first = meter.recordNew(SCOPE, null, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        // A kept flow carries the id the meter made for it.
+        assertTrue(first != null && !first.equals(replayed));
+        assertEquals(first, meter.window(SCOPE).events().get(1).eventId());
+        assertFalse(meter.recordAccepted(SCOPE, replayed, "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION), "The replay is within the last two events");
+        meter.recordNew(SCOPE, null, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        assertTrue(meter.recordAccepted(SCOPE, replayed, "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION), "Two later events aged the first one out");
+        assertEquals(4, meter.window(SCOPE).dataRevision());
+    }
+
+    @Test
+    void aNewEventMakesAnIdOnlyForAFlowItKeepsAndSharesItAcrossScopes() {
+        var meter = new NativeTransportMeter(1);
+        var other = new FederationDomainReference(new FederationDomainId("physical:other"), 1);
+        meter.recordNew(SCOPE, null, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        meter.recordNew(SCOPE, null, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        assertTrue(meter.window(SCOPE).resnapshotRequired());
+        // The overflowed window keeps no flow, so no id is made and the resource is never named.
+        assertEquals(null, meter.recordNew(SCOPE, null, () -> {
+            throw new AssertionError("A window that keeps no events must not name the resource");
+        }, 1, ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
+        assertEquals(3, meter.window(SCOPE).dataRevision());
+        var shared = meter.recordNew(other, null, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION);
+        assertEquals(shared, meter.recordNew(SCOPE, shared, () -> "ae2:energy", 1, ResourceUnit.NANO_AE,
+                FlowState.Attribution.EXACT_OPERATION));
+        assertEquals(shared, meter.window(other).events().get(0).eventId());
+    }
+
+    @Test
     void overflowCollapsesToExplicitResnapshot() {
         var meter = new NativeTransportMeter(2);
         for (var index = 0; index < 3; index++) {

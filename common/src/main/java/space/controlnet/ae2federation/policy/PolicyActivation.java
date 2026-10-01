@@ -28,7 +28,7 @@ final class PolicyActivation {
         };
     }
 
-    private static boolean matches(IdentitySettlement settlement,
+    static boolean matches(IdentitySettlement settlement,
             space.controlnet.ae2federation.identity.NetworkId expected) {
         return settlement.canInheritPolicy() && settlement.networkId().filter(expected::equals).isPresent();
     }

@@ -103,7 +103,8 @@ public final class EffectiveStorageAuthority {
                 result.put(operation, filter);
             }
         });
-        return Map.copyOf(result);
+        // An EnumMap finds an operation by its ordinal; every storage operation reads its filter.
+        return java.util.Collections.unmodifiableMap(result);
     }
 
     private static boolean permits(PolicyFilter filter, PolicyResource resource) {

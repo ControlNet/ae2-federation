@@ -16,14 +16,19 @@ import java.util.function.DoubleSupplier;
 final class EnergyRouteGuard {
     /** One reusable visit set per thread; every demand is a single call, so allocating one per demand is waste. */
     private static final ThreadLocal<Demand> DEMAND = ThreadLocal.withInitial(Demand::new);
+    /**
+     * The demand state {@link #current} returned last. Its owner thread is checked on every read, so a thread
+     * never uses another's; a miss falls back to the thread-local and replaces it.
+     */
+    private static volatile Demand last;
 
     private EnergyRouteGuard() {
     }
 
     /** Runs a demand of {@code consumer}; a demand already running on this thread joins it. */
     static double demand(Object consumer, DoubleSupplier operation) {
-        var demand = DEMAND.get();
-        demand.visited.add(consumer);
+        var demand = current();
+        demand.add(consumer);
         if (demand.running) {
             return operation.getAsDouble();
         }
@@ -32,26 +37,38 @@ final class EnergyRouteGuard {
             return operation.getAsDouble();
         } finally {
             demand.running = false;
-            demand.visited.clear();
+            demand.clear();
         }
     }
 
     /** Whether the running demand may draw on {@code provider}: false when it already visited that Grid. */
     static boolean visit(Object provider) {
-        var demand = DEMAND.get();
-        return !demand.running || demand.visited.add(provider);
+        var demand = current();
+        return !demand.running || demand.add(provider);
+    }
+
+    private static Demand current() {
+        var demand = last;
+        if (demand != null && demand.owner == Thread.currentThread()) {
+            return demand;
+        }
+        demand = DEMAND.get();
+        last = demand;
+        return demand;
     }
 
     /**
-     * The Grids one demand has visited. A demand usually reaches a handful, which an identity scan of a small array
-     * answers faster than hashing, and clearing it touches only the used slots; past {@link #SCAN_LIMIT} Grids an
-     * identity set takes over so a large mesh stays linear.
+     * One thread's running demand and the Grids it has visited. A demand usually reaches a handful, which an identity
+     * scan of a small array answers faster than hashing, and clearing it touches only the used slots; past
+     * {@link #SCAN_LIMIT} Grids an identity set takes over so a large mesh stays linear.
      */
-    private static final class Visited {
+    private static final class Demand {
         private static final int SCAN_LIMIT = 16;
+        private final Thread owner = Thread.currentThread();
         private final Object[] recent = new Object[SCAN_LIMIT];
         private int size;
         private Set<Object> overflow;
+        private boolean running;
 
         /** Adds {@code grid}; false when this demand already visited it. */
         boolean add(Object grid) {
@@ -73,14 +90,11 @@ final class EnergyRouteGuard {
         }
 
         void clear() {
-            Arrays.fill(recent, 0, size, null);
+            for (var index = 0; index < size; index++) {
+                recent[index] = null;
+            }
             size = 0;
             overflow = null;
         }
-    }
-
-    private static final class Demand {
-        private final Visited visited = new Visited();
-        private boolean running;
     }
 }

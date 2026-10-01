@@ -16,6 +16,20 @@ public final class EnergyCapabilityBinding {
     private final NetworkIdentityService providerIdentity;
     /** Set once when the service drops this binding; a withdrawn binding is never published again. */
     private boolean withdrawn;
+    /**
+     * The level registry and its topology revision, and the policy service and its rule watermark, at the last full
+     * authority check this binding passed. Rules change only with the watermark and domains only with the topology
+     * revision, so while all four are unchanged the rule and domain parts of that check still hold.
+     */
+    private Object checkedRegistry;
+    private long checkedTopology;
+    private Object checkedPolicies;
+    private long checkedWatermark;
+    /**
+     * The {@link space.controlnet.ae2federation.identity.IdentityEpoch} when both Grids' settlements last matched
+     * this binding's key: while it is unchanged they would return what matched.
+     */
+    private long matchedEpoch = -1;
 
     EnergyCapabilityBinding(EnergyRelationship relationship, NativeEnergyBackend backend,
             EnergyBindingRevision revision, DirectionalEnergySource source, BooleanSupplier current) {
@@ -34,6 +48,26 @@ public final class EnergyCapabilityBinding {
 
     NetworkIdentityService providerIdentity() {
         return providerIdentity;
+    }
+
+    boolean matchedAt(long epoch) {
+        return epoch == matchedEpoch;
+    }
+
+    void matched(long epoch) {
+        matchedEpoch = epoch;
+    }
+
+    boolean passedAt(Object registry, long topology, Object policies, long watermark) {
+        return registry == checkedRegistry && topology == checkedTopology && policies == checkedPolicies
+                && watermark == checkedWatermark;
+    }
+
+    void passed(Object registry, long topology, Object policies, long watermark) {
+        checkedRegistry = registry;
+        checkedTopology = topology;
+        checkedPolicies = policies;
+        checkedWatermark = watermark;
     }
 
     boolean withdrawn() {

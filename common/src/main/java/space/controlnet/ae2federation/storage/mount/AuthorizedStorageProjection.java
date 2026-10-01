@@ -9,7 +9,6 @@ import java.util.Objects;
 import net.minecraft.network.chat.Component;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import java.util.function.Consumer;
-import space.controlnet.ae2federation.observability.meter.OperationEventId;
 
 final class AuthorizedStorageProjection implements
         space.controlnet.ae2federation.storage.provenance.FederationManagedStorage {
@@ -78,7 +77,7 @@ final class AuthorizedStorageProjection implements
 
     private void observe(AEKey key, long accepted, Actionable mode) {
         if (mode == Actionable.MODULATE && accepted > 0) {
-            acceptedObserver.accept(new AcceptedStorageOperation(OperationEventId.create(), key, accepted));
+            acceptedObserver.accept(new AcceptedStorageOperation(key, accepted));
         }
     }
 }
