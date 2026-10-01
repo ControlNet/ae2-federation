@@ -354,6 +354,32 @@ final class TaskThirtyThreeShowcaseFixture {
         return context.level().getBlockEntity(position) instanceof EndpointBlockEntity endpoint ? endpoint : null;
     }
 
+    /**
+     * Whether the Router's domain holds all eight networks again, unchanged for a second. Each Endpoint carries its
+     * network's identity but starts in a Grid of its own until {@link #devicesReady} connects it, so for a moment two
+     * Grids claim one network. A domain recompute that lands in that moment drops the network until the Router's
+     * once-a-second evidence check puts it back; reopening the workspace before then shows six members.
+     */
+    static boolean domainComplete(ServerContext context) {
+        var state = state(context);
+        var routerNode = FederationDomainRegistryAccess.nodeId(context.level(), TaskFifteenWorldFixture.routerPosition(context));
+        var domain = FederationDomainRegistryAccess.get(context.level()).snapshot().federationDomains().values().stream()
+                .filter(candidate -> candidate.nodes().contains(routerNode)).findFirst().orElse(null);
+        if (domain == null || !domain.memberships().keySet().containsAll(state.networks)) {
+            context.put("task33.showcaseDomainSince", -1L);
+            return false;
+        }
+        var tick = context.level().getGameTime();
+        Long generation = context.get("task33.showcaseDomainGeneration");
+        Long since = context.get("task33.showcaseDomainSince");
+        if (since == null || since < 0 || generation == null || generation != domain.generation()) {
+            context.put("task33.showcaseDomainGeneration", domain.generation());
+            context.put("task33.showcaseDomainSince", tick);
+            return false;
+        }
+        return tick - since >= 20;
+    }
+
     private static State state(ServerContext context) {
         var state = context.<State>get(STATE);
         require(state != null, "Showcase world was not arranged");

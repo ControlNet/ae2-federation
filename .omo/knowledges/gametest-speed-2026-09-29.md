@@ -44,7 +44,8 @@ The following hooks act only under the batch selection and are all TEST-ONLY.
 - Every FAIL and CRASH from the batch then runs again alone (`positive` selection, the way CI runs it):
   - **SHARED** means the test passes alone, so only another test's leftover level state failed it.
   - "(also fails alone)" means a real failure.
-- A known SHARED cause is level SavedData that outlives each test: rule stores and network identities. That is why `policysparsescale`, `policydeletereconnect` and `energydisconnectnosource` count leftover rules or bindings.
+- A known SHARED cause is level SavedData that outlives each test: rule stores and network identities. `policysparsescale` and `policydeletereconnect` used to count leftover rules and tombstones; since 2026-10-01 they assert only what they add over the count they start with, so they pass in a batch too. (`energydisconnectnosource` no longer exists; energy bindings were removed.)
+- Make a level-wide count in a test relative to the count it starts with, so it neither depends on nor breaks a shared level.
 
 Batch mode is for fast local iteration only:
 - It doesn't run the Gradle evidence verifiers (`federation-qa.gradle`).

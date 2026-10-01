@@ -390,6 +390,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntilServer("showcase: devices join their networks", TaskThirtyThreeShowcaseFixture::devicesReady)
                 .server("showcase: map patterns many-to-many", TaskThirtyThreeShowcaseFixture::mapDevices)
                 .waitUntilServer("showcase: mappings installed", TaskThirtyThreeShowcaseFixture::mapped)
+                .waitUntilServer("showcase: the domain holds all eight networks", TaskThirtyThreeShowcaseFixture::domainComplete)
                 // The domain gained members, so the open workspace is out of date: reopen it, as a player would.
                 .closeScreen()
                 .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)

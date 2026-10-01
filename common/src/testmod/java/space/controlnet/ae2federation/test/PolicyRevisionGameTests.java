@@ -50,6 +50,8 @@ public final class PolicyRevisionGameTests {
         var fixtures = new PolicyBridgeFixtures(helper, new BlockPos(5, 3, 5));
         var phase = new int[1];
         var deletedRevision = new PolicyRevision[1];
+        // Counted from the level's tombstones before this test deletes: a shared level holds other tests' too.
+        var tombstonesBefore = new int[1];
         helper.succeedWhen(() -> {
             if (phase[0] == 0 && fixtures.networksSettled()) {
                 fixtures.placeFirstBridge();
@@ -59,6 +61,7 @@ public final class PolicyRevisionGameTests {
             if (phase[0] == 1 && fixtures.firstBridgeReady()) {
                 var service = PolicyService.get(helper.getLevel());
                 var key = PolicyLifecycleGameTests.storageKey(fixtures);
+                tombstonesBefore[0] = service.tombstoneCount();
                 var configured = accepted(service.edit(new PolicyEdit(key, PolicyRevision.NONE,
                         PolicyRule.storageDefaults())));
                 fixtures.removeFirstBridge();
@@ -78,7 +81,7 @@ public final class PolicyRevisionGameTests {
                     space.controlnet.ae2federation.policy.BackendStatus.READY)), PolicyActivationState.UNCONFIGURED,
                     "Reconnect cannot resurrect a deleted rule");
             helper.assertValueEqual(service.revision(key), deletedRevision[0], "Tombstone revision must remain authoritative");
-            helper.assertValueEqual(service.tombstoneCount(), 1, "Deletion protection must remain sparse and durable");
+            helper.assertValueEqual(service.tombstoneCount() - tombstonesBefore[0], 1, "Deletion protection must remain sparse and durable");
             PolicyEvidence.write("policydeletereconnect", 8, Map.of("deleted", "true", "staleAccepted", "false",
                     "resurrectedAfterReconnect", "false", "activationAfterReconnect", "UNCONFIGURED",
                     "tombstoneCount", "1", "tombstoneRevision", Long.toString(deletedRevision[0].value()),
@@ -91,6 +94,9 @@ public final class PolicyRevisionGameTests {
             timeoutTicks = 350, required = true, manualOnly = true)
     public static void policySparseScale(GameTestHelper helper) {
         runWithBridge(helper, "policysparsescale", (fixtures, service, key) -> {
+            // Counted from what the level held before: a shared level holds other tests' rules and tombstones too.
+            var configuredBefore = service.configuredCount();
+            var tombstonesBefore = service.tombstoneCount();
             service.edit(new PolicyEdit(key, PolicyRevision.NONE, PolicyRule.storageDefaults()));
             var reverse = new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), PolicyCapability.CRAFTING);
             service.edit(new PolicyEdit(reverse, PolicyRevision.NONE,
@@ -101,8 +107,8 @@ public final class PolicyRevisionGameTests {
                         PolicyCapability.STORAGE);
                 helper.assertTrue(service.configured(absent).isEmpty(), "Absent policy query cannot allocate a record");
             }
-            helper.assertValueEqual(service.configuredCount(), 2, "Only explicitly configured directional rules may be stored");
-            helper.assertValueEqual(service.tombstoneCount(), 0, "Sparse reads must not create tombstones");
+            helper.assertValueEqual(service.configuredCount() - configuredBefore, 2, "Only explicitly configured directional rules may be stored");
+            helper.assertValueEqual(service.tombstoneCount() - tombstonesBefore, 0, "Sparse reads must not create tombstones");
             PolicyEvidence.write("policysparsescale", 6, Map.of("networkPairQueries", Integer.toString(absentQueries),
                     "storedConfigured", "2", "storedTombstones", "0", "allPairsAllocated", "false",
                     "worldScan", "false", "evictionPolicy", "none"));

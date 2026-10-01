@@ -55,9 +55,15 @@ shared pair's link as a Quartz Fiber, see UI). Diagnostic `ENERGY_SOURCE_MISSING
   `EnergyFigures` (client/policy, unit-tested) shows the pool when `energyPoolGrids > 1`, so every member reads the
   same percentage; a network on its own shows its own cells. A pool member reads "Online · Shared energy"; low
   energy (< 25 % of the pool) still warns first. The card's state line hides overflow, so keep that text short.
-- Known intermittent failure (pre-existing, also at 6505c03): ui.mapping step "showcase: eight named network
-  cards" times out after the Router workspace reopens with 6 members; Automation Tower's Endpoints draw on Main
-  Base, Storage Hall is gone, every card waits for domain status. Not caused by the overview walk.
+- ui.mapping "showcase: eight named network cards" timed out intermittently (also at 6505c03, before this work):
+  the reopened Router workspace listed 6 members, without Automation Tower and Storage Hall. Cause, from TEST-ONLY
+  per-step logs of each showcase Grid and the Router domain: `placeEndpoint` seeds each new Endpoint with its
+  network's identity, but the Endpoint starts in a Grid of its own until `devicesReady` connects it, so for a
+  moment two Grids claim one network. When a domain recompute landed in that moment (generation 81 -> 90), the two
+  networks left the domain; the Router's every-20-tick `publishIfEvidenceChanged` put them back (generation 93), but
+  the scenario had already reopened the workspace, whose member list is fixed at open (a changed domain only makes it
+  stale). Production behaves as designed. Fix: the scenario waits for `TaskThirtyThreeShowcaseFixture
+  .domainComplete` (all eight members, generation unchanged for 20 ticks) before reopening.
 - Global ("all related") scope: the server describes related domains' networks too (`networkOverviewText`), and
   their cards show position, thumbnail, status ("Online/No power · Related: <domain>"), energy and storage, with a
   dashed outline and the pills' lock mark in the corner (`FederationTheme.lockMark`; a text tag overlapped long
