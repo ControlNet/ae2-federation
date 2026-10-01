@@ -183,3 +183,39 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
 | storage extract+insert | 2192 ns | 1189 ns | 1.8 |
 | storage list all (1000 types) | 90 us | 320 us | 0.28 |
 | storage idle tick | 480 us | 671 us | 0.72 |
+
+## Native comparison (remote, d237cf8, 3 runs, medians)
+| metric | default ops: Federation | native | ratio | opsScale 20: Federation | native | ratio |
+|---|---|---|---|---|---|---|
+| energy extract MODULATE | 1378 ns | 372 ns | 3.7 | 294 ns | 89 ns | 3.3 |
+| energy extract SIMULATE | 598 ns | 251 ns | 2.4 | 345 ns* | 70 ns | 5.0 |
+| energy idle tick | 295 us | 263 us | 1.12 | 323 us | 282 us | 1.14 |
+| storage simulate extract | 504 ns | 516 ns | 0.98 | 199 ns | 151 ns | 1.32 |
+| storage extract+insert | 1059 ns | 1105 ns | 0.96 | 532 ns | 435 ns | 1.22 |
+| storage list all (1000 types) | 91 us | 320 us | 0.28 | 92 us | 296 us | 0.31 |
+| storage idle tick | 316 us | 474 us | 0.67 | 287 us | 469 us | 0.61 |
+
+\* the short SIMULATE window still runs partly before C2 (see the warm-up artifact above).
+- Against 948d7ce at default ops: energy MODULATE 3963 -> 1378 ns, SIMULATE 2492 -> 598 ns, storage simulate
+  840 -> 504 ns, extract+insert 2192 -> 1059 ns, energy idle tick 412 -> 295 us.
+- Energy stays the gap: a Federation demand runs AE2's consumer energy service, the Federation source and then the
+  provider Grid's whole energy service (`partProviderExtract` alone, ~82 ns warmed, is what native costs in total:
+  Quartz Fibers draw from the provider buffer through one overlay). Warmed (local opsScale 100) the remaining
+  Federation work per MODULATE is ~45 ns authority recheck, ~30 ns flow bookkeeping and the route guard.
+- At high op counts the first provider's cells run dry and a demand walks the mesh: the per-tick backend currency
+  then lives on each backend object (each discovery is a new object, so it was per binding already) and a source's
+  candidate list on the source with the service's candidate revision, instead of one-entry memos in front of maps.
+  Local opsScale 100: `storedPowerProbe` 778 -> 641 ns, `partBindingCurrent` 47.5 -> 42.9 ns, the rest flat.
+
+## Native comparison, steady state (remote, d237cf8, opsScale 100, 3 runs)
+| metric | Federation | native | ratio |
+|---|---|---|---|
+| energy extract MODULATE | 174 ns | 79 ns | 2.2 |
+| energy extract SIMULATE | 147 ns | 66 ns | 2.2 |
+| energy idle tick | 326 us | 279 us | 1.17 |
+| storage simulate extract | 206 ns | 155 ns | 1.33 |
+| storage extract+insert | 520 ns | 448 ns | 1.16 |
+| storage list all (1000 types) | 91 us | 290 us | 0.31 |
+| storage idle tick | 285 us | 458 us | 0.62 |
+- The energy idle-tick gap is scene composition (the mesh carries more block entities); per tick the Federation
+  part is one consumer idle-drain demand and one reconcile, a few percent of the tick's samples.

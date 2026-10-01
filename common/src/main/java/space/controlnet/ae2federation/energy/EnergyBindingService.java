@@ -6,7 +6,6 @@ import appeng.api.networking.energy.IAEPowerStorage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,17 +35,11 @@ public final class EnergyBindingService implements AutoCloseable {
     private int demandDepth;
     /** Game tick of the last full reconciliation; a demand reconciles at most once per tick. */
     private long reconciledTick = Long.MIN_VALUE;
-    /** Each consumer source's bindings in provider-network order, rebuilt after any binding change. */
-    private final Map<DirectionalEnergySource, List<EnergyCapabilityBinding>> candidates = new IdentityHashMap<>();
-    /** The source {@link #candidates} answered last and its entry; null whenever the map is cleared. */
-    private DirectionalEnergySource lastCandidateSource;
-    private List<EnergyCapabilityBinding> lastCandidates;
-    /** Provider backends whose native sources were rediscovered as current in {@link #currencyTick}. */
-    private final Map<NativeEnergyBackend, Boolean> currentBackends = new IdentityHashMap<>();
-    private long currencyTick = Long.MIN_VALUE;
-    /** The backend {@link #backendCurrent} answered last and its entry in {@link #currentBackends}; null when cleared. */
-    private NativeEnergyBackend lastBackend;
-    private boolean lastBackendCurrent;
+    /**
+     * Advances after any binding change; each consumer source keeps its bindings in provider-network order, listed
+     * at a revision, and they are listed again at the next.
+     */
+    private long candidatesRevision;
 
     private EnergyBindingService(ServerLevel level) {
         this.level = level;
@@ -234,10 +227,7 @@ public final class EnergyBindingService implements AutoCloseable {
         withdrawals += bindings.size();
         bindings.values().forEach(EnergyCapabilityBinding::withdraw);
         bindings.clear();
-        candidates.clear();
-        lastCandidateSource = null;
-        currentBackends.clear();
-        lastBackend = null;
+        candidatesRevision++;
         backends.clear();
         federationDomains.clear();
     }
@@ -295,8 +285,7 @@ public final class EnergyBindingService implements AutoCloseable {
                 () -> current(holder[0], backend));
         holder[0] = binding;
         bindings.put(relationship.key(), binding);
-        candidates.clear();
-        lastCandidateSource = null;
+        candidatesRevision++;
         publications++;
         if (demandDepth == 0) {
             source.announceAvailability();
@@ -304,32 +293,26 @@ public final class EnergyBindingService implements AutoCloseable {
     }
 
     private List<EnergyCapabilityBinding> candidates(DirectionalEnergySource source) {
-        if (source == lastCandidateSource) {
-            return lastCandidates;
+        if (source.candidatesOwner == this && source.candidatesRevision == candidatesRevision) {
+            return source.candidates;
         }
-        var list = candidates.computeIfAbsent(source, ignored -> bindings.values().stream()
+        var list = bindings.values().stream()
                 .filter(binding -> binding.consumerSource() == source)
                 .sorted(Comparator.comparing(binding -> binding.key().providerNetworkId().toString()))
-                .toList());
-        lastCandidateSource = source;
-        lastCandidates = list;
+                .toList();
+        source.candidatesOwner = this;
+        source.candidatesRevision = candidatesRevision;
+        source.candidates = list;
         return list;
     }
 
     /** Rediscovers a provider's native sources at most once per tick; any change is caught on the next tick. */
     private boolean backendCurrent(NativeEnergyBackend backend) {
         var tick = level.getGameTime();
-        if (currencyTick != tick) {
-            currencyTick = tick;
-            currentBackends.clear();
-            lastBackend = null;
-        } else if (backend == lastBackend) {
-            return lastBackendCurrent;
+        if (!backend.checkedAt(tick)) {
+            backend.checked(tick, backends.isCurrent(backend));
         }
-        var current = currentBackends.computeIfAbsent(backend, backends::isCurrent);
-        lastBackend = backend;
-        lastBackendCurrent = current;
-        return current;
+        return backend.checkedCurrent();
     }
 
     private boolean current(EnergyCapabilityBinding binding, NativeEnergyBackend backend) {
@@ -396,8 +379,7 @@ public final class EnergyBindingService implements AutoCloseable {
         var removed = bindings.remove(key);
         if (removed != null) {
             removed.withdraw();
-            candidates.clear();
-            lastCandidateSource = null;
+            candidatesRevision++;
             withdrawals++;
         }
     }

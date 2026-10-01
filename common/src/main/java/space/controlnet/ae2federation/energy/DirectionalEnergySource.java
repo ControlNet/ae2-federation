@@ -18,6 +18,13 @@ public final class DirectionalEnergySource implements IAEPowerStorage {
             java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private @Nullable IManagedGridNode owner;
+    /**
+     * This source's bindings in provider-network order as {@link EnergyBindingService} last listed them, with that
+     * service and its candidate revision; the service lists them again once either differs.
+     */
+    @Nullable Object candidatesOwner;
+    long candidatesRevision;
+    @Nullable java.util.List<EnergyCapabilityBinding> candidates;
 
     /** Binds this source to {@code node}, which {@code nodeOwner} created as its own. */
     public void bind(Object nodeOwner, IManagedGridNode node) {
