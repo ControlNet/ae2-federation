@@ -96,10 +96,12 @@ public final class NativeTransportMeter {
     }
 
     private WindowState state(FederationDomainReference scope) {
-        var state = scope == lastScope ? lastState : windows.computeIfAbsent(scope, ignored -> new WindowState());
-        lastScope = scope;
-        lastState = state;
-        return state;
+        // Written only on a change: a reference store into this long-lived meter costs a GC write barrier.
+        if (scope != lastScope) {
+            lastState = windows.computeIfAbsent(scope, ignored -> new WindowState());
+            lastScope = scope;
+        }
+        return lastState;
     }
 
     /**

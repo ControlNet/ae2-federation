@@ -240,3 +240,23 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
   native's whole demand), source SIMULATE 95.3 ns, source MODULATE 126.9 ns, flow bookkeeping 15.6 ns.
 - Tried and dropped: copying the binding's domain-reference set into a `List` for the bookkeeping loop
   (`partRecordFlow` 14-15 -> 20 ns, MODULATE flat).
+
+## Energy demand round: allocations and write barriers (local opsScale 100, 2 rounds x 3 runs, medians)
+- JFR allocation samples showed four objects per MODULATE demand that C2 did not scalar-replace: the
+  `() -> demand(...)` lambda handed to the route guard, the candidate list's iterator, the domain-reference set's
+  iterator and the `() -> resource` supplier. The guard is now entered and exited around the call, candidates and a
+  binding's scopes (`EnergyCapabilityBinding.scopes()`, a `List` copy of the revision's set in its order) are read
+  by index, and the energy resource is one constant supplier (`recordAccepted(List, Supplier, ...)`).
+  extractModulate 142 -> 135 ns, extractSimulate 95.7 -> 92.3 ns.
+- Elimination study (TEST-ONLY switches that skip one part, measured in context): bookkeeping ~20 ns, authority
+  recheck ~18 ns, route guard ~15 ns of the ~95 ns a Federation demand adds over the provider Grid's own extract.
+- The guard's cost was mostly reference stores into its long-lived per-thread array: under G1 every such store runs
+  the post-write barrier. Ending a demand now only resets the count, a slot is written only when a different Grid
+  goes there (a steady demand stores nothing), reconciliation releases what ended demands left, and the demand state
+  is looked up once and passed to the binding. The meter writes its last-window memo only on a change.
+  extractModulate 139.7 -> 130.3 ns, extractSimulate 96.7 -> 90.3 ns, storedPowerProbe 375 -> 310 ns,
+  partRecordFlow 13.9 -> 10.1 ns.
+- Red herring: with `-XX:+DebugNonSafepoints` half of the samples sat on `ImmutableCollections$ListItr.next` inside
+  AE2's `EnergyService.extractAEPower` (its `List.get` profile is JVM-wide and ListN-dominated, so the provider's
+  List12 misses). Bypassing it through an `@Invoker` for `getConnectedServices` moved the samples but not the time;
+  dropped. Judge a profile's hot line by an A/B, not by its sample share.

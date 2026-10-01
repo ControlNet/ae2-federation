@@ -74,6 +74,25 @@ final class EnergyRouteGuardTest {
                 "A later demand starts with nothing visited");
     }
 
+    @Test
+    void enterStartsADemandOnlyOutsideOneAndOnlyItsStarterEndsIt() {
+        var consumer = grid();
+        var provider = grid();
+        var third = grid();
+
+        assertTrue(EnergyRouteGuard.enter(consumer), "Outside a demand entering starts one");
+        assertFalse(EnergyRouteGuard.enter(provider), "Inside a demand entering joins it");
+        assertFalse(EnergyRouteGuard.visit(provider), "A joining Grid counts as visited");
+        EnergyRouteGuard.exit(false);
+        assertFalse(EnergyRouteGuard.visit(consumer), "A joiner's exit leaves the demand running");
+        assertTrue(EnergyRouteGuard.visit(third));
+        EnergyRouteGuard.exit(true);
+
+        assertTrue(EnergyRouteGuard.enter(consumer), "The starter's exit ended the demand");
+        assertTrue(EnergyRouteGuard.visit(provider), "A new demand starts with only its consumer visited");
+        EnergyRouteGuard.exit(true);
+    }
+
     /** A stand-in Grid: the guard only compares identities. */
     private static Object grid() {
         return new Object();

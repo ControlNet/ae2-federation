@@ -24,6 +24,7 @@ import space.controlnet.ae2federation.observability.state.ResourceUnit;
 
 public final class EnergyBindingService implements AutoCloseable {
     private static final Map<ServerLevel, EnergyBindingService> SERVICES = new WeakHashMap<>();
+    private static final java.util.function.Supplier<String> ENERGY_RESOURCE = () -> "ae2:energy";
 
     private final ServerLevel level;
     private final EnergyFederationDomainObserver federationDomains;
@@ -130,6 +131,7 @@ public final class EnergyBindingService implements AutoCloseable {
 
     public void reconcileAll() {
         reconciledTick = level.getGameTime();
+        EnergyRouteGuard.current().forget();
         diagnostics.clear();
         var desired = federationDomains.relationships();
         backends.retain(desired.values().stream().map(EnergyRelationship::providerGrid).toList());
@@ -162,10 +164,17 @@ public final class EnergyBindingService implements AutoCloseable {
         if (!Double.isFinite(amount) || amount < 0) {
             throw new IllegalArgumentException("Energy amount must be finite and nonnegative");
         }
-        return EnergyRouteGuard.demand(consumerGrid, () -> demand(source, consumerGrid, amount, mode));
+        var guard = EnergyRouteGuard.current();
+        var started = guard.enter(consumerGrid);
+        try {
+            return demand(source, consumerGrid, amount, mode, guard);
+        } finally {
+            guard.exit(started);
+        }
     }
 
-    private double demand(DirectionalEnergySource source, IGrid consumerGrid, double amount, Actionable mode) {
+    private double demand(DirectionalEnergySource source, IGrid consumerGrid, double amount, Actionable mode,
+            EnergyRouteGuard.Demand guard) {
         var outermost = demandDepth == 0;
         demandDepth++;
         try {
@@ -175,19 +184,20 @@ public final class EnergyBindingService implements AutoCloseable {
                 reconcileAll();
             }
             var extracted = 0.0;
-            for (var binding : candidates(source)) {
+            var candidates = candidates(source);
+            for (var index = 0; index < candidates.size(); index++) {
+                var binding = candidates.get(index);
                 if (binding.consumerGrid() != consumerGrid) {
                     continue;
                 }
-                var accepted = binding.extract(amount - extracted, mode);
+                var accepted = binding.extract(amount - extracted, mode, guard);
                 extracted += accepted;
                 if (outermost && mode == Actionable.MODULATE && accepted > 0) {
                     var observability = LevelObservabilityService.get(level);
                     var acceptedNanoAe = nanoAe(accepted);
                     // The binding's key is the ordered (consumer, provider, ME_POWER) Policy key of its two Grids.
                     observability.recordPairFlow(binding.key(), acceptedNanoAe);
-                    observability.recordAccepted(binding.revision().federationDomains(), "ae2:energy",
-                            acceptedNanoAe, ResourceUnit.NANO_AE,
+                    observability.recordAccepted(binding.scopes(), ENERGY_RESOURCE, acceptedNanoAe, ResourceUnit.NANO_AE,
                             space.controlnet.ae2federation.observability.state.FlowState.Attribution.EXACT_OPERATION);
                 }
                 if (extracted >= amount) {

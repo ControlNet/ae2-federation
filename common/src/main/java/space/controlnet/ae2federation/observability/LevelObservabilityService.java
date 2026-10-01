@@ -133,6 +133,25 @@ public final class LevelObservabilityService implements AutoCloseable {
         recordAccepted(scopes, null, () -> resource, amount, unit, attribution);
     }
 
+    /**
+     * As above for scopes in a list, read by index, and a resource named by {@code resource} only when a flow is built:
+     * an operation recorded on every call then allocates nothing here.
+     */
+    public void recordAccepted(java.util.List<FederationDomainReference> scopes,
+            java.util.function.Supplier<String> resource, long amount, ResourceUnit unit,
+            FlowState.Attribution attribution) {
+        java.util.Objects.requireNonNull(resource);
+        if (amount <= 0) {
+            return;
+        }
+        OperationEventId eventId = null;
+        for (var index = 0; index < scopes.size(); index++) {
+            var scope = scopes.get(index);
+            eventId = transportMeter.recordNew(scope, eventId, resource, amount, unit, attribution);
+            flowed(scope);
+        }
+    }
+
     /** {@code eventId} null: the operation is new, and each scope's record shares the id the first one made. */
     private void recordAccepted(Iterable<FederationDomainReference> scopes,
             @org.jetbrains.annotations.Nullable OperationEventId eventId, java.util.function.Supplier<String> resource,
@@ -151,10 +170,16 @@ public final class LevelObservabilityService implements AutoCloseable {
             } else {
                 recorded = transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution);
             }
-            if (recorded && scope != lastFlowedScope) {
-                flowedScopes.add(scope);
-                lastFlowedScope = scope;
+            if (recorded) {
+                flowed(scope);
             }
+        }
+    }
+
+    private void flowed(FederationDomainReference scope) {
+        if (scope != lastFlowedScope) {
+            flowedScopes.add(scope);
+            lastFlowedScope = scope;
         }
     }
 

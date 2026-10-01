@@ -9,6 +9,8 @@ public final class EnergyCapabilityBinding {
     private final EnergyRelationship relationship;
     private final NativeEnergyBackend backend;
     private final EnergyBindingRevision revision;
+    /** The revision's domain references in the set's own order, as an indexed list each accepted demand records into. */
+    private final java.util.List<space.controlnet.ae2federation.domain.FederationDomainReference> scopes;
     private final DirectionalEnergySource source;
     private final BooleanSupplier current;
     /** A Grid's services are fixed for its lifetime, so the binding keeps the identity services of its two Grids. */
@@ -36,6 +38,7 @@ public final class EnergyCapabilityBinding {
         this.relationship = relationship;
         this.backend = backend;
         this.revision = revision;
+        this.scopes = java.util.List.copyOf(revision.federationDomains());
         this.source = source;
         this.current = current;
         consumerIdentity = relationship.consumerGrid().getService(NetworkIdentityService.class);
@@ -86,6 +89,10 @@ public final class EnergyCapabilityBinding {
         return relationship.key();
     }
 
+    public java.util.List<space.controlnet.ae2federation.domain.FederationDomainReference> scopes() {
+        return scopes;
+    }
+
     public EnergyBindingRevision revision() {
         return revision;
     }
@@ -110,8 +117,8 @@ public final class EnergyCapabilityBinding {
         return source;
     }
 
-    double extract(double amount, Actionable mode) {
-        if (!isCurrent() || !EnergyRouteGuard.visit(relationship.providerGrid())) {
+    double extract(double amount, Actionable mode, EnergyRouteGuard.Demand guard) {
+        if (!isCurrent() || !guard.visit(relationship.providerGrid())) {
             return 0;
         }
         return DirectionalEnergyTransfer.extract(backend.service(), amount, mode);
