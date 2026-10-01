@@ -555,27 +555,6 @@ final class FederationTopologyView {
         refresh();
     }
 
-    /**
-     * Selects the network that hosts the given Provider, or maps the given Endpoint, and centres it; an Endpoint no
-     * network maps is centred alone.
-     */
-    boolean focusObject(String objectId) {
-        var endpoint = endpointNodes.stream().filter(node -> node.id().equals(objectId)).findFirst().orElse(null);
-        for (var network : networks) {
-            if (providersByMember.getOrDefault(network.member(), List.of()).contains(objectId)
-                    || endpoint != null && endpoint.owner().equals(network.id())) {
-                selectNetwork(network.id());
-                pendingCenter = network.id();
-                focusApplied = true;
-                return true;
-            }
-        }
-        if (endpoint == null) return false;
-        pendingCenter = endpoint.id();
-        focusApplied = true;
-        return true;
-    }
-
     private void refresh() {
         var signature = new StringBuilder();
         shown().forEach(network -> signature.append(network.id()).append('=').append(network.name()).append(','));
