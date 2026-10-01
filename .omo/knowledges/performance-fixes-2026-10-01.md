@@ -272,3 +272,18 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
   showed one per operation); `readyAuthorization()` still returns one for enumeration.
   insertExtract 307 -> 291 ns, network extract+insert 445 -> 441 ns, simulate 172 -> 167 ns.
 - Before judging a Federation/native ratio, check the testmod mixins for per-operation hooks on only one side.
+
+## Native comparison, clock-corrected (remote, 0d7a85f, opsScale 100, 3 runs, medians)
+| metric | Federation | native | ratio | at 29afd45 |
+|---|---|---|---|---|
+| energy extract MODULATE | 120.8 ns | 39.4 ns | 3.07 | 3.61 |
+| energy extract SIMULATE | 85.3 ns | 22.1 ns | 3.86 | 4.09 |
+| energy idle tick | 276 us | 294 us | 0.94 | 1.55 |
+| storage simulate extract | 169.4 ns | 129.6 ns | 1.31 | 1.31 |
+| storage extract+insert | 443.2 ns | 398.0 ns | 1.11 | 1.25 |
+| storage list all (1000 types) | 95 us | 298 us | 0.32 | 0.32 |
+| storage idle tick | 296 us | 467 us | 0.63 | 0.68 |
+- Idle ticks vary by tens of percent between JVMs (native energy idle 230 -> 294 us with no native change); read
+  them as "same order", not as a ratio.
+- Remaining energy gap per MODULATE (~81 ns): provider Grid's own extract is ~41 ns of the Federation's 121 ns;
+  the rest is the authority recheck (~15 ns), flow bookkeeping (~12 ns), the consumer service hop and the source.
