@@ -282,6 +282,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         .startsWith("Active · revision"))
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
                 .frames(2).screenshot("ui-policy-runtime-energy-shared")
+                .step("select a network card so the shared link is drawn unselected", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .frames(3)
+                .check("the Endpoint's network runs on the shared pool, not a low-energy warning", context ->
+                        TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.endpoint")).stream()
+                                .anyMatch(text -> text.contains("Online · Shared energy")))
+                .screenshot("ui-graph-energy-shared-link")
                 .click("#tab_overview").frames(2)
                 .screenshot("ui-graph-controls")
                 .server("add a real Bridge domain that shares the outer network, and one more beyond it",

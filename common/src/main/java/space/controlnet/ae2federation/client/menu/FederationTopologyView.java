@@ -55,6 +55,9 @@ final class FederationTopologyView {
     private static final float ENDPOINT_HEIGHT = 16;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
+    /** One breath of a shared-energy link's glow, and one run of its sparks from end to end. */
+    private static final long ENERGY_BREATH_MILLIS = 1600;
+    private static final long ENERGY_SPARK_MILLIS = 1400;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
 
@@ -811,6 +814,12 @@ final class FederationTopologyView {
         }
     }
 
+    /** Whether the network can draw more than its own cells hold: it shares a pool with other networks. */
+    private static boolean runsOnSharedEnergy(JsonObject facts) {
+        return facts != null && facts.has("energyAvailable")
+                && facts.get("energyAvailable").getAsLong() > facts.get("energy").getAsLong();
+    }
+
     /** "Energy [bar] 98%": a muted label, an optional bar and the value on the right. */
     private static UIElement figureRow(Component name, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture bar, Label value) {
         var row = new UIElement();
@@ -865,9 +874,13 @@ final class FederationTopologyView {
             if (!identityState.equals("settled") && !identityState.isEmpty()) {
                 stateColor = toneColor(identityState);
                 detail = tr("identity." + identityState);
-            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f) {
+            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f && !runsOnSharedEnergy(facts)) {
                 stateColor = FederationTheme.WARN;
                 detail = tr("card_low_energy");
+            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f) {
+                // Its own cells are low, but the pool it shares keeps it running: not a warning.
+                stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
+                detail = tr("card_shared_energy");
             } else {
                 stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
                 detail = identityState.isEmpty() ? null : tr("identity.settled");
@@ -918,6 +931,8 @@ final class FederationTopologyView {
             var row = pillRow(direction[0], direction[1], font);
             if (row != null) content.add(row);
         }
+        var energyRow = energyPillRow(a, b, font);
+        if (energyRow != null) content.add(energyRow);
         if (related) {
             var lock = text(tr("related_lock"), FederationTheme.DARK_MUTED);
             lock.layout(style -> style.height(9).width(font.width(tr("related_lock")) + 1));
@@ -960,6 +975,11 @@ final class FederationTopologyView {
             width = Math.max(width, rowWidth(direction[0], direction[1], font));
             rows++;
         }
+        var energy = energyChip(a, b);
+        if (energy != null) {
+            width = Math.max(width, font.width(ENERGY_PREFIX) + 6 + 3 + font.width(energy.text()) + 5);
+            rows++;
+        }
         if (related) {
             width = Math.max(width, font.width(tr("related_lock")) + 10);
             rows++;
@@ -990,6 +1010,72 @@ final class FederationTopologyView {
         return row;
     }
 
+    private static final String ENERGY_PREFIX = "⇄";
+
+    /** "⇄ [Shared energy]": the pair's one energy switch, whichever way its rule is written; null without a rule. */
+    private UIElement energyPillRow(Network a, Network b, net.minecraft.client.gui.Font font) {
+        var chip = energyChip(a, b);
+        if (chip == null) return null;
+        var row = new UIElement();
+        row.addClass("pill-row");
+        row.addClass("pill-energy");
+        row.layout(style -> style.height(11).flexDirection(FlexDirection.ROW).gapAll(3).alignItems(AlignItems.CENTER));
+        var prefix = text(Component.literal(ENERGY_PREFIX), FederationTheme.DARK_MUTED);
+        prefix.layout(style -> style.width(font.width(ENERGY_PREFIX) + 6).height(9).flexShrink(0));
+        var label = text(chip.text(), chip.color());
+        label.addClass("pill-chip");
+        label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
+        label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
+        row.addChildren(prefix, label);
+        return row;
+    }
+
+    /** The pair's energy chip: energy green while it shares, else its rule's state colour; null without a rule. */
+    private Chip energyChip(Network a, Network b) {
+        var rule = energyRule(a, b);
+        if (rule == null) return null;
+        var state = ruleState(rule);
+        var text = tr("shared_energy").copy();
+        if (!rule.get("enabled").getAsBoolean()) text = text.withStyle(net.minecraft.ChatFormatting.STRIKETHROUGH);
+        if (state.code().equals("error")) text.append("!");
+        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.ENERGY : state.color());
+    }
+
+    /** The ME power rule that stands for the pair's energy switch, or null when neither way has one. */
+    private JsonObject energyRule(Network a, Network b) {
+        var direction = energyDirection(a, b);
+        return rule(key(direction[0].id(), direction[1].id(), PolicyCapability.ME_POWER.name()));
+    }
+
+    /** Consumer and provider of the rule the pair's energy switch reads and writes. */
+    private Network[] energyDirection(Network a, Network b) {
+        var forward = rule(key(a.id(), b.id(), PolicyCapability.ME_POWER.name()));
+        var reverse = rule(key(b.id(), a.id(), PolicyCapability.ME_POWER.name()));
+        return space.controlnet.ae2federation.client.policy.SharedEnergySwitch.reversed(enabledFlag(forward), enabledFlag(reverse))
+                ? new Network[] {b, a} : new Network[] {a, b};
+    }
+
+    private static Boolean enabledFlag(JsonObject rule) {
+        return rule == null ? null : rule.get("enabled").getAsBoolean();
+    }
+
+    /** Whether the two networks share one energy pool now: an ME power rule either way is active. */
+    private boolean sharesEnergy(String a, String b) {
+        return space.controlnet.ae2federation.client.policy.SharedEnergySwitch.shares(
+                health(rule(key(a, b, PolicyCapability.ME_POWER.name()))),
+                health(rule(key(b, a, PolicyCapability.ME_POWER.name()))));
+    }
+
+    private static space.controlnet.ae2federation.client.policy.RuleHealth health(JsonObject rule) {
+        if (rule == null) return null;
+        return switch (ruleState(rule).code()) {
+            case "active" -> space.controlnet.ae2federation.client.policy.RuleHealth.ACTIVE;
+            case "off" -> space.controlnet.ae2federation.client.policy.RuleHealth.OFF;
+            case "error" -> space.controlnet.ae2federation.client.policy.RuleHealth.ERROR;
+            default -> space.controlnet.ae2federation.client.policy.RuleHealth.WAITING;
+        };
+    }
+
     private float rowWidth(Network consumer, Network provider, net.minecraft.client.gui.Font font) {
         float width = font.width(pillPrefix(consumer, provider)) + 6;
         for (var chip : chips(consumer, provider)) width += 3 + font.width(chip.text()) + 5;
@@ -1006,6 +1092,8 @@ final class FederationTopologyView {
     private List<Chip> chips(Network consumer, Network provider) {
         var chips = new ArrayList<Chip>();
         for (var capability : CAPABILITIES) {
+            // Energy is shared per pair, so it has its own row rather than a chip in either direction.
+            if (capability == PolicyCapability.ME_POWER) continue;
             var rule = rule(key(consumer.id(), provider.id(), capability.name()));
             if (rule == null) continue;
             var state = ruleState(rule);
@@ -1409,8 +1497,8 @@ final class FederationTopologyView {
         for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
             var consumer = direction[0];
             var provider = direction[1];
-            var shownCapabilities = java.util.Arrays.stream(CAPABILITIES).filter(capability -> foreign == null
-                    || rule(key(consumer.id(), provider.id(), capability.name())) != null).toList();
+            var shownCapabilities = java.util.Arrays.stream(CAPABILITIES).filter(capability -> capability != PolicyCapability.ME_POWER)
+                    .filter(capability -> foreign == null || rule(key(consumer.id(), provider.id(), capability.name())) != null).toList();
             if (shownCapabilities.isEmpty()) {
                 section++;
                 continue;
@@ -1423,17 +1511,37 @@ final class FederationTopologyView {
             heading.setId("policy_section_title_" + section);
             heading.setText(tr("uses", name(consumer), name(provider)).withStyle(net.minecraft.ChatFormatting.BOLD));
             panel.addChild(heading);
-            for (var capability : shownCapabilities) panel.addChild(row(section, consumer, provider, capability, foreign == null));
+            for (var capability : shownCapabilities) {
+                panel.addChild(row(section + "_" + capability.name().toLowerCase(Locale.ROOT), consumer, provider, capability,
+                        capabilityName(capability), foreign == null));
+            }
             pairSections.addChild(panel);
             section++;
         }
+        // One switch shares energy both ways, however the pair's rule is written.
+        var energy = energyDirection(a, b);
+        if (foreign != null && energyRule(a, b) == null) return;
+        var panel = new UIElement();
+        panel.addClass("dark-panel");
+        panel.setId("policy_section_energy");
+        var heading = new Label();
+        heading.addClass("pair-section-title");
+        heading.setId("policy_section_title_energy");
+        heading.setText(tr("energy_section", name(a), name(b)).withStyle(net.minecraft.ChatFormatting.BOLD));
+        var note = new Label();
+        note.addClass("pair-section-note");
+        note.setText(tr("energy_section_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        panel.addChildren(heading, note, row("energy", energy[0], energy[1], PolicyCapability.ME_POWER,
+                capabilityName(PolicyCapability.ME_POWER),
+                foreign == null));
+        pairSections.addChild(panel);
     }
 
-    private UIElement row(int section, Network consumer, Network provider, PolicyCapability capability, boolean inDomain) {
+    private UIElement row(String suffix, Network consumer, Network provider, PolicyCapability capability, Component title,
+            boolean inDomain) {
         boolean editable = this.editable && inDomain;
         var ruleKey = key(consumer.id(), provider.id(), capability.name());
         var rule = rule(ruleKey);
-        var suffix = section + "_" + capability.name().toLowerCase(Locale.ROOT);
         var row = new UIElement();
         row.addClass("policy-row");
         row.setId("policy_row_" + suffix);
@@ -1441,7 +1549,7 @@ final class FederationTopologyView {
         head.addClass("policy-row-head");
         var name = new Label();
         name.addClass("policy-capability");
-        name.setText(capabilityName(capability));
+        name.setText(title);
         // Name, state and switch share one line; flow and explanations wrap under the state.
         var stateLabel = new Label();
         stateLabel.addClass("policy-state");
@@ -1469,7 +1577,7 @@ final class FederationTopologyView {
         var state = ruleState(rule);
         var text = tr("rule_state." + state.code(), observed).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
-        if (flow != null && on) text.append("\n").append(flowText(capability, flow));
+        if (flow != null && on) text.append("\n").append(flowText(flow));
         if (state.explain()) text.append("\n").append(runtimeText(rule).copy().withStyle(
                 Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         stateLabel.setText(text);
@@ -1541,12 +1649,8 @@ final class FederationTopologyView {
         return Component.literal(String.join("\n", positions) + (count > positions.size() ? "\n…" : ""));
     }
 
-    private static Component flowText(PolicyCapability capability, JsonObject flow) {
-        var events = flow.get("events").getAsLong();
-        var text = capability == PolicyCapability.ME_POWER
-                ? tr("flow_energy", events, compact(flow.get("amount").getAsLong() / 1_000_000_000L))
-                : tr("flow", events);
-        return text.withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff));
+    private static Component flowText(JsonObject flow) {
+        return tr("flow", flow.get("events").getAsLong()).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff));
     }
 
     /** Whether the rule from {@code consumer} to {@code provider} delivered anything in the flow window. */
@@ -1812,7 +1916,8 @@ final class FederationTopologyView {
                 var ends = pair.split("\\|");
                 boolean selected = pair.equals(selectedPair);
                 var link = link(ends[0], ends[1]);
-                line(context, link, selected ? FederationTheme.SELECT : FederationTheme.EDGE, selected ? 3f : 2f, false);
+                if (sharesEnergy(ends[0], ends[1])) energyLine(context, link, selected);
+                else line(context, link, selected ? FederationTheme.SELECT : FederationTheme.EDGE, selected ? 3f : 2f, false);
                 // Each end is marked in its network's accent where the link meets the card.
                 endMark(context, link.start(), network(ends[0]).accent());
                 endMark(context, link.end(), network(ends[1]).accent());
@@ -1848,6 +1953,43 @@ final class FederationTopologyView {
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
                         color, color, width);
             }
+        }
+
+        /**
+         * A link whose networks share one energy pool: an energy-green line in a breathing glow, with two sparks running
+         * opposite ways, since each network draws from and charges the same pool.
+         */
+        private void energyLine(GUIContext context, TopologyLink link, boolean selected) {
+            var points = link.curve().points(LINK_SEGMENTS);
+            var line = new ArrayList<Vector2f>(LINK_SEGMENTS + 1);
+            for (int index = 0; index < points.length; index += 2) line.add(new Vector2f(points[index], points[index + 1]));
+            long now = net.minecraft.Util.getMillis();
+            float breath = 0.5f + 0.5f * (float) Math.sin((now % ENERGY_BREATH_MILLIS) * (2 * Math.PI / ENERGY_BREATH_MILLIS));
+            int outer = energy(0.18f + 0.22f * breath);
+            int inner = energy(0.40f + 0.30f * breath);
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, outer, outer, selected ? 12f : 10f);
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, inner, inner, 6f);
+            // Selected, the core turns pale green rather than the selection blue, so the link still reads as energy.
+            int core = selected ? 0xffc8ffc8 : FederationTheme.ENERGY;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, core, core, selected ? 3f : 2f);
+            float phase = (now % ENERGY_SPARK_MILLIS) / (float) ENERGY_SPARK_MILLIS;
+            spark(context, points, phase);
+            spark(context, points, 1 - phase);
+        }
+
+        private void spark(GUIContext context, float[] points, float along) {
+            int segments = points.length / 2 - 1;
+            float position = along * segments;
+            int index = Math.min(segments - 1, (int) position);
+            float fraction = position - index;
+            int x = Math.round(points[2 * index] + (points[2 * index + 2] - points[2 * index]) * fraction);
+            int y = Math.round(points[2 * index + 1] + (points[2 * index + 3] - points[2 * index + 1]) * fraction);
+            context.graphics.fill(x - 3, y - 3, x + 3, y + 3, energy(0.35f));
+            context.graphics.fill(x - 1, y - 1, x + 2, y + 2, 0xffe6ffe6);
+        }
+
+        private static int energy(float alpha) {
+            return Math.round(alpha * 255) << 24 | FederationTheme.ENERGY & 0xffffff;
         }
 
         private void endMark(GUIContext context, float[] point, int color) {

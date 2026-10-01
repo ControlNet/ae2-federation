@@ -56,6 +56,7 @@ public final class EnergySharingService implements AutoCloseable {
     private long reconciledWatermark = Long.MIN_VALUE;
     private long reconciledEpoch = Long.MIN_VALUE;
     private int reconciliations;
+    private int dissolutions;
 
     private EnergySharingService(ServerLevel level) {
         this.level = level;
@@ -110,6 +111,7 @@ public final class EnergySharingService implements AutoCloseable {
     public static synchronized void topologyChanged(ServerLevel level) {
         var service = SERVICES.get(level);
         if (service != null) {
+            service.dissolutions++;
             reform(service.peers, Map.of());
         }
     }
@@ -162,6 +164,11 @@ public final class EnergySharingService implements AutoCloseable {
 
     public int reconciliationCount() {
         return reconciliations;
+    }
+
+    /** How often a domain topology change dissolved this level's pools. */
+    public int dissolutionCount() {
+        return dissolutions;
     }
 
     private void reconcileIfChanged() {

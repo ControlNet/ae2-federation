@@ -64,6 +64,7 @@ public final class PerformanceBenchmarkGameTests {
         var scene = new EnergyMeshScene(helper, MESH_SIZE, MESH_PADDING);
         var perf = new PerfMeasure("perfenergymesh");
         var state = new int[] {0};
+        var idleReconciliations = new int[2];
         var window = new PerfMeasure.TickWindow[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(scene.ready(), "Waiting for energy mesh: " + scene.status());
@@ -97,12 +98,18 @@ public final class PerformanceBenchmarkGameTests {
                 perf.nanosPerOp("reconcileSharing", 500, 300, sharing::reconcileAll);
                 helper.assertValueEqual(scene.extractConsumer(1, Actionable.MODULATE), 1.0,
                         "Reconciling must leave the pool standing");
+                idleReconciliations[0] = sharing.reconciliationCount();
+                idleReconciliations[1] = sharing.dissolutionCount();
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
             helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
+            // Nothing changes while idle, so no tick may re-derive who shares or dissolve a pool.
+            var idleSharing = EnergySharingService.get(helper.getLevel());
+            perf.count("idleReconciliations", idleSharing.reconciliationCount() - idleReconciliations[0]);
+            perf.count("idleDissolutions", idleSharing.dissolutionCount() - idleReconciliations[1]);
             helper.assertTrue(scene.consumerCellStored() < 1, "Consumer idle drain must still come from the mesh");
             scene.close();
         });

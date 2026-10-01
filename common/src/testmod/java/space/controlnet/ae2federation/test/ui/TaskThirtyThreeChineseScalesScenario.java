@@ -182,7 +182,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .step("return the aside to the top", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .frames(2)
                 .check("narrow pair editor fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_0_me_power"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage", "#policy_state_energy"))
                 .check("narrow pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-chinese-narrow-policy")

@@ -287,3 +287,9 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
   them as "same order", not as a ratio.
 - Remaining energy gap per MODULATE (~81 ns): provider Grid's own extract is ~41 ns of the Federation's 121 ns;
   the rest is the authority recheck (~15 ns), flow bookkeeping (~12 ns), the consumer service hop and the source.
+
+## Energy redesign: Quartz-Fiber-style sharing (remote, de0ed9d, opsScale 100, 3 runs, medians)
+The remaining energy gap was structural (per-demand authority, flow bookkeeping, the consumer source hop), so
+directional supply was replaced by sharing AE2's own energy pool (`energy-sharing-2026-10-01.md`). Energy demand now
+runs entirely in AE2: MODULATE 45.0 vs native 39.8 ns (1.13x, was 3.07x), SIMULATE 23.2 vs 22.2 ns (1.05x, was
+3.86x). Idle tick differences were within JVM variance; idle reconciliations and pool dissolutions are both 0.

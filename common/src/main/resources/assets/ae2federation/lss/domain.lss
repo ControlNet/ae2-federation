@@ -91,6 +91,7 @@
 .domain-panel .paper-note.read-only-banner { text-color: #ff5b3d12; background: #ffffe6a8; }
 .pair-sections { width: 100%; flex-shrink: 0; gap-all: 4; }
 .domain-panel .pair-section-title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffefeaf8; }
+.domain-panel .pair-section-note { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .policy-row { width: 100%; flex-shrink: 0; gap-all: 2; padding-top: 4; padding-bottom: 2; background: built-in(federation:ROW_RULE); }
 .policy-row-head { width: 100%; flex-direction: row; gap-all: 4; align-items: flex-start; }
 .domain-panel .policy-capability { width: 62; flex-shrink: 0; height: 10; margin-top: 2; text-color: #ffd6d0e0; }

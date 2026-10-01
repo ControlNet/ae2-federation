@@ -66,6 +66,23 @@ def sync(args: argparse.Namespace) -> None:
     rsh = " ".join(shlex.quote(part) for part in ssh(args)[:-1])
     subprocess.run(["rsync", "-a", "--from0", "--files-from=-", "-e", rsh, "./",
                     f"{args.remote}:{args.remote_root}/src/"], cwd=args.tree, input=files, check=True)
+    prune(args, set(files.decode().split("\0")) - {""})
+
+
+def prune(args: argparse.Namespace, local: set[str]) -> None:
+    """Deletes the remote copies of source files the tree no longer has, which rsync's file list cannot express.
+    Only ``<module>/src`` trees are pruned: every file in them is a source file, unlike build or run directories."""
+    trees = sorted({path.split("/src/", 1)[0] + "/src" for path in local if "/src/" in path})
+    if not trees:
+        return
+    listing = subprocess.run(ssh(args) + [f"cd {args.remote_root}/src && find " + " ".join(shlex.quote(tree) for tree in trees)
+                                          + " -type f -print0 2>/dev/null; true"],
+                             check=True, stdout=subprocess.PIPE).stdout
+    stale = sorted(set(listing.decode().split("\0")) - {""} - local)
+    if stale:
+        print(f"pruning {len(stale)} remote source file(s) the tree no longer has", flush=True)
+        subprocess.run(ssh(args) + [f"cd {args.remote_root}/src && xargs -0 rm -f --"],
+                       input="\0".join(stale).encode(), check=True)
 
 
 def run_once(args: argparse.Namespace, test_id: str) -> str:

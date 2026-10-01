@@ -102,6 +102,8 @@ final class TaskThirtyThreeScenarioSupport {
      */
     static String ruleControl(com.lowdragmc.lowdraglib2.uitest.TestContext context, String kind, String consumerUuid,
             String capability) {
+        // Energy is one switch per pair, in its own section.
+        if (capability.equals("me_power")) return "#policy_" + kind + "_energy";
         var index = context.el("#policy_section_title_0").text().indexOf(networkTag(consumerUuid));
         var section = index >= 0 && index <= 12 ? 0 : 1;
         return "#policy_" + kind + "_" + section + "_" + capability;

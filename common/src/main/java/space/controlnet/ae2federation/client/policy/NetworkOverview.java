@@ -120,6 +120,9 @@ public final class NetworkOverview {
         var energy = grid.getEnergyService();
         json.addProperty("energy", Math.round(energy.getStoredPower()));
         json.addProperty("energyMax", Math.round(energy.getMaxStoredPower()));
+        // What the network can draw, including the energy pool it shares with other networks.
+        json.addProperty("energyAvailable", Math.round(energy.extractAEPower(Double.MAX_VALUE,
+                appeng.api.config.Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE)));
         json.addProperty("energyIn", Math.round(energy.getAvgPowerInjection() * 10) / 10d);
         json.addProperty("energyOut", Math.round(energy.getAvgPowerUsage() * 10) / 10d);
         json.addProperty("powered", energy.isNetworkPowered());

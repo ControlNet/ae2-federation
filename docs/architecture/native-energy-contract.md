@@ -1,5 +1,10 @@
 # Native Energy Directionality Gate
 
+> **2026-10-01:** Federation now shares energy symmetrically, by design, through this same overlay: an enabled ME power
+> rule in either direction puts both Grids in one `EnergyOverlayGrid`, as a Quartz Fiber does (see DESIGN §8.4 and
+> `.omo/knowledges/energy-sharing-2026-10-01.md`). The directional supply that Task 31 built on top of the overlay is
+> removed. The Task 10 characterization below is unchanged and still describes the pinned AE2 overlay.
+
 ## Status
 
 Task 10 is `BLOCKED` on Minecraft 1.21.1, NeoForge 21.1.250, AE2 19.2.17, and Java 21.

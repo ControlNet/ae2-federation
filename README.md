@@ -11,8 +11,8 @@ Connect separate **Applied Energistics 2 networks** to share storage, autocrafti
 - **Shared storage**: access items and fluids across connected ME networks.
 - **Remote autocrafting**: request crafting from another network through your ME terminal.
 - **Distributed processing**: map patterns to Processing Endpoints on other networks using the Federation Pattern Provider.
-- **ME power sharing**: supply power from one network to another.
-- **Directional permissions**: choose what each network can access. Sharing stays off until you enable it.
+- **ME power sharing**: two networks share one energy pool, the way a Quartz Fiber joins them, with a single switch per pair.
+- **Directional permissions**: choose what each network can access from the other (energy is shared both ways). Sharing stays off until you enable it.
 - **In-game configuration**: view connected networks, edit permissions, and assign processing targets. English and Simplified Chinese included.
 
 ## Requirements
