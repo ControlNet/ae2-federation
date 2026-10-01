@@ -10,7 +10,7 @@ record EnergyRelationship(PolicyKey key, IGrid consumerGrid, IGrid providerGrid)
         Objects.requireNonNull(consumerGrid);
         Objects.requireNonNull(providerGrid);
         if (consumerGrid == providerGrid) {
-            throw new IllegalArgumentException("Directional energy requires distinct native Grids");
+            throw new IllegalArgumentException("Energy sharing requires distinct native Grids");
         }
     }
 }

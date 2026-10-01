@@ -9,8 +9,8 @@ import java.util.Set;
 public enum RuleHealth {
     OFF, ACTIVE, WAITING, ERROR;
 
-    private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_cycle", "energy_source_missing",
-            "crafting_cpu_missing", "crafting_provider_missing", "consumer_energy_interface_missing",
+    private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_cycle",
+            "crafting_cpu_missing", "crafting_provider_missing", "energy_connection_missing",
             "domain_reference_missing");
 
     public static RuleHealth of(boolean enabled, String code, String backend) {

@@ -30,8 +30,12 @@ public final class FederationDomainRegistryAccess {
     }
 
     private static synchronized FederationDomainRegistry getLocked(ServerLevel level) {
-        var registry = REGISTRIES.computeIfAbsent(level,
-                ignored -> new FederationDomainRegistry(FederationDomainRecomputeBudget.standard()));
+        var registry = REGISTRIES.computeIfAbsent(level, ignored -> {
+            var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+            // Shared energy pools draw without asking Federation, so a topology change dissolves them at once.
+            created.onMutation(() -> space.controlnet.ae2federation.energy.EnergySharingService.topologyChanged(level));
+            return created;
+        });
         last = new LastRegistry(level, registry);
         return registry;
     }

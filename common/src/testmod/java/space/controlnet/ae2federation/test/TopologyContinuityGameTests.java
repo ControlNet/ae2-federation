@@ -30,7 +30,7 @@ import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -109,7 +109,7 @@ public final class TopologyContinuityGameTests {
 
     /**
      * Runs each placement in its own tick, checks the link in that tick, then samples B's power for
-     * {@link #SAMPLE_TICKS} ticks; a placement that adds no member network must not rebuild the energy binding.
+     * {@link #SAMPLE_TICKS} ticks; A and B must keep sharing energy throughout.
      */
     private static void samplePlacements(GameTestHelper helper, PoweredDomain scene, List<Placement> placements,
             String testId, Map<String, String> extraFacts) {
@@ -117,7 +117,6 @@ public final class TopologyContinuityGameTests {
         var step = new int[] { -1 };
         var samples = new int[1];
         var unpowered = new int[1];
-        var publications = new int[1];
         helper.succeedWhen(() -> {
             if (step[0] < 0) {
                 scene.awaitPowered();
@@ -127,18 +126,15 @@ public final class TopologyContinuityGameTests {
                 if (samples[0] == 0) {
                     var placement = placements.get(step[0]);
                     var before = scene.reference();
-                    publications[0] = scene.bindings().publicationCount();
                     placement.action().run();
                     scene.checkLinkNow(placement.name(), placement.keepsGeneration() ? before : null, violations);
                 } else if (!scene.consumerPowered()) {
                     unpowered[0]++;
                 }
+                if (!scene.shares()) {
+                    violations.add("A and B stopped sharing energy after the " + placements.get(step[0]).name());
+                }
                 if (++samples[0] > SAMPLE_TICKS) {
-                    // A member-free node joining must not replace the binding either, only extend the domain.
-                    if (placements.get(step[0]).keepsGeneration()
-                            && scene.bindings().publicationCount() != publications[0]) {
-                        violations.add("the energy binding was rebuilt after the " + placements.get(step[0]).name());
-                    }
                     if (unpowered[0] > 0) {
                         violations.add("B unpowered for " + unpowered[0] + " of " + SAMPLE_TICKS + " ticks after the "
                                 + placements.get(step[0]).name());
@@ -152,7 +148,7 @@ public final class TopologyContinuityGameTests {
             helper.assertTrue(violations.isEmpty(), String.join("; ", violations));
             var facts = new java.util.LinkedHashMap<String, String>(Map.of(
                     "placements", Integer.toString(placements.size()), "sampledTicks", Integer.toString(SAMPLE_TICKS),
-                    "bindingWithdrawn", "false", "consumerUnpowered", "false", "referenceKept", "true",
+                    "sharingWithdrawn", "false", "consumerUnpowered", "false", "referenceKept", "true",
                     "worldScan", "false"));
             facts.putAll(extraFacts);
             FederationDomainEvidence.write(testId, facts.size(), facts);
@@ -172,8 +168,7 @@ public final class TopologyContinuityGameTests {
                 helper.setBlock(PATH_CABLE, Blocks.AIR);
                 helper.assertTrue(!scene.registry().isCurrent(reference), "Cutting the path must invalidate the domain at once");
                 helper.assertTrue(scene.sharedDomains().isEmpty(), "Cutting the path must separate A and B at once");
-                helper.assertTrue(scene.bindings().capability(scene.key()).isEmpty(),
-                        "Cutting the path must withdraw the energy binding at once");
+                helper.assertTrue(!scene.shares(), "Cutting the path must stop A and B sharing energy at once");
                 helper.assertValueEqual(scene.consumerAvailable(), 0.0, "B must reach no power through a cut path");
                 phase[0] = 1;
                 throw new GameTestAssertException("Waiting for AE2 to publish B's power state");
@@ -183,7 +178,7 @@ public final class TopologyContinuityGameTests {
                 helper.assertTrue(!scene.consumerPowered(), "B must be unpowered on the tick after the cut");
             }
             FederationDomainEvidence.write("topologybreakcutspower", 5, Map.of(
-                    "referenceCurrentAfterCut", "false", "domainShared", "false", "bindingWithdrawn", "true",
+                    "referenceCurrentAfterCut", "false", "domainShared", "false", "sharingWithdrawn", "true",
                     "consumerUnpowered", "true", "worldScan", "false"));
             scene.close();
         });
@@ -228,7 +223,7 @@ public final class TopologyContinuityGameTests {
             helper.assertTrue(scene.registry().federationdomainsFor(network.get()).containsAll(scene.sharedDomains()),
                     "The settled network must join the domain it attached to");
             FederationDomainEvidence.write("topologyunsettledattachkeepsdomain", 5, Map.of(
-                    "bindingWithdrawn", "false", "consumerUnpowered", "false", "freshNetworkJoined", "true",
+                    "sharingWithdrawn", "false", "consumerUnpowered", "false", "freshNetworkJoined", "true",
                     "referenceKept", "true", "worldScan", "false"));
             scene.close();
         });
@@ -279,7 +274,7 @@ public final class TopologyContinuityGameTests {
                 stage = 2;
                 throw new GameTestAssertException("Waiting for B to be powered through the domain");
             }
-            if (!consumerPowered() || bindings().capability(key()).isEmpty()) {
+            if (!consumerPowered() || !shares()) {
                 throw new GameTestAssertException("Waiting for B to be powered through the domain");
             }
         }
@@ -292,8 +287,8 @@ public final class TopologyContinuityGameTests {
             if (sharedDomains().isEmpty()) {
                 violations.add("A and B stopped sharing a domain on the " + change);
             }
-            if (bindings().capability(key()).isEmpty()) {
-                violations.add("the energy binding was withdrawn on the " + change);
+            if (!shares()) {
+                violations.add("A and B stopped sharing energy on the " + change);
             }
             if (consumerAvailable() <= 0) {
                 violations.add("B could reach no power on the " + change);
@@ -345,8 +340,8 @@ public final class TopologyContinuityGameTests {
             return FederationDomainRegistryAccess.get(helper.getLevel());
         }
 
-        EnergyBindingService bindings() {
-            return EnergyBindingService.get(helper.getLevel());
+        boolean shares() {
+            return EnergySharingService.shares(helper.getLevel(), key());
         }
 
         private IGrid grid(BlockPos router) {

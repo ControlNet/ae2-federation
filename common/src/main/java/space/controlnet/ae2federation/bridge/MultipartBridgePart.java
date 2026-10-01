@@ -32,8 +32,8 @@ import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.DirectionalEnergySource;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.energy.EnergySharingService;
+import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 
 public final class MultipartBridgePart extends AEBasePart implements IdentityNeutralNodeOwner {
     @PartModels
@@ -57,14 +57,14 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         }
     };
 
-    private final DirectionalEnergySource mainEnergySource = new DirectionalEnergySource();
-    private final DirectionalEnergySource outerEnergySource = new DirectionalEnergySource();
+    private final FederationEnergyConnection mainEnergyConnection = new FederationEnergyConnection();
+    private final FederationEnergyConnection outerEnergyConnection = new FederationEnergyConnection();
     private final IManagedGridNode outerNode = GridHelper.createManagedNode(this, NODE_LISTENER)
             .setTagName("outer")
             .setInWorldNode(true)
             .setIdlePowerUsage(0.0)
             .setFlags(GridFlags.CANNOT_CARRY)
-            .addService(appeng.api.networking.energy.IAEPowerStorage.class, outerEnergySource);
+            .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, outerEnergyConnection);
     private BridgeStatus status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
     private boolean removed;
     private @Nullable FederationDomainSourceId federationDomainSource;
@@ -77,9 +77,9 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
     public MultipartBridgePart(IPartItem<?> partItem) {
         super(partItem);
         getMainNode().setIdlePowerUsage(0.0).setFlags(GridFlags.CANNOT_CARRY)
-                .addService(appeng.api.networking.energy.IAEPowerStorage.class, mainEnergySource);
-        mainEnergySource.bind(this, getMainNode());
-        outerEnergySource.bind(this, outerNode);
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, mainEnergyConnection);
+        mainEnergyConnection.bind(this, getMainNode());
+        outerEnergyConnection.bind(this, outerNode);
     }
 
     @Override
@@ -315,7 +315,7 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
         var mainId = FederationDomainRegistryAccess.confirmedNetworkId(candidate.mainGrid());
@@ -324,12 +324,12 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
         FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
-        EnergyBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }

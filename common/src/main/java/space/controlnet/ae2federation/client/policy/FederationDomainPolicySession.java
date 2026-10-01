@@ -829,23 +829,39 @@ public final class FederationDomainPolicySession {
             state.conflicted();
             return true;
         }
-        var configured = service.configured(key);
-        if (configured.map(record -> record.rule().enabled()).orElse(false) == target.enabled()) {
+        // Energy is shared per pair, whichever way a rule names it: switching it off turns off the other way too.
+        var reverse = key.capability() == PolicyCapability.ME_POWER && !target.enabled()
+                ? new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), key.capability()) : null;
+        boolean reverseOn = reverse != null && enabled(service, reverse);
+        if (enabled(service, key) != target.enabled() && !apply(service, key, revision, target.enabled())) return true;
+        if (reverseOn) {
+            apply(service, reverse, service.revision(reverse), false);
+        } else if (enabled(service, key) == target.enabled() && acknowledgmentId.isEmpty()) {
             state.selectionChanged();
-            return true;
         }
-        var rule = configured.map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
-                .withEnabled(target.enabled());
+        return true;
+    }
+
+    private static boolean enabled(PolicyService service, PolicyKey key) {
+        return service.configured(key).map(record -> record.rule().enabled()).orElse(false);
+    }
+
+    /** Switches {@code key}'s rule; false when the edit was refused as a conflict. */
+    private boolean apply(PolicyService service, PolicyKey key, PolicyRevision revision, boolean enabled) {
+        var rule = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
+                .withEnabled(enabled);
         var result = service.edit(new PolicyEdit(key, revision, rule));
         if (result instanceof PolicyMutationResult.Accepted accepted) {
             expectedRevision = accepted.revision();
             state.accepted();
             acknowledgmentId = "policy-" + accepted.revision().value();
-        } else if (result instanceof PolicyMutationResult.Rejected rejected) {
+            return true;
+        }
+        if (result instanceof PolicyMutationResult.Rejected rejected) {
             expectedRevision = rejected.currentRevision();
             state.conflicted();
         }
-        return true;
+        return false;
     }
 
     /**
@@ -1358,12 +1374,12 @@ public final class FederationDomainPolicySession {
         boolean published = switch (key.capability()) {
             case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
             case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.hasPublishedBinding(level, key);
-            case ME_POWER -> space.controlnet.ae2federation.energy.EnergyBindingService.hasPublishedBinding(level, key);
+            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.shares(level, key);
         };
         if (published) return new RuntimeObservation("published", "", "", "");
         var backendDiagnostic = switch (key.capability()) {
             case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(level, key);
-            case ME_POWER -> space.controlnet.ae2federation.energy.EnergyBindingService.lastDiagnostic(level, key);
+            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key);
             default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic>empty();
         };
         var backend = backendDiagnostic.map(diagnostic -> diagnostic.reason().name().toLowerCase(java.util.Locale.ROOT)).orElse("");

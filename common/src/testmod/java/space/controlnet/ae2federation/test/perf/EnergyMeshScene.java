@@ -7,7 +7,6 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
-import appeng.api.networking.energy.IAEPowerStorage;
 import appeng.blockentity.networking.EnergyCellBlockEntity;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,8 +17,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
-import space.controlnet.ae2federation.energy.DirectionalEnergySource;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -34,7 +32,8 @@ import space.controlnet.ae2federation.test.router.RouterFixtures;
 /**
  * TEST-ONLY benchmark scene: one Router joins {@code size} native Grids (an ME Chest on each horizontal face, then UP),
  * each with a large energy cell and {@code padding} extra virtual nodes, and every ordered pair of Grids has an enabled
- * ME power SUPPLY rule. Grid 0's own cell is drained, so its demand falls through to Federation.
+ * ME power SUPPLY rule, which puts all of them in one shared energy pool. Grid 0's own cell is drained, so its demand
+ * falls through to the other Grids' cells.
  */
 public final class EnergyMeshScene implements AutoCloseable {
     private static final BlockPos CENTER = new BlockPos(6, 5, 6);
@@ -132,7 +131,7 @@ public final class EnergyMeshScene implements AutoCloseable {
                 count++;
             }
         }
-        EnergyBindingService.get(helper.getLevel()).observeFederationDomainMembers(grids);
+        EnergySharingService.get(helper.getLevel()).observeFederationDomainMembers(grids);
         return count;
     }
 
@@ -160,8 +159,9 @@ public final class EnergyMeshScene implements AutoCloseable {
         return total;
     }
 
-    public int bindingCount() {
-        return EnergyBindingService.get(helper.getLevel()).relationshipCount();
+    /** The unordered Grid pairs that share energy. */
+    public int sharedPairCount() {
+        return EnergySharingService.get(helper.getLevel()).sharedPairCount();
     }
 
     public IGrid consumerGrid() {
@@ -170,22 +170,6 @@ public final class EnergyMeshScene implements AutoCloseable {
 
     public double extractConsumer(double amount, Actionable mode) {
         return consumerGrid().getEnergyService().extractAEPower(amount, mode, PowerMultiplier.ONE);
-    }
-
-    public DirectionalEnergySource consumerSource() {
-        for (var node : consumerGrid().getNodes()) {
-            if (node.getService(IAEPowerStorage.class) instanceof DirectionalEnergySource source) {
-                return source;
-            }
-        }
-        throw new IllegalStateException("Consumer Grid has no Federation energy source");
-    }
-
-    /** The binding through which Grid 0 draws on Grid 1. */
-    public space.controlnet.ae2federation.energy.EnergyCapabilityBinding consumerBinding() {
-        var grids = grids();
-        var key = new PolicyKey(network(grids.get(0)), network(grids.get(1)), PolicyCapability.ME_POWER);
-        return EnergyBindingService.get(helper.getLevel()).capability(key).orElseThrow();
     }
 
     public int consumerNodeCount() {

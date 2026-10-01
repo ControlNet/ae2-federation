@@ -24,7 +24,6 @@ import space.controlnet.ae2federation.observability.state.ResourceUnit;
 import space.controlnet.ae2federation.observability.subscription.ObservationAuthority;
 import space.controlnet.ae2federation.observability.subscription.ObservationSubscriptionService;
 import space.controlnet.ae2federation.test.energy.NativeEnergyEvidence;
-import space.controlnet.ae2federation.test.energy.DirectionalEnergyFixture;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.observability.ObservationSnapshotSink;
@@ -36,40 +35,64 @@ public final class ObservabilityGameTests {
     private ObservabilityGameTests() {
     }
 
-    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true)
+    /** One accepted storage extraction through a Storage projection is one physical flow of its exact amount. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            timeoutTicks = 400)
     public static void observeNativeFlowOnce(GameTestHelper helper) {
-        var fixture = new DirectionalEnergyFixture(helper);
+        var fixtures = new PolicyBridgeFixtures(helper, new net.minecraft.core.BlockPos(5, 3, 5));
+        fixtures.installStorageCells();
+        var iron = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.IRON_INGOT);
+        var state = new int[1];
         helper.succeedWhen(() -> {
-            helper.assertTrue(fixture.ready(), "Waiting for native directional energy fixture");
-            fixture.enable();
-            fixture.charge(16);
-            var scope = fixture.binding().revision().federationDomains().iterator().next();
+            if (state[0] == 0) {
+                helper.assertTrue(fixtures.networksSettled(), "Waiting for storage networks");
+                fixtures.placeFirstBridge();
+                state[0] = 1;
+            }
+            var key = PolicyLifecycleGameTests.storageKey(fixtures);
+            if (state[0] == 1) {
+                helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for the Bridge domain");
+                var policies = space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel());
+                policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
+                        space.controlnet.ae2federation.policy.PolicyRule.storageDefaults()));
+                state[0] = 2;
+            }
+            var projection = space.controlnet.ae2federation.storage.mount.StorageMountService.get(helper.getLevel())
+                    .projection(key);
+            helper.assertTrue(projection != null, "Waiting for the Storage projection");
+            var source = new appeng.me.helpers.PlayerSource(helper.makeMockPlayer(net.minecraft.world.level.GameType.CREATIVE));
+            // Stocked straight into the provider's own Grid, which no projection observes.
+            fixtures.outerGrid().getStorageService().getInventory().insert(iron, 16,
+                    appeng.api.config.Actionable.MODULATE, source);
+            var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+            var shared = new java.util.HashSet<>(registry.federationdomainsFor(fixtures.mainNetwork()));
+            shared.retainAll(registry.federationdomainsFor(fixtures.outerNetwork()));
+            var scope = registry.federationDomain(shared.iterator().next()).orElseThrow().reference();
             var meter = LevelObservabilityService.get(helper.getLevel()).transportMeter();
-            var topologyBefore = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel())
-                    .snapshot().topologyRevision();
+            var topologyBefore = registry.snapshot().topologyRevision();
             var before = meter.window(scope).dataRevision();
             var beforeEvents = meter.window(scope).events().size();
-            helper.assertTrue(fixture.simulate(8) > 0, "Native simulation must report availability");
+            helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.SIMULATE, source), 8L,
+                    "Native simulation must report availability");
             helper.assertValueEqual(meter.window(scope).dataRevision(), before,
                     "Simulation must not create a physical flow");
-            helper.assertTrue(fixture.extract(8) > 0, "Native extraction must accept energy");
+            helper.assertValueEqual(projection.extract(iron, 8, appeng.api.config.Actionable.MODULATE, source), 8L,
+                    "Native extraction must accept the items");
             var first = meter.window(scope);
             var repeatedObservation = meter.window(scope);
             helper.assertValueEqual(first.events().size() - beforeEvents, 1,
                     "One native acceptance must create one flow");
-            helper.assertValueEqual(first.events().getLast().amount(), 8_000_000_000L,
-                    "Flow amount must equal exact accepted nano-AE");
+            helper.assertValueEqual(first.events().getLast().amount(), 8L,
+                    "Flow amount must equal the exact accepted amount");
             helper.assertValueEqual(repeatedObservation.events().size(), first.events().size(),
                     "Repeated observation must not multiply physical flow");
-            var topologyAfter = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel())
-                    .snapshot().topologyRevision();
-            helper.assertValueEqual(topologyAfter, topologyBefore,
+            helper.assertValueEqual(registry.snapshot().topologyRevision(), topologyBefore,
                     "Data-only flow updates must not change topology revision");
             write("observenativeflowonce", 7, Map.ofEntries(Map.entry("accepted", "8"),
-                    Map.entry("exactNano", "8000000000"), Map.entry("events", "1"),
+                    Map.entry("exactAmount", "8"), Map.entry("events", "1"),
                     Map.entry("simulationEvents", "0"), Map.entry("observationReads", "2"),
                     Map.entry("deduplicated", "true"), Map.entry("topologyStable", "true")));
-            fixture.close();
+            fixtures.close();
         });
     }
 

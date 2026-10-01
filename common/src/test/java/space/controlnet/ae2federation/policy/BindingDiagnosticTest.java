@@ -13,7 +13,7 @@ final class BindingDiagnosticTest {
 
     @Test
     void topologyChangesInvalidateTheOldBackendReason() {
-        var diagnostic = new BindingDiagnostic(BindingDiagnostic.Reason.ENERGY_SOURCE_MISSING, new PolicyRevision(4), 9);
+        var diagnostic = new BindingDiagnostic(BindingDiagnostic.Reason.ENERGY_CONNECTION_MISSING, new PolicyRevision(4), 9);
         assertFalse(diagnostic.matches(new PolicyRevision(4), 10));
         assertFalse(diagnostic.matches(new PolicyRevision(4), 8));
     }

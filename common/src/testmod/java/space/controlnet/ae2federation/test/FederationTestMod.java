@@ -52,7 +52,7 @@ public final class FederationTestMod {
 						 NativeAutomationGameTests.class, NativeAutomationDemandGameTests.class,
 						 CraftingLifecycleGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
-					 DirectionalEnergyGameTests.class,
+					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
 					   MultipartBridgeGameTests.class, RouterGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
 					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,

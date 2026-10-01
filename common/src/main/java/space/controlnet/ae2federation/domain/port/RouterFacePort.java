@@ -15,7 +15,7 @@ import space.controlnet.ae2federation.ae2.NativeAttachmentResolver;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
-import space.controlnet.ae2federation.energy.DirectionalEnergySource;
+import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 
 public final class RouterFacePort implements IdentityNeutralNodeOwner {
     /**
@@ -46,7 +46,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final Direction face;
     private final FederationPort routerFederationDomainPort;
     private final IManagedGridNode boundaryNode;
-    private final DirectionalEnergySource energySource;
+    private final FederationEnergyConnection energyConnection;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
@@ -57,15 +57,15 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         this.routerPosition = routerPosition.immutable();
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
-        energySource = new DirectionalEnergySource();
+        energyConnection = new FederationEnergyConnection();
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0.0)
                 .setFlags(GridFlags.CANNOT_CARRY)
                 .setExposedOnSides(EnumSet.of(face))
-                .addService(appeng.api.networking.energy.IAEPowerStorage.class, energySource);
-        energySource.bind(this, boundaryNode);
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection);
+        energyConnection.bind(this, boundaryNode);
     }
 
     public void initialize(ServerLevel serverLevel) {

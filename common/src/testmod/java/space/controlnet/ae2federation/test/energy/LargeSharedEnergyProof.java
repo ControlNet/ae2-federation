@@ -3,14 +3,15 @@ package space.controlnet.ae2federation.test.energy;
 import java.util.Map;
 import net.minecraft.gametest.framework.GameTestHelper;
 
-public final class LargeDirectionalEnergyProof {
+/** Draws more than one billion AE through a shared pool, which a finite double must still account exactly. */
+public final class LargeSharedEnergyProof {
     private static final double THRESHOLD = 1_000_000_000.0;
     private static final double REQUESTED = 1_000_000_250.0;
 
-    private LargeDirectionalEnergyProof() {
+    private LargeSharedEnergyProof() {
     }
 
-    public static Map<String, String> capture(GameTestHelper helper, DirectionalEnergyFixture fixture) {
+    public static Map<String, String> capture(GameTestHelper helper, SharedEnergyFixture fixture) {
         var capacity = fixture.providerCapacity();
         var before = fixture.providerStored();
         var available = fixture.consumerAvailable();
@@ -18,12 +19,9 @@ public final class LargeDirectionalEnergyProof {
         var afterSimulation = fixture.providerStored();
         var accepted = fixture.extract(REQUESTED);
         var after = fixture.providerStored();
-        EnergyAuthorityReceipt.captureOperation("energydirectionalpolicy", "large-extract", fixture.consumerGrid(),
-                fixture.providerGrid(), REQUESTED, accepted, before, after);
         helper.assertTrue(capacity > THRESHOLD, "Native provider capacity must exceed one billion AE");
         helper.assertTrue(before > THRESHOLD, "Native provider must hold more than one billion AE");
-        helper.assertTrue(available > THRESHOLD,
-                "Consumer native service must expose more than one billion AE");
+        helper.assertTrue(available > THRESHOLD, "The consumer's shared pool must expose more than one billion AE");
         helper.assertValueEqual(simulated, REQUESTED, "Large native simulation must preserve the full request");
         helper.assertValueEqual(afterSimulation, before, "Large native simulation must not mutate provider energy");
         helper.assertValueEqual(accepted, REQUESTED,

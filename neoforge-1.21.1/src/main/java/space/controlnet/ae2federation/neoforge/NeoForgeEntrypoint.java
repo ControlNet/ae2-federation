@@ -16,7 +16,7 @@ import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
 import space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyActionPayloads;
@@ -54,7 +54,7 @@ public final class NeoForgeEntrypoint {
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelTick);
-        // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy through the bindings.
+        // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools.
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
     }
@@ -72,6 +72,7 @@ public final class NeoForgeEntrypoint {
     /** Requests made after the level ticks, by player actions or GameTests. */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
+        EnergySharingService.tickAll();
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
@@ -82,7 +83,7 @@ public final class NeoForgeEntrypoint {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.closeLevel(level);
             CraftingBindingService.closeLevel(level);
-            EnergyBindingService.closeLevel(level);
+            EnergySharingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             space.controlnet.ae2federation.policy.PolicyService.closeLevel(level);

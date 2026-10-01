@@ -16,7 +16,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.client.policy.FederationDomainPolicySession;
 import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
+import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FlowState;
@@ -57,7 +57,7 @@ public final class PerformanceBenchmarkGameTests {
     private PerformanceBenchmarkGameTests() {
     }
 
-    /** Energy borrowed across a SUPPLY mesh: per-call cost of MODULATE demand and of AE2's stored-power probe. */
+    /** Energy drawn from a pool that a SUPPLY mesh shares: per-call cost of demand, and of re-checking who shares. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 2400, required = true, manualOnly = true)
     public static void perfEnergyMesh(GameTestHelper helper) {
@@ -73,13 +73,13 @@ public final class PerformanceBenchmarkGameTests {
                 scene.drainConsumer();
                 state[0] = 1;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
-                helper.assertTrue(false, "Waiting for mesh bindings");
+                helper.assertTrue(false, "Waiting for the mesh pool");
             }
             if (state[0] == 1) {
                 helper.assertTrue(window[0].ticks() >= 40, "Letting the consumer drain settle");
-                helper.assertTrue(scene.bindingCount() >= MESH_SIZE * (MESH_SIZE - 1),
-                        "Every ordered pair must hold an energy binding, found " + scene.bindingCount());
-                perf.count("bindings", scene.bindingCount());
+                helper.assertValueEqual(scene.sharedPairCount(), MESH_SIZE * (MESH_SIZE - 1) / 2,
+                        "Every pair of mesh Grids must share energy");
+                perf.count("sharedPairs", scene.sharedPairCount());
                 perf.count("consumerNodes", scene.consumerNodeCount());
                 var before = scene.providersStored();
                 helper.assertValueEqual(scene.extractConsumer(1, Actionable.MODULATE), 1.0,
@@ -92,27 +92,11 @@ public final class PerformanceBenchmarkGameTests {
                         () -> energy.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
                 perf.nanosPerOp("extractSimulate", 2000, 300,
                         () -> energy.extractAEPower(1, Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE));
-                var source = scene.consumerSource();
-                helper.assertTrue(source.getAECurrentPower() > 1.0e8, "Stored-power probe must see the mesh cells");
-                perf.nanosPerOp("storedPowerProbe", 500, 300, source::getAECurrentPower);
-                // Parts of one MODULATE demand, for locating its cost: the binding's authority check, the native
-                // extraction from the provider Grid alone, and the accepted-flow bookkeeping.
-                var binding = scene.consumerBinding();
-                helper.assertTrue(binding.isCurrent(), "The mesh binding must be current");
-                perf.nanosPerOp("partBindingCurrent", 2000, 300, binding::isCurrent);
-                var provider = binding.providerService();
-                perf.nanosPerOp("partProviderExtract", 2000, 300,
-                        () -> provider.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
-                perf.nanosPerOp("partSourceSimulate", 2000, 300,
-                        () -> source.extractAEPower(1, Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE));
-                perf.nanosPerOp("partSourceModulate", 2000, 300,
-                        () -> source.extractAEPower(1, Actionable.MODULATE, appeng.api.config.PowerMultiplier.ONE));
-                var observability = LevelObservabilityService.get(helper.getLevel());
-                var scopes = binding.scopes();
-                java.util.function.Supplier<String> resource = () -> "ae2:energy";
-                // The overload a MODULATE demand records through, which makes the operation's event id itself.
-                perf.nanosPerOp("partRecordFlow", 2000, 300, () -> observability.recordAccepted(scopes,
-                        resource, 1_000_000_000L, ResourceUnit.NANO_AE, FlowState.Attribution.EXACT_OPERATION));
+                // Re-deriving who shares from every rule and the domain topology; equal pools are left standing.
+                var sharing = EnergySharingService.get(helper.getLevel());
+                perf.nanosPerOp("reconcileSharing", 500, 300, sharing::reconcileAll);
+                helper.assertValueEqual(scene.extractConsumer(1, Actionable.MODULATE), 1.0,
+                        "Reconciling must leave the pool standing");
                 state[0] = 2;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
@@ -223,7 +207,7 @@ public final class PerformanceBenchmarkGameTests {
                 perf.nanosPerOp("reconcileAll", 500, 300, () -> {
                     mounts.reconcileAll();
                     CraftingBindingService.get(helper.getLevel()).reconcileAll();
-                    EnergyBindingService.get(helper.getLevel()).reconcileAll();
+                    EnergySharingService.get(helper.getLevel()).reconcileAll();
                 });
                 perf.nanosPerOp("bridgeNeighborChanged", 500, 300, fixtures::refreshFirstBridge);
                 helper.assertTrue(mounts.projection(key) != null, "Bridge refresh must keep the projection");

@@ -348,7 +348,7 @@ final class TaskThirtyThreeWorldFixture {
      * Cables from the Provider host's energy cell down its column to the Endpoint's west face. They join two
      * established member networks in one Grid: a real merge, the case the design shows. (A freshly placed node has
      * no established history and is simply adopted, so it cannot merge.) The Endpoint's own energy cell sat at the
-     * end of that column, but the energy-source check earlier in the scenario has removed it.
+     * end of that column, but the energy-sharing check earlier in the scenario has removed it.
      */
     static void joinMemberNetworks(ServerContext context) {
         var hostCell = state(context).hostPosition().west();
@@ -600,16 +600,16 @@ final class TaskThirtyThreeWorldFixture {
         context.level().setBlockAndUpdate(powerPosition, Blocks.AIR.defaultBlockState());
     }
 
-    static boolean energySourceUnavailable(ServerContext context) {
+    /** The Endpoint's Grid, without any energy cell of its own, stays powered by the pool it shares with the host. */
+    static boolean endpointRunsOnSharedEnergy(ServerContext context) {
         var consumerGrid = provider(context).getMainNode().getGrid();
         var targetGrid = endpoint(context).getMainNode().getGrid();
         var key = context.<space.controlnet.ae2federation.policy.PolicyKey>get("energy.diagnosticKey");
         if (FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid).filter(key.consumerNetworkId()::equals).isEmpty()
                 || FederationDomainRegistryAccess.confirmedNetworkId(targetGrid).filter(key.providerNetworkId()::equals).isEmpty()) return false;
-        space.controlnet.ae2federation.energy.EnergyBindingService.get(context.level()).observeConnectedGrids(consumerGrid, targetGrid);
-        return space.controlnet.ae2federation.energy.EnergyBindingService.lastDiagnostic(context.level(), key)
-                .filter(diagnostic -> diagnostic.reason() == space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.ENERGY_SOURCE_MISSING)
-                .isPresent();
+        space.controlnet.ae2federation.energy.EnergySharingService.get(context.level()).observeConnectedGrids(consumerGrid, targetGrid);
+        return space.controlnet.ae2federation.energy.EnergySharingService.shares(context.level(), key)
+                && targetGrid.getEnergyService().isNetworkPowered();
     }
 
     static void verifyPolicySnapshotReads(ServerContext context) {

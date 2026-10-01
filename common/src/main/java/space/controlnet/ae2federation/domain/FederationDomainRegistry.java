@@ -54,8 +54,20 @@ public final class FederationDomainRegistry {
     /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
 
+    /** Runs after every change of node or bridge evidence, before the domains are recomputed from it. */
+    private Runnable mutationListener = () -> {
+    };
+
     public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
         this.budget = budget;
+    }
+
+    /**
+     * Sets what runs after each evidence change. It runs inside the mutation, so it must not read this registry; the
+     * domains it reads later are recomputed from the new evidence.
+     */
+    public void onMutation(Runnable listener) {
+        mutationListener = java.util.Objects.requireNonNull(listener);
     }
 
     public void upsertDirectBridge(FederationDomainSourceId source, NetworkId mainNetwork, NetworkId outerNetwork) {
@@ -75,11 +87,13 @@ public final class FederationDomainRegistry {
         removeDirectBridge(source);
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
+        mutationListener.run();
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
         flush();
         removeDirectBridge(source);
+        mutationListener.run();
     }
 
     /** Records a node's evidence; returns false when it equals what the node already published. */
@@ -96,6 +110,7 @@ public final class FederationDomainRegistry {
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
+        mutationListener.run();
         return true;
     }
 
@@ -105,6 +120,7 @@ public final class FederationDomainRegistry {
             pendingSeeds.addAll(affectedBy(nodeId, previous, null));
             pendingRemovals.add(nodeId);
             removeIncoming(previous);
+            mutationListener.run();
         }
         invalidations.put(nodeId, reason);
         if (reason == FederationDomainInvalidationReason.SOURCE_UNLOADED) {
