@@ -260,3 +260,15 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
   AE2's `EnergyService.extractAEPower` (its `List.get` profile is JVM-wide and ListN-dominated, so the provider's
   List12 misses). Bypassing it through an `@Invoker` for `getConnectedServices` moved the samples but not the time;
   dropped. Judge a profile's hot line by an A/B, not by its sample share.
+
+## Storage round: a test-only per-operation cost (local opsScale 50, 2 rounds x 3 runs, medians)
+- The testmod's `AuthorizedStorageProjectionAutomationEvidenceMixin` injected at RETURN of the projection's
+  insert/extract: Mixin built a `CallbackInfoReturnable` per call and every MODULATE entered the static
+  `synchronized` `AutomationNativeObservation.projection` even with no observation active. Only the Federation path
+  paid it, so it inflated every Federation/native storage ratio. It is now a MixinExtras `@ModifyReturnValue` and the
+  observation returns early, without the lock, while nothing is observed (TEST-ONLY).
+  projection insertExtract 319 -> 307 ns, network extract+insert 466 -> 445 ns.
+- `StorageRelationshipAuthority.permits` no longer builds a `ResourceAuthorization` per call (JFR allocation samples
+  showed one per operation); `readyAuthorization()` still returns one for enumeration.
+  insertExtract 307 -> 291 ns, network extract+insert 445 -> 441 ns, simulate 172 -> 167 ns.
+- Before judging a Federation/native ratio, check the testmod mixins for per-operation hooks on only one side.
