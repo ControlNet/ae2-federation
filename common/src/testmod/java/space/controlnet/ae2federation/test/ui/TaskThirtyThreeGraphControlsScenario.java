@@ -476,8 +476,141 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .server("position Provider host camera", TaskThirtyThreeWorldFixture::positionProviderCamera)
                 .serverTicks(2).frames(2).screenshot("world-provider-host")
                 .server("position Endpoint face camera", TaskThirtyThreeWorldFixture::positionEndpointCamera)
-                .serverTicks(2).frames(2).screenshot("world-endpoint-faces");
+                .serverTicks(2).frames(2).screenshot("world-endpoint-faces")
+                // A block hidden behind stained glass, water and stone, in the rain, keeps its outline's own colour
+                // under Fancy and Fabulous graphics alike; Fabulous composites the translucent layers after the level.
+                .teardown("restore Fancy graphics, the HUD and clear weather", context -> {
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    context.mc().options.hideGui = false;
+                    if (context.mc().options.graphicsMode().get() != net.minecraft.client.GraphicsStatus.FANCY) {
+                        context.mc().options.graphicsMode().set(net.minecraft.client.GraphicsStatus.FANCY);
+                        context.mc().levelRenderer.allChanged();
+                    }
+                })
+                .teardownServer("remove the occluded highlight scene", TaskThirtyThreeGraphControlsScenario::removeOccludedScene)
+                .server("build the occluded highlight scene", TaskThirtyThreeGraphControlsScenario::buildOccludedScene)
+                .awaitClientChunk(new net.minecraft.core.BlockPos(OCCLUDED_X, 64, OCCLUDED_TARGET_Z))
+                .runCommand("weather rain")
+                .waitUntil("the client sees rain", context -> context.level().getRainLevel(1f) > 0.9f)
+                .step("hide the HUD", context -> context.mc().options.hideGui = true)
+                .server("look at the hidden block", TaskThirtyThreeGraphControlsScenario::positionOccludedCamera)
+                .serverTicks(2);
+        occludedHighlight(scenario, net.minecraft.client.GraphicsStatus.FANCY, "fancy");
+        occludedHighlight(scenario, net.minecraft.client.GraphicsStatus.FABULOUS, "fabulous");
     }
+
+    private static final String OVERWORLD = "minecraft:overworld";
+    /** Opaque magenta: nothing in the scene (stone, green glass, water, grass, sky, rain) is near it. */
+    private static final int OCCLUDED_COLOR = 0xFF3CFF;
+    private static final String OCCLUDED_GROUND = "highlight.occludedGround";
+    // One chunk west of the fixture's chunk, so the scene stays out of the other world captures.
+    private static final int OCCLUDED_X = -10;
+    private static final int OCCLUDED_TARGET_Z = 5;
+    private static final int OCCLUDED_CAMERA_Z = 12;
+
+    private static void occludedHighlight(ScenarioBuilder scenario, net.minecraft.client.GraphicsStatus mode, String name) {
+        scenario.step("switch graphics to " + name, context -> {
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    context.mc().options.graphicsMode().set(mode);
+                    context.mc().levelRenderer.allChanged();
+                })
+                .check(name + " graphics is in effect", context -> context.mc().options.graphicsMode().get() == mode
+                        && (context.mc().levelRenderer.getTranslucentTarget() != null)
+                                == (mode == net.minecraft.client.GraphicsStatus.FABULOUS))
+                .waitUntil("the sections are rebuilt", context -> context.mc().levelRenderer.hasRenderedAllSections())
+                .frames(5)
+                .check("no outline colour before the highlight (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".before") < 20)
+                .step("highlight the hidden block", context -> {
+                    int ground = context.<Integer>get(OCCLUDED_GROUND);
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of(
+                            new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(OCCLUDED_X, ground + 1,
+                                    OCCLUDED_TARGET_Z)), OCCLUDED_COLOR);
+                })
+                .frames(3)
+                .screenshot("world-highlight-occluded-" + name)
+                .check("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".after") > 400);
+    }
+
+    /**
+     * Counts pixels near the screen's centre that still read as the outline's magenta. Glass, water or rain drawn
+     * over the line would tint it (green, blue or grey) and the count would drop.
+     */
+    private static int recordOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        var frame = com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.grab();
+        try {
+            int width = frame.getWidth();
+            int height = frame.getHeight();
+            int count = 0;
+            for (int y = height / 4; y < height * 3 / 4; y++) {
+                for (int x = width / 4; x < width * 3 / 4; x++) {
+                    int abgr = frame.getPixelRGBA(x, y);
+                    int red = abgr & 0xff;
+                    int green = abgr >> 8 & 0xff;
+                    int blue = abgr >> 16 & 0xff;
+                    if (red > 150 && blue > 150 && green < 100) count++;
+                }
+            }
+            context.attach("evidenceFor", "ui.graph-controls");
+            context.attach("outlinePixels." + label, Integer.toString(count));
+            return count;
+        } finally {
+            com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.closeQuietly(frame);
+        }
+    }
+
+    /**
+     * Seen from the camera: green stained glass, then water held in a stone frame, then a stone wall, then the
+     * highlighted block.
+     */
+    private static void buildOccludedScene(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        var level = context.level();
+        level.getChunk(OCCLUDED_X >> 4, 0);
+        int ground = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                OCCLUDED_X, OCCLUDED_TARGET_Z);
+        context.put(OCCLUDED_GROUND, ground);
+        var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+        for (int x = OCCLUDED_X - 2; x <= OCCLUDED_X + 2; x++) {
+            for (int y = ground; y <= ground + 3; y++) {
+                boolean frame = x == OCCLUDED_X - 2 || x == OCCLUDED_X + 2 || y == ground + 3;
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 6), stone);
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 7),
+                        frame ? stone : net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 8), frame ? stone
+                        : net.minecraft.world.level.block.Blocks.GREEN_STAINED_GLASS.defaultBlockState());
+            }
+        }
+        level.setBlockAndUpdate(new net.minecraft.core.BlockPos(OCCLUDED_X, ground + 1, OCCLUDED_TARGET_Z),
+                net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState());
+    }
+
+    private static void positionOccludedCamera(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        int ground = context.<Integer>get(OCCLUDED_GROUND);
+        var player = context.player();
+        // Standing on the ground, the eye is about level with the hidden block's centre, which lies mid-frame.
+        player.connection.teleport(OCCLUDED_X + 0.5, ground, OCCLUDED_CAMERA_Z + 0.5,
+                player.getYRot(), player.getXRot());
+        player.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES,
+                net.minecraft.world.phys.Vec3.atCenterOf(new net.minecraft.core.BlockPos(OCCLUDED_X, ground + 1,
+                        OCCLUDED_TARGET_Z)));
+    }
+
+    private static void removeOccludedScene(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        context.server().getCommands().performPrefixedCommand(
+                context.server().createCommandSourceStack().withSuppressedOutput(), "weather clear");
+        Integer ground = (Integer) context.state().get(OCCLUDED_GROUND);
+        if (ground == null) return;
+        var air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        for (int x = OCCLUDED_X - 2; x <= OCCLUDED_X + 2; x++) {
+            for (int y = ground; y <= ground + 3; y++) {
+                for (int z = OCCLUDED_TARGET_Z; z <= 8; z++) {
+                    context.level().setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, z), air);
+                }
+            }
+        }
+    }
+
 
     private static float opacity(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
         return TaskThirtyThreeScenarioSupport.networkCard(context, networkUuid)

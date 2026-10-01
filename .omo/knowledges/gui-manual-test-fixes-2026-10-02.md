@@ -68,7 +68,8 @@ inputs, so a test can rebuild a link in screen space from the card bounds and pr
 - The two RenderTypes are made with `RenderType.create` and the public NeoForge shards; no subclass or access widener
   is needed:
   - shader: `RENDERTYPE_LINES_SHADER`;
-  - depth test: `NO_DEPTH_TEST`;
+  - depth test: our own `DepthTestStateShard("always", 519)` whose `setupRenderState` calls
+    `RenderSystem.disableDepthTest()` (see below);
   - write mask: `COLOR_WRITE`;
   - output: `MAIN_TARGET`;
   - transparency: `TRANSLUCENT_TRANSPARENCY`.
@@ -78,6 +79,17 @@ inputs, so a test can rebuild a link in screen space from the card bounds and pr
   - The `rendertype_lines` shader turns lines into screen-space quads, so widths above 1 work in the core profile.
 - The group colours are unchanged. The pulse now stays between 0.7 and 1.0 alpha, so the lines never fade out.
 - Only the first-person hand (drawn after `AFTER_LEVEL`, with depth cleared) and the GUI cover the outlines.
+- Vanilla `RenderStateShard.NO_DEPTH_TEST` does **not** disable depth testing: for function 519 its setup and clear do
+  nothing, so it relies on the test being off already. `LevelRenderer.renderSnowAndRain` calls `enableDepthTest()` and
+  never turns it off, so while it rained the outlines were depth-tested at `AFTER_LEVEL` and hidden behind blocks
+  (in Fancy and Fabulous alike). Clear weather happened to leave it off, which is why the earlier captures looked
+  right.
+- `ui.graph-controls` covers this at its end. It builds a block behind green stained glass, water and stone (chunk
+  -1, 0), with rain on and the HUD hidden. It highlights the block in magenta under Fancy and then Fabulous, and
+  checks the graphics mode (Fabulous has `levelRenderer.getTranslucentTarget() != null`). In each mode it counts the
+  untinted magenta pixels in the frame's central half (`FrameCapture.grab()`): 0 before the highlight and over 400
+  with it; the fixed renderer gives about 4900. Teardown restores Fancy, the HUD and clear weather, and removes the scene.
+  Fabulous works under the harness's llvmpipe.
 
 ## Endpoint selected on the topology; diagnostics page removed
 

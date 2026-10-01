@@ -27,6 +27,19 @@ public final class WorldHighlight {
     /** Line widths in pixels at 1920 wide; a wider window scales them up, as vanilla's own lines do. */
     private static final float LINE_WIDTH = 6;
     private static final float HALO_WIDTH = 11;
+    /**
+     * Turns depth testing off. Vanilla's {@code NO_DEPTH_TEST} only skips turning it on and so relies on it being off
+     * already, but rain leaves it on at {@code AFTER_LEVEL}, which hid the outlines behind blocks whenever it rained.
+     * Off is the state vanilla expects between render types, so clearing leaves it off.
+     */
+    private static final RenderStateShard.DepthTestStateShard NO_DEPTH_TEST =
+            new RenderStateShard.DepthTestStateShard("always", 519) {
+                @Override
+                public void setupRenderState() {
+                    super.setupRenderState();
+                    RenderSystem.disableDepthTest();
+                }
+            };
     private static final RenderType LINE = lines("ae2federation_highlight_line", LINE_WIDTH);
     private static final RenderType HALO = lines("ae2federation_highlight_halo", HALO_WIDTH);
     private static volatile Highlight current;
@@ -119,7 +132,7 @@ public final class WorldHighlight {
                         .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
                         .setLineState(lineWidth)
                         .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-                        .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                        .setDepthTestState(NO_DEPTH_TEST)
                         .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                         .setOutputState(RenderStateShard.MAIN_TARGET)
                         .setCullState(RenderStateShard.NO_CULL)
