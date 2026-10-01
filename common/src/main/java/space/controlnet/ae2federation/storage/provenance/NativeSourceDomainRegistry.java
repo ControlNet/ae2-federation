@@ -25,6 +25,7 @@ import space.controlnet.ae2federation.ae2.storage.NativeStorageAliasProbe;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 
 /**
  * The single source index for native export sources. Source identity and generation are derived from AE2's real mount
@@ -72,6 +73,16 @@ public final class NativeSourceDomainRegistry {
         return domain;
     }
 
+    /**
+     * Whether the domain {@code probe}'s last {@link #discover(IGrid, Probe)} returned still matches its Grid's native
+     * state, for a caller that knows this registry did not change since (every change advances
+     * {@link space.controlnet.ae2federation.policy.AuthorityEpoch}): then {@code discover} would return it again.
+     */
+    public boolean stillMatches(Probe probe) {
+        var cached = probe.cached;
+        return cached != null && cached.domain() != null && cached.stamp().matches(probe.grid, probe.service);
+    }
+
     /** One caller's memo of the last {@link #discover(IGrid, Probe)} answer; owned by that caller. */
     public static final class Probe {
         private IGrid grid;
@@ -102,6 +113,7 @@ public final class NativeSourceDomainRegistry {
             }
         }
         mutations++;
+        AuthorityEpoch.advance();
         cache.remove(origin);
         discoveryRebuilds++;
         Stamp stamp = null;
@@ -150,6 +162,7 @@ public final class NativeSourceDomainRegistry {
 
     public void invalidate(OriginNetworkId origin) {
         mutations++;
+        AuthorityEpoch.advance();
         current.remove(origin);
         cache.remove(origin);
         nextGeneration(origin);
@@ -157,6 +170,7 @@ public final class NativeSourceDomainRegistry {
 
     public void clear() {
         mutations++;
+        AuthorityEpoch.advance();
         current.clear();
         lastValid.clear();
         generations.clear();

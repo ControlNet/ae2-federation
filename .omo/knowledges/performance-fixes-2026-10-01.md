@@ -44,7 +44,7 @@ allocations, native baselines), then the node-index round (Grid-level activity, 
 
 ## Findings that shaped the fixes
 - Task 21 contract: every storage operation rechecks Policy activation, permissions, filters and source readiness,
-  so the authority is never cached; the fixes only remove repeated work inside the check (a new `PolicyService` and
+  so the authority is never cached across a change; the fixes only remove repeated work inside the check (a new `PolicyService` and
   saved-data lookup per call, `Set.copyOf` of both membership sets, streams, a duplicated readiness scan,
   validating before the native `isPreferredStorageFor`).
 - `IGridNode.isActive()` = powered && booted && channels; powered and booted are Grid properties, each an AE2
@@ -293,3 +293,33 @@ The remaining energy gap was structural (per-demand authority, flow bookkeeping,
 directional supply was replaced by sharing AE2's own energy pool (`energy-sharing-2026-10-01.md`). Energy demand now
 runs entirely in AE2: MODULATE 45.0 vs native 39.8 ns (1.13x, was 3.07x), SIMULATE 23.2 vs 22.2 ns (1.05x, was
 3.86x). Idle tick differences were within JVM variance; idle reconciliations and pool dissolutions are both 0.
+
+## Storage authority round: one epoch for the Federation-side revisions (local opsScale 100)
+- Elimination study at the start (TEST-ONLY switches, 2 runs each, not committed): simulate 162.9 ns; without the
+  source readiness probe 145.5, without the relationship-current check 151.8, without the whole authority check
+  124.2, calling the delegate directly 124.3; native 122.5. So the Federation structure costs nothing on simulate
+  and extract+insert without it is 297 vs native 396 ns (no Interface hop into the provider's NetworkStorage): the
+  whole gap was the per-operation authority check, ~39 ns, plus ~22 ns of flow bookkeeping per MODULATE.
+- `policy/AuthorityEpoch` advances on every change a full check reads on the Federation side: the policy store's
+  watermark, Federation Domain evidence (at mutation, since the registry recomputes lazily on the next read) and
+  every topology revision, identity settlement (`IdentityEpoch.advance`), the dependency index's refresh/clear,
+  mount and provenance mutations, and the per-level PolicyService/registry lifecycles. A mount's `CurrentCheck`
+  keeps the epoch of its last full pass; while it is unchanged an operation only matches the source Grid's native
+  stamp again (`NativeSourceDomainRegistry.stillMatches`), else it runs the full check. A failed full check clears
+  the pass, so a native state that flips back cannot revive it. Every advance comes before the change it announces,
+  so a writer that throws halfway still sends held checks back to a full check.
+- This is an invalidation-driven memo of the last pass's `EffectiveStorageAuthority`, the same kind `CurrentCheck`
+  already kept per revision (its staleness window is the same while every writer advances the epoch), not a check
+  that recomputes everything per operation. A writer of check input added later must advance `AuthorityEpoch`.
+- Across ticks: `perfstorageprojection` does one simulate per idle tick and records `idleAuthorityEpochs` and
+  `idleDependencyRefreshes` over the 100-tick window; both are 0 in the static scene, so the fast path holds for
+  automation that does a few operations per tick, not only inside the benchmark's one-tick bursts.
+- Full-mode A/B: simulate 167.5 -> 148.5 ns, extract+insert 449.5 -> 406.3 ns (native 395.9),
+  projection insertExtract 298.5 -> 263.7 ns.
+- What is left on simulate (~26 ns): the native stamp poll ~12 ns (skipping it gave 136.4) and the call chain ~12 ns.
+  Splitting the fast path from the full check into its own method changed nothing (152.6 vs 148.5, noise).
+- `-P federationPerfOnly=<metric,...>` (TEST-ONLY) measures only the named per-operation metrics: at opsScale 100 the
+  two 1000-type listings took 4m20s of each 4m30s storage run. Results in this mode are not comparable with full-mode
+  ones (Federation simulate reads ~15 ns higher without the listings' warm-up before it, native is unchanged), so
+  compare quick runs only with quick runs: epoch A/B, 2 interleaved rounds x 3 runs, simulate 175.5/176.2 ->
+  162.0/164.8 ns, extract+insert 418.1/431.4 -> 396.4/387.4 ns (native 122.3 / 392.7).

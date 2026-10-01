@@ -77,6 +77,7 @@ public final class PolicyStore {
 
     private PolicyRevision advance() {
         highWatermark = new PolicyRevision(Math.addExact(highWatermark.value(), 1));
+        AuthorityEpoch.advance();
         return highWatermark;
     }
 }

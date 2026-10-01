@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 
 /**
  * Physical Federation Domains follow AE2's Grid model. A link exists only while both ports name each other; a
@@ -84,6 +85,9 @@ public final class FederationDomainRegistry {
         if (current != null && directBridges.containsKey(source) && current.memberships().equals(memberships)) {
             return;
         }
+        // Advanced before the change: pending evidence is recomputed only when the domains are next read, so a held
+        // authorization learns of a change from AuthorityEpoch alone.
+        AuthorityEpoch.advance();
         removeDirectBridge(source);
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
@@ -92,6 +96,7 @@ public final class FederationDomainRegistry {
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
         flush();
+        AuthorityEpoch.advance();
         removeDirectBridge(source);
         mutationListener.run();
     }
@@ -106,6 +111,7 @@ public final class FederationDomainRegistry {
             // A node that left and comes back joins a new domain, as it would if the removal had been read.
             flush();
         }
+        AuthorityEpoch.advance();
         pendingSeeds.addAll(affectedBy(evidence.nodeId(), previous, evidence));
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
@@ -115,6 +121,7 @@ public final class FederationDomainRegistry {
     }
 
     public void invalidateNode(FederationDomainNodeId nodeId, FederationDomainInvalidationReason reason) {
+        AuthorityEpoch.advance();
         var previous = nodes.remove(nodeId);
         if (previous != null) {
             pendingSeeds.addAll(affectedBy(nodeId, previous, null));
@@ -175,6 +182,11 @@ public final class FederationDomainRegistry {
     public Optional<FederationDomainSnapshot> federationDomainOf(FederationDomainNodeId nodeId) {
         flush();
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
+    }
+
+    private long nextTopologyRevision() {
+        AuthorityEpoch.advance();
+        return ++topologyRevision;
     }
 
     /** The revision {@link #snapshot()} would report, without copying the registry. */
@@ -253,6 +265,7 @@ public final class FederationDomainRegistry {
             return;
         }
         topologyRevision++;
+        AuthorityEpoch.advance();
         var sequences = new HashMap<FederationDomainId, Long>();
         old.keySet().forEach(federationDomainId -> sequences.put(federationDomainId, physicalSequences.get(federationDomainId)));
         old.keySet().forEach(this::removeFederationDomain);
@@ -265,7 +278,7 @@ public final class FederationDomainRegistry {
             }
             physicalSequences.put(federationDomainId, before == null ? physicalSequence : sequences.get(federationDomainId));
             var generation = before != null && before.memberships().keySet().equals(component.memberships().keySet())
-                    ? before.generation() : ++topologyRevision;
+                    ? before.generation() : nextTopologyRevision();
             installPhysical(new FederationDomainSnapshot(federationDomainId, generation, component.nodes(),
                     component.memberships()));
             recordDiagnostics(component);
@@ -322,6 +335,7 @@ public final class FederationDomainRegistry {
 
     private void exhaustBudget(Set<FederationDomainNodeId> affected, Set<FederationDomainNodeId> visited,
             Set<FederationDomainId> previous) {
+        AuthorityEpoch.advance();
         visited.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(previous::add);
         previous.forEach(this::removeFederationDomain);
         affected.stream().filter(nodes::containsKey)
@@ -420,6 +434,7 @@ public final class FederationDomainRegistry {
     private void removeDirectBridge(FederationDomainSourceId source) {
         var federationDomainId = directBridges.remove(source);
         if (federationDomainId != null) {
+            AuthorityEpoch.advance();
             removeFederationDomain(federationDomainId);
             topologyRevision++;
         }

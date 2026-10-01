@@ -1,5 +1,7 @@
 package space.controlnet.ae2federation.identity;
 
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
+
 /**
  * Advances on every change that can change a Grid's {@link NetworkIdentityService#settlement()}: a claim change in
  * any level's claim index, and a node, provisional-node, duplicate-lineage or registry change in any identity
@@ -18,5 +20,6 @@ public final class IdentityEpoch {
 
     static void advance() {
         value++;
+        AuthorityEpoch.advance();
     }
 }

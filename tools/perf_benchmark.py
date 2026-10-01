@@ -8,6 +8,7 @@ against an earlier result. Numbers are wall-clock and host dependent: compare on
     python3 tools/perf_benchmark.py --label baseline
     python3 tools/perf_benchmark.py --remote user@example.org --key ~/.ssh/id --label fix1 --compare baseline
     python3 tools/perf_benchmark.py --tests perfenergymesh -P federationPerfMeshSize=4 --label mesh4
+    python3 tools/perf_benchmark.py --tests perfstorageprojection -P federationPerfOnly=consumerSimulateExtract --label ab
 
 ``perfnativeenergy`` and ``perfnativestorage`` (not in the default set) build the same scenes as ``perfenergymesh`` and
 ``perfstorageprojection`` with native AE2 Quartz Fibers and a Storage Bus on an ME Interface, under the same metric

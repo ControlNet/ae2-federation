@@ -12,6 +12,7 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.policy.BackendStatus;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -23,6 +24,7 @@ import space.controlnet.ae2federation.storage.dependency.DependencyCompileBudget
 import space.controlnet.ae2federation.storage.dependency.DependencyCompileException;
 import space.controlnet.ae2federation.storage.dependency.DirectStorageDependency;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
+import space.controlnet.ae2federation.storage.dependency.EffectiveStorageAuthority;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationshipKey;
 import space.controlnet.ae2federation.storage.dependency.NativeSourceCandidate;
 import space.controlnet.ae2federation.storage.dependency.StorageDependencyCompiler;
@@ -52,6 +54,8 @@ final class StorageDependencyIndex {
     }
 
     void refresh() {
+        // Before the maps change, so a refresh that throws halfway still sends held checks back to a full check.
+        AuthorityEpoch.advance();
         refreshCount = Math.incrementExact(refreshCount);
         directRelationships = federationDomains.relationships();
         var nextDomains = new HashMap<OriginNetworkId, NativeSourceDomain>();
@@ -203,6 +207,22 @@ final class StorageDependencyIndex {
         private NetworkIdentityService[] providers;
         /** {@link IdentityEpoch} when every direct relationship's Grids last matched their key. */
         private long matchedEpoch = -1;
+        /** {@link AuthorityEpoch} when this mount's whole authorization check last passed, or -1. */
+        private long authorizedEpoch = -1;
+        private EffectiveStorageAuthority authorized;
+
+        /**
+         * The authority the last passing check returned, while nothing it read on the Federation side changed
+         * ({@link AuthorityEpoch}) and the source Grid's native state still matches the stamp it passed with.
+         */
+        @org.jetbrains.annotations.Nullable EffectiveStorageAuthority stillAuthorized(NativeSourceDomainRegistry provenance) {
+            return authorizedEpoch == AuthorityEpoch.current() && provenance.stillMatches(probe) ? authorized : null;
+        }
+
+        void authorized(long epoch, @org.jetbrains.annotations.Nullable EffectiveStorageAuthority authority) {
+            authorizedEpoch = authority == null ? -1 : epoch;
+            authorized = authority;
+        }
 
         private boolean passedAt(EffectiveSourceRelationship relationship, NativeSourceDomain domain,
                 DependencyCompilation compilation, Map<OriginNetworkId, NativeSourceDomain> domains,
@@ -293,6 +313,7 @@ final class StorageDependencyIndex {
     }
 
     void clear() {
+        AuthorityEpoch.advance();
         directRelationships = Map.of();
         domains = Map.of();
         diagnostics = Map.of();

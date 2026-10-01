@@ -24,6 +24,7 @@ public final class PolicyService {
     private PolicyService(ServerLevel level) {
         this.level = level;
         data = PolicySavedData.get(level);
+        AuthorityEpoch.advance();
     }
 
     /** The service {@link #get} returned last, checked before the map: nearly every call is for the ticked level. */
@@ -42,6 +43,7 @@ public final class PolicyService {
     /** Drops the level's service when the level unloads; the service holds the level, so it cannot be weakly held. */
     public static void closeLevel(ServerLevel level) {
         last = null;
+        AuthorityEpoch.advance();
         SERVICES.remove(level);
     }
 

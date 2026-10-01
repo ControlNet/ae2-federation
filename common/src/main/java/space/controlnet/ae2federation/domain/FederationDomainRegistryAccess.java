@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 
 public final class FederationDomainRegistryAccess {
     private static final Map<ServerLevel, FederationDomainRegistry> REGISTRIES = new WeakHashMap<>();
@@ -32,6 +33,7 @@ public final class FederationDomainRegistryAccess {
     private static synchronized FederationDomainRegistry getLocked(ServerLevel level) {
         var registry = REGISTRIES.computeIfAbsent(level, ignored -> {
             var created = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+            AuthorityEpoch.advance();
             // Shared energy pools draw without asking Federation, so a topology change dissolves them at once.
             created.onMutation(() -> space.controlnet.ae2federation.energy.EnergySharingService.topologyChanged(level));
             return created;
@@ -42,6 +44,7 @@ public final class FederationDomainRegistryAccess {
 
     public static synchronized LevelCloseResult closeLevel(ServerLevel level) {
         last = null;
+        AuthorityEpoch.advance();
         var registered = REGISTRIES.get(level);
         var removed = REGISTRIES.remove(level);
         return new LevelCloseResult(registered != null,

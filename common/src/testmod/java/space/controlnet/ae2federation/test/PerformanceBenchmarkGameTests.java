@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.test;
 
 import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
@@ -21,6 +22,7 @@ import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ResourceUnit;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
@@ -170,6 +172,7 @@ public final class PerformanceBenchmarkGameTests {
         var perf = new PerfMeasure("perfstorageprojection");
         var state = new int[] {0};
         var window = new PerfMeasure.TickWindow[1];
+        var idleStart = new long[2];
         var iron = AEItemKey.of(Items.IRON_INGOT);
         helper.succeedWhen(() -> {
             if (state[0] == 0) {
@@ -222,8 +225,19 @@ public final class PerformanceBenchmarkGameTests {
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
                 helper.assertTrue(false, "Measuring idle ticks");
             }
+            // One operation per tick, as automation does: a held authorization stays on its fast path across ticks
+            // only while nothing advances AuthorityEpoch or refreshes the dependency index in a static scene.
+            var consumer = fixtures.mainGrid().getStorageService().getInventory();
+            helper.assertValueEqual(consumer.extract(iron, 1, Actionable.SIMULATE, IActionSource.empty()), 1L,
+                    "The idle scene must keep its projection");
+            if (window[0].ticks() <= IDLE_SETTLE_TICKS) {
+                idleStart[0] = AuthorityEpoch.current();
+                idleStart[1] = mounts.dependencyRefreshCount();
+            }
             helper.assertTrue(window[0].ticks() > IDLE_SETTLE_TICKS + WINDOW_TICKS, "Measuring idle ticks");
             perf.record("idleTick", window[0].medianTickNanos(), "ns/tick");
+            perf.count("idleAuthorityEpochs", AuthorityEpoch.current() - idleStart[0]);
+            perf.count("idleDependencyRefreshes", mounts.dependencyRefreshCount() - idleStart[1]);
             helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark insert must be extracted again");
             fixtures.close();
         });

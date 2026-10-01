@@ -21,6 +21,13 @@ public final class PerfMeasure {
     private static final int CLOCK_BATCH = 32;
     /** Multiplies every metric's operation count and time budget, so a profiler run collects enough samples. */
     private static final int OPS_SCALE = Integer.getInteger("ae2federation.perf.opsScale", 1);
+    /**
+     * Comma-separated per-operation metrics to measure, or empty for all: the 1000-type listings take minutes at a
+     * high opsScale, which an A/B of one operation does not need.
+     */
+    private static final java.util.Set<String> ONLY = java.util.Arrays.stream(
+                    System.getProperty("ae2federation.perf.only", "").split(","))
+            .map(String::trim).filter(name -> !name.isEmpty()).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private final String testId;
     private final Map<String, String> results = new LinkedHashMap<>();
@@ -29,8 +36,14 @@ public final class PerfMeasure {
         this.testId = testId;
     }
 
-    /** Median ns/op of {@code operation}, at most {@code maxOps} calls and about {@code budgetMillis} per round. */
+    /**
+     * Median ns/op of {@code operation}, at most {@code maxOps} calls and about {@code budgetMillis} per round; NaN,
+     * without running or recording it, when {@code ae2federation.perf.only} names other metrics only.
+     */
     public double nanosPerOp(String metric, int maxOps, long budgetMillis, Runnable operation) {
+        if (!ONLY.isEmpty() && !ONLY.contains(metric)) {
+            return Double.NaN;
+        }
         var medians = new ArrayList<Double>();
         for (var round = 0; round < WARMUP_ROUNDS + ROUNDS; round++) {
             var budget = budgetMillis * 1_000_000L * OPS_SCALE;

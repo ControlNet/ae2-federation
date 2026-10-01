@@ -2,8 +2,6 @@ package space.controlnet.ae2federation.storage.mount;
 
 import appeng.api.stacks.AEKey;
 import java.util.Objects;
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.policy.PolicyOperation;
@@ -13,14 +11,16 @@ import space.controlnet.ae2federation.storage.dependency.EffectiveStorageAuthori
 
 final class StorageRelationshipAuthority implements StorageProjectionAuthorization {
     private final Supplier<EffectiveSourceRelationship> relationship;
-    private final Predicate<EffectiveSourceRelationship> relationshipCurrent;
-    private final BooleanSupplier sourceReady;
+    private final Supplier<@Nullable EffectiveStorageAuthority> readyAuthority;
 
+    /**
+     * @param readyAuthority the current relationship's authority while its source is ready and it is current, else
+     *     null; evaluated on every operation
+     */
     StorageRelationshipAuthority(Supplier<EffectiveSourceRelationship> relationship,
-            Predicate<EffectiveSourceRelationship> relationshipCurrent, BooleanSupplier sourceReady) {
+            Supplier<@Nullable EffectiveStorageAuthority> readyAuthority) {
         this.relationship = Objects.requireNonNull(relationship);
-        this.relationshipCurrent = Objects.requireNonNull(relationshipCurrent);
-        this.sourceReady = Objects.requireNonNull(sourceReady);
+        this.readyAuthority = Objects.requireNonNull(readyAuthority);
     }
 
     @Override
@@ -58,16 +58,8 @@ final class StorageRelationshipAuthority implements StorageProjectionAuthorizati
         };
     }
 
-    /** The current relationship's authority while its source is ready and it is current, else null. */
     private @Nullable EffectiveStorageAuthority readyAuthority() {
-        if (!sourceReady.getAsBoolean()) {
-            return null;
-        }
-        var candidate = relationship.get();
-        if (candidate == null || !relationshipCurrent.test(candidate)) {
-            return null;
-        }
-        return candidate.authority();
+        return readyAuthority.get();
     }
 
     private static boolean permits(EffectiveStorageAuthority authority, PolicyOperation operation, AEKey key) {

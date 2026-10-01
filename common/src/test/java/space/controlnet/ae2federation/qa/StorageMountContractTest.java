@@ -20,7 +20,7 @@ final class StorageMountContractTest {
         assertTrue(projection.contains("delegate.insert(what, amount, mode, source)"));
         assertTrue(projection.contains("delegate.extract(what, amount, mode, source)"));
         assertTrue(authority.contains("EffectiveSourceRelationship"));
-        assertTrue(authority.contains("relationshipCurrent.test(candidate)"));
+        assertTrue(authority.contains("readyAuthority.get()"));
         assertTrue(authority.contains("PolicyOperation.VIEW"));
         assertTrue(effectiveAuthority.contains("PolicyFilterMode.ALLOW_LIST"));
     }
@@ -46,7 +46,13 @@ final class StorageMountContractTest {
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
         assertTrue(dependencies.contains(
                 "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
-        assertTrue(mounts.contains("sourceCurrent(holder[0], check)"));
+        // Every operation re-evaluates its authority: in full, or, while nothing Federation-side changed since a full
+        // pass (AuthorityEpoch), by matching the source Grid's native state again.
+        assertTrue(mounts.contains("sourceCurrent(mounted, check)"));
+        assertTrue(mounts.contains("dependencies.current(candidate, domain, check)"));
+        assertTrue(mounts.contains("check.stillAuthorized(provenance)"));
+        assertTrue(dependencies.contains("authorizedEpoch == AuthorityEpoch.current() && provenance.stillMatches(probe)"));
+        assertTrue(provenance.contains("cached.stamp().matches(probe.grid, probe.service)"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
         assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));
