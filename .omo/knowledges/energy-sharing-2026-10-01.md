@@ -42,8 +42,12 @@ shared pair's link as a Quartz Fiber, see UI). Diagnostic `ENERGY_SOURCE_MISSING
   (`policy_row_energy`, `policy_state_energy`, `policy_switch_energy`). UI helpers map `me_power` to these ids.
 - Shared link (user-chosen "A quartz fibre" from the design canvas row "共享能量视觉", 2026-10-01): a 4 u dark edge,
   a 2 u pale rail (`FederationTheme.QUARTZ`), a 0.75 u core (`QUARTZ_CORE`; selection blue when selected) and four
-  pixel quartz diamonds, two each way, one run per `QUARTZ_BEAD_MILLIS` (3.2 s). No glow. The pill reads
+  quartz beads, two each way, one run per `QUARTZ_BEAD_MILLIS` (3.2 s). No glow. The pill reads
   "◇ [Shared energy]" in `QUARTZ`. The earlier neon glow + sparks and options B–M were rejected.
+- Beads (2026-10-02): each is a square turned 45 degrees (6 u edge in `QUARTZ_BEAD_EDGE`, 4 u core in `QUARTZ_BEAD`, as
+  the storage flow dots), placed at the exact float point on the curve. The first version stacked 1 u `fill` rows
+  into a stair-step diamond at rounded pixels, which the GUI and graph scales blew up into blurry blocks that jumped
+  a pixel at a time.
 - Network cards: `NetworkOverview.addEnergyPool` walks the Grid's AE2 energy overlay (`EnergyService
   .getOverlayGridConnections()`, the same walk as `EnergyOverlayGrid.buildCache`) and
   reports `energyPool`, `energyPoolMax` (sums of each Grid's stored/max) and `energyPoolGrids`. Do NOT probe the

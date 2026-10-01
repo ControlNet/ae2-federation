@@ -2272,23 +2272,25 @@ final class FederationTopologyView {
             bead(context, points, 1 - (phase + 0.75f) % 1);
         }
 
-        /** A pixel quartz diamond at {@code along} (0 to 1) of the link. */
+        /**
+         * A quartz bead at {@code along} (0 to 1) of the link: a square turned 45 degrees, its edge and core the same
+         * sizes as a storage flow dot. It is placed at the exact point and drawn as geometry, so it moves smoothly and
+         * keeps straight edges at any GUI or graph scale.
+         */
         private void bead(GUIContext context, float[] points, float along) {
             int segments = points.length / 2 - 1;
             float position = along * segments;
             int index = Math.min(segments - 1, (int) position);
             float fraction = position - index;
-            int x = Math.round(points[2 * index] + (points[2 * index + 2] - points[2 * index]) * fraction);
-            int y = Math.round(points[2 * index + 1] + (points[2 * index + 3] - points[2 * index + 1]) * fraction);
-            diamond(context, x, y, 3, FederationTheme.QUARTZ_BEAD_EDGE);
-            diamond(context, x, y, 2, FederationTheme.QUARTZ_BEAD);
-        }
-
-        private static void diamond(GUIContext context, int x, int y, int radius, int color) {
-            for (int row = -radius; row <= radius; row++) {
-                int half = radius - Math.abs(row);
-                context.graphics.fill(x - half, y + row, x + half + 1, y + row + 1, color);
-            }
+            float x = points[2 * index] + (points[2 * index + 2] - points[2 * index]) * fraction;
+            float y = points[2 * index + 1] + (points[2 * index + 3] - points[2 * index + 1]) * fraction;
+            var pose = context.graphics.pose();
+            pose.pushPose();
+            pose.translate(x, y, 0);
+            pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(45));
+            context.graphics.fill(-3, -3, 3, 3, FederationTheme.QUARTZ_BEAD_EDGE);
+            context.graphics.fill(-2, -2, 2, 2, FederationTheme.QUARTZ_BEAD);
+            pose.popPose();
         }
 
         private void endMark(GUIContext context, float[] point, int color) {
