@@ -234,10 +234,13 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         context.all(".graph-node-endpoint").size() == 1
                                 && TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Mapped by a Provider of "))
                 .hover(".graph-node-endpoint")
-                .step("open the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
-                .waitUntil("the Endpoint node opens diagnostics", context -> context.el("#page_diagnostics").isVisible())
-                .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
-                .click("#tab_overview")
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
+                .waitUntil("the Endpoint node is selected in place, its panel in the aside", context ->
+                        context.el("#page_overview").isVisible() && context.el("#endpoint_detail").isVisible())
+                .waitForTextContains("#endpoint_fact_configured", "Federated")
+                .step("select the Provider host network again", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.providerHost")))
+                .waitUntil("the network panel is back", context -> !context.el("#endpoint_detail").isVisible())
                 .hover(".network-link")
                 .step("open the pair from the network's links", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))

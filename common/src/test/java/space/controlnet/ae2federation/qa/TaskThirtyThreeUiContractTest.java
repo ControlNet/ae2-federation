@@ -26,7 +26,7 @@ final class TaskThirtyThreeUiContractTest {
         for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
                 "graph_search", "network_links", "pair_editor", "pair_sections", "processing_graph",
                 "processing_scroll", "processing_detail", "mapping_toggle", "processing_unlink", "processing_release",
-                "processing_status", "endpoint_next", "endpoint_detail", "entrance_value", "members_value",
+                "processing_status", "endpoint_detail", "endpoint_identity", "entrance_value", "members_value",
                 "ack_status" }) {
             assertTrue(xml.contains("id=\"" + id + "\""), "Missing stable Task 33 control #" + id);
         }
@@ -40,9 +40,12 @@ final class TaskThirtyThreeUiContractTest {
         // WorkspaceSizeTest pins the sizes: it fills the screen less a margin and shrinks with a small viewport.
         assertTrue(holder.contains("WorkspaceSize.fit(screenWidth, screenHeight"),
                 "The production workspace must size itself from the viewport, shrinking to fit a small one");
-        for (var page : new String[] {"overview", "mapping", "diagnostics"}) {
+        for (var page : new String[] {"overview", "mapping"}) {
             assertTrue(xml.contains("id=\"page_" + page + "\""), "Missing task page " + page);
         }
+        // An Endpoint's details are its panel on the topology; the separate diagnostics page is gone.
+        assertTrue(!xml.contains("id=\"page_diagnostics\"") && !xml.contains("id=\"tab_diagnostics\""),
+                "Endpoint details must stay on the topology, not on a diagnostics page");
         assertTrue(lss.contains(".__button_text__") && lss.contains("adaptive-width: false"),
                 "Button child text must have an explicit bounded style");
         assertTrue(holder.contains("FederationTopologyView") && holder.contains("stringS2C"),

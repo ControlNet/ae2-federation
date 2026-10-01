@@ -65,3 +65,49 @@ inputs, so a test can rebuild a link in screen space from the card bounds and pr
   - The `rendertype_lines` shader turns lines into screen-space quads, so widths above 1 work in the core profile.
 - The group colours are unchanged. The pulse now stays between 0.7 and 1.0 alpha, so the lines never fade out.
 - Only the first-person hand (drawn after `AFTER_LEVEL`, with depth cleared) and the GUI cover the outlines.
+
+## Endpoint selected on the topology; diagnostics page removed
+
+- An Endpoint node is selected like a network card: `selectedEndpoint` in `FederationTopologyView`. At most one of
+  network, pair and Endpoint is selected; every selection site clears the other two.
+- The aside reuses `#network_detail` for the Endpoint, so it matches a network's panel. Rename and the stats panel are
+  hidden; `#endpoint_detail` (fact rows) and `#endpoint_identity_panel` are shown.
+- The panel contains:
+  - title "Endpoint · x, y, z" and a dimension · position · short-id line (the full UUID is in the tooltip);
+  - an explanation line (as the node's tooltip says, plus a non-routine claim result);
+  - the map/3D preview of the network the Endpoint sits on (`nativeNetwork`), with the Endpoint as the anchor mark;
+  - "Highlight 10 s", which outlines only the Endpoint block;
+  - "Owner mappings" on `#graph_open`, sent as `openObject("endpoint_mapping", id)`, which leads to the workspace's
+    `endpoint_mapping:<id>/<uuid>` receipt;
+  - fact rows `#endpoint_fact_{configured,runtime,face,return,owner,claim,native}`;
+  - "Bound patterns (N)" rows (`.endpoint-pattern`);
+  - the identity block (the `ae2federation.ui.workspace.endpoint_identity` text, the owner instance epoch and the
+    native network UUID).
+- The server adds these Endpoint choice fields in `FederationDomainPolicySession.endpointFacts`:
+  - `x/y/z`, `dimension`, `face`, `returnBinding`;
+  - `instanceEpoch`, `claimEpoch`, `generation`, `nativeNetwork`, `ownerPosition`.
+- `patterns` (`mappedPatterns`) lists every Provider slot whose controller has `endpointsForSlot(slot)` containing the
+  Endpoint. It is computed on the server because the client's slot data is split between the `slot` group and
+  `processingProviders` (which skips the selected Provider and is capped).
+- An Endpoint block entrance now opens `overview` with `initialEndpoint` (the Endpoint is selected and centred).
+- With no domain, the session sends `localEndpoint` (id `local`): one read-only node and panel, with no owner
+  navigation and no patterns.
+
+Removed with the diagnostics page:
+
+- `#tab_diagnostics` and `#page_diagnostics`, `FederationEndpointBrowser` (the endpoint table), the endpoint selector,
+  `FederationIcons.DIAGNOSTICS` and the diagnostics LSS;
+- `Session.endpointDetailText` and `endpointIdentityText`, and the menu holder's server-text binds for them;
+- the workspace lang keys used only by them.
+
+Each Endpoint is a node on the graph, so the table's comparison now means selecting nodes.
+
+UI tests:
+
+- `TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "x, y, z")` matches the node's label text. A no-text
+  Button's `text()` is empty in the uitest `Texts`.
+- `endpointFacts` joins the fact rows as "name: value". The gradle Task 33 gates still check
+  `endpointDetail` for "Configured mode: Federated" and `endpointIdentity` for "Claim epoch: 1" and `OWNER_CONFLICT`.
+- `attach` no longer records Endpoint text; `attachEndpoint` does so in `ui.endpoint` and `ui.reject-claim-conflict`.
+- In the 320x240 Chinese layout the highlight button text does not fit for networks either, so the narrow check
+  covers only `#graph_open`.

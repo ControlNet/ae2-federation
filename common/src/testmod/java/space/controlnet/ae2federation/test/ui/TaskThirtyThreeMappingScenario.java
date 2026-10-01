@@ -321,9 +321,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("narrow English pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-english-narrow-policy")
-                .click("#tab_diagnostics").frames(3)
-                .check("narrow English diagnostic text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#endpoint_detail", "#endpoint_identity"))
-                .screenshot("ui-english-narrow-diagnostics")
+                .waitUntil("the Endpoint is a node on the graph", context -> !context.all(".graph-node-endpoint").isEmpty())
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
+                .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
+                .check("narrow English Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                .screenshot("ui-english-narrow-endpoint")
                 .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
                 .screenshot("ui-english-narrow-overview")

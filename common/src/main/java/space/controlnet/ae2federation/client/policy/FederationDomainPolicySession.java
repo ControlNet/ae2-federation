@@ -57,6 +57,8 @@ public final class FederationDomainPolicySession {
     private int mappingLaneIndex;
     private int endpointIndex;
     private NetworkId initialGraphNetwork;
+    /** The id of an Endpoint opened from its own block with no domain to show it in. */
+    private static final String LOCAL_ENDPOINT = "local";
     private String navigationReceipt = "";
     private DeviceDomainAvailability deviceDomainAvailability;
     private space.controlnet.ae2federation.processing.claim.EndpointIdentity mappingEndpointSelection;
@@ -305,11 +307,30 @@ public final class FederationDomainPolicySession {
         root.addProperty("navigationReceipt", navigationReceipt);
         root.addProperty("bridgeUnavailable", entrance instanceof BridgePolicyEntrance && context == null);
         root.addProperty("scope", context == null && deviceDomainAvailability != null ? deviceDomainAvailability.key() : "domain");
-        root.addProperty("initialPage", entrance instanceof DevicePolicyEntrance device ? (device.provider() ? "mapping" : "diagnostics") : "overview");
+        // An Endpoint's own entrance opens the topology with that Endpoint selected; a Provider's opens its mappings.
+        root.addProperty("initialPage", entrance instanceof DevicePolicyEntrance device && device.provider() ? "mapping" : "overview");
         root.addProperty("returnProvider", entrance instanceof DevicePolicyEntrance device && device.provider());
-        if (context == null && entrance instanceof DevicePolicyEntrance device
-                && level.getBlockEntity(device.position()) instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity) {
-            root.addProperty("localEndpointPosition", device.position().toShortString());
+        var deviceEndpoint = entrance instanceof DevicePolicyEntrance device && !device.provider()
+                && level.getBlockEntity(device.position()) instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint
+                ? endpoint : null;
+        if (context == null && deviceEndpoint != null) {
+            root.addProperty("localEndpointPosition", deviceEndpoint.getBlockPos().toShortString());
+            // Without a domain the topology shows this Endpoint alone, read-only.
+            var local = new com.google.gson.JsonArray();
+            if (deviceEndpoint.binding() != null) {
+                var choice = new com.google.gson.JsonObject();
+                choice.addProperty("id", LOCAL_ENDPOINT);
+                choice.addProperty("label", "");
+                endpointFacts(choice, deviceEndpoint.binding());
+                local.add(choice);
+                root.addProperty("initialEndpoint", LOCAL_ENDPOINT);
+            }
+            root.add("localEndpoint", local);
+        }
+        if (context != null && deviceEndpoint != null) {
+            currentEndpoints().stream().filter(binding -> binding.runtime().position().equals(deviceEndpoint.getBlockPos()))
+                    .findFirst().ifPresent(binding -> root.addProperty("initialEndpoint",
+                            FederationDomainGraphProjection.endpointId(context, binding)));
         }
         if (context != null && initialGraphNetwork != null
                 && currentFederationDomain().filter(domain -> domain.memberships().containsKey(initialGraphNetwork)).isPresent()) {
@@ -421,28 +442,77 @@ public final class FederationDomainPolicySession {
         for (var endpoint : endpoints) {
             var id = FederationDomainGraphProjection.endpointId(context, endpoint);
             var choice = addChoice(root, "endpoint", id, shortId(id));
-            choice.addProperty("position", endpoint.runtime().position().toShortString());
-            var navigationOwner = navigationOwner(endpoint);
-            choice.addProperty("mappingNavigation", navigationOwner.isPresent());
-            choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
-            choice.addProperty("configuredMode", endpoint.runtime().configuredMode().name());
-            choice.addProperty("runtimeMode", endpoint.runtime().mode().map(mode ->
-                    mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
-                            ? "LOCAL" : "FEDERATED").orElse("UNBOUND"));
-            choice.addProperty("claimResult", endpoint.lastClaimResultCode());
-            choice.addProperty("endpointIdentity", endpoint.endpointIdentity().id().value().toString());
+            choice.addProperty("mappingNavigation", navigationOwner(endpoint).isPresent());
+            endpointFacts(choice, endpoint);
             endpoint.claimState().owner().ifPresent(owner -> {
-                choice.addProperty("owner", owner.provider().id().value().toString());
-                choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
                 // The network of the owning Provider: the topology draws the Endpoint beside it.
                 currentProviders().stream().filter(entry -> entry.identity().equals(owner.provider())).findFirst()
-                        .flatMap(entry -> FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid()))
-                        .ifPresent(network -> choice.addProperty("ownerNetwork", network.value().toString()));
+                        .ifPresent(entry -> {
+                            FederationDomainRegistryAccess.confirmedNetworkId(entry.provider().getGrid())
+                                    .ifPresent(network -> choice.addProperty("ownerNetwork", network.value().toString()));
+                            if (entry.controller().orElse(null) instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
+                                choice.addProperty("ownerPosition", entity.getBlockPos().toShortString());
+                            }
+                        });
             });
+            choice.add("patterns", mappedPatterns(endpoint));
         }
         if (!endpoints.isEmpty()) selected.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context,
                 endpoints.get(Math.floorMod(endpointIndex, endpoints.size()))));
         return root.toString();
+    }
+
+    /**
+     * What the topology's Endpoint panel shows of one Endpoint: where it is, its modes, face and return binding, its
+     * native network, and its identity and claim with their epochs.
+     */
+    private void endpointFacts(com.google.gson.JsonObject choice, EndpointTargetBinding endpoint) {
+        var runtime = endpoint.runtime();
+        choice.addProperty("position", runtime.position().toShortString());
+        choice.addProperty("x", runtime.position().getX());
+        choice.addProperty("y", runtime.position().getY());
+        choice.addProperty("z", runtime.position().getZ());
+        choice.addProperty("dimension", level.dimension().location().toString());
+        choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
+        choice.addProperty("configuredMode", runtime.configuredMode().name());
+        choice.addProperty("runtimeMode", runtime.mode().map(mode ->
+                mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
+                        ? "LOCAL" : "FEDERATED").orElse("UNBOUND"));
+        choice.addProperty("face", runtime.federationFace().getSerializedName());
+        choice.addProperty("returnBinding", runtime.itemReturnContext().isPresent() || runtime.fluidReturnContext().isPresent());
+        choice.addProperty("claimResult", endpoint.lastClaimResultCode());
+        choice.addProperty("endpointIdentity", endpoint.endpointIdentity().id().value().toString());
+        choice.addProperty("instanceEpoch", endpoint.endpointIdentity().instanceEpoch().value());
+        choice.addProperty("claimEpoch", endpoint.claimState().epoch().value());
+        choice.addProperty("generation", runtime.generation());
+        FederationDomainRegistryAccess.confirmedNetworkId(endpoint.subnetNode().getGrid())
+                .ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
+        endpoint.claimState().owner().ifPresent(owner -> {
+            choice.addProperty("owner", owner.provider().id().value().toString());
+            choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
+        });
+    }
+
+    /** The pattern slots of the domain's Providers whose wires go to {@code endpoint}, with the Provider's position. */
+    private com.google.gson.JsonArray mappedPatterns(EndpointTargetBinding endpoint) {
+        var patterns = new com.google.gson.JsonArray();
+        for (var entry : currentProviders()) {
+            var controller = entry.controller().orElse(null);
+            if (controller == null) continue;
+            var inventory = entry.provider().patternInventory();
+            for (int slot = 0; slot < inventory.size(); slot++) {
+                if (!controller.endpointsForSlot(slot).contains(endpoint.endpointIdentity())) continue;
+                var pattern = new com.google.gson.JsonObject();
+                pattern.addProperty("slot", slot);
+                var stack = inventory.getStackInSlot(slot);
+                pattern.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
+                if (controller instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
+                    pattern.addProperty("provider", entity.getBlockPos().toShortString());
+                }
+                patterns.add(pattern);
+            }
+        }
+        return patterns;
     }
 
     /**
@@ -1231,54 +1301,6 @@ public final class FederationDomainPolicySession {
 
     public String mappingStatusCode() {
         return mappingAcknowledgment;
-    }
-
-    public Component endpointDetailText() {
-        var binding = inspectedEndpoint();
-        if (binding == null) return Component.translatable("ae2federation.ui.domain.endpoint.none");
-        var runtime = binding.runtime();
-        var actual = runtime.mode().map(mode -> mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
-                ? "LOCAL" : "FEDERATED").orElse("UNBOUND");
-        Component nativeNetwork = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
-                .<Component>map(id -> Component.literal(id.value().toString()))
-                .orElseGet(() -> Component.translatable("ae2federation.ui.workspace.network_unconfirmed"));
-        return Component.translatable("ae2federation.ui.workspace.endpoint_runtime", runtime.position().toShortString(),
-                endpointMode(runtime.configuredMode().name()), endpointMode(actual),
-                Component.translatable("ae2federation.ui.workspace.face." + runtime.federationFace().getSerializedName()),
-                Component.translatable("ae2federation.ui.workspace.return_binding." +
-                        (runtime.itemReturnContext().isPresent() || runtime.fluidReturnContext().isPresent() ? "present" : "absent")),
-                Component.translatableWithFallback("ae2federation.ui.workspace.claim_result." + binding.lastClaimResultCode(),
-                        binding.lastClaimResultCode()))
-                .append("\n\n").append(Component.translatable("ae2federation.ui.workspace.native_network", nativeNetwork));
-    }
-
-    public Component endpointIdentityText() {
-        var binding = inspectedEndpoint();
-        if (binding == null) return Component.translatable("ae2federation.ui.domain.endpoint.none");
-        var claim = binding.claimState();
-        Component owner = claim instanceof ClaimState.Owned owned
-                ? Component.literal(owned.ownerIdentity().provider().id().value().toString())
-                : Component.translatable("ae2federation.ui.workspace.unclaimed");
-        var details = Component.translatable("ae2federation.ui.workspace.endpoint_identity",
-                binding.endpointIdentity().id().value().toString(), binding.endpointIdentity().instanceEpoch().value(),
-                owner, claim.epoch().value(), binding.runtime().generation(), binding.lastClaimResultCode());
-        if (claim instanceof ClaimState.Owned owned) {
-            details.append("\n").append(Component.translatable("ae2federation.ui.workspace.owner_instance_epoch",
-                    owned.ownerIdentity().provider().instanceEpoch().value()));
-        }
-        return details;
-    }
-
-    private static Component endpointMode(String mode) {
-        return Component.translatable("ae2federation.ui.workspace.endpoint_mode." + mode);
-    }
-
-    private @org.jetbrains.annotations.Nullable EndpointTargetBinding inspectedEndpoint() {
-        var endpoints = currentEndpoints();
-        var local = entrance instanceof DevicePolicyEntrance device && !device.provider()
-                && level.getBlockEntity(device.position()) instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint
-                ? endpoint.binding() : null;
-        return endpoints.isEmpty() ? local : endpoints.get(Math.floorMod(endpointIndex, endpoints.size()));
     }
 
     public Component entranceText() {

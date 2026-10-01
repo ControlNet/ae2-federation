@@ -18,18 +18,21 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
-                .click("#tab_diagnostics").frames(3)
+                .waitUntil("the Endpoint is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 1)
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
+                .waitUntil("the Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
                 .server("submit competing Endpoint Claim", context ->
                         context.put("task33.claimConflict", TaskThirtyThreeWorldFixture.claimConflict(context)))
                 .checkServer("competing Claim is rejected", context ->
                         "Rejected".equals(context.get("task33.claimConflict")))
-                .waitForTextContains("#endpoint_detail", "Another Provider owns this endpoint")
+                .waitForTextContains("#endpoint_fact_claim", "Another Provider owns this endpoint")
                 .checkTextContains("#endpoint_identity", ClaimRejection.OWNER_CONFLICT.name())
                 .step("record Claim conflict evidence", context -> {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.reject-claim-conflict");
+                    TaskThirtyThreeScenarioSupport.attachEndpoint(context);
                     context.attach("claimConflict", context.get("task33.claimConflict"));
-                    context.attach("claimConflictResult", context.el("#endpoint_detail").text());
-                    context.put("task33.claimConflictResult", context.el("#endpoint_detail").text());
+                    context.attach("claimConflictResult", TaskThirtyThreeScenarioSupport.endpointFacts(context));
+                    context.put("task33.claimConflictResult", TaskThirtyThreeScenarioSupport.endpointFacts(context));
                     context.put("task33.claimConflictIdentity", context.el("#endpoint_identity").text());
                 })
                 .check("all font-cache accesses stayed on the render thread", context -> FontThreadEvidence.violations() == 0)

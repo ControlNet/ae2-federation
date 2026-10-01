@@ -76,9 +76,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
-        bind(ui, "endpoint_detail", this::endpointDetailText);
-        bind(ui, "endpoint_identity", () -> session == null
-                ? Component.translatable("ae2federation.ui.domain.endpoint.none") : session.endpointIdentityText());
 
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
@@ -347,11 +344,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? Component.translatable("ae2federation.ui.mapping_feedback.pending") : session.mappingStatusText();
     }
 
-    private Component endpointDetailText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.endpoint.none")
-                : session.endpointDetailText();
-    }
-
     private String graphSnapshotText() {
         return session == null ? FederationDomainGraphSnapshot.empty().encode() : graphText.get(session::graphSnapshotText);
     }
@@ -395,7 +387,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var sync = element(ui, "sync_text", Label.class);
         sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
         sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
-        element(ui, "endpoint_next", UIElement.class).setActive(active);
         return active;
     }
 

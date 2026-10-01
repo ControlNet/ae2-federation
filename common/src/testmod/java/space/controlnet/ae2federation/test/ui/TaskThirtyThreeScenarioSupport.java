@@ -87,6 +87,37 @@ final class TaskThirtyThreeScenarioSupport {
         context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }
 
+    /** Selects the topology's Endpoint node at {@code position} ("x, y, z"), as a player's click does. */
+    static void selectEndpointNode(com.lowdragmc.lowdraglib2.uitest.TestContext context, String position) {
+        var node = context.all(".graph-node-endpoint").stream()
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
+                        .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                        .anyMatch(text -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) text).getText().getString()
+                                .contains(position))).findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Endpoint node at " + position));
+        var bounds = node.bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    /** The Endpoint panel's facts, one "name: value" line per row, as the Task 33 evidence records them. */
+    static String endpointFacts(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var lines = new java.util.ArrayList<String>();
+        for (var row : context.all(".endpoint-fact")) {
+            var texts = row.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getChildren().stream()
+                    .filter(com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class::isInstance)
+                    .map(text -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) text).getText().getString()).toList();
+            if (texts.size() == 2) lines.add(texts.get(0) + ": " + texts.get(1));
+        }
+        return String.join("\n", lines);
+    }
+
+    /** Records the selected Endpoint's panel: its facts and its identity and ownership. */
+    static void attachEndpoint(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        context.attach("endpointDetail", endpointFacts(context));
+        context.attach("endpointIdentity", context.el("#endpoint_identity").text());
+    }
+
     static void selectFirstNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         var bounds = context.all(".graph-node-member").getFirst().bounds();
         context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
@@ -149,8 +180,6 @@ final class TaskThirtyThreeScenarioSupport {
         context.attach("mappingAck", context.el("#processing_status").text());
         context.attach("mappingAckCode", context.el("#processing_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                 .getStyle().tooltips().asList().getFirst().getString());
-        context.attach("endpointDetail", context.el("#endpoint_detail").text());
-        context.attach("endpointIdentity", context.el("#endpoint_identity").text());
         context.attach("visibleStatus", context.el("#ack_status").text());
         context.attach("graphVisited", context.get("task33.graphVisited"));
         context.attach("workspaceVisible", Boolean.toString(context.el("#domain_root").isVisible()));
