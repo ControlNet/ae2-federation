@@ -3,9 +3,11 @@
     <stylesheet location="ldlib2:lss/modern.lss"/>
     <stylesheet location="ae2federation:lss/domain.lss"/>
     <root id="domain_root" class="domain-shell">
-        <element id="workspace_tabs" class="workspace-rail">
-            <button id="tab_overview" class="rail-tab" text=""/>
-            <button id="tab_mapping" class="rail-tab" text=""/>
+        <element id="workspace_tabs" class="workspace-rail-column">
+            <element id="workspace_rail" class="workspace-rail">
+                <button id="tab_overview" class="rail-tab" text=""/>
+                <button id="tab_mapping" class="rail-tab" text=""/>
+            </element>
         </element>
         <element id="domain_window" class="domain-panel">
             <element class="domain-header">

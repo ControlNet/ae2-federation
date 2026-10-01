@@ -3,6 +3,8 @@
 .domain-shell { flex-direction: row; padding-all: 0; gap-all: 0; }
 .domain-shell label, .domain-shell text-field, .domain-shell .__button_text__ { font: minecraft:default; text-shadow: false; }
 
+// The rail's column fills the window's height; the rail itself, and its background, end under its last tab.
+.workspace-rail-column { width: 26; flex-shrink: 0; flex-direction: column; }
 .workspace-rail { width: 26; flex-shrink: 0; margin-top: 38; padding-top: 4; padding-bottom: 6; padding-left: 3; gap-all: 3; background: built-in(federation:RAIL); }
 .workspace-rail .rail-tab { width: 22; height: 24; padding-all: 0; base-background: built-in(federation:TOOLBAR); hover-background: built-in(federation:TOOLBAR_HOVER); pressed-background: built-in(federation:TOOLBAR_ACTIVE); }
 .workspace-rail .rail-tab.selected { base-background: built-in(federation:TOOLBAR_ACTIVE); }

@@ -39,6 +39,16 @@ zooms only for a wheel turn whose target is the view itself. Cards, link labels 
 The capture phase runs before anything under the pointer can stop propagation. `TopologyLink.between` is linear in its
 inputs, so a test can rebuild a link in screen space from the card bounds and press on `curve().at(0.3)`.
 
+## Tab rail background ends under its tabs
+
+- `#domain_root` (`.domain-shell`) is a row, so its children stretch to the row's full height. Setting
+  `align-self: flex-start` on the rail did not stop this in LDLib2 2.2.34; the rail still reached the window's bottom.
+- `#workspace_tabs` is now a transparent column wrapper (`.workspace-rail-column`). It still fills the height, and the
+  inner `#workspace_rail` holds the tabs and the `federation:RAIL` background. A column child is only as tall as its
+  content, so the background ends under the last tab.
+- `ui.graph-controls` checks that the bottom of `#workspace_rail` lies within 8 px below `#tab_mapping` and well above
+  the root's bottom.
+
 ## Related-domain cards are dashed all round
 
 - A related-domain network card uses `FederationTheme.CARD_RELATED`: a dark ring and a fill, without the light inner

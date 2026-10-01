@@ -19,6 +19,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .checkBounds("#domain_graph", bounds -> bounds.width() > 180 && bounds.height() > 150)
+                // The tab rail's background wraps its tabs and ends under the last one, not at the window's bottom.
+                .check("the tab rail ends under its last tab", context -> {
+                    var rail = context.el("#workspace_rail").bounds();
+                    var last = context.el("#tab_mapping").bounds();
+                    var root = context.el("#domain_root").bounds();
+                    float bottom = last.y() + last.height();
+                    return rail.y() + rail.height() >= bottom && rail.y() + rail.height() <= bottom + 8
+                            && rail.y() + rail.height() < root.y() + root.height() - 20;
+                })
                 .click("#graph_zoom_in").click("#graph_zoom_out").click("#graph_fit")
                 .check("graph remains visible after controls", context -> context.el("#domain_graph").isVisible())
                 .check("both member networks are drawn", context -> context.all(".graph-node-member").size() == 2)
