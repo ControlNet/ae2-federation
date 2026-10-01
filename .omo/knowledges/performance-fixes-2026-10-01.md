@@ -219,3 +219,24 @@ revisions do not cover. Every compare is exact identity or an exact revision: no
 | storage idle tick | 285 us | 458 us | 0.62 |
 - The energy idle-tick gap is scene composition (the mesh carries more block entities); per tick the Federation
   part is one consumer idle-drain demand and one reconcile, a few percent of the tick's samples.
+
+## Harness clock overhead (TEST-ONLY fix)
+- `PerfMeasure` read `System.nanoTime()` after every operation. On the kvm-clock benchmark hosts one read costs
+  ~38-41 ns standalone and ~24 ns inside the GameTest JVM, which was most of a fast native operation's
+  measured time and compressed every Federation/native ratio. The loop now reads the clock once per 32 calls
+  (`CLOCK_BATCH`); tables before this section include the overhead on both sides.
+
+## Native comparison, clock-corrected (remote, 29afd45 + CLOCK_BATCH, opsScale 100)
+| metric | Federation | native | ratio |
+|---|---|---|---|
+| energy extract MODULATE | 134.9 ns | 37.4 ns | 3.6 |
+| energy extract SIMULATE | 95.4 ns | 23.3 ns | 4.1 |
+| energy idle tick | 356 us | 230 us | 1.55 |
+| storage simulate extract | 161.2 ns | 122.9 ns | 1.31 |
+| storage extract+insert | 492.4 ns | 392.9 ns | 1.25 |
+| storage list all (1000 types) | | | 0.32 |
+| storage idle tick | | | 0.68 |
+- Energy parts, same run: binding authority recheck 15.3 ns, provider Grid extract 40.5 ns (alone more than
+  native's whole demand), source SIMULATE 95.3 ns, source MODULATE 126.9 ns, flow bookkeeping 15.6 ns.
+- Tried and dropped: copying the binding's domain-reference set into a `List` for the bookkeeping loop
+  (`partRecordFlow` 14-15 -> 20 ns, MODULATE flat).

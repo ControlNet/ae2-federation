@@ -17,6 +17,8 @@ public final class PerfMeasure {
     private static final Logger LOGGER = LoggerFactory.getLogger("ae2federation-perf");
     private static final int WARMUP_ROUNDS = 2;
     private static final int ROUNDS = 5;
+    /** Operations run between two clock reads. */
+    private static final int CLOCK_BATCH = 32;
     /** Multiplies every metric's operation count and time budget, so a profiler run collects enough samples. */
     private static final int OPS_SCALE = Integer.getInteger("ae2federation.perf.opsScale", 1);
 
@@ -37,8 +39,13 @@ public final class PerfMeasure {
             var ops = 0;
             var now = start;
             while (ops < limit && now - start < budget) {
-                operation.run();
-                ops++;
+                // The clock is read once per batch: on a kvm-clock host one System.nanoTime() costs ~40 ns, which
+                // read per call would be most of a fast operation's measured time.
+                var batch = (int) Math.min(CLOCK_BATCH, limit - ops);
+                for (var call = 0; call < batch; call++) {
+                    operation.run();
+                }
+                ops += batch;
                 now = System.nanoTime();
             }
             if (round >= WARMUP_ROUNDS) {
