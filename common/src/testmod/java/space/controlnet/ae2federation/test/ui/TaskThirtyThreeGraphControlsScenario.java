@@ -97,6 +97,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseUp(point[0], point[1], 0);
                 })
                 .waitUntil("a press on the link opens its pair", context -> context.el("#pair_editor").isVisible())
+                .frames(2).screenshot("ui-graph-link-pair-selected")
                 .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
                         context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()))

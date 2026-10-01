@@ -2205,6 +2205,17 @@ final class FederationTopologyView {
                 endMark(context, link.start(), network(ends[0]).accent());
                 endMark(context, link.end(), network(ends[1]).accent());
             }
+            // A selected pair with no rule switched on yet keeps its dashed link, in the selection colour, while its
+            // rules are being set; otherwise selecting it from a network's dashed link would make the link vanish.
+            if (!selectedPair.isEmpty() && !configured.contains(selectedPair)) {
+                var ends = selectedPair.split("\\|");
+                if (positions.containsKey(ends[0]) && positions.containsKey(ends[1])) {
+                    var link = link(ends[0], ends[1]);
+                    line(context, link, FederationTheme.SELECT, 2f, true);
+                    endMark(context, link.start(), network(ends[0]).accent());
+                    endMark(context, link.end(), network(ends[1]).accent());
+                }
+            }
             if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
                 for (var other : shown()) {
                     if (other.id().equals(selectedNetwork) || configured.contains(pair(selectedNetwork, other.id()))

@@ -32,6 +32,9 @@ zooms only for a wheel turn whose target is the view itself. Cards, link labels 
   - Candidates are the pairs with a rule switched on, plus the dashed links from the selected network to the networks
     it discovers.
   - The match selects the pair exactly as a click on its label does.
+  - Dashed links are drawn only while a network is selected, and selecting a pair clears the network. So a selected
+    pair with no rule switched on draws its own dashed link in the selection colour, with both end marks; otherwise
+    the line the player just pressed would vanish while they set its rules.
 
 The capture phase runs before anything under the pointer can stop propagation. `TopologyLink.between` is linear in its
 inputs, so a test can rebuild a link in screen space from the card bounds and press on `curve().at(0.3)`.
