@@ -426,7 +426,6 @@
   "ae2federation.ui.topology.related_lock": "其他域 · 只读",
   "ae2federation.ui.topology.legend.reads": "甲▸乙 = 甲使用乙的能力",
   "ae2federation.ui.topology.legend.active": "生效",
-  "ae2federation.ui.topology.legend.off": "已关闭",
   "ae2federation.ui.topology.legend.waiting": "后端未就绪",
   "ae2federation.ui.topology.legend.error": "错误",
   "ae2federation.ui.topology.via.router_one": "经由位于 %s 的 Router · 当前域",

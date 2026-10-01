@@ -48,6 +48,55 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
                     return graph.getOffsetX() < context.<float[]>get("graph.panStart")[0] - 1f;
                 })
+                // A card covers much of the canvas: a drag that starts on one pans as well, and a wheel turn over one zooms.
+                .step("press the left button on a card", context -> {
+                    var card = context.all(".graph-node-member").getFirst().bounds();
+                    var point = new float[] {card.centerX(), card.centerY()};
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    context.put("graph.panPoint", point);
+                    context.put("graph.panStart", new float[] {graph.getOffsetX(), graph.getOffsetY()});
+                    context.input().moveTo(point[0], point[1]);
+                    context.input().mouseDown(point[0], point[1], 0);
+                })
+                .repeat(6, steps -> steps.step("drag from the card", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    point[0] += 10;
+                    context.input().dragTo(point[0], point[1], 0);
+                }).frames(1))
+                .step("release over the canvas", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    context.input().mouseUp(point[0], point[1], 0);
+                })
+                .check("a left drag that starts on a card pans the graph", context -> {
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    return graph.getOffsetX() < context.<float[]>get("graph.panStart")[0] - 1f;
+                })
+                .step("turn the wheel over a card", context -> {
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    context.put("graph.wheelScale", graph.getScale());
+                    var card = context.all(".graph-node-member").getFirst().bounds();
+                    context.input().moveTo(card.centerX(), card.centerY());
+                    context.input().scroll(card.centerX(), card.centerY(), 1);
+                })
+                .check("a wheel turn over a card zooms the graph", context ->
+                        context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()
+                                > context.<Float>get("graph.wheelScale") + 0.01f)
+                // The link itself is a target too: with a network selected, a press on the line to the other network (dashed
+                // while the pair has no rule) opens that pair, away from the label in the middle.
+                .click("#graph_fit")
+                .step("select the first network", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .waitUntil("the network panel replaces the pair editor", context -> !context.el("#pair_editor").isVisible())
+                .step("press on the link a third of the way along", context -> {
+                    var cards = context.all(".graph-node-member").stream().map(card -> card.bounds()).toList();
+                    var a = cards.get(0);
+                    var b = cards.get(1);
+                    var point = space.controlnet.ae2federation.client.policy.TopologyLink
+                            .between(a.x(), a.y(), b.x(), b.y(), a.width(), a.height()).curve().at(0.3f);
+                    context.input().moveTo(point[0], point[1]);
+                    context.input().mouseDown(point[0], point[1], 0);
+                    context.input().mouseUp(point[0], point[1], 0);
+                })
+                .waitUntil("a press on the link opens its pair", context -> context.el("#pair_editor").isVisible())
                 .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
                         context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()))

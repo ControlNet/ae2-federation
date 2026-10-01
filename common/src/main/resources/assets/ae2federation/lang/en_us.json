@@ -426,7 +426,6 @@
   "ae2federation.ui.topology.related_lock": "Other domain · read only",
   "ae2federation.ui.topology.legend.reads": "A▸B = A uses B's capability",
   "ae2federation.ui.topology.legend.active": "active",
-  "ae2federation.ui.topology.legend.off": "off",
   "ae2federation.ui.topology.legend.waiting": "not active yet",
   "ae2federation.ui.topology.legend.error": "error",
   "ae2federation.ui.topology.via.router_one": "Via the Router at %s · this domain",

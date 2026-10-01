@@ -57,10 +57,14 @@ final class FederationTopologyView {
     private static final int LINK_SEGMENTS = 24;
     /** One run of a quartz bead along a shared-energy link, from end to end. */
     private static final long QUARTZ_BEAD_MILLIS = 3200;
+    /** How close, in screen pixels, a press must land to a link to select its pair. */
+    private static final float LINK_PICK_PIXELS = 5;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
 
     private final GraphView graph;
+    /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
+    private UIElement linkLayer;
     private final Consumer<String> setPolicy;
     private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
@@ -173,6 +177,20 @@ final class FederationTopologyView {
         this.rename = rename;
         this.openObject = openObject;
         graph = element(ui, "domain_graph", GraphView.class);
+        // GraphView pans and zooms only for a press or a wheel turn that reaches the bare canvas. Cards, link labels and
+        // Endpoint nodes cover most of it, so they hand theirs on, in the capture phase before anything under them can
+        // stop it: a press still selects what it lands on, and dragging from there pans the view. A press on the bare
+        // canvas that lands on a link selects its pair.
+        graph.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
+            if (event.target == graph) {
+                if (event.button == 0) pickLink(event.x, event.y);
+            } else if (event.button == 0 && onCanvas(event.target)) {
+                graph.startDrag(new GraphView.DragOffset(graph.getOffsetX(), graph.getOffsetY()), null);
+            }
+        }, true);
+        graph.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_WHEEL, event -> {
+            if (event.target != graph && onCanvas(event.target)) zoomAt(event.x, event.y, event.deltaY);
+        }, true);
         title = element(ui, "network_title", Label.class);
         identity = element(ui, "network_identity", Label.class);
         accent = element(ui, "network_accent", UIElement.class);
@@ -555,7 +573,8 @@ final class FederationTopologyView {
         pillHalfSizes.clear();
         endpointButtons.clear();
         layout();
-        graph.addContentChild(new Links());
+        linkLayer = new Links();
+        graph.addContentChild(linkLayer);
         // Above the lines but below the link labels and cards, so dots never cover text.
         var pulses = new FederationFlowPulses(this::flows);
         var extent = extent();
@@ -566,6 +585,64 @@ final class FederationTopologyView {
         for (var endpoint : endpointNodes) {
             if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
         }
+    }
+
+    /** Whether {@code element} is drawn on the graph's canvas, as cards, link labels and Endpoint nodes are. */
+    private boolean onCanvas(UIElement element) {
+        for (var at = element; at != null && at != graph; at = at.getParent()) {
+            if (at == graph.contentRoot) return true;
+        }
+        return false;
+    }
+
+    /** GraphView's own wheel zoom, kept on the point under the mouse, for a wheel turn over something on the canvas. */
+    private void zoomAt(float x, float y, double deltaY) {
+        var style = graph.getGraphViewStyle();
+        float scale = graph.getScale();
+        float newScale = net.minecraft.util.Mth.clamp(scale + (float) deltaY * 0.1f, style.minScale(), style.maxScale());
+        if (newScale == scale) return;
+        var local = graph.getLocalMouse(x, y);
+        float rx = local.x - graph.getPositionX();
+        float ry = local.y - graph.getPositionY();
+        graph.setOffsetX(graph.getOffsetX() + rx / scale - rx / newScale);
+        graph.setOffsetY(graph.getOffsetY() + ry / scale - ry / newScale);
+        graph.setScale(newScale);
+    }
+
+    /**
+     * Selects the pair whose link passes under a press on the bare canvas: a link with rules, or, while a network is
+     * selected, one of its dashed links to the networks it could be linked with. The link must lie within a few
+     * screen pixels, whatever the zoom.
+     */
+    private void pickLink(float x, float y) {
+        if (linkLayer == null) return;
+        var local = linkLayer.getLocalMouse(x, y);
+        float pointX = local.x - linkLayer.getPositionX();
+        float pointY = local.y - linkLayer.getPositionY();
+        var candidates = new ArrayList<>(pairsWithRules());
+        if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
+            for (var other : shown()) {
+                if (other.id().equals(selectedNetwork) || !discovers(network(selectedNetwork), other)) continue;
+                var pair = pair(selectedNetwork, other.id());
+                if (!candidates.contains(pair)) candidates.add(pair);
+            }
+        }
+        String nearest = null;
+        float best = LINK_PICK_PIXELS / Math.max(0.01f, graph.getScale());
+        for (var pair : candidates) {
+            var ends = pair.split("\\|");
+            if (!positions.containsKey(ends[0]) || !positions.containsKey(ends[1])) continue;
+            float distance = link(ends[0], ends[1]).curve().distance(pointX, pointY, LINK_SEGMENTS);
+            if (distance < best) {
+                best = distance;
+                nearest = pair;
+            }
+        }
+        if (nearest == null) return;
+        selectedPair = nearest;
+        selectedNetwork = "";
+        focusApplied = true;
+        refresh();
     }
 
     /** The bottom-right corner of everything on the canvas: cards and Endpoint nodes. */
@@ -689,14 +766,29 @@ final class FederationTopologyView {
         boolean selected = network.id().equals(selectedNetwork) || selectedPair.contains(network.id());
         if (network.foreign()) button.addClass("related-network");
         var state = cardState.computeIfAbsent(network.id(), ignored -> new int[] {FederationTheme.DARK_MUTED});
-        var inset = FederationTheme.painted((pen, x, y, width, height) -> pen.rect(x + 2, y + height - 4, width - 4, 2, state[0]));
-        // A related domain's network is outlined dashed and locked, as its links are: shown here, edited elsewhere.
-        var outline = network.foreign() ? FederationTheme.dashedBorder(FederationTheme.DARK_MUTED) : null;
-        var lock = network.foreign() ? FederationTheme.lockMark(FederationTheme.DARK_MUTED) : null;
-        var face = outline == null ? GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset)
-                : GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset, outline, lock);
-        var hover = outline == null ? GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset)
-                : GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset, outline, lock);
+        // A related domain's network is outlined dashed and locked, as its links are: shown here, edited elsewhere. Its
+        // dashes take the place of the card's solid edge, in the selection colour while selected or hovered, and its
+        // state strip along the bottom edge is dashed too, so no solid line runs along any of its edges.
+        boolean dashed = network.foreign();
+        var inset = FederationTheme.painted((pen, x, y, width, height) -> {
+            if (!dashed) {
+                pen.rect(x + 2, y + height - 4, width - 4, 2, state[0]);
+                return;
+            }
+            for (float at = 0; at < width - 4; at += 6) pen.rect(x + 2 + at, y + height - 4, Math.min(4, width - 4 - at), 2, state[0]);
+        });
+        com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture face;
+        com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture hover;
+        if (network.foreign()) {
+            var lock = FederationTheme.lockMark(FederationTheme.DARK_MUTED);
+            var hoverOutline = FederationTheme.dashedBorder(FederationTheme.SELECT, 1);
+            face = GuiTextureGroup.of(FederationTheme.CARD_RELATED, inset,
+                    selected ? hoverOutline : FederationTheme.dashedBorder(FederationTheme.DARK_MUTED, 1), lock);
+            hover = GuiTextureGroup.of(FederationTheme.CARD_RELATED, inset, hoverOutline, lock);
+        } else {
+            face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset);
+            hover = GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset);
+        }
         button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(position.x).top(position.y)
                 .width(CARD_WIDTH).height(CARD_HEIGHT).paddingAll(6).paddingBottom(7).gapAll(4)
@@ -1036,13 +1128,12 @@ final class FederationTopologyView {
         return row;
     }
 
-    /** The pair's energy chip: quartz while it shares, else its rule's state colour; null without a rule. */
+    /** The pair's energy chip: quartz while it shares, else its rule's state colour; null without a rule switched on. */
     private Chip energyChip(Network a, Network b) {
         var rule = energyRule(a, b);
-        if (rule == null) return null;
+        if (rule == null || !rule.get("enabled").getAsBoolean()) return null;
         var state = ruleState(rule);
         var text = tr("shared_energy").copy();
-        if (!rule.get("enabled").getAsBoolean()) text = text.withStyle(net.minecraft.ChatFormatting.STRIKETHROUGH);
         if (state.code().equals("error")) text.append("!");
         return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color());
     }
@@ -1094,17 +1185,19 @@ final class FederationTopologyView {
         return names.consumer() + "▸" + names.provider();
     }
 
-    /** The capabilities {@code consumer} uses from {@code provider}, in the colour of their configured and observed state. */
+    /**
+     * The capabilities {@code consumer} uses from {@code provider}, in the colour of their configured and observed state.
+     * A rule switched off grants nothing, so it shows no chip; the pair editor still lists it, switched off.
+     */
     private List<Chip> chips(Network consumer, Network provider) {
         var chips = new ArrayList<Chip>();
         for (var capability : CAPABILITIES) {
             // Energy is shared per pair, so it has its own row rather than a chip in either direction.
             if (capability == PolicyCapability.ME_POWER) continue;
             var rule = rule(key(consumer.id(), provider.id(), capability.name()));
-            if (rule == null) continue;
+            if (rule == null || !rule.get("enabled").getAsBoolean()) continue;
             var state = ruleState(rule);
             var text = capabilityName(capability).copy();
-            if (!rule.get("enabled").getAsBoolean()) text = text.withStyle(net.minecraft.ChatFormatting.STRIKETHROUGH);
             if (state.code().equals("error")) text.append("!");
             chips.add(new Chip(text, state.color()));
         }
@@ -1747,9 +1840,11 @@ final class FederationTopologyView {
         else if (!endpoints(network).isEmpty()) openObject.accept("endpoint", endpoints(network).getFirst());
     }
 
+    /** Pairs with at least one rule switched on: only those get a link and a label on the graph. */
     private List<String> pairsWithRules() {
         var pairs = new java.util.TreeSet<String>();
         for (var rule : shownRules()) {
+            if (!rule.get("enabled").getAsBoolean()) continue;
             var consumer = rule.get("consumer").getAsString();
             var provider = rule.get("provider").getAsString();
             if (network(consumer) != null && network(provider) != null) pairs.add(pair(consumer, provider));
@@ -1828,10 +1923,10 @@ final class FederationTopologyView {
         return tr("network_name", id.substring(0, 4).toUpperCase(Locale.ROOT));
     }
 
-    /** "A▸B = A uses B's capability ■ active ■ off ■ not active yet ■ error", each square in its state colour. */
+    /** "A▸B = A uses B's capability ■ active ■ not active yet ■ error", each square in its state colour. */
     private static Component legendText() {
         var legend = tr("legend.reads").copy();
-        for (var entry : new Object[][] {{"active", FederationTheme.OK}, {"off", FederationTheme.DARK_MUTED},
+        for (var entry : new Object[][] {{"active", FederationTheme.OK},
                 {"waiting", FederationTheme.WARN}, {"error", FederationTheme.ERROR}}) {
             legend.append("  ").append(Component.literal("■ ").append(tr("legend." + entry[0]))
                     .withStyle(Style.EMPTY.withColor((Integer) entry[1] & 0xffffff)));

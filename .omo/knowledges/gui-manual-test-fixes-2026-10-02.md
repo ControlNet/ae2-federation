@@ -1,0 +1,67 @@
+# GUI fixes from manual testing (2026-10-02)
+
+Seven issues came out of manual testing of the topology workspace. This note records the decisions and the LDLib2 /
+Minecraft facts they rest on.
+
+## Switched-off rules leave the graph
+
+- Turning a capability off in the pair editor keeps the rule with `enabled=false`; it is not deleted.
+- The graph treats such a rule as absent: no chip on the link label (previously struck through), no link and no energy
+  chip. `pairsWithRules()`, `chips()` and `energyChip()` skip disabled rules. The pair editor still lists the rule, so
+  it can be switched back on.
+- The legend lost its "off" entry, and the `ae2federation.ui.topology.legend.off` lang key was removed.
+- The showcase fixture switches off Sky Lab → Nether Outpost storage, so that pair has no link in the showcase.
+
+## GraphView: pan, zoom and link picking over elements
+
+LDLib2 2.2.34 `GraphView` pans only for a left press whose `event.target == this` (a middle press pans anywhere), and
+zooms only for a wheel turn whose target is the view itself. Cards, link labels and Endpoint nodes are children of
+`contentRoot`, so presses and wheel turns over them never reached the view.
+
+`FederationTopologyView` adds **capture-phase** listeners on the graph:
+
+- On a left press whose target is under `contentRoot`, it calls
+  `graph.startDrag(new GraphView.DragOffset(offsetX, offsetY), null)`. GraphView's own `DRAG_SOURCE_UPDATE` handler
+  then pans. LDLib2 `Button` fires `onClick` on mouse down, so the press still selects the card first; a refresh that
+  rebuilds the cards does not break the drag, because the drag source is the graph itself.
+- On a wheel turn under `contentRoot`, it repeats GraphView's zoom math: keep the point under the mouse, change
+  `offsetX/Y`, then `setScale`, which refreshes the transform.
+- On a left press on the bare canvas (`target == graph`), it finds the nearest link with
+  `WireCurve.distance(x, y, LINK_SEGMENTS)`. The point is measured in the link layer's coordinates:
+  `getLocalMouse` minus `getPositionX/Y`. A link counts if it is within 5 screen pixels (divided by the scale).
+  - Candidates are the pairs with a rule switched on, plus the dashed links from the selected network to the networks
+    it discovers.
+  - The match selects the pair exactly as a click on its label does.
+
+The capture phase runs before anything under the pointer can stop propagation. `TopologyLink.between` is linear in its
+inputs, so a test can rebuild a link in screen space from the card bounds and press on `curve().at(0.3)`.
+
+## Related-domain cards are dashed all round
+
+- A related-domain network card uses `FederationTheme.CARD_RELATED`: a dark ring and a fill, without the light inner
+  ring the normal card has.
+- Over it lies `dashedBorder(color, 1)`, which is the selection colour while the card is selected or hovered.
+- Its bottom state strip is dashed too, so no solid line runs along any edge.
+
+## World highlight drawn over the level
+
+`WorldHighlight` draws at `RenderLevelStageEvent.Stage.AFTER_LEVEL`, which is fired from `GameRenderer` after
+`LevelRenderer.renderLevel` returns.
+
+- At that stage the level's model-view stack has been popped. The pose must multiply `event.getModelViewMatrix()` (the
+  camera rotation) before translating by the camera position.
+- In Fabulous mode, `AFTER_WEATHER` and earlier stages are composited by the transparency chain, so translucent
+  layers could still cover the lines. `AFTER_LEVEL` comes after that composite.
+- The two RenderTypes are made with `RenderType.create` and the public NeoForge shards; no subclass or access widener
+  is needed:
+  - shader: `RENDERTYPE_LINES_SHADER`;
+  - depth test: `NO_DEPTH_TEST`;
+  - write mask: `COLOR_WRITE`;
+  - output: `MAIN_TARGET`;
+  - transparency: `TRANSLUCENT_TRANSPARENCY`.
+- Lines are 6 px over an 11 px dark halo, at 1920 px window width; both scale up with wider windows, as vanilla's
+  window-scaled line width does.
+  - An anonymous `LineStateShard` subclass overrides `setupRenderState` to set the scaled width.
+  - The `rendertype_lines` shader turns lines into screen-space quads, so widths above 1 work in the core profile.
+- The group colours are unchanged. The pulse now stays between 0.7 and 1.0 alpha, so the lines never fade out.
+- Only the first-person hand (drawn after `AFTER_LEVEL`, with depth cleared) and the GUI cover the outlines.
