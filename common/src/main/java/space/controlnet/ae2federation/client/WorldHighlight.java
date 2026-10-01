@@ -1,9 +1,14 @@
 package space.controlnet.ae2federation.client;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import java.util.List;
+import java.util.OptionalDouble;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -12,9 +17,18 @@ import space.controlnet.ae2federation.client.policy.BlockMarks;
 /**
  * Pulsing outlines around blocks the player asked to find from the workspace, for ten seconds. This is local
  * presentation of positions the menu already shows; it grants nothing and sends nothing to the server.
+ *
+ * <p>The outlines are drawn once the level is done and ignore depth, so no block, fluid or weather hides them: only
+ * the hand and the GUI draw over them. Each edge is a thick coloured line on a wider dark halo, which keeps it
+ * readable against a sky, a lit wall or a block of the same colour.
  */
 public final class WorldHighlight {
     public static final long DURATION_MILLIS = 10_000;
+    /** Line widths in pixels at 1920 wide; a wider window scales them up, as vanilla's own lines do. */
+    private static final float LINE_WIDTH = 6;
+    private static final float HALO_WIDTH = 11;
+    private static final RenderType LINE = lines("ae2federation_highlight_line", LINE_WIDTH);
+    private static final RenderType HALO = lines("ae2federation_highlight_halo", HALO_WIDTH);
     private static volatile Highlight current;
 
     private WorldHighlight() {
@@ -55,7 +69,7 @@ public final class WorldHighlight {
     }
 
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) return;
         var highlight = current;
         var level = Minecraft.getInstance().level;
         if (highlight == null || level == null) return;
@@ -65,21 +79,50 @@ public final class WorldHighlight {
             return;
         }
         if (!level.dimension().location().toString().equals(highlight.dimension())) return;
-        float pulse = 0.55f + 0.45f * (float) Math.sin(now / 160.0);
+        float pulse = 0.85f + 0.15f * (float) Math.sin(now / 160.0);
         var camera = event.getCamera().getPosition();
+        // The level's own model-view matrix is gone by now; the event still carries the camera's rotation.
         var pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
         pose.translate(-camera.x, -camera.y, -camera.z);
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
-        var lines = buffers.getBuffer(RenderType.lines());
+        var halo = buffers.getBuffer(HALO);
+        for (var group : highlight.groups()) {
+            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, halo, box(block), 0.04f, 0.03f, 0.06f, 0.85f);
+        }
+        buffers.endBatch(HALO);
+        var line = buffers.getBuffer(LINE);
         for (var group : highlight.groups()) {
             float red = (group.color() >> 16 & 0xff) / 255f;
             float green = (group.color() >> 8 & 0xff) / 255f;
             float blue = (group.color() & 0xff) / 255f;
-            for (var block : group.blocks()) {
-                var box = new AABB(block.x(), block.y(), block.z(), block.x() + 1, block.y() + 1, block.z() + 1).inflate(0.02);
-                LevelRenderer.renderLineBox(pose, lines, box, red, green, blue, pulse);
-            }
+            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, line, box(block), red, green, blue, pulse);
         }
-        buffers.endBatch(RenderType.lines());
+        buffers.endBatch(LINE);
+    }
+
+    private static AABB box(BlockMarks.Mark block) {
+        return new AABB(block.x(), block.y(), block.z(), block.x() + 1, block.y() + 1, block.z() + 1).inflate(0.02);
+    }
+
+    /** Vanilla's line type, {@code width} pixels wide, drawn over everything: no depth test and no depth written. */
+    private static RenderType lines(String name, float width) {
+        var lineWidth = new RenderStateShard.LineStateShard(OptionalDouble.of(width)) {
+            @Override
+            public void setupRenderState() {
+                super.setupRenderState();
+                RenderSystem.lineWidth(Math.max(width, Minecraft.getInstance().getWindow().getWidth() / 1920f * width));
+            }
+        };
+        return RenderType.create(name, DefaultVertexFormat.POSITION_COLOR_NORMAL, VertexFormat.Mode.LINES, 1536,
+                RenderType.CompositeState.builder()
+                        .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
+                        .setLineState(lineWidth)
+                        .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                        .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+                        .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                        .setOutputState(RenderStateShard.MAIN_TARGET)
+                        .setCullState(RenderStateShard.NO_CULL)
+                        .createCompositeState(false));
     }
 }
