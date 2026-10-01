@@ -75,6 +75,11 @@ final class TaskThirtyThreeScenarioSupport {
                 .toList();
     }
 
+    /** The energy figure a network's card shows, such as "76%", or null when it shows none. */
+    static String cardPercent(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
+        return cardTexts(context, networkUuid).stream().filter(text -> text.matches("\\d+%")).findFirst().orElse(null);
+    }
+
     /** Selects the topology card of one network through its rendered name. */
     static void selectNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
         var bounds = networkCard(context, networkUuid).bounds();

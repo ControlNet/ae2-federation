@@ -108,6 +108,34 @@ public final class NetworkOverview {
         return grids.stream().findFirst();
     }
 
+    /**
+     * The energy pool the Grid is in: every Grid AE2 joins to it through Quartz Fibers or Federation energy sharing,
+     * walked the way AE2 builds its energy overlay but without reconciling Federation sharing. The figures are summed
+     * per Grid rather than probed with a simulated extraction, which a creative cell answers in full whatever is asked.
+     */
+    private static void addEnergyPool(JsonObject json, appeng.api.networking.energy.IEnergyService energy) {
+        if (!(energy instanceof appeng.me.service.EnergyService start)) return;
+        var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<appeng.me.service.EnergyService, Boolean>());
+        var pending = new java.util.ArrayDeque<appeng.me.service.EnergyService>();
+        pending.add(start);
+        double stored = 0;
+        double max = 0;
+        while (!pending.isEmpty()) {
+            var service = pending.pop();
+            if (!seen.add(service)) continue;
+            stored += service.getStoredPower();
+            max += service.getMaxStoredPower();
+            for (var connection : service.getOverlayGridConnections()) {
+                // A Federation link answers without reconciling sharing; describing a pool must not change it.
+                pending.addAll(connection instanceof space.controlnet.ae2federation.energy.FederationEnergyConnection federation
+                        ? federation.listedEnergyServices() : connection.connectedEnergyServices());
+            }
+        }
+        json.addProperty("energyPool", Math.round(stored));
+        json.addProperty("energyPoolMax", Math.round(max));
+        json.addProperty("energyPoolGrids", seen.size());
+    }
+
     private static void addGridFacts(JsonObject json, IGrid grid) {
         location(grid).ifPresent(node -> {
             json.addProperty("dimension", node.level().dimension().location().toString());
@@ -120,9 +148,7 @@ public final class NetworkOverview {
         var energy = grid.getEnergyService();
         json.addProperty("energy", Math.round(energy.getStoredPower()));
         json.addProperty("energyMax", Math.round(energy.getMaxStoredPower()));
-        // What the network can draw, including the energy pool it shares with other networks.
-        json.addProperty("energyAvailable", Math.round(energy.extractAEPower(Double.MAX_VALUE,
-                appeng.api.config.Actionable.SIMULATE, appeng.api.config.PowerMultiplier.ONE)));
+        addEnergyPool(json, energy);
         json.addProperty("energyIn", Math.round(energy.getAvgPowerInjection() * 10) / 10d);
         json.addProperty("energyOut", Math.round(energy.getAvgPowerUsage() * 10) / 10d);
         json.addProperty("powered", energy.isNetworkPowered());

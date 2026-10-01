@@ -287,6 +287,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the Endpoint's network runs on the shared pool, not a low-energy warning", context ->
                         TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.endpoint")).stream()
                                 .anyMatch(text -> text.contains("Online · Shared energy")))
+                .check("both networks of the pool read its one energy percentage, not their own cells", context -> {
+                    var host = TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.providerHost"));
+                    return host != null && host.equals(TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.endpoint")));
+                })
                 .screenshot("ui-graph-energy-shared-link")
                 .click("#tab_overview").frames(2)
                 .screenshot("ui-graph-controls")
@@ -335,6 +339,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
                         context.all(".related-pair").size() == 2)
+                .check("a related domain's network shows its own status, read-only", context -> {
+                    var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
+                    return context.all(".related-network").size() > 0
+                            && TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("related.id")) != null
+                            && texts.stream().anyMatch(text -> text.matches("(Online|No power) · Related: .+"));
+                })
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
                     // A separate record: the case record above already holds the accepted-edit status.

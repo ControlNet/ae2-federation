@@ -865,15 +865,19 @@ public final class FederationDomainPolicySession {
     }
 
     /**
-     * Identity, location and AE2 service figures for each member network. Figures such as stored energy change every
-     * tick, so the text is rebuilt at most once a second instead of on every binding poll.
+     * Identity, location and AE2 service figures for each member network and each related domain's network shown
+     * read-only. Figures such as stored energy change every tick, so the text is rebuilt at most once a second
+     * instead of on every binding poll.
      */
     public String networkOverviewText() {
         if (selection == null || context == null) return "";
         var now = level.getGameTime();
+        var described = new java.util.ArrayList<>(selection.members());
+        relatedNetworks.stream().sorted(java.util.Comparator.comparing(network -> network.value().toString()))
+                .forEach(described::add);
         if (overviewText.isEmpty() || now - overviewTick >= OVERVIEW_INTERVAL_TICKS || now < overviewTick
-                || !selection.members().equals(overviewMembers)) {
-            overviewMembers = selection.members();
+                || !described.equals(overviewMembers)) {
+            overviewMembers = List.copyOf(described);
             overviewTick = now;
             overviewText = NetworkOverview.describe(level, overviewMembers).toString();
         }

@@ -143,6 +143,11 @@ public final class EnergySharingService implements AutoCloseable {
      */
     List<EnergyService> peers(@Nullable IGrid grid) {
         reconcileIfChanged();
+        return listedPeers(grid);
+    }
+
+    /** The Grids {@code grid} shares energy with as last reconciled, without reconciling: for reading, not for AE2. */
+    List<EnergyService> listedPeers(@Nullable IGrid grid) {
         var listed = grid == null ? null : peers.get(grid);
         if (listed == null) {
             return List.of();

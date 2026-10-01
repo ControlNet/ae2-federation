@@ -55,9 +55,8 @@ final class FederationTopologyView {
     private static final float ENDPOINT_HEIGHT = 16;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
-    /** One breath of a shared-energy link's glow, and one run of its sparks from end to end. */
-    private static final long ENERGY_BREATH_MILLIS = 1600;
-    private static final long ENERGY_SPARK_MILLIS = 1400;
+    /** One run of a quartz bead along a shared-energy link, from end to end. */
+    private static final long QUARTZ_BEAD_MILLIS = 3200;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
 
@@ -691,16 +690,21 @@ final class FederationTopologyView {
         if (network.foreign()) button.addClass("related-network");
         var state = cardState.computeIfAbsent(network.id(), ignored -> new int[] {FederationTheme.DARK_MUTED});
         var inset = FederationTheme.painted((pen, x, y, width, height) -> pen.rect(x + 2, y + height - 4, width - 4, 2, state[0]));
-        var face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset);
-        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset))
-                .pressedTexture(face));
+        // A related domain's network is outlined dashed and locked, as its links are: shown here, edited elsewhere.
+        var outline = network.foreign() ? FederationTheme.dashedBorder(FederationTheme.DARK_MUTED) : null;
+        var lock = network.foreign() ? FederationTheme.lockMark(FederationTheme.DARK_MUTED) : null;
+        var face = outline == null ? GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset)
+                : GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset, outline, lock);
+        var hover = outline == null ? GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset)
+                : GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset, outline, lock);
+        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(position.x).top(position.y)
                 .width(CARD_WIDTH).height(CARD_HEIGHT).paddingAll(6).paddingBottom(7).gapAll(4)
                 .flexDirection(FlexDirection.COLUMN).alignItems(AlignItems.FLEX_START));
         var top = new UIElement();
         top.layout(style -> style.widthPercent(100).height(THUMBNAIL_HEIGHT).flexDirection(FlexDirection.ROW).gapAll(5)
                 .flexShrink(0));
-        // Where the network is, as a map tile of its blocks; related networks carry no location facts.
+        // Where the network is, as a map tile of its blocks.
         var thumbnail = new FederationMapPreview(true);
         thumbnail.setId("graph_node_map_" + sanitize(network.member()));
         thumbnail.layout(style -> style.width(THUMBNAIL_WIDTH).height(THUMBNAIL_HEIGHT).flexShrink(0));
@@ -719,6 +723,8 @@ final class FederationTopologyView {
         heading.setId("graph_node_name_" + sanitize(network.member()));
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
         head.addChildren(swatch, heading);
+        // Room for the lock a related network's card carries in its corner.
+        if (network.foreign()) head.layout(style -> style.paddingRight(4));
         var positionLine = text(Component.empty(), FederationTheme.DARK_MUTED);
         var stateLine = text(Component.empty(), FederationTheme.DARK_TEXT);
         positionLine.setId("graph_node_position_" + sanitize(network.member()));
@@ -814,10 +820,13 @@ final class FederationTopologyView {
         }
     }
 
-    /** Whether the network can draw more than its own cells hold: it shares a pool with other networks. */
-    private static boolean runsOnSharedEnergy(JsonObject facts) {
-        return facts != null && facts.has("energyAvailable")
-                && facts.get("energyAvailable").getAsLong() > facts.get("energy").getAsLong();
+    /** The energy a card and the stats show: the shared pool for a network in one, else its own cells. */
+    private static space.controlnet.ae2federation.client.policy.EnergyFigures energyFigures(JsonObject facts) {
+        if (facts == null || !facts.has("energyMax")) return null;
+        return space.controlnet.ae2federation.client.policy.EnergyFigures.of(facts.get("energy").getAsLong(),
+                facts.get("energyMax").getAsLong(), facts.has("energyPool") ? facts.get("energyPool").getAsLong() : null,
+                facts.has("energyPoolMax") ? facts.get("energyPoolMax").getAsLong() : null,
+                facts.has("energyPoolGrids") ? facts.get("energyPoolGrids").getAsInt() : 0);
     }
 
     /** "Energy [bar] 98%": a muted label, an optional bar and the value on the right. */
@@ -852,33 +861,31 @@ final class FederationTopologyView {
             var state = cardState.get(network.id());
             var thumbnail = cardThumbnails.get(network.id());
             if (thumbnail != null) showThumbnail(thumbnail, network);
-            if (network.foreign()) {
-                lines[0].setText(tr("related_card", domainName(network.domain())).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-                lines[1].setText(tr("read_only"));
-                if (energy != null) energy[0] = -1;
-                if (state != null) state[0] = FederationTheme.DARK_MUTED;
-                continue;
-            }
             var facts = overview.get(network.id());
             var identityState = identityState(network);
             lines[2].setText(facts == null || !facts.has("x") ? Component.empty() : tr("card_position",
                     dimension(facts.get("dimension").getAsString()), facts.get("x").getAsInt() + ", " + facts.get("y").getAsInt()
                             + ", " + facts.get("z").getAsInt()));
-            if (energy != null) energy[0] = facts == null || !facts.has("energyMax") || facts.get("energyMax").getAsLong() <= 0 ? -1
-                    : (float) Math.min(1, facts.get("energy").getAsDouble() / facts.get("energyMax").getAsDouble());
-            // "Online · Identity confirmed", or what needs attention: an identity in doubt, then low energy.
+            var figures = energyFigures(facts);
+            if (energy != null) energy[0] = figures == null ? -1 : figures.fraction();
+            // "Online · Identity confirmed", or what needs attention: an identity in doubt, then low energy. A related
+            // domain's network is not in this domain's graph; it reads online while its Grid has power.
             var status = memberStatus.getOrDefault(network.member(), "pending");
-            boolean online = status.equals("online");
+            boolean online = network.foreign() ? facts != null && facts.has("powered") && facts.get("powered").getAsBoolean()
+                    : status.equals("online");
             int stateColor;
             Component detail;
             if (!identityState.equals("settled") && !identityState.isEmpty()) {
                 stateColor = toneColor(identityState);
                 detail = tr("identity." + identityState);
-            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f && !runsOnSharedEnergy(facts)) {
+            } else if (network.foreign()) {
+                // Which domain it belongs to comes first: low energy there is that domain's to act on.
+                stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
+                detail = tr("related_card", domainName(network.domain()));
+            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f) {
                 stateColor = FederationTheme.WARN;
                 detail = tr("card_low_energy");
-            } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f) {
-                // Its own cells are low, but the pool it shares keeps it running: not a warning.
+            } else if (figures != null && figures.shared()) {
                 stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
                 detail = tr("card_shared_energy");
             } else {
@@ -887,7 +894,7 @@ final class FederationTopologyView {
             }
             // An identity in doubt takes the whole line: it is what the player has to act on.
             boolean doubt = !identityState.equals("settled") && !identityState.isEmpty();
-            var head = tr(online ? "card_online" : "card_waiting");
+            var head = tr(online ? "card_online" : network.foreign() ? "card_unpowered" : "card_waiting");
             lines[0].setText((doubt ? detail.copy() : detail == null ? head : tr("card_state", head, detail))
                     .withStyle(Style.EMPTY.withColor(stateColor & 0xffffff)));
             if (state != null) state[0] = stateColor;
@@ -898,8 +905,7 @@ final class FederationTopologyView {
                 lines[6].setText(Component.empty());
                 continue;
             }
-            int percent = percent(facts);
-            lines[4].setText(Component.literal(percent + "%").withStyle(Style.EMPTY.withColor(energyColor(energy == null ? -1 : energy[0]) & 0xffffff)));
+            lines[4].setText(Component.literal(figures.percent() + "%").withStyle(Style.EMPTY.withColor(energyColor(energy == null ? -1 : energy[0]) & 0xffffff)));
             lines[1].setText(tr("card.types", compact(facts.get("types").getAsLong())));
             lines[5].setText(tr("card.cpus", Component.literal(facts.get("cpusBusy").getAsInt() + "/" + facts.get("cpus").getAsInt())
                     .withStyle(Style.EMPTY.withColor(FederationTheme.VALUE & 0xffffff))));
@@ -1010,9 +1016,9 @@ final class FederationTopologyView {
         return row;
     }
 
-    private static final String ENERGY_PREFIX = "⇄";
+    private static final String ENERGY_PREFIX = "◇";
 
-    /** "⇄ [Shared energy]": the pair's one energy switch, whichever way its rule is written; null without a rule. */
+    /** "◇ [Shared energy]": the pair's one energy switch, whichever way its rule is written; null without a rule. */
     private UIElement energyPillRow(Network a, Network b, net.minecraft.client.gui.Font font) {
         var chip = energyChip(a, b);
         if (chip == null) return null;
@@ -1030,7 +1036,7 @@ final class FederationTopologyView {
         return row;
     }
 
-    /** The pair's energy chip: energy green while it shares, else its rule's state colour; null without a rule. */
+    /** The pair's energy chip: quartz while it shares, else its rule's state colour; null without a rule. */
     private Chip energyChip(Network a, Network b) {
         var rule = energyRule(a, b);
         if (rule == null) return null;
@@ -1038,7 +1044,7 @@ final class FederationTopologyView {
         var text = tr("shared_energy").copy();
         if (!rule.get("enabled").getAsBoolean()) text = text.withStyle(net.minecraft.ChatFormatting.STRIKETHROUGH);
         if (state.code().equals("error")) text.append("!");
-        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.ENERGY : state.color());
+        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color());
     }
 
     /** The ME power rule that stands for the pair's energy switch, or null when neither way has one. */
@@ -1346,12 +1352,11 @@ final class FederationTopologyView {
             stats.addChild(unavailable);
             return;
         }
-        long stored = facts.get("energy").getAsLong();
-        long max = facts.get("energyMax").getAsLong();
-        float fill = max <= 0 ? 0 : Math.min(1f, stored / (float) max);
+        var figures = energyFigures(facts);
+        float fill = Math.max(0, figures.fraction());
         int energy = fill < 0.25f ? FederationTheme.WARN : FederationTheme.ENERGY;
-        stats.addChild(statRow("energy", tr("stat.energy"), fill, energy, tr("stat.energy_value", compact(stored), compact(max)),
-                tr("stat.energy_help", percent(facts))));
+        stats.addChild(statRow("energy", tr("stat.energy"), fill, energy, tr("stat.energy_value", compact(figures.stored()),
+                compact(figures.max())), tr(figures.shared() ? "stat.energy_pool_help" : "stat.energy_help", figures.percent())));
         stats.addChild(statRow("io", tr("stat.io"), 0, FederationTheme.INFO, tr("stat.io_value",
                 decimal(facts.get("energyIn").getAsDouble()), decimal(facts.get("energyOut").getAsDouble())), null));
         stats.addChild(statRow("types", tr("stat.types"), 0, FederationTheme.TEAL,
@@ -1413,12 +1418,12 @@ final class FederationTopologyView {
 
     /** Mirrors the server: only a settled identity takes a name, and only while this player may edit the domain. */
     private boolean renamable(Network network) {
-        return editable && identityState(network).equals("settled");
+        return editable && !network.foreign() && identityState(network).equals("settled");
     }
 
     private void showThumbnail(FederationMapPreview thumbnail, Network network) {
         var facts = overview.get(network.id());
-        if (network.foreign() || facts == null || !facts.has("x")) {
+        if (facts == null || !facts.has("x")) {
             thumbnail.setDisplay(false);
             return;
         }
@@ -1448,11 +1453,6 @@ final class FederationTopologyView {
     private static int energyColor(float fraction) {
         if (fraction < 0) return FederationTheme.DARK_MUTED;
         return fraction <= 0 ? FederationTheme.ERROR : fraction < 0.25f ? FederationTheme.WARN : FederationTheme.OK;
-    }
-
-    private static int percent(JsonObject facts) {
-        long max = facts.get("energyMax").getAsLong();
-        return max <= 0 ? 0 : (int) Math.min(100, Math.round(facts.get("energy").getAsLong() * 100d / max));
     }
 
     /** 950, 12.3k, 1.44M: AE2-style short figures. */
@@ -1956,40 +1956,45 @@ final class FederationTopologyView {
         }
 
         /**
-         * A link whose networks share one energy pool: an energy-green line in a breathing glow, with two sparks running
-         * opposite ways, since each network draws from and charges the same pool.
+         * A link whose networks share one energy pool, drawn like AE2's Quartz Fiber: a pale rail with quartz beads
+         * drifting slowly both ways, since each network draws from and charges the same pool. No glow, so it stays
+         * quiet next to the other links.
          */
         private void energyLine(GUIContext context, TopologyLink link, boolean selected) {
             var points = link.curve().points(LINK_SEGMENTS);
             var line = new ArrayList<Vector2f>(LINK_SEGMENTS + 1);
             for (int index = 0; index < points.length; index += 2) line.add(new Vector2f(points[index], points[index + 1]));
-            long now = net.minecraft.Util.getMillis();
-            float breath = 0.5f + 0.5f * (float) Math.sin((now % ENERGY_BREATH_MILLIS) * (2 * Math.PI / ENERGY_BREATH_MILLIS));
-            int outer = energy(0.18f + 0.22f * breath);
-            int inner = energy(0.40f + 0.30f * breath);
-            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, outer, outer, selected ? 12f : 10f);
-            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, inner, inner, 6f);
-            // Selected, the core turns pale green rather than the selection blue, so the link still reads as energy.
-            int core = selected ? 0xffc8ffc8 : FederationTheme.ENERGY;
-            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, core, core, selected ? 3f : 2f);
-            float phase = (now % ENERGY_SPARK_MILLIS) / (float) ENERGY_SPARK_MILLIS;
-            spark(context, points, phase);
-            spark(context, points, 1 - phase);
+            int edge = 0xff121016;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, edge, edge, selected ? 5f : 4f);
+            int rail = selected ? FederationTheme.QUARTZ_BEAD : FederationTheme.QUARTZ;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, rail, rail, selected ? 3f : 2f);
+            int core = selected ? FederationTheme.SELECT : FederationTheme.QUARTZ_CORE;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, core, core, 0.75f);
+            float phase = (net.minecraft.Util.getMillis() % QUARTZ_BEAD_MILLIS) / (float) QUARTZ_BEAD_MILLIS;
+            // Two beads each way, staggered so no two meet at the same point.
+            bead(context, points, phase);
+            bead(context, points, (phase + 0.5f) % 1);
+            bead(context, points, 1 - (phase + 0.25f) % 1);
+            bead(context, points, 1 - (phase + 0.75f) % 1);
         }
 
-        private void spark(GUIContext context, float[] points, float along) {
+        /** A pixel quartz diamond at {@code along} (0 to 1) of the link. */
+        private void bead(GUIContext context, float[] points, float along) {
             int segments = points.length / 2 - 1;
             float position = along * segments;
             int index = Math.min(segments - 1, (int) position);
             float fraction = position - index;
             int x = Math.round(points[2 * index] + (points[2 * index + 2] - points[2 * index]) * fraction);
             int y = Math.round(points[2 * index + 1] + (points[2 * index + 3] - points[2 * index + 1]) * fraction);
-            context.graphics.fill(x - 3, y - 3, x + 3, y + 3, energy(0.35f));
-            context.graphics.fill(x - 1, y - 1, x + 2, y + 2, 0xffe6ffe6);
+            diamond(context, x, y, 3, FederationTheme.QUARTZ_BEAD_EDGE);
+            diamond(context, x, y, 2, FederationTheme.QUARTZ_BEAD);
         }
 
-        private static int energy(float alpha) {
-            return Math.round(alpha * 255) << 24 | FederationTheme.ENERGY & 0xffffff;
+        private static void diamond(GUIContext context, int x, int y, int radius, int color) {
+            for (int row = -radius; row <= radius; row++) {
+                int half = radius - Math.abs(row);
+                context.graphics.fill(x - half, y + row, x + half + 1, y + row + 1, color);
+            }
         }
 
         private void endMark(GUIContext context, float[] point, int color) {

@@ -31,8 +31,7 @@ Replaces the directional ME power supply of Task 31 (`.omo/knowledges/task-31-di
 
 `DirectionalEnergySource`, `EnergyBindingService`, bindings/revisions, provider generations/ledger, route guard,
 native backend registry; per-operation energy flow observation (energy no longer reports flows: the graph draws a
-shared pair's link energy-green with a breathing glow and two sparks running opposite ways, and the edge pill shows
-"⇄ Shared energy"). Diagnostic `ENERGY_SOURCE_MISSING` is gone; `CONSUMER_ENERGY_INTERFACE_MISSING` became
+shared pair's link as a Quartz Fiber, see UI). Diagnostic `ENERGY_SOURCE_MISSING` is gone; `CONSUMER_ENERGY_INTERFACE_MISSING` became
 `ENERGY_CONNECTION_MISSING` (one network has no Federation node that can join the pool).
 
 ## UI
@@ -41,10 +40,30 @@ shared pair's link energy-green with a breathing glow and two sparks running opp
   that is on, else the configured one, else first-to-second; a pair shares while either rule's health is ACTIVE.
 - Pair editor: the direction sections no longer list ME power; `policy_section_energy` holds one row
   (`policy_row_energy`, `policy_state_energy`, `policy_switch_energy`). UI helpers map `me_power` to these ids.
-- Network cards: `NetworkOverview` adds `energyAvailable` (SIMULATE extract of `Double.MAX_VALUE`, which includes the
-  pool). A card whose own cells are below 25% but can draw more than they hold reads "Online · Shared energy"
-  (green) instead of the low-energy warning. The card's state line hides overflow, so keep that text short.
-- Evidence: `.omo/evidence/gui-energy-sharing/` (`ui-policy-runtime-energy-shared`, `ui-graph-energy-shared-link`).
+- Shared link (user-chosen "A quartz fibre" from the design canvas row "共享能量视觉", 2026-10-01): a 4 u dark edge,
+  a 2 u pale rail (`FederationTheme.QUARTZ`), a 0.75 u core (`QUARTZ_CORE`; selection blue when selected) and four
+  pixel quartz diamonds, two each way, one run per `QUARTZ_BEAD_MILLIS` (3.2 s). No glow. The pill reads
+  "◇ [Shared energy]" in `QUARTZ`. The earlier neon glow + sparks and options B–M were rejected.
+- Network cards: `NetworkOverview.addEnergyPool` walks the Grid's AE2 energy overlay (`EnergyService
+  .getOverlayGridConnections()`, the same walk as `EnergyOverlayGrid.buildCache`) and
+  reports `energyPool`, `energyPoolMax` (sums of each Grid's stored/max) and `energyPoolGrids`. Do NOT probe the
+  pool with a SIMULATE `extractAEPower(Double.MAX_VALUE)`: a creative cell answers any amount in full, so a lone
+  creative Grid looked shared and its figures overflowed (ui.graph-controls and ui.chinese-scales failed).
+  Federation links are read with `FederationEnergyConnection.listedEnergyServices()` (`EnergySharingService
+  .listedPeers`), never `connectedEnergyServices()`, which calls `peers()` and so reconciles sharing first: a view
+  that describes a pool must not move sharing forward outside the energy operations AE2 runs.
+  `EnergyFigures` (client/policy, unit-tested) shows the pool when `energyPoolGrids > 1`, so every member reads the
+  same percentage; a network on its own shows its own cells. A pool member reads "Online · Shared energy"; low
+  energy (< 25 % of the pool) still warns first. The card's state line hides overflow, so keep that text short.
+- Known intermittent failure (pre-existing, also at 6505c03): ui.mapping step "showcase: eight named network
+  cards" times out after the Router workspace reopens with 6 members; Automation Tower's Endpoints draw on Main
+  Base, Storage Hall is gone, every card waits for domain status. Not caused by the overview walk.
+- Global ("all related") scope: the server describes related domains' networks too (`networkOverviewText`), and
+  their cards show position, thumbnail, status ("Online/No power · Related: <domain>"), energy and storage, with a
+  dashed outline and the pills' lock mark in the corner (`FederationTheme.lockMark`; a text tag overlapped long
+  names). The related domain comes before low energy on the state line; related networks cannot be renamed here.
+- Evidence: `.omo/evidence/gui-energy-sharing/` (`ui-policy-runtime-energy-shared`, `ui-graph-energy-shared-link`);
+  `.omo/evidence/gui-energy-quartz/` for the quartz link and related-network status (`ui-scope-related`).
 
 ## Tests
 

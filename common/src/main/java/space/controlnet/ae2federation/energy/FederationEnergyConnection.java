@@ -48,6 +48,19 @@ public final class FederationEnergyConnection implements IEnergyOverlayGridConne
         return service == null ? List.of() : service.peers(node.getGrid());
     }
 
+    /**
+     * The energy services this link reached when sharing was last reconciled. Reading it never reconciles, so a view
+     * that describes a pool cannot move sharing forward outside the energy operations AE2 runs.
+     */
+    public Collection<EnergyService> listedEnergyServices() {
+        var node = node();
+        if (node == null || !(node.getLevel() instanceof ServerLevel level)) {
+            return List.of();
+        }
+        var service = EnergySharingService.find(level);
+        return service == null ? List.of() : service.listedPeers(node.getGrid());
+    }
+
     @Nullable
     IGridNode node() {
         return owner == null ? null : owner.getNode();
