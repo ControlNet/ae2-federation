@@ -29,6 +29,14 @@ def verify_one(test_id: str, output: str, exit_code: int) -> None:
         raise ValueError(f"GameTest {test_id} reported an initialization failure")
 
 
+def gametest_command(test_id: str) -> list[str]:
+    """One GameTest server, with a fresh level, for one test. The server always runs in its own process; reusing the
+    Gradle daemon between tests saves only Gradle's start-up (about a third of each test's time)."""
+    return [str(ROOT / "gradlew"), ":neoforge-1.21.1:runGameTestServer",
+            "-PfederationGameTestSelection=positive", f"-PfederationGameTestId={test_id}",
+            "--dependency-verification=strict", "--no-configuration-cache"]
+
+
 def select_shard(test_ids: list[str], index: int, count: int) -> list[str]:
     if count < 1 or count > len(test_ids) or not 0 <= index < count:
         raise ValueError("Shard index/count must select a nonempty partition of the test manifest")
@@ -43,9 +51,7 @@ def main() -> None:
     test_ids = select_shard(required_test_ids(), args.shard_index, args.shard_count)
     with LOG.open("w") as log:
         for index, test_id in enumerate(test_ids, 1):
-            command = [str(ROOT / "gradlew"), ":neoforge-1.21.1:runGameTestServer",
-                       "-PfederationGameTestSelection=positive", f"-PfederationGameTestId={test_id}",
-                       "--dependency-verification=strict", "--no-configuration-cache", "--no-daemon"]
+            command = gametest_command(test_id)
             log.write(f"CASE {index}/{len(test_ids)} {test_id}\n")
             log.flush()
             try:

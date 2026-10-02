@@ -107,3 +107,10 @@ The required gate remains `python3 tools/required_gametests.py`: one server per 
 - Release keeps one server per test, now in 16 shards (was 8; ~21 min for the whole release run). GitHub's Free
   plan runs at most 20 jobs at once, so 165 one-test jobs would queue in waves and pay 1–2 min of job set-up each.
 - The weekly Qualification workflow still runs the full suite serially, one server per test.
+- `tools/required_gametests.py` reuses the Gradle daemon (no `--no-daemon`); each test still gets its own server
+  process and level. Locally ~22 s → ~15 s per test; a 16-shard slice of 11 tests took 183 s. The release shards use
+  `setup-gradle` with `cache-read-only: true`; only the build job saves the cache.
+- Actions (2026-10-02): checkout@v7, setup-java@v6, upload-artifact@v7, download-artifact@v8 (by name, so v5's
+  by-ID path change does not apply; v8 fails on a digest mismatch), `gradle/actions/setup-gradle@v5`. Not v6: its
+  caching is a proprietary component, and using it means accepting Gradle's Terms of Use — the owner's decision.
+  `itsmeow/curseforge-upload@v3` (last release 2024) still warns about `set-output`; it works.
