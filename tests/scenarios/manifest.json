@@ -87,7 +87,7 @@
     {"id":"crafting.remote-reload","backend":"gametest","testId":"craftingremotereload","structure":"ae2federation_test:harness_native_smoke","assertions":14},
     {"id":"crafting.remote-world-reload","backend":"gametest","testId":"craftingremoteworldreload","structure":"ae2federation_test:harness_native_smoke","assertions":17},
     {"id":"crafting.remote-late-provider","backend":"gametest","testId":"craftingremotelateprovider","structure":"ae2federation_test:harness_native_smoke","assertions":4},
-    {"id":"crafting.remote-restart","backend":"gametest-restart","testId":"craftingremoterestart","structure":"ae2federation_test:harness_native_smoke","assertions":11},
+    {"id":"crafting.remote-restart","backend":"gametest-restart","testId":"craftingremoterestart","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"crafting.reject-replay","backend":"gametest","testId":"craftingrejectreplay","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"crafting.replace-requester","backend":"gametest","testId":"craftingreplacerequester","structure":"ae2federation_test:harness_native_smoke","assertions":16},
 {"id":"terminal.native-crafting","backend":"gametest","testId":"terminalnativecrafting","structure":"ae2federation_test:harness_native_smoke","assertions":21},

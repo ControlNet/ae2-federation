@@ -46,6 +46,7 @@ The following hooks act only under the batch selection and are all TEST-ONLY.
   - "(also fails alone)" means a real failure.
 - A known SHARED cause is level SavedData that outlives each test: rule stores and network identities. `policysparsescale` and `policydeletereconnect` used to count leftover rules and tombstones; since 2026-10-01 they assert only what they add over the count they start with, so they pass in a batch too. (`energydisconnectnosource` no longer exists; energy bindings were removed.)
 - Make a level-wide count in a test relative to the count it starts with, so it neither depends on nor breaks a shared level.
+- Batches run one test at a time; a fixture that builds outside the structure leaves its networks and rules behind, so a test should switch its rules off in `close()` (since 2026-10-02 `ChainStorageFixture` does; it used to leave a live storage listener that failed `subscriptionsnapshotrace` and `subscriptionlistenercleanup`). Since then the full batch has no SHARED test.
 
 Batch mode is for fast local iteration only:
 - It doesn't run the Gradle evidence verifiers (`federation-qa.gradle`).

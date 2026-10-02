@@ -136,7 +136,7 @@ public final class CraftingBindingGameTests {
             helper.assertTrue(fixture.duplicateBridgeReady(), "Waiting for duplicate physical route");
             fixture.bindings().reconcileAll();
             var binding = fixture.binding();
-            helper.assertValueEqual(fixture.bindings().relationshipCount(), 1,
+            helper.assertValueEqual(fixture.ownBindingCount(), 1L,
                     "Duplicate routes must retain one logical relationship");
             helper.assertValueEqual(binding.nativeProviders().size(), 1,
                     "Duplicate routes must not multiply provider capacity");

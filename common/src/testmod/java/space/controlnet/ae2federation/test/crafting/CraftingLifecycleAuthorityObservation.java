@@ -18,6 +18,7 @@ public final class CraftingLifecycleAuthorityObservation {
     private static RequestAuthority request;
     private static CycleAuthority cycle;
     private static int backendDiscoveries;
+    private static java.util.Set<space.controlnet.ae2federation.identity.NetworkId> cycleNetworks = java.util.Set.of();
 
     private CraftingLifecycleAuthorityObservation() {
     }
@@ -44,12 +45,16 @@ public final class CraftingLifecycleAuthorityObservation {
         cycle = new CycleAuthority(testId, fixture.key().toString().replace(" ", ""),
                 fixture.reverseKey().toString().replace(" ", ""),
                 discoveries);
+        cycleNetworks = java.util.Set.of(fixture.key().consumerNetworkId(), fixture.key().providerNetworkId());
         request = null;
         emitCycle("cycle-authorized", discoveries);
     }
 
-    public static synchronized void recordBackendDiscovery() {
-        if ("craftingrejectcycle".equals(selectedTest())) {
+    /** Counts discoveries of the cycle fixture's own networks; other networks in the shared level are not its concern. */
+    public static synchronized void recordBackendDiscovery(appeng.api.networking.IGrid grid) {
+        if ("craftingrejectcycle".equals(selectedTest())
+                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(grid)
+                        .filter(cycleNetworks::contains).isPresent()) {
             backendDiscoveries++;
         }
     }
@@ -211,6 +216,7 @@ public final class CraftingLifecycleAuthorityObservation {
         request = null;
         cycle = null;
         backendDiscoveries = 0;
+        cycleNetworks = java.util.Set.of();
     }
 
     private static boolean matchesDelivery(NativeCraftingRequester requester, ICraftingLink link, AEKey key, long amount,

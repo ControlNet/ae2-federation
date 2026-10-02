@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -24,11 +25,13 @@ import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.test.crafting.CraftingBindingFixture;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingEvidence;
+import space.controlnet.ae2federation.test.world.RestartChunkTickets;
 
 /**
- * A remote crafting job across an actual server restart. The prepare run builds the two networks beside the world
- * spawn (its chunks load at start, while the test itself is placed elsewhere each run), starts a consumer job and
- * holds the provider's job, then the server saves and stops. The verify run loads that world in a new process and
+ * A remote crafting job across an actual server restart. The prepare run builds the two networks at its test
+ * position and keeps their chunks loaded with a persistent NeoForge ticket (saved with the world, so the next server
+ * loads them at start, while its own test is placed elsewhere), starts a consumer job and holds the provider's job,
+ * then the server saves and stops. The verify run loads that world in a new process and
  * only observes and resumes: the binding, the consumer's listing, both CPUs' jobs and the requester's link must come
  * back from the save alone, and the job must finish once without being requested again.
  */
@@ -50,11 +53,10 @@ public final class RemoteCraftingRestartGameTests {
     }
 
     private static void prepare(GameTestHelper helper) {
-        // Within the spawn chunks that tick from the start, clear of identity.restart's chest at spawn + (8, 2, 0).
-        // GameTestHelper.relativePos does not invert absolutePos outside the structure; the test is not rotated, so
-        // a relative position is the offset from the test's origin.
-        var base = helper.getLevel().getSharedSpawnPos().offset(2, 2, -6).subtract(helper.absolutePos(BlockPos.ZERO));
-        var fixture = new CraftingBindingFixture(helper, base);
+        var fixture = new CraftingBindingFixture(helper, true);
+        var chunks = fixture.chunks();
+        var ticketOwner = helper.absolutePos(BlockPos.ZERO);
+        RestartChunkTickets.force(helper.getLevel(), ticketOwner, chunks, true);
         var stage = new int[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
@@ -90,6 +92,9 @@ public final class RemoteCraftingRestartGameTests {
             put(state, "consumerChest", helper.absolutePos(fixture.consumerChestPos()));
             state.setProperty("consumerNetwork", fixture.key().consumerNetworkId().value().toString());
             state.setProperty("providerNetwork", fixture.key().providerNetworkId().value().toString());
+            put(state, "ticketOwner", ticketOwner);
+            state.setProperty("ticketChunks", String.join(";", chunks.stream()
+                    .map(chunk -> chunk.x + ":" + chunk.z).toList()));
             var processId = Long.toString(ProcessHandle.current().pid());
             state.setProperty("prepareProcessId", processId);
             writeState(state);
@@ -116,7 +121,9 @@ public final class RemoteCraftingRestartGameTests {
             if (!resumed[0]) {
                 // Past AE2's 60-tick window for a missing requester and the service's startup window.
                 helper.assertTrue(helper.getTick() >= startedAt[0] + 200, "Waiting through the restart window");
-                helper.assertTrue(chest(helper, consumerChest).getMainNode().getGrid().getCraftingService()
+                var consumerGrid = chest(helper, consumerChest).getMainNode().getGrid();
+                helper.assertTrue(consumerGrid != null, "The consumer's chest must rejoin a Grid after the restart");
+                helper.assertTrue(consumerGrid.getCraftingService()
                                 .getCraftables(candidate -> true).contains(CraftingBindingFixture.outputKey()),
                         "The consumer must list the provider's craftable output again after the restart");
                 helper.assertTrue(busy(helper, providerCpu), "The provider CPU must restore its job");
@@ -136,7 +143,7 @@ public final class RemoteCraftingRestartGameTests {
             helper.assertTrue(!busy(helper, providerCpu) && !busy(helper, consumerCpu), "Both jobs must finish");
             var resubmissions = RemoteCraftingService.get(helper.getLevel()).submissionCount(key);
             helper.assertValueEqual(resubmissions, 0, "The restarted server must not request the job again");
-            NativeCraftingEvidence.write("craftingremoterestart", 11, Map.of(
+            NativeCraftingEvidence.write("craftingremoterestart", 12, Map.of(
                     "prepareProcessId", prepareProcessId,
                     "verifyProcessId", verifyProcessId,
                     "resultInserted", Long.toString(delivered),
@@ -144,6 +151,12 @@ public final class RemoteCraftingRestartGameTests {
                     "providerResidue", Long.toString(residue),
                     "resubmissions", Integer.toString(resubmissions),
                     "busyCpus", Integer.toString((busy(helper, providerCpu) ? 1 : 0) + (busy(helper, consumerCpu) ? 1 : 0))));
+            var chunks = new java.util.ArrayList<ChunkPos>();
+            for (var chunk : state.getProperty("ticketChunks").split(";")) {
+                var parts = chunk.split(":");
+                chunks.add(new ChunkPos(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+            }
+            RestartChunkTickets.force(helper.getLevel(), position(state, "ticketOwner"), chunks, false);
         });
     }
 

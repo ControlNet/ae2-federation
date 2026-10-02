@@ -61,14 +61,6 @@ public final class CraftingBindingFixture implements AutoCloseable {
         this(helper, DEFAULT_BASE, withCpu, withForbiddenPattern, withProviderFluidChest);
     }
 
-    /**
-     * Builds the fixture around {@code base} (the Bridge's cable, relative to the test), which may lie outside the
-     * test's structure, such as beside the world spawn for a restart test.
-     */
-    public CraftingBindingFixture(GameTestHelper helper, BlockPos base) {
-        this(helper, base, true, false, false);
-    }
-
     private CraftingBindingFixture(GameTestHelper helper, BlockPos base, boolean withCpu, boolean withForbiddenPattern,
             boolean withProviderFluidChest) {
         this.helper = helper;
@@ -422,6 +414,24 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return bridge.reloadFirstBridgeHost();
     }
 
+    /** Every block of both networks lies between these two corners, relative to the test. */
+    private BlockPos regionMin() {
+        return base.offset(-1, -1, -3);
+    }
+
+    private BlockPos regionMax() {
+        return base.offset(3, 1, 2);
+    }
+
+    /** The chunks both networks occupy, so a test can keep them loaded across a server restart. */
+    public java.util.Set<net.minecraft.world.level.ChunkPos> chunks() {
+        var chunks = new java.util.LinkedHashSet<net.minecraft.world.level.ChunkPos>();
+        for (var position : BlockPos.betweenClosed(helper.absolutePos(regionMin()), helper.absolutePos(regionMax()))) {
+            chunks.add(new net.minecraft.world.level.ChunkPos(position));
+        }
+        return chunks;
+    }
+
     /**
      * Unloads and reloads every block of both networks in one tick, as a server restart does, so AE2 builds both Grids
      * anew from the saved data; see {@link BlockEntityReload}.
@@ -430,7 +440,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
      */
     public java.util.Map<BlockPos, net.minecraft.nbt.CompoundTag> reloadAll() {
         // Every block the fixture places.
-        var saved = BlockEntityReload.reload(helper, base.offset(-1, -1, -3), base.offset(3, 1, 2));
+        var saved = BlockEntityReload.reload(helper, regionMin(), regionMax());
         bridge.refreshFirstBridgePart();
         return saved;
     }
@@ -467,6 +477,20 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public PatternProviderBlockEntity provider() {
         return nativeSource.provider();
+    }
+
+    /**
+     * Published Crafting bindings between this fixture's two networks, in either direction. Other tests' networks may
+     * still stand in the shared level, so a level-wide count says nothing about this fixture.
+     */
+    public long ownBindingCount() {
+        var networks = java.util.Set.of(key().consumerNetworkId(), key().providerNetworkId());
+        return space.controlnet.ae2federation.crafting.binding.CraftingBindingService
+                .publishedBindingsIfPresent(helper.getLevel()).stream()
+                .map(binding -> binding.relationship().key())
+                .filter(bound -> networks.contains(bound.consumerNetworkId())
+                        && networks.contains(bound.providerNetworkId()))
+                .count();
     }
 
     public appeng.api.networking.IGrid consumerGrid() {

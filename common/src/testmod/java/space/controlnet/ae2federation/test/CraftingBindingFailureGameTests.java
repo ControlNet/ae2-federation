@@ -128,7 +128,7 @@ public final class CraftingBindingFailureGameTests {
             helper.assertTrue(fixture.sourceService().getCpus().isEmpty(), "Fixture must expose no native CPU");
             helper.assertTrue(fixture.bindings().capability(fixture.key()).isEmpty(),
                     "Unavailable native backend must not advertise a capability");
-            helper.assertValueEqual(fixture.bindings().relationshipCount(), 0,
+            helper.assertValueEqual(fixture.ownBindingCount(), 0L,
                     "Unavailable backend must retain no relationship binding");
             helper.assertValueEqual(fixture.provider().getLogic().getAvailablePatterns().size(), 1,
                     "No-CPU rejection must retain the real native provider and pattern");

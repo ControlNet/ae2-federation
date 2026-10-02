@@ -31,6 +31,7 @@ public final class FederationTestMod {
             }
         }
         modBus.addListener(this::registerGameTests);
+        modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {

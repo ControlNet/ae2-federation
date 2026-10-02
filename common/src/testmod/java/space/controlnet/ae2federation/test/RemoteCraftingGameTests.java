@@ -432,7 +432,8 @@ public final class RemoteCraftingGameTests {
     public static void craftingRemoteLateProvider(GameTestHelper helper) {
         var fixture = new CraftingBindingFixture(helper, false);
         var stage = new int[1];
-        var cpuPlacedAt = new long[1];
+        var cpuReadyAt = new long[1];
+        var boundAt = new long[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
             if (stage[0] == 0) {
@@ -441,19 +442,34 @@ public final class RemoteCraftingGameTests {
                 helper.assertTrue(false, "Waiting for the rule without a provider CPU");
             }
             if (stage[0] == 1) {
-                helper.assertTrue(CraftingBindingService.publishedBindingsIfPresent(helper.getLevel()).stream()
-                                .noneMatch(binding -> binding.relationship().key().equals(fixture.key())),
+                helper.assertValueEqual(fixture.ownBindingCount(), 0L,
                         "No binding can be published while the provider has no CPU");
                 fixture.placeProviderCpu();
-                cpuPlacedAt[0] = helper.getTick();
                 stage[0] = 2;
                 helper.assertTrue(false, "Waiting for the provider CPU");
             }
+            if (stage[0] == 2) {
+                // AE2 forms the CPU cluster a tick after the block is placed, and posts GridCraftingCpuChange then.
+                helper.assertTrue(!fixture.sourceService().getCpus().isEmpty(), "Waiting for the provider CPU cluster");
+                cpuReadyAt[0] = helper.getTick();
+                stage[0] = 3;
+            }
+            if (stage[0] == 3) {
+                helper.assertTrue(CraftingBindingService.hasPublishedBinding(helper.getLevel(), fixture.key())
+                                || helper.getTick() - cpuReadyAt[0] > 2,
+                        "Waiting for the binding");
+                // The event is handled when the level tick ends: no rule edit, topology change or polling is needed.
+                helper.assertTrue(helper.getTick() - cpuReadyAt[0] <= 2,
+                        "The binding must follow the provider's CPU at the end of the tick its cluster forms");
+                boundAt[0] = helper.getTick();
+                stage[0] = 4;
+            }
+            // RemoteCraftingService refreshes the consumer's projections every 20 ticks.
             helper.assertTrue(fixture.consumerService().getCraftables(key -> true)
-                            .contains(CraftingBindingFixture.outputKey()),
-                    "The consumer must list the provider's craftable output once the provider has a CPU");
-            helper.assertTrue(helper.getTick() - cpuPlacedAt[0] <= 100,
-                    "The binding must follow the provider's CPU within 100 ticks");
+                            .contains(CraftingBindingFixture.outputKey()) || helper.getTick() - boundAt[0] > 22,
+                    "Waiting for the consumer's projection refresh");
+            helper.assertTrue(helper.getTick() - boundAt[0] <= 22,
+                    "The consumer must list the provider's craftable output within one projection refresh");
             NativeCraftingEvidence.write("craftingremotelateprovider", 4, Map.of(
                     "bindingBeforeCpu", "absent",
                     "consumerListsAfterCpu", "true",

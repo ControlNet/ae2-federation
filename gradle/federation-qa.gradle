@@ -4855,7 +4855,7 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
     }
     def expected = [craftingremoterequest: 12, craftingremotechain: 14, craftingremotecancel: 10,
             craftingremotemissingretry: 11, craftingremotereload: 14, craftingremoteworldreload: 17,
-            craftingremotelateprovider: 4, craftingremoterestart: 11]
+            craftingremotelateprovider: 4, craftingremoterestart: 12]
     // The restart case runs as two server processes; its verify process is the one that writes the evidence.
     def twoProcess = ['craftingremoterestart'] as Set
     def semanticFields = [

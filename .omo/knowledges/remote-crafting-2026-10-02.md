@@ -105,15 +105,27 @@ craftables, and the consumer could not request them. `crafting.remote-request` f
 - A consumer CPU joined by `createConnection` is not persisted; place it adjacent to a cable instead.
 - `GameTestHelper.relativePos` does not invert `absolutePos` outside the structure; use
   `absolute.subtract(helper.absolutePos(BlockPos.ZERO))` (tests are not rotated). Tests are placed at a random far
-  position each run; the restart case builds beside world spawn, whose chunks tick from start.
+  position each run.
+- The restart case builds at its own test position and keeps the fixture's chunks loaded with a persistent NeoForge
+  `TicketController` ticket (`RestartChunkTickets`, owner = the prepare test's origin, stored in the state file;
+  verify removes it). NeoForge saves the ticket and `MinecraftServer.prepareLevels` reinstates it. Vanilla
+  `setChunkForced` does NOT work: `GameTestRunner` unforces every vanilla forced chunk when a batch ends, before the
+  server saves. (`identity.restart` and the policy restart still build beside spawn, whose chunks tick from start.)
 - The GameTest server ticks unthrottled (1600 ticks ≈ 1 s), so wall-clock waits mean nothing; wait in ticks.
 - Running the two phases by hand: pass `-PfederationRetainGameTestRuntime=true` to both, or the verify run starts
   from a deleted world:
   `./gradlew :neoforge-1.21.1:runGameTestServer -PfederationGameTestSelection=positive -PfederationGameTestId=craftingremoterestart -PfederationCraftingPhase=prepare -PfederationCraftingStateFile=<scratch>/crstate.properties -PfederationRetainGameTestRuntime=true --no-configuration-cache`
   then the same with `=verify`.
-- Batch mode: a test that leaves a live binding breaks `craftingrejectcycle` (level-wide discovery delta) and
-  `craftingrejectunavailable` (level-wide binding count) once readiness events reconcile at tick end. A test should
-  switch its rule off when it finishes (`craftingremotelateprovider` does).
+- Batch mode runs one test per batch, in order (`GameTestSequentialBatchMixin` sets `ae2federation.testId` per
+  test); fixtures that build outside the 3×3×3 structure leave their networks and rules in the level after the
+  test. So a "SHARED" failure is leftover state from a finished test, not concurrency. Fixes on 2026-10-02:
+  `ChainStorageFixture.close()` and `craftingremotelateprovider` switch their rules off;
+  `craftingrejectunavailable` / `craftingdeduplicatecapability` count `CraftingBindingFixture.ownBindingCount()`
+  (bindings between the fixture's two networks); `craftingrejectcycle` counts only discoveries of the fixture's
+  networks; `subscriptionsnapshotrace` / `subscriptionlistenercleanup` count listeners relative to the count before
+  they configure, plus `subscriptionRegistrationId(key)`. The full batch then had no SHARED test.
+- `craftingremotelateprovider` measures the fix itself: binding within 2 ticks after the provider's CPU cluster
+  appears (event at level tick end), consumer listing within one 20-tick projection refresh after that.
 
 ## Not covered
 

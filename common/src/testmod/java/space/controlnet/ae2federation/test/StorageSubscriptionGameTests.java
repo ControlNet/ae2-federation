@@ -118,15 +118,19 @@ public final class StorageSubscriptionGameTests {
         var fixture = new DirectSubscriptionFixture(helper);
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for listener cleanup relationship");
-            fixture.configure(PolicyRule.storageDefaults());
             var mounts = fixture.mounts();
-            helper.assertValueEqual(mounts.activeSubscriptionCount(), 1,
+            // Listeners of other networks still standing in the shared level are not this relationship's.
+            var baseline = mounts.activeSubscriptionCount();
+            fixture.configure(PolicyRule.storageDefaults());
+            helper.assertValueEqual(mounts.activeSubscriptionCount(), baseline + 1,
                     "One true source must own one native listener");
             fixture.configure(disabled());
-            helper.assertValueEqual(mounts.activeSubscriptionCount(), 0,
+            helper.assertValueEqual(mounts.activeSubscriptionCount(), baseline,
+                    "Relationship invalidation must release its last source listener");
+            helper.assertValueEqual(mounts.subscriptionRegistrationId(fixture.key()), 0L,
                     "Relationship invalidation must release its last source listener");
             fixture.configure(PolicyRule.storageDefaults());
-            helper.assertValueEqual(mounts.activeSubscriptionCount(), 1,
+            helper.assertValueEqual(mounts.activeSubscriptionCount(), baseline + 1,
                     "Reconnect must install one fresh listener");
             var registrations = mounts.subscriptionRegistrationCount();
             fixture.close();

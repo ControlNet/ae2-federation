@@ -11,6 +11,6 @@ import space.controlnet.ae2federation.test.crafting.CraftingLifecycleAuthorityOb
 abstract class CraftingBackendLifecycleEvidenceMixin {
     @Inject(method = "discover", at = @At("HEAD"), require = 1)
     private void ae2federation$discover(IGrid grid, CallbackInfoReturnable<Object> callback) {
-        CraftingLifecycleAuthorityObservation.recordBackendDiscovery();
+        CraftingLifecycleAuthorityObservation.recordBackendDiscovery(grid);
     }
 }
