@@ -181,10 +181,25 @@ These are separate and both stay:
   the ledger is persisted and keeps no time limit.
 - **Same grid means no projection.** If two paired networks become one grid (a cable or another mod joins them), C ==
   R's grid, and the projection is skipped.
-- **Mount cost.** AE2 rebuilds the cached stacks every tick while a watcher exists, and each rebuild calls every
-  mount's `getAvailableStacks`. Where a mount can, it should answer from the remote grid's public
-  `IStorageService.getCachedInventory()`. Check this for the existing storage mount when it comes up; it is not part of
-  this redesign.
+- **Mount cost.** There are two vanilla AE2 19.2.17 paths, both of which walk every mount.
+  - `StorageService.onServerEndTick` (99-107) rebuilds the cached stacks every tick only while the grid has an
+    `IStorageWatcherNode`: a storage level emitter or a storage or conversion monitor (`AbstractMonitorPart`).
+    Otherwise it only marks the cache stale.
+  - Every open terminal calls `NetworkStorage.getAvailableStacks()` directly each tick (`MEStorageMenu` 254, the
+    inventory from `AbstractTerminalPart.getInventory` 156-160).
+
+  Federation's storage mount (`AuthorizedStorageProjection` over `StorageMountHelpers.aggregate(domain.sources())`)
+  enumerates only the origin's native sources, the cells and drives. It does not enumerate the remote grid's whole
+  `NetworkStorage`. So its cost per walk is what those cells would cost locally, and walks do not nest through other
+  Federation mounts.
+
+  **Do not switch it to the remote grid's `getCachedInventory()`.** That inventory has the wrong scope: it includes the
+  remote grid's own Federation mounts, which would count stacks twice and undo origin keying. It also bypasses
+  `NetworkStorage`'s `mountsInUse` recursion guard. `updateCachedStacks` clears `cachedStacksNeedUpdate` before it
+  fills the counter, so in an A <-> B pair a re-entrant read returns A's half-built cache.
+
+  The new crafting code adds nothing to this per-tick path: projections enumerate patterns only in the 20-tick refresh,
+  and the router acts only on insert.
 - GTLCore's AE2 mixins (planner time slicing, `StorageService.updateCachedStacks` throttling, CPU batch push for its
   own providers) show where AE2 hurts at scale. None is needed for this design.
 
