@@ -7312,7 +7312,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                     || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
                     || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
-                    || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.')) ? 1 : 2,
+                    || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                             || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                             || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -7325,7 +7325,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                             || testCase.id.startsWith('crafting.') || testCase.id.startsWith('terminal.')
                             || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
-                            || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.')])
+                            || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')])
             childArtifacts.add(nativeEvidence)
         }
         def appfluxCases = requestedCases.collect { knownCases[it] }.findAll { it.backend == 'appflux-gametest' }
@@ -7583,6 +7583,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
                 case 'migration.legacy-save-import':
+                case 'rules.crafting-needs-storage':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
                 case 'storage.alias-wrapper-semantics':

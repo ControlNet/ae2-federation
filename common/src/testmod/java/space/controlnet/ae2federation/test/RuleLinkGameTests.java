@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.test;
 
+import java.util.Map;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -25,6 +26,7 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
+import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /** A crafting rule always brings the same direction's storage rule, through the real pair-editor packet path. */
@@ -89,6 +91,10 @@ public final class RuleLinkGameTests {
             helper.assertValueEqual(loaded.configured(storage).map(record -> record.rule()).orElse(null),
                     PolicyRule.storageDefaults(), "Loading must switch on the storage rule a crafting rule needs");
             helper.assertTrue(loaded.isDirty(), "The loaded fix must be saved");
+            PolicyEvidence.write("rulescraftingneedsstorage", 14, Map.of("craftingBringsStorage", "true",
+                    "oneEditForBoth", "true", "otherDirectionUntouched", "true", "storageOffTakesCrafting", "true",
+                    "reexportBringsPlainStorage", "true", "staleSwitchEditsNothing", "true",
+                    "loadAddsStorage", "true"));
 
             player.doCloseContainer();
             fixtures.close();
