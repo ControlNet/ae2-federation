@@ -169,6 +169,26 @@ These are separate and both stay:
 - A crafting rule uses another network's existing pattern providers, including its Federation Provider lanes. Their
   returns land on that network, so the router carries them back.
 
+## Deferred: local-first storage preference
+
+AE2 has no "local vs remote" notion, only storage priority. One number governs both directions in `NetworkStorage`:
+inserts go highest priority first, and extracts (including a CPU taking its inputs) go lowest first. So the storage
+filled first is drained last.
+
+A Federation storage mount today takes the highest priority of the provider's own sources (`StorageMountService`,
+usually 0). Against local drives at 0, the order is mount order. So whether network 1's CPU first takes its own or
+network 2's materials is not defined by design.
+
+Local-first for both directions would mean two mounts per relationship:
+
+- an extract-only mount just below `Integer.MAX_VALUE`, which reports the stacks;
+- an insert-only mount just above `Integer.MIN_VALUE`, which reports nothing.
+
+This is deferred (decision 2026-10-02): it would change every storage rule. The provenance and alias code keys on the
+mounted storage and its priority (`NativeSourceDomainRegistry`). Seven storage GameTest classes pin the current
+priority behaviour. The bug risk outweighs the benefit for now. Cross-network crafting keeps the existing single mount
+and priority unchanged.
+
 ## Phases (each green in CI and pushed before the next)
 
 1. **Three-state rule control:** the session command with revision check, the GUI segment control and copy;
