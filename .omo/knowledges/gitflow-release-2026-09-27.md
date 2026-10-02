@@ -50,3 +50,7 @@
   qualification phrases the player README no longer has); it was failing before this release and is not run by the
   release workflow.
 - `git rev-parse --short A B` fails with "Needed a single revision" in this setup; query one ref per call.
+- Release notes: CI's `--generate-notes` leaves only a "Full Changelog" line. Write player-facing notes in the 0.0.2
+  layout (title, dependency line, upgrade callout, sections, Full Changelog link), check them with
+  `python3 tools/privacy_guard.py message <file>`, then `gh release edit vX.Y.Z --notes-file <file>`. Modrinth and
+  CurseForge changelogs only link to the GitHub release, so they need no edit. Done for 0.0.3 after publication.
