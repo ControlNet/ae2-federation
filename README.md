@@ -59,3 +59,9 @@ Processing needs no permission. Each Endpoint belongs to one Provider at a time.
 ## Development
 
 See [build and test commands](docs/testing/commands.md), [Gitflow and releases](docs/releasing.md), and [compatibility details](docs/compatibility/matrix.md).
+
+## Acknowledgements
+
+- [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the great base mod that this project is based on.
+- [LDLib2](https://github.com/Low-Drag-MC/LDLib2): the UI framework used for this project.
+- [NeoECO AE Extension](https://github.com/DancingSnow0517/NeoECOAEExtension): its LDLib2-based, AE2-styled GUI implementation is the reference for our GUI.
