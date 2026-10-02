@@ -2040,6 +2040,8 @@ final class FederationTopologyView {
                     ? Component.translatable(prefix + "storage_skipped", runtime.get("skipped").getAsInt(), source)
                     : Component.translatable(prefix + "storage_reason", source));
         }
+        if (runtime.has("note")) text.append("\n").append(Component.translatable(prefix + "note."
+                + runtime.get("note").getAsString()));
         return text;
     }
 

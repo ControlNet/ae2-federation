@@ -175,6 +175,7 @@
   "ae2federation.ui.domain.runtime.unobserved": "Not in effect yet: the server has not started using this rule.",
   "ae2federation.ui.domain.runtime.storage_reason": "Last source diagnostic: %s",
   "ae2federation.ui.domain.runtime.storage_skipped": "Not shared: %s of the other network's storages (%s).",
+  "ae2federation.ui.domain.runtime.note.crafting_storage_not_in_effect": "This direction's Storage rule is not in effect yet: until it is, crafting cannot use the other network's materials.",
   "ae2federation.ui.domain.runtime.provenance.unsettled_origin": "source network identity is unsettled",
   "ae2federation.ui.domain.runtime.provenance.callback_changed": "native storage callback changed",
   "ae2federation.ui.domain.runtime.provenance.complete_aggregate": "aggregate storage cannot establish a native source",

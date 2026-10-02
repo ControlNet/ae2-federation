@@ -325,7 +325,9 @@ Test gotchas:
     `opaqueExported`.
 - Seen in the UI world (`ui.graph-controls`, crafting-active step): a storage rule carries `unproven_grid_rebound`
   while the same pair's crafting rule reads Active.
-  - Crafting's gate checks only that the storage rule is enabled, not that it mounts.
+  - Crafting's gate checks only that the storage rule is enabled, not that it mounts. Since 2026-10-03 the gate is
+    unchanged but a crafting rule in effect whose same-direction storage rule is not adds the runtime line
+    `runtime.note.crafting_storage_not_in_effect` (`RuntimeNotes.crafting`, JSON `note`); the rule stays Active.
   - The registry's `lastValid` kept a rebound rejection until a source identity returned. That entry was in memory only.
   - Fixed after Phase E (2026-10-03): `UNPROVEN_GRID_REBOUND` and `lastValid` are gone. A same-id network on a new Grid
     gets a newer generation; its sources take identities from the new callback slots, and held projections of the old

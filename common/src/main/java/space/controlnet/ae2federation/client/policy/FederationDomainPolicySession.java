@@ -1364,10 +1364,12 @@ public final class FederationDomainPolicySession {
     }
 
     /** The last observed runtime result of one rule, as translation keys rather than rendered text. */
-    record RuntimeObservation(String code, String operation, String backend, String storage, int skipped) {
+    record RuntimeObservation(String code, String operation, String backend, String storage, int skipped,
+            String note) {
         RuntimeObservation(String code, String operation, String backend, String storage) {
-            this(code, operation, backend, storage, 0);
+            this(code, operation, backend, storage, 0, "");
         }
+
 
         Component toComponent() {
             String prefix = "ae2federation.ui.domain.runtime.";
@@ -1381,6 +1383,7 @@ public final class FederationDomainPolicySession {
                             Component.translatable(prefix + "provenance." + storage))
                     : Component.translatable(prefix + "storage_reason",
                             Component.translatable(prefix + "provenance." + storage)));
+            if (!note.isEmpty()) text.append("\n").append(Component.translatable(prefix + "note." + note));
             return text;
         }
 
@@ -1391,6 +1394,7 @@ public final class FederationDomainPolicySession {
             if (!backend.isEmpty()) json.addProperty("backend", backend);
             if (!storage.isEmpty()) json.addProperty("storage", storage);
             if (skipped > 0) json.addProperty("skipped", skipped);
+            if (!note.isEmpty()) json.addProperty("note", note);
             return json;
         }
     }
@@ -1421,7 +1425,13 @@ public final class FederationDomainPolicySession {
             var skipped = storageStatus.map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::skippedSources).orElse(0);
             var source = skipped == 0 ? "" : storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::source)
                     .map(diagnostic -> diagnostic.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
-            return new RuntimeObservation("published", "", "", source, source.isEmpty() ? 0 : skipped);
+            if (key.capability() == PolicyCapability.CRAFTING) {
+                var pairStorage = new PolicyKey(key.consumerNetworkId(), key.providerNetworkId(), PolicyCapability.STORAGE);
+                return new RuntimeObservation("published", "", "", "", 0, RuntimeNotes.crafting(
+                        space.controlnet.ae2federation.storage.mount.StorageMountService.status(level, pairStorage)
+                                .map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::inEffect)));
+            }
+            return new RuntimeObservation("published", "", "", source, source.isEmpty() ? 0 : skipped, "");
         }
         var backendReason = switch (key.capability()) {
             case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).flatMap(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::reason);
