@@ -38,8 +38,9 @@ public final class UiGraphBenchmarkGameTests {
             if (state.result == null) {
                 helper.assertTrue(scene.openFirstMenu() && scene.openSecondMenu(),
                         "Two production Federation Domain menus must open before the closed-GUI observation");
+                // The Provider and Endpoint belong to the domain their Federation faces join, not the Bridge's.
                 state.result = measure(profile,
-                        () -> FederationDomainGraphProjection.snapshot(helper.getLevel(), scene.firstScope(),
+                        () -> FederationDomainGraphProjection.snapshot(helper.getLevel(), scene.processingScope(),
                                 ProviderObservationRegistry.entries(helper.getLevel()).stream().findFirst()));
                 state.before = scene.nativeTickerInvocations();
                 state.ownerIdentity = scene.nativeProgressOwnerIdentity();
@@ -182,13 +183,17 @@ public final class UiGraphBenchmarkGameTests {
     }
 
     private static void requireProductionProjection(FederationDomainGraphSnapshot snapshot) {
-        if (nodes(snapshot, FederationDomainGraphNodeKind.MEMBER).isEmpty()
-                || nodes(snapshot, FederationDomainGraphNodeKind.PROVIDER).isEmpty()
-                || nodes(snapshot, FederationDomainGraphNodeKind.ENDPOINT).isEmpty()
-                || edges(snapshot, FederationDomainGraphLayer.PHYSICAL).isEmpty()
-                || edges(snapshot, FederationDomainGraphLayer.CAPABILITY).isEmpty()
-                || snapshot.patterns().isEmpty()) {
-            throw new IllegalStateException("Production graph projection lacks required runtime topology");
+        var missing = new ArrayList<String>();
+        for (var kind : List.of(FederationDomainGraphNodeKind.MEMBER, FederationDomainGraphNodeKind.PROVIDER,
+                FederationDomainGraphNodeKind.ENDPOINT)) {
+            if (nodes(snapshot, kind).isEmpty()) missing.add(kind.name().toLowerCase(java.util.Locale.ROOT) + "-nodes");
+        }
+        for (var layer : List.of(FederationDomainGraphLayer.PHYSICAL, FederationDomainGraphLayer.CAPABILITY)) {
+            if (edges(snapshot, layer).isEmpty()) missing.add(layer.name().toLowerCase(java.util.Locale.ROOT) + "-edges");
+        }
+        if (snapshot.patterns().isEmpty()) missing.add("patterns");
+        if (!missing.isEmpty()) {
+            throw new IllegalStateException("Production graph projection lacks required runtime topology: " + missing);
         }
     }
 

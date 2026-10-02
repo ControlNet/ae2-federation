@@ -6143,9 +6143,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             assertion.cache = [builds: metrics.getProperty('layoutBuildCount') as long,
                     reuses: metrics.getProperty('layoutReuseCount') as long]
             assertion.authority = [nodes: metrics.getProperty('productionProjectionNodeCount') as long,
-                    members: 2L, providers: 1L, endpoints: 1L,
+                    members: 1L, providers: 1L, endpoints: 1L,
                     edges: metrics.getProperty('productionProjectionEdgeCount') as long,
-                    physicalEdges: 2L, capabilityEdges: 1L,
+                    physicalEdges: 1L, capabilityEdges: 1L,
                     patterns: metrics.getProperty('productionProjectionPatternCount') as long,
                     sha256: metrics.getProperty('productionProjectionSha256')]
             assertion.nativeProgress = [owner: metrics.getProperty('nativeProgressOwnerIdentity') as long,

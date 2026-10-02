@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "profileVersion": "ui-small-v1",
   "seed": 340034,
-  "captureIdentitySha256": "7aeb3800f8f5b1307e25b78809fcb6bd93820ac2a6d0d0a3d906a5c32e5bb1c3",
+  "captureIdentitySha256": "44c2b0c8389d5f7ee8a94a295bed3af119c4a3d4702d0fcdb580ebd477cdc780",
   "profileSha256": "b9ecc67a2fb562d9ebb2da418a54e6407f4433ecc2ddc878f55b0b3da2b3daff",
   "budgetSha256": "fdb9980681dbaaa0ace66fd375df6297ca20d09b4bce6cca8b8781fcf745a071",
-  "dependencyLockSha256": "74bdb2dc15608fe3ce30dbd0da3c87d76a7ab8a1678af7f5f65a74f6e3d12ddc",
+  "dependencyLockSha256": "3929a94e4d0e9555ba7e9c9c2702ecb19a4513dd6bc64fcaa0ba81f9cb9d8498",
   "minecraftVersion": "1.21.1",
   "neoForgeVersion": "21.1.250",
   "ae2Version": "19.2.17",
@@ -18,12 +18,12 @@
     "retainedEntries": 128
   },
   "productionProjection": {
-    "nodes": 4,
-    "members": 2,
+    "nodes": 3,
+    "members": 1,
     "providers": 1,
     "endpoints": 1,
-    "edges": 3,
-    "physicalEdges": 2,
+    "edges": 2,
+    "physicalEdges": 1,
     "capabilityEdges": 1,
     "patterns": 3
   }
