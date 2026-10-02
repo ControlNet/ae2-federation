@@ -57,7 +57,7 @@ public final class FederationTestMod {
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
 					   MultipartBridgeGameTests.class, RouterGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
-					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class,
+					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,

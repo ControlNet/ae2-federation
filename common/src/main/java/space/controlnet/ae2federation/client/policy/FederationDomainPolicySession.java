@@ -1402,16 +1402,17 @@ public final class FederationDomainPolicySession {
         }
         boolean published = switch (key.capability()) {
             case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
-            case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.hasPublishedBinding(level, key);
+            case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).map(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::active).orElse(false);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.shares(level, key);
         };
         if (published) return new RuntimeObservation("published", "", "", "");
-        var backendDiagnostic = switch (key.capability()) {
-            case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(level, key);
-            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key);
-            default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic>empty();
+        var backendReason = switch (key.capability()) {
+            case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).flatMap(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::reason);
+            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key)
+                    .map(space.controlnet.ae2federation.policy.BindingDiagnostic::reason);
+            default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic.Reason>empty();
         };
-        var backend = backendDiagnostic.map(diagnostic -> diagnostic.reason().name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+        var backend = backendReason.map(reason -> reason.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
         var storage = "";
         if (key.capability() == PolicyCapability.STORAGE) {
             var diagnostic = space.controlnet.ae2federation.storage.mount.StorageMountService.lastDiagnosticIfPresent(level, key);

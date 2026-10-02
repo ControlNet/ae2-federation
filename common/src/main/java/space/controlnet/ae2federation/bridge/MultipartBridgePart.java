@@ -333,6 +333,7 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(serverLevel);
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
@@ -342,12 +343,14 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
             CraftingBindingService.reconcileIfPresent(serverLevel);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(serverLevel);
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
         FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }

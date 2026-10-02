@@ -240,3 +240,30 @@ and priority unchanged.
    cycle guard.
 5. **P3 (remove the delegated model):** delete its tests and evidence, and rewrite the contract doc.
 6. **Storage items 3 and 5:** skip only the offending provenance source, and show the storage reason in the UI.
+
+## Implementation notes (Phase B, 2026-10-02)
+
+Code lives in `crafting/projection/`:
+
+- `RealCraftingProviders.on(level, grid)`: node `ICraftingProvider` services, plus Federation Provider lanes from
+  `ProviderObservationRegistry`. Lanes register with the crafting service directly (`NativeProviderLaneComposition`)
+  and are not node services. Projections are global providers and never node services, so they are never re-projected.
+- `PatternProjection`: forwards the real provider's own pattern objects (AE2 pattern `equals` compares the
+  definition). `isBusy` is true once withdrawn.
+- `CraftingProjectionService`: per level. Reconciles on rule and topology hooks, and on a tick when the
+  registry/watermark/identity epoch changes. Patterns are compared every 20 ticks. `status(level, key)` feeds the
+  pair editor's runtime line.
+- `CraftingReturnLedger` (overworld SavedData) and `CraftingReturnRouter`:
+  - The router is mounted at `Integer.MAX_VALUE`, preferred only for owed keys. It lists nothing and extracts
+    nothing.
+  - It hands back at most `min(left, owed, consumer.getRequestedAmount)`.
+  - Debts are forgotten after two 20-tick looks with nothing requested, and never in the first 100 ticks.
+- `RemoteCraftingService` no longer ticks; its manifest rows and the `remoteCraftingCases` QA group are gone.
+
+Test gotchas:
+
+- A pattern provider in omni mode pushes round-robin to *every* adjacent inventory, the network's own ME chest
+  included. A hand-run machine needs
+  `PatternProviderBlock.PUSH_DIRECTION = PushDirection.<side>` (`BlockOrientation.setOn` does not restrict it).
+- After a CPU job, the output may land in the provider's chest through the storage mount (same priority, mount order).
+  Assert on the sum of both chests.

@@ -83,11 +83,13 @@ public final class FederationBindingRefresh {
         if (grids.isEmpty()) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(level);
             EnergySharingService.reconcileIfPresent(level);
             return;
         }
         StorageMountService.get(level).observeFederationDomainMembers(grids);
         CraftingBindingService.get(level).observeFederationDomainMembers(grids);
+        space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(level).observeFederationDomainMembers(grids);
         EnergySharingService.get(level).observeFederationDomainMembers(grids);
     }
 }

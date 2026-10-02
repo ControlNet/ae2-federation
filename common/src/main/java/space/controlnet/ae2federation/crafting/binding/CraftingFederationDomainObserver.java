@@ -11,35 +11,35 @@ import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
-final class CraftingFederationDomainObserver {
+public final class CraftingFederationDomainObserver {
     private final ServerLevel level;
     private final Map<NetworkId, IGrid> loadedGrids = new HashMap<>();
 
-    CraftingFederationDomainObserver(ServerLevel level) {
+    public CraftingFederationDomainObserver(ServerLevel level) {
         this.level = level;
     }
 
-    void register(IGrid grid) {
+    public void register(IGrid grid) {
         FederationDomainRegistryAccess.confirmedNetworkId(grid).ifPresent(networkId -> loadedGrids.put(networkId, grid));
     }
 
-    void register(Iterable<IGrid> grids) {
+    public void register(Iterable<IGrid> grids) {
         grids.forEach(this::register);
     }
 
     /** Whether {@code grid} is a loaded Grid of an observed domain member. */
-    boolean observes(IGrid grid) {
+    public boolean observes(IGrid grid) {
         return loadedGrids.containsValue(grid);
     }
 
     /** The loaded Grid that currently carries {@code networkId}, if any. */
-    java.util.Optional<IGrid> grid(NetworkId networkId) {
+    public java.util.Optional<IGrid> grid(NetworkId networkId) {
         var grid = loadedGrids.get(networkId);
         return grid != null && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(networkId::equals).isPresent()
                 ? java.util.Optional.of(grid) : java.util.Optional.empty();
     }
 
-    Map<PolicyKey, CraftingRelationship> relationships() {
+    public Map<PolicyKey, CraftingRelationship> relationships() {
         discardStaleGrids();
         var result = new HashMap<PolicyKey, CraftingRelationship>();
         for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
@@ -59,7 +59,7 @@ final class CraftingFederationDomainObserver {
         return Map.copyOf(result);
     }
 
-    Set<FederationDomainReference> references(CraftingRelationship relationship) {
+    public Set<FederationDomainReference> references(CraftingRelationship relationship) {
         var registry = FederationDomainRegistryAccess.get(level);
         var consumer = registry.federationdomainsFor(relationship.key().consumerNetworkId());
         var provider = registry.federationdomainsFor(relationship.key().providerNetworkId());
@@ -68,11 +68,11 @@ final class CraftingFederationDomainObserver {
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
-    long topologyRevision() {
+    public long topologyRevision() {
         return FederationDomainRegistryAccess.get(level).topologyRevision();
     }
 
-    void clear() {
+    public void clear() {
         loadedGrids.clear();
     }
 

@@ -10,8 +10,8 @@ public enum RuleHealth {
     OFF, ACTIVE, WAITING, ERROR;
 
     private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_cycle",
-            "crafting_cpu_missing", "crafting_provider_missing", "energy_connection_missing",
-            "domain_reference_missing");
+            "crafting_cpu_missing", "crafting_provider_missing", "crafting_storage_required",
+            "energy_connection_missing", "domain_reference_missing");
 
     public static RuleHealth of(boolean enabled, String code, String backend) {
         if (!enabled) return OFF;

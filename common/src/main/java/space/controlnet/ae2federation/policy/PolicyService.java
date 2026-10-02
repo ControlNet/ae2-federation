@@ -52,6 +52,7 @@ public final class PolicyService {
         if (result instanceof PolicyMutationResult.Accepted) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(level);
             EnergySharingService.reconcileIfPresent(level);
         }
         return result;
@@ -63,6 +64,7 @@ public final class PolicyService {
         if (result instanceof PolicyMutationResult.Accepted) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(level);
             EnergySharingService.reconcileIfPresent(level);
         }
         return result;
@@ -73,6 +75,7 @@ public final class PolicyService {
         if (result instanceof PolicyMutationResult.Accepted) {
             StorageMountService.reconcileIfPresent(level);
             CraftingBindingService.reconcileIfPresent(level);
+            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(level);
             EnergySharingService.reconcileIfPresent(level);
         }
         return result;
