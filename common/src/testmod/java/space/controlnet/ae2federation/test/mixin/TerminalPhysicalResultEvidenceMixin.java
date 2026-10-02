@@ -9,8 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
-import space.controlnet.ae2federation.test.crafting.TerminalResultAuthorityReceipt;
-import space.controlnet.ae2federation.test.crafting.CraftingLifecycleAuthorityObservation;
 
 @Mixin(BasicCellInventory.class)
 public abstract class TerminalPhysicalResultEvidenceMixin {
@@ -18,8 +16,5 @@ public abstract class TerminalPhysicalResultEvidenceMixin {
     private void ae2federation_test$insert(AEKey key, long amount, Actionable mode, IActionSource source,
             CallbackInfoReturnable<Long> callback) {
         TerminalNativeObservation.recordPhysicalInsert(this, key, amount, mode, callback.getReturnValue());
-        TerminalResultAuthorityReceipt.recordPhysicalInsert(this, key, amount, mode, callback.getReturnValue());
-        CraftingLifecycleAuthorityObservation.observePhysicalInsertion(this, key, amount, mode,
-                callback.getReturnValue());
     }
 }

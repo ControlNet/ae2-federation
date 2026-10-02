@@ -1,6 +1,5 @@
 package space.controlnet.ae2federation.test;
 
-import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
@@ -8,19 +7,15 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.crafting.terminal.NativeTerminalAdapter;
 import space.controlnet.ae2federation.test.automation.NativeAutomationFixture;
 import space.controlnet.ae2federation.test.automation.AutomationAuthorityObservation;
 import space.controlnet.ae2federation.test.automation.AutomationNativeObservation;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingRequester;
+import space.controlnet.ae2federation.test.crafting.ProviderCraftingOrder;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryEvidence;
-import space.controlnet.ae2federation.test.mixed.MixedFactoryObservation;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryProfile;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryScene;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryBenchmarkState;
-import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
-import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 
 @PrefixGameTestTemplate(false)
 public final class MixedFactoryGameTests {
@@ -41,74 +36,6 @@ public final class MixedFactoryGameTests {
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
-            timeoutTicks = 1000, required = true, manualOnly = true)
-    public static void mixedRejectEmptyOrders(GameTestHelper helper) {
-        var fixture = new NativeAutomationFixture(helper);
-        helper.succeedWhen(() -> {
-            helper.assertTrue(fixture.ready(), "Waiting for native mixed empty-order authority");
-            AutomationNativeObservation.begin("mixedrejectemptyorders");
-            AutomationAuthorityObservation.begin("mixedrejectemptyorders", fixture);
-            TerminalNativeObservation.begin("mixedrejectemptyorders");
-            ProcessingNativeObservation.reset();
-            var before = AutomationNativeObservation.snapshot();
-            var terminalBefore = TerminalNativeObservation.snapshot();
-            var processingBefore = ProcessingNativeObservation.snapshot();
-            var registry = CraftingBindingService.get(helper.getLevel());
-            var requestCountBefore = registry.nativeRequestCount();
-            var linkCountBefore = registry.nativeLinkOwnerCount();
-            var inFlightBefore = fixture.binding().busyCpuCount();
-            var sourceBefore = fixture.physicalSourceTotal();
-            var consumerBefore = fixture.physicalConsumerTotal();
-            var terminal = NativeTerminalAdapter.discover(helper.getLevel(), fixture.binding().consumerGrid(),
-                    fixture.binding().key().providerNetworkId(), IActionSource.empty()).orElseThrow();
-            try {
-                terminal.begin(AEItemKey.of(Items.STICK), 0);
-                throw new IllegalStateException("Native terminal accepted an empty mixed order");
-            } catch (IllegalArgumentException expected) {
-                helper.assertValueEqual(expected.getMessage(), "Native terminal amount must be positive",
-                        "Native terminal must reject empty orders at its boundary");
-            }
-            terminal.close();
-            var after = AutomationNativeObservation.snapshot();
-            var terminalAfter = TerminalNativeObservation.snapshot();
-            var processingAfter = ProcessingNativeObservation.snapshot();
-            var sourceAfter = fixture.physicalSourceTotal();
-            var consumerAfter = fixture.physicalConsumerTotal();
-            var requestCountAfter = registry.nativeRequestCount();
-            var linkCountAfter = registry.nativeLinkOwnerCount();
-            var inFlightAfter = fixture.binding().busyCpuCount();
-            var details = new java.util.TreeMap<String, String>();
-            details.put("rejected", "true");
-            details.put("amount", "0");
-            details.put("queueGrowth", Integer.toString(requestCountAfter - requestCountBefore));
-            details.put("plannerDelta", Integer.toString(terminalAfter.beginCalls() - terminalBefore.beginCalls()));
-            details.put("trackerCallDelta", Integer.toString(after.trackerCalls() - before.trackerCalls()));
-            details.put("nativeSubmissionDelta", Integer.toString(
-                    after.trackerSubmissions() - before.trackerSubmissions()));
-            details.put("projectionCallDelta", Integer.toString(
-                    after.storageInsertCalls() + after.storageExtractCalls()
-                            - before.storageInsertCalls() - before.storageExtractCalls()));
-            details.put("projectionQuantityDelta", Long.toString(
-                    after.storageInserted() + after.storageExtracted()
-                            - before.storageInserted() - before.storageExtracted()));
-            details.put("handlerCallDelta", Integer.toString(processingAfter.size() - processingBefore.size()));
-            details.put("handlerQuantityDelta", Long.toString(Math.abs(sourceAfter - sourceBefore)));
-            details.put("interfaceWorkDelta", Long.toString(Math.abs(consumerAfter - consumerBefore)));
-            details.put("busWorkDelta", Integer.toString(after.importWork() + after.exportWork()
-                    - before.importWork() - before.exportWork()));
-            details.put("inFlightDelta", Long.toString(inFlightAfter - inFlightBefore));
-            details.put("waitingDelta", Integer.toString(linkCountAfter - linkCountBefore));
-            details.put("sourceInventoryDelta", Long.toString(sourceAfter - sourceBefore));
-            details.put("consumerInventoryDelta", Long.toString(consumerAfter - consumerBefore));
-            MixedFactoryEvidence.writeNegative("mixedrejectemptyorders", details.size(), details);
-            AutomationNativeObservation.close();
-            AutomationAuthorityObservation.close();
-            TerminalNativeObservation.close();
-            fixture.close();
-        });
-    }
-
-    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 2000, required = true, manualOnly = true)
     public static void mixedOverloadBackpressure(GameTestHelper helper) {
         var state = new OverloadState(helper);
@@ -118,8 +45,8 @@ public final class MixedFactoryGameTests {
     private static final class OverloadState {
         private final NativeAutomationFixture fixture;
         private NativeCraftingRequester requester;
-        private space.controlnet.ae2federation.crafting.terminal.NativeTerminalRequest first;
-        private space.controlnet.ae2federation.crafting.terminal.NativeTerminalRequest second;
+        private ProviderCraftingOrder first;
+        private ProviderCraftingOrder second;
         private int initialRejections;
         private int retries;
         private long peakInFlight;
@@ -153,21 +80,19 @@ public final class MixedFactoryGameTests {
             if (stage == 1) {
                 helper.assertTrue(requester.isReady(fixture.binding().sourceChest().getMainNode().getNode()),
                         "Native bounded requester must join the provider Grid");
-                var terminal = NativeTerminalAdapter.discover(helper.getLevel(), fixture.binding().consumerGrid(),
-                        fixture.binding().key().providerNetworkId(), IActionSource.empty()).orElseThrow();
-                first = terminal.begin(AEItemKey.of(Items.STICK), 4).orElseThrow();
-                second = terminal.begin(AEItemKey.of(Items.STICK), 4).orElseThrow();
-                terminal.close();
+                var grid = fixture.binding().providerGrid();
+                first = ProviderCraftingOrder.begin(helper.getLevel(), grid, requester.getActionableNode(),
+                        AEItemKey.of(Items.STICK), 4);
+                second = ProviderCraftingOrder.begin(helper.getLevel(), grid, requester.getActionableNode(),
+                        AEItemKey.of(Items.STICK), 4);
                 stage = 2;
             }
             if (stage == 2) {
                 helper.assertTrue(first.completedPlan().isPresent() && second.completedPlan().isPresent(),
                         "Waiting for native overload plans");
-                helper.assertTrue(first.submitTracked(0, requester, requester::handleCrafting).isPresent(),
-                        "First bounded order must submit");
+                helper.assertTrue(first.submitTracked(requester), "First bounded order must submit");
                 fixture.binding().suspendCpu();
-                helper.assertTrue(second.submitTracked(0, requester, requester::handleCrafting).isEmpty(),
-                        "Occupied native tracker slot must reject overload");
+                helper.assertFalse(second.submitTracked(requester), "Occupied native tracker slot must reject overload");
                 initialRejections++;
                 firstDeferredTick = helper.getLevel().getGameTime();
                 helper.assertValueEqual(requester.uniqueNativeJobCount(), 1,
@@ -176,15 +101,15 @@ public final class MixedFactoryGameTests {
                 stage = 3;
             }
             peakInFlight = Math.max(peakInFlight, fixture.binding().busyCpuCount());
-            var registry = CraftingBindingService.get(helper.getLevel());
-            peakRegistry = Math.max(peakRegistry, registry.nativeRequestCount());
+            // The jobs AE2 tracks for the requester: one at a time, whatever was asked for.
+            peakRegistry = Math.max(peakRegistry, requester.getRequestedJobs().size());
             if (stage == 3) {
                 helper.assertTrue(requester.observedDone() && requester.acceptedAmount() == 4
                                 && requester.activeLink() == null,
                         "Waiting for first native order completion and tracker-slot retirement");
                 firstCompletionTick = helper.getLevel().getGameTime();
                 capacityReleaseTick = firstCompletionTick;
-                helper.assertTrue(second.submitTracked(0, requester, requester::handleCrafting).isPresent(),
+                helper.assertTrue(second.submitTracked(requester),
                         "Deferred second order must submit after native capacity is released");
                 retries++;
                 retryTick = helper.getLevel().getGameTime();
@@ -227,8 +152,8 @@ public final class MixedFactoryGameTests {
             details.put("secondSubmissionTick", Long.toString(secondSubmissionTick));
             details.put("secondCompletionTick", Long.toString(secondCompletionTick));
             details.put("registryPeak", Long.toString(peakRegistry));
-            details.put("registryFinal", Integer.toString(registry.nativeRequestCount()));
-            details.put("linkOwnersFinal", Integer.toString(registry.nativeLinkOwnerCount()));
+            details.put("registryFinal", Integer.toString(requester.getRequestedJobs().size()));
+            details.put("linkOwnersFinal", Integer.toString(requester.activeLink() == null ? 0 : 1));
             MixedFactoryEvidence.writeNegative("mixedoverloadbackpressure", details.size(), details);
             AutomationNativeObservation.close();
             AutomationAuthorityObservation.close();

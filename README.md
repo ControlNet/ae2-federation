@@ -9,7 +9,7 @@ Connect separate **Applied Energistics 2 networks** to share storage, autocrafti
 ## Features
 
 - **Shared storage**: access items and fluids across connected ME networks.
-- **Remote autocrafting**: request crafting from another network through your ME terminal.
+- **Remote autocrafting**: craft with another network's pattern providers from your ME terminal.
 - **Distributed processing**: map patterns to Processing Endpoints on other networks using the Federation Pattern Provider.
 - **ME power sharing**: two networks share one energy pool, the way a Quartz Fiber joins them, with a single switch per pair.
 - **Directional permissions**: choose what each network can access from the other (energy is shared both ways). Sharing stays off until you enable it.
@@ -41,7 +41,7 @@ Version **0.0.3** is an early release with no survival crafting recipes; try the
 
 ### Remote crafting
 
-With a crafting permission, the target network can request what the source network crafts, from its terminals or its automation. The source network crafts with its own patterns, crafting CPU and materials, and the result arrives in the target network. Requests can pass along a chain of permissions (A from B, B from C), but crafting permissions cannot form a loop.
+With a crafting permission, the target network uses the source network's pattern providers as its own, from its terminals or its automation. The target network's crafting CPU runs the job with the materials it can see, the source network's storage included: a crafting permission always comes with the storage permission of the same direction. The source network needs no CPU, and the result arrives in the target network. A permission set to re-export passes crafting along a chain (A from B, B from C), and two networks may each craft with the other's providers.
 
 ### Remote processing
 

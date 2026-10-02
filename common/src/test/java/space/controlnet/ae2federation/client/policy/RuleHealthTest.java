@@ -13,8 +13,8 @@ class RuleHealthTest {
     @Test
     void anEnabledRuleThatCannotWorkIsAnError() {
         assertEquals(RuleHealth.ERROR, RuleHealth.of(true, "operation_missing", ""));
-        for (var backend : new String[] {"crafting_cycle", "crafting_cpu_missing",
-                "crafting_provider_missing", "energy_connection_missing", "domain_reference_missing"}) {
+        for (var backend : new String[] {"crafting_storage_required", "energy_connection_missing",
+                "domain_reference_missing"}) {
             assertEquals(RuleHealth.ERROR, RuleHealth.of(true, "unobserved", backend), backend);
         }
     }
@@ -30,6 +30,6 @@ class RuleHealthTest {
 
     @Test
     void disabledRulesAreOffWhateverTheLastObservation() {
-        assertEquals(RuleHealth.OFF, RuleHealth.of(false, "operation_missing", "crafting_cycle"));
+        assertEquals(RuleHealth.OFF, RuleHealth.of(false, "operation_missing", "crafting_storage_required"));
     }
 }

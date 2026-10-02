@@ -12,7 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
-import space.controlnet.ae2federation.test.crafting.TerminalResultAuthorityReceipt;
 
 @Mixin(CraftingCPUCluster.class)
 public abstract class TerminalCraftingCpuEvidenceMixin {
@@ -21,6 +20,5 @@ public abstract class TerminalCraftingCpuEvidenceMixin {
             @Nullable ICraftingRequester requester, CallbackInfoReturnable<ICraftingSubmitResult> callback) {
         var cpu = (CraftingCPUCluster) (Object) this;
         TerminalNativeObservation.recordCpuSubmission(cpu, callback.getReturnValue());
-        TerminalResultAuthorityReceipt.recordSubmission(cpu, callback.getReturnValue());
     }
 }

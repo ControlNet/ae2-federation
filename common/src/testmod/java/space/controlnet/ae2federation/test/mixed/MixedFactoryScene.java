@@ -1,6 +1,5 @@
 package space.controlnet.ae2federation.test.mixed;
 
-import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.misc.InterfaceBlockEntity;
 import java.util.ArrayList;
@@ -14,12 +13,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import space.controlnet.ae2federation.crafting.terminal.NativeTerminalAdapter;
-import space.controlnet.ae2federation.crafting.terminal.NativeTerminalRequest;
 import space.controlnet.ae2federation.test.automation.AutomationAuthorityObservation;
 import space.controlnet.ae2federation.test.automation.AutomationNativeObservation;
 import space.controlnet.ae2federation.test.automation.NativeAutomationFixture;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingRequester;
+import space.controlnet.ae2federation.test.crafting.ProviderCraftingOrder;
 import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
@@ -34,7 +32,7 @@ public final class MixedFactoryScene implements AutoCloseable {
     private final NativeAutomationFixture automation;
     private final List<BlockPos> additionalCpus = new ArrayList<>();
     private final List<NativeCraftingRequester> requesters = new ArrayList<>();
-    private final List<NativeTerminalRequest> requests = new ArrayList<>();
+    private final List<ProviderCraftingOrder> requests = new ArrayList<>();
     private final List<Boolean> submitted = new ArrayList<>();
     private NativeProviderLaneFixtures processing;
     private MixedProcessingMachine machine;
@@ -152,13 +150,16 @@ public final class MixedFactoryScene implements AutoCloseable {
     private void beginRequests() {
         if (!automation.interfaceReady(stockingInterface, false) || requesters.stream().anyMatch(requester ->
                 !requester.isReady(automation.binding().sourceChest().getMainNode().getNode()))) return;
-        var terminal = NativeTerminalAdapter.discover(helper.getLevel(), automation.binding().consumerGrid(),
-                automation.binding().key().providerNetworkId(), IActionSource.empty()).orElseThrow();
-        for (var recipe : topology.blockedRecipes()) {
-            requests.add(terminal.begin(AEItemKey.of(recipe.output()), profile.requested("glass")).orElseThrow());
+        // Each order is planned and run on the provider network's own crafting service, by the requester at its index.
+        var grid = automation.binding().providerGrid();
+        var recipes = topology.blockedRecipes();
+        for (var index = 0; index < recipes.size(); index++) {
+            requests.add(ProviderCraftingOrder.begin(helper.getLevel(), grid, requesters.get(index).getActionableNode(),
+                    AEItemKey.of(recipes.get(index).output()), profile.requested("glass")));
         }
-        requests.add(terminal.begin(AEItemKey.of(topology.chainResult()), profile.requested("emeralds")).orElseThrow());
-        terminal.close();
+        requests.add(ProviderCraftingOrder.begin(helper.getLevel(), grid,
+                requesters.get(recipes.size()).getActionableNode(), AEItemKey.of(topology.chainResult()),
+                profile.requested("emeralds")));
         requests.forEach(ignored -> submitted.add(false));
         stage = 2;
     }
@@ -168,8 +169,7 @@ public final class MixedFactoryScene implements AutoCloseable {
         for (var index = 0; index < requests.size(); index++) {
             if (!submitted.get(index)) {
                 var requester = requesters.get(index);
-                submitted.set(index, requests.get(index).submitTracked(0, requester,
-                        requester::handleCrafting).isPresent());
+                submitted.set(index, requests.get(index).submitTracked(requester));
             }
         }
         if (submitted.stream().allMatch(Boolean::booleanValue)) stage = 3;

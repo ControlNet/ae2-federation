@@ -8,8 +8,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
-import space.controlnet.ae2federation.test.crafting.TerminalResultAuthorityReceipt;
-import space.controlnet.ae2federation.test.crafting.CraftingLifecycleAuthorityObservation;
 
 @Mixin(CraftingCpuLogic.class)
 public abstract class TerminalCraftingResultEvidenceMixin {
@@ -18,7 +16,5 @@ public abstract class TerminalCraftingResultEvidenceMixin {
             CallbackInfoReturnable<Long> callback) {
         var logic = (CraftingCpuLogic) (Object) this;
         TerminalNativeObservation.recordResultCallback(logic, key, amount, mode);
-        TerminalResultAuthorityReceipt.recordCallback(logic, key, amount, mode);
-        CraftingLifecycleAuthorityObservation.recordCpuResult(logic, key, amount, mode);
     }
 }

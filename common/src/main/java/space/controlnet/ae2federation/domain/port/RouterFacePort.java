@@ -47,30 +47,24 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final FederationPort routerFederationDomainPort;
     private final IManagedGridNode boundaryNode;
     private final FederationEnergyConnection energyConnection;
-    private final space.controlnet.ae2federation.crafting.remote.RemoteCraftingRequester craftingRequester;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
     private boolean dirty = true;
     private boolean nodeLoaded;
 
-    /** @param changed marks the Router for saving, for the Crafting jobs this face's Grid runs for consumers */
-    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
-            Runnable changed) {
+    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort) {
         this.routerPosition = routerPosition.immutable();
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
         energyConnection = new FederationEnergyConnection();
-        craftingRequester = new space.controlnet.ae2federation.crafting.remote.RemoteCraftingRequester(
-                "ae2federation_crafting_face_" + face.getSerializedName(), this::node, changed);
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0.0)
                 .setFlags(GridFlags.CANNOT_CARRY)
                 .setExposedOnSides(EnumSet.of(face))
-                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection)
-                .addService(appeng.api.networking.crafting.ICraftingRequester.class, craftingRequester);
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection);
         energyConnection.bind(this, boundaryNode);
     }
 
@@ -146,13 +140,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
 
     public void loadFromNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         nodeLoaded = tag.contains("face_" + face.getSerializedName());
-        craftingRequester.readFromNBT(tag, registries);
         boundaryNode.loadFromNBT(tag);
     }
 
     public void saveToNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         boundaryNode.saveToNBT(tag);
-        craftingRequester.writeToNBT(tag, registries);
     }
 
     private RouterPortBinding resolve() {

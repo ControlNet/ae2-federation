@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
@@ -66,8 +66,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.flush(level);
-            space.controlnet.ae2federation.crafting.binding.CraftingBindingService.flushReadiness(level);
-            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.tick(level);
+            CraftingProjectionService.tick(level);
         }
     }
 
@@ -84,9 +83,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.closeLevel(level);
-            space.controlnet.ae2federation.crafting.remote.RemoteCraftingService.closeLevel(level);
-            CraftingBindingService.closeLevel(level);
-            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.closeLevel(level);
+            CraftingProjectionService.closeLevel(level);
             EnergySharingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);

@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Supplier;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
@@ -82,14 +82,12 @@ public final class FederationBindingRefresh {
         }
         if (grids.isEmpty()) {
             StorageMountService.reconcileIfPresent(level);
-            CraftingBindingService.reconcileIfPresent(level);
-            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(level);
+            CraftingProjectionService.reconcileIfPresent(level);
             EnergySharingService.reconcileIfPresent(level);
             return;
         }
         StorageMountService.get(level).observeFederationDomainMembers(grids);
-        CraftingBindingService.get(level).observeFederationDomainMembers(grids);
-        space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(level).observeFederationDomainMembers(grids);
+        CraftingProjectionService.get(level).observeFederationDomainMembers(grids);
         EnergySharingService.get(level).observeFederationDomainMembers(grids);
     }
 }

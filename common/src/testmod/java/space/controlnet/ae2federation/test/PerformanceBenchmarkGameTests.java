@@ -15,7 +15,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.client.policy.FederationDomainPolicySession;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
@@ -216,7 +216,7 @@ public final class PerformanceBenchmarkGameTests {
                 measureNetworkStorage(helper, perf, consumer, source, bulk);
                 perf.nanosPerOp("reconcileAll", 500, 300, () -> {
                     mounts.reconcileAll();
-                    CraftingBindingService.get(helper.getLevel()).reconcileAll();
+                    CraftingProjectionService.get(helper.getLevel()).reconcileAll();
                     EnergySharingService.get(helper.getLevel()).reconcileAll();
                 });
                 perf.nanosPerOp("bridgeNeighborChanged", 500, 300, fixtures::refreshFirstBridge);

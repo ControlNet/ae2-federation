@@ -279,3 +279,24 @@ Test gotchas:
 - GameTests `projectionchain`, `projectionchainblocked` and `projectionmutual` use `ProjectionChainFixture`. It puts
   three Grids on one Router; the consumer and source each have a CPU and a provider, and the middle has neither.
   `craftingrejectcycle` still belongs to the delegated model and goes in Phase D.
+
+## Implementation notes (Phase D, 2026-10-02)
+
+- Deleted `crafting/binding`, `crafting/remote` and `crafting/terminal`. `CraftingFederationDomainObserver` and
+  `CraftingRelationship` moved to `projection/`. The Bridge and Router face no longer host an `ICraftingRequester`,
+  and their old requester NBT tags are ignored.
+- Removed the diagnostics `CRAFTING_PROVIDER_MISSING`, `CRAFTING_CPU_MISSING` and `CRAFTING_CYCLE`, with their
+  RuleHealth entries and lang keys.
+- Removed GameTests: binding, binding-failure, lifecycle (with `craftingrejectcycle`), remote, remote-restart,
+  terminal and terminal-failure. Also removed 15 manifest rows, the Task 26/27/29 groups with their verifiers,
+  consumers and self-tests, and four unit contract tests.
+- Removed the testmod mixins that targeted deleted classes or existed only for terminal evidence:
+  `CapturedTerminalRequester`, `CraftingBackendLifecycle` and the five `Terminal*ThreadGuard` mixins. The `Terminal*`
+  evidence mixins on AE2 classes (CraftingService, CPU, CpuLogic, cell) stay, since the mixed factory receipts use them.
+- `CraftingBindingFixture` stays as the two-network base for `NativeAutomationFixture`. Its readiness now waits for
+  `CraftingProjectionService.projectionCount(key) > 0`.
+- The mixed scene and `mixedoverloadbackpressure` use the testmod `ProviderCraftingOrder` (plain AE2 on the provider
+  Grid). `mixedrejectemptyorders` was removed: AE2's `beginCraftingCalculation` has no amount check, so the only
+  boundary it tested was the deleted adapter.
+- `federationBenchmark -Pprofile=mixed-small` already failed before this work (checked at e3a932b and 36093d8): the
+  scene never gets past readiness (`stage=0`). It is not in the dev batch or CI and needs its own investigation.

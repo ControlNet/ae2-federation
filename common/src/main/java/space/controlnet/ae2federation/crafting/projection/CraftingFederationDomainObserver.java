@@ -1,4 +1,4 @@
-package space.controlnet.ae2federation.crafting.binding;
+package space.controlnet.ae2federation.crafting.projection;
 
 import appeng.api.networking.IGrid;
 import java.util.HashMap;

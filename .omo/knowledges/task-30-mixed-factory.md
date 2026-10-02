@@ -1,5 +1,11 @@
 # Task 30 Mixed Factory Load
 
+> Updated 2026-10-02: the Crafting binding and native terminal adapter are gone. The scene and
+> `mixedoverloadbackpressure` now plan each order on the provider network's own crafting service
+> (`ProviderCraftingOrder`, plain AE2) and submit it through the requester's `MultiCraftingTracker`; the
+> registry facts come from the requester's own tracked jobs. `mixedrejectemptyorders` tested the deleted adapter's
+> boundary and was removed with its Task 30 negative probes.
+
 ## Native composition
 
 The mixed scene reuses one Task 28 `NativeAutomationFixture`, so Storage projection, Crafting binding, consumer/provider

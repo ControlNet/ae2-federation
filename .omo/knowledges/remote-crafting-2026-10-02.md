@@ -1,7 +1,7 @@
 # Remote crafting: using a Crafting binding from the consumer (2026-10-02)
 
-> Superseded by `crafting-pattern-projection-design-2026-10-02.md` (agreed 2026-10-02): the delegated-job model below is
-> being replaced by pattern projection. This note describes the code until that lands.
+> Superseded by `crafting-pattern-projection-design-2026-10-02.md` (agreed 2026-10-02): the delegated-job model below was
+> replaced by pattern projection, and its code, tests and evidence groups were removed the same day.
 
 ## The gap
 

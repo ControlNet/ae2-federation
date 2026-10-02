@@ -16,8 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.crafting.binding.CraftingFederationDomainObserver;
-import space.controlnet.ae2federation.crafting.binding.CraftingRelationship;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkId;

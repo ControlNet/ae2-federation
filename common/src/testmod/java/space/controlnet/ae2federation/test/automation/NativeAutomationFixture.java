@@ -21,7 +21,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -63,10 +63,12 @@ public final class NativeAutomationFixture implements AutoCloseable {
             helper.assertTrue(result instanceof PolicyMutationResult.Accepted,
                     "Forward native Storage policy must be accepted");
             StorageMountService.get(helper.getLevel()).observeConnectedGrids(binding.consumerGrid(), binding.providerGrid());
+            CraftingProjectionService.get(helper.getLevel()).observeConnectedGrids(binding.consumerGrid(),
+                    binding.providerGrid());
             authorized = true;
             return false;
         }
-        return CraftingBindingService.get(helper.getLevel()).capability(binding.key()).isPresent()
+        return CraftingProjectionService.get(helper.getLevel()).projectionCount(binding.key()) > 0
                 && StorageMountService.get(helper.getLevel()).projection(storageKey()) != null;
     }
 

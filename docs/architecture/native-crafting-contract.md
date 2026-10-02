@@ -1,4 +1,4 @@
-# Native Crafting Binding Gate
+# Native Crafting Contract
 
 ## Status
 
@@ -16,80 +16,52 @@ The accepted public lifecycle is:
 
 No compatibility shim, replacement planner, replacement CPU, or alternate crafting ledger is used.
 
-Task 26 binds that native lifecycle across an authorized Federation relationship. A directional
-`PolicyKey(consumerNetworkId, providerNetworkId, CRAFTING)` selects one revision-bound capability regardless of how many
-physical Bridge routes connect the networks. The capability exposes the provider Grid's exact native crafting service,
-providers, provider nodes, and CPUs; Federation does not copy patterns or own planning, execution, task, or result state.
+## Cross-Network Crafting
 
-The binding fails closed when Policy is disabled or deleted, a held revision becomes stale, Federation Domain connectivity is lost,
-the provider generation changes, source identity is no longer settled, or native provider/CPU readiness disappears.
-Reconciliation withdraws the old binding before a subsequent capability access can use it.
+Network C crafts with network P's pattern providers as AE2 does within one network: C's own CPU plans and runs the
+job, with what C's storage shows, and pushes each pattern to P's provider. P needs no CPU. The code is in
+`crafting/projection/` and uses public AE2 API only.
 
-## Consumer-Side Use
+A crafting rule "C uses P" projects P's providers onto C while all of these hold:
 
-A published binding is used from the consumer's own ME crafting service, so its terminals, crafting monitors and
-automation see and request the provider's craftables as AE2 normally does (`crafting.remote-*` GameTests).
-`RemoteCraftingService` does this with public AE2 API only:
+- the rule is enabled and has the `REQUEST` operation;
+- the same direction's storage rule is enabled, since the CPU takes P's materials through it (otherwise the rule
+  reports `crafting_storage_required`);
+- the rule is active for the pair, and C and P share a Federation Domain.
 
-- For each current binding it registers one emit-only `ICraftingProvider` on the consumer Grid
-  (`addGlobalCraftingProvider`). It has no patterns; `getEmitableItems` returns what the provider Grid can craft,
-  as the rule's filter permits, minus keys the consumer crafts with its own patterns (AE2 plans an emitable key without
-  looking at patterns, so the consumer's own patterns keep priority). The set is refreshed every 20 ticks
-  (`refreshGlobalCraftingProvider`).
-- AE2 plans such a key on the consumer as an emitted item: the consumer's CPU waits for it. Every 5 ticks the service
-  reads `getRequestedAmount` on the consumer, subtracts what provider jobs already have in flight, and plans the rest on
-  the provider with `REPORT_MISSING_ITEMS`. A plan that is missing materials or finds no CPU is not submitted and is
-  tried again after 40 ticks; the consumer's CPU keeps waiting, as for a vanilla crafting emitter.
-- An executable plan is submitted on the provider with a `RemoteCraftingRequester` as its requester. The requester is
-  an `ICraftingRequester` node service on a Federation node of the provider Grid (each Bridge side and each Router face
-  port). AE2 hands it the job's final output; it inserts what the consumer's job asked for into the consumer Grid, whose
-  `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus of the pattern (one log makes four planks)
-  stays in the provider Grid's storage.
-- When the consumer stops waiting for a key on two looks in a row (its job ended or was cancelled), the provider jobs
-  for it are cancelled through their links, and the provider's CPU returns their materials. A consumer that is not
-  reachable (unloaded, or its binding is being rebuilt) is not judged: its provider jobs keep running, and output the
-  consumer cannot take stays in the provider Grid's storage, where a later provider plan for the same consumer finds
-  it.
-- The requester's links are saved with the host of its node and reloaded with `StorageHelper.loadCraftingLink`; AE2
-  calls `getRequestedJobs` when the node joins its Grid, which reconnects running jobs. For 100 ticks after the
-  service starts (a server start or level load), it starts and cancels no provider job, so requesters and CPUs in
-  chunks loaded later reconnect first; AE2 itself cancels a job whose requester stays missing for 60 ticks.
-  `crafting.remote-reload` reloads the Bridge hosting the requester and restarts the service while a provider job
-  runs, with both CPUs loaded. `crafting.remote-world-reload` unloads and reloads every block entity of both networks
-  from their saved data in one server (CPUs, chests, cables, Bridge), so both Grids are rebuilt and both CPUs restore
-  their jobs from NBT. `crafting.remote-restart` stops the server with a provider job running and verifies in a new
-  server process that the binding, the consumer's listing, both CPUs' jobs and the requester's link come back from the
-  save alone, and that the job finishes once without being requested again.
+The Policy screen switches the storage rule on with the crafting rule, and switches crafting off with storage, in one
+edit. A save holding a crafting rule without its storage rule gets the storage rule on load.
 
-The provider's own plan sees its own projections, so a request recurses along Crafting rules: with rules consumer →
-middle and middle → source only, the consumer's sticks are crafted by the middle from planks the source crafts from
-logs (`crafting.remote-chain`). `CraftingDependencyCycleGuard` keeps the Crafting rule graph acyclic
-(`crafting.reject-cycle`), so the recursion always ends, and no Crafting cycle is needed to reach a network further
-away.
+- **Projection.** `RealCraftingProviders` lists P's own providers: the `ICraftingProvider` node services on P's Grid,
+  plus the Federation Provider lanes registered on it. Each one gets a `PatternProjection` on C's crafting service
+  (`addGlobalCraftingProvider`). It offers the real provider's own pattern objects, priority and busy state, and no
+  emitable items. A push goes straight to the real provider. A withdrawn projection offers no patterns, reports busy and
+  refuses pushes before it is removed, so nothing is pushed through it afterwards.
+- **Returns.** An accepted push records what P now owes C in `CraftingReturnLedger`: the pattern's outputs, plus the
+  container items its inputs leave behind, such as empty buckets. The ledger is saved data, so a debt survives a
+  reload.
+  - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
+    lists nothing and extracts nothing.
+  - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
+    `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus stays on P.
+  - A debt is dropped after two 20-tick looks in which C requests nothing, but never in the first 100 ticks, while
+    CPUs in later chunks reconnect. A cancelled job's late outputs therefore stay on P.
+- **Re-export.** Crafting passes on as storage does (`CraftingReach`). With "C uses M" and "M uses S" set to
+  re-export, S's providers are projected onto C too. The push and the return still go straight between C and S; M
+  takes no part. A consumer never reaches itself, so mutual rules and rings are allowed, and there is no cycle guard.
+- **Reconciliation.** Rule edits and topology changes reconcile at once. The tick reconciles only after a change to the
+  domain topology, a rule or a Grid identity. Providers and their patterns are compared every 20 ticks, because AE2
+  has no event for a provider's patterns changing.
 
-Run and consume the eight cases with:
+Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
+are abandoned on load.
+
+The GameTests are `crafting.projection-*`: request, remote materials, manual return, cancel, revoked, reload, storage
+required, chain, chain blocked and mutual. Run them with:
 
 ```sh
-./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.remote-request,crafting.remote-chain,crafting.remote-cancel,crafting.remote-missing-retry,crafting.remote-reload,crafting.remote-world-reload,crafting.remote-late-provider,crafting.remote-restart -PevidenceDir=.omo/evidence/remote-crafting --dependency-verification=strict --warning-mode=fail --no-configuration-cache
-RESULT_FILE=$(ls -td .omo/evidence/remote-crafting/attempt-*/result.json | sed -n '1p')
-./gradlew :neoforge-1.21.1:federationRemoteCraftingEvidenceConsumer -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.projection-request,crafting.projection-remote-materials,crafting.projection-manual-return,crafting.projection-cancel,crafting.projection-revoked,crafting.projection-reload,crafting.projection-storage-required,crafting.projection-chain,crafting.projection-chain-blocked,crafting.projection-mutual -PevidenceDir=.omo/evidence/crafting-projection --dependency-verification=strict --no-configuration-cache
 ```
-
-Each case writes the outcome it measured (delivered amount, provider materials and residue, provider job counts,
-busy CPUs; for the reload cases, the saved links and CPU jobs and the resubmissions), and the verifier requires the
-exact schema, matching log trace facts, and the expected outcome for every field. `crafting.remote-restart` runs as two
-server processes (`gametest-restart`); the verifier also requires distinct process IDs, the prepare process's ID in the
-saved state file and in the prepare log. CI runs only the single-process cases.
-
-A binding still requires the provider Grid to have its own native patterns and CPU; a network with neither cannot
-provide Crafting, even if it could pass on another network's craftables. Readiness is followed through AE2's public
-Grid events (`CraftingReadinessEvents`): `GridCraftingCpuChange`, and `GridPowerStatusChange` /
-`GridBootingStatusChange`, since a pattern provider's node becomes active only with power or a reboot (a node joining
-reboots its Grid). An event on a Grid the bindings observe makes the level publish its missing Crafting bindings once at
-the end of its tick. It only adds: a provider that loses its CPUs keeps its binding, so AE2 itself answers
-`NO_CPU_FOUND` (`terminal.no-cpu`) and a waiting consumer job is tried again, as when every CPU is busy. A rule switched on before the provider has a CPU therefore binds once the CPU is placed
-(`crafting.remote-late-provider`), and after a restart the binding follows the provider's CPUs as they form, after the
-domain is already known.
 
 ## Pinned Sources
 
@@ -102,8 +74,11 @@ All source links refer to AE2 commit `79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a`.
 - [Automation tracker](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/helpers/MultiCraftingTracker.java)
 - [Native service](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/me/service/CraftingService.java)
 - [Native CPU execution](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/crafting/execution/CraftingCpuLogic.java)
+- [Crafting provider](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/api/networking/crafting/ICraftingProvider.java)
+- [Storage provider](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/api/networking/storage/IStorageProvider.java)
+- [Native storage priority](https://github.com/AppliedEnergistics/Applied-Energistics-2/blob/79ee2c704ad62941a426c26b1cb1f76ef5b2ee5a/src/main/java/appeng/me/storage/NetworkStorage.java)
 
-## Verified Binding
+## Verified Native Lifecycle
 
 Terminal-equivalent requests use a mock-player `PlayerSource`, calculate with
 `CalculationStrategy.REPORT_MISSING_ITEMS`, and submit with a null requester. The successful submission is standalone,
@@ -137,13 +112,6 @@ through a second reload.
 - Available materials and pattern with no crafting CPU produce an executable plan and native `NO_CPU_FOUND`; materials
   remain untouched.
 - Native completion is not treated as proof of delivery. Stocking separately asserts the amount accepted by the requester.
-- An authorized source with patterns but no native CPU advertises no Federation Crafting capability and has no fallback.
-- Replacing provider A with a separately constructed Pattern Provider B on the same settled source `NetworkId` advances the
-  provider generation. B has a different registration node UUID/node object, provider object, pattern object, and binding;
-  every accessor on retained binding A remains empty after B becomes current.
-- Removing the final real Bridge Federation Domain from a live binding advances topology, increments the withdrawal counter, empties
-  every retained accessor, and publishes no replacement capability. This is separate from the no-CPU rejection proof.
-- Two physical Bridge routes for the same directional relationship retain one provider, pattern set, and CPU capacity.
 
 ## Evidence And Verification
 
@@ -164,47 +132,3 @@ their link IDs, validates the exact native artifact set and runtime facts, and b
 identity. The adversarial self-test fully rebinds copied evidence and rejects forged duplicate counts/UUIDs, a submitted
 duplicate invocation, missing provider dispatch, unaccepted stocking output, invalid missing-material/no-CPU submissions,
 forged pre-cancel Grid/CPU extraction, altered return facts, and missing artifacts.
-
-Task 26 adds the exact four-case binding set with assertion counts `18`, `8`, `18`, and `5`:
-
-```sh
-./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.native-binding,crafting.deduplicate-capability,crafting.native-state-owner,crafting.reject-unavailable -PevidenceDir=.omo/evidence/task-26 --no-configuration-cache
-RESULT_FILE=$(ls -td .omo/evidence/task-26/attempt-*/result.json | sed -n '1p')
-./gradlew :neoforge-1.21.1:federationVerifyEvidence -PresultFile="$RESULT_FILE" -PevidenceDir=.omo/evidence/task-26 --no-configuration-cache
-./gradlew :neoforge-1.21.1:federationTaskTwentySixEvidenceConsumer -PresultFile="$RESULT_FILE" --no-configuration-cache
-./gradlew :neoforge-1.21.1:federationTaskTwentySixEvidenceSelfTest -PresultFile="$RESULT_FILE" --no-configuration-cache
-```
-
-`AE2F_CRAFT_NATIVE_ENTRY` remains the semantic evidence channel. A separate `AE2F_CRAFT_AUTHORITY` observer scans the live
-AE2 Grid and node services directly, without reading that semantic Map, and receipts the settled NetworkId, Grid/service,
-registration node UUID/node object, provider object, CPU set, exact pattern object, binding/generation, Federation Domain references,
-topology revision, common-Federation Domain count, withdrawal count, and access state. The consumer requires the exact phase set for
-each child and cross-correlates both channels. Missing, duplicate, substituted, conflicting, or fully rebound fabricated
-authority is rejected for Task 26-specific semantic reasons.
-
-Task 27 adds the exact five-case native terminal set with assertion counts `21`, `15`, `10`, `10`, and `10`:
-
-```sh
-./gradlew :neoforge-1.21.1:federationVerify -Pcases=terminal.native-crafting,terminal.native-result,terminal.missing-material,terminal.no-cpu,terminal.reject-async-world-access -PevidenceDir=.omo/evidence/task-27 --dependency-verification=strict --warning-mode=fail --no-configuration-cache
-RESULT_FILE=$(ls -td .omo/evidence/task-27/attempt-*/result.json | sed -n '1p')
-./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceConsumer -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
-./gradlew :neoforge-1.21.1:federationTaskTwentySevenEvidenceSelfTest -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
-```
-
-Terminal discovery captures the authorized provider service, native provider node, CPU set, action source, and filtered
-craftables on the server thread. AE2's calculator receives only the immutable captured requester. Submission rechecks the
-Policy/Federation Domain/provider authority snapshot before calling native `submitJob`; native AE2 remains responsible for executable,
-missing-material, and no-CPU outcomes. Result evidence correlates the native job, CPU logic callback, provider push, and
-physical cell insertion rather than accepting a public aggregate quantity increase.
-
-The discovery fixture publishes two genuine native patterns from the same bound provider: sticks are explicitly allow-listed
-and a crafting table is forbidden. An independent discovery receipt scans the source and consumer crafting services, exact
-provider pattern objects, discovered key set, and configured filter. It proves that only the original allowed pattern is
-visible, with no copied pattern or alternate provider. (The consumer-side emit-only projection described under
-Consumer-Side Use carries no patterns, so it adds no pattern object to either service.)
-
-Before submission, result authority captures the exact physical cell delegate selected as the destination. Independent
-submission, callback, and insertion receipts then correlate that object with the native link UUID, selected CPU,
-`CraftingCpuLogic`, callback owner, output key, requested amount, and inserted amount. Fully rebound substitutions of the
-job, logic/callback, or destination across semantic/native/runtime channels are rejected because they cannot change the
-pre-established authority receipts.

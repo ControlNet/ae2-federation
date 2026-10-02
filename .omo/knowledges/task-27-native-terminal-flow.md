@@ -1,5 +1,8 @@
 # Task 27 Native Terminal Flow
 
+> Superseded (2026-10-02): the delegated crafting model this note describes was removed with its code, tests and
+> evidence groups; see `crafting-pattern-projection-design-2026-10-02.md` and `docs/architecture/native-crafting-contract.md`.
+
 ## Production Boundary
 
 - `crafting/terminal/NativeTerminalAdapter` selects the directional consumer-to-provider `PolicyKey`, requires

@@ -5,7 +5,6 @@ import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
-import appeng.api.networking.crafting.ICraftingRequester;
 import appeng.api.parts.IPartCollisionHelper;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.IPartItem;
@@ -32,8 +31,7 @@ import space.controlnet.ae2federation.domain.FederationDomainSourceId;
 import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.crafting.remote.RemoteCraftingRequester;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 
@@ -61,18 +59,12 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
 
     private final FederationEnergyConnection mainEnergyConnection = new FederationEnergyConnection();
     private final FederationEnergyConnection outerEnergyConnection = new FederationEnergyConnection();
-    // Requesters of the jobs each side's Grid runs for consumers under Crafting rules.
-    private final RemoteCraftingRequester mainCraftingRequester = new RemoteCraftingRequester(
-            "ae2federation_crafting_main", () -> getMainNode().getNode(), this::markForSave);
-    private final RemoteCraftingRequester outerCraftingRequester = new RemoteCraftingRequester(
-            "ae2federation_crafting_outer", () -> this.outerNode.getNode(), this::markForSave);
     private final IManagedGridNode outerNode = GridHelper.createManagedNode(this, NODE_LISTENER)
             .setTagName("outer")
             .setInWorldNode(true)
             .setIdlePowerUsage(0.0)
             .setFlags(GridFlags.CANNOT_CARRY)
-            .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, outerEnergyConnection)
-            .addService(ICraftingRequester.class, outerCraftingRequester);
+            .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, outerEnergyConnection);
     private BridgeStatus status = BridgeStatus.invalid(BridgeOperationalReason.MISSING_MAIN_ATTACHMENT);
     private boolean removed;
     private @Nullable FederationDomainSourceId federationDomainSource;
@@ -85,8 +77,7 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
     public MultipartBridgePart(IPartItem<?> partItem) {
         super(partItem);
         getMainNode().setIdlePowerUsage(0.0).setFlags(GridFlags.CANNOT_CARRY)
-                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, mainEnergyConnection)
-                .addService(ICraftingRequester.class, mainCraftingRequester);
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, mainEnergyConnection);
         mainEnergyConnection.bind(this, getMainNode());
         outerEnergyConnection.bind(this, outerNode);
     }
@@ -159,8 +150,6 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             net.minecraft.core.HolderLookup.Provider registries) {
         mainNodeLoaded = data.contains("gn");
         outerNodeLoaded = data.contains("outer");
-        mainCraftingRequester.readFromNBT(data, registries);
-        outerCraftingRequester.readFromNBT(data, registries);
         super.readFromNBT(data, registries);
         outerNode.loadFromNBT(data);
         refresh();
@@ -171,13 +160,6 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             net.minecraft.core.HolderLookup.Provider registries) {
         super.writeToNBT(data, registries);
         outerNode.saveToNBT(data);
-        mainCraftingRequester.writeToNBT(data, registries);
-        outerCraftingRequester.writeToNBT(data, registries);
-    }
-
-    private void markForSave() {
-        var host = getHost();
-        if (host != null) host.markForSave();
     }
 
     @Override
@@ -332,8 +314,7 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         if (candidate == null) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingBindingService.reconcileIfPresent(serverLevel);
-            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(serverLevel);
+            CraftingProjectionService.reconcileIfPresent(serverLevel);
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
@@ -342,15 +323,13 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
         if (mainId.isEmpty() || outerId.isEmpty()) {
             FederationDomainRegistryAccess.invalidateDirectBridgeIfPresent(serverLevel, federationDomainSource);
             StorageMountService.reconcileIfPresent(serverLevel);
-            CraftingBindingService.reconcileIfPresent(serverLevel);
-            space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.reconcileIfPresent(serverLevel);
+            CraftingProjectionService.reconcileIfPresent(serverLevel);
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
         FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
-        CraftingBindingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
-        space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
+        CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
     }
 }

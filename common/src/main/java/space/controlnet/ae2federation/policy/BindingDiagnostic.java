@@ -4,9 +4,6 @@ package space.controlnet.ae2federation.policy;
 public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, long topologyRevision) {
     public enum Reason {
         IDENTITY_UNCONFIRMED,
-        CRAFTING_PROVIDER_MISSING,
-        CRAFTING_CPU_MISSING,
-        CRAFTING_CYCLE,
         /** A crafting rule without the REQUEST operation. */
         CRAFTING_REQUEST_MISSING,
         /** A crafting rule whose direction's storage rule is off: the CPU could not take the materials. */
