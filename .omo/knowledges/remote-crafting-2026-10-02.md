@@ -1,5 +1,8 @@
 # Remote crafting: using a Crafting binding from the consumer (2026-10-02)
 
+> Superseded by `crafting-pattern-projection-design-2026-10-02.md` (agreed 2026-10-02): the delegated-job model below is
+> being replaced by pattern projection. This note describes the code until that lands.
+
 ## The gap
 
 Before this change, `CraftingBindingService` published bindings, but nothing on the consumer used them:
