@@ -11,9 +11,10 @@ which the scene never called. For that window two live Grids claim the provider 
 provider as `AMBIGUOUS_SPLIT`.
 
 - The orphan cell never joined, so the split never healed.
-- Even with the cell joined a tick later, the crafting and storage observers had already dropped the provider Grid
-  (`discardStaleGrids` on an unconfirmed id). Nothing re-registered it: the fixture's `observeConnectedGrids` is one-shot,
-  and the bridge part only refreshes on node-state or neighbour changes. The projection status stayed empty.
+- When the cell was joined a tick later, the crafting projection status stayed empty after the heal. Inferred from the
+  code, not observed directly: the crafting observer (and likely the storage observer) dropped the provider Grid in
+  `discardStaleGrids` while its id was unconfirmed. Nothing re-registered it, because the fixture's
+  `observeConnectedGrids` is one-shot and the bridge part only refreshes on node-state or neighbour changes.
 
 ## Fix (testmod only)
 
@@ -27,6 +28,6 @@ fixture and the binding fixture name the first unmet condition in the timeout me
 - The Task 30 verifier then fails with `benchmark capture identity is stale`. `tests/benchmarks/*/baseline.json` record
   the `gradle/verification-metadata.xml` sha from before e8eb052; all three baselines (mixed, processing, ui) are stale the
   same way. Their policy is `explicit-edit-and-rerun-required`, so refreshing them is the user's call.
-- Product question: the storage and crafting observers forget a Grid during a transient unconfirmed identity and re-learn it
-  only from a bridge/router refresh. A split that heals without a block update beside a Federation block may leave the
+- Product question (inferred, not verified in isolation): the storage and crafting observers forget a Grid during a
+  transient unconfirmed identity and re-learn it only from a bridge/router refresh. A split that heals without a block update beside a Federation block may leave the
   rule unobserved.
