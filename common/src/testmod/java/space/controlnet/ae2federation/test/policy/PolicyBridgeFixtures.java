@@ -1,14 +1,17 @@
 package space.controlnet.ae2federation.test.policy;
 
 import appeng.api.networking.IGrid;
+import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
+import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -101,6 +104,25 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     public void refreshSecondBridge() {
         second.onNeighborChanged(helper.getLevel(), helper.absolutePos(secondPosition),
                 helper.absolutePos(secondPosition.north()));
+    }
+
+    /**
+     * Saves the first Bridge's cable bus, replaces the block and loads the saved data into the new one in the same
+     * tick, as a chunk load restores it: the new Bridge part reads its NBT before its nodes join a Grid.
+     *
+     * @return the saved cable bus data
+     */
+    public CompoundTag reloadFirstBridgeHost() {
+        var registries = helper.getLevel().registryAccess();
+        var state = helper.getBlockState(firstPosition);
+        var saved = helper.getLevel().getBlockEntity(helper.absolutePos(firstPosition)).saveWithFullMetadata(registries);
+        helper.setBlock(firstPosition, Blocks.AIR);
+        helper.setBlock(firstPosition, state);
+        helper.getLevel().getBlockEntity(helper.absolutePos(firstPosition)).loadWithComponents(saved, registries);
+        first = PartHelper.getPart(BridgeRegistration.BRIDGE.get(), helper.getLevel(),
+                helper.absolutePos(firstPosition), Direction.NORTH);
+        helper.assertTrue(first != null, "The reloaded cable bus must restore the Bridge part");
+        return saved;
     }
 
     public void removeFirstBridge() {

@@ -46,16 +46,34 @@ automation see and request the provider's craftables as AE2 normally does (`craf
   `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus of the pattern (one log makes four planks)
   stays in the provider Grid's storage.
 - When the consumer stops waiting for a key on two looks in a row (its job ended or was cancelled), the provider jobs
-  for it are cancelled through their links, and the provider's CPU returns their materials.
+  for it are cancelled through their links, and the provider's CPU returns their materials. A consumer that is not
+  reachable (unloaded, or its binding is being rebuilt) is not judged: its provider jobs keep running, and output the
+  consumer cannot take stays in the provider Grid's storage, where a later provider plan for the same consumer finds
+  it.
 - The requester's links are saved with the host of its node and reloaded with `StorageHelper.loadCraftingLink`; AE2
-  calls `getRequestedJobs` when the node joins its Grid, which reconnects running jobs. No GameTest covers this
-  reload path yet.
+  calls `getRequestedJobs` when the node joins its Grid, which reconnects running jobs. For 100 ticks after the
+  service starts (a server start or level load), it starts and cancels no provider job, so requesters and CPUs in
+  chunks loaded later reconnect first; AE2 itself cancels a job whose requester stays missing for 60 ticks.
+  `crafting.remote-reload` reloads the Bridge hosting the requester and restarts the service while a provider job
+  runs; the CPUs stay loaded in that test.
 
 The provider's own plan sees its own projections, so a request recurses along Crafting rules: with rules consumer →
 middle and middle → source only, the consumer's sticks are crafted by the middle from planks the source crafts from
 logs (`crafting.remote-chain`). `CraftingDependencyCycleGuard` keeps the Crafting rule graph acyclic
 (`crafting.reject-cycle`), so the recursion always ends, and no Crafting cycle is needed to reach a network further
 away.
+
+Run and consume the five cases with:
+
+```sh
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.remote-request,crafting.remote-chain,crafting.remote-cancel,crafting.remote-missing-retry,crafting.remote-reload -PevidenceDir=.omo/evidence/remote-crafting --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+RESULT_FILE=$(ls -td .omo/evidence/remote-crafting/attempt-*/result.json | sed -n '1p')
+./gradlew :neoforge-1.21.1:federationRemoteCraftingEvidenceConsumer -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+```
+
+Each case writes the outcome it measured (delivered amount, provider materials and residue, provider job counts,
+busy CPUs; for reload, the saved link and resubmissions), and the verifier requires the exact schema, matching log
+trace facts, and the expected outcome for every field.
 
 A binding still requires the provider Grid to have its own native patterns and CPU; a network with neither cannot
 provide Crafting, even if it could pass on another network's craftables.

@@ -377,6 +377,11 @@ public final class CraftingBindingFixture implements AutoCloseable {
                 .extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
     }
 
+    /** Reloads the Bridge's cable bus from its saved data in one tick; see {@link PolicyBridgeFixtures}. */
+    public net.minecraft.nbt.CompoundTag reloadBridgeHost() {
+        return bridge.reloadFirstBridgeHost();
+    }
+
     /** Cancels the consumer's running job, as a player does from its CPU's status screen. */
     public void cancelConsumerJob() {
         consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).map(CraftingCPUCluster.class::cast)

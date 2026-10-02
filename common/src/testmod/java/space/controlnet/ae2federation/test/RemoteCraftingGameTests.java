@@ -1,11 +1,13 @@
 package space.controlnet.ae2federation.test;
 
+import java.util.Map;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.crafting.remote.RemoteCraftingService;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.crafting.CraftingBindingFixture;
+import space.controlnet.ae2federation.test.crafting.NativeCraftingEvidence;
 import space.controlnet.ae2federation.test.crafting.RemoteCraftingChainFixture;
 
 /**
@@ -59,6 +61,16 @@ public final class RemoteCraftingGameTests {
                     "No sticks may stay in the provider's storage");
             helper.assertValueEqual(fixture.busyConsumerCpuCount() + fixture.busyCpuCount(), 0L,
                     "Both jobs must finish");
+            var submissions = RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key());
+            helper.assertValueEqual(submissions, 1, "Exactly one provider job must run");
+            NativeCraftingEvidence.write("craftingremoterequest", 12, Map.of(
+                    "consumerPatterns", Integer.toString(fixture.consumerService()
+                            .getCraftingFor(CraftingBindingFixture.outputKey()).size()),
+                    "resultInserted", Long.toString(fixture.consumerPhysicalOutputAmount()),
+                    "providerMaterialAfter", Long.toString(fixture.physicalMaterialAmount()),
+                    "providerResidue", Long.toString(fixture.physicalOutputAmount()),
+                    "providerSubmissions", Integer.toString(submissions),
+                    "busyCpus", Long.toString(fixture.busyConsumerCpuCount() + fixture.busyCpuCount())));
             fixture.close();
         });
     }
@@ -113,6 +125,17 @@ public final class RemoteCraftingGameTests {
                     "Exactly one provider job on the middle");
             helper.assertValueEqual(remote.submissionCount(fixture.middleToSource()), 1,
                     "Exactly one provider job on the source, requested by the middle");
+            NativeCraftingEvidence.write("craftingremotechain", 14, Map.of(
+                    "consumerSourceRule", PolicyService.get(helper.getLevel()).configured(fixture.consumerToSource())
+                            .isPresent() ? "present" : "absent",
+                    "resultInserted", Long.toString(fixture.consumerAmount(RemoteCraftingChainFixture.stick())),
+                    "sourceLogsAfter", Long.toString(fixture.sourceAmount(RemoteCraftingChainFixture.log())),
+                    "sourcePlanksAfter", Long.toString(fixture.sourceAmount(RemoteCraftingChainFixture.planks())),
+                    "middleResidue", Long.toString(fixture.middleAmount(RemoteCraftingChainFixture.planks())
+                            + fixture.middleAmount(RemoteCraftingChainFixture.stick())),
+                    "middleSubmissions", Integer.toString(remote.submissionCount(fixture.consumerToMiddle())),
+                    "sourceSubmissions", Integer.toString(remote.submissionCount(fixture.middleToSource())),
+                    "busyCpus", Long.toString(fixture.busyCpuCount())));
             fixture.close();
         });
     }
@@ -160,6 +183,13 @@ public final class RemoteCraftingGameTests {
             helper.assertValueEqual(fixture.physicalMaterialAmount(), 2L,
                     "The cancelled provider job must return its two planks");
             helper.assertValueEqual(fixture.consumerPhysicalOutputAmount(), 0L, "No sticks may be delivered");
+            var submissions = RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key());
+            helper.assertValueEqual(submissions, 1, "Exactly one provider job must have run");
+            NativeCraftingEvidence.write("craftingremotecancel", 10, Map.of(
+                    "providerMaterialAfter", Long.toString(fixture.physicalMaterialAmount()),
+                    "consumerResult", Long.toString(fixture.consumerPhysicalOutputAmount()),
+                    "providerSubmissions", Integer.toString(submissions),
+                    "busyCpus", Long.toString(fixture.busyCpuCount() + fixture.busyConsumerCpuCount())));
             fixture.close();
         });
     }
@@ -174,6 +204,7 @@ public final class RemoteCraftingGameTests {
         var fixture = new CraftingBindingFixture(helper, true);
         var stage = new int[1];
         var waitedUntil = new long[1];
+        var whileMissing = new int[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
             if (stage[0] == 0) {
@@ -203,6 +234,7 @@ public final class RemoteCraftingGameTests {
                 helper.assertValueEqual(RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key()), 0,
                         "A provider plan missing materials must not be submitted");
                 helper.assertValueEqual(fixture.busyConsumerCpuCount(), 1L, "The consumer's CPU must keep waiting");
+                whileMissing[0] = RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key());
                 fixture.insertMaterials(2);
                 stage[0] = 4;
                 helper.assertTrue(false, "Waiting for the retried provider job");
@@ -213,6 +245,90 @@ public final class RemoteCraftingGameTests {
                     "Both jobs must finish");
             helper.assertValueEqual(RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key()), 1,
                     "Exactly one provider job must run");
+            NativeCraftingEvidence.write("craftingremotemissingretry", 11, Map.of(
+                    "submissionsWhileMissing", Integer.toString(whileMissing[0]),
+                    "resultInserted", Long.toString(fixture.consumerPhysicalOutputAmount()),
+                    "providerSubmissions", Integer.toString(
+                            RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key())),
+                    "busyCpus", Long.toString(fixture.busyConsumerCpuCount() + fixture.busyCpuCount())));
+            fixture.close();
+        });
+    }
+
+    /**
+     * A server restart while a provider job runs: the provider's requester is saved with its Bridge and the service
+     * starts empty. The reloaded Bridge's requester reconnects AE2's job, which then delivers to the consumer, and
+     * nothing is requested a second time. The CPUs stay loaded; only the requester's host and the service restart.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void craftingRemoteReload(GameTestHelper helper) {
+        var fixture = new CraftingBindingFixture(helper, true);
+        var stage = new int[1];
+        var reloadedAt = new long[1];
+        var savedLink = new boolean[1];
+        helper.succeedWhen(() -> {
+            if (stage[0] < 4) {
+                helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
+            }
+            if (stage[0] == 0) {
+                fixture.enable();
+                fixture.insertMaterials(2);
+                fixture.addConsumerCpu();
+                stage[0] = 1;
+                helper.assertTrue(false, "Waiting for the consumer CPU");
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.consumerCpuReady(), "Waiting for the consumer CPU to join its Grid");
+                helper.assertTrue(fixture.consumerService().getCraftables(key -> true)
+                                .contains(CraftingBindingFixture.outputKey()),
+                        "Waiting for the consumer to list the provider's craftable output");
+                fixture.beginOnConsumer(4);
+                stage[0] = 2;
+                helper.assertTrue(false, "Waiting for the consumer's plan");
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                helper.assertTrue(fixture.submitOnConsumer(), "The consumer must start the job on its own CPU");
+                stage[0] = 3;
+                helper.assertTrue(false, "Waiting for the provider job");
+            }
+            if (stage[0] == 3) {
+                helper.assertValueEqual(fixture.busyCpuCount(), 1L, "Waiting for the provider job to start");
+                // Hold the provider's job, so it is still running when its requester's host reloads.
+                fixture.suspendCpu();
+                RemoteCraftingService.closeLevel(helper.getLevel());
+                var saved = fixture.reloadBridgeHost();
+                savedLink[0] = saved.toString().contains("ae2federation_crafting_");
+                helper.assertTrue(savedLink[0], "The Bridge must save the provider job's link with its host");
+                reloadedAt[0] = helper.getTick();
+                stage[0] = 4;
+                helper.assertTrue(false, "Waiting for the reloaded Bridge");
+            }
+            if (stage[0] == 4) {
+                // Past AE2's 60-tick window for a missing requester, and long enough for the service to settle.
+                helper.assertTrue(helper.getTick() >= reloadedAt[0] + 200, "Waiting through the reload window");
+                helper.assertValueEqual(fixture.busyCpuCount(), 1L,
+                        "The provider job must survive its requester's reload");
+                helper.assertValueEqual(fixture.busyConsumerCpuCount(), 1L, "The consumer's CPU must keep waiting");
+                fixture.resumeCpu();
+                stage[0] = 5;
+                helper.assertTrue(false, "Waiting for the resumed provider job");
+            }
+            helper.assertValueEqual(fixture.consumerPhysicalOutputAmount(), 4L,
+                    "Four sticks must arrive through the reloaded requester");
+            helper.assertValueEqual(fixture.physicalMaterialAmount(), 0L, "Only the job's two planks may be used");
+            helper.assertValueEqual(fixture.busyConsumerCpuCount() + fixture.busyCpuCount(), 0L,
+                    "Both jobs must finish");
+            helper.assertValueEqual(RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key()), 0,
+                    "The restarted service must not request the job again");
+            NativeCraftingEvidence.write("craftingremotereload", 14, Map.of(
+                    "savedLink", Boolean.toString(savedLink[0]),
+                    "resultInserted", Long.toString(fixture.consumerPhysicalOutputAmount()),
+                    "providerMaterialAfter", Long.toString(fixture.physicalMaterialAmount()),
+                    "resubmissions", Integer.toString(
+                            RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key())),
+                    "busyCpus", Long.toString(fixture.busyConsumerCpuCount() + fixture.busyCpuCount())));
             fixture.close();
         });
     }

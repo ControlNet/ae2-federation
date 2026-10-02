@@ -56,6 +56,12 @@ public final class RemoteCraftingService implements AutoCloseable {
     static final int DEMAND_TICKS = 5;
     /** Ticks before a provider plan that could not run is tried again. */
     static final int RETRY_TICKS = 40;
+    /**
+     * Ticks after the service starts (a server start or a level load) in which no provider job is started or
+     * cancelled: requesters and CPUs in chunks loaded later reconnect first. Longer than the 60 ticks AE2 waits for a
+     * missing requester before it cancels the job itself.
+     */
+    static final int STARTUP_TICKS = 100;
 
     private final ServerLevel level;
     private final Map<PolicyKey, Projected> projections = new HashMap<>();
@@ -176,6 +182,7 @@ public final class RemoteCraftingService implements AutoCloseable {
 
     /** Starts provider jobs for what consumers wait for, and cancels them for what they no longer wait for. */
     private void serveDemand() {
+        if (ticks < STARTUP_TICKS) return;
         var inFlight = new HashMap<Demand, Long>();
         var running = new HashMap<Demand, List<RemoteCraftingRequester.Job>>();
         for (var requester : List.copyOf(requesters)) {
@@ -207,9 +214,11 @@ public final class RemoteCraftingService implements AutoCloseable {
             bindings.sort(Comparator.comparing(binding -> binding.relationship().key().providerNetworkId().value()));
             start(demand, bindings.getFirst(), missing);
         });
-        // A key no longer waited for on two looks in a row: its consumer job ended or was cancelled.
+        // A key no longer waited for on two looks in a row: its consumer job ended or was cancelled. A consumer that
+        // is not reachable (unloaded, or its binding is being rebuilt) is not asked; the job's output then stays
+        // with the provider (RemoteCraftingRequester), and a consumer still waiting later is served from it.
         running.forEach((demand, jobs) -> {
-            if (waiting.contains(demand)) {
+            if (waiting.contains(demand) || !consumers.containsKey(demand.consumer())) {
                 idle.remove(demand);
             } else if (!idle.add(demand)) {
                 jobs.forEach(job -> job.link.cancel());

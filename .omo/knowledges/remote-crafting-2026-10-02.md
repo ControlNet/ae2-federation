@@ -59,8 +59,30 @@ craftables, and the consumer could not request them. `crafting.remote-request` f
 - Assert submission counts per `PolicyKey` (`submissionCount(key)`), not level-wide: `--manifest` runs tests
   concurrently in one level.
 
+## Reload and unreachable consumers
+
+- `crafting.remote-reload` reloads the Bridge's cable bus in one tick (`saveWithFullMetadata` → AIR → same state →
+  `loadWithComponents`, `PolicyBridgeFixtures.reloadFirstBridgeHost`) and calls `RemoteCraftingService.closeLevel`
+  while the provider CPU is suspended.
+- It first failed: right after the restart no binding was published yet, so the consumer's demand looked absent and
+  `serveDemand` cancelled the reloaded job (traced with temporary output, since removed). The same rule would have
+  cancelled provider jobs whenever a consumer's chunk unloaded.
+- Fixes: only a reachable consumer (one with a current projection) is judged for cancellation; and for
+  `STARTUP_TICKS = 100` after the service starts it starts and cancels nothing (AE2's nexus cancels a job whose
+  requester stays missing for more than 60 ticks, so a job not reconnected by then is gone anyway).
+- `PartHelper.getPart(IPartItem, level, pos, side)` re-resolves the part after the reload; the fixture's old part
+  reference is dead.
+
+## federationVerify group
+
+- `remoteCraftingCases` / `verifyRemoteCraftingEvidence` / `federationRemoteCraftingEvidenceConsumer` in
+  `gradle/federation-qa.gradle`. Each test writes `NativeCraftingEvidence` facts from measured values; the verifier
+  checks the exact schema, the `AE2F_CRAFT_NATIVE_ENTRY` trace, assertion counts (must match the manifest), and the
+  expected outcome per field. A mutation of one expected value was rejected with "outcome mismatch".
+- No mutation self-test task and no persisted `.omo/evidence` receipt, unlike Tasks 26–31.
+
 ## Not covered
 
-- The reload of a running remote job (the requester's NBT round trip) has no GameTest yet.
+- The reload test keeps both CPUs loaded; a full world restart (CPU jobs reloaded too) is not exercised.
 - A provider must have its own patterns and CPU to be bound (`NativeCraftingBackendRegistry.discover`). A network
   with neither cannot provide Crafting at all, so it cannot pass on another network's craftables either.
