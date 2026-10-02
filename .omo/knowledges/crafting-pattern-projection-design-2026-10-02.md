@@ -169,6 +169,25 @@ These are separate and both stay:
 - A crafting rule uses another network's existing pattern providers, including its Federation Provider lanes. Their
   returns land on that network, so the router carries them back.
 
+## Lessons from GTLCore (commit 208cbe9, Forge 1.20.1, LGPLv3: ideas only, no code copied)
+
+- **Pass the provider's own pattern objects.** Some providers advertise modified `IPatternDetails` (GTLCore's ME
+  pattern buffer strips the GT circuit) and check `containsKey(details)` on push. So:
+  - the projection advertises exactly the objects R's `getAvailablePatterns()` returns;
+  - `pushPattern` maps the incoming details to R's own object: first by `equals`, then by `getDefinition()`. The second
+    case covers a CPU job restored after a reload, which decodes the pattern again from its item.
+- **Providers may never be busy.** GTLCore's buffer always reports `isBusy() == false` and buffers every push. Network
+  1's CPU will push as fast as it can, and outputs can come back many ticks later and in bulk. This is another reason
+  the ledger is persisted and keeps no time limit.
+- **Same grid means no projection.** If two paired networks become one grid (a cable or another mod joins them), C ==
+  R's grid, and the projection is skipped.
+- **Mount cost.** AE2 rebuilds the cached stacks every tick while a watcher exists, and each rebuild calls every
+  mount's `getAvailableStacks`. Where a mount can, it should answer from the remote grid's public
+  `IStorageService.getCachedInventory()`. Check this for the existing storage mount when it comes up; it is not part of
+  this redesign.
+- GTLCore's AE2 mixins (planner time slicing, `StorageService.updateCachedStacks` throttling, CPU batch push for its
+  own providers) show where AE2 hurts at scale. None is needed for this design.
+
 ## Deferred: local-first storage preference
 
 AE2 has no "local vs remote" notion, only storage priority. One number governs both directions in `NetworkStorage`:
