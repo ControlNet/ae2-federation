@@ -25,9 +25,12 @@ fixture and the binding fixture name the first unmet condition in the timeout me
 
 ## Still open
 
-- The Task 30 verifier then fails with `benchmark capture identity is stale`. `tests/benchmarks/*/baseline.json` record
-  the `gradle/verification-metadata.xml` sha from before e8eb052; all three baselines (mixed, processing, ui) are stale the
-  same way. Their policy is `explicit-edit-and-rerun-required`, so refreshing them is the user's call.
+- Resolved in cb2c32a (user-approved): the three `tests/benchmarks/*/baseline.json` held the
+  `gradle/verification-metadata.xml` sha from before e8eb052, which only added the AE2 19.2.9 checksums, so their
+  `dependencyLockSha256` and `captureIdentitySha256` were refreshed. `ui-small` was also broken since 0063940: it projected
+  the Bridge's domain, which no longer holds the Provider or Endpoint. It now projects `processingScope()`, which has one
+  member network and one physical edge. The baseline `productionProjection` and the Task 34 report builder were updated
+  to match. All three benchmarks and the Task 30/34 self-tests pass.
 - Product question (inferred, not verified in isolation): the storage and crafting observers forget a Grid during a
   transient unconfirmed identity and re-learn it only from a bridge/router refresh. A split that heals without a block update beside a Federation block may leave the
   rule unobserved.
