@@ -84,6 +84,10 @@ public final class FederationTheme {
     /** A locked switch reads at about half strength against the dark panel. */
     public static final IGuiTexture SWITCH_OFF_LOCKED = tinted(AE2_CHECKBOX, 0, 28, 22, 12, 0x8cffffff);
     public static final IGuiTexture SWITCH_ON_LOCKED = tinted(AE2_CHECKBOX, 0, 40, 22, 12, 0x8cffffff);
+    /** A re-exporting rule: AE2's on switch with only its track green; the knob and outline stay AE2's. */
+    public static final IGuiTexture SWITCH_REEXPORT = reexport(0, SwitchTrackOverlay.ON, 0xff);
+    public static final IGuiTexture SWITCH_REEXPORT_HOVER = reexport(22, SwitchTrackOverlay.ON_HOVER, 0xff);
+    public static final IGuiTexture SWITCH_REEXPORT_LOCKED = reexport(0, SwitchTrackOverlay.ON, 0x8c);
     /** A flat outlined button on a dark panel, such as a rule's "Map ›" link. */
     public static final IGuiTexture LINK = painted((pen, x, y, width, height) -> {
         pen.rect(x, y, width, 1, EDGE);
@@ -155,6 +159,8 @@ public final class FederationTheme {
         provider.addResource("SWITCH_ON", SWITCH_ON);
         provider.addResource("SWITCH_OFF_LOCKED", SWITCH_OFF_LOCKED);
         provider.addResource("SWITCH_ON_LOCKED", SWITCH_ON_LOCKED);
+        provider.addResource("SWITCH_REEXPORT", SWITCH_REEXPORT);
+        provider.addResource("SWITCH_REEXPORT_LOCKED", SWITCH_REEXPORT_LOCKED);
         provider.addResource("SCROLL_BAR", SCROLL_BAR);
         provider.addResource("ROW_RULE", ROW_RULE);
         provider.addResource("LINK", LINK);
@@ -187,8 +193,13 @@ public final class FederationTheme {
         return new SnappedSprite(SpriteTexture.of(image).setSprite(x, y, width, height).setColor(color));
     }
 
+    private static IGuiTexture reexport(int spriteX, int[][] track, int alpha) {
+        return new RecolouredSwitch(SpriteTexture.of(AE2_CHECKBOX).setSprite(spriteX, 40, 22, 12)
+                .setColor(alpha << 24 | 0xffffff), track, alpha);
+    }
+
     /** An AE2 sprite drawn with its edges on whole screen pixels; a rotated or skewed pose draws it as laid out. */
-    private static final class SnappedSprite implements IGuiTexture {
+    private static class SnappedSprite implements IGuiTexture {
         private final SpriteTexture sprite;
 
         private SnappedSprite(SpriteTexture sprite) {
@@ -200,13 +211,46 @@ public final class FederationTheme {
                 float width, float height, float partialTicks) {
             var pose = target.pose().last().pose();
             if (pose.m01() != 0 || pose.m10() != 0 || pose.m00() == 0 || pose.m11() == 0) {
-                sprite.draw(target, mouseX, mouseY, x, y, width, height, partialTicks);
+                drawAt(target, mouseX, mouseY, x, y, width, height, partialTicks);
                 return;
             }
             double guiScale = net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale();
             float[] horizontal = PixelSnap.span(x, width, pose.m00(), pose.m30(), guiScale);
             float[] vertical = PixelSnap.span(y, height, pose.m11(), pose.m31(), guiScale);
-            sprite.draw(target, mouseX, mouseY, horizontal[0], vertical[0], horizontal[1], vertical[1], partialTicks);
+            drawAt(target, mouseX, mouseY, horizontal[0], vertical[0], horizontal[1], vertical[1], partialTicks);
+        }
+
+        void drawAt(net.minecraft.client.gui.GuiGraphics target, float mouseX, float mouseY, float x, float y,
+                float width, float height, float partialTicks) {
+            sprite.draw(target, mouseX, mouseY, x, y, width, height, partialTicks);
+        }
+    }
+
+    /**
+     * AE2's on switch with its track pixels painted over in green, scaled into the same snapped rectangle as the
+     * sprite so each painted pixel covers exactly one of the sprite's.
+     */
+    private static final class RecolouredSwitch extends SnappedSprite {
+        private final int[][] track;
+        private final int alpha;
+
+        private RecolouredSwitch(SpriteTexture sprite, int[][] track, int alpha) {
+            super(sprite);
+            this.track = track;
+            this.alpha = alpha;
+        }
+
+        @Override
+        void drawAt(net.minecraft.client.gui.GuiGraphics target, float mouseX, float mouseY, float x, float y,
+                float width, float height, float partialTicks) {
+            super.drawAt(target, mouseX, mouseY, x, y, width, height, partialTicks);
+            float unitX = width / 22;
+            float unitY = height / 12;
+            for (var rect : track) {
+                int color = alpha << 24 | SwitchTrackOverlay.color(rect[4]) & 0xffffff;
+                DrawerHelper.drawSolidRect(target, x + rect[0] * unitX, y + rect[1] * unitY, rect[2] * unitX,
+                        rect[3] * unitY, color);
+            }
         }
     }
 

@@ -42,6 +42,7 @@ import space.controlnet.ae2federation.persistence.NetworkNameBook;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyRevision;
+import space.controlnet.ae2federation.policy.RuleMode;
 
 /**
  * The domain seen as networks: a card per ME network, one edge per network pair with configured rules, and a pair
@@ -1836,27 +1837,49 @@ final class FederationTopologyView {
         stateLabel.addClass("policy-state");
         stateLabel.setId("policy_state_" + suffix);
         head.addChildren(name, stateLabel);
-        boolean on = rule != null && rule.get("enabled").getAsBoolean();
+        var mode = mode(rule);
+        boolean on = mode.enabled();
         var toggle = new Button();
         toggle.noText();
         toggle.addClass("policy-switch");
         toggle.setId("policy_switch_" + suffix);
         if (on) toggle.addClass("on");
-        toggle.buttonStyle(style -> style.baseTexture(on ? FederationTheme.SWITCH_ON : FederationTheme.SWITCH_OFF)
-                .hoverTexture(on ? FederationTheme.SWITCH_ON_HOVER : FederationTheme.SWITCH_OFF_HOVER)
-                .pressedTexture(on ? FederationTheme.SWITCH_ON_HOVER : FederationTheme.SWITCH_OFF_HOVER));
+        if (mode == RuleMode.REEXPORT) toggle.addClass("reexport");
+        var base = switch (mode) {
+            case DISABLED -> FederationTheme.SWITCH_OFF;
+            case ENABLED -> FederationTheme.SWITCH_ON;
+            case REEXPORT -> FederationTheme.SWITCH_REEXPORT;
+        };
+        var hover = switch (mode) {
+            case DISABLED -> FederationTheme.SWITCH_OFF_HOVER;
+            case ENABLED -> FederationTheme.SWITCH_ON_HOVER;
+            case REEXPORT -> FederationTheme.SWITCH_REEXPORT_HOVER;
+        };
+        toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
         toggle.setActive(editable);
         // A locked switch is drawn faded by its LSS texture; the read-only note says why it is locked.
-        toggle.style(style -> style.tooltips(ruleSummary(capability, rule), runtimeText(rule)));
+        toggle.style(style -> style.tooltips(switchTooltip(capability, rule, mode).toArray(Component[]::new)));
         var observed = rule != null ? rule.get("revision").getAsLong() : revisions.getOrDefault(ruleKey, 0L);
+        var policyKey = new PolicyKey(NetworkId.parse(consumer.id()), NetworkId.parse(provider.id()), capability);
+        // Left click steps forward and right click back, as AE2's setting buttons do, so a player can switch a rule
+        // off without passing through re-export. Shared energy has only off and on.
+        boolean threeState = RuleMode.REEXPORT.allowedFor(capability);
         toggle.setOnClick(event -> {
             if (!editable) return;
-            setPolicy.accept(new PolicySwitchTarget(new PolicyKey(NetworkId.parse(consumer.id()),
-                    NetworkId.parse(provider.id()), capability), !on, new PolicyRevision(observed)).encode());
+            var next = threeState ? mode.next() : on ? RuleMode.DISABLED : RuleMode.ENABLED;
+            setPolicy.accept(new PolicySwitchTarget(policyKey, next, new PolicyRevision(observed)).encode());
         });
+        if (threeState) {
+            toggle.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
+                if (event.button != 1 || !editable || !toggle.isActive()) return;
+                com.lowdragmc.lowdraglib2.gui.util.UISoundUtils.playButtonClickSound();
+                setPolicy.accept(new PolicySwitchTarget(policyKey, mode.previous(), new PolicyRevision(observed)).encode());
+            });
+        }
         head.addChild(toggle);
         var state = ruleState(rule);
-        var text = tr("rule_state." + state.code(), observed).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
+        var stateCode = state.code() + (mode == RuleMode.REEXPORT ? "_reexport" : "");
+        var text = tr("rule_state." + stateCode, observed).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
         if (flow != null && on) text.append("\n").append(flowText(flow));
         if (state.explain()) text.append("\n").append(runtimeText(rule).copy().withStyle(
@@ -1869,8 +1892,8 @@ final class FederationTopologyView {
     }
 
     /**
-     * "Operations [view] [insert] [extract]  Filter: all resources  Re-export: off", as the design lists a storage
-     * rule's terms: a green chip per allowed operation, then the filter and re-export in muted text.
+     * "Operations [view] [insert] [extract]", as the design lists a storage rule's terms: a green chip per allowed
+     * operation. Re-export is the switch's third state.
      */
     private static UIElement terms(String suffix, JsonObject terms) {
         var font = net.minecraft.client.Minecraft.getInstance().font;
@@ -1893,14 +1916,6 @@ final class FederationTopologyView {
             chip.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.OK)));
             line.addChild(chip);
         }
-        var filter = terms.get("filter").getAsString();
-        var filterText = filter.equals("all") ? tr("filter.all") : tr("filter." + filter, terms.get("filterEntries").getAsInt());
-        var rest = tr("terms_rest", filterText, tr(terms.get("reexport").getAsBoolean() ? "reexport.on" : "reexport.off"));
-        var restLabel = word.apply(rest, FederationTheme.DARK_MUTED);
-        restLabel.addClass("policy-terms");
-        restLabel.setId("policy_terms_" + suffix);
-        restLabel.layout(style -> style.marginLeft(3));
-        line.addChild(restLabel);
         return line;
     }
 
@@ -1942,6 +1957,30 @@ final class FederationTopologyView {
         return false;
     }
 
+    private static RuleMode mode(JsonObject rule) {
+        if (rule == null || !rule.get("enabled").getAsBoolean()) return RuleMode.DISABLED;
+        return rule.has("reexport") && rule.get("reexport").getAsBoolean() ? RuleMode.REEXPORT : RuleMode.ENABLED;
+    }
+
+    /**
+     * The rule's summary and runtime, then, for a rule that can be passed on, its three states with the current one
+     * marked and how the mouse buttons step through them.
+     */
+    private static List<Component> switchTooltip(PolicyCapability capability, JsonObject rule, RuleMode mode) {
+        var lines = new ArrayList<Component>();
+        lines.add(ruleSummary(capability, rule));
+        lines.add(runtimeText(rule));
+        if (!RuleMode.REEXPORT.allowedFor(capability)) return lines;
+        for (var each : RuleMode.values()) {
+            var name = tr("mode." + each.name().toLowerCase(java.util.Locale.ROOT));
+            lines.add(each == mode ? tr("mode.current", name).withStyle(net.minecraft.ChatFormatting.WHITE)
+                    : tr("mode.other", name).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        }
+        lines.add(tr("mode.hint").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        lines.add(tr("mode.reexport_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        return lines;
+    }
+
     private static RuleState ruleState(JsonObject rule) {
         if (rule == null) return new RuleState("unconfigured", FederationTheme.TEXT_MUTED, false);
         if (!rule.get("enabled").getAsBoolean()) return new RuleState("off", FederationTheme.DARK_MUTED, false);
@@ -1958,7 +1997,11 @@ final class FederationTopologyView {
     private static Component ruleSummary(PolicyCapability capability, JsonObject rule) {
         return Component.translatable("ae2federation.ui.domain.rule", capabilityName(capability),
                 rule == null ? Component.translatable("ae2federation.ui.domain.rule.unconfigured")
-                        : Component.translatable("ae2federation.ui.domain.rule." + (rule.get("enabled").getAsBoolean() ? "on" : "off")),
+                        : Component.translatable("ae2federation.ui.domain.rule." + switch (mode(rule)) {
+                            case DISABLED -> "off";
+                            case ENABLED -> "on";
+                            case REEXPORT -> "reexport";
+                        }),
                 rule == null ? 0 : rule.get("revision").getAsLong());
     }
 

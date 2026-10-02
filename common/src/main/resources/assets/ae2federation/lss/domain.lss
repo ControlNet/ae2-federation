@@ -108,6 +108,7 @@
 .domain-panel .policy-switch { width: 22; height: 12; padding-all: 0; flex-shrink: 0; }
 .domain-panel button.policy-switch.__disabled__ { base-background: built-in(federation:SWITCH_OFF_LOCKED); }
 .domain-panel button.policy-switch.on.__disabled__ { base-background: built-in(federation:SWITCH_ON_LOCKED); }
+.domain-panel button.policy-switch.on.reexport.__disabled__ { base-background: built-in(federation:SWITCH_REEXPORT_LOCKED); }
 
 .domain-footer { width: 100%; height: 11; flex-shrink: 0; flex-direction: row; }
 .domain-status { flex: 1; min-width: 0; height: 10; text-color: #ff6d6a82; }

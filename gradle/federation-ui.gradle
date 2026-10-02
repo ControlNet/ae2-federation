@@ -229,6 +229,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || !captures.any { it.path.contains('ui-network-location') }
             || !captures.any { it.path.contains('world-network-highlight') }
             || !captures.any { it.path.contains('ui-graph-network-renamed') }
+            || !captures.any { it.path.contains('ui-policy-reexport') }
             || !controlsOutcome.visibleStatus.startsWith('Server confirmed: Storage rule ')
             || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
             || !captures.any { it.path.contains('world-router-overview') }

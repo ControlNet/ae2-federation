@@ -66,6 +66,43 @@ final class AeControlSpritesTest {
     }
 
     @Test
+    void theReexportSwitchRecoloursExactlyTheOnSwitchsBlueTrack() throws IOException {
+        var checkbox = ae2Image("textures/guis/checkbox.png");
+        // AE2's on switch at (0,40) and its hover at (22,40): the overlay covers every blue pixel and nothing else.
+        assertOverlayIsTheTrack(checkbox, 0, 40, SwitchTrackOverlay.ON);
+        assertOverlayIsTheTrack(checkbox, 22, 40, SwitchTrackOverlay.ON_HOVER);
+        var theme = Files.readString(REPOSITORY_ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/client/menu/FederationTheme.java"));
+        // Hover is chosen in code, as for the other switches; the LSS picks the base and locked textures.
+        for (var name : new String[] {"SWITCH_REEXPORT", "SWITCH_REEXPORT_LOCKED"}) {
+            assertTrue(theme.contains("provider.addResource(\"" + name + "\", " + name + ")"),
+                    "The theme must register " + name + " for LSS");
+        }
+    }
+
+    private static void assertOverlayIsTheTrack(BufferedImage image, int x, int y, int[][] overlay) {
+        var covered = new boolean[22][12];
+        for (var rect : overlay) {
+            for (int column = rect[0]; column < rect[0] + rect[2]; column++) {
+                for (int row = rect[1]; row < rect[1] + rect[3]; row++) {
+                    int expected = rect[4] == SwitchTrackOverlay.TRACK ? 0xff9cd3ff : 0xffdaffff;
+                    assertEquals(expected, image.getRGB(x + column, y + row),
+                            "The overlay paints a pixel that is not AE2's track at " + column + "," + row);
+                    covered[column][row] = true;
+                }
+            }
+        }
+        for (int column = 0; column < 22; column++) {
+            for (int row = 0; row < 12; row++) {
+                int argb = image.getRGB(x + column, y + row);
+                if (argb == 0xff9cd3ff || argb == 0xffdaffff) {
+                    assertTrue(covered[column][row], "AE2's track pixel " + column + "," + row + " stays blue");
+                }
+            }
+        }
+    }
+
+    @Test
     void spritesAreDrawnOnWholeScreenPixels() {
         // A button laid out at y 254.25 with height 17.5, at GUI scale 2: its edges move to screen rows 509 and 544.
         var span = PixelSnap.span(254.25f, 17.5f, 1, 0, 2);

@@ -269,7 +269,24 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         TaskFifteenWorldFixture.policyRevision(context)
                                 > context.<Long>get("task33.policyBefore"))
                 .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
-                .waitForTextContains("#policy_terms_0_storage", "Filter: all resources · Re-export: off")
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled with re-export")
+                .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "re-export")
+                .check("the third state is the re-export switch", context -> context.el(
+                        TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                        .hasClass("reexport"))
+                .frames(2).screenshot("ui-policy-reexport")
+                .step("right click steps back to enabled", context -> {
+                    var bounds = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).bounds();
+                    context.input().mouseDown(bounds.centerX(), bounds.centerY(), 1);
+                    context.input().mouseUp(bounds.centerX(), bounds.centerY(), 1);
+                })
+                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled · revision")
+                .check("the switch is plain on again", context -> {
+                    var toggle = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                            .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+                    return toggle.hasClass("on") && !toggle.hasClass("reexport");
+                })
                 .check("each allowed operation is a chip", context -> context.all("#policy_terms_row_0_storage .term-chip").stream()
                         .map(chip -> chip.text()).toList().equals(java.util.List.of("view", "insert", "extract")))
                 .server("record authoritative policy result", context -> {

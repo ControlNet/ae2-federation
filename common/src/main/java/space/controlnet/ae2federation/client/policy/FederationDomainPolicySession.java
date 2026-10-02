@@ -29,6 +29,7 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.provider.PatternSlotHandle;
@@ -358,6 +359,7 @@ public final class FederationDomainPolicySession {
                     row.addProperty("provider", record.key().providerNetworkId().value().toString());
                     row.addProperty("capability", record.key().capability().name());
                     row.addProperty("enabled", record.rule().enabled());
+                    row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                     row.addProperty("revision", record.revision().value());
                     row.add("terms", termsJson(record.rule()));
                     row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
@@ -902,24 +904,24 @@ public final class FederationDomainPolicySession {
         // Energy is shared per pair, whichever way a rule names it: switching it off turns off the other way too.
         var reverse = key.capability() == PolicyCapability.ME_POWER && !target.enabled()
                 ? new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), key.capability()) : null;
-        boolean reverseOn = reverse != null && enabled(service, reverse);
-        if (enabled(service, key) != target.enabled() && !apply(service, key, revision, target.enabled())) return true;
+        boolean reverseOn = reverse != null && mode(service, reverse).enabled();
+        if (mode(service, key) != target.mode() && !apply(service, key, revision, target.mode())) return true;
         if (reverseOn) {
-            apply(service, reverse, service.revision(reverse), false);
-        } else if (enabled(service, key) == target.enabled() && acknowledgmentId.isEmpty()) {
+            apply(service, reverse, service.revision(reverse), RuleMode.DISABLED);
+        } else if (mode(service, key) == target.mode() && acknowledgmentId.isEmpty()) {
             state.selectionChanged();
         }
         return true;
     }
 
-    private static boolean enabled(PolicyService service, PolicyKey key) {
-        return service.configured(key).map(record -> record.rule().enabled()).orElse(false);
+    private static RuleMode mode(PolicyService service, PolicyKey key) {
+        return service.configured(key).map(record -> RuleMode.of(record.rule())).orElse(RuleMode.DISABLED);
     }
 
-    /** Switches {@code key}'s rule; false when the edit was refused as a conflict. */
-    private boolean apply(PolicyService service, PolicyKey key, PolicyRevision revision, boolean enabled) {
+    /** Sets {@code key}'s rule to {@code mode}; false when the edit was refused as a conflict. */
+    private boolean apply(PolicyService service, PolicyKey key, PolicyRevision revision, RuleMode mode) {
         var rule = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
-                .withEnabled(enabled);
+                .withMode(mode);
         var result = service.edit(new PolicyEdit(key, revision, rule));
         if (result instanceof PolicyMutationResult.Accepted accepted) {
             expectedRevision = accepted.revision();
@@ -1022,6 +1024,7 @@ public final class FederationDomainPolicySession {
                         row.addProperty("provider", record.key().providerNetworkId().value().toString());
                         row.addProperty("capability", record.key().capability().name());
                         row.addProperty("enabled", record.rule().enabled());
+                        row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                         row.addProperty("revision", record.revision().value());
                         row.add("terms", termsJson(record.rule()));
                         row.addProperty("domain", domainId.value());
@@ -1436,10 +1439,15 @@ public final class FederationDomainPolicySession {
     /** "Server confirmed: Storage rule on · revision 12", from the rule the server just accepted. */
     private Component acceptedText() {
         var key = selection.key();
-        var enabled = PolicyService.get(level).configured(key).map(record -> record.rule().enabled()).orElse(false);
+        var mode = mode(PolicyService.get(level), key);
+        var state = switch (mode) {
+            case DISABLED -> "off";
+            case ENABLED -> "on";
+            case REEXPORT -> "reexport";
+        };
         return Component.translatable("ae2federation.ui.domain.status.accepted",
                 Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)),
-                Component.translatable("ae2federation.ui.domain.status.accepted." + (enabled ? "on" : "off")),
+                Component.translatable("ae2federation.ui.domain.status.accepted." + state),
                 expectedRevision.value());
     }
 

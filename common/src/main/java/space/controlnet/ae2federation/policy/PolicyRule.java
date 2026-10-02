@@ -22,4 +22,8 @@ public record PolicyRule(boolean enabled, Set<PolicyOperation> operations, Polic
     public PolicyRule withEnabled(boolean nextEnabled) {
         return new PolicyRule(nextEnabled, operations, filter, allowReexport);
     }
+
+    public PolicyRule withMode(RuleMode mode) {
+        return new PolicyRule(mode.enabled(), operations, filter, mode == RuleMode.REEXPORT);
+    }
 }
