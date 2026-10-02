@@ -29,6 +29,7 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleLinks;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
@@ -51,6 +52,8 @@ public final class FederationDomainPolicySession {
     private PolicyRevision expectedRevision = PolicyRevision.NONE;
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
+    /** Rules the last accepted switch changed along with the selected one, named in the status line. */
+    private List<RuleLinks.Change> linkedChanges = List.of();
     private int mappingProviderIndex;
     /** The Provider being edited, so a Provider added or removed elsewhere in the domain does not change it. */
     private space.controlnet.ae2federation.processing.provider.ProviderIdentity mappingProviderIdentity;
@@ -864,15 +867,13 @@ public final class FederationDomainPolicySession {
         }
         var service = PolicyService.get(level);
         var key = selection.key();
-        var current = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()));
-        var enabled = service.configured(key).isEmpty() || !current.enabled();
-        var result = service.edit(new PolicyEdit(key, expectedRevision, current.withEnabled(enabled)));
-        if (result instanceof PolicyMutationResult.Accepted accepted) {
-            expectedRevision = accepted.revision();
-            state.accepted();
-            acknowledgmentId = "policy-" + accepted.revision().value();
-        } else if (result instanceof PolicyMutationResult.Rejected rejected) {
-            expectedRevision = rejected.currentRevision();
+        if (!service.revision(key).equals(expectedRevision)) {
+            expectedRevision = service.revision(key);
+            reject(PolicyEditorSessionState.Status.STALE_REVISION);
+            return;
+        }
+        var enabled = service.configured(key).isEmpty() || !mode(service, key).enabled();
+        if (!applyLinked(service, key, enabled ? RuleMode.ENABLED : RuleMode.DISABLED)) {
             reject(PolicyEditorSessionState.Status.STALE_REVISION);
         }
     }
@@ -901,39 +902,38 @@ public final class FederationDomainPolicySession {
             state.conflicted();
             return true;
         }
-        // Energy is shared per pair, whichever way a rule names it: switching it off turns off the other way too.
-        var reverse = key.capability() == PolicyCapability.ME_POWER && !target.enabled()
-                ? new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), key.capability()) : null;
-        boolean reverseOn = reverse != null && mode(service, reverse).enabled();
-        if (mode(service, key) != target.mode() && !apply(service, key, revision, target.mode())) return true;
-        if (reverseOn) {
-            apply(service, reverse, service.revision(reverse), RuleMode.DISABLED);
-        } else if (mode(service, key) == target.mode() && acknowledgmentId.isEmpty()) {
+        if (!applyLinked(service, key, target.mode())) state.conflicted();
+        return true;
+    }
+
+    /**
+     * Sets {@code key} to {@code mode} with the rules linked to it, in one edit: a crafting rule brings its storage
+     * rule, and energy is one pool per pair. False when the edit was refused because a rule changed meanwhile.
+     */
+    private boolean applyLinked(PolicyService service, PolicyKey key, RuleMode mode) {
+        var edits = RuleLinks.of(key, mode, other -> mode(service, other)).stream()
+                .filter(change -> mode(service, change.key()) != change.mode())
+                .map(change -> new PolicyEdit(change.key(), service.revision(change.key()),
+                        service.configured(change.key()).map(record -> record.rule())
+                                .orElseGet(() -> defaults(change.key().capability())).withMode(change.mode())))
+                .toList();
+        linkedChanges = List.of();
+        if (edits.isEmpty()) {
             state.selectionChanged();
+            return true;
         }
+        var result = service.editAll(edits);
+        expectedRevision = service.revision(key);
+        if (!(result instanceof PolicyMutationResult.Accepted accepted)) return false;
+        state.accepted();
+        acknowledgmentId = "policy-" + accepted.revision().value();
+        linkedChanges = edits.stream().filter(edit -> !edit.key().equals(key))
+                .map(edit -> new RuleLinks.Change(edit.key(), RuleMode.of(edit.rule()))).toList();
         return true;
     }
 
     private static RuleMode mode(PolicyService service, PolicyKey key) {
         return service.configured(key).map(record -> RuleMode.of(record.rule())).orElse(RuleMode.DISABLED);
-    }
-
-    /** Sets {@code key}'s rule to {@code mode}; false when the edit was refused as a conflict. */
-    private boolean apply(PolicyService service, PolicyKey key, PolicyRevision revision, RuleMode mode) {
-        var rule = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
-                .withMode(mode);
-        var result = service.edit(new PolicyEdit(key, revision, rule));
-        if (result instanceof PolicyMutationResult.Accepted accepted) {
-            expectedRevision = accepted.revision();
-            state.accepted();
-            acknowledgmentId = "policy-" + accepted.revision().value();
-            return true;
-        }
-        if (result instanceof PolicyMutationResult.Rejected rejected) {
-            expectedRevision = rejected.currentRevision();
-            state.conflicted();
-        }
-        return false;
     }
 
     /**
@@ -1436,19 +1436,32 @@ public final class FederationDomainPolicySession {
         };
     }
 
-    /** "Server confirmed: Storage rule on · revision 12", from the rule the server just accepted. */
+    /**
+     * "Server confirmed: Crafting rule on · revision 12 · also Storage rule on", from the rule the server just accepted
+     * and the rules linked to it.
+     */
     private Component acceptedText() {
         var key = selection.key();
-        var mode = mode(PolicyService.get(level), key);
-        var state = switch (mode) {
+        var text = Component.translatable("ae2federation.ui.domain.status.accepted", capabilityName(key),
+                modeName(mode(PolicyService.get(level), key)), expectedRevision.value());
+        for (var linked : linkedChanges) {
+            text.append(Component.translatable("ae2federation.ui.domain.status.accepted.also",
+                    capabilityName(linked.key()), modeName(linked.mode())));
+        }
+        return text;
+    }
+
+    private static Component capabilityName(PolicyKey key) {
+        return Component.translatable("ae2federation.ui.workspace.capability."
+                + key.capability().name().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    private static Component modeName(RuleMode mode) {
+        return Component.translatable("ae2federation.ui.domain.status.accepted." + switch (mode) {
             case DISABLED -> "off";
             case ENABLED -> "on";
             case REEXPORT -> "reexport";
-        };
-        return Component.translatable("ae2federation.ui.domain.status.accepted",
-                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)),
-                Component.translatable("ae2federation.ui.domain.status.accepted." + state),
-                expectedRevision.value());
+        });
     }
 
     public String statusCode() {
@@ -1603,6 +1616,7 @@ public final class FederationDomainPolicySession {
             return;
         }
         acknowledgmentId = "";
+        linkedChanges = List.of();
         refreshExpectedRevision();
     }
 
@@ -1651,6 +1665,7 @@ public final class FederationDomainPolicySession {
     private void reject(PolicyEditorSessionState.Status rejectedState) {
         state.reject(rejectedState);
         acknowledgmentId = "";
+        linkedChanges = List.of();
     }
 
     private static Optional<FederationDomainSnapshot> bridgeFederationDomain(ServerLevel level, BridgeRightClickContext bridge) {

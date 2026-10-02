@@ -320,6 +320,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .server("observe the actual unavailable crafting backend", TaskThirtyThreeWorldFixture::observeUnavailableCraftingBackend)
                 .waitUntil("missing provider is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
                         .contains("Last backend check: No active native crafting provider."))
+                .check("crafting holds its storage rule on", context -> TaskThirtyThreeScenarioSupport.tooltipContains(context,
+                        TaskThirtyThreeScenarioSupport.ruleControl(context, "switch", context.get("net.providerHost"), "storage"),
+                        "Crafting is on and needs this storage rule"))
                 .frames(2).screenshot("ui-policy-runtime-backend-missing")
                 .server("place a real native crafting provider", TaskThirtyThreeWorldFixture::placeNativeCraftingProvider)
                 .waitUntilServer("native provider is active but its grid has no CPU", TaskThirtyThreeWorldFixture::nativeProviderHasNoCpu)

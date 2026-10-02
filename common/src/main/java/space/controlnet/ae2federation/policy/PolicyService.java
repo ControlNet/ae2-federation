@@ -57,6 +57,17 @@ public final class PolicyService {
         return result;
     }
 
+    /** As {@link #edit}, for edits that must land together, such as a crafting rule and the storage rule it needs. */
+    public PolicyMutationResult editAll(java.util.List<PolicyEdit> edits) {
+        var result = data.editAll(edits);
+        if (result instanceof PolicyMutationResult.Accepted) {
+            StorageMountService.reconcileIfPresent(level);
+            CraftingBindingService.reconcileIfPresent(level);
+            EnergySharingService.reconcileIfPresent(level);
+        }
+        return result;
+    }
+
     public PolicyMutationResult delete(PolicyDelete deletion) {
         var result = data.delete(deletion);
         if (result instanceof PolicyMutationResult.Accepted) {

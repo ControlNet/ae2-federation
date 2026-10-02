@@ -1839,6 +1839,10 @@ final class FederationTopologyView {
         head.addChildren(name, stateLabel);
         var mode = mode(rule);
         boolean on = mode.enabled();
+        // Crafting takes the other network's materials through the same direction's storage rule, which therefore
+        // stays on while crafting is: it steps only between its two on states.
+        boolean heldByCrafting = capability == PolicyCapability.STORAGE
+                && mode(rule(key(consumer.id(), provider.id(), PolicyCapability.CRAFTING.name()))).enabled();
         var toggle = new Button();
         toggle.noText();
         toggle.addClass("policy-switch");
@@ -1858,7 +1862,7 @@ final class FederationTopologyView {
         toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
         toggle.setActive(editable);
         // A locked switch is drawn faded by its LSS texture; the read-only note says why it is locked.
-        toggle.style(style -> style.tooltips(switchTooltip(capability, rule, mode).toArray(Component[]::new)));
+        toggle.style(style -> style.tooltips(switchTooltip(capability, rule, mode, heldByCrafting).toArray(Component[]::new)));
         var observed = rule != null ? rule.get("revision").getAsLong() : revisions.getOrDefault(ruleKey, 0L);
         var policyKey = new PolicyKey(NetworkId.parse(consumer.id()), NetworkId.parse(provider.id()), capability);
         // Left click steps forward and right click back, as AE2's setting buttons do, so a player can switch a rule
@@ -1866,14 +1870,16 @@ final class FederationTopologyView {
         boolean threeState = RuleMode.REEXPORT.allowedFor(capability);
         toggle.setOnClick(event -> {
             if (!editable) return;
-            var next = threeState ? mode.next() : on ? RuleMode.DISABLED : RuleMode.ENABLED;
+            var next = !threeState ? on ? RuleMode.DISABLED : RuleMode.ENABLED
+                    : heldByCrafting ? held(mode) : mode.next();
             setPolicy.accept(new PolicySwitchTarget(policyKey, next, new PolicyRevision(observed)).encode());
         });
         if (threeState) {
             toggle.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
                 if (event.button != 1 || !editable || !toggle.isActive()) return;
                 com.lowdragmc.lowdraglib2.gui.util.UISoundUtils.playButtonClickSound();
-                setPolicy.accept(new PolicySwitchTarget(policyKey, mode.previous(), new PolicyRevision(observed)).encode());
+                setPolicy.accept(new PolicySwitchTarget(policyKey,
+                        heldByCrafting ? held(mode) : mode.previous(), new PolicyRevision(observed)).encode());
             });
         }
         head.addChild(toggle);
@@ -1957,6 +1963,11 @@ final class FederationTopologyView {
         return false;
     }
 
+    /** A storage rule crafting depends on steps between enabled and re-export, either way. */
+    private static RuleMode held(RuleMode mode) {
+        return mode == RuleMode.ENABLED ? RuleMode.REEXPORT : RuleMode.ENABLED;
+    }
+
     private static RuleMode mode(JsonObject rule) {
         if (rule == null || !rule.get("enabled").getAsBoolean()) return RuleMode.DISABLED;
         return rule.has("reexport") && rule.get("reexport").getAsBoolean() ? RuleMode.REEXPORT : RuleMode.ENABLED;
@@ -1964,9 +1975,10 @@ final class FederationTopologyView {
 
     /**
      * The rule's summary and runtime, then, for a rule that can be passed on, its three states with the current one
-     * marked and how the mouse buttons step through them.
+     * marked and how the mouse buttons step through them. A storage rule crafting depends on cannot be switched off.
      */
-    private static List<Component> switchTooltip(PolicyCapability capability, JsonObject rule, RuleMode mode) {
+    private static List<Component> switchTooltip(PolicyCapability capability, JsonObject rule, RuleMode mode,
+            boolean heldByCrafting) {
         var lines = new ArrayList<Component>();
         lines.add(ruleSummary(capability, rule));
         lines.add(runtimeText(rule));
@@ -1977,6 +1989,10 @@ final class FederationTopologyView {
                     : tr("mode.other", name).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         }
         lines.add(tr("mode.hint").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        if (heldByCrafting) lines.add(tr("mode.storage_held").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
+        if (capability == PolicyCapability.CRAFTING) {
+            lines.add(tr("mode.crafting_storage").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        }
         lines.add(tr("mode.reexport_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         return lines;
     }

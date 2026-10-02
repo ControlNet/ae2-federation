@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.policy;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,6 +31,50 @@ public final class PolicyStore {
         var configured = new PolicyRecord.Configured(edit.key(), advance(), edit.rule());
         entries.put(edit.key(), configured);
         return new PolicyMutationResult.Accepted(configured);
+    }
+
+    /**
+     * Applies every edit or none: each is checked against its own key's revision first. The result is the first edit's,
+     * or the first stale edit's rejection.
+     */
+    public PolicyMutationResult editAll(List<PolicyEdit> edits) {
+        if (edits.isEmpty()) throw new IllegalArgumentException("No edits");
+        var keys = new HashSet<PolicyKey>();
+        for (var edit : edits) {
+            if (!keys.add(edit.key())) throw new IllegalArgumentException("Two edits of " + edit.key());
+        }
+        for (var edit : edits) {
+            var current = revision(edit.key());
+            if (!current.equals(edit.expectedRevision())) {
+                return new PolicyMutationResult.Rejected(current, PolicyRejection.STALE_REVISION);
+            }
+        }
+        PolicyMutationResult first = null;
+        for (var edit : edits) {
+            var result = edit(edit);
+            if (first == null) first = result;
+        }
+        return first;
+    }
+
+    /**
+     * Switches on the storage rule of every enabled crafting rule's direction, for worlds saved before crafting needed
+     * it: a disabled storage rule keeps its operations, a missing one gets the defaults. Returns how many changed.
+     */
+    public int requireStorageForCrafting() {
+        var missing = entries.values().stream()
+                .filter(record -> record instanceof PolicyRecord.Configured configured
+                        && configured.key().capability() == PolicyCapability.CRAFTING && configured.rule().enabled())
+                .map(record -> new PolicyKey(record.key().consumerNetworkId(), record.key().providerNetworkId(),
+                        PolicyCapability.STORAGE))
+                .filter(storage -> configured(storage).map(record -> !record.rule().enabled()).orElse(true))
+                .toList();
+        for (var storage : missing) {
+            var rule = configured(storage).map(record -> record.rule().withEnabled(true))
+                    .orElseGet(PolicyRule::storageDefaults);
+            edit(new PolicyEdit(storage, revision(storage), rule));
+        }
+        return missing.size();
     }
 
     public PolicyMutationResult delete(PolicyDelete deletion) {
