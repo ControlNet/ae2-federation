@@ -25,10 +25,25 @@ public record CandidateRelationshipRevision(long compilationRevision, long feder
         }
     }
 
-    public boolean isCurrent(long topologyRevision, SourceGeneration currentSourceGeneration,
+    /**
+     * The compiled topology revision is kept for evidence only: a change to a domain the relationship depends on
+     * reaches it through that domain's reference, while a change anywhere else in the level leaves it current.
+     */
+    public boolean isCurrent(SourceGeneration currentSourceGeneration,
             Function<PolicyKey, PolicyRevision> policyLookup, Predicate<FederationDomainReference> federationDomainLookup) {
-        return federationDomainTopologyRevision == topologyRevision && sourceGeneration.equals(currentSourceGeneration)
-                && policyRevisions.entrySet().stream().allMatch(entry -> entry.getValue().equals(policyLookup.apply(entry.getKey())))
-                && federationDomainReferences.stream().allMatch(federationDomainLookup);
+        if (!sourceGeneration.equals(currentSourceGeneration)) {
+            return false;
+        }
+        for (var entry : policyRevisions.entrySet()) {
+            if (!entry.getValue().equals(policyLookup.apply(entry.getKey()))) {
+                return false;
+            }
+        }
+        for (var reference : federationDomainReferences) {
+            if (!federationDomainLookup.test(reference)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

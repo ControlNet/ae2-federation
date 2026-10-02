@@ -20,7 +20,7 @@ final class StorageMountContractTest {
         assertTrue(projection.contains("delegate.insert(what, amount, mode, source)"));
         assertTrue(projection.contains("delegate.extract(what, amount, mode, source)"));
         assertTrue(authority.contains("EffectiveSourceRelationship"));
-        assertTrue(authority.contains("relationshipCurrent.test(candidate)"));
+        assertTrue(authority.contains("readyAuthority.get()"));
         assertTrue(authority.contains("PolicyOperation.VIEW"));
         assertTrue(effectiveAuthority.contains("PolicyFilterMode.ALLOW_LIST"));
     }
@@ -44,12 +44,25 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("Map<PolicyKey, MountedStorageRelationship>"));
         var dependencies = source("storage/mount/StorageDependencyIndex.java");
         assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
-        assertTrue(dependencies.contains("PolicyService.get(level).revision"));
-        assertTrue(dependencies.contains("FederationDomainRegistryAccess.get(level).isCurrent"));
-        assertTrue(mounts.contains("sourceCurrent(holder[0])"));
+        assertTrue(dependencies.contains(
+                "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
+        // Every operation re-evaluates its authority: in full, or, while nothing it reads changed since a full pass
+        // (AuthorityEpoch, which AE2's mount table and Grid power and booting events also advance), by matching the
+        // source's delegate links again.
+        assertTrue(mounts.contains("sourceCurrent(mounted, check)"));
+        assertTrue(mounts.contains("dependencies.current(candidate, domain, check)"));
+        assertTrue(mounts.contains("check.stillAuthorized(provenance)"));
+        assertTrue(dependencies.contains("authorizedEpoch == AuthorityEpoch.current() && provenance.stillMatches(probe)"));
+        assertTrue(provenance.contains("cached.stamp().linksCurrent()"));
+        var ledger = source("ae2/storage/NativeMountLedger.java");
+        assertTrue(ledger.contains("ledger.ae2federation$markMountChanged();\n            AuthorityEpoch.advance();"));
+        var gridEvents = source("ae2/storage/NativeGridStateEvents.java");
+        assertTrue(gridEvents.contains("addEventHandler(GridPowerStatusChange.class"));
+        assertTrue(gridEvents.contains("addEventHandler(GridBootingStatusChange.class"));
+        assertTrue(source("CommonStartup.java").contains("NativeGridStateEvents.register();"));
         assertTrue(mounts.contains("public MountGeneration mountGeneration"));
         assertTrue(mounts.contains("removedProviderCount++"));
-        assertTrue(federationDomains.contains("snapshot().federationDomains().values()"));
+        assertTrue(federationDomains.contains("FederationDomainRegistryAccess.get(level).federationDomains()"));
         assertTrue(federationDomains.contains("federationDomain.memberships().keySet()"));
     }
 
@@ -61,7 +74,12 @@ final class StorageMountContractTest {
         var registries = source("domain/FederationDomainRegistryAccess.java");
         var entrypoint = Files.readString(ROOT.resolve(
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint.java"));
-        assertTrue(cable.contains("StorageMountService.topologyChangedIfPresent"));
+        var refresh = source("domain/FederationBindingRefresh.java");
+        // A Cable's topology change reaches Storage through the coalesced binding refresh, which the level flushes.
+        assertTrue(cable.contains("FederationBindingRefresh.request(serverLevel)"));
+        assertTrue(refresh.contains("StorageMountService.reconcileIfPresent(level)"));
+        assertTrue(entrypoint.contains("FederationBindingRefresh.flush(level)"));
+        assertTrue(entrypoint.contains("FederationBindingRefresh.closeLevel(level)"));
         assertTrue(mounts.contains("SERVICES.remove(level)"));
         assertTrue(mounts.contains("mountedProvidersRemoved"));
         assertTrue(registries.contains("removedRegisteredInstance"));

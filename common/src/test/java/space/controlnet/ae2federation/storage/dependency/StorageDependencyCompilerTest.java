@@ -89,11 +89,11 @@ final class StorageDependencyCompilerTest {
         var revision = relationship.revision();
         var policies = Map.copyOf(revision.policyRevisions());
 
-        assertTrue(revision.isCurrent(7, new SourceGeneration(1), policies::get, ignored -> true));
-        assertFalse(revision.isCurrent(8, new SourceGeneration(1), policies::get, ignored -> true));
-        assertFalse(revision.isCurrent(7, new SourceGeneration(2), policies::get, ignored -> true));
-        assertFalse(revision.isCurrent(7, new SourceGeneration(1), key -> new PolicyRevision(99), ignored -> true));
-        assertFalse(revision.isCurrent(7, new SourceGeneration(1), policies::get, ignored -> false));
+        assertTrue(revision.isCurrent(new SourceGeneration(1), policies::get, ignored -> true));
+        assertFalse(revision.isCurrent(new SourceGeneration(2), policies::get, ignored -> true));
+        assertFalse(revision.isCurrent(new SourceGeneration(1), key -> new PolicyRevision(99), ignored -> true));
+        // A domain change reaches the relationship through its references, not through the level-wide revision.
+        assertFalse(revision.isCurrent(new SourceGeneration(1), policies::get, ignored -> false));
     }
 
     private static DependencyCompilation compile(Set<DirectStorageDependency> edges) {

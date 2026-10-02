@@ -134,12 +134,13 @@ public final class FederationDomainGameTests {
             var rightNetwork = nativeNetwork(helper, fixtures, RIGHT, Direction.NORTH);
             helper.assertValueEqual(registry.federationdomainsFor(leftNetwork), registry.federationdomainsFor(rightNetwork),
                     "Unload fixture must begin merged");
+            var merged = registry.federationDomain(registry.federationdomainsFor(leftNetwork).iterator().next())
+                    .orElseThrow().reference();
             FederationCableBlockEntity middle = helper.getBlockEntity(new BlockPos(6, 4, 6));
             middle.onChunkUnloaded();
-            helper.assertTrue(registry.federationdomainsFor(leftNetwork).isEmpty(),
-                    "Partial unload must remove uncertain left membership immediately");
-            helper.assertTrue(registry.federationdomainsFor(rightNetwork).isEmpty(),
-                    "Partial unload must remove uncertain right membership immediately");
+            helper.assertTrue(!registry.isCurrent(merged), "Partial unload must invalidate the merged reference immediately");
+            helper.assertTrue(shared(registry, leftNetwork, rightNetwork).isEmpty(),
+                    "Partial unload must stop the left and right memberships sharing a domain immediately");
             FederationDomainEvidence.write("federationdomainpartialunload", 8, Map.of(
                     "initiallyMerged", "true", "unloadLifecycleInvoked", "true", "staleMembershipAccepted", "false",
                     "forcedChunkLoads", "0", "loadedEvidenceOnly", "true", "affectedComponentsOnly", "true",
@@ -161,12 +162,15 @@ public final class FederationDomainGameTests {
                 helper.assertTrue(false, "Waiting for loaded reciprocal Router topology");
             }
             var leftNetwork = nativeNetwork(helper, fixtures, LEFT, Direction.NORTH);
+            var rightNetwork = nativeNetwork(helper, fixtures, RIGHT, Direction.NORTH);
+            helper.assertValueEqual(registry.federationdomainsFor(leftNetwork), registry.federationdomainsFor(rightNetwork),
+                    "Stale route fixture must begin merged");
             var federationDomainId = registry.federationdomainsFor(leftNetwork).iterator().next();
             var reference = registry.federationDomain(federationDomainId).orElseThrow().reference();
             helper.setBlock(new BlockPos(6, 4, 6), Blocks.AIR);
             helper.assertTrue(!registry.isCurrent(reference), "Topology invalidation must reject stale Federation Domain references");
-            helper.assertTrue(registry.federationdomainsFor(leftNetwork).isEmpty(),
-                    "Invalidation must remove stale network index truth immediately");
+            helper.assertTrue(shared(registry, leftNetwork, rightNetwork).isEmpty(),
+                    "Invalidation must remove the shared network index entry immediately");
             FederationDomainEvidence.write("federationdomainrejectstaleroute", 8, Map.of(
                     "referenceInitiallyCurrent", "true", "referenceCurrentAfterChange", "false",
                     "staleRouteAccepted", "false", "indexInvalidatedImmediately", "true",
@@ -196,6 +200,14 @@ public final class FederationDomainGameTests {
         for (var x = LEFT.getX() + 1; x < RIGHT.getX(); x++) {
             fixtures.placeFederationCable(new BlockPos(x, LEFT.getY(), LEFT.getZ()));
         }
+    }
+
+    private static java.util.Set<space.controlnet.ae2federation.domain.FederationDomainId> shared(
+            space.controlnet.ae2federation.domain.FederationDomainRegistry registry,
+            space.controlnet.ae2federation.identity.NetworkId first, space.controlnet.ae2federation.identity.NetworkId second) {
+        var shared = new java.util.HashSet<>(registry.federationdomainsFor(first));
+        shared.retainAll(registry.federationdomainsFor(second));
+        return shared;
     }
 
     private static space.controlnet.ae2federation.identity.NetworkId nativeNetwork(GameTestHelper helper,

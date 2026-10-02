@@ -27,10 +27,17 @@ final class CraftingFederationDomainObserver {
         grids.forEach(this::register);
     }
 
+    /** The loaded Grid that currently carries {@code networkId}, if any. */
+    java.util.Optional<IGrid> grid(NetworkId networkId) {
+        var grid = loadedGrids.get(networkId);
+        return grid != null && FederationDomainRegistryAccess.confirmedNetworkId(grid).filter(networkId::equals).isPresent()
+                ? java.util.Optional.of(grid) : java.util.Optional.empty();
+    }
+
     Map<PolicyKey, CraftingRelationship> relationships() {
         discardStaleGrids();
         var result = new HashMap<PolicyKey, CraftingRelationship>();
-        for (var federationDomain : FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values()) {
+        for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
             var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
                     .filter(java.util.Objects::nonNull).toList();
             for (var consumer : members) {
@@ -57,7 +64,7 @@ final class CraftingFederationDomainObserver {
     }
 
     long topologyRevision() {
-        return FederationDomainRegistryAccess.get(level).snapshot().topologyRevision();
+        return FederationDomainRegistryAccess.get(level).topologyRevision();
     }
 
     void clear() {

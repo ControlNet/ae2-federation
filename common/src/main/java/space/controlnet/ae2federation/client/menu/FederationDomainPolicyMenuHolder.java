@@ -29,6 +29,13 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private FederationWorkspace currentWorkspace;
     private FederationTopologyView currentTopology;
     private String serverStatus = "pending";
+    /**
+     * The workspace choices and the domain graph, rebuilt at most every {@link Throttled#TICKS} ticks: each walks the
+     * whole domain (its Endpoints, patterns and rules) and the screen polls both every tick. An accepted action rebuilds
+     * them at once.
+     */
+    private final Throttled choicesText = new Throttled();
+    private final Throttled graphText = new Throttled();
     /** The largest size this screen grows to; it fills the screen up to it. */
     private final int maxWidth;
     private final int maxHeight;
@@ -69,9 +76,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
-        bind(ui, "endpoint_detail", this::endpointDetailText);
-        bind(ui, "endpoint_identity", () -> session == null
-                ? Component.translatable("ae2federation.ui.domain.endpoint.none") : session.endpointIdentityText());
 
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
@@ -90,7 +94,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         currentTopology = graphState;
         workspace.bindGraph(graphState);
         var choices = new BindableValue<String>("");
-        choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.workspaceChoices())
+        choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : choicesText.get(session::workspaceChoices))
                 .initialValue("").remoteSetter(value -> {
                     workspace.acceptChoices(value);
                     if (!value.isEmpty()) graphState.acceptChoices(com.google.gson.JsonParser.parseString(value).getAsJsonObject());
@@ -206,7 +210,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             if (!applied) {
                 return FederationDomainPolicyActionResult.INVALID_TARGET;
             }
-            authority.advance();
+            accepted();
             return FederationDomainPolicyActionResult.ACCEPTED;
         }
         if (mappingAction(request.action())) {
@@ -252,8 +256,14 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             case NEXT_ENDPOINT -> session.nextEndpoint();
             case RELEASE_ENDPOINT -> session.releaseEndpoint();
         }
-        authority.advance();
+        accepted();
         return FederationDomainPolicyActionResult.ACCEPTED;
+    }
+
+    private void accepted() {
+        choicesText.invalidate();
+        graphText.invalidate();
+        authority.advance();
     }
 
     private static boolean mappingAction(FederationDomainPolicyAction action) {
@@ -334,13 +344,27 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         return session == null ? Component.translatable("ae2federation.ui.mapping_feedback.pending") : session.mappingStatusText();
     }
 
-    private Component endpointDetailText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.endpoint.none")
-                : session.endpointDetailText();
+    private String graphSnapshotText() {
+        return session == null ? FederationDomainGraphSnapshot.empty().encode() : graphText.get(session::graphSnapshotText);
     }
 
-    private String graphSnapshotText() {
-        return session == null ? FederationDomainGraphSnapshot.empty().encode() : session.graphSnapshotText();
+    /** A server-side text rebuilt at most every {@link #TICKS} reads, or on the next read after {@link #invalidate}. */
+    private static final class Throttled {
+        private static final int TICKS = 5;
+        private @Nullable String value;
+        private int age;
+
+        String get(java.util.function.Supplier<String> build) {
+            if (value == null || ++age >= TICKS) {
+                age = 0;
+                value = build.get();
+            }
+            return value;
+        }
+
+        void invalidate() {
+            value = null;
+        }
     }
 
     private String statusCode() {
@@ -363,7 +387,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var sync = element(ui, "sync_text", Label.class);
         sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
         sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
-        element(ui, "endpoint_next", UIElement.class).setActive(active);
         return active;
     }
 

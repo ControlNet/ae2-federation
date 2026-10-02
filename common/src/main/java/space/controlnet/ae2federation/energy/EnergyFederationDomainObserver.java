@@ -3,9 +3,7 @@ package space.controlnet.ae2federation.energy;
 import appeng.api.networking.IGrid;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
@@ -30,7 +28,7 @@ final class EnergyFederationDomainObserver {
     Map<PolicyKey, EnergyRelationship> relationships() {
         discardStaleGrids();
         var relationships = new HashMap<PolicyKey, EnergyRelationship>();
-        for (var federationDomain : FederationDomainRegistryAccess.get(level).snapshot().federationDomains().values()) {
+        for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
             var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
                     .filter(java.util.Objects::nonNull).toList();
             for (var consumer : members) {
@@ -47,16 +45,8 @@ final class EnergyFederationDomainObserver {
         return Map.copyOf(relationships);
     }
 
-    Set<FederationDomainReference> references(EnergyRelationship relationship) {
-        var registry = FederationDomainRegistryAccess.get(level);
-        var consumer = registry.federationdomainsFor(relationship.key().consumerNetworkId());
-        var provider = registry.federationdomainsFor(relationship.key().providerNetworkId());
-        return consumer.stream().filter(provider::contains).map(registry::federationDomain).flatMap(java.util.Optional::stream)
-                .map(snapshot -> snapshot.reference()).collect(java.util.stream.Collectors.toUnmodifiableSet());
-    }
-
     long topologyRevision() {
-        return FederationDomainRegistryAccess.get(level).snapshot().topologyRevision();
+        return FederationDomainRegistryAccess.get(level).topologyRevision();
     }
 
     void clear() {

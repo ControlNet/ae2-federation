@@ -55,7 +55,7 @@ public final class CraftingBindingService implements AutoCloseable {
         if (service == null) return Optional.empty();
         var diagnostic = service.diagnostics.get(key);
         return diagnostic != null && diagnostic.matches(PolicyService.get(level).revision(key),
-                FederationDomainRegistryAccess.get(level).snapshot().topologyRevision())
+                FederationDomainRegistryAccess.get(level).topologyRevision())
                 ? Optional.of(diagnostic) : Optional.empty();
     }
 
@@ -133,8 +133,7 @@ public final class CraftingBindingService implements AutoCloseable {
         var binding = snapshot.binding();
         if (bindings.get(binding.relationship().key()) != binding
                 || binding.relationship().providerGrid() != snapshot.sourceGrid()
-                || snapshot.sourceGrid().getCraftingService() != snapshot.service()
-                || federationDomains.topologyRevision() != binding.revision().topologyRevision()) {
+                || snapshot.sourceGrid().getCraftingService() != snapshot.service()) {
             return false;
         }
         var registry = FederationDomainRegistryAccess.get(level);
@@ -207,6 +206,22 @@ public final class CraftingBindingService implements AutoCloseable {
         return nativeRequests.linkOwnerCount();
     }
 
+    /** The bindings published by the last reconciliation, without reconciling; each says itself whether it is current. */
+    public static synchronized List<CraftingCapabilityBinding> publishedBindingsIfPresent(ServerLevel level) {
+        var service = SERVICES.get(level);
+        return service == null ? List.of() : List.copyOf(service.bindings.values());
+    }
+
+    /**
+     * The loaded Grid of a network the Crafting observer has seen, whether or not any rule still involves it: a job
+     * already running for a consumer still delivers there.
+     */
+    public static synchronized Optional<IGrid> gridIfPresent(ServerLevel level,
+            space.controlnet.ae2federation.identity.NetworkId networkId) {
+        var service = SERVICES.get(level);
+        return service == null ? Optional.empty() : service.federationDomains.grid(networkId);
+    }
+
     public int relationshipCount() {
         return bindings.size();
     }
@@ -263,7 +278,7 @@ public final class CraftingBindingService implements AutoCloseable {
         var active = bindings.get(relationship.key());
         if (active != null && active.relationship().consumerGrid() == relationship.consumerGrid()
                 && active.relationship().providerGrid() == relationship.providerGrid()
-                && active.revision().equals(revision) && active.nativeService().orElse(null) == backend.service()) {
+                && active.revision().sameAuthority(revision) && active.nativeService().orElse(null) == backend.service()) {
             return;
         }
         remove(relationship.key());
@@ -277,7 +292,6 @@ public final class CraftingBindingService implements AutoCloseable {
 
     private boolean current(CraftingCapabilityBinding binding, NativeCraftingBackend backend) {
         if (binding == null || bindings.get(binding.relationship().key()) != binding
-                || federationDomains.topologyRevision() != binding.revision().topologyRevision()
                 || !binding.revision().providerGeneration().equals(backend.generation())
                 || !backends.isCurrent(backend)) {
             return false;
@@ -290,9 +304,9 @@ public final class CraftingBindingService implements AutoCloseable {
         var configured = policies.configured(binding.relationship().key()).orElse(null);
         return configured != null && configured.revision().equals(binding.revision().policyRevision())
                 && configured.rule().enabled() && configured.rule().operations().contains(PolicyOperation.REQUEST)
-                && policies.activation(binding.relationship().key(), new PolicyRuntimeEndpoints(
-                        binding.relationship().consumerGrid(), binding.relationship().providerGrid(), BackendStatus.READY))
-                        == PolicyActivationState.ACTIVE;
+                && policies.activation(configured, new PolicyRuntimeEndpoints(
+                        binding.relationship().consumerGrid(), binding.relationship().providerGrid(), BackendStatus.READY),
+                        registry) == PolicyActivationState.ACTIVE;
     }
 
     private void remove(PolicyKey key) {

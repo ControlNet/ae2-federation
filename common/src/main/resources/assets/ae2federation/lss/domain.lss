@@ -3,6 +3,8 @@
 .domain-shell { flex-direction: row; padding-all: 0; gap-all: 0; }
 .domain-shell label, .domain-shell text-field, .domain-shell .__button_text__ { font: minecraft:default; text-shadow: false; }
 
+// The rail's column fills the window's height; the rail itself, and its background, end under its last tab.
+.workspace-rail-column { width: 26; flex-shrink: 0; flex-direction: column; }
 .workspace-rail { width: 26; flex-shrink: 0; margin-top: 38; padding-top: 4; padding-bottom: 6; padding-left: 3; gap-all: 3; background: built-in(federation:RAIL); }
 .workspace-rail .rail-tab { width: 22; height: 24; padding-all: 0; base-background: built-in(federation:TOOLBAR); hover-background: built-in(federation:TOOLBAR_HOVER); pressed-background: built-in(federation:TOOLBAR_ACTIVE); }
 .workspace-rail .rail-tab.selected { base-background: built-in(federation:TOOLBAR_ACTIVE); }
@@ -91,6 +93,7 @@
 .domain-panel .paper-note.read-only-banner { text-color: #ff5b3d12; background: #ffffe6a8; }
 .pair-sections { width: 100%; flex-shrink: 0; gap-all: 4; }
 .domain-panel .pair-section-title { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ffefeaf8; }
+.domain-panel .pair-section-note { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .policy-row { width: 100%; flex-shrink: 0; gap-all: 2; padding-top: 4; padding-bottom: 2; background: built-in(federation:ROW_RULE); }
 .policy-row-head { width: 100%; flex-direction: row; gap-all: 4; align-items: flex-start; }
 .domain-panel .policy-capability { width: 62; flex-shrink: 0; height: 10; margin-top: 2; text-color: #ffd6d0e0; }
@@ -117,7 +120,7 @@
 .domain-panel .request-status.request-error { text-color: #ff922e42; }
 .state-sync, .authority-sync { width: 0; height: 0; display: none; }
 
-// Processing and diagnostics pages keep their current structure in the new palette.
+// The processing page keeps its current structure in the new palette.
 .domain-heading { height: 10; flex-shrink: 0; }
 .page-description { adaptive-height: true; flex-shrink: 0; text-wrap: wrap; }
 .domain-panel .page-description { text-color: #ff6d6a82; }
@@ -162,22 +165,18 @@
 .domain-shell.compact .processing-legend { display: none; }
 .compact-actions { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 3; }
 .compact-actions button { flex: 1; }
-.diagnostic-scroll { flex: 1; min-height: 0; scroller-view-mode: vertical; }
-.diagnostic-scroll .__scroller_view_view-port__ { padding-all: 0; background: #00000000; }
 .domain-panel .mapping-status { width: 100%; adaptive-height: true; flex-shrink: 0; text-wrap: wrap; text-color: #ff79541b; }
 .domain-panel .mapping-status.feedback-neutral { text-color: #ff6d6a82; }
 .domain-panel .mapping-status.feedback-waiting { text-color: #ff79541b; }
 .domain-panel .mapping-status.feedback-success { text-color: #ff28633b; }
 .domain-panel .mapping-status.feedback-error { text-color: #ff922e42; }
-.diagnostic-toolbar { height: 18; flex-shrink: 0; flex-direction: row; gap-all: 4; }
-.diagnostic-toolbar selector { flex: 1; }
-.diagnostic-toolbar button { width: 70; }
-#endpoint_locate { width: 48; }
-.domain-panel #endpoint_local { display: none; flex: 1; min-width: 0; height: 18; padding-all: 4; vertical-align: center; background: built-in(federation:FIELD); }
-.endpoint-columns { flex: 1; min-height: 0; flex-direction: row; gap-all: 6; }
-.endpoint-column { flex: 1; min-width: 0; padding-all: 6; gap-all: 4; background: built-in(federation:DARK_PANEL); }
-.domain-panel .endpoint-column .domain-heading { text-color: #ffefeaf8; }
-.domain-panel .endpoint-facts { width: 100%; flex-shrink: 0; adaptive-height: true; text-wrap: wrap; text-color: #ffd6d0e0; }
+// The topology's Endpoint panel: one fact per row, its name on the left, as the processing facts.
+.endpoint-fact { width: 100%; flex-shrink: 0; flex-direction: row; gap-all: 4; align-items: flex-start; }
+.domain-panel .endpoint-fact-name { width: 80; flex-shrink: 0; adaptive-height: true; text-wrap: wrap; text-color: #ffaaa4b2; }
+.domain-panel .endpoint-fact-value { flex: 1; min-width: 0; adaptive-height: true; text-wrap: wrap; text-color: #ffd6d0e0; }
+.domain-shell.compact .endpoint-fact { flex-direction: column; gap-all: 0; }
+.domain-shell.compact .domain-panel .endpoint-fact-name { width: 100%; }
+.domain-shell.compact .domain-panel .endpoint-fact-value { flex-grow: 0; width: 100%; }
 .bridge-unavailable { display: none; flex: 1; min-height: 0; padding-all: 8; gap-all: 8; background: built-in(federation:DARK_PANEL); }
 .domain-panel .bridge-unavailable label { text-color: #ffd6d0e0; }
 

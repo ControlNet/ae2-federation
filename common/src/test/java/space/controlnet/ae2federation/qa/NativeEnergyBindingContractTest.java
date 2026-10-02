@@ -53,22 +53,26 @@ final class NativeEnergyBindingContractTest {
     }
 
     @Test
-    void taskThirtyOneRegistersPolicyBoundDirectionalEnergyCases() throws IOException {
+    void taskThirtyOneRegistersPolicyBoundSharedEnergyCases() throws IOException {
         var fixture = Files.readString(ROOT.resolve(
-                "common/src/testmod/java/space/controlnet/ae2federation/test/energy/DirectionalEnergyFixture.java"));
+                "common/src/testmod/java/space/controlnet/ae2federation/test/energy/SharedEnergyFixture.java"));
         var tests = Files.readString(ROOT.resolve(
-                "common/src/testmod/java/space/controlnet/ae2federation/test/DirectionalEnergyGameTests.java"));
+                "common/src/testmod/java/space/controlnet/ae2federation/test/SharedEnergyGameTests.java"));
         var testMod = Files.readString(ROOT.resolve(
                 "common/src/testmod/java/space/controlnet/ae2federation/test/FederationTestMod.java"));
-        assertTrue(fixture.contains("EnergyBindingService"));
+        var manifest = Files.readString(ROOT.resolve("tests/scenarios/manifest.json"));
+        assertTrue(fixture.contains("EnergySharingService"));
         assertTrue(fixture.contains("PolicyOperation.SUPPLY"));
-        assertTrue(fixture.contains("DirectionalEnergySource"));
-        assertTrue(tests.contains("energyDirectionalPolicy"));
+        assertTrue(tests.contains("energySharedMutual"));
         assertTrue(tests.contains("energyColdStart"));
-        assertTrue(tests.contains("energyRingConservation"));
-        assertTrue(tests.contains("energyRejectReverse"));
-        assertTrue(tests.contains("energyDisconnectNoSource"));
-        assertTrue(testMod.contains("DirectionalEnergyGameTests.class"));
+        assertTrue(tests.contains("energySharedTransitive"));
+        assertTrue(tests.contains("energyRuleOffSplits"));
+        assertTrue(tests.contains("energyDisconnectSplits"));
+        assertTrue(testMod.contains("SharedEnergyGameTests.class"));
+        for (var id : Set.of("energy.shared-mutual", "energy.cold-start", "energy.shared-transitive",
+                "energy.rule-off-splits", "energy.disconnect-splits")) {
+            assertTrue(manifest.contains("\"id\":\"" + id + "\""), id);
+        }
     }
 
     @Test

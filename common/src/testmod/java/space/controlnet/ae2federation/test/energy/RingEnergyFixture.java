@@ -10,8 +10,8 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -22,6 +22,10 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
 
+/**
+ * Three native Grids, each with an empty AE2 energy cell, on three faces of one router. ME power rules between them
+ * join their Grids into shared energy pools.
+ */
 public final class RingEnergyFixture implements AutoCloseable {
     private static final BlockPos CENTER = new BlockPos(6, 5, 6);
     private static final List<Direction> FACES = List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST);
@@ -62,7 +66,7 @@ public final class RingEnergyFixture implements AutoCloseable {
                 .noneMatch(common::contains))) {
             return false;
         }
-        EnergyBindingService.get(helper.getLevel()).observeFederationDomainMembers(grids);
+        EnergySharingService.get(helper.getLevel()).observeFederationDomainMembers(grids);
         return true;
     }
 
@@ -76,19 +80,19 @@ public final class RingEnergyFixture implements AutoCloseable {
                 key(grids.get(2), grids.get(0)));
     }
 
-    public void enableCycle() {
+    /** Enables the rules first-to-second and second-to-third, leaving first and third without a rule of their own. */
+    public void enableChain() {
         var policies = PolicyService.get(helper.getLevel());
-        for (var key : keys()) {
+        for (var key : keys().subList(0, 2)) {
             var result = policies.edit(new PolicyEdit(key, policies.revision(key),
                     PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY))));
             helper.assertTrue(result instanceof PolicyMutationResult.Accepted,
-                    "Every directed ring edge must accept its ME power Policy");
+                    "Every chain edge must accept its ME power rule");
         }
-        EnergyBindingService.get(helper.getLevel()).observeFederationDomainMembers(grids());
     }
 
-    public void chargeSecond(double amount) {
-        var cell = cell(1);
+    public void chargeThird(double amount) {
+        var cell = cell(2);
         var overflow = cell.injectAEPower(amount - cell.getAECurrentPower(), Actionable.MODULATE);
         helper.assertValueEqual(overflow, 0.0, "Ring provider cell must accept its charge");
     }
@@ -105,8 +109,12 @@ public final class RingEnergyFixture implements AutoCloseable {
         return total;
     }
 
-    public EnergyBindingService bindings() {
-        return EnergyBindingService.get(helper.getLevel());
+    public boolean shares(PolicyKey key) {
+        return EnergySharingService.shares(helper.getLevel(), key);
+    }
+
+    public int sharedPairCount() {
+        return EnergySharingService.get(helper.getLevel()).sharedPairCount();
     }
 
     private EnergyCellBlockEntity cell(int index) {

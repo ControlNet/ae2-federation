@@ -3,10 +3,11 @@
     <stylesheet location="ldlib2:lss/modern.lss"/>
     <stylesheet location="ae2federation:lss/domain.lss"/>
     <root id="domain_root" class="domain-shell">
-        <element id="workspace_tabs" class="workspace-rail">
-            <button id="tab_overview" class="rail-tab" text=""/>
-            <button id="tab_mapping" class="rail-tab" text=""/>
-            <button id="tab_diagnostics" class="rail-tab" text=""/>
+        <element id="workspace_tabs" class="workspace-rail-column">
+            <element id="workspace_rail" class="workspace-rail">
+                <button id="tab_overview" class="rail-tab" text=""/>
+                <button id="tab_mapping" class="rail-tab" text=""/>
+            </element>
         </element>
         <element id="domain_window" class="domain-panel">
             <element class="domain-header">
@@ -88,8 +89,13 @@
                             <button id="graph_open" text="ae2federation.ui.topology.devices"/>
                         </element>
                         <element id="network_stats" class="dark-panel network-stats"/>
+                        <element id="endpoint_detail" class="dark-panel"/>
                         <label id="network_links_heading" class="aside-heading"/>
                         <element id="network_links" class="network-links"/>
+                        <element id="endpoint_identity_panel" class="dark-panel">
+                            <label class="panel-caption"><lang key="ae2federation.ui.workspace.identity_ownership"/></label>
+                            <label id="endpoint_identity" class="panel-text"/>
+                        </element>
                     </element>
                     <element id="pair_editor" class="aside-section">
                         <label id="pair_title" class="aside-title"/>
@@ -128,32 +134,6 @@
                         </scroller-view>
                         <label id="processing_note" class="paper-note processing-note"/>
                     </element>
-                </element>
-            </element>
-            <element id="page_diagnostics" class="workspace-page">
-                <label id="diagnostics_description" class="page-description"><lang key="ae2federation.ui.workspace.diagnostics_help"/></label>
-                <element class="diagnostic-toolbar">
-                    <selector id="endpoint_next"/>
-                    <label id="endpoint_local"/>
-                    <button id="endpoint_browse" text="ae2federation.ui.workspace.endpoints_browse"/>
-                    <button id="endpoint_locate" text="ae2federation.ui.workspace.endpoint_locate"/>
-                </element>
-                <element class="endpoint-columns">
-                    <element class="endpoint-column">
-                        <label class="domain-heading"><lang key="ae2federation.ui.workspace.operation"/></label>
-                        <scroller-view id="endpoint_operation_scroll" class="diagnostic-scroll">
-                            <label id="endpoint_detail" class="endpoint-facts"/>
-                        </scroller-view>
-                    </element>
-                    <element class="endpoint-column">
-                        <label class="domain-heading"><lang key="ae2federation.ui.workspace.identity_ownership"/></label>
-                        <scroller-view id="endpoint_identity_scroll" class="diagnostic-scroll">
-                            <label id="endpoint_identity" class="endpoint-facts"/>
-                        </scroller-view>
-                    </element>
-                </element>
-                <element class="compact-actions diagnostic-navigation">
-                    <button id="endpoint_mapping" text="ae2federation.ui.workspace.endpoint_mapping"/>
                 </element>
             </element>
             <element class="domain-footer">

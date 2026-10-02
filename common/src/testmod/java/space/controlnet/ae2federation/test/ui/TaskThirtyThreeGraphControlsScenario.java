@@ -19,6 +19,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
         TaskThirtyThreeScenarioSupport.open(scenario, TaskThirtyThreeScenarioSupport.Entrance.ROUTER)
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .checkBounds("#domain_graph", bounds -> bounds.width() > 180 && bounds.height() > 150)
+                // The tab rail's background wraps its tabs and ends under the last one, not at the window's bottom.
+                .check("the tab rail ends under its last tab", context -> {
+                    var rail = context.el("#workspace_rail").bounds();
+                    var last = context.el("#tab_mapping").bounds();
+                    var root = context.el("#domain_root").bounds();
+                    float bottom = last.y() + last.height();
+                    return rail.y() + rail.height() >= bottom && rail.y() + rail.height() <= bottom + 8
+                            && rail.y() + rail.height() < root.y() + root.height() - 20;
+                })
                 .click("#graph_zoom_in").click("#graph_zoom_out").click("#graph_fit")
                 .check("graph remains visible after controls", context -> context.el("#domain_graph").isVisible())
                 .check("both member networks are drawn", context -> context.all(".graph-node-member").size() == 2)
@@ -48,6 +57,56 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
                     return graph.getOffsetX() < context.<float[]>get("graph.panStart")[0] - 1f;
                 })
+                // A card covers much of the canvas: a drag that starts on one pans as well, and a wheel turn over one zooms.
+                .step("press the left button on a card", context -> {
+                    var card = context.all(".graph-node-member").getFirst().bounds();
+                    var point = new float[] {card.centerX(), card.centerY()};
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    context.put("graph.panPoint", point);
+                    context.put("graph.panStart", new float[] {graph.getOffsetX(), graph.getOffsetY()});
+                    context.input().moveTo(point[0], point[1]);
+                    context.input().mouseDown(point[0], point[1], 0);
+                })
+                .repeat(6, steps -> steps.step("drag from the card", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    point[0] += 10;
+                    context.input().dragTo(point[0], point[1], 0);
+                }).frames(1))
+                .step("release over the canvas", context -> {
+                    var point = context.<float[]>get("graph.panPoint");
+                    context.input().mouseUp(point[0], point[1], 0);
+                })
+                .check("a left drag that starts on a card pans the graph", context -> {
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    return graph.getOffsetX() < context.<float[]>get("graph.panStart")[0] - 1f;
+                })
+                .step("turn the wheel over a card", context -> {
+                    var graph = context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class);
+                    context.put("graph.wheelScale", graph.getScale());
+                    var card = context.all(".graph-node-member").getFirst().bounds();
+                    context.input().moveTo(card.centerX(), card.centerY());
+                    context.input().scroll(card.centerX(), card.centerY(), 1);
+                })
+                .check("a wheel turn over a card zooms the graph", context ->
+                        context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()
+                                > context.<Float>get("graph.wheelScale") + 0.01f)
+                // The link itself is a target too: with a network selected, a press on the line to the other network (dashed
+                // while the pair has no rule) opens that pair, away from the label in the middle.
+                .click("#graph_fit")
+                .step("select the first network", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .waitUntil("the network panel replaces the pair editor", context -> !context.el("#pair_editor").isVisible())
+                .step("press on the link a third of the way along", context -> {
+                    var cards = context.all(".graph-node-member").stream().map(card -> card.bounds()).toList();
+                    var a = cards.get(0);
+                    var b = cards.get(1);
+                    var point = space.controlnet.ae2federation.client.policy.TopologyLink
+                            .between(a.x(), a.y(), b.x(), b.y(), a.width(), a.height()).curve().at(0.3f);
+                    context.input().moveTo(point[0], point[1]);
+                    context.input().mouseDown(point[0], point[1], 0);
+                    context.input().mouseUp(point[0], point[1], 0);
+                })
+                .waitUntil("a press on the link opens its pair", context -> context.el("#pair_editor").isVisible())
+                .frames(2).screenshot("ui-graph-link-pair-selected")
                 .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
                         context.el("#domain_graph").as(com.lowdragmc.lowdraglib2.gui.ui.elements.GraphView.class).getScale()))
@@ -185,10 +244,13 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         context.all(".graph-node-endpoint").size() == 1
                                 && TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Mapped by a Provider of "))
                 .hover(".graph-node-endpoint")
-                .step("open the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
-                .waitUntil("the Endpoint node opens diagnostics", context -> context.el("#page_diagnostics").isVisible())
-                .waitForTextContains("#endpoint_detail", "Configured mode: Federated")
-                .click("#tab_overview")
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
+                .waitUntil("the Endpoint node is selected in place, its panel in the aside", context ->
+                        context.el("#page_overview").isVisible() && context.el("#endpoint_detail").isVisible())
+                .waitForTextContains("#endpoint_fact_configured", "Federated")
+                .step("select the Provider host network again", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
+                        context, context.get("net.providerHost")))
+                .waitUntil("the network panel is back", context -> !context.el("#endpoint_detail").isVisible())
                 .hover(".network-link")
                 .step("open the pair from the network's links", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))
@@ -272,18 +334,26 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").startsWith("Off · revision"))
                 .screenshot("ui-policy-switch-conflict")
                 .closeScreen()
-                .server("remove the fixture's native energy source", TaskThirtyThreeWorldFixture::removeEndpointEnergySource)
-                .waitUntilServer("real backend reports no extractable native energy source", TaskThirtyThreeWorldFixture::energySourceUnavailable)
+                .server("share energy with the Endpoint and remove its own energy cell", TaskThirtyThreeWorldFixture::removeEndpointEnergySource)
+                .waitUntilServer("the Endpoint runs on the shared energy pool", TaskThirtyThreeWorldFixture::endpointRunsOnSharedEnergy)
                 .server("open fresh policy context after source removal", TaskThirtyThreeWorldFixture::openRouter)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .awaitElement("#policy_section_title_0")
-                .waitUntil("energy source absence is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "me_power")
-                        .contains("Last backend check: No local public energy source allows extraction."))
-                .check("a missing energy source is a blocking error, not a wait", context ->
-                        TaskThirtyThreeScenarioSupport.ruleState(context, "me_power").startsWith("On, but blocked · revision"))
+                .waitUntil("the sharing energy rule is active", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "me_power")
+                        .startsWith("Active · revision"))
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
-                .frames(2).screenshot("ui-policy-runtime-energy-source-missing")
+                .frames(2).screenshot("ui-policy-runtime-energy-shared")
+                .step("select a network card so the shared link is drawn unselected", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .frames(3)
+                .check("the Endpoint's network runs on the shared pool, not a low-energy warning", context ->
+                        TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.endpoint")).stream()
+                                .anyMatch(text -> text.contains("Online · Shared energy")))
+                .check("both networks of the pool read its one energy percentage, not their own cells", context -> {
+                    var host = TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.providerHost"));
+                    return host != null && host.equals(TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.endpoint")));
+                })
+                .screenshot("ui-graph-energy-shared-link")
                 .click("#tab_overview").frames(2)
                 .screenshot("ui-graph-controls")
                 .server("add a real Bridge domain that shares the outer network, and one more beyond it",
@@ -331,6 +401,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
                         context.all(".related-pair").size() == 2)
+                .check("a related domain's network shows its own status, read-only", context -> {
+                    var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
+                    return context.all(".related-network").size() > 0
+                            && TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("related.id")) != null
+                            && texts.stream().anyMatch(text -> text.matches("(Online|No power) · Related: .+"));
+                })
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
                     // A separate record: the case record above already holds the accepted-edit status.
@@ -400,8 +476,141 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .server("position Provider host camera", TaskThirtyThreeWorldFixture::positionProviderCamera)
                 .serverTicks(2).frames(2).screenshot("world-provider-host")
                 .server("position Endpoint face camera", TaskThirtyThreeWorldFixture::positionEndpointCamera)
-                .serverTicks(2).frames(2).screenshot("world-endpoint-faces");
+                .serverTicks(2).frames(2).screenshot("world-endpoint-faces")
+                // A block hidden behind stained glass, water and stone, in the rain, keeps its outline's own colour
+                // under Fancy and Fabulous graphics alike; Fabulous composites the translucent layers after the level.
+                .teardown("restore Fancy graphics, the HUD and clear weather", context -> {
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    context.mc().options.hideGui = false;
+                    if (context.mc().options.graphicsMode().get() != net.minecraft.client.GraphicsStatus.FANCY) {
+                        context.mc().options.graphicsMode().set(net.minecraft.client.GraphicsStatus.FANCY);
+                        context.mc().levelRenderer.allChanged();
+                    }
+                })
+                .teardownServer("remove the occluded highlight scene", TaskThirtyThreeGraphControlsScenario::removeOccludedScene)
+                .server("build the occluded highlight scene", TaskThirtyThreeGraphControlsScenario::buildOccludedScene)
+                .awaitClientChunk(new net.minecraft.core.BlockPos(OCCLUDED_X, 64, OCCLUDED_TARGET_Z))
+                .runCommand("weather rain")
+                .waitUntil("the client sees rain", context -> context.level().getRainLevel(1f) > 0.9f)
+                .step("hide the HUD", context -> context.mc().options.hideGui = true)
+                .server("look at the hidden block", TaskThirtyThreeGraphControlsScenario::positionOccludedCamera)
+                .serverTicks(2);
+        occludedHighlight(scenario, net.minecraft.client.GraphicsStatus.FANCY, "fancy");
+        occludedHighlight(scenario, net.minecraft.client.GraphicsStatus.FABULOUS, "fabulous");
     }
+
+    private static final String OVERWORLD = "minecraft:overworld";
+    /** Opaque magenta: nothing in the scene (stone, green glass, water, grass, sky, rain) is near it. */
+    private static final int OCCLUDED_COLOR = 0xFF3CFF;
+    private static final String OCCLUDED_GROUND = "highlight.occludedGround";
+    // One chunk west of the fixture's chunk, so the scene stays out of the other world captures.
+    private static final int OCCLUDED_X = -10;
+    private static final int OCCLUDED_TARGET_Z = 5;
+    private static final int OCCLUDED_CAMERA_Z = 12;
+
+    private static void occludedHighlight(ScenarioBuilder scenario, net.minecraft.client.GraphicsStatus mode, String name) {
+        scenario.step("switch graphics to " + name, context -> {
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    context.mc().options.graphicsMode().set(mode);
+                    context.mc().levelRenderer.allChanged();
+                })
+                .check(name + " graphics is in effect", context -> context.mc().options.graphicsMode().get() == mode
+                        && (context.mc().levelRenderer.getTranslucentTarget() != null)
+                                == (mode == net.minecraft.client.GraphicsStatus.FABULOUS))
+                .waitUntil("the sections are rebuilt", context -> context.mc().levelRenderer.hasRenderedAllSections())
+                .frames(5)
+                .check("no outline colour before the highlight (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".before") < 20)
+                .step("highlight the hidden block", context -> {
+                    int ground = context.<Integer>get(OCCLUDED_GROUND);
+                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of(
+                            new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(OCCLUDED_X, ground + 1,
+                                    OCCLUDED_TARGET_Z)), OCCLUDED_COLOR);
+                })
+                .frames(3)
+                .screenshot("world-highlight-occluded-" + name)
+                .check("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".after") > 400);
+    }
+
+    /**
+     * Counts pixels near the screen's centre that still read as the outline's magenta. Glass, water or rain drawn
+     * over the line would tint it (green, blue or grey) and the count would drop.
+     */
+    private static int recordOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        var frame = com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.grab();
+        try {
+            int width = frame.getWidth();
+            int height = frame.getHeight();
+            int count = 0;
+            for (int y = height / 4; y < height * 3 / 4; y++) {
+                for (int x = width / 4; x < width * 3 / 4; x++) {
+                    int abgr = frame.getPixelRGBA(x, y);
+                    int red = abgr & 0xff;
+                    int green = abgr >> 8 & 0xff;
+                    int blue = abgr >> 16 & 0xff;
+                    if (red > 150 && blue > 150 && green < 100) count++;
+                }
+            }
+            context.attach("evidenceFor", "ui.graph-controls");
+            context.attach("outlinePixels." + label, Integer.toString(count));
+            return count;
+        } finally {
+            com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.closeQuietly(frame);
+        }
+    }
+
+    /**
+     * Seen from the camera: green stained glass, then water held in a stone frame, then a stone wall, then the
+     * highlighted block.
+     */
+    private static void buildOccludedScene(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        var level = context.level();
+        level.getChunk(OCCLUDED_X >> 4, 0);
+        int ground = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                OCCLUDED_X, OCCLUDED_TARGET_Z);
+        context.put(OCCLUDED_GROUND, ground);
+        var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+        for (int x = OCCLUDED_X - 2; x <= OCCLUDED_X + 2; x++) {
+            for (int y = ground; y <= ground + 3; y++) {
+                boolean frame = x == OCCLUDED_X - 2 || x == OCCLUDED_X + 2 || y == ground + 3;
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 6), stone);
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 7),
+                        frame ? stone : net.minecraft.world.level.block.Blocks.WATER.defaultBlockState());
+                level.setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, 8), frame ? stone
+                        : net.minecraft.world.level.block.Blocks.GREEN_STAINED_GLASS.defaultBlockState());
+            }
+        }
+        level.setBlockAndUpdate(new net.minecraft.core.BlockPos(OCCLUDED_X, ground + 1, OCCLUDED_TARGET_Z),
+                net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState());
+    }
+
+    private static void positionOccludedCamera(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        int ground = context.<Integer>get(OCCLUDED_GROUND);
+        var player = context.player();
+        // Standing on the ground, the eye is about level with the hidden block's centre, which lies mid-frame.
+        player.connection.teleport(OCCLUDED_X + 0.5, ground, OCCLUDED_CAMERA_Z + 0.5,
+                player.getYRot(), player.getXRot());
+        player.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES,
+                net.minecraft.world.phys.Vec3.atCenterOf(new net.minecraft.core.BlockPos(OCCLUDED_X, ground + 1,
+                        OCCLUDED_TARGET_Z)));
+    }
+
+    private static void removeOccludedScene(com.lowdragmc.lowdraglib2.uitest.ServerContext context) {
+        context.server().getCommands().performPrefixedCommand(
+                context.server().createCommandSourceStack().withSuppressedOutput(), "weather clear");
+        Integer ground = (Integer) context.state().get(OCCLUDED_GROUND);
+        if (ground == null) return;
+        var air = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        for (int x = OCCLUDED_X - 2; x <= OCCLUDED_X + 2; x++) {
+            for (int y = ground; y <= ground + 3; y++) {
+                for (int z = OCCLUDED_TARGET_Z; z <= 8; z++) {
+                    context.level().setBlockAndUpdate(new net.minecraft.core.BlockPos(x, y, z), air);
+                }
+            }
+        }
+    }
+
 
     private static float opacity(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
         return TaskThirtyThreeScenarioSupport.networkCard(context, networkUuid)

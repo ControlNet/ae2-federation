@@ -22,6 +22,8 @@ public final class IdentityClaimIndex<G> {
     private final Map<G, GridClaims> liveClaims = new IdentityHashMap<>();
     private final Map<UUID, Map<G, Integer>> nodeIndex = new HashMap<>();
     private final Map<NetworkId, Map<G, Integer>> networkIndex = new HashMap<>();
+    /** Advances on every claim change, and so on every change that can clear a cached settlement. */
+    private long revision;
     private long settlementComputations;
     private long lineageLookups;
     private long cachedReads;
@@ -31,6 +33,8 @@ public final class IdentityClaimIndex<G> {
         if (!claims.lineages.add(lineage)) {
             return;
         }
+        revision++;
+        IdentityEpoch.advance();
         invalidateSharing(grid, lineage);
         nodeIndex.computeIfAbsent(lineage.nodeId(), ignored -> new IdentityHashMap<>()).merge(grid, 1, Integer::sum);
         networkIndex.computeIfAbsent(lineage.networkId(), ignored -> new IdentityHashMap<>())
@@ -42,6 +46,8 @@ public final class IdentityClaimIndex<G> {
         if (claims == null || !claims.lineages.remove(lineage)) {
             return;
         }
+        revision++;
+        IdentityEpoch.advance();
         unindex(grid, lineage);
         invalidateSharing(grid, lineage);
         if (claims.lineages.isEmpty()) {
@@ -54,6 +60,8 @@ public final class IdentityClaimIndex<G> {
         if (claims == null) {
             return;
         }
+        revision++;
+        IdentityEpoch.advance();
         for (var lineage : claims.lineages) {
             unindex(grid, lineage);
             invalidateSharing(grid, lineage);
@@ -99,6 +107,13 @@ public final class IdentityClaimIndex<G> {
 
     public int indexedNetworkIds() {
         return networkIndex.size();
+    }
+
+    /**
+     * Unchanged while no claim changes: every settlement {@link #settle} would return stays what it returned last.
+     */
+    public long revision() {
+        return revision;
     }
 
     public long settlementComputations() {

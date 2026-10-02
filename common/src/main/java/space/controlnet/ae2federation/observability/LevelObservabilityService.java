@@ -29,16 +29,43 @@ public final class LevelObservabilityService implements AutoCloseable {
     public static final long PAIR_FLOW_WINDOW_TICKS = 100;
     private final java.util.Map<LaneKey, space.controlnet.ae2federation.observability.meter.PairFlowWindow> laneFlows =
             new java.util.HashMap<>();
+    /** Scopes that accepted a flow since the last sweep; only subscribed ones are projected, once per tick. */
+    private final java.util.Set<FederationDomainReference> flowedScopes = new java.util.HashSet<>();
+    /**
+     * The scope added to {@link #flowedScopes} last since the sweep, and the rule window recorded into last: one
+     * binding's operations repeat the same scope and key objects, which an identity test answers without hashing.
+     */
+    private FederationDomainReference lastFlowedScope;
+    private space.controlnet.ae2federation.policy.PolicyKey lastPairKey;
+    private space.controlnet.ae2federation.observability.meter.PairFlowWindow lastPairWindow;
+    private static final long PRUNE_INTERVAL_TICKS = 100;
+    /** The key type a storage record named last and its unit; a type's id never changes. */
+    private appeng.api.stacks.AEKeyType lastKeyType;
+    private ResourceUnit lastKeyUnit;
 
     private LevelObservabilityService(ServerLevel level) {
         this.level = level;
     }
 
-    public static synchronized LevelObservabilityService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, LevelObservabilityService::new);
+    /**
+     * The service {@link #get} returned last, read without the lock: every accepted energy demand looks it up.
+     * Replaced under the lock, cleared on close.
+     */
+    private static volatile LevelObservabilityService last;
+
+    public static LevelObservabilityService get(ServerLevel level) {
+        var cached = last;
+        return cached != null && cached.level == level ? cached : getLocked(level);
+    }
+
+    private static synchronized LevelObservabilityService getLocked(ServerLevel level) {
+        var service = SERVICES.computeIfAbsent(level, LevelObservabilityService::new);
+        last = service;
+        return service;
     }
 
     public static synchronized void closeLevel(ServerLevel level) {
+        last = null;
         var service = SERVICES.remove(level);
         if (service != null) {
             service.close();
@@ -63,9 +90,29 @@ public final class LevelObservabilityService implements AutoCloseable {
     }
 
     public void sweep() {
-        subscriptions.activeScopes().forEach(this::snapshot);
+        for (var scope : subscriptions.activeScopes()) {
+            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
+                    flowedScopes.contains(scope) && transportMeter.window(scope).resnapshotRequired());
+        }
+        flowedScopes.clear();
+        lastFlowedScope = null;
         var recovered = subscriptions.recoverRequired(this::snapshot);
         recovered.forEach(transportMeter::acknowledgeSnapshot);
+        if (level.getGameTime() % PRUNE_INTERVAL_TICKS == 0) {
+            prune();
+        }
+    }
+
+    /** Drops meter windows of domain generations that no longer exist and flow windows that went quiet. */
+    private void prune() {
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(level);
+        var active = subscriptions.activeScopes();
+        transportMeter.retain(scope -> active.contains(scope) || registry.isCurrent(scope));
+        var now = level.getGameTime();
+        pairFlows.values().removeIf(window -> !window.summarize(now).active());
+        lastPairKey = null;
+        lastPairWindow = null;
+        laneFlows.values().removeIf(window -> !window.summarize(now).active());
     }
 
     public FederationDomainStateSnapshot snapshot(FederationDomainReference scope) {
@@ -74,24 +121,52 @@ public final class LevelObservabilityService implements AutoCloseable {
 
     public void recordAccepted(Iterable<FederationDomainReference> scopes, OperationEventId eventId, String resource, long amount,
             ResourceUnit unit, FlowState.Attribution attribution) {
+        java.util.Objects.requireNonNull(eventId);
+        java.util.Objects.requireNonNull(resource);
+        recordAccepted(scopes, eventId, () -> resource, amount, unit, attribution);
+    }
+
+    /** {@code eventId} null: the operation is new, and each scope's record shares the id the first one made. */
+    private void recordAccepted(Iterable<FederationDomainReference> scopes,
+            @org.jetbrains.annotations.Nullable OperationEventId eventId, java.util.function.Supplier<String> resource,
+            long amount, ResourceUnit unit, FlowState.Attribution attribution) {
         if (amount <= 0) {
             return;
         }
+        var created = eventId == null;
+        // The meter records every accepted operation at once; subscribers see it in the tick's sweep, which projects
+        // each subscribed scope once however many operations it accepted.
         for (var scope : scopes) {
-            if (!transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution)) {
-                continue;
+            boolean recorded;
+            if (created) {
+                eventId = transportMeter.recordNew(scope, eventId, resource, amount, unit, attribution);
+                recorded = true;
+            } else {
+                recorded = transportMeter.recordAccepted(scope, eventId, resource, amount, unit, attribution);
             }
-            var window = transportMeter.window(scope);
-            subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
-                    window.resnapshotRequired());
+            if (recorded) {
+                flowed(scope);
+            }
+        }
+    }
+
+    private void flowed(FederationDomainReference scope) {
+        if (scope != lastFlowedScope) {
+            flowedScopes.add(scope);
+            lastFlowedScope = scope;
         }
     }
 
     /** Records one accepted delivery that a rule allowed; callers pass only amounts the target actually took. */
     public void recordPairFlow(space.controlnet.ae2federation.policy.PolicyKey key, long amount) {
         if (amount <= 0) return;
-        pairFlows.computeIfAbsent(key, ignored -> new space.controlnet.ae2federation.observability.meter.PairFlowWindow(
-                PAIR_FLOW_WINDOW_TICKS)).record(level.getGameTime(), amount);
+        if (key != lastPairKey) {
+            lastPairWindow = pairFlows.computeIfAbsent(key,
+                    ignored -> new space.controlnet.ae2federation.observability.meter.PairFlowWindow(
+                            PAIR_FLOW_WINDOW_TICKS));
+            lastPairKey = key;
+        }
+        lastPairWindow.record(level.getGameTime(), amount);
     }
 
     /** One Provider lane (the channel to one Endpoint); {@code provider} is the Provider identity's string form. */
@@ -118,15 +193,24 @@ public final class LevelObservabilityService implements AutoCloseable {
         var window = pairFlows.get(key);
         if (window == null) return space.controlnet.ae2federation.observability.meter.PairFlowWindow.Summary.NONE;
         var summary = window.summarize(level.getGameTime());
-        if (!summary.active()) pairFlows.remove(key);
+        if (!summary.active()) {
+            pairFlows.remove(key);
+            lastPairKey = null;
+            lastPairWindow = null;
+        }
         return summary;
     }
 
     public void recordAcceptedStorage(Iterable<FederationDomainReference> scopes, AcceptedStorageOperation operation) {
         var key = operation.resource();
-        var typePath = key.getType().getId().getPath();
-        var unit = typePath.contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
-        recordAccepted(scopes, operation.eventId(), key.getId().toString(), operation.amount(), unit,
+        var type = key.getType();
+        if (type != lastKeyType) {
+            lastKeyUnit = type.getId().getPath().contains("fluid") ? ResourceUnit.FLUID_DROPLET : ResourceUnit.ITEM;
+            lastKeyType = type;
+        }
+        var unit = lastKeyUnit;
+        // The resource id is a registry lookup and a new string; only a kept or reported flow needs it.
+        recordAccepted(scopes, null, () -> key.getId().toString(), operation.amount(), unit,
                 FlowState.Attribution.EXACT_OPERATION);
     }
 

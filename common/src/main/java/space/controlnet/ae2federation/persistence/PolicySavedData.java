@@ -64,6 +64,11 @@ public final class PolicySavedData extends SavedData {
         return store.snapshot();
     }
 
+    /** The revision {@code snapshot().highWatermark()} reports, without copying the rules. */
+    public PolicyRevision highWatermark() {
+        return store.nextRevision();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         return PolicyStateCodec.save(store.snapshot(), tag);

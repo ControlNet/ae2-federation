@@ -9,7 +9,6 @@ import java.util.Objects;
 import net.minecraft.network.chat.Component;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import java.util.function.Consumer;
-import space.controlnet.ae2federation.observability.meter.OperationEventId;
 
 final class AuthorizedStorageProjection implements
         space.controlnet.ae2federation.storage.provenance.FederationManagedStorage {
@@ -26,7 +25,8 @@ final class AuthorizedStorageProjection implements
 
     @Override
     public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        return authorization.permits(PolicyOperation.INSERT, what) && delegate.isPreferredStorageFor(what, source);
+        // The native preference is checked first: most sources prefer nothing, and the insert itself validates again.
+        return delegate.isPreferredStorageFor(what, source) && authorization.permits(PolicyOperation.INSERT, what);
     }
 
     @Override
@@ -52,9 +52,14 @@ final class AuthorizedStorageProjection implements
     @Override
     public void getAvailableStacks(KeyCounter output) {
         // Source validity and relationship currency are evaluated once per enumeration; only the Policy resource
-        // filter runs per key. Quantities come straight from the native delegate.
+        // filter runs per key, and not at all when it allows every key. Quantities come straight from the native
+        // delegate.
         var ready = authorization.readyAuthorization();
         if (ready == null) {
+            return;
+        }
+        if (ready.permitsAll(PolicyOperation.VIEW)) {
+            delegate.getAvailableStacks(output);
             return;
         }
         var available = delegate.getAvailableStacks();
@@ -72,7 +77,7 @@ final class AuthorizedStorageProjection implements
 
     private void observe(AEKey key, long accepted, Actionable mode) {
         if (mode == Actionable.MODULATE && accepted > 0) {
-            acceptedObserver.accept(new AcceptedStorageOperation(OperationEventId.create(), key, accepted));
+            acceptedObserver.accept(new AcceptedStorageOperation(key, accepted));
         }
     }
 }

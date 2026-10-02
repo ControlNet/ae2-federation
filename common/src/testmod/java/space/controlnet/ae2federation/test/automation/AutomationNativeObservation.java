@@ -9,7 +9,8 @@ import java.util.List;
 import space.controlnet.ae2federation.test.mixed.MixedFactoryRuntimeReceipt;
 
 public final class AutomationNativeObservation {
-    private static Mutable active;
+    /** Written under the class lock; read without it only to skip operations while nothing is observed. */
+    private static volatile Mutable active;
 
     private AutomationNativeObservation() {
     }
@@ -51,7 +52,13 @@ public final class AutomationNativeObservation {
         MixedFactoryRuntimeReceipt.bus("EXPORT", bus, worked);
     }
 
-    public static synchronized void projection(Object projection, String operation, AEKey key, long requested,
+    public static void projection(Object projection, String operation, AEKey key, long requested, long accepted) {
+        if (active != null) {
+            projectionLocked(projection, operation, key, requested, accepted);
+        }
+    }
+
+    private static synchronized void projectionLocked(Object projection, String operation, AEKey key, long requested,
             long accepted) {
         if (active == null) return;
         if (!AutomationAuthorityObservation.acceptsProjectionOperation(projection, operation, key)) {

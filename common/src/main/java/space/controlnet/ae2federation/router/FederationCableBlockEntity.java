@@ -10,27 +10,27 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
-import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 
 public final class FederationCableBlockEntity extends BlockEntity {
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
+    /** Client only: the flow renderer's neighbour mask and the game tick it was read in. */
+    private int flowMask;
+    private long flowMaskTick = Long.MIN_VALUE;
 
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
-            ports.put(face, new CableFacePort(position, face, this::invalidateFederationDomainTopology));
+            ports.put(face, new CableFacePort(position, face));
         }
     }
 
@@ -50,7 +50,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     public void neighborChanged(BlockPos neighborPosition) {
         for (var face : Direction.values()) {
             if (worldPosition.relative(face).equals(neighborPosition)) {
-                ports.get(face).invalidate();
+                if (ports.get(face).revalidate()) {
+                    publishFederationDomainTopology();
+                }
                 return;
             }
         }
@@ -77,17 +79,6 @@ public final class FederationCableBlockEntity extends BlockEntity {
         ports.values().forEach(port -> port.initialize(serverLevel));
     }
 
-    private void invalidateFederationDomainTopology() {
-        federationDomainDirty = true;
-        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
-                    FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
-        }
-    }
-
     private void publishFederationDomainTopology() {
         if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
             return;
@@ -101,22 +92,33 @@ public final class FederationCableBlockEntity extends BlockEntity {
                         new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
             }
         });
-        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId, evidence));
-        StorageMountService.topologyChangedIfPresent(serverLevel);
-        CraftingBindingService.topologyChangedIfPresent(serverLevel);
-        EnergyBindingService.reconcileIfPresent(serverLevel);
+        if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
+                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+            FederationBindingRefresh.request(serverLevel);
+        }
         federationDomainDirty = false;
     }
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
-            StorageMountService.topologyChangedIfPresent(serverLevel);
-            CraftingBindingService.topologyChangedIfPresent(serverLevel);
-            EnergyBindingService.reconcileIfPresent(serverLevel);
+            FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
         federationDomainDirty = true;
         ports.values().forEach(CableFacePort::destroy);
+    }
+
+    /**
+     * The neighbour mask the flow renderer draws, read from the level at most once per game tick: the renderer asks
+     * every frame, and six block lookups per cable per frame add up across a base.
+     */
+    public int flowMask() {
+        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
+        if (level != null && flowMaskTick != gameTime) {
+            flowMask = CableVisualConnections.mask(level, worldPosition);
+            flowMaskTick = gameTime;
+        }
+        return flowMask;
     }
 }

@@ -14,6 +14,12 @@ public abstract class CompatibilityGameTestPlacementMixin {
         if (testId.equalsIgnoreCase("compatprettyitems") || testId.equalsIgnoreCase("compatprettyfluids")) {
             return new BlockPos(0, position.getY(), 0);
         }
+        // TEST-ONLY: replays a run at the origin a CI log reported ("tests are now running at position x, y, z").
+        String origin = System.getProperty("ae2federation.testOrigin", "");
+        if (!origin.isBlank()) {
+            String[] parts = origin.split(",");
+            return new BlockPos(Integer.parseInt(parts[0].trim()), position.getY(), Integer.parseInt(parts[1].trim()));
+        }
         return position;
     }
 }

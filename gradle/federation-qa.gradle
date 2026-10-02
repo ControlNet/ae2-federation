@@ -430,10 +430,13 @@ def verifyTaskTwentyEightEvidence
 def taskTwentyNineCases = ['crafting.cancel-native', 'crafting.disconnect-restart', 'crafting.reject-cycle',
         'crafting.reject-replay', 'crafting.replace-requester']
 def verifyTaskTwentyNineEvidence
+def remoteCraftingCases = ['crafting.remote-request', 'crafting.remote-chain', 'crafting.remote-cancel',
+        'crafting.remote-missing-retry', 'crafting.remote-reload']
+def verifyRemoteCraftingEvidence
 def taskThirtyCases = ['mixed.reject-empty-orders', 'mixed.overload-backpressure']
 def verifyTaskThirtyNegativeEvidence
-def taskThirtyOneCases = ['energy.directional-policy', 'energy.cold-start', 'energy.ring-conservation',
-        'energy.reject-reverse', 'energy.disconnect-no-source']
+def taskThirtyOneCases = ['energy.shared-mutual', 'energy.cold-start', 'energy.shared-transitive',
+        'energy.rule-off-splits', 'energy.disconnect-splits']
 def verifyTaskThirtyOneEvidence
 def taskThirtyTwoCases = ['observe.native-flow-once', 'observe.scoped-snapshot', 'observe.close-cleanup',
         'observe.reject-stale-delta', 'observe.reject-cross-domain-edit']
@@ -1332,24 +1335,25 @@ verifyTaskTenEvidence = { File attempt, List requested, List<String> declaredPat
 verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
     if (!requested.any { it in taskThirtyOneCases }) return
     if (requested != taskThirtyOneCases) throw new GradleException('Task 31 evidence must select the exact canonical case set')
-    def expected = [energydirectionalpolicy: 21, energycoldstart: 7, energyringconservation: 4,
-            energyrejectreverse: 4, energydisconnectnosource: 9]
+    def expected = [energysharedmutual: 18, energycoldstart: 8, energysharedtransitive: 7,
+            energyruleoffsplits: 10, energydisconnectsplits: 7]
     def fields = [
-            energydirectionalpolicy: ['providerBefore', 'providerAfter', 'providerAfterSimulation', 'simulated',
-                    'accepted', 'providerDebit', 'simulationMutation', 'reverseCapability', 'distinctGrids',
-                    'consumerChannels', 'providerChannels', 'federationOverhead', 'providerServiceExact',
+            energysharedmutual: ['providerBefore', 'providerAfter', 'providerAfterSimulation', 'simulated',
+                    'accepted', 'providerDebit', 'consumerAvailable', 'providerAvailable', 'sharesForward',
+                    'sharesReverse', 'reverseConfigured', 'distinctGrids', 'consumerChannels', 'providerChannels',
                     'largeProviderCapacity', 'largeProviderBefore', 'largeConsumerAvailable', 'largeRequested',
                     'largeSimulated', 'largeProviderAfterSimulation', 'largeAccepted', 'largeProviderAfter',
                     'largeProviderDebit'],
-            energycoldstart: ['initiallyPowered', 'routeEstablishedCold', 'poweredAfter', 'providerBefore',
+            energycoldstart: ['initiallyPowered', 'ruleDirection', 'poweredAfter', 'providerBefore',
                     'providerAfter', 'providerDebit', 'consumerStoredBefore', 'consumerAvailableBefore', 'distinctGrids'],
-            energyringconservation: ['distinctGridCount', 'directedEdges', 'totalBefore', 'totalAfter',
-                    'requested', 'accepted', 'totalDebit', 'cycleTerminated', 'createdEnergy'],
-            energyrejectreverse: ['forwardConfigured', 'reverseConfigured', 'reverseExtracted', 'providerBefore',
-                    'providerAfter', 'reverseMutation', 'distinctGrids'],
-            energydisconnectnosource: ['initialTransfer', 'heldBindingCurrent', 'staleExtracted',
-                    'providerAfterTransfer', 'bindingCountWithoutSource', 'generationBefore', 'generationAfter',
-                    'replacementExtracted', 'replacementServiceExact']]
+            energysharedtransitive: ['distinctGridCount', 'ruledPairs', 'firstThirdRule', 'totalBefore', 'totalAfter',
+                    'requested', 'accepted', 'totalDebit', 'createdEnergy'],
+            energyruleoffsplits: ['initialTransfer', 'sharedWhileEnabled', 'extractedAfterOff',
+                    'providerMutationAfterOff', 'availableAfterOff', 'sharedAfterOff', 'reenabledExtracted'],
+            energydisconnectsplits: ['initialTransfer', 'sharedWhileConnected', 'extractedAfterDisconnect',
+                    'providerMutationAfterDisconnect', 'availableAfterDisconnect', 'distinctGrids',
+                    'sharedAfterDisconnect']]
+    def operationCounts = [energysharedmutual: 2, energyruleoffsplits: 2]
     def envelopeFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
             'inserted', 'extracted', 'elapsedNanos'] as Set
     def decimal = { Properties properties, String name ->
@@ -1360,33 +1364,6 @@ verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> decla
         }
     }
     def parsed = [:]
-    def authorities = [:]
-    def operations = [:]
-    def authorityFields = ['testId', 'selected', 'phase', 'consumerNetwork', 'providerNetwork', 'consumerGrid',
-            'providerGrid', 'providerService', 'binding', 'generation', 'access', 'capability'] as Set
-    def operationFields = ['testId', 'selected', 'phase', 'consumerGrid', 'providerGrid', 'providerService',
-            'requested', 'accepted', 'providerBefore', 'providerAfter'] as Set
-    def expectedAuthorityPhases = [energydirectionalpolicy: ['pre-operation'], energycoldstart: ['cold-route'],
-            energyringconservation: ['edge-0', 'edge-1', 'edge-2'], energyrejectreverse: ['forward-only'],
-            energydisconnectnosource: ['initial', 'source-removed', 'replacement']]
-    def expectedOperationPhases = [energydirectionalpolicy: ['extract', 'large-extract'],
-            energycoldstart: ['native-recovery'],
-            energyringconservation: ['cycle-extract'], energyrejectreverse: ['reverse-denied'],
-            energydisconnectnosource: ['initial-extract', 'stale-denied', 'replacement-extract']]
-    def parseReceipt = { String line, String marker, Set<String> exactFields, String testId ->
-        def payload = line.substring(line.indexOf(marker) + marker.length())
-        def receipt = [:]
-        payload.split(/\s+/).each { token ->
-            def separator = token.indexOf('=')
-            if (separator < 1 || receipt.put(token.substring(0, separator), token.substring(separator + 1)) != null) {
-                throw new GradleException("Task 31 malformed or duplicate receipt field: ${testId}")
-            }
-        }
-        if (receipt.keySet() != exactFields || receipt.testId != testId || receipt.selected != testId) {
-            throw new GradleException("Task 31 receipt schema or child identity is invalid: ${testId}")
-        }
-        receipt
-    }
     expected.each { testId, assertionCount ->
         if (childExits["positive-${testId}"] != 0) {
             throw new GradleException("Task 31 native child exit is missing or nonzero: ${testId}")
@@ -1407,9 +1384,9 @@ verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> decla
         if (properties.stringPropertyNames() != expectedFields) {
             throw new GradleException("Task 31 exact schema mismatch in ${artifactName}")
         }
-        def operationCount = testId == 'energydirectionalpolicy' ? 2 : 1
         if (parsePositiveInteger(properties.getProperty('assertions'), 'Task 31 assertions') != assertionCount
-                || parsePositiveInteger(properties.getProperty('operations'), 'Task 31 operations') != operationCount) {
+                || parsePositiveInteger(properties.getProperty('operations'), 'Task 31 operations')
+                        != operationCounts.get(testId, 1)) {
             throw new GradleException("Task 31 assertion/operation accounting mismatch in ${artifactName}")
         }
         def traceFacts = [:]
@@ -1423,148 +1400,79 @@ verifyTaskThirtyOneEvidence = { File attempt, List requested, List<String> decla
                 throw new GradleException("Task 31 runtime trace mismatch in ${artifactName}: ${name}")
             }
         }
-        def authorityByPhase = [:]
-        new File(attempt, logName).readLines().findAll { it.contains('AE2F_ENERGY_AUTHORITY ') }.each { line ->
-            def receipt = parseReceipt(line, 'AE2F_ENERGY_AUTHORITY ', authorityFields, testId as String)
-            if (authorityByPhase.put(receipt.phase, receipt) != null) {
-                throw new GradleException("Task 31 duplicate authority phase: ${testId}/${receipt.phase}")
-            }
-        }
-        if (authorityByPhase.keySet() != expectedAuthorityPhases[testId] as Set) {
-            throw new GradleException("Task 31 authority receipt set is missing, extra, or substituted: ${testId}")
-        }
-        def operationByPhase = [:]
-        new File(attempt, logName).readLines().findAll { it.contains('AE2F_ENERGY_OPERATION ') }.each { line ->
-            def receipt = parseReceipt(line, 'AE2F_ENERGY_OPERATION ', operationFields, testId as String)
-            if (operationByPhase.put(receipt.phase, receipt) != null) {
-                throw new GradleException("Task 31 duplicate operation phase: ${testId}/${receipt.phase}")
-            }
-        }
-        if (operationByPhase.keySet() != expectedOperationPhases[testId] as Set) {
-            throw new GradleException("Task 31 native operation receipt set is missing, extra, or substituted: ${testId}")
-        }
-        authorities[testId] = authorityByPhase
-        operations[testId] = operationByPhase
         parsed[testId] = properties
     }
 
-    def directional = parsed.energydirectionalpolicy as Properties
-    if (decimal(directional, 'accepted') != 250 || decimal(directional, 'providerDebit') != 250
-            || decimal(directional, 'providerBefore') - decimal(directional, 'providerAfter')
-                    != decimal(directional, 'providerDebit')
-            || decimal(directional, 'providerBefore') != decimal(directional, 'providerAfterSimulation')
-            || decimal(directional, 'extracted').movePointLeft(9)
-                    != decimal(directional, 'accepted') + decimal(directional, 'largeAccepted')
-            || directional.getProperty('simulationMutation') != 'false'
-            || directional.getProperty('reverseCapability') != 'false'
-            || directional.getProperty('distinctGrids') != 'true'
-            || directional.getProperty('federationOverhead') != '0'
-            || directional.getProperty('providerServiceExact') != 'true') {
-        throw new GradleException('Task 31 directional Policy accounting is incomplete')
+    def mutual = parsed.energysharedmutual as Properties
+    if (decimal(mutual, 'accepted') != 250 || decimal(mutual, 'simulated') != 250
+            || decimal(mutual, 'providerDebit') != 250
+            || decimal(mutual, 'providerBefore') - decimal(mutual, 'providerAfter') != decimal(mutual, 'providerDebit')
+            || decimal(mutual, 'providerBefore') != decimal(mutual, 'providerAfterSimulation')
+            || decimal(mutual, 'consumerAvailable') != decimal(mutual, 'providerAvailable')
+            || decimal(mutual, 'extracted').movePointLeft(9)
+                    != decimal(mutual, 'accepted') + decimal(mutual, 'largeAccepted')
+            || mutual.getProperty('sharesForward') != 'true' || mutual.getProperty('sharesReverse') != 'true'
+            || mutual.getProperty('reverseConfigured') != 'false'
+            || mutual.getProperty('distinctGrids') != 'true') {
+        throw new GradleException('Task 31 mutual energy sharing accounting is incomplete')
     }
-    if (decimal(directional, 'largeProviderCapacity') <= 1_000_000_000
-            || decimal(directional, 'largeProviderBefore') <= 1_000_000_000
-            || decimal(directional, 'largeConsumerAvailable') <= 1_000_000_000
-            || decimal(directional, 'largeRequested') <= 1_000_000_000
-            || decimal(directional, 'largeSimulated') != decimal(directional, 'largeRequested')
-            || decimal(directional, 'largeAccepted') != decimal(directional, 'largeRequested')
-            || decimal(directional, 'largeProviderAfterSimulation') != decimal(directional, 'largeProviderBefore')
-            || decimal(directional, 'largeProviderBefore') - decimal(directional, 'largeProviderAfter')
-                    != decimal(directional, 'largeProviderDebit')
-            || decimal(directional, 'largeProviderDebit') != decimal(directional, 'largeAccepted')
-            || decimal(directional, 'largeProviderBefore') > decimal(directional, 'largeProviderCapacity')) {
+    if (decimal(mutual, 'largeProviderCapacity') <= 1_000_000_000
+            || decimal(mutual, 'largeProviderBefore') <= 1_000_000_000
+            || decimal(mutual, 'largeConsumerAvailable') <= 1_000_000_000
+            || decimal(mutual, 'largeRequested') <= 1_000_000_000
+            || decimal(mutual, 'largeSimulated') != decimal(mutual, 'largeRequested')
+            || decimal(mutual, 'largeAccepted') != decimal(mutual, 'largeRequested')
+            || decimal(mutual, 'largeProviderAfterSimulation') != decimal(mutual, 'largeProviderBefore')
+            || decimal(mutual, 'largeProviderBefore') - decimal(mutual, 'largeProviderAfter')
+                    != decimal(mutual, 'largeProviderDebit')
+            || decimal(mutual, 'largeProviderDebit') != decimal(mutual, 'largeAccepted')
+            || decimal(mutual, 'largeProviderBefore') > decimal(mutual, 'largeProviderCapacity')) {
         throw new GradleException('Task 31 large finite native energy accounting is incomplete')
-    }
-    def directionalAuthority = authorities.energydirectionalpolicy.'pre-operation'
-    def directionalOperation = operations.energydirectionalpolicy.extract
-    def largeDirectionalOperation = operations.energydirectionalpolicy.'large-extract'
-    if (directionalAuthority.access != 'current' || directionalAuthority.capability != 'true'
-            || directionalOperation.providerService != directionalAuthority.providerService
-            || directionalOperation.consumerGrid != directionalAuthority.consumerGrid
-            || directionalOperation.providerGrid != directionalAuthority.providerGrid
-            || new BigDecimal(directionalOperation.accepted) != decimal(directional, 'accepted')
-            || new BigDecimal(directionalOperation.providerBefore) != decimal(directional, 'providerBefore')
-            || new BigDecimal(directionalOperation.providerAfter) != decimal(directional, 'providerAfter')
-            || largeDirectionalOperation.providerService != directionalAuthority.providerService
-            || largeDirectionalOperation.consumerGrid != directionalAuthority.consumerGrid
-            || largeDirectionalOperation.providerGrid != directionalAuthority.providerGrid
-            || new BigDecimal(largeDirectionalOperation.requested) != decimal(directional, 'largeRequested')
-            || new BigDecimal(largeDirectionalOperation.accepted) != decimal(directional, 'largeAccepted')
-            || new BigDecimal(largeDirectionalOperation.providerBefore) != decimal(directional, 'largeProviderBefore')
-            || new BigDecimal(largeDirectionalOperation.providerAfter) != decimal(directional, 'largeProviderAfter')) {
-        throw new GradleException('Task 31 independent directional authority mismatch')
     }
     def coldStart = parsed.energycoldstart as Properties
     if (coldStart.getProperty('initiallyPowered') != 'false'
-            || coldStart.getProperty('routeEstablishedCold') != 'true'
+            || coldStart.getProperty('ruleDirection') != 'reverse'
             || coldStart.getProperty('poweredAfter') != 'true'
             || decimal(coldStart, 'providerDebit') <= 0
+            || decimal(coldStart, 'providerBefore') - decimal(coldStart, 'providerAfter')
+                    != decimal(coldStart, 'providerDebit')
             || decimal(coldStart, 'consumerStoredBefore') != 0
             || decimal(coldStart, 'consumerAvailableBefore') != 0
             || coldStart.getProperty('distinctGrids') != 'true') {
         throw new GradleException('Task 31 native cold-start recovery is incomplete')
     }
-    if (authorities.energycoldstart.'cold-route'.access != 'current'
-            || operations.energycoldstart.'native-recovery'.providerService
-                    != authorities.energycoldstart.'cold-route'.providerService
-            || new BigDecimal(operations.energycoldstart.'native-recovery'.accepted)
-                    != decimal(coldStart, 'providerDebit')) {
-        throw new GradleException('Task 31 independent cold-start authority mismatch')
+    def transitive = parsed.energysharedtransitive as Properties
+    if (transitive.getProperty('distinctGridCount') != '3' || transitive.getProperty('ruledPairs') != '2'
+            || transitive.getProperty('firstThirdRule') != 'false'
+            || decimal(transitive, 'requested') != 400 || decimal(transitive, 'accepted') != 300
+            || decimal(transitive, 'totalDebit') != 300
+            || decimal(transitive, 'totalBefore') - decimal(transitive, 'totalAfter') != decimal(transitive, 'accepted')
+            || transitive.getProperty('createdEnergy') != '0') {
+        throw new GradleException('Task 31 transitive three-Grid pool conservation is incomplete')
     }
-    def ring = parsed.energyringconservation as Properties
-    if (ring.getProperty('distinctGridCount') != '3' || ring.getProperty('directedEdges') != '3'
-            || decimal(ring, 'requested') != 400 || decimal(ring, 'accepted') != 300
-            || decimal(ring, 'totalDebit') != 300
-            || decimal(ring, 'totalBefore') - decimal(ring, 'totalAfter') != decimal(ring, 'accepted')
-            || ring.getProperty('cycleTerminated') != 'true' || ring.getProperty('createdEnergy') != '0') {
-        throw new GradleException('Task 31 three-Grid ring conservation is incomplete')
+    def ruleOff = parsed.energyruleoffsplits as Properties
+    if (decimal(ruleOff, 'initialTransfer') != 200 || ruleOff.getProperty('sharedWhileEnabled') != 'true'
+            || decimal(ruleOff, 'extractedAfterOff') != 0 || decimal(ruleOff, 'providerMutationAfterOff') != 0
+            || decimal(ruleOff, 'availableAfterOff') != 0 || ruleOff.getProperty('sharedAfterOff') != 'false'
+            || decimal(ruleOff, 'reenabledExtracted') != 100) {
+        throw new GradleException('Task 31 rule-off pool split is incomplete')
     }
-    def ringAuthorities = authorities.energyringconservation.values()
-    if (ringAuthorities*.consumerGrid.toSet().size() != 3 || ringAuthorities*.providerGrid.toSet().size() != 3
-            || ringAuthorities*.consumerGrid.toSet() != ringAuthorities*.providerGrid.toSet()
-            || ringAuthorities.any { it.access != 'current' || it.capability != 'true' }
-            || new BigDecimal(operations.energyringconservation.'cycle-extract'.accepted)
-                    != decimal(ring, 'accepted')) {
-        throw new GradleException('Task 31 independent three-Grid ring authority mismatch')
-    }
-    def reverse = parsed.energyrejectreverse as Properties
-    if (reverse.getProperty('forwardConfigured') != 'true' || reverse.getProperty('reverseConfigured') != 'false'
-            || decimal(reverse, 'reverseExtracted') != 0 || decimal(reverse, 'reverseMutation') != 0
-            || decimal(reverse, 'providerBefore') != decimal(reverse, 'providerAfter')
-            || reverse.getProperty('distinctGrids') != 'true') {
-        throw new GradleException('Task 31 reverse Policy rejection is incomplete')
-    }
-    if (authorities.energyrejectreverse.'forward-only'.access != 'current'
-            || new BigDecimal(operations.energyrejectreverse.'reverse-denied'.accepted) != 0) {
-        throw new GradleException('Task 31 independent reverse rejection authority mismatch')
-    }
-    def disconnected = parsed.energydisconnectnosource as Properties
-    if (disconnected.getProperty('heldBindingCurrent') != 'false'
-            || decimal(disconnected, 'staleExtracted') != 0
-            || disconnected.getProperty('bindingCountWithoutSource') != '0'
-            || decimal(disconnected, 'replacementExtracted') != 100
-            || disconnected.getProperty('replacementServiceExact') != 'true'
-            || Long.parseLong(disconnected.getProperty('generationAfter'))
-                    <= Long.parseLong(disconnected.getProperty('generationBefore'))) {
-        throw new GradleException('Task 31 stale-route fail-closed semantics are incomplete')
-    }
-    def disconnectedAuthority = authorities.energydisconnectnosource
-    if (disconnectedAuthority.initial.access != 'current'
-            || disconnectedAuthority.'source-removed'.access != 'unavailable'
-            || disconnectedAuthority.'source-removed'.capability != 'false'
-            || disconnectedAuthority.replacement.access != 'current'
-            || Long.parseLong(disconnectedAuthority.replacement.generation)
-                    <= Long.parseLong(disconnectedAuthority.initial.generation)
-            || new BigDecimal(operations.energydisconnectnosource.'stale-denied'.accepted) != 0
-            || new BigDecimal(operations.energydisconnectnosource.'replacement-extract'.accepted) != 100) {
-        throw new GradleException('Task 31 independent source lifecycle authority mismatch')
+    def disconnected = parsed.energydisconnectsplits as Properties
+    if (decimal(disconnected, 'initialTransfer') != 200
+            || disconnected.getProperty('sharedWhileConnected') != 'true'
+            || decimal(disconnected, 'extractedAfterDisconnect') != 0
+            || decimal(disconnected, 'providerMutationAfterDisconnect') != 0
+            || decimal(disconnected, 'availableAfterDisconnect') != 0
+            || disconnected.getProperty('distinctGrids') != 'true'
+            || disconnected.getProperty('sharedAfterDisconnect') != 'false') {
+        throw new GradleException('Task 31 disconnect pool split is incomplete')
     }
 }
 verifyTaskThirtyTwoEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
     if (!requested.any { it in taskThirtyTwoCases }) return
     if (requested != taskThirtyTwoCases) throw new GradleException('Task 32 evidence must select the exact canonical case set')
     def expected = [
-            observenativeflowonce: [accepted: '8', exactNano: '8000000000', events: '1', simulationEvents: '0',
+            observenativeflowonce: [accepted: '8', exactAmount: '8', events: '1', simulationEvents: '0',
                     observationReads: '2', deduplicated: 'true', topologyStable: 'true'],
             observescopedsnapshot: [members: '2', canonical: 'true', crossFederationDomain: 'false', federationDomains: '2',
                     sessionBound: 'true', providers: '1', endpoints: '1', nonFlowDeltas: '2',
@@ -2077,7 +1985,7 @@ verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declar
             federationdomainpartialunload: 8, federationdomainrejectstaleroute: 8]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.findAll {
-        new File(it).name.startsWith('native-domain') && new File(it).name.endsWith('.properties')
+        new File(it).name.startsWith('native-federationdomain') && new File(it).name.endsWith('.properties')
     }
     if (declaredNativeNames.size() != expectedArtifacts.size() || declaredNativeNames.toSet() != expectedArtifacts) {
         throw new GradleException('Task 13 native artifact set is duplicated, missing, or substituted')
@@ -4939,6 +4847,87 @@ verifyTaskTwentyNineEvidence = { File attempt, List requested, List<String> decl
     }
 }
 
+verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
+    if (!requested.any { it in remoteCraftingCases }) return
+    if (requested != remoteCraftingCases) {
+        throw new GradleException('Remote crafting evidence must select the exact canonical case set')
+    }
+    def expected = [craftingremoterequest: 12, craftingremotechain: 14, craftingremotecancel: 10,
+            craftingremotemissingretry: 11, craftingremotereload: 14]
+    def semanticFields = [
+            craftingremoterequest: ['consumerPatterns', 'resultInserted', 'providerMaterialAfter', 'providerResidue',
+                    'providerSubmissions', 'busyCpus'],
+            craftingremotechain: ['consumerSourceRule', 'resultInserted', 'sourceLogsAfter', 'sourcePlanksAfter',
+                    'middleResidue', 'middleSubmissions', 'sourceSubmissions', 'busyCpus'],
+            craftingremotecancel: ['providerMaterialAfter', 'consumerResult', 'providerSubmissions', 'busyCpus'],
+            craftingremotemissingretry: ['submissionsWhileMissing', 'resultInserted', 'providerSubmissions',
+                    'busyCpus'],
+            craftingremotereload: ['savedLink', 'resultInserted', 'providerMaterialAfter', 'resubmissions',
+                    'busyCpus']]
+    // The outcome each case proves; any other value is a regression, not a variant.
+    def semantics = [
+            craftingremoterequest: [consumerPatterns: '0', resultInserted: '4', providerMaterialAfter: '0',
+                    providerResidue: '0', providerSubmissions: '1', busyCpus: '0'],
+            craftingremotechain: [consumerSourceRule: 'absent', resultInserted: '4', sourceLogsAfter: '0',
+                    sourcePlanksAfter: '2', middleResidue: '0', middleSubmissions: '1', sourceSubmissions: '1',
+                    busyCpus: '0'],
+            craftingremotecancel: [providerMaterialAfter: '2', consumerResult: '0', providerSubmissions: '1',
+                    busyCpus: '0'],
+            craftingremotemissingretry: [submissionsWhileMissing: '0', resultInserted: '4', providerSubmissions: '1',
+                    busyCpus: '0'],
+            craftingremotereload: [savedLink: 'true', resultInserted: '4', providerMaterialAfter: '0',
+                    resubmissions: '0', busyCpus: '0']]
+    def artifactFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
+            'inserted', 'extracted', 'elapsedNanos'] as Set
+    def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
+    def nativeNames = declaredPaths.collect { new File(it).name }.findAll {
+        it.startsWith('native-crafting') && it.endsWith('.properties')
+    }
+    if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
+        throw new GradleException('Remote crafting native child is missing, extra, or substituted')
+    }
+    expected.each { testId, assertionCount ->
+        if (childExits["positive-${testId}"] != 0) {
+            throw new GradleException("Remote crafting native child exit is missing or nonzero: ${testId}")
+        }
+        def artifact = "native-${testId}.properties"
+        def log = "positive-${testId}.log"
+        if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
+            throw new GradleException("Remote crafting requires exactly one artifact and log for ${testId}")
+        }
+        def file = new File(attempt, artifact)
+        def properties = loadProperties(file)
+        requireProperty(properties, 'schemaVersion', '1', file)
+        requireProperty(properties, 'status', 'passed', file)
+        requireProperty(properties, 'kind', 'verify', file)
+        requireProperty(properties, 'testId', testId as String, file)
+        requireProperty(properties, 'structure', 'ae2federation_test:harness_native_smoke', file)
+        if (parsePositiveInteger(properties.getProperty('assertions'), 'Remote crafting assertions') != assertionCount
+                || parsePositiveInteger(properties.getProperty('operations'), 'Remote crafting operations') != 1) {
+            throw new GradleException("Remote crafting assertion/operation accounting mismatch in ${artifact}")
+        }
+        def traceFacts = [:]
+        (new File(attempt, log).text =~ /AE2F_CRAFT_NATIVE_ENTRY testId=([a-z0-9]+) fact=([A-Za-z0-9.]+) value=([^\s]+)/).each { match ->
+            if (match[1] == testId && traceFacts.put(match[2], match[3]) != null) {
+                throw new GradleException("Remote crafting duplicate semantic trace fact in ${log}: ${match[2]}")
+            }
+        }
+        def fields = semanticFields[testId] as Set
+        if (properties.stringPropertyNames() != artifactFields + fields || traceFacts.keySet() != fields) {
+            throw new GradleException("Remote crafting exact schema mismatch in ${artifact}")
+        }
+        fields.each { name ->
+            if (traceFacts[name] != properties.getProperty(name)) {
+                throw new GradleException("Remote crafting semantic trace mismatch in ${artifact}: ${name}")
+            }
+            if (properties.getProperty(name) != semantics[testId][name]) {
+                throw new GradleException("Remote crafting outcome mismatch in ${artifact}: ${name}="
+                        + properties.getProperty(name))
+            }
+        }
+    }
+}
+
 verifyTaskTwentyBenchmarkEvidence = { File attempt, Map report, List<String> declaredPaths ->
     if (report.kind != 'benchmark' || report.requested != ['processing-small']) return null
     def required = ['benchmark-native.properties', 'benchmark-profile.json', 'benchmark-baseline.json',
@@ -6301,6 +6290,8 @@ verifyPersistedReport = { File resultFile, boolean requireCurrentIdentity ->
             report.childExits as Map)
     verifyTaskTwentyNineEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
             report.childExits as Map)
+    verifyRemoteCraftingEvidence(attempt, report.requested as List, report.artifacts.collect { it.path as String },
+            report.childExits as Map)
     verifyTaskTwentyBenchmarkEvidence(attempt, report as Map, report.artifacts.collect { it.path as String })
     verifyTaskThirtyNegativeEvidence(attempt, report.requested as List,
             report.artifacts.collect { it.path as String }, report.childExits as Map)
@@ -7276,7 +7267,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     structure: testCase.structure, assertions: testCase.assertions,
                     accounting: !(testCase.id in taskEighteenCases || testCase.id.startsWith('processing.')
                             || testCase.id.startsWith('mixed.')),
-                    operations: testCase.id == 'energy.directional-policy' ? 2
+                    operations: testCase.id in ['energy.shared-mutual', 'energy.rule-off-splits'] ? 2
                             : (testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
                     || testCase.id.startsWith('endpoint.') || testCase.id.startsWith('storage-proof.')
                     || testCase.id.startsWith('craft-proof.') || testCase.id.startsWith('energy-proof.')
@@ -7664,6 +7655,11 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.reject-cycle':
                 case 'crafting.reject-replay':
                 case 'crafting.replace-requester':
+                case 'crafting.remote-request':
+                case 'crafting.remote-chain':
+                case 'crafting.remote-cancel':
+                case 'crafting.remote-missing-retry':
+                case 'crafting.remote-reload':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -7676,18 +7672,18 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'energy-proof.reject-reverse':
                 case 'energy-proof.no-source':
                 case 'energy-proof.ring':
-                case 'energy.directional-policy':
+                case 'energy.shared-mutual':
                 case 'energy.cold-start':
-                case 'energy.ring-conservation':
-                case 'energy.reject-reverse':
-                case 'energy.disconnect-no-source':
+                case 'energy.shared-transitive':
+                case 'energy.rule-off-splits':
+                case 'energy.disconnect-splits':
                 case 'observe.native-flow-once':
                 case 'observe.scoped-snapshot':
                 case 'observe.close-cleanup':
                 case 'observe.reject-stale-delta':
                 case 'observe.reject-cross-domain-edit':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
-                    def energyOperations = testCase.testId == 'energydirectionalpolicy' ? 2 : 1
+                    def energyOperations = testCase.testId in ['energysharedmutual', 'energyruleoffsplits'] ? 2 : 1
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: energyOperations,
                             allowZeroWork: true])
@@ -7901,6 +7897,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
     verifyTaskTwentySevenEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyEightEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskTwentyNineEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
+    verifyRemoteCraftingEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyNegativeEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyOneEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
     verifyTaskThirtyTwoEvidence(attempt, requestedCases, artifacts.collect { it.path as String }, childExits)
@@ -10880,6 +10877,21 @@ tasks.register('federationTaskTwentyEightEvidenceSelfTest') {
     }
 }
 
+tasks.register('federationRemoteCraftingEvidenceConsumer') {
+    group = 'verification'
+    description = 'Consumes a complete five-case remote crafting result.'
+    dependsOn(tasks.named('jar'))
+    doLast {
+        def resultPath = resultFileProperty.orNull
+        if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
+        def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
+        if (report.requested != remoteCraftingCases) {
+            throw new GradleException('Result is not the canonical remote crafting case set')
+        }
+        logger.lifecycle('Remote crafting evidence verified')
+    }
+}
+
 tasks.register('federationTaskTwentyNineEvidenceConsumer') {
     group = 'verification'
     description = 'Consumes a complete five-case Task 29 native crafting lifecycle result.'
@@ -10897,20 +10909,20 @@ tasks.register('federationTaskTwentyNineEvidenceConsumer') {
 
 tasks.register('federationTaskThirtyOneEvidenceConsumer') {
     group = 'verification'
-    description = 'Consumes a complete five-case Task 31 directional energy result.'
+    description = 'Consumes a complete five-case Task 31 shared energy result.'
     dependsOn(tasks.named('jar'))
     doLast {
         def resultPath = resultFileProperty.orNull
         if (resultPath == null || resultPath.isBlank()) throw new GradleException('Missing -PresultFile')
         def report = verifyPersistedReport(strictCanonicalPath(rootProject.file(resultPath)), true)
         if (report.requested != taskThirtyOneCases) throw new GradleException('Result is not the canonical Task 31 case set')
-        logger.lifecycle('Task 31 directional energy evidence verified')
+        logger.lifecycle('Task 31 shared energy evidence verified')
     }
 }
 
 tasks.register('federationTaskThirtyOneEvidenceSelfTest') {
     group = 'verification'
-    description = 'Rejects rebound Task 31 authority, accounting, lifecycle, ring, reserve, and schema substitutions.'
+    description = 'Rejects rebound Task 31 accounting, sharing, split, reserve, and schema substitutions.'
     dependsOn(tasks.named('jar'))
     notCompatibleWithConfigurationCache('Copies and fully rebinds persisted Task 31 evidence.')
     doLast {
@@ -10931,72 +10943,49 @@ tasks.register('federationTaskThirtyOneEvidenceSelfTest') {
         def rejected = [
                 mutateFact('fake-reserve', 'energycoldstart', 'consumerStoredBefore', '1.0'),
                 mutateFact('fake-powered', 'energycoldstart', 'poweredAfter', 'false'),
-                mutateFact('reverse-rule', 'energyrejectreverse', 'reverseConfigured', 'true'),
-                mutateFact('merged-grid', 'energydirectionalpolicy', 'distinctGrids', 'false'),
-                mutateFact('hidden-loss', 'energydirectionalpolicy', 'providerDebit', '249.0'),
-                mutateFact('simulation-mutation', 'energydirectionalpolicy', 'providerAfterSimulation', '999.0'),
+                mutateFact('forward-only', 'energysharedmutual', 'sharesReverse', 'false'),
+                mutateFact('two-rules', 'energysharedmutual', 'reverseConfigured', 'true'),
+                mutateFact('split-pool', 'energysharedmutual', 'providerAvailable', '0.0'),
+                mutateFact('merged-grid', 'energysharedmutual', 'distinctGrids', 'false'),
+                mutateFact('hidden-loss', 'energysharedmutual', 'providerDebit', '249.0'),
+                mutateFact('simulation-mutation', 'energysharedmutual', 'providerAfterSimulation', '999.0'),
                 taskFiveEvidenceProbeRejects(sourceResult, 'task31-large-value-truncation') { File attempt, Map ignored ->
-                    def file = new File(attempt, 'native-energydirectionalpolicy.properties')
+                    def file = new File(attempt, 'native-energysharedmutual.properties')
                     def properties = loadProperties(file)
                     def replacements = [largeRequested: '1.0E9', largeSimulated: '1.0E9',
                             largeAccepted: '1.0E9', largeProviderDebit: '1.0E9',
                             extracted: '1000000250000000000', inserted: '1000000250000000000']
                     replacements.each { field, replacement -> properties.setProperty(field, replacement) }
                     file.withOutputStream { properties.store(it, 'Task 31 rebound large-value probe') }
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
+                    def log = new File(attempt, 'positive-energysharedmutual.log')
                     replacements.each { field, replacement ->
                         log.text = log.text.replaceFirst("fact=${field} value=[^\\s]+",
                                 "fact=${field} value=${replacement}")
                     }
-                    log.text = log.text.replaceFirst(
-                            /(phase=large-extract[^\n]* requested=)[^\s]+( accepted=)[^\s]+/) {
-                        match, prefix, separator -> "${prefix}1.0E9${separator}1.0E9"
-                    }
                 },
-                mutateFact('double-delivery', 'energyringconservation', 'accepted', '600.0'),
-                mutateFact('missing-ring-edge', 'energyringconservation', 'directedEdges', '2'),
-                mutateFact('stale-generation', 'energydisconnectnosource', 'generationAfter', '1'),
-                mutateFact('stale-service', 'energydisconnectnosource', 'replacementServiceExact', 'false'),
+                mutateFact('double-delivery', 'energysharedtransitive', 'accepted', '600.0'),
+                mutateFact('direct-third-rule', 'energysharedtransitive', 'firstThirdRule', 'true'),
+                mutateFact('stale-pool-after-off', 'energyruleoffsplits', 'extractedAfterOff', '100.0'),
+                mutateFact('shared-after-off', 'energyruleoffsplits', 'sharedAfterOff', 'true'),
+                mutateFact('stale-pool-after-disconnect', 'energydisconnectsplits', 'extractedAfterDisconnect', '100.0'),
+                mutateFact('shared-after-disconnect', 'energydisconnectsplits', 'sharedAfterDisconnect', 'true'),
                 taskFiveEvidenceProbeRejects(sourceResult, 'task31-extra-fact') { File attempt, Map ignored ->
-                    def file = new File(attempt, 'native-energydirectionalpolicy.properties')
+                    def file = new File(attempt, 'native-energysharedmutual.properties')
                     def properties = loadProperties(file)
                     properties.setProperty('unexpected', 'true')
                     file.withOutputStream { properties.store(it, 'Task 31 extra-field probe') }
                 },
                 taskFiveEvidenceProbeRejects(sourceResult, 'task31-missing-fact') { File attempt, Map ignored ->
-                    def file = new File(attempt, 'native-energydirectionalpolicy.properties')
+                    def file = new File(attempt, 'native-energysharedmutual.properties')
                     def properties = loadProperties(file)
                     properties.remove('accepted')
                     file.withOutputStream { properties.store(it, 'Task 31 missing-field probe') }
                 },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-missing-authority') { File attempt, Map ignored ->
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    log.text = log.readLines().findAll { !it.contains('AE2F_ENERGY_AUTHORITY ') }.join('\n') + '\n'
-                },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-duplicate-authority') { File attempt, Map ignored ->
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    def receipt = log.readLines().find { it.contains('AE2F_ENERGY_AUTHORITY ') }
-                    log.text += receipt + '\n'
-                },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-forged-authority-service') { File attempt, Map ignored ->
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    log.text = log.text.replaceFirst(/(AE2F_ENERGY_AUTHORITY[^\n]* providerService=)[0-9]+/, '$14294967295')
-                },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-forged-operation') { File attempt, Map ignored ->
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    log.text = log.text.replaceFirst(/(AE2F_ENERGY_OPERATION[^\n]* accepted=)250\.0/, '$1500.0')
-                },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-authority-extra-field') { File attempt, Map ignored ->
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    log.text = log.text.replaceFirst(/(AE2F_ENERGY_AUTHORITY[^\n]* capability=true)/, '$1 forged=true')
-                },
-                taskFiveEvidenceProbeRejects(sourceResult, 'task31-substituted-authority-child') { File attempt, Map ignored ->
-                    def source = new File(attempt, 'positive-energycoldstart.log').readLines()
-                            .find { it.contains('AE2F_ENERGY_AUTHORITY ') }
-                    def log = new File(attempt, 'positive-energydirectionalpolicy.log')
-                    log.text = log.readLines().collect {
-                        it.contains('AE2F_ENERGY_AUTHORITY ') ? source : it
-                    }.join('\n') + '\n'
+                taskFiveEvidenceProbeRejects(sourceResult, 'task31-untraced-fact') { File attempt, Map ignored ->
+                    def file = new File(attempt, 'native-energysharedmutual.properties')
+                    def properties = loadProperties(file)
+                    properties.setProperty('consumerChannels', '99')
+                    file.withOutputStream { properties.store(it, 'Task 31 untraced-fact probe') }
                 }]
         if (rejected.any { !(it instanceof String) }) {
             throw new GradleException('Task 31 rebound semantic mutation was accepted')
@@ -11031,7 +11020,7 @@ tasks.register('federationTaskThirtyTwoEvidenceSelfTest') {
                 ['double-flow', 'observenativeflowonce', 'events', '2'],
                 ['simulation-count', 'observenativeflowonce', 'simulationEvents', '1'],
                 ['subscriber-multiplication', 'observenativeflowonce', 'observationReads', '3'],
-                ['inexact-energy', 'observenativeflowonce', 'exactNano', '9223372036854775807'],
+                ['inexact-amount', 'observenativeflowonce', 'exactAmount', '9223372036854775807'],
                 ['topology-churn', 'observenativeflowonce', 'topologyStable', 'false'],
                 ['scope-leak', 'observescopedsnapshot', 'crossFederationDomain', 'true'],
                 ['wrong-domain-count', 'observescopedsnapshot', 'domains', '1'],

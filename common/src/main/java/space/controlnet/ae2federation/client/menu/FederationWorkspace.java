@@ -6,14 +6,9 @@ import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
-import com.lowdragmc.lowdraglib2.gui.ui.event.HoverTooltips;
-import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.minecraft.network.chat.Component;
@@ -21,19 +16,15 @@ import net.minecraft.network.chat.Component;
 
 /** Local navigation and presentation; every business selection still goes through the authorized menu request. */
 final class FederationWorkspace {
-    private static final List<String> PAGES = List.of("overview", "mapping", "diagnostics");
-    /** The server's choice groups; only the Endpoint diagnostics keep a selector, the wires view is the rest. */
+    /** The topology (with each Endpoint's panel) and the wires view; an Endpoint's details are on the topology. */
+    private static final List<String> PAGES = List.of("overview", "mapping");
+    /** The server's choice groups; the wires view and the topology present them. */
     private static final List<String> CHOICE_GROUPS = List.of("mapping_provider", "slot", "target", "endpoint");
-    private static final Map<String, String> SELECTORS = Map.of("endpoint", "endpoint_next");
     private final PatternChoices patterns = new PatternChoices();
     private final UI ui;
-    private final FederationEndpointBrowser endpointBrowser;
     private final Consumer<String> select;
-    private final Map<String, Selector<String>> selectors = new HashMap<>();
     private final Map<String, String> confirmedSelections = new HashMap<>();
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
-    private final Map<String, String> choiceFilters = new HashMap<>();
-    private final Map<String, Label> choiceEmptyLabels = new HashMap<>();
     private boolean entranceApplied;
     private String navigationGroup;
     private String navigationId;
@@ -43,18 +34,13 @@ final class FederationWorkspace {
     private boolean authorityAllowsNavigation;
     private String page = "overview";
 
-    @SuppressWarnings("unchecked")
     FederationWorkspace(UI ui, Consumer<String> select) {
         this.ui = ui;
         this.select = select;
-        endpointBrowser = new FederationEndpointBrowser(ui, select);
-        element("endpoint_mapping", Button.class).setOnClick(event -> navigateEndpoint());
-        element("endpoint_browse", Button.class).setOnClick(event -> endpointBrowser.open());
         // The design's title is bold; the tab name after it is not.
         element("domain_title", Label.class).setText(Component.translatable("ae2federation.ui.domain.title")
                 .withStyle(net.minecraft.ChatFormatting.BOLD));
-        var icons = Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING,
-                "diagnostics", FederationIcons.DIAGNOSTICS);
+        var icons = Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING);
         for (var page : PAGES) {
             var tab = element("tab_" + page, Button.class);
             tab.noText();
@@ -64,42 +50,6 @@ final class FederationWorkspace {
             tab.setOnClick(event -> show(page));
         }
         show("overview");
-        SELECTORS.forEach((group, id) -> {
-            var selector = (Selector<String>) element(id, Selector.class);
-            selector.buttonIcon.style(style -> style.backgroundTexture(
-                    com.lowdragmc.lowdraglib2.gui.texture.Icons.DOWN_ARROW_NO_BAR.copy().setColor(FederationTheme.TEXT)));
-            selector.setCandidateUIProvider(value -> {
-                var label = new Label();
-                label.addClass("choice-label");
-                if (value != null) label.addClass("choice-" + group + "-" + value.replaceAll("[^a-zA-Z0-9_-]", "_"));
-                label.setText(choiceText(group, value));
-                label.addEventListener(UIEvents.HOVER_TOOLTIPS, event -> event.hoverTooltips = choiceTooltip(group, value));
-                return label;
-            });
-            selector.selectorStyle(style -> style.maxItemCount(5).scrollerViewHeight(90));
-            selector.setOnValueChanged(value -> {
-                if (value != null) select.accept(group + ":" + value);
-                selector.setValue(confirmedSelections.get(group), false);
-            });
-            selectors.put(group, selector);
-            {
-                var search = new TextField();
-                search.setId(id + "_search");
-                search.layout(style -> style.height(18).widthPercent(100).flexShrink(0));
-                search.textFieldStyle(style -> style.placeholder(tr("search_devices").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
-                var empty = new Label();
-                empty.setId(id + "_empty");
-                empty.setText(tr("no_choices"));
-                empty.layout(style -> style.height(18).paddingAll(3));
-                empty.setDisplay(false);
-                choiceEmptyLabels.put(group, empty);
-                selector.dialog.addChildAt(search, 0).addChild(empty);
-                search.setTextResponder(value -> {
-                    choiceFilters.put(group, value.strip().toLowerCase(Locale.ROOT));
-                    refreshChoices(group);
-                });
-            }
-        });
     }
 
     void updateNavigationAuthority(boolean allowed, boolean rejected) {
@@ -109,18 +59,11 @@ final class FederationWorkspace {
     }
 
     private void updateEndpointNavigation() {
-        var id = confirmedSelections.get("endpoint");
-        var endpoint = choices.getOrDefault("endpoint", List.of()).stream()
-                .filter(choice -> choice.get("id").getAsString().equals(id)).findFirst().orElse(null);
-        boolean available = endpoint != null && endpoint.has("mappingNavigation")
-                && endpoint.get("mappingNavigation").getAsBoolean();
-        var button = element("endpoint_mapping", Button.class);
-        button.setActive(authorityAllowsNavigation && available);
-        button.style(style -> style.tooltips(tr(available ? "endpoint_navigation_help" : "endpoint_navigation_unavailable")));
+        if (topology != null) topology.setEndpointNavigation(authorityAllowsNavigation);
     }
 
-    private void navigateEndpoint() {
-        var endpoint = confirmedSelections.get("endpoint");
+    /** Follows an Endpoint to its owner's mappings once the server has selected the owner, its slot and the Endpoint. */
+    private void navigateEndpoint(String endpoint) {
         if (!authorityAllowsNavigation || endpoint == null) return;
         endpointNavigationReceipt = "endpoint_mapping:" + endpoint + "/" + java.util.UUID.randomUUID();
         select.accept(endpointNavigationReceipt);
@@ -140,10 +83,7 @@ final class FederationWorkspace {
         topology = graph;
         // One header search: it dims networks in the topology and filters Providers, patterns and Endpoints here.
         if (processing != null) graph.onSearch(processing::filter);
-        element("endpoint_locate", Button.class).setOnClick(event -> {
-            var id = confirmedSelections.get("endpoint");
-            if (id != null && graph.focusObject(id)) show("overview");
-        });
+        updateEndpointNavigation();
     }
 
     void show(String page) {
@@ -166,8 +106,6 @@ final class FederationWorkspace {
             if (candidate.equals(page)) button.addClass("selected");
         }
         element("graph_search", UIElement.class).setDisplay("overview".equals(page) || mapping);
-        // Close floating selectors when navigating away from their anchors.
-        selectors.values().forEach(Selector::hide);
     }
 
     /** The footer repeats processing feedback on the processing page only, and only when there is something to say. */
@@ -180,7 +118,6 @@ final class FederationWorkspace {
         if (encoded.isEmpty()) return;
         patterns.reset();
         var root = JsonParser.parseString(encoded).getAsJsonObject();
-        endpointBrowser.accept(root);
         if (!entranceApplied) {
             boolean fromProvider = root.has("returnProvider") && root.get("returnProvider").getAsBoolean();
             if (root.has("initialPage")) show(root.get("initialPage").getAsString());
@@ -192,29 +129,12 @@ final class FederationWorkspace {
         element("workspace_tabs", UIElement.class).setDisplay(!bridgeUnavailable);
         if (bridgeUnavailable) show("unavailable");
         var selected = root.getAsJsonObject("selected");
-        boolean hasDomain = selected.has("consumer");
-        boolean localEndpoint = !hasDomain && root.has("localEndpointPosition");
-        element("endpoint_next", Selector.class).setDisplay(!localEndpoint);
-        var localLabel = element("endpoint_local", Label.class);
-        localLabel.setDisplay(localEndpoint);
-        if (localEndpoint) localLabel.setText(tr("local_endpoint", root.get("localEndpointPosition").getAsString()));
-        element("diagnostics_description", Label.class).setText(tr(localEndpoint ? "local_diagnostics_help" : "diagnostics_help"));
-        for (var id : List.of("endpoint_browse")) {
-            var button = element(id, Button.class);
-            button.setActive(hasDomain);
-            button.style(style -> style.tooltips(tr(hasDomain ? "domain_browse_help" : "domain_browse_unavailable")));
-        }
         for (var group : CHOICE_GROUPS) {
             var values = new ArrayList<JsonObject>();
             root.getAsJsonArray(group).forEach(value -> values.add(value.getAsJsonObject()));
-            var previous = choices.put(group, List.copyOf(values));
-            var selector = selectors.get(group);
-            if (!values.equals(previous) && selector != null) refreshChoices(group);
-            var confirmed = selected.has(group) ? selected.get(group).getAsString() : null;
-            confirmedSelections.put(group, confirmed);
-            if (selector != null) selector.setValue(confirmed, false);
+            choices.put(group, List.copyOf(values));
+            confirmedSelections.put(group, selected.has(group) ? selected.get(group).getAsString() : null);
         }
-        element("endpoint_locate", Button.class).setActive(confirmedSelections.get("endpoint") != null);
         updateEndpointNavigation();
         if (endpointNavigationReceipt != null && root.has("navigationReceipt")
                 && endpointNavigationReceipt.equals(root.get("navigationReceipt").getAsString())) {
@@ -225,7 +145,7 @@ final class FederationWorkspace {
             endpointNavigationReceipt = null;
         }
         if (navigationGroup != null && navigationId.equals(confirmedSelections.get(navigationGroup))) {
-            show(navigationGroup.equals("mapping_provider") ? "mapping" : "diagnostics");
+            show("mapping");
             navigationGroup = null;
         }
         if (processing != null) {
@@ -244,53 +164,20 @@ final class FederationWorkspace {
         }
     }
 
-    private void refreshChoices(String group) {
-        var query = choiceFilters.getOrDefault(group, "");
-        var matches = choices.getOrDefault(group, List.of()).stream()
-                .map(value -> value.get("id").getAsString())
-                .filter(id -> query.isEmpty() || (id + " " + choiceText(group, id).getString())
-                        .toLowerCase(Locale.ROOT).contains(query)).toList();
-        selectors.get(group).setCandidates(matches);
-        var empty = choiceEmptyLabels.get(group);
-        if (empty != null) empty.setDisplay(matches.isEmpty());
-    }
-
+    /** Opens a Provider's mappings, or follows an Endpoint to its owner's: the two places the topology links to. */
     void openObject(String group, String id) {
+        if (group.equals("endpoint_mapping")) {
+            navigateEndpoint(id);
+            return;
+        }
         navigationGroup = group;
         navigationId = id;
         if (id.equals(confirmedSelections.get(group))) {
-            show(group.equals("mapping_provider") ? "mapping" : "diagnostics");
+            show("mapping");
             navigationGroup = null;
         } else {
             select.accept(group + ":" + id);
         }
-    }
-
-    private HoverTooltips choiceTooltip(String group, String id) {
-        var tooltip = HoverTooltips.empty().append(choiceText(group, id));
-        var choice = choices.getOrDefault(group, List.of()).stream()
-                .filter(value -> value.get("id").getAsString().equals(id)).findFirst().orElse(null);
-        if (group.equals("target") && choice != null && choice.has("state")) {
-            tooltip = tooltip.append(tr("target_state." + choice.get("state").getAsString() + ".detail"));
-            if (choice.has("owner")) tooltip = tooltip.append(tr("target_owner", choice.get("owner").getAsString(),
-                    choice.get("ownerInstance").getAsLong()));
-        }
-        // Choice ids are internal hashes: the position and state above already say which device this is.
-        return tooltip;
-    }
-
-    private Component choiceText(String group, String id) {
-        if (id == null) return tr("none");
-        var choice = choices.getOrDefault(group, List.of()).stream()
-                .filter(value -> value.get("id").getAsString().equals(id)).findFirst().orElse(null);
-        if (choice == null) return Component.literal(id);
-        if (group.equals("slot")) return Component.literal("#" + id + " ").append(patterns.name(choice));
-        if (group.equals("target") && choice.has("state")) return tr("target_choice",
-                tr("target_state." + choice.get("state").getAsString()),
-                choice.has("position") ? choice.get("position").getAsString() : choice.get("label").getAsString());
-        if (choice.has("position")) return tr(group.equals("mapping_provider") ? "provider_at" : "endpoint_at",
-                choice.get("position").getAsString());
-        return Component.literal(choice.get("label").getAsString());
     }
 
     /** The objects of one root array, or none when an older payload leaves it out. */

@@ -8,8 +8,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
+import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
+import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationshipKey;
+import space.controlnet.ae2federation.storage.dependency.EffectiveStorageAuthority;
 import space.controlnet.ae2federation.storage.provenance.MountGeneration;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
@@ -22,16 +26,19 @@ public final class StorageMountService implements AutoCloseable {
     private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
     private final Map<PolicyKey, MountedStorageRelationship> mounts = new HashMap<>();
     private final Map<PolicyKey, MountGeneration> mountGenerations = new HashMap<>();
+    /** Advances before every change to {@link #mounts} or {@link #mountGenerations}. */
+    private long mountsRevision;
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final StorageFederationDomainObserver federationDomains;
     private final StorageDependencyIndex dependencies;
-    private final StorageSubscriptionService subscriptions = new StorageSubscriptionService();
+    private final StorageSubscriptionService subscriptions;
     private final StorageSubscriptionPlanner subscriptionPlanner;
     private final LevelObservabilityService observability;
     private int removedProviderCount;
     private long sourceValidations;
 
     private StorageMountService(ServerLevel level) {
+        subscriptions = new StorageSubscriptionService(level::getGameTime);
         federationDomains = new StorageFederationDomainObserver(level);
         dependencies = new StorageDependencyIndex(level, federationDomains, provenance);
         subscriptionPlanner = new StorageSubscriptionPlanner(dependencies, subscriptions);
@@ -142,8 +149,10 @@ public final class StorageMountService implements AutoCloseable {
     public void reconcileAll() {
         dependencies.refresh();
         var desired = dependencies.relationships();
+        var desiredPolicies = new java.util.HashSet<PolicyKey>();
+        desired.keySet().forEach(effective -> desiredPolicies.add(effective.policyKey()));
         List.copyOf(mounts.keySet()).stream()
-                .filter(key -> desired.keySet().stream().noneMatch(effective -> effective.policyKey().equals(key)))
+                .filter(key -> !desiredPolicies.contains(key))
                 .forEach(this::removeMount);
         desired.values().forEach(this::reconcileEffective);
         subscriptionPlanner.reconcile(mounts, mountGenerations);
@@ -266,6 +275,8 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     private void removeMount(PolicyKey key) {
+        mountsRevision++;
+        AuthorityEpoch.advance();
         var mounted = mounts.remove(key);
         if (mounted != null) {
             StorageMountHelpers.nextGeneration(mountGenerations, key);
@@ -295,11 +306,12 @@ public final class StorageMountService implements AutoCloseable {
             return;
         }
         removeMount(key);
+        AuthorityEpoch.advance();
         var delegate = StorageMountHelpers.aggregate(domain.sources());
         var holder = new MountedStorageRelationship[1];
-        var authority = new StorageRelationshipAuthority(() -> dependencies.relationship(effective.key()),
-                candidate -> dependencies.current(candidate, domain),
-                () -> holder[0] != null && sourceCurrent(holder[0]));
+        var check = new StorageDependencyIndex.CurrentCheck();
+        var authority = new StorageRelationshipAuthority(() -> dependencies.relationship(effective.key(), check),
+                () -> readyAuthority(effective.key(), domain, holder[0], check));
         var projection = new AuthorizedStorageProjection(delegate, authority,
                 operation -> {
                     observability.recordAcceptedStorage(authority.scopes(), operation);
@@ -312,13 +324,50 @@ public final class StorageMountService implements AutoCloseable {
         holder[0] = next;
         consumer.getService(IStorageService.class).addGlobalStorageProvider(provider);
         mounts.put(key, next);
+        mountsRevision++;
     }
 
-    private boolean sourceCurrent(MountedStorageRelationship mounted) {
+    /**
+     * The mounted relationship's authority while its source is ready and the relationship is current, else null.
+     * While nothing the last passing check read on the Federation side changed ({@link AuthorityEpoch}), only the
+     * source Grid's native state is read again, which is what that check would find different.
+     */
+    private @Nullable EffectiveStorageAuthority readyAuthority(EffectiveSourceRelationshipKey key,
+            NativeSourceDomain domain, @Nullable MountedStorageRelationship mounted,
+            StorageDependencyIndex.CurrentCheck check) {
+        var still = check.stillAuthorized(provenance);
+        if (still != null) {
+            sourceValidations++;
+            return still;
+        }
+        var epoch = AuthorityEpoch.current();
+        EffectiveStorageAuthority authority = null;
+        if (mounted != null && sourceCurrent(mounted, check)) {
+            var candidate = dependencies.relationship(key, check);
+            if (candidate != null && dependencies.current(candidate, domain, check)) {
+                authority = candidate.authority();
+            }
+        }
+        check.authorized(epoch, authority);
+        return authority;
+    }
+
+    /**
+     * The mount's provider Grid is its domain's runtime Grid, so {@link StorageDependencyIndex#sourceCurrent} covers
+     * the source nodes' readiness on that Grid.
+     */
+    private boolean sourceCurrent(MountedStorageRelationship mounted, StorageDependencyIndex.CurrentCheck check) {
         sourceValidations++;
-        if (mounts.get(mounted.relationship().key()) != mounted
-                || !mounted.generation().equals(mountGenerations.get(mounted.relationship().key()))
-                || !mounted.sourceReady() || !dependencies.sourceCurrent(mounted.domain())) {
+        // Neither map changed since this mount last found itself in both, so it still would.
+        if (check.mountsRevision != mountsRevision) {
+            if (mounts.get(mounted.relationship().key()) != mounted
+                    || !mounted.generation().equals(mountGenerations.get(mounted.relationship().key()))) {
+                removeIfCurrent(mounted);
+                return false;
+            }
+            check.mountsRevision = mountsRevision;
+        }
+        if (!dependencies.sourceCurrent(mounted.domain(), check)) {
             removeIfCurrent(mounted);
             return false;
         }
@@ -327,6 +376,8 @@ public final class StorageMountService implements AutoCloseable {
 
     private int closeState() {
         var removed = mounts.size();
+        mountsRevision++;
+        AuthorityEpoch.advance();
         subscriptions.close();
         List.copyOf(mounts.values()).forEach(mounted -> mounted.relationship().consumerGrid()
                 .getService(IStorageService.class).removeGlobalStorageProvider(mounted.provider()));

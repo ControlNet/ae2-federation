@@ -2,6 +2,8 @@ package space.controlnet.ae2federation.storage.provenance;
 
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.energy.IEnergyService;
+import appeng.api.networking.pathing.IPathingService;
 import appeng.api.networking.storage.IStorageService;
 import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.MEStorage;
@@ -21,7 +23,9 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.ae2.storage.NativeMountLedger;
 import space.controlnet.ae2federation.ae2.storage.NativeStorageAliasProbe;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 
 /**
  * The single source index for native export sources. Source identity and generation are derived from AE2's real mount
@@ -39,9 +43,55 @@ public final class NativeSourceDomainRegistry {
     private final Map<OriginNetworkId, NativeSourceDomain> lastValid = new HashMap<>();
     private final Map<OriginNetworkId, Long> generations = new HashMap<>();
     private final Map<OriginNetworkId, CachedDiscovery> cache = new HashMap<>();
+    /** Advances before any change to {@link #current} or {@link #cache}. */
+    private long mutations;
     private long discoveryRebuilds;
     private long cachedDiscoveries;
     private long providerScans;
+
+    /**
+     * As {@link #discover(IGrid)}, answered from {@code probe} while this registry's cache and current domains are
+     * unchanged since {@code probe} saw {@code discover} return a domain for the same Grid, and no settlement changed
+     * ({@link IdentityEpoch}; discover returns a domain only for a settled Grid): then only that domain's stamp is
+     * matched again, and the result is the one {@code discover} gives.
+     */
+    public NativeSourceDomain discover(IGrid grid, Probe probe) {
+        var cached = probe.cached;
+        if (probe.grid == grid && probe.mutations == mutations && probe.epoch == IdentityEpoch.current()
+                && cached.stamp().matches(grid, probe.service)) {
+            cachedDiscoveries++;
+            return cached.domain();
+        }
+        var epoch = IdentityEpoch.current();
+        var domain = discover(grid);
+        // discover returned the domain its origin's cache entry and current domain both hold.
+        probe.grid = grid;
+        probe.epoch = epoch;
+        probe.service = grid.getStorageService();
+        probe.cached = cache.get(domain.origin());
+        probe.mutations = mutations;
+        return domain;
+    }
+
+    /**
+     * Whether the domain {@code probe}'s last {@link #discover(IGrid, Probe)} returned still matches its Grid's native
+     * state, for a caller that knows {@link space.controlnet.ae2federation.policy.AuthorityEpoch} did not change since:
+     * neither this registry nor the Grid's membership, mount table, power or booting state did, so of the stamp only
+     * the delegate links, which change without any event, are read again. Then {@code discover} would return it again.
+     */
+    public boolean stillMatches(Probe probe) {
+        var cached = probe.cached;
+        return cached != null && cached.domain() != null && cached.stamp().linksCurrent();
+    }
+
+    /** One caller's memo of the last {@link #discover(IGrid, Probe)} answer; owned by that caller. */
+    public static final class Probe {
+        private IGrid grid;
+        private long epoch = -1;
+        private IStorageService service;
+        private CachedDiscovery cached;
+        private long mutations = -1;
+    }
 
     public NativeSourceDomain discover(IGrid grid) {
         var confirmed = FederationDomainRegistryAccess.confirmedNetworkId(grid);
@@ -63,6 +113,8 @@ public final class NativeSourceDomainRegistry {
                 return cached.domain();
             }
         }
+        mutations++;
+        AuthorityEpoch.advance();
         cache.remove(origin);
         discoveryRebuilds++;
         Stamp stamp = null;
@@ -110,12 +162,16 @@ public final class NativeSourceDomainRegistry {
     }
 
     public void invalidate(OriginNetworkId origin) {
+        mutations++;
+        AuthorityEpoch.advance();
         current.remove(origin);
         cache.remove(origin);
         nextGeneration(origin);
     }
 
     public void clear() {
+        mutations++;
+        AuthorityEpoch.advance();
         current.clear();
         lastValid.clear();
         generations.clear();
@@ -176,7 +232,8 @@ public final class NativeSourceDomainRegistry {
         }
         var links = new ArrayList<NativeStorageAliasProbe.DelegateLink>();
         var sources = buildSources(registrations, links);
-        var stamp = new Stamp(grid, grid.getStorageService(), snapshot.generation(),
+        var stamp = new Stamp(grid, grid.getStorageService(), grid.getEnergyService(), grid.getPathingService(),
+                snapshot.generation(),
                 stampNodes.toArray(IGridNode[]::new), toArray(stampActive),
                 links.toArray(NativeStorageAliasProbe.DelegateLink[]::new));
         return new Capture(sources, nodes, stamp);
@@ -335,19 +392,32 @@ public final class NativeSourceDomainRegistry {
      * Cheap validity stamp of one rebuilt domain. Every field is a revision or identity that AE2 changes when the
      * inputs of discovery change; no quantities are held.
      */
-    private record Stamp(IGrid grid, IStorageService service, long mountGeneration, IGridNode[] providerNodes,
-            boolean[] providerActive, NativeStorageAliasProbe.DelegateLink[] delegateLinks) {
+    /** {@code energy} and {@code pathing} are {@code grid}'s services, fixed for the Grid's lifetime. */
+    private record Stamp(IGrid grid, IStorageService service, IEnergyService energy, IPathingService pathing,
+            long mountGeneration, IGridNode[] providerNodes, boolean[] providerActive,
+            NativeStorageAliasProbe.DelegateLink[] delegateLinks) {
         boolean matches(IGrid currentGrid, IStorageService currentService) {
             if (grid != currentGrid || service != currentService
                     || NativeMountLedger.generation(currentService) != mountGeneration) {
                 return false;
             }
-            for (var index = 0; index < providerNodes.length; index++) {
-                var node = providerNodes[index];
-                if (node.isActive() != providerActive[index] || node.getGrid() != grid) {
-                    return false;
+            if (providerNodes.length > 0) {
+                var powered = energy.isNetworkPowered();
+                var booted = !pathing.isNetworkBooting();
+                for (var index = 0; index < providerNodes.length; index++) {
+                    var node = providerNodes[index];
+                    // A node now on another Grid, or destroyed, no longer matches; one still on this Grid is
+                    // active exactly when this Grid is powered and booted and the node has its channels.
+                    if (NodeActivity.gridOf(node) != grid
+                            || NodeActivity.activeOnGrid(node, powered, booted) != providerActive[index]) {
+                        return false;
+                    }
                 }
             }
+            return linksCurrent();
+        }
+
+        boolean linksCurrent() {
             for (var link : delegateLinks) {
                 if (!link.current()) {
                     return false;

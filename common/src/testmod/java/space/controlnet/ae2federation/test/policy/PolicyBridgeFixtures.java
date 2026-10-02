@@ -1,14 +1,17 @@
 package space.controlnet.ae2federation.test.policy;
 
 import appeng.api.networking.IGrid;
+import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.level.block.Blocks;
+import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.bridge.MultipartBridgePart;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -103,6 +106,25 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
                 helper.absolutePos(secondPosition.north()));
     }
 
+    /**
+     * Saves the first Bridge's cable bus, replaces the block and loads the saved data into the new one in the same
+     * tick, as a chunk load restores it: the new Bridge part reads its NBT before its nodes join a Grid.
+     *
+     * @return the saved cable bus data
+     */
+    public CompoundTag reloadFirstBridgeHost() {
+        var registries = helper.getLevel().registryAccess();
+        var state = helper.getBlockState(firstPosition);
+        var saved = helper.getLevel().getBlockEntity(helper.absolutePos(firstPosition)).saveWithFullMetadata(registries);
+        helper.setBlock(firstPosition, Blocks.AIR);
+        helper.setBlock(firstPosition, state);
+        helper.getLevel().getBlockEntity(helper.absolutePos(firstPosition)).loadWithComponents(saved, registries);
+        first = PartHelper.getPart(BridgeRegistration.BRIDGE.get(), helper.getLevel(),
+                helper.absolutePos(firstPosition), Direction.NORTH);
+        helper.assertTrue(first != null, "The reloaded cable bus must restore the Bridge part");
+        return saved;
+    }
+
     public void removeFirstBridge() {
         helper.assertTrue(first.getHost().removePart(first), "Original Bridge part must be removed from its AE2 host");
     }
@@ -138,6 +160,18 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     /** Adds a native node storage provider to the provider (outer) Grid, west of its first cable. */
     public appeng.api.networking.IManagedGridNode addOuterStorageProvider(appeng.api.storage.IStorageProvider provider) {
         return bridges.nativePorts().createStorageProvider(Direction.EAST, firstPosition.north().west(), provider);
+    }
+
+    /**
+     * The native AE2 alternative to a Bridge: an ME Storage Bus on the consumer (main) cable facing an ME Interface on
+     * the provider (outer) cable, where the first Bridge would go.
+     */
+    public void placeNativeStorageBusToInterface() {
+        var bus = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(firstPosition),
+                Direction.NORTH, null, appeng.core.definitions.AEParts.STORAGE_BUS.asItem());
+        var face = appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(firstPosition.north()),
+                Direction.SOUTH, null, appeng.core.definitions.AEParts.INTERFACE.asItem());
+        helper.assertTrue(bus != null && face != null, "Native Storage Bus and Interface parts must be placeable");
     }
 
     public InvalidSecondCallbackProvider callbackProbe() {

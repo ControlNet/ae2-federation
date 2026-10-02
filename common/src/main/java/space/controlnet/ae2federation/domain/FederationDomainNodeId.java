@@ -12,8 +12,18 @@ public record FederationDomainNodeId(String dimension, long blockPosition) imple
 
     @Override
     public int compareTo(FederationDomainNodeId other) {
-        var dimensionOrder = dimension.compareTo(other.dimension);
+        var dimensionOrder = dimension == other.dimension ? 0 : dimension.compareTo(other.dimension);
         return dimensionOrder != 0 ? dimensionOrder : Long.compareUnsigned(blockPosition, other.blockPosition);
+    }
+
+    /**
+     * Mixes the packed position: the record default hashes {@code BlockPos.asLong()} as {@code high ^ low}, which keeps
+     * the low bits nearly constant across one layer of blocks, so a large cable network degrades HashMaps to tree bins.
+     */
+    @Override
+    public int hashCode() {
+        var mixed = blockPosition * 0x9E3779B97F4A7C15L;
+        return 31 * dimension.hashCode() + (int) (mixed ^ (mixed >>> 32));
     }
 
     @Override

@@ -34,11 +34,10 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.ae2.processing.NativeLaneDispatchListener;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.energy.EnergyBindingService;
 import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
@@ -60,7 +59,6 @@ import space.controlnet.ae2federation.processing.claim.EndpointOwnerIdentity;
 import space.controlnet.ae2federation.processing.claim.NativeTargetDomainRegistry;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
-import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 /**
  * ME Federation Pattern Provider. The front face is the Federation port; the other five faces expose one native ME
@@ -118,6 +116,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     private @Nullable BlockCapabilityCache<FederationPort, Direction> federationCache;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     private boolean federationDomainDirty = true;
+    private @Nullable FederationDomainNodeEvidence publishedEvidence;
     private boolean unloading;
     private boolean pendingRotation;
     private int maintenanceTicks;
@@ -159,7 +158,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             pendingRotation = true;
         }
         rebuildFederationCache();
-        invalidateFederationDomainTopology();
+        withdrawFederationDomainNode();
     }
 
     /** The Federation port capability exists only on the front face. */
@@ -187,7 +186,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             provider.register();
         }
         rebuildFederationCache();
-        invalidateFederationDomainTopology();
+        federationDomainDirty = true;
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state,
@@ -221,14 +220,15 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (runtime != null && getMainNode().getGrid() != null && !provider.registered()) {
             provider.register();
         }
-        invalidateFederationDomainTopology();
+        refreshFederationDomainEvidence();
     }
 
     @Override
     public void onMainNodeStateChanged(IGridNodeListener.State reason) {
         provider.onMainNodeStateChanged();
         if (reason == IGridNodeListener.State.GRID_BOOT) {
-            invalidateFederationDomainTopology();
+            // A boot keeps the node on the same Grid; the next tick publishes whatever identity it settles to.
+            federationDomainDirty = true;
         }
     }
 
@@ -268,6 +268,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         federationCache = null;
         federationDomainDirty = true;
+        publishedEvidence = null;
     }
 
     // ---- PatternProviderLogicHost: the owner logic is the native face of the Provider
@@ -660,25 +661,41 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     public void neighborChanged(BlockPos neighborPosition) {
         owner.updateRedstoneState();
         provider.updateRedstoneState();
-        if (worldPosition.relative(federationFace()).equals(neighborPosition)) {
-            invalidateFederationDomainTopology();
+        if (worldPosition.relative(federationFace()).equals(neighborPosition)
+                && level instanceof ServerLevel serverLevel && federationDomainNodeId != null && runtime != null
+                && !evidence(serverLevel).equals(publishedEvidence)) {
+            // A block placed in front that is not a Federation port leaves the evidence, and so the domain, as it is.
+            publishFederationDomainTopology();
         }
     }
 
     /**
      * Some capability of the front neighbour changed, such as an Endpoint's item handlers when it is claimed: publish
      * the evidence again on the next tick, which leaves the domain as it is when the link is the same. A changed
-     * neighbour block reaches {@link #neighborChanged}, which invalidates the node.
+     * neighbour block reaches {@link #neighborChanged}, which republishes a changed link at once.
      */
     private void recheckFederationPeer() {
         federationDomainDirty = true;
     }
 
-    private void invalidateFederationDomainTopology() {
+    /** A rotation moves the Federation face: the link of the old front must not outlive it by a tick. */
+    private void withdrawFederationDomainNode() {
         federationDomainDirty = true;
+        publishedEvidence = null;
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
             FederationDomainRegistryAccess.invalidateNodeIfPresent(serverLevel, federationDomainNodeId,
                     FederationDomainInvalidationReason.TOPOLOGY_CHANGED);
+        }
+    }
+
+    /**
+     * The node moved to another Grid, inside AE2's Grid propagation: replace the membership in the registry at once, so
+     * no domain keeps the old network, and leave the bindings to the next tick's publication, outside propagation.
+     */
+    private void refreshFederationDomainEvidence() {
+        federationDomainDirty = true;
+        if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null && runtime != null) {
+            FederationDomainRegistryAccess.get(serverLevel).upsertNode(evidence(serverLevel));
         }
     }
 
@@ -687,6 +704,15 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             return;
         }
         federationDomainDirty = false;
+        publishedEvidence = evidence(serverLevel);
+        FederationDomainRegistryAccess.get(serverLevel).upsertNode(publishedEvidence);
+        FederationBindingRefresh.request(serverLevel, () -> {
+            var grid = getMainNode().getGrid();
+            return grid == null ? List.of() : List.of(grid);
+        });
+    }
+
+    private FederationDomainNodeEvidence evidence(ServerLevel serverLevel) {
         var evidence = new java.util.TreeMap<String, FederationDomainPortEvidence>();
         var peer = federationPeer(serverLevel);
         var grid = getMainNode().getGrid();
@@ -698,12 +724,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             evidence.put(NATIVE_PORT, FederationDomainRegistryAccess.nativeEvidence(grid, new FederationDomainPortId(federationDomainNodeId,
                     NATIVE_PORT)));
         }
-        FederationDomainRegistryAccess.get(serverLevel).upsertNode(new FederationDomainNodeEvidence(federationDomainNodeId, evidence));
-        if (grid != null) {
-            StorageMountService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-            CraftingBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-            EnergyBindingService.get(serverLevel).observeFederationDomainMembers(List.of(grid));
-        }
+        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
     }
 
     private @Nullable FederationPort federationPeer(ServerLevel serverLevel) {
@@ -718,9 +739,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     }
 
     private static void reconcileServices(ServerLevel serverLevel) {
-        StorageMountService.reconcileIfPresent(serverLevel);
-        CraftingBindingService.reconcileIfPresent(serverLevel);
-        EnergyBindingService.reconcileIfPresent(serverLevel);
+        FederationBindingRefresh.request(serverLevel);
     }
 
     // ---- drops and persistence

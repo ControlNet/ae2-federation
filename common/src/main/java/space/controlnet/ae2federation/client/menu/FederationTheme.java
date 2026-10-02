@@ -33,6 +33,11 @@ public final class FederationTheme {
     public static final int EDGE = 0xff8b83a0;
     /** AE2's energy green, for stored energy that is not running low. */
     public static final int ENERGY = 0xff00fc00;
+    /** A shared-energy link, drawn like AE2's Quartz Fiber: a pale rail, its core, and the quartz beads on it. */
+    public static final int QUARTZ = 0xffcfd9e8;
+    public static final int QUARTZ_CORE = 0xff7f93ab;
+    public static final int QUARTZ_BEAD = 0xffe8f4ff;
+    public static final int QUARTZ_BEAD_EDGE = 0xff3b4a5c;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */
     public static final int[] NETWORK_ACCENTS = {0xff61afef, 0xffd19a66, 0xffc678dd, 0xff98c379, 0xffe06c75,
             0xff56b6c2, 0xffe5c07b, 0xffbe5046};
@@ -52,6 +57,8 @@ public final class FederationTheme {
     public static final IGuiTexture DARK_PANEL = darkPanel();
     public static final IGuiTexture CARD = card(0xffd8d3e4);
     public static final IGuiTexture CARD_SELECTED = card(SELECT);
+    /** A related domain's network: the card's frame without its solid edge, which the caller draws dashed. */
+    public static final IGuiTexture CARD_RELATED = relatedCard();
     public static final IGuiTexture WELL_RECT = well();
     public static final IGuiTexture RAIL = rail();
 
@@ -241,6 +248,13 @@ public final class FederationTheme {
         });
     }
 
+    private static IGuiTexture relatedCard() {
+        return painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, 0xff121016);
+            pen.rect(x + 2, y + 2, width - 4, height - 4, 0xff2c2735);
+        });
+    }
+
     private static IGuiTexture card(int edge) {
         return painted((pen, x, y, width, height) -> {
             pen.rect(x, y, width, height, 0xff121016);
@@ -256,10 +270,18 @@ public final class FederationTheme {
         });
     }
 
-    /** A one-pixel state line along a card's bottom edge. */
     /** A one-pixel dashed outline: something shown here that belongs elsewhere, such as a related domain's link. */
     public static IGuiTexture dashedBorder(int color) {
-        return painted((pen, x, y, width, height) -> {
+        return dashedBorder(color, 0);
+    }
+
+    /** {@link #dashedBorder(int)} drawn {@code inset} pixels inside the bounds, where a card draws its edge. */
+    public static IGuiTexture dashedBorder(int color, float inset) {
+        return painted((pen, outerX, outerY, outerWidth, outerHeight) -> {
+            float x = outerX + inset;
+            float y = outerY + inset;
+            float width = outerWidth - 2 * inset;
+            float height = outerHeight - 2 * inset;
             for (float at = 0; at < width; at += 4) {
                 float length = Math.min(2, width - at);
                 pen.rect(x + at, y, length, 1, color);

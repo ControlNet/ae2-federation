@@ -6,8 +6,4 @@ import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelation
 
 record MountedStorageRelationship(StorageRelationship relationship, NativeSourceDomain domain,
         MountGeneration generation, RelationshipStorageProvider provider, EffectiveSourceRelationshipKey effectiveKey) {
-    boolean sourceReady() {
-        return domain.sourceNodes().stream().allMatch(node -> node.isActive() && node.hasGridBooted()
-                && node.getGrid() == relationship.providerGrid());
-    }
 }

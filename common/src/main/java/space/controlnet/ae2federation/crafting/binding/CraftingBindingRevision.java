@@ -15,4 +15,14 @@ public record CraftingBindingRevision(PolicyRevision policyRevision, long topolo
             throw new IllegalArgumentException("Crafting binding revision requires current Policy and Federation Domain evidence");
         }
     }
+
+    /**
+     * Whether a binding captured with this revision still carries the same authority. The topology revision is kept for
+     * evidence only: the domains are held by their references, whose generation changes with their member networks, so
+     * a Federation block joining or leaving anywhere in the level neither replaces the binding nor stales a request.
+     */
+    public boolean sameAuthority(CraftingBindingRevision other) {
+        return policyRevision.equals(other.policyRevision) && federationDomains.equals(other.federationDomains)
+                && providerGeneration.equals(other.providerGeneration);
+    }
 }

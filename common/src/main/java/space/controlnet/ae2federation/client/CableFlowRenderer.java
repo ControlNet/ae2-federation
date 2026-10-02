@@ -8,7 +8,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
@@ -28,7 +27,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var level = cable.getLevel();
         if (level == null) return;
         var pos = cable.getBlockPos();
-        int mask = CableVisualConnections.mask(level, pos);
+        int mask = cable.flowMask();
         var vertices = buffers.getBuffer(FLOW);
         var pose = stack.last();
         // These are decorative pulses, not packet paths or measured traffic.

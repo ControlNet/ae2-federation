@@ -1,0 +1,6 @@
+#!/bin/sh
+here=$(dirname "$0")
+. "$here/chain.sh"
+refs=$(cat)
+printf '%s\n' "$refs" | python3 "$here/../privacy_guard.py" push || exit 1
+printf '%s\n' "$refs" | chain_global pre-push "$@"

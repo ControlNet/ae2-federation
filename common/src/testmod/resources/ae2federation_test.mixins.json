@@ -39,7 +39,8 @@
     "MultiCraftingTrackerAutomationEvidenceMixin",
     "ImportBusAutomationEvidenceMixin",
     "ExportBusAutomationEvidenceMixin",
-    "AuthorizedStorageProjectionAutomationEvidenceMixin"
+    "AuthorizedStorageProjectionAutomationEvidenceMixin",
+    "MenuBroadcastTickMixin"
   ],
   "client": [
     "ClientFontThreadGuardMixin"

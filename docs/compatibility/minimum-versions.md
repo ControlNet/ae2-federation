@@ -74,7 +74,8 @@ exactly one required test and exit zero:
 - `processingnativedifferential`
 - `storagenativeaccess`
 - `identitypartonsettledcable`
-- `energydirectionalpolicy`
+- `energydirectionalpolicy` (the directional energy case of that time; energy is now shared through
+  `energysharedmutual` and its siblings, which this floor run did not cover)
 - `scalesmallprocessingdevelopment`
 
 The last case completed one real crafting job in each of the native big-grid,

@@ -1,0 +1,5 @@
+#!/bin/sh
+here=$(dirname "$0")
+. "$here/chain.sh"
+python3 "$here/../privacy_guard.py" staged || exit 1
+chain_global pre-commit "$@"

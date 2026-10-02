@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.storage.provenance.FederationManagedStorageProvider;
 
 /**
@@ -70,6 +71,9 @@ public final class NativeMountLedger {
 
         void ae2federation$markMountChanged();
 
+        /** Reconciles the observing level's relationships at this service's tick end, as a mount change does. */
+        void ae2federation$requestReconcile();
+
         java.util.Map<IGridNode, ?> ae2federation$nodeProviderStates();
 
         List<?> ae2federation$globalProviderStates();
@@ -127,6 +131,14 @@ public final class NativeMountLedger {
         // Grid's own source domain nor trigger a reconcile feedback loop.
         if (!(provider instanceof FederationManagedStorageProvider) && service instanceof ServiceMountLedger ledger) {
             ledger.ae2federation$markMountChanged();
+            AuthorityEpoch.advance();
+        }
+    }
+
+    /** See {@link ServiceMountLedger#ae2federation$requestReconcile()}; nothing for a service that is not AE2's. */
+    public static void requestReconcile(IStorageService service) {
+        if (service instanceof ServiceMountLedger ledger) {
+            ledger.ae2federation$requestReconcile();
         }
     }
 }

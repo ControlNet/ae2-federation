@@ -1,6 +1,5 @@
 package space.controlnet.ae2federation.policy;
 
-import java.util.Collections;
 import space.controlnet.ae2federation.identity.IdentitySettlement;
 
 final class PolicyActivation {
@@ -19,9 +18,8 @@ final class PolicyActivation {
                 || !matches(request.providerIdentity(), request.key().providerNetworkId())) {
             return PolicyActivationState.DISCONNECTED;
         }
-        var consumerFederationDomains = request.federationDomainRegistry().federationdomainsFor(request.key().consumerNetworkId());
-        var providerFederationDomains = request.federationDomainRegistry().federationdomainsFor(request.key().providerNetworkId());
-        if (Collections.disjoint(consumerFederationDomains, providerFederationDomains)) {
+        if (!request.federationDomainRegistry().shareFederationDomain(request.key().consumerNetworkId(),
+                request.key().providerNetworkId())) {
             return PolicyActivationState.DISCONNECTED;
         }
         return switch (request.backendStatus()) {
@@ -30,7 +28,7 @@ final class PolicyActivation {
         };
     }
 
-    private static boolean matches(IdentitySettlement settlement,
+    static boolean matches(IdentitySettlement settlement,
             space.controlnet.ae2federation.identity.NetworkId expected) {
         return settlement.canInheritPolicy() && settlement.networkId().filter(expected::equals).isPresent();
     }

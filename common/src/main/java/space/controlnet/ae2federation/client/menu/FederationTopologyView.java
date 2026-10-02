@@ -55,10 +55,16 @@ final class FederationTopologyView {
     private static final float ENDPOINT_HEIGHT = 16;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
+    /** One run of a quartz bead along a shared-energy link, from end to end. */
+    private static final long QUARTZ_BEAD_MILLIS = 3200;
+    /** How close, in screen pixels, a press must land to a link to select its pair. */
+    private static final float LINK_PICK_PIXELS = 5;
     /** Fitting may zoom out this far, so a narrow canvas still shows every card. */
     private static final float MIN_FIT_SCALE = 0.1f;
 
     private final GraphView graph;
+    /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
+    private UIElement linkLayer;
     private final Consumer<String> setPolicy;
     private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
@@ -82,6 +88,9 @@ final class FederationTopologyView {
     private final TextField renameField;
     private final Button renameSave;
     private final UIElement stats;
+    private final UIElement endpointDetail;
+    private final UIElement endpointIdentityPanel;
+    private final Label endpointIdentity;
     private final FederationMapPreview preview = new FederationMapPreview();
     private final UIElement location;
     private final Label locationNote;
@@ -101,6 +110,8 @@ final class FederationTopologyView {
      * related" scope. The server sends at most a cap of them, nearest first, and says how many there are.
      */
     private final List<Network> related = new ArrayList<>();
+    /** {@link #shown()} by id, rebuilt after the shown networks change; the canvas looks networks up every frame. */
+    private Map<String, Network> shownById;
     private int relatedTotal;
     private final Map<String, JsonObject> relatedRules = new HashMap<>();
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
@@ -140,6 +151,12 @@ final class FederationTopologyView {
     private boolean focusApplied;
     private String selectedNetwork = "";
     private String selectedPair = "";
+    /** The Endpoint whose panel the aside shows; at most one of it, the network and the pair is selected. */
+    private String selectedEndpoint = "";
+    /** The server's facts about each Endpoint, by id: its modes, claim, identity and the patterns mapped to it. */
+    private final Map<String, JsonObject> endpointFacts = new HashMap<>();
+    /** Whether the server lets this viewer follow an Endpoint to its owner's mappings. */
+    private boolean endpointNavigation;
     private String structure = "";
     private String asideSignature = "";
     private String search = "";
@@ -169,6 +186,20 @@ final class FederationTopologyView {
         this.rename = rename;
         this.openObject = openObject;
         graph = element(ui, "domain_graph", GraphView.class);
+        // GraphView pans and zooms only for a press or a wheel turn that reaches the bare canvas. Cards, link labels and
+        // Endpoint nodes cover most of it, so they hand theirs on, in the capture phase before anything under them can
+        // stop it: a press still selects what it lands on, and dragging from there pans the view. A press on the bare
+        // canvas that lands on a link selects its pair.
+        graph.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
+            if (event.target == graph) {
+                if (event.button == 0) pickLink(event.x, event.y);
+            } else if (event.button == 0 && onCanvas(event.target)) {
+                graph.startDrag(new GraphView.DragOffset(graph.getOffsetX(), graph.getOffsetY()), null);
+            }
+        }, true);
+        graph.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_WHEEL, event -> {
+            if (event.target != graph && onCanvas(event.target)) zoomAt(event.x, event.y, event.deltaY);
+        }, true);
         title = element(ui, "network_title", Label.class);
         identity = element(ui, "network_identity", Label.class);
         accent = element(ui, "network_accent", UIElement.class);
@@ -178,6 +209,9 @@ final class FederationTopologyView {
         linksHeading = element(ui, "network_links_heading", Label.class);
         links = element(ui, "network_links", UIElement.class);
         networkDetail = element(ui, "network_detail", UIElement.class);
+        endpointDetail = element(ui, "endpoint_detail", UIElement.class);
+        endpointIdentityPanel = element(ui, "endpoint_identity_panel", UIElement.class);
+        endpointIdentity = element(ui, "endpoint_identity", Label.class);
         pairEditor = element(ui, "pair_editor", UIElement.class);
         pairTitle = element(ui, "pair_title", Label.class);
         pairNote = element(ui, "pair_note", Label.class);
@@ -227,7 +261,11 @@ final class FederationTopologyView {
             showFlow.run();
         });
         showFlow.run();
-        devices.setOnClick(event -> openDevices());
+        // On an Endpoint's panel the same button follows it to its owner's mappings.
+        devices.setOnClick(event -> {
+            if (selectedEndpoint.isEmpty()) openDevices();
+            else if (endpointNavigation) openObject.accept("endpoint_mapping", selectedEndpoint);
+        });
         pairEditor.setDisplay(false);
         scopeButton = element(ui, "graph_scope", Button.class);
         domainScopeButton = element(ui, "graph_scope_domain", Button.class);
@@ -285,7 +323,7 @@ final class FederationTopologyView {
             } else {
                 space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
             }
-            highlightedNetwork = selectedNetwork;
+            highlightedNetwork = selectedEndpoint.isEmpty() ? selectedNetwork : selectedEndpoint;
             highlightedUntil = System.currentTimeMillis() + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS;
             locationNote.setText(highlightedText());
             locationNote.setDisplay(true);
@@ -296,6 +334,7 @@ final class FederationTopologyView {
     private void setScope(boolean related) {
         if (showRelated == related) return;
         showRelated = related;
+        shownById = null;
         if (!showRelated && network(selectedNetwork) == null) selectedNetwork = "";
         if (!showRelated && !selectedPair.isEmpty() && java.util.Arrays.stream(selectedPair.split("\\|"))
                 .anyMatch(id -> network(id) == null)) selectedPair = "";
@@ -332,6 +371,7 @@ final class FederationTopologyView {
         via = root.has("via") ? root.getAsJsonObject("via") : null;
         networks.clear();
         networkDomains.clear();
+        shownById = null;
         if (root.has("networks")) {
             var index = 0;
             for (var value : root.getAsJsonArray("networks")) {
@@ -353,14 +393,21 @@ final class FederationTopologyView {
                 networkDomains.put(id, domains(json));
             }
         }
+        shownById = null;
         endpointNodes.clear();
-        if (root.has("endpoint")) for (var value : root.getAsJsonArray("endpoint")) {
+        endpointFacts.clear();
+        // Without a domain an Endpoint opened from its own block is shown alone, read-only.
+        var endpointValues = new ArrayList<com.google.gson.JsonElement>();
+        if (root.has("endpoint")) root.getAsJsonArray("endpoint").forEach(endpointValues::add);
+        if (root.has("localEndpoint")) root.getAsJsonArray("localEndpoint").forEach(endpointValues::add);
+        for (var value : endpointValues) {
             var json = value.getAsJsonObject();
             endpointNodes.add(new EndpointNode(json.get("id").getAsString(),
                     json.has("position") ? json.get("position").getAsString() : "",
                     json.has("ownerNetwork") ? json.get("ownerNetwork").getAsString() : "",
                     json.has("runtimeMode") ? json.get("runtimeMode").getAsString() : "UNBOUND",
                     json.has("nodeReady") && json.get("nodeReady").getAsBoolean()));
+            endpointFacts.put(json.get("id").getAsString(), json);
         }
         relatedRules.clear();
         if (root.has("relatedRules")) for (var value : root.getAsJsonArray("relatedRules")) {
@@ -382,7 +429,16 @@ final class FederationTopologyView {
                     row.get("capability").getAsString()), row.get("revision").getAsLong());
         }
         if (!focusApplied && root.has("initialGraphFocus")) focus = root.get("initialGraphFocus").getAsString();
-        if (selectedNetwork.isEmpty() && selectedPair.isEmpty() && !networks.isEmpty()) {
+        // An Endpoint's own entrance opens with that Endpoint selected and centred.
+        if (!focusApplied && root.has("initialEndpoint") && endpointFacts.containsKey(root.get("initialEndpoint").getAsString())) {
+            selectedEndpoint = root.get("initialEndpoint").getAsString();
+            selectedNetwork = "";
+            selectedPair = "";
+            pendingCenter = selectedEndpoint;
+            focusApplied = true;
+        }
+        if (!selectedEndpoint.isEmpty() && !endpointFacts.containsKey(selectedEndpoint)) selectedEndpoint = "";
+        if (selectedNetwork.isEmpty() && selectedPair.isEmpty() && selectedEndpoint.isEmpty() && !networks.isEmpty()) {
             if (networks.size() == 2) {
                 selectedPair = pair(networks.get(0).id(), networks.get(1).id());
             } else {
@@ -499,31 +555,10 @@ final class FederationTopologyView {
         refresh();
     }
 
-    /**
-     * Selects the network that hosts the given Provider, or maps the given Endpoint, and centres it; an Endpoint no
-     * network maps is centred alone.
-     */
-    boolean focusObject(String objectId) {
-        var endpoint = endpointNodes.stream().filter(node -> node.id().equals(objectId)).findFirst().orElse(null);
-        for (var network : networks) {
-            if (providersByMember.getOrDefault(network.member(), List.of()).contains(objectId)
-                    || endpoint != null && endpoint.owner().equals(network.id())) {
-                selectNetwork(network.id());
-                pendingCenter = network.id();
-                focusApplied = true;
-                return true;
-            }
-        }
-        if (endpoint == null) return false;
-        pendingCenter = endpoint.id();
-        focusApplied = true;
-        return true;
-    }
-
     private void refresh() {
         var signature = new StringBuilder();
         shown().forEach(network -> signature.append(network.id()).append('=').append(network.name()).append(','));
-        signature.append('|').append(selectedNetwork).append('|').append(selectedPair).append('|');
+        signature.append('|').append(selectedNetwork).append('|').append(selectedPair).append('|').append(selectedEndpoint).append('|');
         pairsWithRules().forEach(value -> signature.append(value).append(';'));
         shownRules().forEach(rule -> signature.append(rule.get("capability").getAsString())
                 .append(rule.get("enabled").getAsBoolean()).append(ruleState(rule).code()));
@@ -548,7 +583,8 @@ final class FederationTopologyView {
         pillHalfSizes.clear();
         endpointButtons.clear();
         layout();
-        graph.addContentChild(new Links());
+        linkLayer = new Links();
+        graph.addContentChild(linkLayer);
         // Above the lines but below the link labels and cards, so dots never cover text.
         var pulses = new FederationFlowPulses(this::flows);
         var extent = extent();
@@ -559,6 +595,65 @@ final class FederationTopologyView {
         for (var endpoint : endpointNodes) {
             if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
         }
+    }
+
+    /** Whether {@code element} is drawn on the graph's canvas, as cards, link labels and Endpoint nodes are. */
+    private boolean onCanvas(UIElement element) {
+        for (var at = element; at != null && at != graph; at = at.getParent()) {
+            if (at == graph.contentRoot) return true;
+        }
+        return false;
+    }
+
+    /** GraphView's own wheel zoom, kept on the point under the mouse, for a wheel turn over something on the canvas. */
+    private void zoomAt(float x, float y, double deltaY) {
+        var style = graph.getGraphViewStyle();
+        float scale = graph.getScale();
+        float newScale = net.minecraft.util.Mth.clamp(scale + (float) deltaY * 0.1f, style.minScale(), style.maxScale());
+        if (newScale == scale) return;
+        var local = graph.getLocalMouse(x, y);
+        float rx = local.x - graph.getPositionX();
+        float ry = local.y - graph.getPositionY();
+        graph.setOffsetX(graph.getOffsetX() + rx / scale - rx / newScale);
+        graph.setOffsetY(graph.getOffsetY() + ry / scale - ry / newScale);
+        graph.setScale(newScale);
+    }
+
+    /**
+     * Selects the pair whose link passes under a press on the bare canvas: a link with rules, or, while a network is
+     * selected, one of its dashed links to the networks it could be linked with. The link must lie within a few
+     * screen pixels, whatever the zoom.
+     */
+    private void pickLink(float x, float y) {
+        if (linkLayer == null) return;
+        var local = linkLayer.getLocalMouse(x, y);
+        float pointX = local.x - linkLayer.getPositionX();
+        float pointY = local.y - linkLayer.getPositionY();
+        var candidates = new ArrayList<>(pairsWithRules());
+        if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
+            for (var other : shown()) {
+                if (other.id().equals(selectedNetwork) || !discovers(network(selectedNetwork), other)) continue;
+                var pair = pair(selectedNetwork, other.id());
+                if (!candidates.contains(pair)) candidates.add(pair);
+            }
+        }
+        String nearest = null;
+        float best = LINK_PICK_PIXELS / Math.max(0.01f, graph.getScale());
+        for (var pair : candidates) {
+            var ends = pair.split("\\|");
+            if (!positions.containsKey(ends[0]) || !positions.containsKey(ends[1])) continue;
+            float distance = link(ends[0], ends[1]).curve().distance(pointX, pointY, LINK_SEGMENTS);
+            if (distance < best) {
+                best = distance;
+                nearest = pair;
+            }
+        }
+        if (nearest == null) return;
+        selectedPair = nearest;
+        selectedNetwork = "";
+        selectedEndpoint = "";
+        focusApplied = true;
+        refresh();
     }
 
     /** The bottom-right corner of everything on the canvas: cards and Endpoint nodes. */
@@ -682,17 +777,37 @@ final class FederationTopologyView {
         boolean selected = network.id().equals(selectedNetwork) || selectedPair.contains(network.id());
         if (network.foreign()) button.addClass("related-network");
         var state = cardState.computeIfAbsent(network.id(), ignored -> new int[] {FederationTheme.DARK_MUTED});
-        var inset = FederationTheme.painted((pen, x, y, width, height) -> pen.rect(x + 2, y + height - 4, width - 4, 2, state[0]));
-        var face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset);
-        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset))
-                .pressedTexture(face));
+        // A related domain's network is outlined dashed and locked, as its links are: shown here, edited elsewhere. Its
+        // dashes take the place of the card's solid edge, in the selection colour while selected or hovered, and its
+        // state strip along the bottom edge is dashed too, so no solid line runs along any of its edges.
+        boolean dashed = network.foreign();
+        var inset = FederationTheme.painted((pen, x, y, width, height) -> {
+            if (!dashed) {
+                pen.rect(x + 2, y + height - 4, width - 4, 2, state[0]);
+                return;
+            }
+            for (float at = 0; at < width - 4; at += 6) pen.rect(x + 2 + at, y + height - 4, Math.min(4, width - 4 - at), 2, state[0]);
+        });
+        com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture face;
+        com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture hover;
+        if (network.foreign()) {
+            var lock = FederationTheme.lockMark(FederationTheme.DARK_MUTED);
+            var hoverOutline = FederationTheme.dashedBorder(FederationTheme.SELECT, 1);
+            face = GuiTextureGroup.of(FederationTheme.CARD_RELATED, inset,
+                    selected ? hoverOutline : FederationTheme.dashedBorder(FederationTheme.DARK_MUTED, 1), lock);
+            hover = GuiTextureGroup.of(FederationTheme.CARD_RELATED, inset, hoverOutline, lock);
+        } else {
+            face = GuiTextureGroup.of(selected ? FederationTheme.CARD_SELECTED : FederationTheme.CARD, inset);
+            hover = GuiTextureGroup.of(FederationTheme.CARD_SELECTED, inset);
+        }
+        button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(position.x).top(position.y)
                 .width(CARD_WIDTH).height(CARD_HEIGHT).paddingAll(6).paddingBottom(7).gapAll(4)
                 .flexDirection(FlexDirection.COLUMN).alignItems(AlignItems.FLEX_START));
         var top = new UIElement();
         top.layout(style -> style.widthPercent(100).height(THUMBNAIL_HEIGHT).flexDirection(FlexDirection.ROW).gapAll(5)
                 .flexShrink(0));
-        // Where the network is, as a map tile of its blocks; related networks carry no location facts.
+        // Where the network is, as a map tile of its blocks.
         var thumbnail = new FederationMapPreview(true);
         thumbnail.setId("graph_node_map_" + sanitize(network.member()));
         thumbnail.layout(style -> style.width(THUMBNAIL_WIDTH).height(THUMBNAIL_HEIGHT).flexShrink(0));
@@ -711,6 +826,8 @@ final class FederationTopologyView {
         heading.setId("graph_node_name_" + sanitize(network.member()));
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
         head.addChildren(swatch, heading);
+        // Room for the lock a related network's card carries in its corner.
+        if (network.foreign()) head.layout(style -> style.paddingRight(4));
         var positionLine = text(Component.empty(), FederationTheme.DARK_MUTED);
         var stateLine = text(Component.empty(), FederationTheme.DARK_TEXT);
         positionLine.setId("graph_node_position_" + sanitize(network.member()));
@@ -751,7 +868,8 @@ final class FederationTopologyView {
         button.noText();
         button.addClass("graph-node-endpoint");
         button.setId("graph_endpoint_" + sanitize(endpoint.id()));
-        boolean selected = !selectedNetwork.isEmpty() && endpoint.owner().equals(selectedNetwork);
+        boolean selected = endpoint.id().equals(selectedEndpoint)
+                || !selectedNetwork.isEmpty() && endpoint.owner().equals(selectedNetwork);
         var face = GuiTextureGroup.of(FederationTheme.WELL_RECT,
                 new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, selected ? FederationTheme.SELECT : 0xff47434f));
         var hover = GuiTextureGroup.of(FederationTheme.WELL_RECT,
@@ -767,7 +885,7 @@ final class FederationTopologyView {
         var label = text(endpointLabel(endpoint), FederationTheme.DARK_TEXT);
         label.layout(style -> style.flex(1).minWidth(0).widthAuto().height(9));
         button.addChildren(dot, label);
-        button.setOnClick(event -> openObject.accept("endpoint", endpoint.id()));
+        button.setOnClick(event -> selectEndpoint(endpoint.id()));
         endpointButtons.put(endpoint.id(), button);
         return button;
     }
@@ -806,6 +924,15 @@ final class FederationTopologyView {
         }
     }
 
+    /** The energy a card and the stats show: the shared pool for a network in one, else its own cells. */
+    private static space.controlnet.ae2federation.client.policy.EnergyFigures energyFigures(JsonObject facts) {
+        if (facts == null || !facts.has("energyMax")) return null;
+        return space.controlnet.ae2federation.client.policy.EnergyFigures.of(facts.get("energy").getAsLong(),
+                facts.get("energyMax").getAsLong(), facts.has("energyPool") ? facts.get("energyPool").getAsLong() : null,
+                facts.has("energyPoolMax") ? facts.get("energyPoolMax").getAsLong() : null,
+                facts.has("energyPoolGrids") ? facts.get("energyPoolGrids").getAsInt() : 0);
+    }
+
     /** "Energy [bar] 98%": a muted label, an optional bar and the value on the right. */
     private static UIElement figureRow(Component name, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture bar, Label value) {
         var row = new UIElement();
@@ -838,38 +965,40 @@ final class FederationTopologyView {
             var state = cardState.get(network.id());
             var thumbnail = cardThumbnails.get(network.id());
             if (thumbnail != null) showThumbnail(thumbnail, network);
-            if (network.foreign()) {
-                lines[0].setText(tr("related_card", domainName(network.domain())).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-                lines[1].setText(tr("read_only"));
-                if (energy != null) energy[0] = -1;
-                if (state != null) state[0] = FederationTheme.DARK_MUTED;
-                continue;
-            }
             var facts = overview.get(network.id());
             var identityState = identityState(network);
             lines[2].setText(facts == null || !facts.has("x") ? Component.empty() : tr("card_position",
                     dimension(facts.get("dimension").getAsString()), facts.get("x").getAsInt() + ", " + facts.get("y").getAsInt()
                             + ", " + facts.get("z").getAsInt()));
-            if (energy != null) energy[0] = facts == null || !facts.has("energyMax") || facts.get("energyMax").getAsLong() <= 0 ? -1
-                    : (float) Math.min(1, facts.get("energy").getAsDouble() / facts.get("energyMax").getAsDouble());
-            // "Online · Identity confirmed", or what needs attention: an identity in doubt, then low energy.
+            var figures = energyFigures(facts);
+            if (energy != null) energy[0] = figures == null ? -1 : figures.fraction();
+            // "Online · Identity confirmed", or what needs attention: an identity in doubt, then low energy. A related
+            // domain's network is not in this domain's graph; it reads online while its Grid has power.
             var status = memberStatus.getOrDefault(network.member(), "pending");
-            boolean online = status.equals("online");
+            boolean online = network.foreign() ? facts != null && facts.has("powered") && facts.get("powered").getAsBoolean()
+                    : status.equals("online");
             int stateColor;
             Component detail;
             if (!identityState.equals("settled") && !identityState.isEmpty()) {
                 stateColor = toneColor(identityState);
                 detail = tr("identity." + identityState);
+            } else if (network.foreign()) {
+                // Which domain it belongs to comes first: low energy there is that domain's to act on.
+                stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
+                detail = tr("related_card", domainName(network.domain()));
             } else if (energy != null && energy[0] >= 0 && energy[0] < 0.25f) {
                 stateColor = FederationTheme.WARN;
                 detail = tr("card_low_energy");
+            } else if (figures != null && figures.shared()) {
+                stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
+                detail = tr("card_shared_energy");
             } else {
                 stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
                 detail = identityState.isEmpty() ? null : tr("identity.settled");
             }
             // An identity in doubt takes the whole line: it is what the player has to act on.
             boolean doubt = !identityState.equals("settled") && !identityState.isEmpty();
-            var head = tr(online ? "card_online" : "card_waiting");
+            var head = tr(online ? "card_online" : network.foreign() ? "card_unpowered" : "card_waiting");
             lines[0].setText((doubt ? detail.copy() : detail == null ? head : tr("card_state", head, detail))
                     .withStyle(Style.EMPTY.withColor(stateColor & 0xffffff)));
             if (state != null) state[0] = stateColor;
@@ -880,8 +1009,7 @@ final class FederationTopologyView {
                 lines[6].setText(Component.empty());
                 continue;
             }
-            int percent = percent(facts);
-            lines[4].setText(Component.literal(percent + "%").withStyle(Style.EMPTY.withColor(energyColor(energy == null ? -1 : energy[0]) & 0xffffff)));
+            lines[4].setText(Component.literal(figures.percent() + "%").withStyle(Style.EMPTY.withColor(energyColor(energy == null ? -1 : energy[0]) & 0xffffff)));
             lines[1].setText(tr("card.types", compact(facts.get("types").getAsLong())));
             lines[5].setText(tr("card.cpus", Component.literal(facts.get("cpusBusy").getAsInt() + "/" + facts.get("cpus").getAsInt())
                     .withStyle(Style.EMPTY.withColor(FederationTheme.VALUE & 0xffffff))));
@@ -913,6 +1041,8 @@ final class FederationTopologyView {
             var row = pillRow(direction[0], direction[1], font);
             if (row != null) content.add(row);
         }
+        var energyRow = energyPillRow(a, b, font);
+        if (energyRow != null) content.add(energyRow);
         if (related) {
             var lock = text(tr("related_lock"), FederationTheme.DARK_MUTED);
             lock.layout(style -> style.height(9).width(font.width(tr("related_lock")) + 1));
@@ -939,6 +1069,7 @@ final class FederationTopologyView {
         button.setOnClick(event -> {
             selectedPair = pair;
             selectedNetwork = "";
+            selectedEndpoint = "";
             focusApplied = true;
             refresh();
         });
@@ -953,6 +1084,11 @@ final class FederationTopologyView {
         for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
             if (chips(direction[0], direction[1]).isEmpty()) continue;
             width = Math.max(width, rowWidth(direction[0], direction[1], font));
+            rows++;
+        }
+        var energy = energyChip(a, b);
+        if (energy != null) {
+            width = Math.max(width, font.width(ENERGY_PREFIX) + 6 + 3 + font.width(energy.text()) + 5);
             rows++;
         }
         if (related) {
@@ -985,6 +1121,71 @@ final class FederationTopologyView {
         return row;
     }
 
+    private static final String ENERGY_PREFIX = "◇";
+
+    /** "◇ [Shared energy]": the pair's one energy switch, whichever way its rule is written; null without a rule. */
+    private UIElement energyPillRow(Network a, Network b, net.minecraft.client.gui.Font font) {
+        var chip = energyChip(a, b);
+        if (chip == null) return null;
+        var row = new UIElement();
+        row.addClass("pill-row");
+        row.addClass("pill-energy");
+        row.layout(style -> style.height(11).flexDirection(FlexDirection.ROW).gapAll(3).alignItems(AlignItems.CENTER));
+        var prefix = text(Component.literal(ENERGY_PREFIX), FederationTheme.DARK_MUTED);
+        prefix.layout(style -> style.width(font.width(ENERGY_PREFIX) + 6).height(9).flexShrink(0));
+        var label = text(chip.text(), chip.color());
+        label.addClass("pill-chip");
+        label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
+        label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
+        row.addChildren(prefix, label);
+        return row;
+    }
+
+    /** The pair's energy chip: quartz while it shares, else its rule's state colour; null without a rule switched on. */
+    private Chip energyChip(Network a, Network b) {
+        var rule = energyRule(a, b);
+        if (rule == null || !rule.get("enabled").getAsBoolean()) return null;
+        var state = ruleState(rule);
+        var text = tr("shared_energy").copy();
+        if (state.code().equals("error")) text.append("!");
+        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color());
+    }
+
+    /** The ME power rule that stands for the pair's energy switch, or null when neither way has one. */
+    private JsonObject energyRule(Network a, Network b) {
+        var direction = energyDirection(a, b);
+        return rule(key(direction[0].id(), direction[1].id(), PolicyCapability.ME_POWER.name()));
+    }
+
+    /** Consumer and provider of the rule the pair's energy switch reads and writes. */
+    private Network[] energyDirection(Network a, Network b) {
+        var forward = rule(key(a.id(), b.id(), PolicyCapability.ME_POWER.name()));
+        var reverse = rule(key(b.id(), a.id(), PolicyCapability.ME_POWER.name()));
+        return space.controlnet.ae2federation.client.policy.SharedEnergySwitch.reversed(enabledFlag(forward), enabledFlag(reverse))
+                ? new Network[] {b, a} : new Network[] {a, b};
+    }
+
+    private static Boolean enabledFlag(JsonObject rule) {
+        return rule == null ? null : rule.get("enabled").getAsBoolean();
+    }
+
+    /** Whether the two networks share one energy pool now: an ME power rule either way is active. */
+    private boolean sharesEnergy(String a, String b) {
+        return space.controlnet.ae2federation.client.policy.SharedEnergySwitch.shares(
+                health(rule(key(a, b, PolicyCapability.ME_POWER.name()))),
+                health(rule(key(b, a, PolicyCapability.ME_POWER.name()))));
+    }
+
+    private static space.controlnet.ae2federation.client.policy.RuleHealth health(JsonObject rule) {
+        if (rule == null) return null;
+        return switch (ruleState(rule).code()) {
+            case "active" -> space.controlnet.ae2federation.client.policy.RuleHealth.ACTIVE;
+            case "off" -> space.controlnet.ae2federation.client.policy.RuleHealth.OFF;
+            case "error" -> space.controlnet.ae2federation.client.policy.RuleHealth.ERROR;
+            default -> space.controlnet.ae2federation.client.policy.RuleHealth.WAITING;
+        };
+    }
+
     private float rowWidth(Network consumer, Network provider, net.minecraft.client.gui.Font font) {
         float width = font.width(pillPrefix(consumer, provider)) + 6;
         for (var chip : chips(consumer, provider)) width += 3 + font.width(chip.text()) + 5;
@@ -997,15 +1198,19 @@ final class FederationTopologyView {
         return names.consumer() + "▸" + names.provider();
     }
 
-    /** The capabilities {@code consumer} uses from {@code provider}, in the colour of their configured and observed state. */
+    /**
+     * The capabilities {@code consumer} uses from {@code provider}, in the colour of their configured and observed state.
+     * A rule switched off grants nothing, so it shows no chip; the pair editor still lists it, switched off.
+     */
     private List<Chip> chips(Network consumer, Network provider) {
         var chips = new ArrayList<Chip>();
         for (var capability : CAPABILITIES) {
+            // Energy is shared per pair, so it has its own row rather than a chip in either direction.
+            if (capability == PolicyCapability.ME_POWER) continue;
             var rule = rule(key(consumer.id(), provider.id(), capability.name()));
-            if (rule == null) continue;
+            if (rule == null || !rule.get("enabled").getAsBoolean()) continue;
             var state = ruleState(rule);
             var text = capabilityName(capability).copy();
-            if (!rule.get("enabled").getAsBoolean()) text = text.withStyle(net.minecraft.ChatFormatting.STRIKETHROUGH);
             if (state.code().equals("error")) text.append("!");
             chips.add(new Chip(text, state.color()));
         }
@@ -1018,19 +1223,192 @@ final class FederationTopologyView {
     private void selectNetwork(String id) {
         selectedNetwork = id;
         selectedPair = "";
+        selectedEndpoint = "";
         focusApplied = true;
         refresh();
     }
 
+    private void selectEndpoint(String id) {
+        selectedEndpoint = id;
+        selectedNetwork = "";
+        selectedPair = "";
+        focusApplied = true;
+        refresh();
+    }
+
+    /** Whether the server currently lets this viewer follow an Endpoint to its owner's mappings. */
+    void setEndpointNavigation(boolean allowed) {
+        if (endpointNavigation == allowed) return;
+        endpointNavigation = allowed;
+        renderAside();
+    }
+
+    /**
+     * An Endpoint's panel, laid out as a network's: where it is on the map or in 3D among the blocks of the network it
+     * sits on, its modes and claim, the patterns whose wires go to it, and its identity and ownership.
+     */
+    private void renderEndpoint(EndpointNode endpoint) {
+        var json = endpointFacts.get(endpoint.id());
+        links.clearAllChildren();
+        stats.clearAllChildren();
+        endpointDetail.clearAllChildren();
+        renaming = "";
+        renameRow.setDisplay(false);
+        renameButton.setDisplay(false);
+        stats.setDisplay(false);
+        var owner = network(endpoint.owner());
+        var host = network(string(json, "nativeNetwork"));
+        accent.style(style -> style.backgroundTexture(FederationTheme.solid(endpointColor(endpoint))));
+        title.setText(endpointLabel(endpoint));
+        var uuid = string(json, "endpointIdentity");
+        var shortId = uuid.length() > 8 ? uuid.substring(0, 4) + "…" + uuid.substring(uuid.length() - 3) : uuid;
+        identity.setText(json.has("dimension")
+                ? tr("endpoint_identity_line", dimension(json.get("dimension").getAsString()), endpoint.position(), shortId)
+                : tr("endpoint_identity_short", shortId));
+        identity.style(style -> style.tooltips(Component.literal(uuid)));
+        // What it is used for, as its node's tooltip says, then why the last claim request went as it did. Without a
+        // domain there is no Provider to name, only that the panel is read-only.
+        boolean local = !json.has("mappingNavigation");
+        var explanation = Component.empty().append(local ? tr("endpoint_local_help")
+                : !endpoint.ready() ? tr("endpoint_node.not_ready")
+                : endpoint.mode().equals("LOCAL") ? tr("endpoint_node.local")
+                : owner != null ? tr("endpoint_node.mapped", name(owner)) : tr("endpoint_node.unmapped"));
+        var claim = string(json, "claimResult");
+        if (!claim.isEmpty() && !claim.equals("NONE") && !claim.equals("ACQUIRED") && !claim.equals("RETAINED")) {
+            explanation.append("\n").append(claimResult(claim).copy()
+                    .withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
+        }
+        detail.setText(explanation);
+        explain.setDisplay(true);
+        renderEndpointLocation(endpoint, json, host);
+        // The Endpoint's operation, one fact per row.
+        endpointDetail.addChildren(
+                endpointFact("configured", FederationWorkspace.tr("endpoint_mode." + string(json, "configuredMode"))),
+                endpointFact("runtime", FederationWorkspace.tr("endpoint_mode." + endpoint.mode())),
+                endpointFact("face", FederationWorkspace.tr("face." + string(json, "face"))),
+                endpointFact("return", FederationWorkspace.tr("return_binding."
+                        + (json.has("returnBinding") && json.get("returnBinding").getAsBoolean() ? "present" : "absent"))),
+                endpointFact("owner", json.has("ownerPosition") ? tr("endpoint_owner_at", json.get("ownerPosition").getAsString())
+                        : json.has("owner") ? tr("endpoint_owner_unloaded") : FederationWorkspace.tr("unclaimed")),
+                endpointFact("claim", claimResult(claim.isEmpty() ? "NONE" : claim)),
+                endpointFact("native", host != null ? name(host) : json.has("nativeNetwork")
+                        ? tr("network_name", json.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
+                        : FederationWorkspace.tr("network_unconfirmed")));
+        boolean navigable = json.has("mappingNavigation") && json.get("mappingNavigation").getAsBoolean();
+        devices.setDisplay(!local);
+        devices.setText(FederationWorkspace.tr("endpoint_mapping"));
+        devices.setActive(endpointNavigation && navigable);
+        devices.style(style -> style.tooltips(FederationWorkspace.tr(navigable ? "endpoint_navigation_help"
+                : "endpoint_navigation_unavailable")));
+        // The patterns whose wires go to this Endpoint, wherever their Provider is.
+        var patterns = json.has("patterns") ? json.getAsJsonArray("patterns") : new JsonArray();
+        linksHeading.setText(tr("endpoint_patterns", patterns.size()));
+        if (patterns.isEmpty()) links.addChild(sectionNote(tr(local ? "endpoint_patterns_local" : "endpoint_patterns_none")));
+        for (var value : patterns) {
+            var pattern = value.getAsJsonObject();
+            var label = pattern.get("label").getAsString();
+            var row = sectionNote(tr("endpoint_pattern", pattern.get("slot").getAsInt(),
+                    label.isEmpty() ? tr("endpoint_pattern_empty") : Component.literal(label),
+                    pattern.has("provider") ? pattern.get("provider").getAsString() : "?"));
+            row.addClass("endpoint-pattern");
+            links.addChild(row);
+        }
+        // Identity and ownership, with the epochs a claim is checked against.
+        var identityText = FederationWorkspace.tr("endpoint_identity", uuid, number(json, "instanceEpoch"),
+                json.has("owner") ? Component.literal(json.get("owner").getAsString()) : FederationWorkspace.tr("unclaimed"),
+                number(json, "claimEpoch"), number(json, "generation"), claim.isEmpty() ? "NONE" : claim);
+        if (json.has("ownerInstance")) {
+            identityText.append("\n").append(FederationWorkspace.tr("owner_instance_epoch", json.get("ownerInstance").getAsLong()));
+        }
+        identityText.append("\n\n").append(FederationWorkspace.tr("native_network", json.has("nativeNetwork")
+                ? Component.literal(json.get("nativeNetwork").getAsString()) : FederationWorkspace.tr("network_unconfirmed")));
+        endpointIdentity.setText(identityText);
+    }
+
+    /** The map tile around the Endpoint, its own network's blocks tinted, and the in-world outline of its block. */
+    private void renderEndpointLocation(EndpointNode endpoint, JsonObject json, Network host) {
+        if (!json.has("x") || !json.has("dimension")) {
+            location.setDisplay(false);
+            preview.clear();
+            highlightBlocks = List.of();
+            highlightParts = List.of();
+            highlight.setActive(false);
+            return;
+        }
+        location.setDisplay(true);
+        var dimension = json.get("dimension").getAsString();
+        var anchor = new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(json.get("x").getAsInt(),
+                json.get("y").getAsInt(), json.get("z").getAsInt());
+        var facts = host == null ? null : overview.get(host.id());
+        var blocks = new ArrayList<Integer>();
+        if (facts != null && facts.has("blocks") && dimension.equals(string(facts, "dimension"))) {
+            facts.getAsJsonArray("blocks").forEach(value -> blocks.add(value.getAsInt()));
+        }
+        var mask = space.controlnet.ae2federation.client.policy.BlockMarks.fromFlat(blocks);
+        int color = host != null ? host.accent() : FederationTheme.DARK_MUTED;
+        preview.show(dimension, mask, color, List.of(anchor), FederationTheme.DARK_TITLE);
+        var legend = Component.empty();
+        if (!mask.isEmpty()) legend.append(Component.literal("■ ").append(FederationWorkspace.trLocation("legend_network"))
+                .withStyle(Style.EMPTY.withColor(color & 0xffffff))).append("  ");
+        legend.append(Component.literal("■ ").append(FederationWorkspace.trLocation("legend_around"))
+                .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        legend.append(Component.literal("  □ ").append(tr("endpoint_legend")).withStyle(Style.EMPTY.withColor(0xffffff)));
+        locationLegend.setText(legend);
+        locationLegend.style(style -> style.tooltips(FederationWorkspace.trLocation("network_blocks", mask.size())));
+        highlightDimension = dimension;
+        highlightColor = FederationTheme.SELECT;
+        highlightBlocks = List.of(anchor);
+        highlightParts = List.of();
+        highlight.setText(FederationWorkspace.trLocation("highlight_timed"));
+        boolean here = preview.inPlayerDimension();
+        highlight.setActive(here);
+        boolean outlined = endpoint.id().equals(highlightedNetwork) && System.currentTimeMillis() < highlightedUntil;
+        locationNote.setText(outlined ? highlightedText()
+                : here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
+        locationNote.setDisplay(outlined || !here);
+    }
+
+    private static UIElement endpointFact(String name, Component value) {
+        var row = new UIElement();
+        row.addClass("endpoint-fact");
+        row.setId("endpoint_fact_" + name + "_row");
+        var caption = new Label();
+        caption.addClass("endpoint-fact-name");
+        caption.setText(tr("endpoint_fact." + name));
+        var text = new Label();
+        text.addClass("endpoint-fact-value");
+        text.setId("endpoint_fact_" + name);
+        text.setText(value);
+        row.addChildren(caption, text);
+        return row;
+    }
+
+    private static Component claimResult(String code) {
+        return Component.translatableWithFallback("ae2federation.ui.workspace.claim_result." + code, code);
+    }
+
+    private static String string(JsonObject json, String key) {
+        return json != null && json.has(key) ? json.get(key).getAsString() : "";
+    }
+
+    private static long number(JsonObject json, String key) {
+        return json.has(key) ? json.get(key).getAsLong() : 0;
+    }
+
     private void renderAside() {
-        var signature = scope + "|" + selectedNetwork + "|" + selectedPair + "|" + editable + "|" + rules + "|" + revisions + "|"
+        var signature = scope + "|" + selectedNetwork + "|" + selectedPair + "|" + selectedEndpoint + "|" + endpointFacts + "|"
+                + endpointNavigation + "|" + editable + "|" + rules + "|" + revisions + "|"
                 + memberStatus + "|" + providersByMember + "|" + endpointNodes + "|" + networks + "|" + overview + "|" + renaming + "|" + showRelated + related + relatedRules + "|" + flows;
         if (signature.equals(asideSignature)) return;
         asideSignature = signature;
         var pairEnds = selectedPair.isEmpty() ? null : selectedPair.split("\\|");
         networkDetail.setDisplay(pairEnds == null);
         pairEditor.setDisplay(pairEnds != null);
+        var endpoint = endpointNodes.stream().filter(node -> node.id().equals(selectedEndpoint)).findFirst().orElse(null);
+        endpointDetail.setDisplay(pairEnds == null && endpoint != null);
+        endpointIdentityPanel.setDisplay(pairEnds == null && endpoint != null);
         if (pairEnds != null) renderPair(network(pairEnds[0]), network(pairEnds[1]));
+        else if (endpoint != null) renderEndpoint(endpoint);
         else renderNetwork(network(selectedNetwork));
     }
 
@@ -1041,6 +1419,7 @@ final class FederationTopologyView {
         renameRow.setDisplay(!renaming.isEmpty());
         renameButton.setDisplay(network != null);
         stats.setDisplay(network != null);
+        devices.setDisplay(true);
         if (network == null) {
             var scoped = networks.isEmpty() && !scope.equals("domain") && !scope.equals("available");
             title.setText(scoped ? FederationWorkspace.tr("scope_summary." + scope) : tr("no_network"));
@@ -1136,6 +1515,7 @@ final class FederationTopologyView {
             link.setOnClick(event -> {
                 selectedPair = pair(network.id(), other.id());
                 selectedNetwork = "";
+                selectedEndpoint = "";
                 refresh();
             });
             links.addChild(link);
@@ -1253,12 +1633,11 @@ final class FederationTopologyView {
             stats.addChild(unavailable);
             return;
         }
-        long stored = facts.get("energy").getAsLong();
-        long max = facts.get("energyMax").getAsLong();
-        float fill = max <= 0 ? 0 : Math.min(1f, stored / (float) max);
+        var figures = energyFigures(facts);
+        float fill = Math.max(0, figures.fraction());
         int energy = fill < 0.25f ? FederationTheme.WARN : FederationTheme.ENERGY;
-        stats.addChild(statRow("energy", tr("stat.energy"), fill, energy, tr("stat.energy_value", compact(stored), compact(max)),
-                tr("stat.energy_help", percent(facts))));
+        stats.addChild(statRow("energy", tr("stat.energy"), fill, energy, tr("stat.energy_value", compact(figures.stored()),
+                compact(figures.max())), tr(figures.shared() ? "stat.energy_pool_help" : "stat.energy_help", figures.percent())));
         stats.addChild(statRow("io", tr("stat.io"), 0, FederationTheme.INFO, tr("stat.io_value",
                 decimal(facts.get("energyIn").getAsDouble()), decimal(facts.get("energyOut").getAsDouble())), null));
         stats.addChild(statRow("types", tr("stat.types"), 0, FederationTheme.TEAL,
@@ -1320,12 +1699,12 @@ final class FederationTopologyView {
 
     /** Mirrors the server: only a settled identity takes a name, and only while this player may edit the domain. */
     private boolean renamable(Network network) {
-        return editable && identityState(network).equals("settled");
+        return editable && !network.foreign() && identityState(network).equals("settled");
     }
 
     private void showThumbnail(FederationMapPreview thumbnail, Network network) {
         var facts = overview.get(network.id());
-        if (network.foreign() || facts == null || !facts.has("x")) {
+        if (facts == null || !facts.has("x")) {
             thumbnail.setDisplay(false);
             return;
         }
@@ -1355,11 +1734,6 @@ final class FederationTopologyView {
     private static int energyColor(float fraction) {
         if (fraction < 0) return FederationTheme.DARK_MUTED;
         return fraction <= 0 ? FederationTheme.ERROR : fraction < 0.25f ? FederationTheme.WARN : FederationTheme.OK;
-    }
-
-    private static int percent(JsonObject facts) {
-        long max = facts.get("energyMax").getAsLong();
-        return max <= 0 ? 0 : (int) Math.min(100, Math.round(facts.get("energy").getAsLong() * 100d / max));
     }
 
     /** 950, 12.3k, 1.44M: AE2-style short figures. */
@@ -1404,8 +1778,8 @@ final class FederationTopologyView {
         for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
             var consumer = direction[0];
             var provider = direction[1];
-            var shownCapabilities = java.util.Arrays.stream(CAPABILITIES).filter(capability -> foreign == null
-                    || rule(key(consumer.id(), provider.id(), capability.name())) != null).toList();
+            var shownCapabilities = java.util.Arrays.stream(CAPABILITIES).filter(capability -> capability != PolicyCapability.ME_POWER)
+                    .filter(capability -> foreign == null || rule(key(consumer.id(), provider.id(), capability.name())) != null).toList();
             if (shownCapabilities.isEmpty()) {
                 section++;
                 continue;
@@ -1418,17 +1792,37 @@ final class FederationTopologyView {
             heading.setId("policy_section_title_" + section);
             heading.setText(tr("uses", name(consumer), name(provider)).withStyle(net.minecraft.ChatFormatting.BOLD));
             panel.addChild(heading);
-            for (var capability : shownCapabilities) panel.addChild(row(section, consumer, provider, capability, foreign == null));
+            for (var capability : shownCapabilities) {
+                panel.addChild(row(section + "_" + capability.name().toLowerCase(Locale.ROOT), consumer, provider, capability,
+                        capabilityName(capability), foreign == null));
+            }
             pairSections.addChild(panel);
             section++;
         }
+        // One switch shares energy both ways, however the pair's rule is written.
+        var energy = energyDirection(a, b);
+        if (foreign != null && energyRule(a, b) == null) return;
+        var panel = new UIElement();
+        panel.addClass("dark-panel");
+        panel.setId("policy_section_energy");
+        var heading = new Label();
+        heading.addClass("pair-section-title");
+        heading.setId("policy_section_title_energy");
+        heading.setText(tr("energy_section", name(a), name(b)).withStyle(net.minecraft.ChatFormatting.BOLD));
+        var note = new Label();
+        note.addClass("pair-section-note");
+        note.setText(tr("energy_section_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
+        panel.addChildren(heading, note, row("energy", energy[0], energy[1], PolicyCapability.ME_POWER,
+                capabilityName(PolicyCapability.ME_POWER),
+                foreign == null));
+        pairSections.addChild(panel);
     }
 
-    private UIElement row(int section, Network consumer, Network provider, PolicyCapability capability, boolean inDomain) {
+    private UIElement row(String suffix, Network consumer, Network provider, PolicyCapability capability, Component title,
+            boolean inDomain) {
         boolean editable = this.editable && inDomain;
         var ruleKey = key(consumer.id(), provider.id(), capability.name());
         var rule = rule(ruleKey);
-        var suffix = section + "_" + capability.name().toLowerCase(Locale.ROOT);
         var row = new UIElement();
         row.addClass("policy-row");
         row.setId("policy_row_" + suffix);
@@ -1436,7 +1830,7 @@ final class FederationTopologyView {
         head.addClass("policy-row-head");
         var name = new Label();
         name.addClass("policy-capability");
-        name.setText(capabilityName(capability));
+        name.setText(title);
         // Name, state and switch share one line; flow and explanations wrap under the state.
         var stateLabel = new Label();
         stateLabel.addClass("policy-state");
@@ -1464,7 +1858,7 @@ final class FederationTopologyView {
         var state = ruleState(rule);
         var text = tr("rule_state." + state.code(), observed).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
-        if (flow != null && on) text.append("\n").append(flowText(capability, flow));
+        if (flow != null && on) text.append("\n").append(flowText(flow));
         if (state.explain()) text.append("\n").append(runtimeText(rule).copy().withStyle(
                 Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         stateLabel.setText(text);
@@ -1536,12 +1930,8 @@ final class FederationTopologyView {
         return Component.literal(String.join("\n", positions) + (count > positions.size() ? "\n…" : ""));
     }
 
-    private static Component flowText(PolicyCapability capability, JsonObject flow) {
-        var events = flow.get("events").getAsLong();
-        var text = capability == PolicyCapability.ME_POWER
-                ? tr("flow_energy", events, compact(flow.get("amount").getAsLong() / 1_000_000_000L))
-                : tr("flow", events);
-        return text.withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff));
+    private static Component flowText(JsonObject flow) {
+        return tr("flow", flow.get("events").getAsLong()).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff));
     }
 
     /** Whether the rule from {@code consumer} to {@code provider} delivered anything in the flow window. */
@@ -1635,12 +2025,14 @@ final class FederationTopologyView {
         var network = network(selectedNetwork);
         if (network == null) return;
         if (!providers(network).isEmpty()) openObject.accept("mapping_provider", providers(network).getFirst());
-        else if (!endpoints(network).isEmpty()) openObject.accept("endpoint", endpoints(network).getFirst());
+        else if (!endpoints(network).isEmpty()) selectEndpoint(endpoints(network).getFirst());
     }
 
+    /** Pairs with at least one rule switched on: only those get a link and a label on the graph. */
     private List<String> pairsWithRules() {
         var pairs = new java.util.TreeSet<String>();
         for (var rule : shownRules()) {
+            if (!rule.get("enabled").getAsBoolean()) continue;
             var consumer = rule.get("consumer").getAsString();
             var provider = rule.get("provider").getAsString();
             if (network(consumer) != null && network(provider) != null) pairs.add(pair(consumer, provider));
@@ -1656,7 +2048,11 @@ final class FederationTopologyView {
     }
 
     private Network network(String id) {
-        return shown().stream().filter(network -> network.id().equals(id)).findFirst().orElse(null);
+        if (shownById == null) {
+            shownById = new HashMap<>();
+            for (var network : shown()) shownById.putIfAbsent(network.id(), network);
+        }
+        return shownById.get(id);
     }
 
     private List<String> providers(Network network) {
@@ -1715,10 +2111,10 @@ final class FederationTopologyView {
         return tr("network_name", id.substring(0, 4).toUpperCase(Locale.ROOT));
     }
 
-    /** "A▸B = A uses B's capability ■ active ■ off ■ not active yet ■ error", each square in its state colour. */
+    /** "A▸B = A uses B's capability ■ active ■ not active yet ■ error", each square in its state colour. */
     private static Component legendText() {
         var legend = tr("legend.reads").copy();
-        for (var entry : new Object[][] {{"active", FederationTheme.OK}, {"off", FederationTheme.DARK_MUTED},
+        for (var entry : new Object[][] {{"active", FederationTheme.OK},
                 {"waiting", FederationTheme.WARN}, {"error", FederationTheme.ERROR}}) {
             legend.append("  ").append(Component.literal("■ ").append(tr("legend." + entry[0]))
                     .withStyle(Style.EMPTY.withColor((Integer) entry[1] & 0xffffff)));
@@ -1803,10 +2199,22 @@ final class FederationTopologyView {
                 var ends = pair.split("\\|");
                 boolean selected = pair.equals(selectedPair);
                 var link = link(ends[0], ends[1]);
-                line(context, link, selected ? FederationTheme.SELECT : FederationTheme.EDGE, selected ? 3f : 2f, false);
+                if (sharesEnergy(ends[0], ends[1])) energyLine(context, link, selected);
+                else line(context, link, selected ? FederationTheme.SELECT : FederationTheme.EDGE, selected ? 3f : 2f, false);
                 // Each end is marked in its network's accent where the link meets the card.
                 endMark(context, link.start(), network(ends[0]).accent());
                 endMark(context, link.end(), network(ends[1]).accent());
+            }
+            // A selected pair with no rule switched on yet keeps its dashed link, in the selection colour, while its
+            // rules are being set; otherwise selecting it from a network's dashed link would make the link vanish.
+            if (!selectedPair.isEmpty() && !configured.contains(selectedPair)) {
+                var ends = selectedPair.split("\\|");
+                if (positions.containsKey(ends[0]) && positions.containsKey(ends[1])) {
+                    var link = link(ends[0], ends[1]);
+                    line(context, link, FederationTheme.SELECT, 2f, true);
+                    endMark(context, link.start(), network(ends[0]).accent());
+                    endMark(context, link.end(), network(ends[1]).accent());
+                }
             }
             if (!selectedNetwork.isEmpty() && positions.containsKey(selectedNetwork)) {
                 for (var other : shown()) {
@@ -1819,7 +2227,7 @@ final class FederationTopologyView {
                 var place = endpointPlaces.get(endpoint.id());
                 if (place == null || place.link() == null) continue;
                 var owner = network(endpoint.owner());
-                boolean selected = endpoint.owner().equals(selectedNetwork);
+                boolean selected = endpoint.owner().equals(selectedNetwork) || endpoint.id().equals(selectedEndpoint);
                 line(context, new TopologyLink(place.link(), 0.5f), selected ? FederationTheme.SELECT : FederationTheme.EDGE,
                         selected ? 2f : 1.5f, false);
                 if (owner != null) endMark(context, new float[] {place.link().fromX(), place.link().fromY()}, owner.accent());
@@ -1839,6 +2247,50 @@ final class FederationTopologyView {
                 DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), List.of(line.get(index - 1), line.get(index)),
                         color, color, width);
             }
+        }
+
+        /**
+         * A link whose networks share one energy pool, drawn like AE2's Quartz Fiber: a pale rail with quartz beads
+         * drifting slowly both ways, since each network draws from and charges the same pool. No glow, so it stays
+         * quiet next to the other links.
+         */
+        private void energyLine(GUIContext context, TopologyLink link, boolean selected) {
+            var points = link.curve().points(LINK_SEGMENTS);
+            var line = new ArrayList<Vector2f>(LINK_SEGMENTS + 1);
+            for (int index = 0; index < points.length; index += 2) line.add(new Vector2f(points[index], points[index + 1]));
+            int edge = 0xff121016;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, edge, edge, selected ? 5f : 4f);
+            int rail = selected ? FederationTheme.QUARTZ_BEAD : FederationTheme.QUARTZ;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, rail, rail, selected ? 3f : 2f);
+            int core = selected ? FederationTheme.SELECT : FederationTheme.QUARTZ_CORE;
+            DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, core, core, 0.75f);
+            float phase = (net.minecraft.Util.getMillis() % QUARTZ_BEAD_MILLIS) / (float) QUARTZ_BEAD_MILLIS;
+            // Two beads each way, staggered so no two meet at the same point.
+            bead(context, points, phase);
+            bead(context, points, (phase + 0.5f) % 1);
+            bead(context, points, 1 - (phase + 0.25f) % 1);
+            bead(context, points, 1 - (phase + 0.75f) % 1);
+        }
+
+        /**
+         * A quartz bead at {@code along} (0 to 1) of the link: a square turned 45 degrees, its edge and core the same
+         * sizes as a storage flow dot. It is placed at the exact point and drawn as geometry, so it moves smoothly and
+         * keeps straight edges at any GUI or graph scale.
+         */
+        private void bead(GUIContext context, float[] points, float along) {
+            int segments = points.length / 2 - 1;
+            float position = along * segments;
+            int index = Math.min(segments - 1, (int) position);
+            float fraction = position - index;
+            float x = points[2 * index] + (points[2 * index + 2] - points[2 * index]) * fraction;
+            float y = points[2 * index + 1] + (points[2 * index + 3] - points[2 * index + 1]) * fraction;
+            var pose = context.graphics.pose();
+            pose.pushPose();
+            pose.translate(x, y, 0);
+            pose.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(45));
+            context.graphics.fill(-3, -3, 3, 3, FederationTheme.QUARTZ_BEAD_EDGE);
+            context.graphics.fill(-2, -2, 2, 2, FederationTheme.QUARTZ_BEAD);
+            pose.popPose();
         }
 
         private void endMark(GUIContext context, float[] point, int color) {

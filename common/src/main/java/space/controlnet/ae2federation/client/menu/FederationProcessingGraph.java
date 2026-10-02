@@ -104,6 +104,8 @@ public final class FederationProcessingGraph {
 
     private final List<JsonObject> slots = new ArrayList<>();
     private final List<JsonObject> endpoints = new ArrayList<>();
+    /** {@link #endpoints} by id; the wires look their Endpoint up every frame. */
+    private final java.util.Map<String, JsonObject> endpointsById = new java.util.HashMap<>();
     /** Display names of the domain's networks, in the order of the choices' {@code networkIndex}. */
     private final List<String> networkNames = new ArrayList<>();
     private final Map<String, UIElement> ports = new LinkedHashMap<>();
@@ -316,6 +318,8 @@ public final class FederationProcessingGraph {
         slotChoices.stream().filter(choice -> slotElements != null || !choice.get("empty").getAsBoolean()).forEach(slots::add);
         endpoints.clear();
         endpoints.addAll(targetChoices);
+        endpointsById.clear();
+        endpoints.forEach(endpoint -> endpointsById.putIfAbsent(endpoint.get("id").getAsString(), endpoint));
         confirmedTarget = selectedTarget == null ? "" : selectedTarget;
         wires.clear();
         for (var slot : slots) {
@@ -1253,7 +1257,7 @@ public final class FederationProcessingGraph {
     }
 
     private JsonObject endpoint(String id) {
-        return endpoints.stream().filter(value -> value.get("id").getAsString().equals(id)).findFirst().orElse(null);
+        return endpointsById.get(id);
     }
 
     static String sanitize(String value) {

@@ -9,6 +9,10 @@ import com.lowdragmc.lowdraglib2.uitest.UIScenario;
 @LDLRegisterClient(name = "ui.mapping", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
 public final class TaskThirtyThreeMappingScenario implements UIScenario {
+    /** TEST-ONLY: frames timed once the showcase's network detail (graph and map preview) is on screen. */
+    private static final int PERF_FRAMES = 120;
+    private static final long[] FRAME_TIMING = new long[1];
+
     @Override
     public void configure(ScenarioOptions options) {
         TaskThirtyThreeScenarioSupport.configure(options, 3);
@@ -317,9 +321,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("narrow English pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-english-narrow-policy")
-                .click("#tab_diagnostics").frames(3)
-                .check("narrow English diagnostic text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#endpoint_detail", "#endpoint_identity"))
-                .screenshot("ui-english-narrow-diagnostics")
+                .waitUntil("the Endpoint is a node on the graph", context -> !context.all(".graph-node-endpoint").isEmpty())
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
+                .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
+                .check("narrow English Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
+                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                .screenshot("ui-english-narrow-endpoint")
                 .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
                 .screenshot("ui-english-narrow-overview")
@@ -386,6 +393,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntilServer("showcase: devices join their networks", TaskThirtyThreeShowcaseFixture::devicesReady)
                 .server("showcase: map patterns many-to-many", TaskThirtyThreeShowcaseFixture::mapDevices)
                 .waitUntilServer("showcase: mappings installed", TaskThirtyThreeShowcaseFixture::mapped)
+                .waitUntilServer("showcase: the domain holds all eight networks", TaskThirtyThreeShowcaseFixture::domainComplete)
                 // The domain gained members, so the open workspace is out of date: reopen it, as a player would.
                 .closeScreen()
                 .server("showcase: open the Router workspace", TaskThirtyThreeWorldFixture::openRouter)
@@ -397,6 +405,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click("#graph_fit").frames(3)
                 .step("showcase: select Main Base", context -> showcaseSelect(context, "Main Base"))
                 .waitUntil("showcase: Main Base details", context -> context.el("#network_detail").isVisible())
+                // TEST-ONLY performance evidence: the average frame with the domain graph and the map preview shown.
+                .step("perf: start frame timing", context -> FRAME_TIMING[0] = System.nanoTime())
+                .frames(PERF_FRAMES)
+                .step("perf: report frame timing", context -> org.slf4j.LoggerFactory.getLogger("ae2federation-perf")
+                        .info("AE2F_PERF test=uishowcase metric=frameTime value={} unit=ns/frame",
+                                (System.nanoTime() - FRAME_TIMING[0]) / PERF_FRAMES))
                 .check("showcase: five Endpoint nodes, four beside the network that maps them", context ->
                         context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)

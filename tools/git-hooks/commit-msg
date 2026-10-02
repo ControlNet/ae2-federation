@@ -1,0 +1,5 @@
+#!/bin/sh
+here=$(dirname "$0")
+. "$here/chain.sh"
+chain_global commit-msg "$@" || exit 1
+python3 "$here/../privacy_guard.py" message "$1"

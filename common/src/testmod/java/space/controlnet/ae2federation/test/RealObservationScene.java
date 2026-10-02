@@ -146,6 +146,10 @@ final class RealObservationScene implements AutoCloseable {
         return scope(first);
     }
 
+    space.controlnet.ae2federation.bridge.BridgeRightClickContext firstBridgeContext() {
+        return first.firstBridgeContext();
+    }
+
     boolean wakeNativeTicker() {
         return processing.wakeNativeTicker();
     }

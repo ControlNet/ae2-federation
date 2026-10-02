@@ -1,3 +1,6 @@
+> **Superseded 2026-10-01:** directional supply was replaced by Quartz-Fiber-style sharing; see
+> `energy-sharing-2026-10-01.md`. Kept as history.
+
 # Task 31 Directional ME Energy
 
 - A consumer-local read-only `IAEPowerStorage` on an existing Bridge/Hub managed node lets AE2's native `IEnergyService` discover Federation supply, including a cold Grid. Posting `GridPowerStorageStateChanged(PROVIDE_POWER)` after binding publication wakes native power evaluation.

@@ -97,8 +97,8 @@ public final class IdentityGameTests {
         var left = new BlockPos(1, 1, 1);
         var middle = new BlockPos(2, 1, 1);
         var right = new BlockPos(3, 1, 1);
-        // The middle node must be ready before either chest. If both chests became ready first, each would start its
-        // own Grid with its own NetworkId and the middle node would merge them (AMBIGUOUS_MERGE), not split one.
+        // The middle node must be ready before either chest. If both chests became ready in an earlier tick, each would
+        // start its own Grid with its own NetworkId and the middle node would merge them (AMBIGUOUS_MERGE), not split one.
         helper.setBlock(middle, AEBlocks.CREATIVE_ENERGY_CELL.block());
         var chestsPlaced = new boolean[1];
         var originalIds = new String[1];
@@ -174,6 +174,38 @@ public final class IdentityGameTests {
                     "copyNode", Integer.toUnsignedString(System.identityHashCode(copyNode)),
                     "sourceCanInherit", "false",
                     "copyCanInherit", "false"));
+        });
+    }
+
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void identitySameTickFragments(GameTestHelper helper) {
+        // AE2 readies new block entities of one chunk in placement order, so both chests are readied before the middle
+        // node that joins them: each starts its own Grid first. The row is kept inside one chunk so the order holds at
+        // every test origin; across a chunk border AE2 orders the chunks by hash, which is how CI met this at random.
+        int shift = 0;
+        while (helper.absolutePos(new BlockPos(1 + shift, 1, 1)).getX() >> 4
+                != helper.absolutePos(new BlockPos(3 + shift, 1, 1)).getX() >> 4) {
+            shift++;
+        }
+        var left = new BlockPos(1 + shift, 1, 1);
+        var middle = left.east();
+        var right = middle.east();
+        helper.setBlock(left, AEBlocks.ME_CHEST.block());
+        helper.setBlock(right, AEBlocks.ME_CHEST.block());
+        helper.setBlock(middle, AEBlocks.CREATIVE_ENERGY_CELL.block());
+        helper.succeedWhen(() -> {
+            var leftNode = relativeNode(helper, left);
+            var rightNode = relativeNode(helper, right);
+            helper.assertTrue(leftNode.getGrid() == rightNode.getGrid(), "The middle node must join both chests");
+            helper.assertValueEqual(service(leftNode).settlement().status(), IdentityStatus.SETTLED,
+                    "Nodes new in one tick must settle on one NetworkId, not an ambiguous merge");
+            var networkId = service(leftNode).lineage(leftNode).networkId();
+            helper.assertValueEqual(service(rightNode).lineage(rightNode).networkId(), networkId,
+                    "Both chests must share the NetworkId");
+            helper.assertValueEqual(service(leftNode).settlement().networkId().orElseThrow(), networkId,
+                    "The settlement must name that NetworkId");
+            writeEvidence("identitysametickfragments", 4, networkId.toString(), "settled");
         });
     }
 
