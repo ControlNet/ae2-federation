@@ -219,7 +219,7 @@ final class FederationTopologyView {
         searchEmpty = element(ui, "graph_search_empty", Label.class);
         searchEmpty.setText(tr("no_network_matches"));
         var searchField = element(ui, "graph_search", TextField.class);
-        searchField.textFieldStyle(style -> style.placeholder(tr("search").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
+        searchField.textFieldStyle(style -> style.placeholder(tr("search").withStyle(Style.EMPTY.withColor(FederationTheme.PLACEHOLDER & 0xffffff))));
         searchField.setTextResponder(value -> {
             search = value.strip().toLowerCase(Locale.ROOT);
             applySearch();
@@ -281,7 +281,7 @@ final class FederationTopologyView {
         renameRow = element(ui, "network_rename_row", UIElement.class);
         renameField = element(ui, "network_rename_field", TextField.class);
         renameSave = element(ui, "network_rename_save", Button.class);
-        renameField.textFieldStyle(style -> style.placeholder(tr("rename_placeholder").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)));
+        renameField.textFieldStyle(style -> style.placeholder(tr("rename_placeholder").withStyle(Style.EMPTY.withColor(FederationTheme.PLACEHOLDER & 0xffffff))));
         renameField.setTextResponder(value -> renameSave.setActive(NetworkNameBook.sanitize(value).isPresent()));
         renameButton.setOnClick(event -> {
             var network = network(selectedNetwork);

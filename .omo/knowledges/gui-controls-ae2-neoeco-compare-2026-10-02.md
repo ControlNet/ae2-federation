@@ -23,3 +23,31 @@ Federation paints everything except the toolbar buttons in `FederationTheme`, so
 text colours) comes from hand-copied values. Using AE2's sprites the way NeoECO does (AE2 is a hard dependency) would
 give exact parity for button, text field, switch and scroller. The comparison board was rendered once into
 `build/gui-compare/controls-board.png` (not tracked).
+
+## Outcome (same day)
+
+`FederationTheme` now draws button, hover/selected, disabled, text field, switch and scroller with AE2's own sprites
+(regions and nine-slice borders pinned by `AeControlSpritesTest`, which reads the AE2 jar):
+
+- buttons `gui/sprites/button*.png` 200x20, borders (l,t,r,b) normal 2,2,2,5, highlighted 2,3,2,4, disabled 2,4,2,3;
+  highlighted and disabled keep AE2's one- and two-pixel drop. DANGER has no AE2 sprite and stays painted in AE2's
+  button geometry.
+- text field and scrollbar track: `guis/text_field.png` (0,0,128,12) border 1,3,1,1; text `#F2F2F2`, placeholder
+  `#DEDFE3` (AE2 palette), `focus-overlay: empty` so LDLib2's vanilla focus rectangle does not show.
+- switch `guis/checkbox.png` 22x12 at (0,28) off, (0,40) on, hover at x=22; locked = the sprite at alpha `0x8c`.
+  `.policy-switch` is 22x12 so the sprite is not stretched.
+- scroller `gui/sprites/small_scroller.png` 7x15 border 2,2,2,4 in a 9-wide track (`padding-all: 1`).
+- `TEXT` is AE2's `#413F54`.
+
+Kept on purpose:
+
+- `TEXT_MUTED` stays `#6D6A82`: AE2's muted `#878FA5` is about 2.0:1 against the `#CBCCD4` face (ours about 3.3:1),
+  too faint for the many secondary captions.
+- The dark panel stays painted. LDLib2 `BORDER_THICK_RT1` (NeoECO's host panel) fills with `#605A66`, too light for
+  the purple/teal values; ours already uses its outline/bevel colours with the darker `#2F2A34` fill.
+
+Pitfall found: LDLib2 does not round layout to whole pixels, so elements sit at fractional positions (a button 17.5
+units tall). A nine-slice sprite whose seam lands on a pixel centre then samples the neighbouring texel row and shows
+broken lines. Painted rectangles do not show this. Every AE2 sprite is therefore wrapped in `SnappedSprite`, which
+moves the rectangle's edges to whole screen pixels through the current pose and GUI scale (`PixelSnap.span`,
+unit-tested) before drawing. Check in screenshots by counting colour runs per pixel row of a stretched control.

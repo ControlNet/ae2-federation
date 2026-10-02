@@ -8,16 +8,18 @@ import com.lowdragmc.lowdraglib2.gui.util.DrawerHelper;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * AE2 surfaces in the NeoECO AE Extension palette: a light bevelled frame, lipped buttons, dark inner panels and
- * cards. Switches and toolbar buttons reuse AE2's own sprites.
+ * AE2 surfaces in the NeoECO AE Extension palette: a light bevelled frame, dark inner panels and cards. Buttons, text
+ * fields, switches, the scrollbar and toolbar buttons are AE2's own sprites, as NeoECO's are.
  */
 public final class FederationTheme {
     public static final int OUTLINE = 0xff413f54;
     public static final int FACE = 0xffcbccd4;
     public static final int HIGHLIGHT = 0xfff2f2f2;
     public static final int BAND = 0xff878fa5;
-    public static final int TEXT = 0xff3f3d52;
+    public static final int TEXT = 0xff413f54;
     public static final int TEXT_MUTED = 0xff6d6a82;
+    /** AE2's text field placeholder, light on the field's grey-blue fill. */
+    public static final int PLACEHOLDER = 0xffdedfe3;
     public static final int DARK_TEXT = 0xffd6d0e0;
     public static final int DARK_TITLE = 0xffefeaf8;
     public static final int DARK_MUTED = 0xffaaa4b2;
@@ -48,12 +50,24 @@ public final class FederationTheme {
     public static final int SELECTED = SELECT;
 
     public static final IGuiTexture FRAME = frame();
-    public static final IGuiTexture FIELD = inset(HIGHLIGHT, 0xff9a9fb4);
-    public static final IGuiTexture BUTTON = button(0xff9a9fb4, 0xffadb0c4, 0xff696d88, 2);
-    public static final IGuiTexture HOVER = button(SELECT, 0xffdaffff, 0xff708cba, 2);
-    public static final IGuiTexture PRESSED = button(SELECT, 0xffdaffff, 0xff708cba, 1);
-    public static final IGuiTexture DANGER = button(0xffd5b6bd, 0xffffe6e9, 0xff916271, 2);
-    public static final IGuiTexture DISABLED = button(0xff696d88, 0xff767a93, 0xff5b5e76, 1);
+    private static final ResourceLocation AE2_BUTTON = ae2("textures/gui/sprites/button.png");
+    private static final ResourceLocation AE2_BUTTON_HIGHLIGHTED = ae2("textures/gui/sprites/button_highlighted.png");
+    private static final ResourceLocation AE2_BUTTON_DISABLED = ae2("textures/gui/sprites/button_disabled.png");
+    private static final ResourceLocation AE2_TEXT_FIELD = ae2("textures/guis/text_field.png");
+    private static final ResourceLocation AE2_CHECKBOX = ae2("textures/guis/checkbox.png");
+    private static final ResourceLocation AE2_SCROLLER = ae2("textures/gui/sprites/small_scroller.png");
+    private static final ResourceLocation AE2_STATES = ae2("textures/guis/states.png");
+
+    /** AE2's inset: a light rim and two shadow rows over the fill. Text fields and the scrollbar track use it. */
+    public static final IGuiTexture FIELD = sprite(AE2_TEXT_FIELD, 0, 0, 128, 12, 1, 3, 1, 1);
+    // AE2's button sprites. The highlighted one sits a pixel lower and the disabled one two, as AE2 draws them.
+    public static final IGuiTexture BUTTON = sprite(AE2_BUTTON, 0, 0, 200, 20, 2, 2, 2, 5);
+    public static final IGuiTexture HOVER = sprite(AE2_BUTTON_HIGHLIGHTED, 0, 0, 200, 20, 2, 3, 2, 4);
+    public static final IGuiTexture PRESSED = HOVER;
+    public static final IGuiTexture DISABLED = sprite(AE2_BUTTON_DISABLED, 0, 0, 200, 20, 2, 4, 2, 3);
+    /** AE2 has no warning button: its button's shape in red, for an action that releases or removes something. */
+    public static final IGuiTexture DANGER = danger();
+    public static final IGuiTexture SCROLL_BAR = sprite(AE2_SCROLLER, 0, 0, 7, 15, 2, 2, 2, 4);
     public static final IGuiTexture DARK_PANEL = darkPanel();
     public static final IGuiTexture CARD = card(0xffd8d3e4);
     public static final IGuiTexture CARD_SELECTED = card(SELECT);
@@ -62,13 +76,14 @@ public final class FederationTheme {
     public static final IGuiTexture WELL_RECT = well();
     public static final IGuiTexture RAIL = rail();
 
-    private static final ResourceLocation AE2_STATES = ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/states.png");
-    public static final IGuiTexture SWITCH_OFF = slider(false, false, false);
-    public static final IGuiTexture SWITCH_OFF_HOVER = slider(false, true, false);
-    public static final IGuiTexture SWITCH_OFF_LOCKED = slider(false, false, true);
-    public static final IGuiTexture SWITCH_ON = slider(true, false, false);
-    public static final IGuiTexture SWITCH_ON_HOVER = slider(true, true, false);
-    public static final IGuiTexture SWITCH_ON_LOCKED = slider(true, false, true);
+    // AE2's 22x12 switch: off, the knob left of a grey track; on, a blue track left of the knob. Hover is lighter.
+    public static final IGuiTexture SWITCH_OFF = sprite(AE2_CHECKBOX, 0, 28, 22, 12);
+    public static final IGuiTexture SWITCH_OFF_HOVER = sprite(AE2_CHECKBOX, 22, 28, 22, 12);
+    public static final IGuiTexture SWITCH_ON = sprite(AE2_CHECKBOX, 0, 40, 22, 12);
+    public static final IGuiTexture SWITCH_ON_HOVER = sprite(AE2_CHECKBOX, 22, 40, 22, 12);
+    /** A locked switch reads at about half strength against the dark panel. */
+    public static final IGuiTexture SWITCH_OFF_LOCKED = tinted(AE2_CHECKBOX, 0, 28, 22, 12, 0x8cffffff);
+    public static final IGuiTexture SWITCH_ON_LOCKED = tinted(AE2_CHECKBOX, 0, 40, 22, 12, 0x8cffffff);
     /** A flat outlined button on a dark panel, such as a rule's "Map ›" link. */
     public static final IGuiTexture LINK = painted((pen, x, y, width, height) -> {
         pen.rect(x, y, width, 1, EDGE);
@@ -140,6 +155,7 @@ public final class FederationTheme {
         provider.addResource("SWITCH_ON", SWITCH_ON);
         provider.addResource("SWITCH_OFF_LOCKED", SWITCH_OFF_LOCKED);
         provider.addResource("SWITCH_ON_LOCKED", SWITCH_ON_LOCKED);
+        provider.addResource("SCROLL_BAR", SCROLL_BAR);
         provider.addResource("ROW_RULE", ROW_RULE);
         provider.addResource("LINK", LINK);
         provider.addResource("LINK_HOVER", LINK_HOVER);
@@ -153,8 +169,45 @@ public final class FederationTheme {
         return NETWORK_ACCENTS[Math.floorMod(index, NETWORK_ACCENTS.length)];
     }
 
+    private static ResourceLocation ae2(String path) {
+        return ResourceLocation.fromNamespaceAndPath("ae2", path);
+    }
+
     private static IGuiTexture sprite(ResourceLocation image, int x, int y, int width, int height) {
-        return SpriteTexture.of(image).setSprite(x, y, width, height);
+        return new SnappedSprite(SpriteTexture.of(image).setSprite(x, y, width, height));
+    }
+
+    private static IGuiTexture sprite(ResourceLocation image, int x, int y, int width, int height, int left, int top,
+            int right, int bottom) {
+        return new SnappedSprite(SpriteTexture.of(image).setSprite(x, y, width, height)
+                .setBorder(left, top, right, bottom));
+    }
+
+    private static IGuiTexture tinted(ResourceLocation image, int x, int y, int width, int height, int color) {
+        return new SnappedSprite(SpriteTexture.of(image).setSprite(x, y, width, height).setColor(color));
+    }
+
+    /** An AE2 sprite drawn with its edges on whole screen pixels; a rotated or skewed pose draws it as laid out. */
+    private static final class SnappedSprite implements IGuiTexture {
+        private final SpriteTexture sprite;
+
+        private SnappedSprite(SpriteTexture sprite) {
+            this.sprite = sprite;
+        }
+
+        @Override
+        public void draw(net.minecraft.client.gui.GuiGraphics target, float mouseX, float mouseY, float x, float y,
+                float width, float height, float partialTicks) {
+            var pose = target.pose().last().pose();
+            if (pose.m01() != 0 || pose.m10() != 0 || pose.m00() == 0 || pose.m11() == 0) {
+                sprite.draw(target, mouseX, mouseY, x, y, width, height, partialTicks);
+                return;
+            }
+            double guiScale = net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale();
+            float[] horizontal = PixelSnap.span(x, width, pose.m00(), pose.m30(), guiScale);
+            float[] vertical = PixelSnap.span(y, height, pose.m11(), pose.m31(), guiScale);
+            sprite.draw(target, mouseX, mouseY, horizontal[0], vertical[0], horizontal[1], vertical[1], partialTicks);
+        }
     }
 
     /** Outline, one-pixel highlight and a two-pixel bottom band, as in AE2's and NeoECO's panel backgrounds. */
@@ -177,63 +230,13 @@ public final class FederationTheme {
         });
     }
 
-    /**
-     * The design's slider switch: a raised knob beside a coloured track. On, the knob sits right of a blue track with
-     * a light bar; off, it sits left of a grey track with a hollow square. A locked switch is drawn faded.
-     */
-    private static IGuiTexture slider(boolean on, boolean hover, boolean locked) {
-        return painted((pen, x, y, width, height) -> {
-            float knob = Math.round(width * 0.46f);
-            float trackX = on ? x + 1 : x + 1 + knob;
-            float trackWidth = width - 2 - knob;
-            float knobX = on ? x + width - 1 - knob : x + 1;
-            pen.rect(x, y, width, height, fade(OUTLINE, locked));
-            pen.rect(trackX, y + 1, trackWidth, height - 2, fade(on ? SELECT : 0xff696d88, locked));
-            float middleX = Math.round(trackX + trackWidth / 2f);
-            float middleY = Math.round(y + height / 2f);
-            if (on) {
-                pen.rect(middleX - 1, middleY - 3, 1, 5, fade(0xffdaffff, locked));
-            } else {
-                int square = fade(0xff878fa5, locked);
-                pen.rect(middleX - 2, middleY - 2, 4, 1, square);
-                pen.rect(middleX - 2, middleY + 1, 4, 1, square);
-                pen.rect(middleX - 2, middleY - 2, 1, 4, square);
-                pen.rect(middleX + 1, middleY - 2, 1, 4, square);
-            }
-            pen.rect(knobX, y + 1, knob, height - 2, fade(hover ? 0xffadb0c4 : 0xff9a9fb4, locked));
-            pen.rect(knobX, y + 1, knob, 1, fade(hover ? 0xffdaffff : 0xffadb0c4, locked));
-            pen.rect(knobX, y + 1, 1, height - 4, fade(hover ? 0xffdaffff : 0xffadb0c4, locked));
-            pen.rect(knobX, y + height - 3, knob, 2, fade(0xff696d88, locked));
-        });
-    }
-
-    /** A locked control reads at about half strength against the dark panel, as the design's 55% opacity. */
-    private static int fade(int color, boolean locked) {
-        if (!locked) return color;
-        int panel = 0x2f2a34;
-        int r = Math.round((color >> 16 & 0xff) * 0.55f + (panel >> 16 & 0xff) * 0.45f);
-        int g = Math.round((color >> 8 & 0xff) * 0.55f + (panel >> 8 & 0xff) * 0.45f);
-        int b = Math.round((color & 0xff) * 0.55f + (panel & 0xff) * 0.45f);
-        return 0xff000000 | r << 16 | g << 8 | b;
-    }
-
-    /** A face with a top/left highlight and a darker bottom lip that reads as a raised AE2 button. */
-    private static IGuiTexture button(int face, int light, int lip, int lipHeight) {
+    /** AE2's button geometry: outline, a one-pixel highlight around the face and a three-pixel lip. */
+    private static IGuiTexture danger() {
         return painted((pen, x, y, width, height) -> {
             pen.rect(x, y, width, height, OUTLINE);
-            pen.rect(x + 1, y + 1, width - 2, height - 2, face);
-            pen.rect(x + 1, y + 1, width - 2, 1, light);
-            pen.rect(x + 1, y + 1, 1, height - 2 - lipHeight, light);
-            pen.rect(x + 1, y + height - 1 - lipHeight, width - 2, lipHeight, lip);
-        });
-    }
-
-    private static IGuiTexture inset(int fill, int shadow) {
-        return painted((pen, x, y, width, height) -> {
-            pen.rect(x, y, width, height, OUTLINE);
-            pen.rect(x + 1, y + 1, width - 2, height - 2, fill);
-            pen.rect(x + 1, y + 1, width - 2, 1, shadow);
-            pen.rect(x + 1, y + 1, 1, height - 2, shadow);
+            pen.rect(x + 1, y + 1, width - 2, height - 5, 0xffffe6e9);
+            pen.rect(x + 2, y + 2, width - 4, height - 7, 0xffd5b6bd);
+            pen.rect(x + 1, y + height - 4, width - 2, 3, 0xff916271);
         });
     }
 
