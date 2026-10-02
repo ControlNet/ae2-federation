@@ -29,6 +29,7 @@ import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleMode;
 
 /**
  * Cross-network crafting as AE2 does it within one network: under an active crafting rule "C uses P", every real
@@ -36,6 +37,10 @@ import space.controlnet.ae2federation.policy.PolicyService;
  * the job with what C's storage shows, which includes P's storage through the same direction's storage rule, and
  * pushes each pattern straight to P's provider. P needs no CPU. What P's machines return is handed back to C's CPU by
  * P's {@link CraftingReturnRouter}, as far as the {@link CraftingReturnLedger} says P owes it.
+ *
+ * <p>Re-export passes providers on as it passes storage on ({@link CraftingReach}): when "C uses M" and "M uses S"
+ * with re-export, S's providers are offered to C too. The push still goes straight from C's CPU to S's provider, and
+ * S's router returns straight to C; M takes no part and needs nothing but its rules.
  *
  * <p>Rule edits and topology changes reconcile at once; each tick reconciles again only when the domain topology, a
  * rule or a Grid identity changed, and every {@link #REFRESH_TICKS} ticks the providers and their patterns are
@@ -53,7 +58,8 @@ public final class CraftingProjectionService implements AutoCloseable {
 
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
-    private final Map<PolicyKey, Projected> projected = new HashMap<>();
+    /** By (consumer, network whose providers are projected): a rule's own provider, or one reached through re-export. */
+    private final Map<Pair, Projected> projected = new HashMap<>();
     private final Map<IGrid, CraftingReturnRouter> routers = new IdentityHashMap<>();
     private final Map<PolicyKey, Status> statuses = new HashMap<>();
     /** Debts whose consumer reported nothing requested at the last look; forgotten if it still does at the next. */
@@ -69,6 +75,12 @@ public final class CraftingProjectionService implements AutoCloseable {
     public record Status(Optional<BindingDiagnostic.Reason> reason, int patterns) {
         public boolean active() {
             return reason.isEmpty();
+        }
+    }
+
+    private record Pair(NetworkId consumer, NetworkId executing) {
+        PolicyKey rule() {
+            return new PolicyKey(consumer, executing, PolicyCapability.CRAFTING);
         }
     }
 
@@ -118,7 +130,12 @@ public final class CraftingProjectionService implements AutoCloseable {
 
     /** The projections of {@code key}'s provider network on its consumer, for tests and diagnostics. */
     public int projectionCount(PolicyKey key) {
-        var entry = projected.get(key);
+        return projectionCount(key.consumerNetworkId(), key.providerNetworkId());
+    }
+
+    /** The projections of {@code executing}'s providers on {@code consumer}, directly or through re-export. */
+    public int projectionCount(NetworkId consumer, NetworkId executing) {
+        var entry = projected.get(new Pair(consumer, executing));
         return entry == null ? 0 : entry.projections().size();
     }
 
@@ -156,7 +173,8 @@ public final class CraftingProjectionService implements AutoCloseable {
         reconciledWatermark = policies.highWatermark();
         reconciledEpoch = IdentityEpoch.current();
         statuses.clear();
-        var active = new HashSet<PolicyKey>();
+        var grids = new HashMap<NetworkId, IGrid>();
+        var edges = new ArrayList<CraftingReach.Edge>();
         for (var relationship : federationDomains.relationships().values()) {
             var key = relationship.key();
             var reason = blocked(policies, relationship);
@@ -164,11 +182,23 @@ public final class CraftingProjectionService implements AutoCloseable {
                 if (policies.configured(key).isPresent()) statuses.put(key, new Status(reason, 0));
                 continue;
             }
-            active.add(key);
-            sync(key, relationship.consumerGrid(), relationship.providerGrid());
+            grids.put(key.consumerNetworkId(), relationship.consumerGrid());
+            grids.put(key.providerNetworkId(), relationship.providerGrid());
+            var mode = RuleMode.of(policies.configured(key).orElseThrow().rule());
+            edges.add(new CraftingReach.Edge(key.consumerNetworkId(), key.providerNetworkId(),
+                    mode == RuleMode.REEXPORT));
+            statuses.put(key, new Status(Optional.empty(), 0));
         }
-        for (var key : List.copyOf(projected.keySet())) {
-            if (!active.contains(key)) withdraw(projected.remove(key));
+        var active = new HashSet<Pair>();
+        CraftingReach.compute(edges).forEach((consumer, reached) -> {
+            for (var executing : reached) {
+                var pair = new Pair(consumer, executing);
+                active.add(pair);
+                sync(pair, grids.get(consumer), grids.get(executing));
+            }
+        });
+        for (var pair : List.copyOf(projected.keySet())) {
+            if (!active.contains(pair)) withdraw(projected.remove(pair));
         }
         syncRouters();
     }
@@ -197,16 +227,16 @@ public final class CraftingProjectionService implements AutoCloseable {
         return Optional.empty();
     }
 
-    /** Projects the provider network's current real providers onto the consumer, adding, refreshing and removing. */
-    private void sync(PolicyKey key, IGrid consumer, IGrid provider) {
-        var entry = projected.get(key);
+    /** Projects the executing network's current real providers onto the consumer, adding, refreshing and removing. */
+    private void sync(Pair pair, IGrid consumer, IGrid provider) {
+        var entry = projected.get(pair);
         if (entry != null && (entry.consumer() != consumer || entry.provider() != provider)) {
-            withdraw(projected.remove(key));
+            withdraw(projected.remove(pair));
             entry = null;
         }
         if (entry == null) {
             entry = new Projected(consumer, provider, new LinkedHashMap<>());
-            projected.put(key, entry);
+            projected.put(pair, entry);
         }
         var crafting = consumer.getCraftingService();
         var reals = RealCraftingProviders.on(level, provider);
@@ -223,7 +253,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var real : reals) {
             var projection = entry.projections().get(real);
             if (projection == null) {
-                projection = new PatternProjection(real, (pushed, details, inputs) -> owe(key, details, inputs));
+                projection = new PatternProjection(real, (pushed, details, inputs) -> owe(pair, details, inputs));
                 entry.projections().put(real, projection);
                 crafting.addGlobalCraftingProvider(projection);
             } else if (projection.refresh()) {
@@ -231,7 +261,9 @@ public final class CraftingProjectionService implements AutoCloseable {
             }
             patterns += projection.getAvailablePatterns().size();
         }
-        statuses.put(key, new Status(Optional.empty(), patterns));
+        // A rule's own provider network: the pair editor shows how many patterns it offers.
+        var status = statuses.get(pair.rule());
+        if (status != null && status.active()) statuses.put(pair.rule(), new Status(Optional.empty(), patterns));
     }
 
     private void withdraw(Projected entry) {
@@ -243,11 +275,11 @@ public final class CraftingProjectionService implements AutoCloseable {
         entry.projections().clear();
     }
 
-    /** Records what the provider network now owes the consumer's CPU for one accepted push. */
-    private void owe(PolicyKey key, IPatternDetails details, KeyCounter[] inputs) {
+    /** Records what the executing network now owes the consumer's CPU for one accepted push. */
+    private void owe(Pair pair, IPatternDetails details, KeyCounter[] inputs) {
         var ledger = CraftingReturnLedger.get(level);
-        var executing = key.providerNetworkId();
-        var consumer = key.consumerNetworkId();
+        var executing = pair.executing();
+        var consumer = pair.consumer();
         for (var output : details.getOutputs()) {
             ledger.add(executing, consumer, output.what(), output.amount());
         }
@@ -262,7 +294,7 @@ public final class CraftingProjectionService implements AutoCloseable {
                 }
             }
         }
-        var entry = projected.get(key);
+        var entry = projected.get(pair);
         if (entry != null && !routers.containsKey(entry.provider())) syncRouters();
     }
 
@@ -280,8 +312,8 @@ public final class CraftingProjectionService implements AutoCloseable {
     private void syncRouters() {
         var ledger = CraftingReturnLedger.get(level);
         var wanted = new IdentityHashMap<IGrid, NetworkId>();
-        projected.forEach((key, entry) -> {
-            if (!entry.projections().isEmpty()) wanted.put(entry.provider(), key.providerNetworkId());
+        projected.forEach((pair, entry) -> {
+            if (!entry.projections().isEmpty()) wanted.put(entry.provider(), pair.executing());
         });
         for (var owed : ledger.entries()) {
             federationDomains.grid(owed.executing()).ifPresent(grid -> wanted.put(grid, owed.executing()));

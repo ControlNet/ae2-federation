@@ -267,3 +267,15 @@ Test gotchas:
   `PatternProviderBlock.PUSH_DIRECTION = PushDirection.<side>` (`BlockOrientation.setOn` does not restrict it).
 - After a CPU job, the output may land in the provider's chest through the storage mount (same priority, mount order).
   Assert on the sum of both chests.
+
+## Implementation notes (Phase C, 2026-10-02)
+
+- `CraftingReach.compute(edges)` is pure (JUnit `CraftingReachTest`). Edges are the unblocked crafting rules, and
+  `reexport` is `RuleMode.REEXPORT` on that rule. A consumer reaches its rules' providers directly. Through a reached
+  network M it follows only M's re-exporting rules, and it never reaches itself, so mutual rules and rings end.
+- `CraftingProjectionService` keys projections by `Pair(consumer, executing)`, not by rule. The ledger and the router
+  use the real executing network, so a chained push and its return skip the middle network entirely.
+- A rule's pattern-count status counts only its own provider network, not what re-export adds.
+- GameTests `projectionchain`, `projectionchainblocked` and `projectionmutual` use `ProjectionChainFixture`. It puts
+  three Grids on one Router; the consumer and source each have a CPU and a provider, and the middle has neither.
+  `craftingrejectcycle` still belongs to the delegated model and goes in Phase D.

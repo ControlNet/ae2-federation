@@ -7579,6 +7579,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-revoked':
                 case 'crafting.projection-reload':
                 case 'crafting.projection-storage-required':
+                case 'crafting.projection-chain':
+                case 'crafting.projection-chain-blocked':
+                case 'crafting.projection-mutual':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,

@@ -4,6 +4,9 @@ import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixt
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.planks;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.sticks;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.stone;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.CONSUMER;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.MIDDLE;
+import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.SOURCE;
 
 import java.util.Map;
 import net.minecraft.gametest.framework.GameTest;
@@ -13,6 +16,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
+import space.controlnet.ae2federation.test.crafting.ProjectionChainFixture;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 
 /**
@@ -286,6 +290,163 @@ public final class PatternProjectionGameTests {
                     "The consumer must not see the provider's patterns");
             PolicyEvidence.write("projectionstoragerequired", 3, Map.of("reason", "CRAFTING_STORAGE_REQUIRED",
                     "projections", "0"));
+            fixture.close();
+        });
+    }
+
+    /**
+     * Consumer uses middle, and middle uses source with re-export: the consumer's CPU pushes straight to the source's
+     * provider, the source's return goes straight back to the consumer, and the middle takes no part.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 800)
+    public static void projectionChain(GameTestHelper helper) {
+        var fixture = new ProjectionChainFixture(helper);
+        var stage = new int[1];
+        var sourceCpuRan = new boolean[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for the three networks and their providers");
+            if (stage[0] == 0) {
+                fixture.enableChain(RuleMode.REEXPORT);
+                fixture.putIn(CONSUMER, ProjectionChainFixture.log(), 1);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.canCraft(CONSUMER, ProjectionChainFixture.planks()),
+                        "Waiting for the source's patterns on the consumer");
+                helper.assertValueEqual(fixture.projections(CONSUMER, SOURCE), 1,
+                        "The source's provider is projected onto the consumer");
+                helper.assertValueEqual(fixture.projections(MIDDLE, SOURCE), 1,
+                        "The source's provider is projected onto the middle too");
+                helper.assertValueEqual(fixture.projections(CONSUMER, MIDDLE), 0, "The middle has no provider");
+                helper.assertValueEqual(fixture.cpuCount(MIDDLE), 0L, "The middle has no CPU");
+                helper.assertTrue(fixture.routes(SOURCE), "The source routes its returns");
+                helper.assertFalse(fixture.routes(MIDDLE), "Nothing is routed through the middle");
+                fixture.begin(CONSUMER, ProjectionChainFixture.planks(), 4);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                helper.assertFalse(fixture.plan().simulation(), "The consumer's own log must be enough");
+                helper.assertTrue(fixture.submit(), "The consumer's own CPU must take the job");
+                stage[0] = 3;
+            }
+            sourceCpuRan[0] |= fixture.busyCpus(SOURCE) > 0;
+            helper.assertValueEqual(fixture.busyCpus(CONSUMER), 0L, "Waiting for the consumer's job to finish");
+            helper.assertFalse(sourceCpuRan[0], "The source's own CPU takes no part");
+            helper.assertValueEqual(fixture.total(ProjectionChainFixture.planks()), 4L,
+                    "The job must store exactly four planks");
+            helper.assertValueEqual(fixture.amount(CONSUMER, ProjectionChainFixture.log()), 0L,
+                    "The consumer's log was used");
+            helper.assertValueEqual(fixture.owed(SOURCE, CONSUMER, ProjectionChainFixture.planks()), 0L,
+                    "Every returned plank was handed back");
+            PolicyEvidence.write("projectionchain", 12, Map.of("reachedThroughMiddle", "true", "middleCpus", "0",
+                    "middleRoutes", "false", "planks", "4", "sourceCpuRan", "false"));
+            fixture.close();
+        });
+    }
+
+    /** The same chain without re-export: the middle can craft with the source's provider, the consumer cannot. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 800)
+    public static void projectionChainBlocked(GameTestHelper helper) {
+        var fixture = new ProjectionChainFixture(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for the three networks and their providers");
+            if (stage[0] == 0) {
+                fixture.enableChain(RuleMode.ENABLED);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertValueEqual(fixture.projections(MIDDLE, SOURCE), 1,
+                        "Waiting for the source's provider on the middle");
+                helper.assertTrue(fixture.canCraft(MIDDLE, ProjectionChainFixture.planks()),
+                        "The middle can plan the source's planks");
+                helper.assertValueEqual(fixture.projections(CONSUMER, SOURCE), 0,
+                        "Without re-export the source is not projected onto the consumer");
+                helper.assertFalse(fixture.canCraft(CONSUMER, ProjectionChainFixture.planks()),
+                        "The consumer cannot plan the source's planks");
+                fixture.crafting(MIDDLE, SOURCE, RuleMode.REEXPORT);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertValueEqual(fixture.projections(CONSUMER, SOURCE), 1,
+                        "Waiting for re-export to reach the consumer");
+                fixture.crafting(MIDDLE, SOURCE, RuleMode.ENABLED);
+                stage[0] = 3;
+            }
+            helper.assertValueEqual(fixture.projections(CONSUMER, SOURCE), 0,
+                    "Waiting for the consumer's projection to be withdrawn");
+            helper.assertFalse(fixture.canCraft(CONSUMER, ProjectionChainFixture.planks()),
+                    "The consumer can no longer plan the source's planks");
+            helper.assertValueEqual(fixture.projections(MIDDLE, SOURCE), 1, "The middle keeps its own projection");
+            PolicyEvidence.write("projectionchainblocked", 8, Map.of("consumerReachedWithoutReexport", "false",
+                    "consumerReachedWithReexport", "true", "withdrawnWhenReexportOff", "true"));
+            fixture.close();
+        });
+    }
+
+    /**
+     * Mutual rules: the consumer crafts planks with the source's provider, then the source crafts sticks from those
+     * planks with the consumer's provider, each on its own CPU.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 1000)
+    public static void projectionMutual(GameTestHelper helper) {
+        var fixture = new ProjectionChainFixture(helper);
+        var stage = new int[1];
+        var otherCpuRan = new boolean[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for the three networks and their providers");
+            if (stage[0] == 0) {
+                fixture.enableMutual();
+                fixture.putIn(CONSUMER, ProjectionChainFixture.log(), 1);
+                stage[0] = 1;
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.canCraft(CONSUMER, ProjectionChainFixture.planks())
+                        && fixture.canCraft(SOURCE, ProjectionChainFixture.sticks()),
+                        "Waiting for each network's patterns on the other");
+                helper.assertValueEqual(fixture.projections(CONSUMER, SOURCE), 1,
+                        "The source's provider is projected onto the consumer");
+                helper.assertValueEqual(fixture.projections(SOURCE, CONSUMER), 1,
+                        "The consumer's provider is projected onto the source");
+                fixture.begin(CONSUMER, ProjectionChainFixture.planks(), 4);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                helper.assertFalse(fixture.plan().simulation(), "The consumer's log must be enough");
+                helper.assertTrue(fixture.submit(), "The consumer's own CPU must take the planks job");
+                stage[0] = 3;
+            }
+            if (stage[0] == 3) {
+                otherCpuRan[0] |= fixture.busyCpus(SOURCE) > 0;
+                helper.assertValueEqual(fixture.busyCpus(CONSUMER), 0L, "Waiting for the planks job to finish");
+                helper.assertValueEqual(fixture.total(ProjectionChainFixture.planks()), 4L,
+                        "The planks job must store exactly four planks");
+                helper.assertFalse(otherCpuRan[0], "The source's CPU takes no part in the consumer's job");
+                fixture.begin(SOURCE, ProjectionChainFixture.sticks(), 4);
+                stage[0] = 4;
+            }
+            if (stage[0] == 4) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the source's plan");
+                helper.assertFalse(fixture.plan().simulation(), "The planks must be visible to the source");
+                helper.assertTrue(fixture.submit(), "The source's own CPU must take the sticks job");
+                stage[0] = 5;
+            }
+            otherCpuRan[0] |= fixture.busyCpus(CONSUMER) > 0;
+            helper.assertValueEqual(fixture.busyCpus(SOURCE), 0L, "Waiting for the sticks job to finish");
+            helper.assertFalse(otherCpuRan[0], "The consumer's CPU takes no part in the source's job");
+            helper.assertValueEqual(fixture.total(ProjectionChainFixture.sticks()), 4L,
+                    "The sticks job must store exactly four sticks");
+            helper.assertValueEqual(fixture.total(ProjectionChainFixture.planks()), 2L, "Two planks were used");
+            helper.assertValueEqual(fixture.total(ProjectionChainFixture.log()), 0L, "The log was used");
+            helper.assertValueEqual(fixture.owed(SOURCE, CONSUMER, ProjectionChainFixture.planks())
+                    + fixture.owed(CONSUMER, SOURCE, ProjectionChainFixture.sticks()), 0L, "Nothing is owed either way");
+            PolicyEvidence.write("projectionmutual", 13, Map.of("consumerUsedSourceProvider", "true",
+                    "sourceUsedConsumerProvider", "true", "planks", "2", "sticks", "4"));
             fixture.close();
         });
     }
