@@ -22,8 +22,12 @@ mod version. The filename identifies the development commit; it does not change
 the mod version declared in `gradle.properties`.
 
 Development artifacts and uploaded Quick correctness GameTest logs expire after
-7 days. The JAR is available before the longer GameTest suite finishes; inspect
-the final workflow result for full test status. These downloads do not create a
+7 days. The JAR is available before the GameTest suite finishes; inspect the
+final workflow result for full test status. Quick correctness runs every
+required manifest GameTest in one server, one after another
+(`tools/dev_gametests.py --manifest --ci`), and fails unless that is one
+complete pass of exactly the manifest; a test that fails there but passes alone
+also fails it. A newer push to the same branch cancels the running check. These downloads do not create a
 GitHub Release. Published versions remain available from GitHub Releases.
 
 ## Versioning
@@ -92,7 +96,7 @@ gh secret set -f .env -R ControlNet/ae2-federation
 gh secret list -R ControlNet/ae2-federation
 ```
 
-The required manifest GameTests run in eight parallel groups, with each test assigned exactly once. Publication waits for every group to succeed.
+The required manifest GameTests run in sixteen parallel groups, each test in its own GameTest server and assigned exactly once. Publication waits for every group to succeed.
 
 After the build, unit tests, archive validation, and all required manifest GameTests pass, the workflow publishes:
 

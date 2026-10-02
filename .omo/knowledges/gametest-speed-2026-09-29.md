@@ -95,3 +95,15 @@ The required gate remains `python3 tools/required_gametests.py`: one server per 
   now seeds its `stable` node with saved lineage: a node minted in the test's tick no longer counts as established.
 - Read failures from the `required-gametest-log` artifact: `gh run download <id> -n required-gametest-log -D <dir>`, then
   `grep "failed at" <dir>/gametest.log`.
+
+## CI (2026-10-02)
+
+- Quick correctness spent 73 of 74 minutes in `tools/required_gametests.py`: one Gradle process and one server per
+  test (~27 s each, almost all start-up). It now runs `tools/dev_gametests.py --manifest --ci --log gametest.log`.
+- `--ci` passes only one complete batch: exit 0, exactly one `All N required tests passed :)` with N = requested,
+  every requested test's batch started exactly once and no other, no initialization-failure marker; SHARED fails too.
+  Exit code alone is not enough: a run that selects no test still exits 0.
+- Quick has `concurrency` with `cancel-in-progress` per ref, and a 60-minute timeout.
+- Release keeps one server per test, now in 16 shards (was 8; ~21 min for the whole release run). GitHub's Free
+  plan runs at most 20 jobs at once, so 165 one-test jobs would queue in waves and pay 1–2 min of job set-up each.
+- The weekly Qualification workflow still runs the full suite serially, one server per test.

@@ -6,7 +6,7 @@ from tools.required_gametests import required_test_ids, select_shard, verify_one
 class RequiredGameTestsTest(unittest.TestCase):
     def test_release_shards_cover_manifest_exactly_once(self):
         tests = required_test_ids()
-        partitions = [select_shard(tests, index, 8) for index in range(8)]
+        partitions = [select_shard(tests, index, 16) for index in range(16)]
         combined = [test for partition in partitions for test in partition]
         self.assertCountEqual(combined, tests)
         self.assertEqual(len(combined), len(set(combined)))

@@ -54,3 +54,5 @@
   layout (title, dependency line, upgrade callout, sections, Full Changelog link), check them with
   `python3 tools/privacy_guard.py message <file>`, then `gh release edit vX.Y.Z --notes-file <file>`. Modrinth and
   CurseForge changelogs only link to the GitHub release, so they need no edit. Done for 0.0.3 after publication.
+- Since 2026-10-02 the release workflow runs GameTests in 16 shards, and Quick correctness on dev runs them in one
+  batch server (`dev_gametests.py --manifest --ci`); see `gametest-speed-2026-09-29.md`.
