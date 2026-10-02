@@ -60,24 +60,34 @@ public final class CraftingBindingFixture implements AutoCloseable {
     }
 
     public boolean ready() {
+        return readiness().isEmpty();
+    }
+
+    /** The first readiness condition that does not hold yet, or empty once both networks are bridged and settled. */
+    public String readiness() {
         if (!bridge.networksSettled()) {
-            return false;
+            return "settling:" + bridge.settlementDiagnostics();
         }
         if (!nativeSource.advanceInitialPlacement(bridge.outerNetwork())) {
-            return false;
+            return "placing-source";
         }
         if (!bridgePlaced) {
             bridge.placeFirstBridge();
             bridgePlaced = true;
-            return false;
+            return "placing-bridge";
         }
         if (!bridge.firstBridgeReady()) {
             bridge.refreshFirstBridge();
-            return false;
+            return "bridge";
         }
-        return nativeSource.initialReady(bridge.outerGrid())
-                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isPresent()
-                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent();
+        if (!nativeSource.initialReady(bridge.outerGrid())) {
+            return "source";
+        }
+        if (space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isEmpty()
+                || space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isEmpty()) {
+            return "confirming";
+        }
+        return "";
     }
 
     public PolicyKey key() {

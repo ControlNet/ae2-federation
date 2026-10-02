@@ -52,8 +52,14 @@ public final class NativeAutomationFixture implements AutoCloseable {
     }
 
     public boolean ready() {
-        if (!binding.ready()) {
-            return false;
+        return readiness().isEmpty();
+    }
+
+    /** The first readiness condition that does not hold yet, or empty once both rules work. */
+    public String readiness() {
+        var bindingWaiting = binding.readiness();
+        if (!bindingWaiting.isEmpty()) {
+            return "binding-" + bindingWaiting;
         }
         if (!authorized) {
             binding.enable();
@@ -66,10 +72,15 @@ public final class NativeAutomationFixture implements AutoCloseable {
             CraftingProjectionService.get(helper.getLevel()).observeConnectedGrids(binding.consumerGrid(),
                     binding.providerGrid());
             authorized = true;
-            return false;
+            return "authorizing";
         }
-        return CraftingProjectionService.get(helper.getLevel()).projectionCount(binding.key()) > 0
-                && StorageMountService.get(helper.getLevel()).projection(storageKey()) != null;
+        if (CraftingProjectionService.get(helper.getLevel()).projectionCount(binding.key()) == 0) {
+            return "projection:" + CraftingProjectionService.status(helper.getLevel(), binding.key());
+        }
+        if (StorageMountService.get(helper.getLevel()).projection(storageKey()) == null) {
+            return "storage:" + StorageMountService.status(helper.getLevel(), storageKey());
+        }
+        return "";
     }
 
     public InterfaceBlockEntity placeConsumerInterface(boolean second) {

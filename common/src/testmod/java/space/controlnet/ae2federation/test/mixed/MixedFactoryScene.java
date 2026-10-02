@@ -38,6 +38,7 @@ public final class MixedFactoryScene implements AutoCloseable {
     private MixedProcessingMachine machine;
     private InterfaceBlockEntity stockingInterface;
     private int stage;
+    private String waitingFor = "";
     private int blockedTicks;
     private int consumedStockingCycles;
     private boolean finished;
@@ -54,7 +55,24 @@ public final class MixedFactoryScene implements AutoCloseable {
     }
 
     public boolean ready() {
-        if (!automation.ready()) return false;
+        waitingFor = readiness();
+        return waitingFor.isEmpty();
+    }
+
+    /**
+     * The first readiness condition that does not hold yet, or empty once the scene can start. The provider network is
+     * completed before the rules are enabled: the added CPUs and the lane's node and energy cell carry the provider's
+     * network id, and until each joins the provider Grid a second live Grid claims that id and its identity reads as a
+     * split.
+     */
+    private String readiness() {
+        if (processing != null) {
+            additionalCpus.forEach(automation.binding()::connectNativeCpu);
+            processing.connectEnergy();
+            processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
+        }
+        var bindingWaiting = automation.binding().readiness();
+        if (!bindingWaiting.isEmpty()) return "automation-binding-" + bindingWaiting;
         if (processing == null) {
             for (var index = 1; index < profile.cpuLimit(); index++) {
                 var position = new BlockPos(3 + index, 3, 3);
@@ -66,16 +84,22 @@ public final class MixedFactoryScene implements AutoCloseable {
             processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
             processing.register();
             machine = new MixedProcessingMachine(helper, processing, topology);
-            return false;
+            return "processing-placed";
         }
-        if (additionalCpus.stream().anyMatch(position -> !automation.binding().connectNativeCpu(position))) return false;
-        processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
-        return processing.managedNode().getNode() != null
-                && processing.managedNode().getNode().getGrid() == automation.binding().providerGrid()
-                && automation.binding().sourceService().getCpus().size() == profile.cpuLimit()
-                && automation.binding().sourceService().isCraftable(AEItemKey.of(topology.chainResult()))
-                && topology.blockedRecipes().stream().allMatch(recipe ->
-                        automation.binding().sourceService().isCraftable(AEItemKey.of(recipe.output())));
+        if (additionalCpus.stream().anyMatch(position -> !automation.binding().connectNativeCpu(position))) return "cpus";
+        if (!processing.connectEnergy()) return "processing-energy";
+        var service = automation.binding().sourceService();
+        if (processing.managedNode().getNode() == null
+                || processing.managedNode().getNode().getGrid() != automation.binding().providerGrid()) {
+            return "processing-grid";
+        }
+        if (service.getCpus().size() != profile.cpuLimit()) return "cpu-count=" + service.getCpus().size();
+        if (!service.isCraftable(AEItemKey.of(topology.chainResult()))) return "chain-uncraftable";
+        for (var recipe : topology.blockedRecipes()) {
+            if (!service.isCraftable(AEItemKey.of(recipe.output()))) return "blocked-uncraftable";
+        }
+        var automationWaiting = automation.readiness();
+        return automationWaiting.isEmpty() ? "" : "automation-" + automationWaiting;
     }
 
     public boolean tick() {
@@ -89,7 +113,7 @@ public final class MixedFactoryScene implements AutoCloseable {
     }
 
     public String progress() {
-        return "stage=" + stage + ",blockedTicks=" + blockedTicks + ",busy="
+        return "stage=" + stage + (stage == 0 ? ",waiting=" + waitingFor : "") + ",blockedTicks=" + blockedTicks + ",busy="
                 + automation.binding().busyCpuCount() + ",cpus=" + automation.binding().sourceService().getCpus().size()
                 + ",requests=" + requests.size() + ",submitted=" + submitted.stream().filter(Boolean::booleanValue).count();
     }
