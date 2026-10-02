@@ -300,3 +300,31 @@ Test gotchas:
   boundary it tested was the deleted adapter.
 - `federationBenchmark -Pprofile=mixed-small` already failed before this work (checked at b493abf, before the three-state switch, and at e3a932b and 36093d8): the
   scene never gets past readiness (`stage=0`). It is not in the dev batch or CI and needs its own investigation.
+
+## Implementation notes (Phase E, storage audit items 5 and 3, 2026-10-02)
+
+- E1 (87d2e8a): `StorageMountService.status(level, key)` replaces `hasPublishedBinding`/`lastDiagnosticIfPresent`.
+  - `inEffect` also covers a rule that is only a re-export hop. Mounts are keyed by (consumer, origin), so rule
+    (C, M) in C -> M -> S has no mount of its own and used to read "not in effect".
+  - The reason comes from the pure `StorageRuleReason.classify`: activation, then domain references, then
+    `STORAGE_ACCESS_NONE`, then the provider source state (rejected / `STORAGE_SOURCE_EMPTY` / `BACKEND_UNREADY`),
+    then `STORAGE_COMPILE_BUDGET`.
+  - A rule `refresh` never paired reads `IDENTITY_UNCONFIRMED` (network not loaded or not settled) or
+    `NETWORK_PAIR_DISCONNECTED` (both loaded, no shared domain).
+  - `RuleHealth` treats a storage source diagnostic other than `unsettled_origin` as an error.
+  - The `StorageProvenanceException` catches were dead: only the testmod-only `NativeStorageProvenance` throws it.
+- E2: `NativeSourceDomainRegistry` skips instead of rejecting.
+  - A mounted `NetworkStorage` is skipped alone (`COMPLETE_AGGREGATE`).
+  - An alias conflict (`NON_TRANSPARENT_ALIAS`, `AMBIGUOUS_SHARED_DELEGATE`, `OPAQUE_EXTERNAL_ALIAS`) skips its alias
+    group: every candidate whose delegate chain overlaps the conflicting handles. Resolution then reruns until clean.
+  - `NativeSourceDomain.skipped()` lists them, `sameSnapshot` compares them, and a node with only skipped handles is
+    not a source node. Chains are walked once, so the skipped handles' delegate links stay in the stamp.
+  - Still whole-domain: `UNSETTLED_ORIGIN`, `NATIVE_MOUNT_TABLE_UNAVAILABLE`, `UNPROVEN_GRID_REBOUND`.
+  - The rule's runtime text adds "Not shared: N of the other network's storages (diagnostic)".
+  - Task 22 `provenance.opaque-boundary` now logs `AE2F_PROVENANCE_SKIP` records, and its mutation probe flips
+    `opaqueExported`.
+- Seen in the UI world (`ui.graph-controls`, crafting-active step): a storage rule carries `unproven_grid_rebound`
+  while the same pair's crafting rule reads Active.
+  - Crafting's gate checks only that the storage rule is enabled, not that it mounts.
+  - The registry's `lastValid` keeps a rebound rejection until a source identity returns. That entry is in memory only.
+  - Not addressed in Phase E.

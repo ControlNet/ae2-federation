@@ -46,6 +46,7 @@ final class StorageDependencyIndex {
     private Map<OriginNetworkId, NativeSourceDomain> domains = Map.of();
     private Map<PolicyKey, ProvenanceDiagnostic> diagnostics = Map.of();
     private Map<PolicyKey, BindingDiagnostic.Reason> reasons = Map.of();
+    private Map<NetworkId, Integer> skippedSources = Map.of();
     private Set<NetworkId> loadedNetworks = Set.of();
     private DependencyCompilation compilation = new DependencyCompilation(Map.of(), 0, 0);
     private long compilationRevision;
@@ -65,6 +66,7 @@ final class StorageDependencyIndex {
         var nextDomains = new HashMap<OriginNetworkId, NativeSourceDomain>();
         var nextDiagnostics = new HashMap<PolicyKey, ProvenanceDiagnostic>();
         var sourceStates = new HashMap<NetworkId, StorageRuleReason.Source>();
+        var nextSkipped = new HashMap<NetworkId, Integer>();
         var loaded = federationDomains.loadedGrids();
         loadedNetworks = Set.copyOf(loaded.keySet());
         for (var entry : loaded.entrySet()) {
@@ -76,6 +78,14 @@ final class StorageDependencyIndex {
                 if (state == StorageRuleReason.Source.READY) {
                     nextDomains.put(domain.origin(), domain);
                 }
+                if (!domain.skipped().isEmpty()) {
+                    // The rest of the network's storage is shared; the skipped handles are reported, never exported.
+                    nextSkipped.put(entry.getKey(), domain.skipped().size());
+                    var diagnostic = domain.skipped().getFirst().diagnostic();
+                    directRelationships.values().stream()
+                            .filter(relationship -> relationship.key().providerNetworkId().equals(entry.getKey()))
+                            .forEach(relationship -> nextDiagnostics.put(relationship.key(), diagnostic));
+                }
             } catch (ProvenanceException exception) {
                 sourceStates.put(entry.getKey(), StorageRuleReason.Source.REJECTED);
                 directRelationships.values().stream()
@@ -85,6 +95,7 @@ final class StorageDependencyIndex {
         }
         domains = Map.copyOf(nextDomains);
         diagnostics = Map.copyOf(nextDiagnostics);
+        skippedSources = Map.copyOf(nextSkipped);
         var policies = PolicyService.get(level);
         var dependencies = new HashSet<DirectStorageDependency>();
         var enabled = new HashMap<StorageRelationship, PolicyRecord.Configured>();
@@ -171,6 +182,11 @@ final class StorageDependencyIndex {
 
     ProvenanceDiagnostic diagnostic(PolicyKey key) {
         return diagnostics.get(key);
+    }
+
+    /** The provider network's mounted handles left out of its domain at the last refresh. */
+    int skippedSources(PolicyKey key) {
+        return skippedSources.getOrDefault(key.providerNetworkId(), 0);
     }
 
     boolean current(EffectiveSourceRelationship relationship, NativeSourceDomain domain) {
@@ -358,6 +374,7 @@ final class StorageDependencyIndex {
         domains = Map.of();
         diagnostics = Map.of();
         reasons = Map.of();
+        skippedSources = Map.of();
         loadedNetworks = Set.of();
         compilation = new DependencyCompilation(Map.of(), 0, 0);
     }

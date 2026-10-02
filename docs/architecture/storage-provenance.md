@@ -17,18 +17,24 @@ does not replay `IStorageProvider.mountInventories` to discover sources. It obse
   generations, never quantities.
 - Both node providers and native **global** providers (`IStorageService.addGlobalStorageProvider`) are sources, so
   third-party inventories registered through either native path need no Federation registration. Federation's own
-  projection and route providers, AE2's crafting-service storage, and complete `NetworkStorage` aggregates are excluded.
+  projection and route providers and AE2's crafting-service storage are excluded. A mounted complete `NetworkStorage`
+  aggregate is skipped with `COMPLETE_AGGREGATE`.
 - One provider mounting several independent handles (for example a drive with several cells) yields one source per
   handle. The same handle mounted by several providers is deduplicated. A `DelegatingMEInventory` chain reaching another
   mounted handle is deduplicated only when every wrapper above that handle is exactly AE2's base
   `DelegatingMEInventory` class, which forwards every call unchanged. A subclass is not proof of transparency:
   `MEInventoryHandler` (and `DriveWatcher`) apply a filter, insert/extract access limits and `isPreferredStorageFor`,
   and native AE2 mounts the wrapper and its delegate as two storages with their own priorities. Folding such a wrapper
-  into its delegate would change where items land, so that combination fails closed with `NON_TRANSPARENT_ALIAS`.
+  into its delegate would change where items land, so that combination is reported as `NON_TRANSPARENT_ALIAS`.
   A non-transparent wrapper whose delegate is not mounted is its own source and executes through the wrapper, so its
   filter, access limits and simulate/modulate behaviour stay native. Wrappers sharing an unmounted inner inventory
   (`AMBIGUOUS_SHARED_DELEGATE`) and third-party handles referencing another mounted handle (`OPAQUE_EXTERNAL_ALIAS`)
-  also fail closed with a diagnostic; they are never guessed into one source.
+  are reported too; they are never guessed into one source.
+- Such a conflict skips its whole alias group: every mounted handle whose delegate chain overlaps the conflicting
+  handles', because none of them is provably the one to keep. A complete aggregate is skipped alone. A skipped handle
+  is never exported, and the rest of the network's storage is still shared. The domain lists the skips, and the rule's
+  runtime text names the diagnostic and how many storages are left out. Only an unsettled origin, an unreadable mount
+  table or an unproven Grid rebound still reject the whole domain.
 - A listing evaluates source validity and relationship currency once and then applies the Policy resource filter per
   key. Insert and extract validate per call against cheap revision stamps (ledger generation, Policy revision, Domain
   topology, identity), so disconnect, revocation or a remount stops real operations on the next call.
@@ -38,7 +44,8 @@ rebuilds, 75,030 node scans and 50,020 `mountInventories` replays; they now caus
 
 `storage.alias-wrapper-semantics` compares Federation with native AE2 for a filtering `MEInventoryHandler` W (priority
 100, iron only) over a mounted B (priority 0) beside C (priority 50, accepts iron): native lands iron in C, and
-Federation now reports `NON_TRANSPARENT_ALIAS` instead of merging W into B (which landed it in B). It also covers W
+Federation skips W and B with `NON_TRANSPARENT_ALIAS` instead of merging W into B (which landed it in B), so iron
+lands in C as natively. It also covers W
 alone (filter, access limits and dynamic filter match native), a priority remount, a transparent wrapper plus a duplicate
 global mount (one source, counted once, no replay or rebuild on stable queries), a dynamic delegate change, two
 handlers sharing one inner inventory, and a wrapper retargeted onto a mounted handle.

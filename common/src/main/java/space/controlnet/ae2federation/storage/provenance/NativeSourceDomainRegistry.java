@@ -132,13 +132,13 @@ public final class NativeSourceDomainRegistry {
                         "Rebound Grid retained NetworkId without callback-owned source continuity");
             }
             var active = current.get(origin);
-            if (active != null && sameSnapshot(active, grid, capture.sources(), capture.nodes())) {
+            if (active != null && sameSnapshot(active, grid, capture.sources(), capture.nodes(), capture.skipped())) {
                 cache.put(origin, new CachedDiscovery(stamp, active, null, null));
                 return active;
             }
             var generation = new SourceGeneration(nextGeneration(origin));
             var sources = capture.sources().stream().map(source -> source.withGeneration(origin, generation)).toList();
-            var domain = new NativeSourceDomain(origin, generation, grid, sources, capture.nodes());
+            var domain = new NativeSourceDomain(origin, generation, grid, sources, capture.nodes(), capture.skipped());
             current.put(origin, domain);
             lastValid.put(origin, domain);
             cache.put(origin, new CachedDiscovery(stamp, domain, null, null));
@@ -216,7 +216,7 @@ public final class NativeSourceDomainRegistry {
         }
         registrations.sort(Comparator.comparing(Registration::registrationId,
                 (left, right) -> new SourceAliasId(left, 0).compareTo(new SourceAliasId(right, 0))));
-        var nodes = registrations.stream().map(Registration::node).toList();
+        var nodeRegistrations = List.copyOf(registrations);
         var globalOrdinals = new HashMap<String, Integer>();
         for (var providerMounts : snapshot.globalProviders()) {
             providerScans++;
@@ -231,12 +231,28 @@ public final class NativeSourceDomainRegistry {
             }
         }
         var links = new ArrayList<NativeStorageAliasProbe.DelegateLink>();
-        var sources = buildSources(registrations, links);
+        var built = buildSources(registrations, links);
+        var skipped = new ArrayList<SkippedSource>();
+        for (var registration : registrations) {
+            for (var entry : registration.entries()) {
+                var diagnostic = built.skipped().get(entry.mount().storage());
+                if (diagnostic != null) {
+                    skipped.add(new SkippedSource(new SourceAliasId(registration.registrationId(),
+                            entry.callbackIndex()), diagnostic));
+                }
+            }
+        }
+        skipped.sort(Comparator.comparing(SkippedSource::alias));
+        // A node whose every handle is skipped exports nothing, so its readiness does not gate the domain.
+        var nodes = nodeRegistrations.stream()
+                .filter(registration -> registration.entries().stream()
+                        .anyMatch(entry -> !built.skipped().containsKey(entry.mount().storage())))
+                .map(Registration::node).toList();
         var stamp = new Stamp(grid, grid.getStorageService(), grid.getEnergyService(), grid.getPathingService(),
                 snapshot.generation(),
                 stampNodes.toArray(IGridNode[]::new), toArray(stampActive),
                 links.toArray(NativeStorageAliasProbe.DelegateLink[]::new));
-        return new Capture(sources, nodes, stamp);
+        return new Capture(built.sources(), nodes, List.copyOf(skipped), stamp);
     }
 
     /**
@@ -259,28 +275,31 @@ public final class NativeSourceDomainRegistry {
             if (entry.storage() instanceof FederationManagedStorage) {
                 continue;
             }
-            if (entry.storage() instanceof NetworkStorage) {
-                throw new ProvenanceException(ProvenanceDiagnostic.COMPLETE_AGGREGATE,
-                        "Complete native Grid aggregate cannot be an ExportSource");
-            }
             result.add(new CallbackEntry(callbackIndex, entry));
         }
         return List.copyOf(result);
     }
 
     /**
-     * Groups mounted handles into export sources, separating source identity from execution. Identical handles (the
-     * same inventory mounted by several providers) are one source. A mounted handle whose AE2 delegate chain reaches
-     * another mounted handle shares that handle's identity; it is executed through that handle only when every wrapper
-     * on the way is {@linkplain NativeStorageAliasProbe#transparent transparent}. Otherwise one identity would need two
-     * different behaviours (e.g. a filtering Storage Bus handler over an inventory that is also mounted directly), so
-     * the domain is rejected with {@link ProvenanceDiagnostic#NON_TRANSPARENT_ALIAS} rather than double counting or
-     * bypassing the wrapper. Distinct handles of one provider (e.g. several cells in a drive) are independent sources,
-     * which is AE2's own contract: a ProviderState refuses to mount the same inventory twice. Handles that provably
-     * share an unmounted inner inventory, or third-party handles that reference another mounted handle, cannot be
-     * safely deduplicated either and reject the domain with an explicit diagnostic.
+     * Groups mounted handles into export sources, separating source identity from execution, and leaves out the
+     * handles whose identity cannot be proven. Identical handles (the same inventory mounted by several providers) are
+     * one source. A mounted handle whose AE2 delegate chain reaches another mounted handle shares that handle's
+     * identity; it is executed through that handle only when every wrapper on the way is
+     * {@linkplain NativeStorageAliasProbe#transparent transparent}. Otherwise one identity would need two different
+     * behaviours (e.g. a filtering Storage Bus handler over an inventory that is also mounted directly), which is
+     * {@link ProvenanceDiagnostic#NON_TRANSPARENT_ALIAS}. Distinct handles of one provider (e.g. several cells in a
+     * drive) are independent sources, which is AE2's own contract: a ProviderState refuses to mount the same inventory
+     * twice. Handles that provably share an unmounted inner inventory
+     * ({@link ProvenanceDiagnostic#AMBIGUOUS_SHARED_DELEGATE}), and third-party handles that reference another mounted
+     * handle ({@link ProvenanceDiagnostic#OPAQUE_EXTERNAL_ALIAS}), cannot be safely deduplicated either.
+     *
+     * <p>Such a conflict skips its whole alias group: every mounted handle whose delegate chain overlaps the
+     * conflicting handles', since no single one of them is provably the one to keep. A complete
+     * {@link NetworkStorage} aggregate is skipped alone ({@link ProvenanceDiagnostic#COMPLETE_AGGREGATE}). The other
+     * handles still become sources; a skipped handle is never exported. Every chain is walked once, so {@code links}
+     * also holds the skipped handles' delegate links and a retarget still invalidates the domain.
      */
-    private static List<SourceDraft> buildSources(List<Registration> registrations,
+    private static Built buildSources(List<Registration> registrations,
             List<NativeStorageAliasProbe.DelegateLink> links) {
         var mounted = Collections.newSetFromMap(new IdentityHashMap<MEStorage, Boolean>());
         registrations.forEach(registration -> registration.entries()
@@ -289,40 +308,85 @@ public final class NativeSourceDomainRegistry {
         for (var storage : mounted) {
             chains.put(storage, NativeStorageAliasProbe.chain(storage, links));
         }
+        var skipped = new IdentityHashMap<MEStorage, ProvenanceDiagnostic>();
+        for (var storage : mounted) {
+            if (storage instanceof NetworkStorage) {
+                skipped.put(storage, ProvenanceDiagnostic.COMPLETE_AGGREGATE);
+            }
+        }
+        // Each round skips at least one candidate, so this ends within one round per mounted handle.
+        while (true) {
+            var candidates = Collections.newSetFromMap(new IdentityHashMap<MEStorage, Boolean>());
+            mounted.stream().filter(storage -> !skipped.containsKey(storage)).forEach(candidates::add);
+            var resolution = resolve(registrations, chains, candidates);
+            if (resolution.conflict() == null) {
+                return new Built(resolution.sources(), skipped);
+            }
+            for (var storage : aliasGroup(resolution.conflict().handles(), chains, candidates)) {
+                skipped.put(storage, resolution.conflict().diagnostic());
+            }
+        }
+    }
+
+    /** The candidates whose delegate chains overlap {@code handles} or one another's, transitively. */
+    private static Set<MEStorage> aliasGroup(List<MEStorage> handles, Map<MEStorage, List<MEStorage>> chains,
+            Set<MEStorage> candidates) {
+        var group = Collections.newSetFromMap(new IdentityHashMap<MEStorage, Boolean>());
+        var elements = Collections.newSetFromMap(new IdentityHashMap<MEStorage, Boolean>());
+        elements.addAll(handles);
+        var grew = true;
+        while (grew) {
+            grew = false;
+            for (var candidate : candidates) {
+                if (!group.contains(candidate) && chains.get(candidate).stream().anyMatch(elements::contains)) {
+                    group.add(candidate);
+                    elements.addAll(chains.get(candidate));
+                    grew = true;
+                }
+            }
+        }
+        return group;
+    }
+
+    /** The export sources of {@code candidates}, or the first identity conflict among them. */
+    private static Resolution resolve(List<Registration> registrations, Map<MEStorage, List<MEStorage>> chains,
+            Set<MEStorage> candidates) {
         var canonical = new IdentityHashMap<MEStorage, MEStorage>();
-        for (var entry : chains.entrySet()) {
-            var chain = entry.getValue();
-            MEStorage root = entry.getKey();
+        for (var storage : candidates) {
+            var chain = chains.get(storage);
+            MEStorage root = storage;
             // Whether every chain element before the current one forwards unchanged.
             var transparentSoFar = NativeStorageAliasProbe.transparent(root);
             for (var index = 1; index < chain.size(); index++) {
                 var element = chain.get(index);
-                if (mounted.contains(element)) {
+                if (candidates.contains(element)) {
                     if (!transparentSoFar) {
-                        throw new ProvenanceException(ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS,
-                                "A mounted wrapper that is not provably transparent forwards to another mounted "
-                                        + "handle; one source identity cannot carry both behaviours");
+                        return Resolution.of(new Conflict(ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS,
+                                List.of(storage, element)));
                     }
                     root = element;
                 }
                 transparentSoFar &= NativeStorageAliasProbe.transparent(element);
             }
-            canonical.put(entry.getKey(), root);
+            canonical.put(storage, root);
         }
         var elementOwner = new IdentityHashMap<MEStorage, MEStorage>();
-        for (var entry : chains.entrySet()) {
-            var root = canonical.get(entry.getKey());
-            for (var element : entry.getValue()) {
+        for (var storage : candidates) {
+            var root = canonical.get(storage);
+            for (var element : chains.get(storage)) {
                 var owner = elementOwner.putIfAbsent(element, root);
                 if (owner != null && owner != root) {
-                    throw new ProvenanceException(ProvenanceDiagnostic.AMBIGUOUS_SHARED_DELEGATE,
-                            "Several mounted wrappers forward to one native inventory; no safe deduplication exists");
+                    return Resolution.of(new Conflict(ProvenanceDiagnostic.AMBIGUOUS_SHARED_DELEGATE,
+                            List.of(owner, root, element)));
                 }
             }
         }
         var byStorage = new IdentityHashMap<MEStorage, SourceBuilder>();
         for (var registration : registrations) {
             for (var entry : registration.entries()) {
+                if (!candidates.contains(entry.mount().storage())) {
+                    continue;
+                }
                 var aliasId = new SourceAliasId(registration.registrationId(), entry.callbackIndex());
                 byStorage.computeIfAbsent(canonical.get(entry.mount().storage()), SourceBuilder::new)
                         .add(aliasId, entry.mount().priority());
@@ -331,19 +395,19 @@ public final class NativeSourceDomainRegistry {
         var groups = new IdentityHashMap<MEStorage, Set<MEStorage>>();
         elementOwner.forEach((element, owner) -> groups
                 .computeIfAbsent(owner, ignored -> Collections.newSetFromMap(new IdentityHashMap<>())).add(element));
-        for (var entry : chains.entrySet()) {
-            var terminal = entry.getValue().getLast();
-            var own = groups.get(canonical.get(entry.getKey()));
-            if (NativeStorageAliasProbe.opaqueReference(terminal, own, elementOwner.keySet()) != null) {
-                throw new ProvenanceException(ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS,
-                        "Mounted third-party handle references another mounted native handle; "
-                                + "aliasing cannot be proven, explicit adapter required");
+        for (var storage : candidates) {
+            var terminal = chains.get(storage).getLast();
+            var own = groups.get(canonical.get(storage));
+            var referenced = NativeStorageAliasProbe.opaqueReference(terminal, own, elementOwner.keySet());
+            if (referenced != null) {
+                return Resolution.of(new Conflict(ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS,
+                        List.of(storage, terminal, referenced)));
             }
         }
         var result = new ArrayList<SourceDraft>();
         byStorage.values().forEach(builder -> result.add(builder.build()));
         result.sort((left, right) -> left.id().registration().compareTo(right.id().registration()));
-        return List.copyOf(result);
+        return new Resolution(List.copyOf(result), null);
     }
 
     private static boolean sharesSourceIdentity(NativeSourceDomain previous, List<SourceDraft> next) {
@@ -352,9 +416,9 @@ public final class NativeSourceDomainRegistry {
     }
 
     private static boolean sameSnapshot(NativeSourceDomain current, IGrid grid,
-            List<SourceDraft> sources, List<IGridNode> nodes) {
+            List<SourceDraft> sources, List<IGridNode> nodes, List<SkippedSource> skipped) {
         if (current.runtimeGrid() != grid || current.sources().size() != sources.size()
-                || current.sourceNodes().size() != nodes.size()) {
+                || current.sourceNodes().size() != nodes.size() || !current.skipped().equals(skipped)) {
             return false;
         }
         for (var index = 0; index < sources.size(); index++) {
@@ -437,7 +501,20 @@ public final class NativeSourceDomainRegistry {
     private record Registration(UUID registrationId, @Nullable IGridNode node, List<CallbackEntry> entries) {
     }
 
-    private record Capture(List<SourceDraft> sources, List<IGridNode> nodes, Stamp stamp) {
+    private record Capture(List<SourceDraft> sources, List<IGridNode> nodes, List<SkippedSource> skipped,
+            Stamp stamp) {
+    }
+
+    private record Built(List<SourceDraft> sources, Map<MEStorage, ProvenanceDiagnostic> skipped) {
+    }
+
+    private record Conflict(ProvenanceDiagnostic diagnostic, List<MEStorage> handles) {
+    }
+
+    private record Resolution(List<SourceDraft> sources, @Nullable Conflict conflict) {
+        static Resolution of(Conflict conflict) {
+            return new Resolution(List.of(), conflict);
+        }
     }
 
     private record SourceDraft(ExportSourceId id, MEStorage storage, int priority, List<SourceAlias> aliases) {

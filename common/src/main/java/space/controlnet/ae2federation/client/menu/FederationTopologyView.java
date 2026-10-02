@@ -2034,8 +2034,12 @@ final class FederationTopologyView {
         var text = Component.translatable(prefix + code);
         if (runtime.has("backend")) text.append("\n").append(Component.translatable(prefix + "backend_reason",
                 Component.translatable(prefix + "backend." + runtime.get("backend").getAsString())));
-        if (runtime.has("storage")) text.append("\n").append(Component.translatable(prefix + "storage_reason",
-                Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString())));
+        if (runtime.has("storage")) {
+            var source = Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString());
+            text.append("\n").append(runtime.has("skipped") && code.equals("published")
+                    ? Component.translatable(prefix + "storage_skipped", runtime.get("skipped").getAsInt(), source)
+                    : Component.translatable(prefix + "storage_reason", source));
+        }
         return text;
     }
 

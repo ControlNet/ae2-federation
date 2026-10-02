@@ -3285,6 +3285,7 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
     def parsed = [:]
     def nativeRecords = [:].withDefault { [] }
     def rejectionRecords = [:].withDefault { [] }
+    def skipRecords = [:].withDefault { [] }
     def callbackRecords = [:].withDefault { [] }
     def mountRecords = [:].withDefault { [] }
     expected.each { testId, assertionCount ->
@@ -3327,6 +3328,10 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
         (logText =~ /AE2F_PROVENANCE_REJECTION testId=([a-z0-9]+) origin=([^\s]+) generation=([0-9]+) diagnostic=([^\s]+) current=([^\s]+)/).each { match ->
             if (match[1] == testId) rejectionRecords[testId] << [origin: match[2], generation: match[3],
                     diagnostic: match[4], current: match[5]]
+        }
+        (logText =~ /AE2F_PROVENANCE_SKIP testId=([a-z0-9]+) origin=([^\s]+) generation=([0-9]+) alias=([^\s]+) diagnostic=([^\s]+)/).each { match ->
+            if (match[1] == testId) skipRecords[testId] << [origin: match[2], generation: match[3], alias: match[4],
+                    diagnostic: match[5]]
         }
         (logText =~ /AE2F_PROVENANCE_CALLBACK testId=([a-z0-9]+) phase=([^\s]+) slot=([0-9]+) managed=(true|false)/).each { match ->
             if (match[1] == testId) callbackRecords[testId] << [phase: match[2], slot: match[3], managed: match[4]]
@@ -3448,19 +3453,23 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
     }
     def opaque = parsed.provenanceopaqueboundary as Properties
     def opaqueNative = nativeRecords.provenanceopaqueboundary
-    def opaqueRejection = rejectionRecords.provenanceopaqueboundary
-    if (opaqueNative.size() != 1 || opaqueRejection.size() != 1
+    // An opaque alias is skipped with its group, not exported, while the domain itself is rebuilt, not rejected.
+    def opaqueSkips = skipRecords.provenanceopaqueboundary
+    if (opaqueNative.size() != 1 || opaqueSkips.isEmpty()
             || opaque.getProperty('originNetworkId') != opaqueNative[0].origin
-            || opaque.getProperty('originNetworkId') != opaqueRejection[0].origin
             || opaque.getProperty('generationBefore') != opaqueNative[0].generation
-            || opaque.getProperty('generationBefore') != opaqueRejection[0].generation
+            || !(opaque.getProperty('generationAfter') ==~ /[0-9]+/)
+            || (opaque.getProperty('generationAfter') as long) <= (opaque.getProperty('generationBefore') as long)
+            || opaqueSkips.any { it.origin != opaque.getProperty('originNetworkId')
+                    || it.generation != opaque.getProperty('generationAfter')
+                    || it.diagnostic != 'OPAQUE_EXTERNAL_ALIAS' }
+            || opaque.getProperty('skippedAliases') != opaqueSkips.size() as String
             || opaque.getProperty('diagnostic') != 'OPAQUE_EXTERNAL_ALIAS'
-            || opaque.getProperty('diagnostic') != opaqueRejection[0].diagnostic
-            || opaqueRejection[0].current != 'false' || opaque.getProperty('wholeRelationshipRejected') != 'true'
-            || opaque.getProperty('partialSourcesAccepted') != '0'
+            || opaque.getProperty('wholeRelationshipRejected') != 'false'
+            || opaque.getProperty('opaqueExported') != 'false'
             || opaque.getProperty('oldGenerationCurrent') != 'false'
             || opaque.getProperty('nativeQuantity') != '0'
-            || opaque.getProperty('opaqueCompatibility') != 'unsupported-fail-closed') {
+            || opaque.getProperty('opaqueCompatibility') != 'skipped-not-exported') {
         throw new GradleException('Task 22 opaque alias boundary semantics are incomplete')
     }
 }
@@ -9100,7 +9109,7 @@ tasks.register('federationTaskTwentyTwoEvidenceSelfTest') {
                 },
                 importedProjectionAcceptance: mutateFact('provenanceexcludeimport', 'managedPriorityAccepted', 'true',
                         'Task 22 managed import exclusion semantics are incomplete'),
-                ('opaque-wrapper-acceptance'): mutateFact('provenanceopaqueboundary', 'wholeRelationshipRejected', 'false',
+                ('opaque-wrapper-acceptance'): mutateFact('provenanceopaqueboundary', 'opaqueExported', 'true',
                         'Task 22 opaque alias boundary semantics are incomplete'),
                 quantityDoubling: mutateFact('provenancemultientry', 'visibleQuantity', '22',
                         'Task 22 multi-entry alias or quantity/capacity semantics are incomplete'),

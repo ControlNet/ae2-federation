@@ -14,7 +14,6 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.storage.mount.RelationshipStorageProvider;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
 import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
-import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.storage.ProvenanceCallbackProviders;
 import space.controlnet.ae2federation.test.storage.ProvenanceEvidence;
@@ -149,27 +148,28 @@ public final class StorageProvenanceGameTests {
                 appeng.api.storage.IStorageProvider.requestUpdate(providerNode[0]);
                 phase[0] = 2;
             }
-            ProvenanceException rejected = null;
-            try {
-                registry.discover(fixture.grid());
-            } catch (ProvenanceException exception) {
-                rejected = exception;
-            }
-            helper.assertTrue(rejected != null, "Opaque external alias must reject the complete domain");
-            helper.assertValueEqual(rejected.diagnostic(), ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS,
-                    "Opaque rejection must carry a precise diagnostic");
-            helper.assertTrue(!registry.isCurrent(initial[0]), "Rejected discovery must invalidate earlier sources");
+            var next = registry.discover(fixture.grid());
+            helper.assertTrue(!next.skipped().isEmpty() && next.skipped().stream()
+                            .allMatch(skipped -> skipped.diagnostic() == ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS),
+                    "Opaque external alias group must be skipped with a precise diagnostic, not reject the domain");
+            helper.assertTrue(next.sources().stream().noneMatch(source -> source.storage() == fixture.source()),
+                    "Neither the opaque wrapper nor the handle it references is exported");
+            helper.assertTrue(!registry.isCurrent(initial[0]), "Skipping must invalidate earlier sources");
             helper.assertValueEqual(initial[0].sources().getFirst().storage().getAvailableStacks().get(IRON), 0L,
-                    "Rejection must not mutate native authority");
+                    "Skipping must not mutate native authority");
             ProvenanceEvidence.domain("provenanceopaqueboundary", "before", initial[0]);
-            ProvenanceEvidence.rejection("provenanceopaqueboundary", initial[0], rejected.diagnostic());
+            ProvenanceEvidence.skipped("provenanceopaqueboundary", next);
             PolicyEvidence.write("provenanceopaqueboundary", 8, Map.ofEntries(
                     Map.entry("originNetworkId", initial[0].origin().value().toString()),
                     Map.entry("generationBefore", Long.toString(initial[0].generation().value())),
-                    Map.entry("diagnostic", rejected.diagnostic().name()),
-                    Map.entry("wholeRelationshipRejected", "true"), Map.entry("partialSourcesAccepted", "0"),
+                    Map.entry("generationAfter", Long.toString(next.generation().value())),
+                    Map.entry("diagnostic", ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS.name()),
+                    Map.entry("wholeRelationshipRejected", "false"),
+                    Map.entry("partialSourcesAccepted", Integer.toString(next.sources().size())),
+                    Map.entry("skippedAliases", Integer.toString(next.skipped().size())),
+                    Map.entry("opaqueExported", "false"),
                     Map.entry("oldGenerationCurrent", "false"), Map.entry("nativeQuantity", "0"),
-                    Map.entry("opaqueCompatibility", "unsupported-fail-closed")));
+                    Map.entry("opaqueCompatibility", "skipped-not-exported")));
             fixture.close();
         });
     }

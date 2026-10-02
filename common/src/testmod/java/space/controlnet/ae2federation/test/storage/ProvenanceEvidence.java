@@ -27,6 +27,14 @@ public final class ProvenanceEvidence {
         }
     }
 
+    public static void skipped(String testId, NativeSourceDomain domain) {
+        for (var skipped : domain.skipped()) {
+            LOGGER.info("AE2F_PROVENANCE_SKIP testId={} origin={} generation={} alias={} diagnostic={}",
+                    testId, domain.origin().value(), domain.generation().value(), skipped.alias(),
+                    skipped.diagnostic());
+        }
+    }
+
     public static void rejection(String testId, NativeSourceDomain previous, ProvenanceDiagnostic diagnostic) {
         LOGGER.info("AE2F_PROVENANCE_REJECTION testId={} origin={} generation={} diagnostic={} current=false",
                 testId, previous.origin().value(), previous.generation().value(), diagnostic);

@@ -73,8 +73,9 @@ public final class StorageMountService implements AutoCloseable {
 
     private Status status(PolicyKey key) {
         var source = Optional.ofNullable(dependencies.diagnostic(key));
-        return inEffect.contains(key) ? new Status(true, Optional.empty(), source, 0)
-                : new Status(false, dependencies.reason(key), source, 0);
+        var skipped = dependencies.skippedSources(key);
+        return inEffect.contains(key) ? new Status(true, Optional.empty(), source, skipped)
+                : new Status(false, dependencies.reason(key), source, skipped);
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {

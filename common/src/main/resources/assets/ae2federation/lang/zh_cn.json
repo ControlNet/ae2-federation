@@ -174,6 +174,7 @@
   "ae2federation.ui.domain.runtime.published": "上次检查：已生效。每次使用时仍会重新检查权限。",
   "ae2federation.ui.domain.runtime.unobserved": "尚未生效：服务器还没有开始使用这条规则。",
   "ae2federation.ui.domain.runtime.storage_reason": "最近的存储来源诊断：%s",
+  "ae2federation.ui.domain.runtime.storage_skipped": "未共享：对方网络有 %s 个存储无法安全共享（%s）。",
   "ae2federation.ui.domain.runtime.provenance.unsettled_origin": "来源网络身份尚未稳定",
   "ae2federation.ui.domain.runtime.provenance.callback_changed": "原生存储回调已变化",
   "ae2federation.ui.domain.runtime.provenance.complete_aggregate": "聚合存储无法确立原生来源",
