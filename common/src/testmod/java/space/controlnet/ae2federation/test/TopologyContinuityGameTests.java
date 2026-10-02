@@ -43,6 +43,7 @@ import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.domain.FederationDomainEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * Network A (with a creative cell) supplies ME power to network B through Router, Federation Cable and Router. Changing
@@ -88,7 +89,7 @@ public final class TopologyContinuityGameTests {
             timeoutTicks = 1200, required = true, manualOnly = true)
     public static void topologyPlayerPlacementKeepsPower(GameTestHelper helper) {
         var scene = new PoweredDomain(helper);
-        var player = helper.makeMockServerPlayerInLevel();
+        var player = MockServerPlayers.inLevel(helper);
         player.setPos(Vec3.atCenterOf(helper.absolutePos(new BlockPos(6, 8, 2))));
         var placements = List.<Placement>of(
                 new Placement("Federation Cable placed by a player", true, () -> scene.use(player,

@@ -23,6 +23,7 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * The Federation Pattern Provider reaches a domain through its own Federation face (its FRONT). Its network being a
@@ -50,7 +51,7 @@ public final class ProviderFederationFaceGameTests {
         helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                 .setValue(BlockStateProperties.FACING, Direction.SOUTH));
         var position = helper.absolutePos(PROVIDER);
-        var player = helper.makeMockServerPlayerInLevel();
+        var player = MockServerPlayers.inLevel(helper);
         player.setPos(net.minecraft.world.phys.Vec3.atCenterOf(position).add(0, 1, 0));
         var session = space.controlnet.ae2federation.client.policy.FederationDomainPolicySession.forDevice(player, position);
         var opened = helper.<FederationPatternProviderBlockEntity>getBlockEntity(PROVIDER);

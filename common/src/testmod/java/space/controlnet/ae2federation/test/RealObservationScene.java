@@ -22,6 +22,7 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.processing.ProviderTargetRuntimeFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 final class RealObservationScene implements AutoCloseable {
     private final GameTestHelper helper;
@@ -204,7 +205,7 @@ final class RealObservationScene implements AutoCloseable {
         if (existing != null) {
             return existing;
         }
-        var player = helper.makeMockServerPlayerInLevel();
+        var player = MockServerPlayers.inLevel(helper);
         player.setPos(Vec3.atCenterOf(fixture.firstBridgeContext().position()));
         ObservationGameTestPlayerTransport.install(player);
         helper.assertTrue(FederationDomainPolicyMenu.openBridge(player, fixture.firstBridgeContext()),

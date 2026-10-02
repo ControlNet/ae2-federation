@@ -18,6 +18,7 @@ import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.energy.NativeEnergyEvidence;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 @PrefixGameTestTemplate(false)
 public final class TaskThirtyFivePacketGameTests {
@@ -36,7 +37,7 @@ public final class TaskThirtyFivePacketGameTests {
                 helper.assertTrue(false, "Waiting for Task 35 confirmed Federation Domain");
             }
             helper.assertTrue(fixtures.firstBridgeReady(), "Waiting for Task 35 policy context");
-            var player = helper.makeMockServerPlayerInLevel();
+            var player = MockServerPlayers.inLevel(helper);
             player.setPos(Vec3.atCenterOf(fixtures.firstBridgeContext().position()));
             ObservationGameTestPlayerTransport.install(player);
             helper.assertTrue(FederationDomainPolicyMenu.openBridge(player, fixtures.firstBridgeContext()),
