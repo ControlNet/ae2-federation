@@ -30,10 +30,14 @@ import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
+import space.controlnet.ae2federation.test.world.BlockEntityReload;
 
 public final class CraftingBindingFixture implements AutoCloseable {
-    private static final BlockPos BASE = new BlockPos(5, 3, 5);
-    private static final BlockPos CONSUMER_CPU = BASE.south(2);
+    private static final BlockPos DEFAULT_BASE = new BlockPos(5, 3, 5);
+
+    private final BlockPos base;
+    /** Beside the consumer's cable, so the CPU joins the consumer Grid as a placed block does, and again after a reload. */
+    private final BlockPos consumerCpuPos;
 
     private final GameTestHelper helper;
     private final PolicyBridgeFixtures bridge;
@@ -54,11 +58,51 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public CraftingBindingFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern,
             boolean withProviderFluidChest) {
+        this(helper, DEFAULT_BASE, withCpu, withForbiddenPattern, withProviderFluidChest);
+    }
+
+    /**
+     * Builds the fixture around {@code base} (the Bridge's cable, relative to the test), which may lie outside the
+     * test's structure, such as beside the world spawn for a restart test.
+     */
+    public CraftingBindingFixture(GameTestHelper helper, BlockPos base) {
+        this(helper, base, true, false, false);
+    }
+
+    private CraftingBindingFixture(GameTestHelper helper, BlockPos base, boolean withCpu, boolean withForbiddenPattern,
+            boolean withProviderFluidChest) {
         this.helper = helper;
         this.withCpu = withCpu;
-        nativeSource = new CraftingNativeSourceFixture(helper, withCpu, withForbiddenPattern);
-        bridge = new PolicyBridgeFixtures(helper, BASE, withProviderFluidChest);
+        this.base = base;
+        consumerCpuPos = base.west();
+        nativeSource = new CraftingNativeSourceFixture(helper, base, withCpu, withForbiddenPattern);
+        bridge = new PolicyBridgeFixtures(helper, base, withProviderFluidChest);
         bridge.installStorageCells();
+    }
+
+    /** Places the provider's CPU beside its chest, as a player adds one after the rule is already on. */
+    public void placeProviderCpu() {
+        nativeSource.placeCpu(key().providerNetworkId());
+    }
+
+    /** The provider's CPU, relative to the test. */
+    public BlockPos providerCpuPos() {
+        return nativeSource.cpuPosition();
+    }
+
+    /** The consumer's CPU, relative to the test. */
+    public BlockPos consumerCpuPos() {
+        return consumerCpuPos;
+    }
+
+    /** The provider's ME chest, relative to the test. */
+    public BlockPos providerChestPos() {
+        return base.north(2);
+    }
+
+    /** The consumer's ME chest, relative to the test. */
+    public BlockPos consumerChestPos() {
+        return base.south();
     }
 
     public boolean ready() {
@@ -321,24 +365,20 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return cpuNode != null && sourceNode != null && cpuNode.getGrid() == sourceNode.getGrid();
     }
 
-    /** A crafting CPU on the consumer Grid, south of its chest, so the consumer can run its own native jobs. */
+    /** A crafting CPU on the consumer Grid, west of its cable, so the consumer can run its own native jobs. */
     public void addConsumerCpu() {
-        helper.setBlock(CONSUMER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
-        helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode()
+        helper.setBlock(consumerCpuPos, AEBlocks.CRAFTING_STORAGE_1K.block());
+        helper.<CraftingBlockEntity>getBlockEntity(consumerCpuPos).getMainNode()
                 .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", key().consumerNetworkId()));
     }
 
     public boolean consumerCpuReady() {
-        var cpuNode = helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode().getNode();
+        var cpuNode = helper.<CraftingBlockEntity>getBlockEntity(consumerCpuPos).getMainNode().getNode();
         var chestNode = consumerChest().getMainNode().getNode();
         if (cpuNode == null || chestNode == null) {
             return false;
         }
-        if (cpuNode.getGrid() != chestNode.getGrid()) {
-            GridHelper.createConnection(cpuNode, chestNode);
-            return false;
-        }
-        return !consumerService().getCpus().isEmpty();
+        return cpuNode.getGrid() == chestNode.getGrid() && !consumerService().getCpus().isEmpty();
     }
 
     public appeng.api.networking.crafting.ICraftingService consumerService() {
@@ -380,6 +420,19 @@ public final class CraftingBindingFixture implements AutoCloseable {
     /** Reloads the Bridge's cable bus from its saved data in one tick; see {@link PolicyBridgeFixtures}. */
     public net.minecraft.nbt.CompoundTag reloadBridgeHost() {
         return bridge.reloadFirstBridgeHost();
+    }
+
+    /**
+     * Unloads and reloads every block of both networks in one tick, as a server restart does, so AE2 builds both Grids
+     * anew from the saved data; see {@link BlockEntityReload}.
+     *
+     * @return each reloaded block entity's saved data
+     */
+    public java.util.Map<BlockPos, net.minecraft.nbt.CompoundTag> reloadAll() {
+        // Every block the fixture places.
+        var saved = BlockEntityReload.reload(helper, base.offset(-1, -1, -3), base.offset(3, 1, 2));
+        bridge.refreshFirstBridgePart();
+        return saved;
     }
 
     /** Cancels the consumer's running job, as a player does from its CPU's status screen. */
@@ -432,7 +485,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return ((PolicyMutationResult.Accepted) result).revision();
     }
 
-    private static AEItemKey inputKey() {
+    public static AEItemKey inputKey() {
         return AEItemKey.of(Items.OAK_PLANKS);
     }
 

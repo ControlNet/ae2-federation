@@ -4,6 +4,7 @@ import java.util.Map;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
 import space.controlnet.ae2federation.crafting.remote.RemoteCraftingService;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.crafting.CraftingBindingFixture;
@@ -329,6 +330,136 @@ public final class RemoteCraftingGameTests {
                     "resubmissions", Integer.toString(
                             RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key())),
                     "busyCpus", Long.toString(fixture.busyConsumerCpuCount() + fixture.busyCpuCount())));
+            fixture.close();
+        });
+    }
+
+    /**
+     * A restart of both networks while a provider job runs: every block of both Grids is unloaded and loaded again
+     * from its saved data in one tick, and the service starts empty, so AE2 restores both CPUs' jobs and builds both
+     * Grids and their crafting services anew, and the job's two links meet again. The job then delivers to the consumer
+     * and nothing is requested a second time.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void craftingRemoteWorldReload(GameTestHelper helper) {
+        var fixture = new CraftingBindingFixture(helper, true);
+        var stage = new int[1];
+        var reloadedAt = new long[1];
+        var saved = new int[2];
+        var before = new Object[2];
+        helper.succeedWhen(() -> {
+            if (stage[0] < 4) {
+                helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
+            }
+            if (stage[0] == 0) {
+                fixture.enable();
+                fixture.insertMaterials(2);
+                fixture.addConsumerCpu();
+                stage[0] = 1;
+                helper.assertTrue(false, "Waiting for the consumer CPU");
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.consumerCpuReady(), "Waiting for the consumer CPU to join its Grid");
+                helper.assertTrue(fixture.consumerService().getCraftables(key -> true)
+                                .contains(CraftingBindingFixture.outputKey()),
+                        "Waiting for the consumer to list the provider's craftable output");
+                fixture.beginOnConsumer(4);
+                stage[0] = 2;
+                helper.assertTrue(false, "Waiting for the consumer's plan");
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                helper.assertTrue(fixture.submitOnConsumer(), "The consumer must start the job on its own CPU");
+                stage[0] = 3;
+                helper.assertTrue(false, "Waiting for the provider job");
+            }
+            if (stage[0] == 3) {
+                helper.assertValueEqual(fixture.busyCpuCount(), 1L, "Waiting for the provider job to start");
+                // AE2 saves a suspended job as suspended, so the job is still running after the reload.
+                fixture.suspendCpu();
+                RemoteCraftingService.closeLevel(helper.getLevel());
+                before[0] = fixture.consumerGrid();
+                before[1] = fixture.providerGrid();
+                var tags = fixture.reloadAll().values();
+                saved[0] = (int) tags.stream().filter(tag -> tag.contains("job")).count();
+                saved[1] = (int) tags.stream().filter(tag -> tag.toString().contains("ae2federation_crafting_"))
+                        .count();
+                helper.assertValueEqual(saved[0], 2, "Both CPUs must save their running jobs");
+                helper.assertValueEqual(saved[1], 1, "The Bridge must save the provider job's link");
+                reloadedAt[0] = helper.getTick();
+                stage[0] = 4;
+                helper.assertTrue(false, "Waiting for the reloaded networks");
+            }
+            if (stage[0] == 4) {
+                helper.assertTrue(helper.getTick() >= reloadedAt[0] + 200, "Waiting through the reload window");
+                helper.assertTrue(fixture.consumerGrid() != before[0] && fixture.providerGrid() != before[1],
+                        "Both Grids and their crafting services must be built anew");
+                helper.assertValueEqual(fixture.busyCpuCount(), 1L, "The provider CPU must restore its job");
+                helper.assertValueEqual(fixture.busyConsumerCpuCount(), 1L, "The consumer CPU must restore its job");
+                fixture.resumeCpu();
+                stage[0] = 5;
+                helper.assertTrue(false, "Waiting for the resumed provider job");
+            }
+            helper.assertValueEqual(fixture.consumerPhysicalOutputAmount(), 4L,
+                    "Four sticks must arrive after both networks reloaded");
+            helper.assertValueEqual(fixture.physicalMaterialAmount(), 0L, "Only the job's two planks may be used");
+            helper.assertValueEqual(fixture.physicalOutputAmount(), 0L, "No sticks may stay with the provider");
+            helper.assertValueEqual(fixture.busyConsumerCpuCount() + fixture.busyCpuCount(), 0L,
+                    "Both jobs must finish");
+            var resubmissions = RemoteCraftingService.get(helper.getLevel()).submissionCount(fixture.key());
+            helper.assertValueEqual(resubmissions, 0, "The restarted service must not request the job again");
+            NativeCraftingEvidence.write("craftingremoteworldreload", 17, Map.of(
+                    "savedCpuJobs", Integer.toString(saved[0]),
+                    "savedLinks", Integer.toString(saved[1]),
+                    "resultInserted", Long.toString(fixture.consumerPhysicalOutputAmount()),
+                    "providerMaterialAfter", Long.toString(fixture.physicalMaterialAmount()),
+                    "providerResidue", Long.toString(fixture.physicalOutputAmount()),
+                    "resubmissions", Integer.toString(resubmissions),
+                    "busyCpus", Long.toString(fixture.busyConsumerCpuCount() + fixture.busyCpuCount())));
+            fixture.close();
+        });
+    }
+
+    /**
+     * The rule is switched on before the provider has a CPU, so no binding can be published yet. A player then adds
+     * the CPU: nothing else changes (no rule edit, no topology change), and the consumer must still come to list the
+     * provider's craftable output, as it must after a restart, where the domain forms before the provider's CPUs and
+     * patterns are loaded.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void craftingRemoteLateProvider(GameTestHelper helper) {
+        var fixture = new CraftingBindingFixture(helper, false);
+        var stage = new int[1];
+        var cpuPlacedAt = new long[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(fixture.ready(), "Waiting for native Crafting topology: " + fixture.readinessState());
+            if (stage[0] == 0) {
+                fixture.enable();
+                stage[0] = 1;
+                helper.assertTrue(false, "Waiting for the rule without a provider CPU");
+            }
+            if (stage[0] == 1) {
+                helper.assertTrue(CraftingBindingService.publishedBindingsIfPresent(helper.getLevel()).stream()
+                                .noneMatch(binding -> binding.relationship().key().equals(fixture.key())),
+                        "No binding can be published while the provider has no CPU");
+                fixture.placeProviderCpu();
+                cpuPlacedAt[0] = helper.getTick();
+                stage[0] = 2;
+                helper.assertTrue(false, "Waiting for the provider CPU");
+            }
+            helper.assertTrue(fixture.consumerService().getCraftables(key -> true)
+                            .contains(CraftingBindingFixture.outputKey()),
+                    "The consumer must list the provider's craftable output once the provider has a CPU");
+            helper.assertTrue(helper.getTick() - cpuPlacedAt[0] <= 100,
+                    "The binding must follow the provider's CPU within 100 ticks");
+            NativeCraftingEvidence.write("craftingremotelateprovider", 4, Map.of(
+                    "bindingBeforeCpu", "absent",
+                    "consumerListsAfterCpu", "true",
+                    "withinTicks", "true"));
+            // Leaves no live binding behind for tests that count the shared level's bindings or discoveries.
+            fixture.setEnabled(PolicyService.get(helper.getLevel()).revision(fixture.key()), false);
             fixture.close();
         });
     }

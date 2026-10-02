@@ -431,7 +431,8 @@ def taskTwentyNineCases = ['crafting.cancel-native', 'crafting.disconnect-restar
         'crafting.reject-replay', 'crafting.replace-requester']
 def verifyTaskTwentyNineEvidence
 def remoteCraftingCases = ['crafting.remote-request', 'crafting.remote-chain', 'crafting.remote-cancel',
-        'crafting.remote-missing-retry', 'crafting.remote-reload']
+        'crafting.remote-missing-retry', 'crafting.remote-reload', 'crafting.remote-world-reload',
+        'crafting.remote-late-provider', 'crafting.remote-restart']
 def verifyRemoteCraftingEvidence
 def taskThirtyCases = ['mixed.reject-empty-orders', 'mixed.overload-backpressure']
 def verifyTaskThirtyNegativeEvidence
@@ -4853,7 +4854,10 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
         throw new GradleException('Remote crafting evidence must select the exact canonical case set')
     }
     def expected = [craftingremoterequest: 12, craftingremotechain: 14, craftingremotecancel: 10,
-            craftingremotemissingretry: 11, craftingremotereload: 14]
+            craftingremotemissingretry: 11, craftingremotereload: 14, craftingremoteworldreload: 17,
+            craftingremotelateprovider: 4, craftingremoterestart: 11]
+    // The restart case runs as two server processes; its verify process is the one that writes the evidence.
+    def twoProcess = ['craftingremoterestart'] as Set
     def semanticFields = [
             craftingremoterequest: ['consumerPatterns', 'resultInserted', 'providerMaterialAfter', 'providerResidue',
                     'providerSubmissions', 'busyCpus'],
@@ -4863,7 +4867,12 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
             craftingremotemissingretry: ['submissionsWhileMissing', 'resultInserted', 'providerSubmissions',
                     'busyCpus'],
             craftingremotereload: ['savedLink', 'resultInserted', 'providerMaterialAfter', 'resubmissions',
-                    'busyCpus']]
+                    'busyCpus'],
+            craftingremoteworldreload: ['savedCpuJobs', 'savedLinks', 'resultInserted', 'providerMaterialAfter',
+                    'providerResidue', 'resubmissions', 'busyCpus'],
+            craftingremotelateprovider: ['bindingBeforeCpu', 'consumerListsAfterCpu', 'withinTicks'],
+            craftingremoterestart: ['prepareProcessId', 'verifyProcessId', 'resultInserted', 'providerMaterialAfter',
+                    'providerResidue', 'resubmissions', 'busyCpus']]
     // The outcome each case proves; any other value is a regression, not a variant.
     def semantics = [
             craftingremoterequest: [consumerPatterns: '0', resultInserted: '4', providerMaterialAfter: '0',
@@ -4876,6 +4885,12 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
             craftingremotemissingretry: [submissionsWhileMissing: '0', resultInserted: '4', providerSubmissions: '1',
                     busyCpus: '0'],
             craftingremotereload: [savedLink: 'true', resultInserted: '4', providerMaterialAfter: '0',
+                    resubmissions: '0', busyCpus: '0'],
+            craftingremoteworldreload: [savedCpuJobs: '2', savedLinks: '1', resultInserted: '4',
+                    providerMaterialAfter: '0', providerResidue: '0', resubmissions: '0', busyCpus: '0'],
+            craftingremotelateprovider: [bindingBeforeCpu: 'absent', consumerListsAfterCpu: 'true',
+                    withinTicks: 'true'],
+            craftingremoterestart: [resultInserted: '4', providerMaterialAfter: '0', providerResidue: '0',
                     resubmissions: '0', busyCpus: '0']]
     def artifactFields = ['schemaVersion', 'status', 'kind', 'testId', 'structure', 'assertions', 'operations',
             'inserted', 'extracted', 'elapsedNanos'] as Set
@@ -4886,12 +4901,15 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
     if (nativeNames.size() != expectedArtifacts.size() || nativeNames.toSet() != expectedArtifacts) {
         throw new GradleException('Remote crafting native child is missing, extra, or substituted')
     }
+    if (childExits['restart-prepare'] != 0 || childExits['restart-verify'] != 0) {
+        throw new GradleException('Remote crafting two-process restart child exits are incomplete')
+    }
     expected.each { testId, assertionCount ->
-        if (childExits["positive-${testId}"] != 0) {
+        if (!(testId in twoProcess) && childExits["positive-${testId}"] != 0) {
             throw new GradleException("Remote crafting native child exit is missing or nonzero: ${testId}")
         }
         def artifact = "native-${testId}.properties"
-        def log = "positive-${testId}.log"
+        def log = testId in twoProcess ? 'restart-verify.log' : "positive-${testId}.log"
         if (declaredPaths.count { it == artifact } != 1 || declaredPaths.count { it == log } != 1) {
             throw new GradleException("Remote crafting requires exactly one artifact and log for ${testId}")
         }
@@ -4920,11 +4938,25 @@ verifyRemoteCraftingEvidence = { File attempt, List requested, List<String> decl
             if (traceFacts[name] != properties.getProperty(name)) {
                 throw new GradleException("Remote crafting semantic trace mismatch in ${artifact}: ${name}")
             }
-            if (properties.getProperty(name) != semantics[testId][name]) {
+            if (semantics[testId].containsKey(name) && properties.getProperty(name) != semantics[testId][name]) {
                 throw new GradleException("Remote crafting outcome mismatch in ${artifact}: ${name}="
                         + properties.getProperty(name))
             }
         }
+    }
+    // The restart case's two processes: distinct, and the prepare one is the process that wrote the restored state.
+    def restart = loadProperties(new File(attempt, 'native-craftingremoterestart.properties'))
+    def preparePid = parsePositiveInteger(restart.getProperty('prepareProcessId'), 'Remote crafting prepare process ID')
+    def verifyPid = parsePositiveInteger(restart.getProperty('verifyProcessId'), 'Remote crafting verify process ID')
+    if (preparePid == verifyPid || declaredPaths.count { it == 'crafting-restart-state.properties' } != 1
+            || declaredPaths.count { it == 'restart-prepare.log' } != 1) {
+        throw new GradleException('Remote crafting restart evidence does not prove distinct complete processes')
+    }
+    if (loadProperties(new File(attempt, 'crafting-restart-state.properties')).getProperty('prepareProcessId')
+            != restart.getProperty('prepareProcessId')
+            || !(new File(attempt, 'restart-prepare.log').text.contains(
+                    "AE2F_CRAFT_RESTART_PREPARE testId=craftingremoterestart processId=${preparePid}"))) {
+        throw new GradleException('Remote crafting restart process identity is rebound')
     }
 }
 
@@ -7315,25 +7347,27 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         def restartCase = requestedCases.collect { knownCases[it] }.find { it.backend == 'gametest-restart' }
         if (restartCase != null) {
             def policyRestart = restartCase.id.startsWith('policy.')
-            def restartState = new File(attempt, policyRestart ? 'policy-restart-state.properties' : 'identity-restart-state.properties')
-            def phaseProperty = policyRestart ? 'federationPolicyPhase' : 'federationIdentityPhase'
-            def stateProperty = policyRestart ? 'federationPolicyStateFile' : 'federationIdentityStateFile'
+            def craftingRestart = restartCase.id.startsWith('crafting.')
+            def restartFamily = policyRestart ? 'policy' : craftingRestart ? 'crafting' : 'identity'
+            def restartState = new File(attempt, "${restartFamily}-restart-state.properties")
+            def phaseProperty = "federation${restartFamily.capitalize()}Phase"
+            def stateProperty = "federation${restartFamily.capitalize()}StateFile"
             def prepare = gradleCommand('restart-prepare', [':neoforge-1.21.1:runGameTestServer',
                     '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
                     "-P${phaseProperty}=prepare", "-P${stateProperty}=${restartState.absolutePath}",
                     '-PfederationRetainGameTestRuntime=true'], [timeout: 180, retainRuntime: true])
             if (prepare.result.exit != 0 || !restartState.isFile()) {
-                throw new GradleException('Identity restart preparation process failed')
+                throw new GradleException("${restartFamily.capitalize()} restart preparation process failed")
             }
             def nativeEvidence = new File(attempt, "native-${restartCase.testId}.properties")
             def verify = gradleCommand('restart-verify', [':neoforge-1.21.1:runGameTestServer',
                     '-PfederationGameTestSelection=positive', "-PfederationGameTestId=${restartCase.testId}",
                     "-P${phaseProperty}=verify", "-P${stateProperty}=${restartState.absolutePath}",
                     "-PfederationNativeEvidenceFile=${nativeEvidence.absolutePath}"], [timeout: 180, retainRuntime: false])
-            if (verify.result.exit != 0) throw new GradleException('Identity restart verification process failed')
+            if (verify.result.exit != 0) throw new GradleException("${restartFamily.capitalize()} restart verification process failed")
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: restartCase.testId,
                     structure: restartCase.structure, assertions: restartCase.assertions,
-                    operations: policyRestart ? 1 : 2, allowZeroWork: policyRestart])
+                    operations: policyRestart || craftingRestart ? 1 : 2, allowZeroWork: policyRestart])
             childArtifacts.add(restartState); childArtifacts.add(nativeEvidence)
         }
         requestedCases.each { caseId ->
@@ -7660,6 +7694,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.remote-cancel':
                 case 'crafting.remote-missing-retry':
                 case 'crafting.remote-reload':
+                case 'crafting.remote-world-reload':
+                case 'crafting.remote-late-provider':
+                case 'crafting.remote-restart':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -10879,7 +10916,7 @@ tasks.register('federationTaskTwentyEightEvidenceSelfTest') {
 
 tasks.register('federationRemoteCraftingEvidenceConsumer') {
     group = 'verification'
-    description = 'Consumes a complete five-case remote crafting result.'
+    description = 'Consumes a complete eight-case remote crafting result.'
     dependsOn(tasks.named('jar'))
     doLast {
         def resultPath = resultFileProperty.orNull

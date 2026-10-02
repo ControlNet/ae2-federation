@@ -80,9 +80,42 @@ craftables, and the consumer could not request them. `crafting.remote-request` f
   checks the exact schema, the `AE2F_CRAFT_NATIVE_ENTRY` trace, assertion counts (must match the manifest), and the
   expected outcome per field. A mutation of one expected value was rejected with "outcome mismatch".
 - No mutation self-test task and no persisted `.omo/evidence` receipt, unlike Tasks 26–31.
+- Eight cases since 2026-10-02: plus `crafting.remote-world-reload`, `crafting.remote-late-provider`,
+  `crafting.remote-restart`. The restart case is backend `gametest-restart` (two processes, state file
+  `crafting-restart-state.properties`, logs `restart-prepare.log` / `restart-verify.log`); the verifier checks its
+  evidence from `restart-verify.log` and the process IDs. `tools/required_gametests.py` (CI) runs only backend
+  `gametest`, so CI does not run it.
+
+## Reload and restart coverage (2026-10-02)
+
+- Bug found by the restart case: `CraftingBindingService.reconcileAll` ran only on rule edits, Bridge events, domain
+  mutations and `capability()` reads. After a restart the domain was known before the provider's CPU cluster formed,
+  discovery threw `CRAFTING_CPU_MISSING`, and nothing reconciled again (same in game for a rule enabled before the
+  provider had a CPU). Fix: `CraftingReadinessEvents` subscribes to `GridCraftingCpuChange`, `GridPowerStatusChange`,
+  `GridBootingStatusChange` (registered in `CommonStartup`); an event on an observed Grid marks the level, and
+  `CraftingBindingService.flushReadiness` publishes only missing bindings at level tick end
+  (`NeoForgeEntrypoint.onLevelTick`). A full `reconcileAll` there broke `terminalnocpu`: removing the provider's CPU
+  withdrew the binding, so submission returned `StaleBinding` instead of AE2's `NO_CPU_FOUND`. AE2 19.2.x
+  has no pattern-change Grid event; readiness only needs an active provider node and a CPU, and node activity
+  changes only with power or a reboot.
+- In-process world reload (`BlockEntityReload`): save each block entity with `saveWithFullMetadata`, then
+  `onChunkUnloaded()` + `removeBlockEntity`, then `BlockEntity.loadStatic` + `setBlockEntity` (which schedules AE2's
+  init). Reload the whole fixture region, or the old Grid's link nexus cancels the job. Replacing a CPU block with AIR
+  is NOT an unload: `AbstractCraftingUnitBlock.onRemove` breaks the cluster and cancels its job.
+- A consumer CPU joined by `createConnection` is not persisted; place it adjacent to a cable instead.
+- `GameTestHelper.relativePos` does not invert `absolutePos` outside the structure; use
+  `absolute.subtract(helper.absolutePos(BlockPos.ZERO))` (tests are not rotated). Tests are placed at a random far
+  position each run; the restart case builds beside world spawn, whose chunks tick from start.
+- The GameTest server ticks unthrottled (1600 ticks ≈ 1 s), so wall-clock waits mean nothing; wait in ticks.
+- Running the two phases by hand: pass `-PfederationRetainGameTestRuntime=true` to both, or the verify run starts
+  from a deleted world:
+  `./gradlew :neoforge-1.21.1:runGameTestServer -PfederationGameTestSelection=positive -PfederationGameTestId=craftingremoterestart -PfederationCraftingPhase=prepare -PfederationCraftingStateFile=<scratch>/crstate.properties -PfederationRetainGameTestRuntime=true --no-configuration-cache`
+  then the same with `=verify`.
+- Batch mode: a test that leaves a live binding breaks `craftingrejectcycle` (level-wide discovery delta) and
+  `craftingrejectunavailable` (level-wide binding count) once readiness events reconcile at tick end. A test should
+  switch its rule off when it finishes (`craftingremotelateprovider` does).
 
 ## Not covered
 
-- The reload test keeps both CPUs loaded; a full world restart (CPU jobs reloaded too) is not exercised.
 - A provider must have its own patterns and CPU to be bound (`NativeCraftingBackendRegistry.discover`). A network
   with neither cannot provide Crafting at all, so it cannot pass on another network's craftables either.

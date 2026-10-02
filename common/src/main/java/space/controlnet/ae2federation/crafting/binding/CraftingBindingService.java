@@ -23,6 +23,7 @@ import space.controlnet.ae2federation.policy.PolicyService;
 
 public final class CraftingBindingService implements AutoCloseable {
     private static final Map<ServerLevel, CraftingBindingService> SERVICES = new WeakHashMap<>();
+    private static final Map<ServerLevel, Set<IGrid>> READINESS_CHANGED = new WeakHashMap<>();
 
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
@@ -71,11 +72,37 @@ public final class CraftingBindingService implements AutoCloseable {
         }
     }
 
+    /**
+     * Records that {@code grid}'s crafting CPUs, power or boot state changed. Only a Grid the level's bindings observe
+     * matters; the level reconciles once when its tick ends ({@link #flushReadiness(ServerLevel)}).
+     */
+    static synchronized void readinessChanged(ServerLevel level, IGrid grid) {
+        var service = SERVICES.get(level);
+        if (service != null && service.federationDomains.observes(grid)) {
+            READINESS_CHANGED.computeIfAbsent(level,
+                    ignored -> java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>())).add(grid);
+        }
+    }
+
+    /**
+     * Publishes the level's missing bindings whose provider Grid changed its Crafting readiness since the last flush.
+     * It only adds: a provider that loses its CPUs keeps its binding, so AE2 itself reports that no CPU is free
+     * and a waiting consumer job is tried again, as when every CPU is busy.
+     */
+    public static synchronized void flushReadiness(ServerLevel level) {
+        var changed = READINESS_CHANGED.remove(level);
+        var service = SERVICES.get(level);
+        if (changed != null && service != null) {
+            service.reconcileUnbound(changed);
+        }
+    }
+
     public static synchronized void topologyChangedIfPresent(ServerLevel level) {
         reconcileIfPresent(level);
     }
 
     public static synchronized CloseReceipt closeLevel(ServerLevel level) {
+        READINESS_CHANGED.remove(level);
         var service = SERVICES.remove(level);
         var active = service == null ? 0 : service.bindings.size();
         if (service != null) {
@@ -103,15 +130,7 @@ public final class CraftingBindingService implements AutoCloseable {
         diagnostics.clear();
         nativeRequests.retireTerminal();
         var desired = federationDomains.relationships();
-        var policies = PolicyService.get(level);
-        var eligible = new HashSet<PolicyKey>();
-        for (var key : desired.keySet()) {
-            var configured = policies.configured(key).orElse(null);
-            if (configured != null && configured.rule().enabled()
-                    && configured.rule().operations().contains(PolicyOperation.REQUEST)) {
-                eligible.add(key);
-            }
-        }
+        var eligible = eligible(desired.keySet());
         var cyclic = CraftingDependencyCycleGuard.cyclicKeys(eligible);
         cyclic.forEach(key -> recordDiagnostic(key,
                 space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_CYCLE));
@@ -121,6 +140,33 @@ public final class CraftingBindingService implements AutoCloseable {
         desired.values().stream()
                 .filter(relationship -> eligible.contains(relationship.key()) && !cyclic.contains(relationship.key()))
                 .forEach(this::reconcile);
+    }
+
+    private void reconcileUnbound(Set<IGrid> changedProviders) {
+        var desired = federationDomains.relationships();
+        var eligible = eligible(desired.keySet());
+        var cyclic = CraftingDependencyCycleGuard.cyclicKeys(eligible);
+        desired.values().stream()
+                .filter(relationship -> changedProviders.contains(relationship.providerGrid())
+                        && eligible.contains(relationship.key()) && !cyclic.contains(relationship.key())
+                        && !bindings.containsKey(relationship.key()))
+                .forEach(relationship -> {
+                    diagnostics.remove(relationship.key());
+                    reconcile(relationship);
+                });
+    }
+
+    private Set<PolicyKey> eligible(Set<PolicyKey> keys) {
+        var policies = PolicyService.get(level);
+        var eligible = new HashSet<PolicyKey>();
+        for (var key : keys) {
+            var configured = policies.configured(key).orElse(null);
+            if (configured != null && configured.rule().enabled()
+                    && configured.rule().operations().contains(PolicyOperation.REQUEST)) {
+                eligible.add(key);
+            }
+        }
+        return eligible;
     }
 
     public Optional<CraftingCapabilityBinding> capability(PolicyKey key) {

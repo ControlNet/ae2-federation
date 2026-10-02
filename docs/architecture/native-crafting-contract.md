@@ -55,7 +55,11 @@ automation see and request the provider's craftables as AE2 normally does (`craf
   service starts (a server start or level load), it starts and cancels no provider job, so requesters and CPUs in
   chunks loaded later reconnect first; AE2 itself cancels a job whose requester stays missing for 60 ticks.
   `crafting.remote-reload` reloads the Bridge hosting the requester and restarts the service while a provider job
-  runs; the CPUs stay loaded in that test.
+  runs, with both CPUs loaded. `crafting.remote-world-reload` unloads and reloads every block entity of both networks
+  from their saved data in one server (CPUs, chests, cables, Bridge), so both Grids are rebuilt and both CPUs restore
+  their jobs from NBT. `crafting.remote-restart` stops the server with a provider job running and verifies in a new
+  server process that the binding, the consumer's listing, both CPUs' jobs and the requester's link come back from the
+  save alone, and that the job finishes once without being requested again.
 
 The provider's own plan sees its own projections, so a request recurses along Crafting rules: with rules consumer →
 middle and middle → source only, the consumer's sticks are crafted by the middle from planks the source crafts from
@@ -63,20 +67,29 @@ logs (`crafting.remote-chain`). `CraftingDependencyCycleGuard` keeps the Craftin
 (`crafting.reject-cycle`), so the recursion always ends, and no Crafting cycle is needed to reach a network further
 away.
 
-Run and consume the five cases with:
+Run and consume the eight cases with:
 
 ```sh
-./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.remote-request,crafting.remote-chain,crafting.remote-cancel,crafting.remote-missing-retry,crafting.remote-reload -PevidenceDir=.omo/evidence/remote-crafting --dependency-verification=strict --warning-mode=fail --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.remote-request,crafting.remote-chain,crafting.remote-cancel,crafting.remote-missing-retry,crafting.remote-reload,crafting.remote-world-reload,crafting.remote-late-provider,crafting.remote-restart -PevidenceDir=.omo/evidence/remote-crafting --dependency-verification=strict --warning-mode=fail --no-configuration-cache
 RESULT_FILE=$(ls -td .omo/evidence/remote-crafting/attempt-*/result.json | sed -n '1p')
 ./gradlew :neoforge-1.21.1:federationRemoteCraftingEvidenceConsumer -PresultFile="$RESULT_FILE" --dependency-verification=strict --warning-mode=fail --no-configuration-cache
 ```
 
 Each case writes the outcome it measured (delivered amount, provider materials and residue, provider job counts,
-busy CPUs; for reload, the saved link and resubmissions), and the verifier requires the exact schema, matching log
-trace facts, and the expected outcome for every field.
+busy CPUs; for the reload cases, the saved links and CPU jobs and the resubmissions), and the verifier requires the
+exact schema, matching log trace facts, and the expected outcome for every field. `crafting.remote-restart` runs as two
+server processes (`gametest-restart`); the verifier also requires distinct process IDs, the prepare process's ID in the
+saved state file and in the prepare log. CI runs only the single-process cases.
 
 A binding still requires the provider Grid to have its own native patterns and CPU; a network with neither cannot
-provide Crafting, even if it could pass on another network's craftables.
+provide Crafting, even if it could pass on another network's craftables. Readiness is followed through AE2's public
+Grid events (`CraftingReadinessEvents`): `GridCraftingCpuChange`, and `GridPowerStatusChange` /
+`GridBootingStatusChange`, since a pattern provider's node becomes active only with power or a reboot (a node joining
+reboots its Grid). An event on a Grid the bindings observe makes the level publish its missing Crafting bindings once at
+the end of its tick. It only adds: a provider that loses its CPUs keeps its binding, so AE2 itself answers
+`NO_CPU_FOUND` (`terminal.no-cpu`) and a waiting consumer job is tried again, as when every CPU is busy. A rule switched on before the provider has a CPU therefore binds once the CPU is placed
+(`crafting.remote-late-provider`), and after a restart the binding follows the provider's CPUs as they form, after the
+domain is already known.
 
 ## Pinned Sources
 

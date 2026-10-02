@@ -48,7 +48,7 @@ public final class FederationTestMod {
 					 StorageSourceIndexGameTests.class,
 					 StorageNativeStateGameTests.class,
 						 ResourceQualificationGameTests.class,
-						 CraftingBindingGameTests.class, CraftingBindingFailureGameTests.class, RemoteCraftingGameTests.class,
+						 CraftingBindingGameTests.class, CraftingBindingFailureGameTests.class, RemoteCraftingGameTests.class, RemoteCraftingRestartGameTests.class,
 						 TerminalCraftingGameTests.class, TerminalCraftingFailureGameTests.class,
 						 NativeAutomationGameTests.class, NativeAutomationDemandGameTests.class,
 						 CraftingLifecycleGameTests.class,

@@ -119,10 +119,15 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
         helper.setBlock(firstPosition, Blocks.AIR);
         helper.setBlock(firstPosition, state);
         helper.getLevel().getBlockEntity(helper.absolutePos(firstPosition)).loadWithComponents(saved, registries);
+        refreshFirstBridgePart();
+        return saved;
+    }
+
+    /** Finds the first Bridge part again after its cable bus was reloaded; the old part object is dead. */
+    public void refreshFirstBridgePart() {
         first = PartHelper.getPart(BridgeRegistration.BRIDGE.get(), helper.getLevel(),
                 helper.absolutePos(firstPosition), Direction.NORTH);
         helper.assertTrue(first != null, "The reloaded cable bus must restore the Bridge part");
-        return saved;
     }
 
     public void removeFirstBridge() {

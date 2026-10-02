@@ -27,6 +27,11 @@ final class CraftingFederationDomainObserver {
         grids.forEach(this::register);
     }
 
+    /** Whether {@code grid} is a loaded Grid of an observed domain member. */
+    boolean observes(IGrid grid) {
+        return loadedGrids.containsValue(grid);
+    }
+
     /** The loaded Grid that currently carries {@code networkId}, if any. */
     java.util.Optional<IGrid> grid(NetworkId networkId) {
         var grid = loadedGrids.get(networkId);
