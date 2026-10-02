@@ -298,5 +298,5 @@ Test gotchas:
 - The mixed scene and `mixedoverloadbackpressure` use the testmod `ProviderCraftingOrder` (plain AE2 on the provider
   Grid). `mixedrejectemptyorders` was removed: AE2's `beginCraftingCalculation` has no amount check, so the only
   boundary it tested was the deleted adapter.
-- `federationBenchmark -Pprofile=mixed-small` already failed before this work (checked at e3a932b and 36093d8): the
+- `federationBenchmark -Pprofile=mixed-small` already failed before this work (checked at b493abf, before the three-state switch, and at e3a932b and 36093d8): the
   scene never gets past readiness (`stage=0`). It is not in the dev batch or CI and needs its own investigation.
