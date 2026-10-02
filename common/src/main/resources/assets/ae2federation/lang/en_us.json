@@ -179,7 +179,6 @@
   "ae2federation.ui.domain.runtime.provenance.callback_changed": "native storage callback changed",
   "ae2federation.ui.domain.runtime.provenance.complete_aggregate": "aggregate storage cannot establish a native source",
   "ae2federation.ui.domain.runtime.provenance.opaque_external_alias": "external storage alias is opaque",
-  "ae2federation.ui.domain.runtime.provenance.unproven_grid_rebound": "storage reassignment to another grid is unproven",
   "ae2federation.ui.domain.runtime.provenance.ambiguous_shared_delegate": "multiple wrappers share an ambiguous storage delegate",
   "ae2federation.ui.domain.runtime.provenance.non_transparent_alias": "storage alias changes access behavior",
   "ae2federation.ui.domain.runtime.provenance.native_mount_table_unavailable": "native mount table is unavailable",

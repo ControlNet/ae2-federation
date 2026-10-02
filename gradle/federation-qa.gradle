@@ -3284,7 +3284,6 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
     }
     def parsed = [:]
     def nativeRecords = [:].withDefault { [] }
-    def rejectionRecords = [:].withDefault { [] }
     def skipRecords = [:].withDefault { [] }
     def callbackRecords = [:].withDefault { [] }
     def mountRecords = [:].withDefault { [] }
@@ -3325,10 +3324,6 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
                     generation: match[4], grid: match[5], source: match[6], storage: match[7],
                     aliases: match[8], priority: match[9]]
         }
-        (logText =~ /AE2F_PROVENANCE_REJECTION testId=([a-z0-9]+) origin=([^\s]+) generation=([0-9]+) diagnostic=([^\s]+) current=([^\s]+)/).each { match ->
-            if (match[1] == testId) rejectionRecords[testId] << [origin: match[2], generation: match[3],
-                    diagnostic: match[4], current: match[5]]
-        }
         (logText =~ /AE2F_PROVENANCE_SKIP testId=([a-z0-9]+) origin=([^\s]+) generation=([0-9]+) alias=([^\s]+) diagnostic=([^\s]+)/).each { match ->
             if (match[1] == testId) skipRecords[testId] << [origin: match[2], generation: match[3], alias: match[4],
                     diagnostic: match[5]]
@@ -3365,12 +3360,13 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
     }
     def rebound = parsed.provenancenativerebind as Properties
     def reboundNative = nativeRecords.provenancenativerebind.sort { it.phase }
-    if (reboundNative*.phase != ['after', 'before', 'slot-before']) {
+    if (reboundNative*.phase != ['after', 'before', 'slot-after', 'slot-before']) {
         throw new GradleException('Task 22 native rebound trace phases are incomplete')
     }
     def after = reboundNative[0]
     def before = reboundNative[1]
-    def slotBefore = reboundNative[2]
+    def slotAfter = reboundNative[2]
+    def slotBefore = reboundNative[3]
     if (before.origin != after.origin || before.source != after.source || before.aliases != after.aliases
             || before.grid == after.grid || before.storage == after.storage
             || before.generation.toLong() >= after.generation.toLong()
@@ -3387,16 +3383,15 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 22 native rebound identity or generation semantics are incomplete')
     }
     def callback = callbackRecords.provenancenativerebind
-    def reboundRejection = rejectionRecords.provenancenativerebind
     if (callback.size() != 3
             || callback.findAll { it.phase == 'slot-before' }*.slot != ['0', '1']
             || callback.findAll { it.phase == 'slot-before' }*.managed != ['true', 'false']
             || callback.findAll { it.phase == 'slot-after' }*.slot != ['0']
             || callback.findAll { it.phase == 'slot-after' }*.managed != ['false']
-            || reboundRejection.size() != 1 || reboundRejection[0].origin != slotBefore.origin
-            || reboundRejection[0].generation != slotBefore.generation
-            || reboundRejection[0].diagnostic != 'UNPROVEN_GRID_REBOUND'
-            || reboundRejection[0].current != 'false'
+            || slotAfter.origin != slotBefore.origin || slotAfter.grid == slotBefore.grid
+            || slotAfter.source == slotBefore.source || !(slotAfter.source ==~ sourcePattern)
+            || !slotAfter.source.endsWith(':0') || slotAfter.aliases != slotAfter.source
+            || slotAfter.generation.toLong() <= slotBefore.generation.toLong()
             || rebound.getProperty('slotOrigin') != slotBefore.origin
             || rebound.getProperty('slotSourceBefore') != slotBefore.source
             || rebound.getProperty('slotAliasBefore') != slotBefore.aliases
@@ -3405,8 +3400,11 @@ verifyTaskTwentyTwoEvidence = { File attempt, List requested, List<String> decla
             || rebound.getProperty('slotAfterNativeIndex') != '0'
             || rebound.getProperty('slotManagedBefore') != '1'
             || rebound.getProperty('slotManagedAfter') != '0'
-            || rebound.getProperty('slotReboundDiagnostic') != 'UNPROVEN_GRID_REBOUND'
-            || rebound.getProperty('slotOldGenerationCurrent') != 'false') {
+            || rebound.getProperty('slotSourceAfter') != slotAfter.source
+            || rebound.getProperty('slotGenerationBefore') != slotBefore.generation
+            || rebound.getProperty('slotGenerationAfter') != slotAfter.generation
+            || rebound.getProperty('slotOldGenerationCurrent') != 'false'
+            || rebound.getProperty('slotNewGenerationCurrent') != 'true') {
         throw new GradleException('Task 22 callback-slot continuity semantics are incomplete')
     }
     def mount = mountRecords.provenancenativerebind

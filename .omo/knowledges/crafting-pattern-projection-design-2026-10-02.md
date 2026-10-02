@@ -319,12 +319,15 @@ Test gotchas:
     group: every candidate whose delegate chain overlaps the conflicting handles. Resolution then reruns until clean.
   - `NativeSourceDomain.skipped()` lists them, `sameSnapshot` compares them, and a node with only skipped handles is
     not a source node. Chains are walked once, so the skipped handles' delegate links stay in the stamp.
-  - Still whole-domain: `UNSETTLED_ORIGIN`, `NATIVE_MOUNT_TABLE_UNAVAILABLE`, `UNPROVEN_GRID_REBOUND`.
+  - Still whole-domain: `UNSETTLED_ORIGIN`, `NATIVE_MOUNT_TABLE_UNAVAILABLE`.
   - The rule's runtime text adds "Not shared: N of the other network's storages (diagnostic)".
   - Task 22 `provenance.opaque-boundary` now logs `AE2F_PROVENANCE_SKIP` records, and its mutation probe flips
     `opaqueExported`.
 - Seen in the UI world (`ui.graph-controls`, crafting-active step): a storage rule carries `unproven_grid_rebound`
   while the same pair's crafting rule reads Active.
   - Crafting's gate checks only that the storage rule is enabled, not that it mounts.
-  - The registry's `lastValid` keeps a rebound rejection until a source identity returns. That entry is in memory only.
-  - Not addressed in Phase E.
+  - The registry's `lastValid` kept a rebound rejection until a source identity returned. That entry was in memory only.
+  - Fixed after Phase E (2026-10-03): `UNPROVEN_GRID_REBOUND` and `lastValid` are gone. A same-id network on a new Grid
+    gets a newer generation; its sources take identities from the new callback slots, and held projections of the old
+    generation fail closed. `provenance.native-rebind` and the Task 22 verifier check that the slot-0 source does not
+    inherit the slot-1 identity.

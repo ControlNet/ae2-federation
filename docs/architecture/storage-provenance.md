@@ -33,8 +33,12 @@ does not replay `IStorageProvider.mountInventories` to discover sources. It obse
 - Such a conflict skips its whole alias group: every mounted handle whose delegate chain overlaps the conflicting
   handles', because none of them is provably the one to keep. A complete aggregate is skipped alone. A skipped handle
   is never exported, and the rest of the network's storage is still shared. The domain lists the skips, and the rule's
-  runtime text names the diagnostic and how many storages are left out. Only an unsettled origin, an unreadable mount
-  table or an unproven Grid rebound still reject the whole domain.
+  runtime text names the diagnostic and how many storages are left out. Only an unsettled origin or an unreadable mount
+  table still reject the whole domain.
+- A network that comes back on a new runtime Grid (a broken cable rejoined, a chunk reloaded) with the same settled
+  `NetworkId` gets a new source generation. Its sources take their identities from the new Grid's callback slots, so
+  a different storage that lands on another slot never inherits an old source's identity, and projections held from
+  the old generation fail closed.
 - A listing evaluates source validity and relationship currency once and then applies the Policy resource filter per
   key. Insert and extract validate per call against cheap revision stamps (ledger generation, Policy revision, Domain
   topology, identity), so disconnect, revocation or a remount stops real operations on the next call.

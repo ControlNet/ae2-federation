@@ -5,7 +5,6 @@ public enum ProvenanceDiagnostic {
     CALLBACK_CHANGED,
     COMPLETE_AGGREGATE,
     OPAQUE_EXTERNAL_ALIAS,
-    UNPROVEN_GRID_REBOUND,
     /** Several mounted AE2 delegating wrappers provably forward to one unmounted inner inventory. */
     AMBIGUOUS_SHARED_DELEGATE,
     /**

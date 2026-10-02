@@ -179,7 +179,6 @@
   "ae2federation.ui.domain.runtime.provenance.callback_changed": "原生存储回调已变化",
   "ae2federation.ui.domain.runtime.provenance.complete_aggregate": "聚合存储无法确立原生来源",
   "ae2federation.ui.domain.runtime.provenance.opaque_external_alias": "外部存储别名不可追溯",
-  "ae2federation.ui.domain.runtime.provenance.unproven_grid_rebound": "无法确认存储重新归属的网络",
   "ae2federation.ui.domain.runtime.provenance.ambiguous_shared_delegate": "多个封装共享的存储委托存在歧义",
   "ae2federation.ui.domain.runtime.provenance.non_transparent_alias": "存储别名改变了访问行为",
   "ae2federation.ui.domain.runtime.provenance.native_mount_table_unavailable": "无法读取原生挂载表",

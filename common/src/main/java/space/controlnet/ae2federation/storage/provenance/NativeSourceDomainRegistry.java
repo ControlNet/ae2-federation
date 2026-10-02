@@ -40,7 +40,6 @@ import space.controlnet.ae2federation.policy.AuthorityEpoch;
  */
 public final class NativeSourceDomainRegistry {
     private final Map<OriginNetworkId, NativeSourceDomain> current = new HashMap<>();
-    private final Map<OriginNetworkId, NativeSourceDomain> lastValid = new HashMap<>();
     private final Map<OriginNetworkId, Long> generations = new HashMap<>();
     private final Map<OriginNetworkId, CachedDiscovery> cache = new HashMap<>();
     /** Advances before any change to {@link #current} or {@link #cache}. */
@@ -126,11 +125,6 @@ public final class NativeSourceDomainRegistry {
             var snapshot = NativeMountLedger.snapshot(service);
             var capture = capture(grid, origin, snapshot);
             stamp = capture.stamp();
-            var previous = lastValid.get(origin);
-            if (previous != null && previous.runtimeGrid() != grid && !sharesSourceIdentity(previous, capture.sources())) {
-                throw new ProvenanceException(ProvenanceDiagnostic.UNPROVEN_GRID_REBOUND,
-                        "Rebound Grid retained NetworkId without callback-owned source continuity");
-            }
             var active = current.get(origin);
             if (active != null && sameSnapshot(active, grid, capture.sources(), capture.nodes(), capture.skipped())) {
                 cache.put(origin, new CachedDiscovery(stamp, active, null, null));
@@ -140,7 +134,6 @@ public final class NativeSourceDomainRegistry {
             var sources = capture.sources().stream().map(source -> source.withGeneration(origin, generation)).toList();
             var domain = new NativeSourceDomain(origin, generation, grid, sources, capture.nodes(), capture.skipped());
             current.put(origin, domain);
-            lastValid.put(origin, domain);
             cache.put(origin, new CachedDiscovery(stamp, domain, null, null));
             return domain;
         } catch (ProvenanceException exception) {
@@ -173,7 +166,6 @@ public final class NativeSourceDomainRegistry {
         mutations++;
         AuthorityEpoch.advance();
         current.clear();
-        lastValid.clear();
         generations.clear();
         cache.clear();
     }
@@ -408,11 +400,6 @@ public final class NativeSourceDomainRegistry {
         byStorage.values().forEach(builder -> result.add(builder.build()));
         result.sort((left, right) -> left.id().registration().compareTo(right.id().registration()));
         return new Resolution(List.copyOf(result), null);
-    }
-
-    private static boolean sharesSourceIdentity(NativeSourceDomain previous, List<SourceDraft> next) {
-        return previous.sources().stream().map(ExportSource::id)
-                .anyMatch(id -> next.stream().anyMatch(source -> source.id().equals(id)));
     }
 
     private static boolean sameSnapshot(NativeSourceDomain current, IGrid grid,
