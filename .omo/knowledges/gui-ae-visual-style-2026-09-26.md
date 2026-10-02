@@ -1,5 +1,12 @@
 # AE-inspired visual theme, 2026-09-26
 
+> **Current state (2026-10-02):** Data Energistics is no longer a reference. The v2 redesign replaced its gray-blue
+> canvas palette with NeoECO's dark canvas (`FederationTheme.CANVAS` `#201E27`, grid in `.domain-graph`) and dark
+> network cards. What remains in `FederationTopologyView` (cursor-centred zoom, fit, picking a link by distance,
+> selection emphasis) is ordinary LDLib2 `GraphView` behaviour, not something taken from it. Its single-surface
+> rendering was never adopted: each network is a card element, only links share a drawn layer. Notes below and in
+> `gui-ldlib2-reference-review-2026-09-26.md` that call it a graph reference are historical.
+
 The user explicitly emphasized NeoECO and Data Energistics as references for visual style, in addition to interaction ideas.
 Reviewed the existing local source snapshots and viewed NeoECO's background/button PNGs. NeoECO uses light gray-violet
 pixel bevels and centralized button/slot states (`NETextures`, `eco.lss`). Data Energistics' `CraftingPlanGraphPalette`
