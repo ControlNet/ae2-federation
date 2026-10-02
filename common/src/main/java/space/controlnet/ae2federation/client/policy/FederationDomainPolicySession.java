@@ -1400,8 +1400,11 @@ public final class FederationDomainPolicySession {
                 return new RuntimeObservation("operation_missing", operation.name().toLowerCase(java.util.Locale.ROOT), "", "");
             }
         }
+        var storageStatus = key.capability() == PolicyCapability.STORAGE
+                ? space.controlnet.ae2federation.storage.mount.StorageMountService.status(level, key)
+                : Optional.<space.controlnet.ae2federation.storage.mount.StorageMountService.Status>empty();
         boolean published = switch (key.capability()) {
-            case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
+            case STORAGE -> storageStatus.map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::inEffect).orElse(false);
             case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).map(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::active).orElse(false);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.shares(level, key);
         };
@@ -1410,14 +1413,11 @@ public final class FederationDomainPolicySession {
             case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).flatMap(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::reason);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key)
                     .map(space.controlnet.ae2federation.policy.BindingDiagnostic::reason);
-            default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic.Reason>empty();
+            case STORAGE -> storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::reason);
         };
         var backend = backendReason.map(reason -> reason.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
-        var storage = "";
-        if (key.capability() == PolicyCapability.STORAGE) {
-            var diagnostic = space.controlnet.ae2federation.storage.mount.StorageMountService.lastDiagnosticIfPresent(level, key);
-            if (diagnostic != null) storage = diagnostic.name().toLowerCase(java.util.Locale.ROOT);
-        }
+        var storage = storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::source)
+                .map(diagnostic -> diagnostic.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
         return new RuntimeObservation("unobserved", "", backend, storage);
     }
 

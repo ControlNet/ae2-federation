@@ -13,7 +13,13 @@ public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, lo
         NETWORK_PAIR_DISCONNECTED,
         BACKEND_UNREADY,
         DOMAIN_REFERENCE_MISSING,
-        ENERGY_CONNECTION_MISSING
+        ENERGY_CONNECTION_MISSING,
+        /** A storage rule whose operations and filters allow nothing. */
+        STORAGE_ACCESS_NONE,
+        /** The provider network has no storage it can share. */
+        STORAGE_SOURCE_EMPTY,
+        /** The level's storage relationships exceeded the dependency compiler's budget. */
+        STORAGE_COMPILE_BUDGET
     }
 
     public static Reason inactiveReason(PolicyActivationState state) {

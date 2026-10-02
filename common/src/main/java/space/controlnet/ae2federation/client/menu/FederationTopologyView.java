@@ -2003,7 +2003,8 @@ final class FederationTopologyView {
         var runtime = rule.getAsJsonObject("runtime");
         var code = runtime == null ? "unobserved" : runtime.get("code").getAsString();
         var backend = runtime != null && runtime.has("backend") ? runtime.get("backend").getAsString() : "";
-        return switch (space.controlnet.ae2federation.client.policy.RuleHealth.of(true, code, backend)) {
+        var storage = runtime != null && runtime.has("storage") ? runtime.get("storage").getAsString() : "";
+        return switch (space.controlnet.ae2federation.client.policy.RuleHealth.of(true, code, backend, storage)) {
             case ACTIVE -> new RuleState("active", FederationTheme.OK, false);
             case ERROR -> new RuleState("error", FederationTheme.ERROR, true);
             default -> new RuleState("waiting", FederationTheme.WARN, true);

@@ -52,6 +52,11 @@ public final class ChainStorageFixture implements AutoCloseable {
         lineX(3, 6, 4, 7, AEColor.YELLOW);
     }
 
+    /** Takes B's only cell out, so B has no storage of its own and can only pass A's on. */
+    public void emptyB() {
+        chest(B_CHEST).setCell(net.minecraft.world.item.ItemStack.EMPTY);
+    }
+
     public boolean networksSettled() {
         IGrid[] grids = { aGrid(), bGrid(), cGrid(), dGrid() };
         var distinctGrids = new HashSet<IGrid>();
