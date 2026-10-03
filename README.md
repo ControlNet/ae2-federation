@@ -60,6 +60,8 @@ Processing needs no permission. Each Endpoint belongs to one Provider at a time.
 
 See [build and test commands](docs/testing/commands.md), [Gitflow and releases](docs/releasing.md), and [compatibility details](docs/compatibility/matrix.md).
 
+Future feature discussions and confirmed idea requirements are collected in the [idea library](docs/ideas/README.md).
+
 ## Acknowledgements
 
 - [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the great base mod that this project is based on.
