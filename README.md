@@ -30,10 +30,6 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 
 [Report a bug or suggest a feature](https://github.com/ControlNet/ae2-federation/issues). For bugs, include your mod versions, what happened, and logs or screenshots.
 
-## Development
-
-[Build and test](docs/testing/commands.md) · [Gitflow and releases](docs/releasing.md) · [Compatibility](docs/compatibility/matrix.md) · [Idea library](docs/ideas/README.md)
-
 ## Acknowledgements
 
 - [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the base mod this project builds on.
