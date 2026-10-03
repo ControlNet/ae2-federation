@@ -579,10 +579,12 @@ def uiTaskFifteenUpstreamMutations = [
         'forged-task15-ack': { report, upstream ->
             def forgedId = 'locally-forged-task15-ack'
             def ldlibReport = new JsonSlurper().parse(upstream)
-            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.router' }.steps
-                    .find { it.attachments?.caseId == 'ui.router' }.attachments
-            upstreamOutcome.visibleStatus = upstreamOutcome.visibleStatus.replaceFirst(/policy-[0-9]+$/, forgedId)
-            report.controlAttachments.find { it.caseId == 'ui.router' }.visibleStatus = upstreamOutcome.visibleStatus
+            // The footer stays empty once the server accepts an edit; a locally written acknowledgment must not pass.
+            ldlibReport.scenarios.find { it.name == 'ui.router' }.steps
+                    .findAll { it.attachments?.caseId == 'ui.router' }
+                    .each { it.attachments.visibleStatus = "Server acknowledged ${forgedId}".toString() }
+            report.controlAttachments.findAll { it.caseId == 'ui.router' }
+                    .each { it.visibleStatus = "Server acknowledged ${forgedId}".toString() }
             upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
         },
         'stale-context-success': { report, upstream ->
@@ -607,10 +609,12 @@ def uiTaskThirtyThreeUpstreamMutations = [
         },
         'claim-conflict-success': { report, upstream ->
             def ldlibReport = new JsonSlurper().parse(upstream)
-            def upstreamOutcome = ldlibReport.scenarios.find { it.name == 'ui.reject-claim-conflict' }.steps
-                    .find { it.attachments?.caseId == 'ui.reject-claim-conflict' }.attachments
-            upstreamOutcome.claimConflictResult = 'SUCCESS'
-            report.controlAttachments.find { it.caseId == 'ui.reject-claim-conflict' }.claimConflictResult = 'SUCCESS'
+            // The scenario records its outcome more than once; the verifier reads the last, so forge them all.
+            ldlibReport.scenarios.find { it.name == 'ui.reject-claim-conflict' }.steps
+                    .findAll { it.attachments?.caseId == 'ui.reject-claim-conflict' }
+                    .each { it.attachments.claimConflictResult = 'SUCCESS' }
+            report.controlAttachments.findAll { it.caseId == 'ui.reject-claim-conflict' }
+                    .each { it.claimConflictResult = 'SUCCESS' }
             upstream.text = JsonOutput.prettyPrint(JsonOutput.toJson(ldlibReport)) + '\n'
         },
         'fabricated-task33-multipart': { report, upstream ->
