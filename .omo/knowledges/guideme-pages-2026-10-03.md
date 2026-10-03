@@ -46,6 +46,11 @@ closing, because it is preceded by punctuation and followed by a letter.
   - Relative links resolve.
   - Ids are qualified and known.
   - Each Federation item has exactly one page.
+  - Chinese paragraphs and list items stay on one source line, with a space after their punctuation (mutation
+    checked).
+- Getting Started describes the screen as it is: a pair's rule switches appear on the right after you click the line
+  between two network cards, or select one card and then the other network in its list. This was checked against the
+  Task 33 screenshots `79_ui-graph-link-pair-selected` and `178_ui-graph-network-detail`.
 - The `guideClient` run opens AE2's guide on a page at the title screen. It points
   `guideme.ae2.guide.sources` at our folder, so the pages hot-reload while it runs. `guideme.validateAtStartup` compiles
   only those development pages, and the log lists each "Compiling ae2federation:..." line plus any `PageCompiler`

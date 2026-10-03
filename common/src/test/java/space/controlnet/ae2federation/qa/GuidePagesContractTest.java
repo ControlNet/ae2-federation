@@ -90,6 +90,27 @@ final class GuidePagesContractTest {
         }
     }
 
+    /**
+     * GuideME breaks lines only at whitespace and mishandles a run longer than a line, so Chinese text needs a break
+     * point after its punctuation, and a soft-wrapped source line would end the rendered line early.
+     */
+    @Test
+    void chineseParagraphsStayOnOneLineWithABreakAfterPunctuation() throws IOException {
+        var block = Pattern.compile("^(\\s*<(?!ItemLink)|#|\\* |\\d+\\. |\\||$)");
+        var cramped = Pattern.compile("[，。；：！？](?=[^\\s，。；：！？、）”*])");
+        for (var page : pages(CHINESE)) {
+            var text = Files.readString(CHINESE.resolve(page));
+            var lines = text.substring(text.indexOf("\n---\n", 4) + 5).split("\n", -1);
+            for (var i = 0; i < lines.length; i++) {
+                // Tags, tables, headings and blank lines are not wrapped paragraph text.
+                if (block.matcher(lines[i]).find() && !lines[i].startsWith("* ") && !lines[i].matches("\\d+\\. .*")) continue;
+                assertTrue(!cramped.matcher(lines[i]).find(), page + ": no break point after punctuation: " + lines[i]);
+                assertTrue(i + 1 == lines.length || block.matcher(lines[i + 1]).find(),
+                        page + ": a paragraph continues on the next source line: " + lines[i + 1]);
+            }
+        }
+    }
+
     @Test
     void eachFederationItemHasOnePageForTheItemIndex() throws IOException {
         var owners = new TreeMap<String, String>();

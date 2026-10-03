@@ -45,9 +45,9 @@ Routers face to face; always put Federation Cable between them.
 ## 3. Switch sharing on
 
 Right-click the Router or the Bridge (stay within eight blocks) to open the Federation screen. It draws the networks
-in this Federation domain as cards. Select a network card to list its rules with each other network, each with a
-switch. A rule reads "network A uses network B's storage": it works in that direction only, and the other direction
-has its own switch.
+in this Federation domain as cards. Click the line between two cards, or select one card and then the other network
+in the list on the right. The right side then shows that pair's rules in two groups, "A uses B's" and "B uses A's",
+each rule with a switch, and below them the shared energy switch. A rule works in its direction only.
 
 * Left-click a switch to step it forward (Disabled, Enabled, Enabled with re-export) and right-click to step back.
 * **Storage** lets one network see, insert and extract the other's items and fluids.
