@@ -14,7 +14,7 @@ item_ids:
 
 <BlockImage id="ae2federation:processing_endpoint" p:facing="south" scale="6" />
 
-让另一个网络上的<ItemLink id="ae2federation:pattern_provider" />使用你的机器。 参见[远程加工](../remote-processing.md)。
+让另一个网络上的<ItemLink id="ae2federation:pattern_provider" />使用你的机器。 参见[远程合成](../remote-processing.md)。
 
 * **前面**： 联邦面。 放置时朝向你点击的方块， 所以请点击<ItemLink id="ae2federation:cable" />或路由器。 用扳手可以转动它。
 * **其他五个面**： 接入机器自己的小ME网络（加工子网络）。 供应器送来的原料进入这个网络的存储； 机器必须把产物推回这几个面之一。

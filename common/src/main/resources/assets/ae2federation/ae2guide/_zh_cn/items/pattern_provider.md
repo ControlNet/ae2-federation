@@ -14,7 +14,7 @@ item_ids:
 
 <BlockImage id="ae2federation:pattern_provider" p:facing="south" scale="6" />
 
-通过<ItemLink id="ae2federation:processing_endpoint" />把处理样板发给其他网络上的机器。 参见[远程加工](../remote-processing.md)。
+通过<ItemLink id="ae2federation:processing_endpoint" />把处理样板发给其他网络上的机器。 参见[远程合成](../remote-processing.md)。
 
 * **前面**： 联邦面。 放置时前面朝向你点击的方块， 所以请点击<ItemLink id="ae2federation:cable" />或路由器。 用扳手可以转动它； 潜行时用扳手可以拆下。
 * **其他五个面**： 接入供应器自己的ME网络， 在那里占用一个频道。

@@ -82,4 +82,4 @@ navigation:
 
 在使用对方存储的那个网络上打开ME终端： 对方网络的物品会列在里面， 并且可以取出。 规则的状态显示在开关旁边： 生效时为绿色， 尚未生效时为黄色， 被阻止时为红色， 下面一行写着原因。 参见[排错](troubleshooting.md)。
 
-下一步： [联邦的工作方式](mechanics.md) 和 [远程加工](remote-processing.md)。
+下一步： [联邦的工作方式](mechanics.md) 和 [远程合成](remote-processing.md)。

@@ -20,7 +20,8 @@ on, and each permission works in one direction.
 
 * [Getting Started](getting-started.md): craft the parts and connect your first two networks.
 * [How Federation Works](mechanics.md): domains, rules, shared energy and the limits.
-* [Remote Processing](remote-processing.md): send processing patterns to machines on other networks.
+* [Remote Crafting](remote-processing.md): order from another network's pattern providers, or send processing
+  patterns to its machines.
 * [Troubleshooting](troubleshooting.md): what the warnings in the Federation screen mean.
 
 ## Items and blocks

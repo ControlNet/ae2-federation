@@ -15,7 +15,7 @@ item_ids:
 <BlockImage id="ae2federation:pattern_provider" p:facing="south" scale="6" />
 
 Sends processing patterns to machines on other networks, through
-<ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Processing](../remote-processing.md).
+<ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Crafting](../remote-processing.md).
 
 * **Front:** the Federation face. When you place the Provider, the front faces the block you clicked, so click
   <ItemLink id="ae2federation:cable" /> or a Router. A wrench turns it; sneak and use a wrench to pick it up.

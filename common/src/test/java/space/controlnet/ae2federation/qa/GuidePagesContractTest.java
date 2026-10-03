@@ -28,7 +28,7 @@ final class GuidePagesContractTest {
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
-            "pattern_provider", "fluix_glass_cable", "network_tool");
+            "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler");
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);

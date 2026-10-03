@@ -94,4 +94,4 @@ Open an ME terminal on the network that uses the other's storage: the other netw
 be taken out. A rule's state shows beside its switch: green when active, yellow while it is not active yet, red when
 something blocks it, with the reason underneath. See [Troubleshooting](troubleshooting.md).
 
-Next: [How Federation Works](mechanics.md) and [Remote Processing](remote-processing.md).
+Next: [How Federation Works](mechanics.md) and [Remote Crafting](remote-processing.md).

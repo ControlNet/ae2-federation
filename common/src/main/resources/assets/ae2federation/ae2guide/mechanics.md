@@ -35,14 +35,15 @@ you switch a rule on.
 
 * **Crafting needs Storage.** Your own crafting CPU runs the job with the materials it can see, which include the
   other network's storage. Switching Crafting on also switches the same direction's Storage on, and switching that
-  Storage off also switches the Crafting off. The other network needs no CPU, and the result arrives in yours.
+  Storage off also switches the Crafting off. The other network needs no CPU, and the result arrives in yours; see
+  [Remote Crafting](remote-processing.md).
 * **Re-export** (the third state) passes access along a chain: if A uses B's storage and B uses C's storage with Re-export, A can reach
   C's storage through B. Crafting works the same way, and two networks may each craft with the other's providers.
 * **ME power** has one switch for the pair, and energy flows both ways, as with a <ItemLink id="ae2:quartz_fiber" />.
   Pools join up: if A shares with B and B with C, all three share one pool. Each network needs a Router face or a
   Bridge for this; a network that reaches the domain only through a Pattern Provider front cannot join the pool.
 * **Processing needs no rule.** Any Federation Pattern Provider can use any Processing Endpoint in its domain; see
-  [Remote Processing](remote-processing.md).
+  [Remote Crafting](remote-processing.md).
 
 ## The Federation screen
 

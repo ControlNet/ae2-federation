@@ -15,7 +15,7 @@ item_ids:
 <BlockImage id="ae2federation:processing_endpoint" p:facing="south" scale="6" />
 
 Lets a <ItemLink id="ae2federation:pattern_provider" /> on another network use your machines. See
-[Remote Processing](../remote-processing.md).
+[Remote Crafting](../remote-processing.md).
 
 * **Front:** the Federation face. It faces the block you clicked when placing it, so click
   <ItemLink id="ae2federation:cable" /> or a Router. A wrench turns it.
