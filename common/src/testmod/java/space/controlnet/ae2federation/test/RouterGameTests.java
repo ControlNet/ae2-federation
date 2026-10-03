@@ -190,6 +190,84 @@ public final class RouterGameTests {
         });
     }
 
+    /**
+     * Two Routers placed face to face link directly, as through Federation Cable: the touching faces resolve as
+     * Federation, their boundary nodes stay unconnected (no two-node native Grid between them), and the networks on
+     * the far faces share a domain. Replacing the second Router with a native device turns the face native again.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void routerAdjacentFederation(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var second = CENTER.east();
+        fixtures.placeNativeDevice(CENTER, Direction.WEST);
+        fixtures.placeNativeDevice(second, Direction.EAST);
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                for (var grid : new appeng.api.networking.IGrid[] {
+                        fixtures.nativeDeviceNode(CENTER, Direction.WEST).getGrid(),
+                        fixtures.nativeDeviceNode(second, Direction.EAST).getGrid()}) {
+                    helper.assertTrue(space.controlnet.ae2federation.domain.FederationDomainRegistryAccess
+                            .confirmedNetworkId(grid).isPresent(), "Waiting for native identities to settle");
+                }
+                fixtures.placeRouter(CENTER);
+                phase[0] = 1;
+                helper.assertTrue(false, "Waiting for the first Router");
+            }
+            var first = fixtures.router(CENTER);
+            if (phase[0] == 1) {
+                helper.assertValueEqual(first.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
+                        "The first Router must join its native network");
+                fixtures.placeRouter(second);
+                phase[0] = 2;
+                helper.assertTrue(false, "Waiting for the adjacent Router");
+            }
+            if (phase[0] == 2) {
+                var adjacent = fixtures.router(second);
+                helper.assertValueEqual(first.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                        "The existing Router's face must link to the adjacent Router");
+                helper.assertValueEqual(adjacent.binding(Direction.WEST).kind(), RouterPortKind.FEDERATION,
+                        "The new Router's face must link to the existing Router");
+                helper.assertTrue(first.boundaryNode(Direction.EAST).getConnections().isEmpty()
+                        && adjacent.boundaryNode(Direction.WEST).getConnections().isEmpty(),
+                        "Touching Router faces must not form a native Grid between them");
+                helper.assertTrue(fixtures.allFederationLinksAreReciprocal(first)
+                        && fixtures.allFederationLinksAreReciprocal(adjacent), "The direct link must be reciprocal");
+                helper.assertTrue(!fixtures.hasInternalNativeConnection(first)
+                        && !fixtures.hasInternalNativeConnection(adjacent), "Routers must not join native Grids");
+                var left = network(helper, first, Direction.WEST);
+                var right = network(helper, adjacent, Direction.EAST);
+                helper.assertTrue(!registry.federationdomainsFor(left).isEmpty()
+                        && registry.federationdomainsFor(left).equals(registry.federationdomainsFor(right)),
+                        "Networks on adjacent Routers must share a Federation domain");
+                fixtures.nativePorts().placeChest(second);
+                phase[0] = 3;
+                helper.assertTrue(false, "Waiting for the native replacement");
+            }
+            helper.assertValueEqual(first.binding(Direction.EAST).kind(), RouterPortKind.NATIVE_ME,
+                    "A native device replacing the adjacent Router must turn the face native");
+            helper.assertTrue(!first.boundaryNode(Direction.EAST).getConnections().isEmpty(),
+                    "The face must expose its node again once no Router faces it");
+            RouterEvidence.write("routeradjacentfederation", 9, Map.of(
+                    "adjacentFederation", "true", "reciprocal", "true", "touchingNativeEdge", "false",
+                    "sharedDomain", "true", "nativeJoin", "false", "replacedNative", "true",
+                    "placement", "sequential"));
+            fixtures.close();
+        });
+    }
+
+    private static space.controlnet.ae2federation.identity.NetworkId network(GameTestHelper helper,
+            space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
+        var binding = router.binding(face);
+        helper.assertTrue(binding instanceof RouterPortBinding.Native, "Router face must resolve its native attachment");
+        return space.controlnet.ae2federation.domain.FederationDomainRegistryAccess
+                .confirmedNetworkId(((RouterPortBinding.Native) binding).attachment().grid())
+                .orElseThrow(() -> new net.minecraft.gametest.framework.GameTestAssertException(
+                        "Native Router identity is not settled"));
+    }
+
     private static String identity(Object value) {
         return Integer.toUnsignedString(System.identityHashCode(value));
     }

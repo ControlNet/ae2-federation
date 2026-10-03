@@ -17,9 +17,9 @@ item_ids:
 路由器把ME网络接入一个[联邦域](../mechanics.md)。 它的六个面各自独立工作：
 
 * 接触ME线缆或设备时， 这个面加入那个网络， 不占用频道， 也没有待机耗电；
-* 接触<ItemLink id="ae2federation:cable" />、联邦样板供应器前面或处理端点前面时， 这个面把联邦域继续向外连接。
+* 接触<ItemLink id="ae2federation:cable" />、另一个路由器、联邦样板供应器前面或处理端点前面时， 这个面把联邦域继续向外连接。
 
-一个路由器上最多可以汇集六个不同的网络， 它的各个面不会把这些网络合成一个。 两个面接同一个网络也可以， 只算一次。 两个路由器面对面贴在一起不会连通， 请用联邦线缆连接。
+一个路由器上最多可以汇集六个不同的网络， 它的各个面不会把这些网络合成一个。 两个面接同一个网络也可以， 只算一次。 两个路由器面对面贴在一起会直接连通， 和用联邦线缆连接一样。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_hub.snbt" />

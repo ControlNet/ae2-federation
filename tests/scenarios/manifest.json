@@ -118,6 +118,7 @@
     {"id":"router.repeat-network","backend":"gametest","testId":"routerrepeatnetwork","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"router.port-replacement","backend":"gametest","testId":"routerportreplacement","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"router.reject-unsupported","backend":"gametest","testId":"routerrejectunsupported","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"router.adjacent-federation","backend":"gametest","testId":"routeradjacentfederation","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"domain.bridge-diamond","backend":"gametest","testId":"federationdomainbridgediamond","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.router-merge-split","backend":"gametest","testId":"federationdomainroutermergesplit","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.redundant-membership","backend":"gametest","testId":"federationdomainredundantmembership","structure":"ae2federation_test:harness_native_smoke","assertions":8},

@@ -380,7 +380,7 @@ def taskElevenCases = ['bridge.valid', 'bridge.invalid', 'bridge.same-grid', 'br
         'bridge.reload-replace']
 def verifyTaskElevenEvidence
 def taskTwelveCases = ['router.mixed-six-faces', 'router.six-independent-me', 'router.repeat-network',
-        'router.port-replacement', 'router.reject-unsupported']
+        'router.port-replacement', 'router.reject-unsupported', 'router.adjacent-federation']
 def verifyTaskTwelveEvidence
 def taskThirteenCases = ['domain.bridge-diamond', 'domain.router-merge-split', 'domain.redundant-membership',
         'domain.partial-unload', 'domain.reject-stale-route']
@@ -1870,7 +1870,7 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
     if (!requested.any { it in taskTwelveCases }) return
     if (requested != taskTwelveCases) throw new GradleException('Task 12 evidence must select the exact canonical case set')
     def expected = [routermixedsixfaces: 9, routersixindependentme: 10, routerrepeatnetwork: 8,
-            routerportreplacement: 8, routerrejectunsupported: 8]
+            routerportreplacement: 8, routerrejectunsupported: 8, routeradjacentfederation: 9]
     def expectedArtifacts = expected.keySet().collect { "native-${it}.properties" } as Set
     def declaredNativeNames = declaredPaths.findAll {
         new File(it).name.startsWith('native-router') && new File(it).name.endsWith('.properties')
@@ -1964,6 +1964,13 @@ verifyTaskTwelveEvidence = { File attempt, List requested, List<String> declared
             || unsupported.getProperty('loadedNeighborOnly') != 'true'
             || unsupported.getProperty('federationDomainPowerRequired') != 'false') {
         throw new GradleException('Task 12 unsupported-neighbor or all-Federation semantics are incomplete')
+    }
+    def adjacent = parsed.routeradjacentfederation as Properties
+    if (adjacent.getProperty('adjacentFederation') != 'true' || adjacent.getProperty('reciprocal') != 'true'
+            || adjacent.getProperty('touchingNativeEdge') != 'false' || adjacent.getProperty('sharedDomain') != 'true'
+            || adjacent.getProperty('nativeJoin') != 'false' || adjacent.getProperty('replacedNative') != 'true'
+            || adjacent.getProperty('placement') != 'sequential') {
+        throw new GradleException('Task 12 face-to-face Router link semantics are incomplete')
     }
 }
 verifyTaskThirteenEvidence = { File attempt, List requested, List<String> declaredPaths, Map childExits ->
@@ -6888,6 +6895,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'router.repeat-network':
                 case 'router.port-replacement':
                 case 'router.reject-unsupported':
+                case 'router.adjacent-federation':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,

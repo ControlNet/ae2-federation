@@ -17,12 +17,12 @@ item_ids:
 The Router brings ME networks into a [Federation domain](../mechanics.md). Each of its six faces works on its own:
 
 * touched by an ME cable or device, the face joins that network, without using a channel or idle power;
-* touched by <ItemLink id="ae2federation:cable" />, a Pattern Provider front or an Endpoint front, the face links
-  the domain onwards.
+* touched by <ItemLink id="ae2federation:cable" />, another Router, a Pattern Provider front or an Endpoint front,
+  the face links the domain onwards.
 
 Up to six different networks can meet at one Router, and its faces never join them into one network. Two faces on the
-same network are fine and count once. Two Routers placed face to face do not connect; join them with Federation
-Cable.
+same network are fine and count once. Two Routers placed face to face link directly, just as if Federation Cable
+joined them.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_hub.snbt" />

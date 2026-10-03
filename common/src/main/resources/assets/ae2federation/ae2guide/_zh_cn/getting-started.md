@@ -47,7 +47,7 @@ navigation:
   <RecipeFor id="ae2federation:router" />
 </Row>
 
-让<ItemLink id="ae2federation:router" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个路由器最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个路由器， 再用<ItemLink id="ae2federation:cable" />把路由器连起来。 不要把两个路由器面对面直接贴在一起， 中间一定要有联邦线缆。
+让<ItemLink id="ae2federation:router" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个路由器最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个路由器， 再用<ItemLink id="ae2federation:cable" />把路由器连起来。 两个路由器面对面贴在一起时会直接连通， 中间不需要线缆。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/router_cable.snbt" />

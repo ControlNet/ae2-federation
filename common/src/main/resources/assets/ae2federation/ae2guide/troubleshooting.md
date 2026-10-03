@@ -21,8 +21,8 @@ reason.
 * **"The outer attachment does not support a Federation connection."** The Bridge's outer side touches a block with
   no ME node, such as Federation Cable. Bridges join ME networks directly; use a Router for Federation Cable.
 * **A Router face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
-  Federation face when Federation Cable, a Pattern Provider front or an Endpoint front touches it. Two Routers placed
-  face to face do not connect; put Federation Cable between them.
+  Federation face when Federation Cable, another Router, a Pattern Provider front or an Endpoint front touches it. Any
+  other block leaves the face unused.
 * **"No domain with two networks."** The block you opened does not reach two networks yet. Connect a Router or
   Bridge, then open it again.
 

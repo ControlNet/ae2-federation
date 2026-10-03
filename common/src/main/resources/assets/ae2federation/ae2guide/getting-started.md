@@ -53,8 +53,8 @@ cable or device of the second network. The two networks stay separate; the Bridg
 
 Touch one face of a <ItemLink id="ae2federation:router" /> with an ME cable of the first network and another face
 with an ME cable of the second network. One Router can take up to six networks, one per face. For networks far
-apart, give each its own Router and join the Routers with <ItemLink id="ae2federation:cable" />. Do not place two
-Routers face to face; always put Federation Cable between them.
+apart, give each its own Router and join the Routers with <ItemLink id="ae2federation:cable" />. Two Routers placed
+face to face link directly, with no cable between them.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/router_cable.snbt" />

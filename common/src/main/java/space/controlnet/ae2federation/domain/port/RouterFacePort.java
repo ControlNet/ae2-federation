@@ -52,6 +52,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private ServerLevel level;
     private boolean dirty = true;
     private boolean nodeLoaded;
+    private boolean facesFederationPort;
 
     public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort) {
         this.routerPosition = routerPosition.immutable();
@@ -71,7 +72,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     public void initialize(ServerLevel serverLevel) {
         level = serverLevel;
         var neighborPosition = routerPosition.relative(face);
-        var neighbor = serverLevel.isLoaded(neighborPosition)
+        var loaded = serverLevel.isLoaded(neighborPosition);
+        // Decided before the node exists, so two Routers placed face to face never join their faces for a tick.
+        hideNodeIfFederation(loaded && reciprocal(
+                serverLevel.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite())));
+        var neighbor = loaded && !facesFederationPort
                 ? GridHelper.getExposedNode(serverLevel, neighborPosition, face.getOpposite())
                 : null;
         if (!nodeLoaded && neighbor != null) {
@@ -156,16 +161,34 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         if (node == null) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
-        var nativeAttachment = NativeAttachmentResolver.resolve(level, routerPosition, face, node);
         var federationPort = federationCache.getCapability();
-        var validFederationPort = federationPort != null
-                && federationPort.ownerPosition().equals(neighborPosition)
-                && federationPort.outwardFace() == face.getOpposite()
-                && routerFederationDomainPort.connectsTo(federationPort);
+        var validFederationPort = reciprocal(federationPort);
+        // Hiding or showing the node updates its connections at once, so the native check below sees the result.
+        hideNodeIfFederation(validFederationPort);
+        var nativeAttachment = NativeAttachmentResolver.resolve(level, routerPosition, face, node);
         if (nativeAttachment.isPresent() == validFederationPort) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
         return nativeAttachment.<RouterPortBinding>map(RouterPortBinding.Native::new)
                 .orElseGet(() -> new RouterPortBinding.Federation(federationPort));
+    }
+
+    private boolean reciprocal(@Nullable FederationPort port) {
+        return port != null && port.ownerPosition().equals(routerPosition.relative(face))
+                && port.outwardFace() == face.getOpposite() && routerFederationDomainPort.connectsTo(port);
+    }
+
+    /**
+     * A face that touches a Federation port links through that port only, so its node is not exposed on the face.
+     * Another Router's face exposes a boundary node too: left exposed, AE2 would join the two into a native Grid of
+     * their own, and the face would count as native and Federation at once and stay disconnected. Once the port goes,
+     * the node is exposed again and connects to whatever native neighbour is there.
+     */
+    private void hideNodeIfFederation(boolean federation) {
+        if (federation == facesFederationPort) {
+            return;
+        }
+        facesFederationPort = federation;
+        boundaryNode.setExposedOnSides(federation ? EnumSet.noneOf(Direction.class) : EnumSet.of(face));
     }
 }
