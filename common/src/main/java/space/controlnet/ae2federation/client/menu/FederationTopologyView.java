@@ -1862,8 +1862,11 @@ final class FederationTopologyView {
         }
         head.addChild(toggle);
         var state = ruleState(rule);
-        var stateCode = state.code() + (mode == RuleMode.REEXPORT ? "_reexport" : "");
-        var text = tr("rule_state." + stateCode).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
+        // The words name only the switch's setting; the colour says whether it works, the tooltip why not. The
+        // undrawn health class lets tests tell a working rule from a waiting one.
+        var setting = state.code().equals("off") ? "off" : mode == RuleMode.REEXPORT ? "reexport" : "on";
+        stateLabel.addClass("health-" + state.code());
+        var text = tr("rule_state." + setting).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
         if (flow != null && on) text.append("\n").append(flowText(flow));
         stateLabel.setText(text);

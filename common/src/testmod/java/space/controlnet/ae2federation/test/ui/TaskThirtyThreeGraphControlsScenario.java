@@ -285,7 +285,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the switch moves to re-export", context -> storageSwitch(context).hasClass("reexport"))
                 .check("an accepted edit leaves the footer hidden", context -> !context.el("#domain_footer")
                         .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
-                .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "re-export")
+                .waitForText(TaskFifteenScenarioSupport.STORAGE_STATE, "On with re-export")
                 .check("the third state is the re-export switch", context -> context.el(
                         TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                         .hasClass("reexport"))
@@ -301,9 +301,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 // storage only its reason. The server reports the runtime a moment after the switch, so wait for it.
                 .waitUntil("the switch has no tooltip, and the rule's state only says what needs attention", context -> {
                     var state = TaskThirtyThreeScenarioSupport.tooltipLines(context, TaskFifteenScenarioSupport.STORAGE_STATE);
-                    var shown = context.el(TaskFifteenScenarioSupport.STORAGE_STATE).text();
+                    var label = context.el(TaskFifteenScenarioSupport.STORAGE_STATE);
                     return TaskThirtyThreeScenarioSupport.noTooltip(context, TaskFifteenScenarioSupport.STORAGE_SWITCH)
-                            && (shown.equals("Active") ? state.isEmpty()
+                            && label.text().equals("On")
+                            && (label.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active") ? state.isEmpty()
                                     : state.equals(java.util.List.of("The other network has no storage it can share.")));
                 })
                 .check("a storage rule lists no operations", context -> context.all(".policy-terms-row").isEmpty())
@@ -339,8 +340,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-operation-denied")
                 .server("enable the crafting rule", TaskThirtyThreeWorldFixture::enableCraftingRule)
-                .waitUntil("crafting is active", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .equals("Active"))
+                .waitUntil("crafting is active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-crafting-active")
                 .server("switch the storage rule off through the API", context ->
                         TaskThirtyThreeWorldFixture.setCraftingStorage(context, false))
@@ -352,8 +352,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-storage-required")
                 .server("switch the storage rule back on", context -> TaskThirtyThreeWorldFixture.setCraftingStorage(context, true))
-                .waitUntil("crafting is active again", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .equals("Active"))
+                .waitUntil("crafting is active again", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
                 .server("disable the observed rule and reject its old diagnostic", TaskThirtyThreeWorldFixture::disableObservedCraftingRule)
                 .waitUntil("the disabled rule reads off, with no leftover reason", context -> TaskThirtyThreeScenarioSupport
                         .ruleState(context, "crafting").equals("Off"))
@@ -372,8 +371,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .awaitElement("#policy_section_title_0")
-                .waitUntil("the sharing energy rule is active", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "me_power")
-                        .equals("Active"))
+                .waitUntil("the sharing energy rule is active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "me_power"))
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
                 .frames(2).screenshot("ui-policy-runtime-energy-shared")
                 .step("select a network card so the shared link is drawn unselected", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)

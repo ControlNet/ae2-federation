@@ -170,6 +170,12 @@ final class TaskThirtyThreeScenarioSupport {
         return context.el(ruleControl(context, "state", context.get("net.providerHost"), capability)).text();
     }
 
+    /** Whether the rule works: its state label names only the setting, and carries its health as an undrawn class. */
+    static boolean ruleActive(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
+        return context.el(ruleControl(context, "state", context.get("net.providerHost"), capability))
+                .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active");
+    }
+
     /** Scrolls the topology aside so a pair-editor row is in view for screenshots. */
     static void revealRule(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
         revealInAside(context, ruleControl(context, "row", context.get("net.providerHost"), capability));

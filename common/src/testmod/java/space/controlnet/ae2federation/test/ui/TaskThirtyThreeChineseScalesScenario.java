@@ -50,7 +50,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         context, context.get("net.providerHost")))
                 .waitUntil("localized network detail is shown", context -> context.el("#network_detail").isVisible())
                 .check("localized device counts are on the devices button", context ->
-                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern Provider：1"))
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "样板供应器：1"))
                 .check("localized network detail fits compact inspector", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#network_identity", "#network_stat_energy")
                                 && TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open", "#network_highlight"))
