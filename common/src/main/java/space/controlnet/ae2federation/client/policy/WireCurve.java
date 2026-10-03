@@ -16,6 +16,17 @@ public record WireCurve(float fromX, float fromY, float toX, float toY) {
         return new float[] {x, y};
     }
 
+    /** The curve's direction at {@code t} (0..1), as {@code [dx, dy]}, not normalised. */
+    public float[] tangent(float t) {
+        float bend = (toX - fromX) / 2;
+        float c1x = fromX + bend;
+        float c2x = toX - bend;
+        float u = 1 - t;
+        float dx = 3 * u * u * (c1x - fromX) + 6 * u * t * (c2x - c1x) + 3 * t * t * (toX - c2x);
+        float dy = 6 * u * t * (toY - fromY);
+        return new float[] {dx, dy};
+    }
+
     /** {@code segments + 1} points along the curve, as flat {@code [x, y, ...]}. */
     public float[] points(int segments) {
         var points = new float[(segments + 1) * 2];

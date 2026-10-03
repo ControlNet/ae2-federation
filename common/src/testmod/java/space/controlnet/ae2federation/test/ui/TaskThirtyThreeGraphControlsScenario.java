@@ -453,7 +453,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && policies.configured(context.get("related.far.rule")).isEmpty();
                 })
                 .check("the legend is shown in the canvas corner", context -> context.el("#graph_legend").isVisible()
-                        && context.el("#graph_legend").text().contains("A▸B = A uses B's capability"))
+                        && context.el("#graph_legend").text().contains("▸ points to the network that uses it"))
                 .click("#graph_legend_toggle")
                 .waitUntil("the legend folds away", context -> !context.el("#graph_legend").isVisible())
                 .click("#graph_legend_toggle")

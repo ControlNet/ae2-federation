@@ -46,4 +46,25 @@ class WireCurveTest {
         assertTrue(curve.distance(quarter[0], quarter[1], 32) < 0.5);
         assertTrue(curve.distance(0, 100, 32) > 30);
     }
+
+    @Test
+    void theTangentFollowsTheCurve() {
+        var curve = new WireCurve(0, 0, 100, 60);
+        var start = curve.tangent(0);
+        assertEquals(0, start[1], 1e-4);
+        assertTrue(start[0] > 0, "leaves the port heading right");
+        // Halfway the curve climbs twice as steeply as the straight line between its ends.
+        var middle = curve.tangent(0.5f);
+        assertEquals(2 * 60 / 100f, middle[1] / middle[0], 1e-4);
+        var before = curve.at(0.49f);
+        var after = curve.at(0.51f);
+        assertEquals((after[1] - before[1]) / (after[0] - before[0]), middle[1] / middle[0], 1e-2);
+    }
+
+    @Test
+    void aStackedLinkHeadsStraightDownHalfway() {
+        var middle = new WireCurve(50, 0, 50, 80).tangent(0.5f);
+        assertEquals(0, middle[0], 1e-4);
+        assertTrue(middle[1] > 0);
+    }
 }

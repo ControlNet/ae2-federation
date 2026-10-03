@@ -40,6 +40,8 @@ public final class FederationTheme {
     public static final int QUARTZ_CORE = 0xff7f93ab;
     public static final int QUARTZ_BEAD = 0xffe8f4ff;
     public static final int QUARTZ_BEAD_EDGE = 0xff3b4a5c;
+    /** A rule in effect that passes its access on: apart from active green, selection blue and the switch's green. */
+    public static final int REEXPORT = 0xff4fd8e8;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */
     public static final int[] NETWORK_ACCENTS = {0xff61afef, 0xffd19a66, 0xffc678dd, 0xff98c379, 0xffe06c75,
             0xff56b6c2, 0xffe5c07b, 0xffbe5046};
@@ -362,34 +364,35 @@ public final class FederationTheme {
 
     /** {@link #dashedBorder(int)} drawn {@code inset} pixels inside the bounds, where a card draws its edge. */
     public static IGuiTexture dashedBorder(int color, float inset) {
-        return painted((pen, outerX, outerY, outerWidth, outerHeight) -> {
-            float x = outerX + inset;
-            float y = outerY + inset;
-            float width = outerWidth - 2 * inset;
-            float height = outerHeight - 2 * inset;
-            for (float at = 0; at < width; at += 4) {
-                float length = Math.min(2, width - at);
-                pen.rect(x + at, y, length, 1, color);
-                pen.rect(x + at, y + height - 1, length, 1, color);
-            }
-            for (float at = 0; at < height; at += 4) {
-                float length = Math.min(2, height - at);
-                pen.rect(x, y + at, 1, length, color);
-                pen.rect(x + width - 1, y + at, 1, length, color);
-            }
-        });
+        return painted((pen, x, y, width, height) ->
+                dashes(pen, x + inset, y + inset, width - 2 * inset, height - 2 * inset, color));
+    }
+
+    /** The outline of {@link #dashedBorder(int)} around the given box. */
+    static void dashes(Pen pen, float x, float y, float width, float height, int color) {
+        for (float at = 0; at < width; at += 4) {
+            float length = Math.min(2, width - at);
+            pen.rect(x + at, y, length, 1, color);
+            pen.rect(x + at, y + height - 1, length, 1, color);
+        }
+        for (float at = 0; at < height; at += 4) {
+            float length = Math.min(2, height - at);
+            pen.rect(x, y + at, 1, length, color);
+            pen.rect(x + width - 1, y + at, 1, length, color);
+        }
     }
 
     /** A small padlock, 5x6 pixels at the top-right corner: this can be read here but not changed. */
     public static IGuiTexture lockMark(int color) {
-        return painted((pen, x, y, width, height) -> {
-            float left = x + width - 8;
-            float top = y + 2;
-            pen.rect(left + 1, top, 3, 1, color);
-            pen.rect(left, top + 1, 1, 2, color);
-            pen.rect(left + 4, top + 1, 1, 2, color);
-            pen.rect(left, top + 3, 5, 3, color);
-        });
+        return painted((pen, x, y, width, height) -> padlock(pen, x + width - 8, y + 2, color));
+    }
+
+    /** The padlock of {@link #lockMark(int)}, its top-left corner at {@code (left, top)}. */
+    static void padlock(Pen pen, float left, float top, int color) {
+        pen.rect(left + 1, top, 3, 1, color);
+        pen.rect(left, top + 1, 1, 2, color);
+        pen.rect(left + 4, top + 1, 1, 2, color);
+        pen.rect(left, top + 3, 5, 3, color);
     }
 
     public static IGuiTexture accentLine(int color) {

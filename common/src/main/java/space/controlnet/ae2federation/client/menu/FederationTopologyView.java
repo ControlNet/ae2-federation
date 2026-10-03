@@ -31,6 +31,7 @@ import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
+import space.controlnet.ae2federation.client.policy.DirectionLabelPose;
 import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
 import space.controlnet.ae2federation.client.policy.NetworkIdentityState;
@@ -166,8 +167,8 @@ final class FederationTopologyView {
     /** Viewer preference only: the server keeps recording deliveries either way. */
     private static boolean liveFlowHidden = false;
     private boolean fitted;
-    /** Half sizes of the link labels, which hide the middle of their link. */
-    private final Map<String, Vector2f> pillHalfSizes = new HashMap<>();
+    /** Half sizes of the energy chips that sit on their link, by pair, which hide the link's middle from flow dots. */
+    private final Map<String, Vector2f> centredLabelHalfSizes = new HashMap<>();
     private final List<java.util.function.Consumer<String>> searchListeners = new ArrayList<>();
     /** Where each link's label sits along it, by pair; the middle unless crossing links would stack their labels. */
     private final Map<String, Float> labelSpots = new HashMap<>();
@@ -572,7 +573,7 @@ final class FederationTopologyView {
         cardLines.clear();
         cardState.clear();
         cardThumbnails.clear();
-        pillHalfSizes.clear();
+        centredLabelHalfSizes.clear();
         endpointButtons.clear();
         layout();
         linkLayer = new Links();
@@ -582,7 +583,7 @@ final class FederationTopologyView {
         var extent = extent();
         pulses.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(extent.x + 8).height(extent.y + 8));
         graph.addContentChild(pulses);
-        for (var pair : pairsWithRules()) graph.addContentChild(edgePill(pair));
+        for (var pair : pairsWithRules()) linkLabels(pair).forEach(graph::addContentChild);
         for (var network : shown()) graph.addContentChild(card(network));
         for (var endpoint : endpointNodes) {
             if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
@@ -667,7 +668,7 @@ final class FederationTopologyView {
             var ends = pair.split("\\|");
             if (!positions.containsKey(ends[0]) || !positions.containsKey(ends[1])) continue;
             var link = pairLink(pair);
-            var label = pillHalfSizes.getOrDefault(pair, new Vector2f());
+            var label = centredLabelHalfSizes.getOrDefault(pair, new Vector2f());
             // Resources travel from the providing network to the consumer: from the link's end when the first network consumes.
             if (flowing(ends[0], ends[1])) flows.add(new FederationFlowPulses.Flow(link, true, label.x, label.y));
             if (flowing(ends[1], ends[0])) flows.add(new FederationFlowPulses.Flow(link, false, label.x, label.y));
@@ -724,7 +725,10 @@ final class FederationTopologyView {
         for (var pair : pairsWithRules()) {
             var ends = pair.split("\\|");
             if (!index.containsKey(ends[0]) || !index.containsKey(ends[1])) continue;
-            var half = pillHalfSize(network(ends[0]), network(ends[1]), font);
+            var a = corners[index.get(ends[0])];
+            var b = corners[index.get(ends[1])];
+            var half = labelExtent(network(ends[0]), network(ends[1]),
+                    TopologyLink.between(a[0], a[1], b[0], b[1], CARD_WIDTH, CARD_HEIGHT), font);
             labels.add(new space.controlnet.ae2federation.client.policy.TopologySpacing.Label(index.get(ends[0]),
                     index.get(ends[1]), half.x, half.y));
             labelled.add(pair);
@@ -992,49 +996,80 @@ final class FederationTopologyView {
         }
     }
 
+    private static final int LABEL_PADDING = 3;
+    private static final int LABEL_HEIGHT = 11 + 2 * LABEL_PADDING;
+    private static final int LABEL_CAP = 6;
+    private static final int LABEL_CLEARANCE = 3;
+    /** Room at the label's end for a related domain's padlock. */
+    private static final int LABEL_LOCK = 8;
+
     /**
-     * The label of a link: one row per direction that has rules, "Main▸Mine" followed by a chip per capability in the
-     * colour of its state, struck through when off and marked "!" on error. A related domain's link is dashed and locked.
+     * The labels of a link: one per direction that has rules, on the left of the way the capabilities travel, its cap
+     * pointing at the network that uses them; a chip per capability in the colour of its state, marked "!" on error.
+     * Shared energy is energy both ways, so both directions end with its chip; a pair with nothing but energy has one
+     * level chip on the link instead. A related domain's labels are dashed and locked.
      */
-    private Button edgePill(String pair) {
+    private List<Button> linkLabels(String pair) {
         var ends = pair.split("\\|");
         var a = network(ends[0]);
         var b = network(ends[1]);
-        var middle = pairLink(pair).label();
+        var link = pairLink(pair);
+        boolean related = a.foreign() || b.foreign();
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        var labels = new ArrayList<Button>();
+        var at = link.label();
+        if (!directed(a, b)) {
+            var energy = energyChip(a, b);
+            if (energy == null) return labels;
+            var chips = List.of(energy);
+            float width = labelBodyWidth(chips, related, font);
+            centredLabelHalfSizes.put(pair, new Vector2f(width / 2, LABEL_HEIGHT / 2f));
+            labels.add(linkLabel(pair, "graph_pair_" + sanitize(a.member()) + "_" + sanitize(b.member()), chips, null,
+                    related, at[0], at[1], width, LABEL_HEIGHT, 0));
+            return labels;
+        }
+        var tangent = link.curve().tangent(link.labelAt());
+        for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
+            var chips = directionChips(direction[0], direction[1]);
+            if (chips.isEmpty()) continue;
+            var pose = labelPose(tangent, direction[1] == a, chips, related, font);
+            labels.add(linkLabel(pair, "graph_pair_" + sanitize(direction[0].member()) + "_" + sanitize(direction[1].member()),
+                    chips, pose.cap(), related, at[0] + pose.offsetX(), at[1] + pose.offsetY(), pose.width(), pose.height(),
+                    pose.rotation()));
+        }
+        return labels;
+    }
+
+    /** One label centred on {@code (x, y)}, turned by {@code rotation} degrees; a null cap is the level energy chip. */
+    private Button linkLabel(String pair, String id, List<Chip> chips, DirectionLabelPose.Cap cap, boolean related,
+            float x, float y, float width, float height, float rotation) {
         var button = new Button();
         button.noText();
-        button.setId("graph_pair_" + sanitize(a.member()) + "_" + sanitize(b.member()));
+        button.setId(id);
         button.addClass("graph-pair");
-        boolean selected = pair.equals(selectedPair);
         // A related domain's link is shown, not edited here: dashed and locked, as its cards are read-only.
-        boolean related = a.foreign() || b.foreign();
         if (related) button.addClass("related-pair");
-        var font = net.minecraft.client.Minecraft.getInstance().font;
-        var content = new ArrayList<UIElement>();
-        for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
-            var row = pillRow(direction[0], direction[1], font);
-            if (row != null) content.add(row);
-        }
-        var energyRow = energyPillRow(a, b, font);
-        if (energyRow != null) content.add(energyRow);
-        var border = selected ? FederationTheme.SELECT : 0xff47434f;
-        var face = related
-                ? GuiTextureGroup.of(FederationTheme.solid(FederationTheme.WELL), FederationTheme.dashedBorder(selected ? FederationTheme.SELECT : 0xff8b83a0),
-                        FederationTheme.lockMark(FederationTheme.DARK_MUTED))
-                : GuiTextureGroup.of(FederationTheme.WELL_RECT, new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, border));
-        var hover = related
-                ? GuiTextureGroup.of(FederationTheme.solid(FederationTheme.WELL), FederationTheme.dashedBorder(FederationTheme.SELECT),
-                        FederationTheme.lockMark(FederationTheme.DARK_MUTED))
-                : GuiTextureGroup.of(FederationTheme.WELL_RECT, new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.SELECT));
+        boolean selected = pair.equals(selectedPair);
+        var face = labelFace(cap, selected ? FederationTheme.SELECT : related ? FederationTheme.EDGE : 0xff47434f, related);
+        var hover = labelFace(cap, FederationTheme.SELECT, related);
         button.buttonStyle(style -> style.baseTexture(face).hoverTexture(hover).pressedTexture(face));
-        var half = pillHalfSize(a, b, font);
-        float pillWidth = half.x * 2;
-        float height = half.y * 2;
-        pillHalfSizes.put(pair, half);
-        button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(middle[0] - pillWidth / 2f)
-                .top(middle[1] - height / 2).width(pillWidth).height(height).paddingAll(3).gapAll(2)
-                .flexDirection(FlexDirection.COLUMN).alignItems(AlignItems.FLEX_START));
-        content.forEach(button::addChild);
+        button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(x - width / 2).top(y - height / 2)
+                .width(width).height(height)
+                .paddingLeft(LABEL_PADDING + (cap == DirectionLabelPose.Cap.LEFT ? LABEL_CAP : 0))
+                .paddingRight(LABEL_PADDING + (related ? LABEL_LOCK : 0) + (cap == DirectionLabelPose.Cap.RIGHT ? LABEL_CAP : 0))
+                .paddingTop(LABEL_PADDING + (cap == DirectionLabelPose.Cap.UP ? LABEL_CAP : 0))
+                .paddingBottom(LABEL_PADDING + (cap == DirectionLabelPose.Cap.DOWN ? LABEL_CAP : 0))
+                .gapAll(3).flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
+        // Turned about its centre, which stays on the spot the pose chose.
+        if (rotation != 0) button.transform(transform -> transform.rotation(rotation));
+        var font = net.minecraft.client.Minecraft.getInstance().font;
+        for (var chip : chips) {
+            var label = text(chip.text(), chip.color());
+            label.addClass("pill-chip");
+            label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
+            label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
+            button.addChild(label);
+        }
         button.setOnClick(event -> {
             selectedPair = pair;
             selectedNetwork = "";
@@ -1045,65 +1080,94 @@ final class FederationTopologyView {
         return button;
     }
 
-    /** Half the size of the label between {@code a} and {@code b}: a row per direction with rules, and the lock line. */
-    private Vector2f pillHalfSize(Network a, Network b, net.minecraft.client.gui.Font font) {
+    /**
+     * A label's face: the well inside its border, solid, or dashed with a padlock for a related domain; then its cap,
+     * stepped in whole pixels, on the end the pose chose.
+     */
+    private static com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture labelFace(DirectionLabelPose.Cap cap, int border, boolean related) {
+        return FederationTheme.painted((pen, x, y, width, height) -> {
+            boolean across = cap == DirectionLabelPose.Cap.LEFT || cap == DirectionLabelPose.Cap.RIGHT;
+            boolean upright = cap == DirectionLabelPose.Cap.UP || cap == DirectionLabelPose.Cap.DOWN;
+            float left = cap == DirectionLabelPose.Cap.LEFT ? x + LABEL_CAP : x;
+            float top = cap == DirectionLabelPose.Cap.UP ? y + LABEL_CAP : y;
+            float bodyWidth = width - (across ? LABEL_CAP : 0);
+            float bodyHeight = height - (upright ? LABEL_CAP : 0);
+            pen.rect(left, top, bodyWidth, bodyHeight, FederationTheme.WELL);
+            if (related) {
+                FederationTheme.dashes(pen, left, top, bodyWidth, bodyHeight, border);
+                FederationTheme.padlock(pen, left + bodyWidth - 8, top + 2, FederationTheme.DARK_MUTED);
+            } else {
+                pen.rect(left, top, bodyWidth, 1, border);
+                pen.rect(left, top + bodyHeight - 1, bodyWidth, 1, border);
+                pen.rect(left, top, 1, bodyHeight, border);
+                pen.rect(left + bodyWidth - 1, top, 1, bodyHeight, border);
+            }
+            if (cap == null) return;
+            for (int step = 0; step < LABEL_CAP; step++) {
+                if (across) {
+                    float inset = Math.round(step * bodyHeight / (2f * LABEL_CAP));
+                    float column = cap == DirectionLabelPose.Cap.RIGHT ? left + bodyWidth + step : left - 1 - step;
+                    pen.rect(column, top + inset, 1, bodyHeight - 2 * inset, FederationTheme.DARK_TEXT);
+                } else {
+                    float half = LABEL_CAP - step;
+                    float row = cap == DirectionLabelPose.Cap.DOWN ? top + bodyHeight + step : top - 1 - step;
+                    pen.rect(left + bodyWidth / 2 - half, row, 2 * half, 1, FederationTheme.DARK_TEXT);
+                }
+            }
+        });
+    }
+
+    /**
+     * Half the size of a box on the link's middle that holds the pair's labels, so the layout keeps them off the cards:
+     * the energy chip on the link, or the direction labels beside it, on either side as the curve may turn.
+     */
+    private Vector2f labelExtent(Network a, Network b, TopologyLink link, net.minecraft.client.gui.Font font) {
         boolean related = a.foreign() || b.foreign();
-        float width = 0;
-        int rows = 0;
+        if (!directed(a, b)) {
+            var energy = energyChip(a, b);
+            return energy == null ? new Vector2f() : new Vector2f(labelBodyWidth(List.of(energy), related, font) / 2, LABEL_HEIGHT / 2f);
+        }
+        var tangent = link.curve().tangent(link.labelAt());
+        float halfWidth = 0;
+        float halfHeight = 0;
         for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
-            if (chips(direction[0], direction[1]).isEmpty()) continue;
-            width = Math.max(width, rowWidth(direction[0], direction[1], font));
-            rows++;
+            var chips = directionChips(direction[0], direction[1]);
+            if (chips.isEmpty()) continue;
+            var pose = labelPose(tangent, direction[1] == a, chips, related, font);
+            double radians = Math.toRadians(pose.rotation());
+            float cos = (float) Math.abs(Math.cos(radians));
+            float sin = (float) Math.abs(Math.sin(radians));
+            halfWidth = Math.max(halfWidth, Math.abs(pose.offsetX()) + pose.width() / 2 * cos + pose.height() / 2 * sin);
+            halfHeight = Math.max(halfHeight, Math.abs(pose.offsetY()) + pose.width() / 2 * sin + pose.height() / 2 * cos);
         }
-        var energy = energyChip(a, b);
-        if (energy != null) {
-            width = Math.max(width, font.width(ENERGY_PREFIX) + 6 + 3 + font.width(energy.text()) + 5);
-            rows++;
-        }
-        float pillWidth = Math.max(48, width + 10 + (related ? 8 : 0));
-        float height = rows * 11 + Math.max(0, rows - 1) * 2 + 6;
-        return new Vector2f(pillWidth / 2f, height / 2);
+        return new Vector2f(halfWidth, halfHeight);
     }
 
-    /** One direction of a link label, or null when that direction has no rules. */
-    private UIElement pillRow(Network consumer, Network provider, net.minecraft.client.gui.Font font) {
+    /** The pose of a direction's label; {@code alongCurve} when its capabilities travel the way the curve is drawn. */
+    private static DirectionLabelPose labelPose(float[] tangent, boolean alongCurve, List<Chip> chips, boolean related,
+            net.minecraft.client.gui.Font font) {
+        float sign = alongCurve ? 1 : -1;
+        return DirectionLabelPose.of(sign * tangent[0], sign * tangent[1], labelBodyWidth(chips, related, font), LABEL_HEIGHT,
+                LABEL_CAP, LABEL_CLEARANCE);
+    }
+
+    private static float labelBodyWidth(List<Chip> chips, boolean related, net.minecraft.client.gui.Font font) {
+        float width = 2 * LABEL_PADDING + (related ? LABEL_LOCK : 0) + 3 * (chips.size() - 1);
+        for (var chip : chips) width += font.width(chip.text()) + 5;
+        return width;
+    }
+
+    /** Whether either direction has a rule switched on besides energy, which has no direction of its own. */
+    private boolean directed(Network a, Network b) {
+        return !chips(a, b).isEmpty() || !chips(b, a).isEmpty();
+    }
+
+    /** One direction's chips: its capabilities, then the pair's energy, which goes both ways. */
+    private List<Chip> directionChips(Network consumer, Network provider) {
         var chips = chips(consumer, provider);
-        if (chips.isEmpty()) return null;
-        var row = new UIElement();
-        row.addClass("pill-row");
-        row.layout(style -> style.height(11).flexDirection(FlexDirection.ROW).gapAll(3).alignItems(AlignItems.CENTER));
-        var prefix = text(Component.literal(pillPrefix(consumer, provider)), FederationTheme.DARK_MUTED);
-        // Slack for the "▸" glyph, which the font draws wider than it measures.
-        prefix.layout(style -> style.width(font.width(pillPrefix(consumer, provider)) + 6).height(9).flexShrink(0));
-        row.addChild(prefix);
-        for (var chip : chips) {
-            var label = text(chip.text(), chip.color());
-            label.addClass("pill-chip");
-            label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
-            label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
-            row.addChild(label);
-        }
-        return row;
-    }
-
-    private static final String ENERGY_PREFIX = "◇";
-
-    /** "◇ [Shared energy]": the pair's one energy switch, whichever way its rule is written; null without a rule. */
-    private UIElement energyPillRow(Network a, Network b, net.minecraft.client.gui.Font font) {
-        var chip = energyChip(a, b);
-        if (chip == null) return null;
-        var row = new UIElement();
-        row.addClass("pill-row");
-        row.addClass("pill-energy");
-        row.layout(style -> style.height(11).flexDirection(FlexDirection.ROW).gapAll(3).alignItems(AlignItems.CENTER));
-        var prefix = text(Component.literal(ENERGY_PREFIX), FederationTheme.DARK_MUTED);
-        prefix.layout(style -> style.width(font.width(ENERGY_PREFIX) + 6).height(9).flexShrink(0));
-        var label = text(chip.text(), chip.color());
-        label.addClass("pill-chip");
-        label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
-        label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
-        row.addChildren(prefix, label);
-        return row;
+        var energy = energyChip(consumer, provider);
+        if (energy != null) chips.add(energy);
+        return chips;
     }
 
     /** The pair's energy chip: quartz while it shares, else its rule's state colour; null without a rule switched on. */
@@ -1111,7 +1175,7 @@ final class FederationTopologyView {
         var rule = energyRule(a, b);
         if (rule == null || !rule.get("enabled").getAsBoolean()) return null;
         var state = ruleState(rule);
-        var text = tr("shared_energy").copy();
+        var text = tr("energy").copy();
         if (state.code().equals("error")) text.append("!");
         return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color());
     }
@@ -1151,18 +1215,6 @@ final class FederationTopologyView {
         };
     }
 
-    private float rowWidth(Network consumer, Network provider, net.minecraft.client.gui.Font font) {
-        float width = font.width(pillPrefix(consumer, provider)) + 6;
-        for (var chip : chips(consumer, provider)) width += 3 + font.width(chip.text()) + 5;
-        return width;
-    }
-
-    private static String pillPrefix(Network consumer, Network provider) {
-        var names = space.controlnet.ae2federation.client.policy.PillName.pair(consumer.name(), consumer.id(),
-                provider.name(), provider.id());
-        return names.consumer() + "▸" + names.provider();
-    }
-
     /**
      * The capabilities {@code consumer} uses from {@code provider}, in the colour of their configured and observed state.
      * A rule switched off grants nothing, so it shows no chip; the pair editor still lists it, switched off.
@@ -1170,14 +1222,16 @@ final class FederationTopologyView {
     private List<Chip> chips(Network consumer, Network provider) {
         var chips = new ArrayList<Chip>();
         for (var capability : CAPABILITIES) {
-            // Energy is shared per pair, so it has its own row rather than a chip in either direction.
+            // Energy is one switch per pair, added to both directions by directionChips.
             if (capability == PolicyCapability.ME_POWER) continue;
             var rule = rule(key(consumer.id(), provider.id(), capability.name()));
             if (rule == null || !rule.get("enabled").getAsBoolean()) continue;
             var state = ruleState(rule);
             var text = capabilityName(capability).copy();
             if (state.code().equals("error")) text.append("!");
-            chips.add(new Chip(text, state.color()));
+            // A rule in effect that passes its access on says so by colour alone.
+            boolean passesOn = state.code().equals("active") && mode(rule) == RuleMode.REEXPORT;
+            chips.add(new Chip(text, passesOn ? FederationTheme.REEXPORT : state.color()));
         }
         return chips;
     }
@@ -2100,14 +2154,20 @@ final class FederationTopologyView {
         return tr("network_name", id.substring(0, 4).toUpperCase(Locale.ROOT));
     }
 
-    /** "A▸B = A uses B's capability ■ active ■ not active yet ■ error", each square in its state colour. */
+    /**
+     * "■ active ■ active with re-export ■ not active yet ■ error ■ energy shared", each square in its chip colour, over
+     * "▸ points to the network that uses it". The swatches come first: an adaptive-width label is as wide as its
+     * first line and does not wrap.
+     */
     private static Component legendText() {
-        var legend = tr("legend.reads").copy();
-        for (var entry : new Object[][] {{"active", FederationTheme.OK},
-                {"waiting", FederationTheme.WARN}, {"error", FederationTheme.ERROR}}) {
-            legend.append("  ").append(Component.literal("■ ").append(tr("legend." + entry[0]))
+        var legend = Component.empty();
+        for (var entry : new Object[][] {{"active", FederationTheme.OK}, {"reexport", FederationTheme.REEXPORT},
+                {"waiting", FederationTheme.WARN}, {"error", FederationTheme.ERROR}, {"energy", FederationTheme.QUARTZ}}) {
+            if (!legend.getSiblings().isEmpty()) legend.append("  ");
+            legend.append(Component.literal("■ ").append(tr("legend." + entry[0]))
                     .withStyle(Style.EMPTY.withColor((Integer) entry[1] & 0xffffff)));
         }
+        legend.append("\n").append(tr("legend.reads"));
         return legend;
     }
 
