@@ -12,6 +12,7 @@ build/
 .omo/run-continuation/
 .omo/start-work/
 .omo/ulw-execute/
+.omo/thread-tools/
 __pycache__/
 *.pyc
 .project
