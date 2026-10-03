@@ -554,8 +554,9 @@ final class FederationTopologyView {
         shown().forEach(network -> signature.append(network.id()).append('=').append(network.name()).append(','));
         signature.append('|').append(selectedNetwork).append('|').append(selectedPair).append('|').append(selectedEndpoint).append('|');
         pairsWithRules().forEach(value -> signature.append(value).append(';'));
+        // The mode too: a rule that starts re-exporting turns its chip cyan without changing its state.
         shownRules().forEach(rule -> signature.append(rule.get("capability").getAsString())
-                .append(rule.get("enabled").getAsBoolean()).append(ruleState(rule).code()));
+                .append(mode(rule)).append(ruleState(rule).code()));
         memberStatus.forEach((member, status) -> signature.append(member).append('=').append(status));
         endpointNodes.forEach(endpoint -> signature.append(endpoint).append(';'));
         if (!signature.toString().equals(structure)) {
@@ -1000,6 +1001,8 @@ final class FederationTopologyView {
     private static final int LABEL_HEIGHT = 11 + 2 * LABEL_PADDING;
     private static final int LABEL_CAP = 6;
     private static final int LABEL_CLEARANCE = 3;
+    /** Between stacked chips. */
+    private static final int LABEL_STACK_GAP = 2;
     /** Room at the label's end for a related domain's padlock. */
     private static final int LABEL_LOCK = 8;
 
@@ -1025,7 +1028,7 @@ final class FederationTopologyView {
             float width = labelBodyWidth(chips, related, font);
             centredLabelHalfSizes.put(pair, new Vector2f(width / 2, LABEL_HEIGHT / 2f));
             labels.add(linkLabel(pair, "graph_pair_" + sanitize(a.member()) + "_" + sanitize(b.member()), chips, null,
-                    related, at[0], at[1], width, LABEL_HEIGHT, 0));
+                    false, related, at[0], at[1], width, LABEL_HEIGHT, 0));
             return labels;
         }
         var tangent = link.curve().tangent(link.labelAt());
@@ -1034,15 +1037,18 @@ final class FederationTopologyView {
             if (chips.isEmpty()) continue;
             var pose = labelPose(tangent, direction[1] == a, chips, related, font);
             labels.add(linkLabel(pair, "graph_pair_" + sanitize(direction[0].member()) + "_" + sanitize(direction[1].member()),
-                    chips, pose.cap(), related, at[0] + pose.offsetX(), at[1] + pose.offsetY(), pose.width(), pose.height(),
-                    pose.rotation()));
+                    chips, pose.cap(), pose.stacked(), related, at[0] + pose.offsetX(), at[1] + pose.offsetY(), pose.width(),
+                    pose.height(), pose.rotation()));
         }
         return labels;
     }
 
-    /** One label centred on {@code (x, y)}, turned by {@code rotation} degrees; a null cap is the level energy chip. */
-    private Button linkLabel(String pair, String id, List<Chip> chips, DirectionLabelPose.Cap cap, boolean related,
-            float x, float y, float width, float height, float rotation) {
+    /**
+     * One label centred on {@code (x, y)}, turned by {@code rotation} degrees; a null cap is the level energy chip.
+     * Stacked chips stand one under another, as wide as the widest, their words centred.
+     */
+    private Button linkLabel(String pair, String id, List<Chip> chips, DirectionLabelPose.Cap cap, boolean stacked,
+            boolean related, float x, float y, float width, float height, float rotation) {
         var button = new Button();
         button.noText();
         button.setId(id);
@@ -1059,14 +1065,19 @@ final class FederationTopologyView {
                 .paddingRight(LABEL_PADDING + (related ? LABEL_LOCK : 0) + (cap == DirectionLabelPose.Cap.RIGHT ? LABEL_CAP : 0))
                 .paddingTop(LABEL_PADDING + (cap == DirectionLabelPose.Cap.UP ? LABEL_CAP : 0))
                 .paddingBottom(LABEL_PADDING + (cap == DirectionLabelPose.Cap.DOWN ? LABEL_CAP : 0))
-                .gapAll(3).flexDirection(FlexDirection.ROW).alignItems(AlignItems.CENTER));
+                .gapAll(stacked ? LABEL_STACK_GAP : 3).flexDirection(stacked ? FlexDirection.COLUMN : FlexDirection.ROW)
+                .alignItems(AlignItems.CENTER));
         // Turned about its centre, which stays on the spot the pose chose.
         if (rotation != 0) button.transform(transform -> transform.rotation(rotation));
         var font = net.minecraft.client.Minecraft.getInstance().font;
+        float widest = widestChip(chips, font);
         for (var chip : chips) {
             var label = text(chip.text(), chip.color());
             label.addClass("pill-chip");
-            label.layout(style -> style.width(font.width(chip.text()) + 5).height(11).paddingLeft(2).paddingTop(1).flexShrink(0));
+            if (chip.reexport()) label.addClass("reexport");
+            float chipWidth = stacked ? widest : font.width(chip.text()) + 5;
+            label.layout(style -> style.width(chipWidth).height(11).paddingLeft(2).paddingRight(3).paddingTop(1).flexShrink(0));
+            if (stacked) label.textStyle(style -> style.textAlignHorizontal(com.lowdragmc.lowdraglib2.gui.ui.data.Horizontal.CENTER));
             label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
             button.addChild(label);
         }
@@ -1147,8 +1158,16 @@ final class FederationTopologyView {
     private static DirectionLabelPose labelPose(float[] tangent, boolean alongCurve, List<Chip> chips, boolean related,
             net.minecraft.client.gui.Font font) {
         float sign = alongCurve ? 1 : -1;
+        float columnWidth = 2 * LABEL_PADDING + (related ? LABEL_LOCK : 0) + widestChip(chips, font);
+        float columnHeight = 2 * LABEL_PADDING + chips.size() * 11 + (chips.size() - 1) * LABEL_STACK_GAP;
         return DirectionLabelPose.of(sign * tangent[0], sign * tangent[1], labelBodyWidth(chips, related, font), LABEL_HEIGHT,
-                LABEL_CAP, LABEL_CLEARANCE);
+                columnWidth, columnHeight, LABEL_CAP, LABEL_CLEARANCE);
+    }
+
+    private static float widestChip(List<Chip> chips, net.minecraft.client.gui.Font font) {
+        float widest = 0;
+        for (var chip : chips) widest = Math.max(widest, font.width(chip.text()) + 5);
+        return widest;
     }
 
     private static float labelBodyWidth(List<Chip> chips, boolean related, net.minecraft.client.gui.Font font) {
@@ -1177,7 +1196,7 @@ final class FederationTopologyView {
         var state = ruleState(rule);
         var text = tr("energy").copy();
         if (state.code().equals("error")) text.append("!");
-        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color());
+        return new Chip(text, sharesEnergy(a.id(), b.id()) ? FederationTheme.QUARTZ : state.color(), false);
     }
 
     /** The ME power rule that stands for the pair's energy switch, or null when neither way has one. */
@@ -1230,13 +1249,14 @@ final class FederationTopologyView {
             var text = capabilityName(capability).copy();
             if (state.code().equals("error")) text.append("!");
             // A rule in effect that passes its access on says so by colour alone.
-            boolean passesOn = state.code().equals("active") && mode(rule) == RuleMode.REEXPORT;
-            chips.add(new Chip(text, passesOn ? FederationTheme.REEXPORT : state.color()));
+            boolean reexport = mode(rule) == RuleMode.REEXPORT;
+            chips.add(new Chip(text, reexport && state.code().equals("active") ? FederationTheme.REEXPORT : state.color(), reexport));
         }
         return chips;
     }
 
-    private record Chip(MutableComponent text, int color) {
+    /** A capability chip; {@code reexport} when its rule passes access on, an undrawn class the UI tests read. */
+    private record Chip(MutableComponent text, int color, boolean reexport) {
     }
 
     private void selectNetwork(String id) {

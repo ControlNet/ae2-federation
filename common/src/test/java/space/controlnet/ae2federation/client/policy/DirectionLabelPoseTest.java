@@ -8,12 +8,16 @@ import org.junit.jupiter.api.Test;
 class DirectionLabelPoseTest {
     private static final float BODY_WIDTH = 40;
     private static final float BODY_HEIGHT = 13;
+    /** The same chips stacked, as a level label lays them out. */
+    private static final float COLUMN_WIDTH = 24;
+    private static final float COLUMN_HEIGHT = 28;
     private static final float CAP = 5;
     private static final float CLEARANCE = 3;
 
     private static DirectionLabelPose pose(double degrees) {
         double radians = Math.toRadians(degrees);
-        return DirectionLabelPose.of((float) Math.cos(radians), (float) Math.sin(radians), BODY_WIDTH, BODY_HEIGHT, CAP, CLEARANCE);
+        return DirectionLabelPose.of((float) Math.cos(radians), (float) Math.sin(radians), BODY_WIDTH, BODY_HEIGHT,
+                COLUMN_WIDTH, COLUMN_HEIGHT, CAP, CLEARANCE);
     }
 
     @Test
@@ -21,6 +25,7 @@ class DirectionLabelPoseTest {
         var pose = pose(0);
         assertEquals(0, pose.rotation(), 1e-4);
         assertEquals(DirectionLabelPose.Cap.RIGHT, pose.cap());
+        assertTrue(!pose.stacked(), "a label along the link keeps its chips in a row");
         assertEquals(BODY_WIDTH + CAP, pose.width(), 1e-4);
         assertEquals(BODY_HEIGHT, pose.height(), 1e-4);
         // Left of travel to the right is up, in screen coordinates.
@@ -66,20 +71,21 @@ class DirectionLabelPoseTest {
     }
 
     @Test
-    void steeperThanTheLimitTheLabelStaysLevelAndPointsUpOrDown() {
+    void steeperThanTheLimitTheLabelStaysLevelStacksItsChipsAndPointsUpOrDown() {
         var down = pose(40);
         assertEquals(0, down.rotation(), 1e-4);
         assertEquals(DirectionLabelPose.Cap.DOWN, down.cap());
-        assertEquals(BODY_WIDTH, down.width(), 1e-4);
-        assertEquals(BODY_HEIGHT + CAP, down.height(), 1e-4);
+        assertTrue(down.stacked(), "a level label stacks its chips");
+        assertEquals(COLUMN_WIDTH, down.width(), 1e-4);
+        assertEquals(COLUMN_HEIGHT + CAP, down.height(), 1e-4);
         assertEquals(DirectionLabelPose.Cap.UP, pose(-40).cap());
         assertEquals(DirectionLabelPose.Cap.DOWN, pose(140).cap());
         var straightDown = pose(90);
         assertEquals(DirectionLabelPose.Cap.DOWN, straightDown.cap());
         // Heading down, left of travel is to the right of the screen; the box clears the line by its half width.
-        assertEquals(BODY_WIDTH / 2 + CLEARANCE, straightDown.offsetX(), 1e-3);
+        assertEquals(COLUMN_WIDTH / 2 + CLEARANCE, straightDown.offsetX(), 1e-3);
         assertEquals(0, straightDown.offsetY(), 1e-3);
-        assertEquals(-(BODY_WIDTH / 2 + CLEARANCE), pose(-90).offsetX(), 1e-3);
+        assertEquals(-(COLUMN_WIDTH / 2 + CLEARANCE), pose(-90).offsetX(), 1e-3);
     }
 
     @Test

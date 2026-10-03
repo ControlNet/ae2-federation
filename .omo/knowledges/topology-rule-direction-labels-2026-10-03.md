@@ -39,6 +39,13 @@ middle of a link change; links, ports and curves stay as they are.
   energy-only chip, which is the one label sitting on the line.
 - An LDLib2 label with `adaptive-width` never wraps and takes the width of its first line (`TextElement.recompute`),
   so the legend puts the five swatches first and the arrow note after a `\n`.
+- Level labels stack their chips (2026-10-04): one under another, all as wide as the widest, words centred, the cap
+  centred on the top or bottom end. `DirectionLabelPose.of` takes both the row and the column size and says which it
+  used (`stacked`).
+- The graph rebuilds only when `FederationTopologyView.refresh`'s structure signature changes. It must hold each rule's
+  `mode` (off, on, re-export), not only enabled and state: switching on to re-export changes neither, so the chip kept
+  its old colour until something else changed. Re-export chips carry an undrawn `reexport` class that the
+  graph-controls scenario reads, as the fixture's storage rule may not be active (cyan only shows when it is).
 - The showcase layout's network order varies between runs, so whether any of its labels runs along a link varies too.
 
 Design boards: the "AE2 Federation GUI" design canvas, rows from "拓扑图规则方向" down to "颜色编码".

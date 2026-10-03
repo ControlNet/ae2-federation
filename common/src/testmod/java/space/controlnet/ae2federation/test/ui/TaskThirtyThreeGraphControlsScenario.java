@@ -289,6 +289,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the third state is the re-export switch", context -> context.el(
                         TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
                         .hasClass("reexport"))
+                .waitUntil("the graph shows the re-export at once, no longer in active green", context -> {
+                    var chips = context.all(".pill-chip.reexport");
+                    return !chips.isEmpty() && chips.stream().noneMatch(chip -> chip.as(
+                            com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class).getTextStyle().textColor()
+                            == space.controlnet.ae2federation.client.menu.FederationTheme.OK);
+                })
                 .frames(2).screenshot("ui-policy-reexport")
                 .step("right click steps back to enabled", context -> {
                     var bounds = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).bounds();
@@ -297,6 +303,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 })
                 .waitUntil("the switch steps back to plain on", context -> storageSwitch(context).hasClass("on")
                         && !storageSwitch(context).hasClass("reexport"))
+                .waitUntil("the graph drops the re-export with it", context -> context.all(".pill-chip.reexport").isEmpty())
                 // The fixture's provider side may or may not have storage: a working rule has no tooltip, one waiting for
                 // storage only its reason. The server reports the runtime a moment after the switch, so wait for it.
                 .waitUntil("the switch has no tooltip, and the rule's state only says what needs attention", context -> {
