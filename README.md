@@ -12,8 +12,6 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 - Craft with another network's pattern providers.
 - Send processing jobs to machines on another network.
 - Share power between two networks.
-- Choose what each network shares. Everything starts off.
-- English and Simplified Chinese.
 
 ## Requirements
 
