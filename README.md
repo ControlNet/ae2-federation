@@ -30,7 +30,7 @@ Regular builds and tests use AE2 19.2.17 and LDLib2 2.2.34; see the [minimum-ver
 2. Download the mod JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and put it alongside its required mods in the instance's `mods/` folder.
 3. Launch Minecraft. For multiplayer, install the same mods on the server.
 
-Version **0.0.3** is an early release with no survival crafting recipes; try the blocks from the **AE2 Federation** Creative tab.
+Every block is crafted in survival from early AE2 materials, starting with a **Federation Logic Processor** pressed in the Inscriber from a Logic Processor and Fluix Dust; JEI or EMI shows the recipes.
 
 ## Getting started
 
@@ -65,3 +65,5 @@ See [build and test commands](docs/testing/commands.md), [Gitflow and releases](
 - [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the great base mod that this project is based on.
 - [LDLib2](https://github.com/Low-Drag-MC/LDLib2): the UI framework used for this project.
 - [NeoECO AE Extension](https://github.com/DancingSnow0517/NeoECOAEExtension): its LDLib2-based, AE2-styled GUI implementation is the reference for our GUI.
+
+The Federation Logic Processor texture is edited from AE2's Logic Processor texture and, like AE2's art, is licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), not AGPL-3.0.

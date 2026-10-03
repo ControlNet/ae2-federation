@@ -2,6 +2,7 @@
   "mod.ae2federation.name": "AE2 Federation",
   "itemGroup.ae2federation.main": "AE2 Federation",
   "item.ae2federation.bridge": "ME联邦桥",
+  "item.ae2federation.federation_logic_processor": "联邦逻辑处理器",
   "block.ae2federation.router": "ME联邦路由器",
   "block.ae2federation.cable": "ME联邦线缆",
   "block.ae2federation.processing_endpoint": "ME联邦处理端点",

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "tag": "ae2:glass_cable"
+    },
+    "P": {
+      "item": "ae2federation:federation_logic_processor"
+    }
+  },
+  "pattern": [
+    "GGG",
+    "GPG",
+    "GGG"
+  ],
+  "result": {
+    "count": 16,
+    "id": "ae2federation:cable"
+  }
+}

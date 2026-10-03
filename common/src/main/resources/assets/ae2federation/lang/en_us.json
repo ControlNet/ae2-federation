@@ -2,6 +2,7 @@
   "mod.ae2federation.name": "AE2 Federation",
   "itemGroup.ae2federation.main": "AE2 Federation",
   "item.ae2federation.bridge": "ME Federation Bridge",
+  "item.ae2federation.federation_logic_processor": "Federation Logic Processor",
   "block.ae2federation.router": "ME Federation Router",
   "block.ae2federation.cable": "ME Federation Cable",
   "ae2federation.domain_policy": "ME Federation Domain",

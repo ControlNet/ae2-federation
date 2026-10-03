@@ -7,6 +7,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
+import space.controlnet.ae2federation.material.MaterialRegistration;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
@@ -24,6 +25,7 @@ public final class FederationCreativeTab {
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
                         output.accept(BridgeRegistration.BRIDGE.get());
+                        output.accept(MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get());
                     })
                     .build());
 

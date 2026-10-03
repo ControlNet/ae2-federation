@@ -47,4 +47,9 @@ Gradle dependency verification metadata in `gradle/verification-metadata.xml` is
 
 This repository remains AGPL-3.0-only. Task 1 links to published dependencies and copies no third-party source.
 
+One shipped asset is derived from AE2's art. The Federation Logic Processor item texture
+(`assets/ae2federation/textures/item/federation_logic_processor.png`) is AE2 19.2.17's Logic Processor texture
+(`assets/ae2/textures/item/logic_processor.png`) with twelve pixels recoloured in AE2's Fluix palette. It is a
+derivative of AE2's binary assets and is distributed under their licence, CC BY-NC-SA 3.0, not AGPL-3.0.
+
 LDLib2 `2.2.34` is checksum-identifiable in its official Maven publication, but the inspected public repository does not expose a matching `2.2.34` source tag. This is recorded as a provenance limitation, not hidden as source-tag equivalence.

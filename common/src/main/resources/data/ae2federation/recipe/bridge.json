@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:storage_bus"
+    },
+    {
+      "item": "ae2:quartz_fiber"
+    },
+    {
+      "item": "ae2federation:federation_logic_processor"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2federation:bridge"
+  }
+}
