@@ -358,7 +358,7 @@
   "ae2federation.ui.processing.claim.unobserved": "未加载",
   "ae2federation.ui.processing.claim.unobserved.detail": "所在区块未加载，状态未知。",
   "ae2federation.ui.location.highlight": "在世界中高亮",
-  "ae2federation.ui.location.highlight_help": "在世界中描出这些方块的轮廓 10 秒，只有你能看到。",
+  "ae2federation.ui.location.highlight_help": "在世界中闪烁描出这些方块的轮廓 10 秒，可与其他高亮同时显示，只有你能看到。",
   "ae2federation.ui.location.highlighted": "正在描出 %s 个方块，持续 10 秒。",
   "ae2federation.ui.location.network_blocks": "着色：本网络的 %s 个方块。标记：控制器或首个节点。",
   "ae2federation.ui.location.other_dimension": "位于%s。地图和高亮只显示你所在的维度。",

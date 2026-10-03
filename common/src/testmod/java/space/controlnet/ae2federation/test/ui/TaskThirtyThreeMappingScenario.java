@@ -51,6 +51,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && !context.el("#processing_release").isVisible())
                 .waitUntil("the Endpoint thumbnail samples loaded terrain", context -> context.el("#processing_preview_to .map-thumbnail")
                         .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
+                .step("end earlier highlights", context -> space.controlnet.ae2federation.client.WorldHighlight.clear())
                 .click("#processing_highlight")
                 .check("the selected Endpoint is outlined in the world", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1)
@@ -415,6 +416,17 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
+                .check("showcase: quartz beads drift along the shared-energy links", context ->
+                        space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() > 0)
+                .click("#graph_flow_toggle")
+                .waitForText("#graph_throughput", "Live flow off")
+                .frames(2)
+                .check("showcase: hiding live flow also stops the quartz beads", context ->
+                        space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() == 0)
+                .click("#graph_flow_toggle")
+                .waitUntil("showcase: live flow is back on", context ->
+                        !context.el("#graph_throughput").text().equals("Live flow off")
+                                && space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() > 0)
                 .step("showcase: select a network on the second Router", context -> showcaseSelect(context, "Sky Lab"))
                 .waitForTextContains("#network_title", "Sky Lab")
                 .hover("#domain_title").frames(5)

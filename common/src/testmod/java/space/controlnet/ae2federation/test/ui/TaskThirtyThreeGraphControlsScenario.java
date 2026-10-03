@@ -450,6 +450,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     return text.contains("Contains: ") && text.contains(" · ") && text.contains("Disconnect them to recover.");
                 })
                 .waitForTextContains("#network_highlight", "Highlight both parts")
+                .step("end earlier highlights", context -> space.controlnet.ae2federation.client.WorldHighlight.clear())
                 .step("highlight both parts", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
                 .check("both parts are outlined in their own colours", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2)
@@ -491,7 +492,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 // A block hidden behind stained glass, water and stone, in the rain, keeps its outline's own colour
                 // under Fancy and Fabulous graphics alike; Fabulous composites the translucent layers after the level.
                 .teardown("restore Fancy graphics, the HUD and clear weather", context -> {
-                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    space.controlnet.ae2federation.client.WorldHighlight.clear();
                     context.mc().options.hideGui = false;
                     if (context.mc().options.graphicsMode().get() != net.minecraft.client.GraphicsStatus.FANCY) {
                         context.mc().options.graphicsMode().set(net.minecraft.client.GraphicsStatus.FANCY);
@@ -521,7 +522,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
 
     private static void occludedHighlight(ScenarioBuilder scenario, net.minecraft.client.GraphicsStatus mode, String name) {
         scenario.step("switch graphics to " + name, context -> {
-                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    space.controlnet.ae2federation.client.WorldHighlight.clear();
                     context.mc().options.graphicsMode().set(mode);
                     context.mc().levelRenderer.allChanged();
                 })
@@ -540,8 +541,12 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 })
                 .frames(3)
                 .screenshot("world-highlight-occluded-" + name)
-                .check("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
-                        recordOutlinePixels(context, name + ".after") > 400);
+                // The outline blinks, so a frame grabbed while it is dark shows nothing: wait for a lit one.
+                .waitUntil("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".after") > 400)
+                .waitUntil("the outline blinks dark while the highlight runs (" + name + ")", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1
+                                && recordOutlinePixels(context, name + ".dark") < 20);
     }
 
     /**

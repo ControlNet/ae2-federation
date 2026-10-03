@@ -102,8 +102,8 @@ final class FederationTopologyView {
     private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightParts = List.of();
     private String highlightDimension = "";
     private int highlightColor;
-    private String highlightedNetwork = "";
-    private long highlightedUntil;
+    /** When the world highlight of each network or Endpoint asked for from this view ends; several can run at once. */
+    private final Map<String, Long> highlightedUntil = new HashMap<>();
 
     private final List<Network> networks = new ArrayList<>();
     /**
@@ -324,8 +324,10 @@ final class FederationTopologyView {
             } else {
                 space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
             }
-            highlightedNetwork = selectedEndpoint.isEmpty() ? selectedNetwork : selectedEndpoint;
-            highlightedUntil = System.currentTimeMillis() + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS;
+            long now = System.currentTimeMillis();
+            highlightedUntil.values().removeIf(until -> until < now);
+            highlightedUntil.put(selectedEndpoint.isEmpty() ? selectedNetwork : selectedEndpoint,
+                    now + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS);
             locationNote.setText(highlightedText());
             locationNote.setDisplay(true);
         });
@@ -1363,7 +1365,7 @@ final class FederationTopologyView {
         highlight.setText(FederationWorkspace.trLocation("highlight_timed"));
         boolean here = preview.inPlayerDimension();
         highlight.setActive(here);
-        boolean outlined = endpoint.id().equals(highlightedNetwork) && System.currentTimeMillis() < highlightedUntil;
+        boolean outlined = highlighted(endpoint.id());
         locationNote.setText(outlined ? highlightedText()
                 : here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
         locationNote.setDisplay(outlined || !here);
@@ -1591,7 +1593,7 @@ final class FederationTopologyView {
         boolean here = preview.inPlayerDimension();
         highlight.setActive(here);
         locationLegend.style(style -> style.tooltips(FederationWorkspace.trLocation("network_blocks", mask.size())));
-        boolean outlined = network.id().equals(highlightedNetwork) && System.currentTimeMillis() < highlightedUntil;
+        boolean outlined = highlighted(network.id());
         // The legend explains the map; the note only reports an outline in progress or why nothing can be drawn.
         locationNote.setText(outlined ? highlightedText()
                 : here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
@@ -1613,6 +1615,10 @@ final class FederationTopologyView {
                     groups.isEmpty() ? accent : FederationTheme.WARN));
         }
         return groups;
+    }
+
+    private boolean highlighted(String id) {
+        return System.currentTimeMillis() < highlightedUntil.getOrDefault(id, 0L);
     }
 
     private Component highlightedText() {
@@ -2224,6 +2230,8 @@ final class FederationTopologyView {
 
     /** Relationship lines behind the cards: configured pairs solid, unconfigured pairs of the selection dashed. */
     private final class Links extends UIElement {
+        /** Quartz beads drawn in the current frame. */
+        private int beads;
         Links() {
             var extent = extent();
             layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(0).top(0).width(extent.x + 8).height(extent.y + 8));
@@ -2260,6 +2268,7 @@ final class FederationTopologyView {
             var pose = context.graphics.pose();
             pose.pushPose();
             pose.translate(getPositionX(), getPositionY(), 0);
+            beads = 0;
             var configured = pairsWithRules();
             for (var pair : configured) {
                 var ends = pair.split("\\|");
@@ -2299,6 +2308,7 @@ final class FederationTopologyView {
                 if (owner != null) endMark(context, new float[] {place.link().fromX(), place.link().fromY()}, owner.accent());
             }
             pose.popPose();
+            FederationFlowPulses.beadsDrawn(beads);
         }
 
         private void line(GUIContext context, TopologyLink link, int color, float width, boolean dashed) {
@@ -2330,6 +2340,8 @@ final class FederationTopologyView {
             DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, rail, rail, selected ? 3f : 2f);
             int core = selected ? FederationTheme.SELECT : FederationTheme.QUARTZ_CORE;
             DrawerHelper.drawTexLines(context.graphics, LDLibRenderTypes.graphWire(), line, core, core, 0.75f);
+            // The beads are the link's live flow; hiding live flow leaves the rail, which only says the pool is shared.
+            if (liveFlowHidden) return;
             float phase = (net.minecraft.Util.getMillis() % QUARTZ_BEAD_MILLIS) / (float) QUARTZ_BEAD_MILLIS;
             // Two beads each way, staggered so no two meet at the same point.
             bead(context, points, phase);
@@ -2344,6 +2356,7 @@ final class FederationTopologyView {
          * keeps straight edges at any GUI or graph scale.
          */
         private void bead(GUIContext context, float[] points, float along) {
+            beads++;
             int segments = points.length / 2 - 1;
             float position = along * segments;
             int index = Math.min(segments - 1, (int) position);

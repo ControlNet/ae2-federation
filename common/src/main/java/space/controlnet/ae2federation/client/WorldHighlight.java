@@ -15,8 +15,9 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import space.controlnet.ae2federation.client.policy.BlockMarks;
 
 /**
- * Pulsing outlines around blocks the player asked to find from the workspace, for ten seconds. This is local
- * presentation of positions the menu already shows; it grants nothing and sends nothing to the server.
+ * Blinking outlines around blocks the player asked to find from the workspace, each for ten seconds; several can run at
+ * once, so two networks highlighted one after the other both stay outlined. This is local presentation of positions the
+ * menu already shows; it grants nothing and sends nothing to the server.
  *
  * <p>The outlines are drawn once the level is done and ignore depth, so no block, fluid or weather hides them: only
  * the hand and the GUI draw over them. Each edge is a thick coloured line on a wider dark halo, which keeps it
@@ -42,7 +43,9 @@ public final class WorldHighlight {
             };
     private static final RenderType LINE = lines("ae2federation_highlight_line", LINE_WIDTH);
     private static final RenderType HALO = lines("ae2federation_highlight_halo", HALO_WIDTH);
-    private static volatile Highlight current;
+    private static final int MAX_HIGHLIGHTS = 16;
+    private static final space.controlnet.ae2federation.client.policy.HighlightSet<List<Group>> HIGHLIGHTS =
+            new space.controlnet.ae2federation.client.policy.HighlightSet<>(DURATION_MILLIS, MAX_HIGHLIGHTS);
 
     private WorldHighlight() {
     }
@@ -54,45 +57,45 @@ public final class WorldHighlight {
         }
     }
 
-    private record Highlight(String dimension, List<Group> groups, long expiresAt) {
-    }
-
-    /** Replaces any running highlight; only one set of blocks is outlined at a time. */
+    /** Outlines {@code blocks} beside the highlights still running; the same blocks again restart their time. */
     public static void show(String dimension, List<BlockMarks.Mark> blocks, int color) {
         show(dimension, List.of(new Group(blocks, color)));
     }
 
-    /** Replaces any running highlight with several groups, each in its own colour. */
+    /** Outlines several groups, each in its own colour, as one highlight beside those still running. */
     public static void show(String dimension, List<Group> groups) {
         var shown = groups.stream().filter(group -> !group.blocks().isEmpty()).toList();
-        current = shown.isEmpty() ? null : new Highlight(dimension, shown, System.currentTimeMillis() + DURATION_MILLIS);
+        if (shown.isEmpty()) return;
+        HIGHLIGHTS.add(List.of(dimension, shown), dimension, shown, System.currentTimeMillis());
+    }
+
+    /** Ends every running highlight. */
+    public static void clear() {
+        HIGHLIGHTS.clear();
     }
 
     /** Blocks outlined right now, for the workspace's own feedback and tests. */
     public static int activeBlocks() {
-        var highlight = current;
-        return highlight == null || highlight.expiresAt() < System.currentTimeMillis() ? 0
-                : highlight.groups().stream().mapToInt(group -> group.blocks().size()).sum();
+        return HIGHLIGHTS.active(System.currentTimeMillis()).stream().flatMap(entry -> entry.value().stream())
+                .mapToInt(group -> group.blocks().size()).sum();
     }
 
-    /** Colour groups outlined right now. */
+    /** Colour groups outlined right now, over all running highlights. */
     public static int activeGroups() {
-        var highlight = current;
-        return highlight == null || highlight.expiresAt() < System.currentTimeMillis() ? 0 : highlight.groups().size();
+        return HIGHLIGHTS.active(System.currentTimeMillis()).stream().mapToInt(entry -> entry.value().size()).sum();
     }
 
     public static void render(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL) return;
-        var highlight = current;
         var level = Minecraft.getInstance().level;
-        if (highlight == null || level == null) return;
+        if (level == null) return;
         long now = System.currentTimeMillis();
-        if (highlight.expiresAt() < now) {
-            current = null;
-            return;
-        }
-        if (!level.dimension().location().toString().equals(highlight.dimension())) return;
-        float pulse = 0.85f + 0.15f * (float) Math.sin(now / 160.0);
+        var dimension = level.dimension().location().toString();
+        // Each highlight blinks from its own start, so one just asked for is lit at once.
+        var groups = HIGHLIGHTS.active(now).stream()
+                .filter(entry -> entry.dimension().equals(dimension) && entry.lit(now))
+                .flatMap(entry -> entry.value().stream()).toList();
+        if (groups.isEmpty()) return;
         var camera = event.getCamera().getPosition();
         // The level's own model-view matrix is gone by now; the event still carries the camera's rotation.
         var pose = new PoseStack();
@@ -100,16 +103,16 @@ public final class WorldHighlight {
         pose.translate(-camera.x, -camera.y, -camera.z);
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         var halo = buffers.getBuffer(HALO);
-        for (var group : highlight.groups()) {
+        for (var group : groups) {
             for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, halo, box(block), 0.04f, 0.03f, 0.06f, 0.85f);
         }
         buffers.endBatch(HALO);
         var line = buffers.getBuffer(LINE);
-        for (var group : highlight.groups()) {
+        for (var group : groups) {
             float red = (group.color() >> 16 & 0xff) / 255f;
             float green = (group.color() >> 8 & 0xff) / 255f;
             float blue = (group.color() & 0xff) / 255f;
-            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, line, box(block), red, green, blue, pulse);
+            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, line, box(block), red, green, blue, 1f);
         }
         buffers.endBatch(LINE);
     }

@@ -53,10 +53,21 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .frames(2)
                 .screenshot("ui-endpoint-detail")
                 .hover("#network_highlight")
+                .step("another highlight is already running", context -> {
+                    space.controlnet.ae2federation.client.WorldHighlight.clear();
+                    space.controlnet.ae2federation.client.WorldHighlight.show("minecraft:overworld", java.util.List.of(
+                            new space.controlnet.ae2federation.client.policy.BlockMarks.Mark(0, -60, 0)), 0xFFFFFF);
+                })
                 .step("highlight the Endpoint in the world", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
-                .waitUntil("only the Endpoint's block is outlined", context ->
-                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1)
+                .waitUntil("the Endpoint's block is outlined beside the earlier highlight", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2
+                                && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 2)
+                .step("highlight the Endpoint again", context ->
+                        TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
+                .check("highlighting the same block again restarts it instead of adding a copy", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2
+                                && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 2)
                 .server("record actual contextual navigation endpoints", TaskThirtyThreeWorldFixture::recordEndpointNavigation)
                 .step("reveal the owner navigation", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#graph_open"))
                 .frames(2)
