@@ -8,64 +8,52 @@ Connect separate **Applied Energistics 2 networks** to share storage, autocrafti
 
 ## Features
 
-- **Shared storage**: access items and fluids across connected ME networks.
-- **Remote autocrafting**: craft with another network's pattern providers from your ME terminal.
-- **Distributed processing**: map patterns to Processing Endpoints on other networks using the Federation Pattern Provider.
-- **ME power sharing**: two networks share one energy pool, the way a Quartz Fiber joins them, with a single switch per pair.
-- **Directional permissions**: choose what each network can access from the other (energy is shared both ways). Sharing stays off until you enable it.
-- **In-game configuration**: view connected networks, edit permissions, and assign processing targets. English and Simplified Chinese included.
+- **Shared storage**: use another network's items and fluids from your own terminals.
+- **Remote autocrafting**: order from another network's pattern providers.
+- **Remote processing**: send patterns to machines on other networks with the Federation Pattern Provider.
+- **Shared ME power**: join two networks' energy with one switch.
+- **Your choice, per direction**: each network decides what the other may use. Nothing is shared until you switch it on.
+
+English and Simplified Chinese are included.
 
 ## Requirements
 
 - Minecraft **1.21.1** / Java **21**
 - NeoForge **21.1.250**
-- Applied Energistics 2 **19.2.9 or newer** for Minecraft 1.21.1 and its dependencies
-- LDLib2 **2.2.34 or newer** for Minecraft 1.21.1 and its dependencies
+- Applied Energistics 2 **19.2.9 or newer**
+- LDLib2 **2.2.34 or newer**
 
-Regular builds and tests use AE2 19.2.17 and LDLib2 2.2.34; see the [minimum-version investigation](docs/compatibility/minimum-versions.md) for the lower bounds. Newer versions are allowed by the loader, but have not all been compatibility-tested. Install the mod and its dependencies on **both the client and server** for multiplayer.
+Install them on **both the client and the server**. Tested with AE2 19.2.17 and LDLib2 2.2.34 ([version notes](docs/compatibility/minimum-versions.md)).
 
 ## Installation
 
-1. Set up a NeoForge instance with the versions listed above.
-2. Download the mod JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and put it alongside its required mods in the instance's `mods/` folder.
-3. Launch Minecraft. For multiplayer, install the same mods on the server.
+1. Set up a NeoForge instance with the versions above.
+2. Put the JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and its dependencies in the `mods/` folder.
+3. Launch Minecraft.
 
-Every block is crafted in survival from early AE2 materials, starting with a **Federation Logic Processor** pressed in the Inscriber from a Logic Processor and Fluix Dust. EMI shows the recipes; JEI users also need [AE2 JEI Integration](https://www.curseforge.com/minecraft/mc-mods/ae2-jei-integration) for AE2 machine recipes. AE2's in-game guide has an **AE2 Federation** section. See [survival recipes and guide resources](docs/features/survival-playability.md).
+Every block is craftable in survival. AE2's in-game guide has an **AE2 Federation** section with recipes and setup. JEI users need [AE2 JEI Integration](https://www.curseforge.com/minecraft/mc-mods/ae2-jei-integration) to see AE2 machine recipes.
 
 ## Getting started
 
 1. Build two separate, powered ME networks.
-2. Connect them through an **ME Federation Router**, using a different face for each network. Use **ME Federation Cable** to link Routers over longer distances. For two adjacent networks, an **ME Federation Bridge** can connect them directly.
-3. Right-click the Router or Bridge, select the source and target networks, and enable the sharing permissions you need. Permissions apply in one direction; configure the reverse direction separately if needed.
-4. Use your normal ME terminal to access the storage and crafting you enabled.
+2. Connect them: an **ME Federation Bridge** for networks side by side, or an **ME Federation Router** (one network per face) and **ME Federation Cable** for networks further apart.
+3. Right-click the Router or Bridge, click the line between two networks, and switch on **Storage**, **Crafting** or **ME power**. Each rule works in one direction.
+4. Use your normal ME terminal.
 
-### Remote crafting
-
-With a crafting permission, the target network uses the source network's pattern providers as its own, from its terminals or its automation. The target network's crafting CPU runs the job with the materials it can see, the source network's storage included: a crafting permission always comes with the storage permission of the same direction. The source network needs no CPU, and the result arrives in the target network. A permission set to re-export passes crafting along a chain (A from B, B from C), and two networks may each craft with the other's providers.
-
-### Remote processing
-
-1. Place an **ME Federation Pattern Provider** on the network that sends the work, and an **ME Federation Processing Endpoint** beside the machines.
-2. Connect the Federation faces of both to the same Federation network.
-3. Right-click the Provider, insert encoded processing patterns, and drag each pattern onto an Endpoint.
-4. Results the machines push into the Endpoint return to the Provider's network.
-
-Processing needs no permission. Each Endpoint belongs to one Provider at a time.
+**Remote processing**: place an **ME Federation Pattern Provider** on your network and an **ME Federation Processing Endpoint** next to the machines, with both fronts on Federation Cable. Right-click the Provider, insert processing patterns, and drag each pattern onto an Endpoint. Results pushed into the Endpoint come back to your network.
 
 ## Feedback
 
-[Report a bug or suggest a feature](https://github.com/ControlNet/ae2-federation/issues). For bugs, include your mod versions, what happened, and relevant logs or screenshots.
+[Report a bug or suggest a feature](https://github.com/ControlNet/ae2-federation/issues). For bugs, include your mod versions, what happened, and logs or screenshots.
 
 ## Development
 
-See [build and test commands](docs/testing/commands.md), [Gitflow and releases](docs/releasing.md), and [compatibility details](docs/compatibility/matrix.md).
-
-Future feature discussions and confirmed idea requirements are collected in the [idea library](docs/ideas/README.md).
+[Build and test](docs/testing/commands.md) · [Gitflow and releases](docs/releasing.md) · [Compatibility](docs/compatibility/matrix.md) · [Idea library](docs/ideas/README.md)
 
 ## Acknowledgements
 
-- [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the great base mod that this project is based on.
-- [LDLib2](https://github.com/Low-Drag-MC/LDLib2): the UI framework used for this project.
-- [NeoECO AE Extension](https://github.com/DancingSnow0517/NeoECOAEExtension): its LDLib2-based, AE2-styled GUI implementation is the reference for our GUI.
+- [Applied Energistics 2](https://github.com/AppliedEnergistics/Applied-Energistics-2): the base mod this project builds on.
+- [LDLib2](https://github.com/Low-Drag-MC/LDLib2): the UI framework.
+- [NeoECO AE Extension](https://github.com/DancingSnow0517/NeoECOAEExtension): its LDLib2-based, AE2-styled GUI is the reference for ours.
 
 The Federation Logic Processor texture is edited from AE2's Logic Processor texture and, like AE2's art, is licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), not AGPL-3.0.

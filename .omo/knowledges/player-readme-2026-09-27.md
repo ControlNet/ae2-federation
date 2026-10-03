@@ -12,3 +12,8 @@
   then short "Remote crafting" and "Remote processing" subsections with only what a player does and must know.
   A feature commit updates the README only when a player-visible step changes, in one short sentence; rules and
   edge cases go to `docs/architecture/` or the release notes.
+- 2026-10-03: grown back to 694 words, with stale steps (selecting source and target networks, "permissions" where
+  the screen says rules). Rewritten to 414: feature bullets, requirements, installation, four connection steps naming
+  the Storage, Crafting and ME power switches, and one paragraph for remote processing. Remote crafting needs no
+  section of its own (switch on Crafting, order from the terminal). Mechanism details (re-export chains, CPU side,
+  one Provider per Endpoint, subnets, return buffers) live in the AE2 in-game guide pages under `ae2guide/`.
