@@ -80,7 +80,6 @@ public final class ProviderObservationRegistry {
         var pendingBefore = amounts(before);
         var pendingAfter = amounts(after);
         var root = OperationEventId.create();
-        var laneKey = new LevelObservabilityService.LaneKey(entry.identity().toString(), entry.laneIndex(), false);
         offered.forEach((resource, amount) -> {
             var remainder = Math.max(0L, pendingAfter.getOrDefault(resource, 0L)
                     - pendingBefore.getOrDefault(resource, 0L));
@@ -90,7 +89,9 @@ public final class ProviderObservationRegistry {
                         (root.value() + ":" + resource.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
                 LevelObservabilityService.get(entry.level()).recordAccepted(scopes(entry), child,
                         resource.getId().toString(), accepted, unit(resource), FlowState.Attribution.EXACT_OPERATION);
-                LevelObservabilityService.get(entry.level()).recordLaneFlow(laneKey, accepted);
+                LevelObservabilityService.get(entry.level()).recordLaneFlow(new LevelObservabilityService.LaneKey(
+                        entry.identity().toString(), entry.laneIndex(), false, resource.getType().getId().toString()),
+                        accepted);
             }
         });
     }
@@ -107,7 +108,8 @@ public final class ProviderObservationRegistry {
             LevelObservabilityService.get(level).recordAccepted(scopes(entry), OperationEventId.create(),
                     resource.getId().toString(), accepted, unit(resource), FlowState.Attribution.AGGREGATE_LANE_RETURN);
             LevelObservabilityService.get(level).recordLaneFlow(new LevelObservabilityService.LaneKey(
-                    entry.identity().toString(), entry.laneIndex(), true), accepted);
+                    entry.identity().toString(), entry.laneIndex(), true, resource.getType().getId().toString()),
+                    accepted);
         }
     }
 

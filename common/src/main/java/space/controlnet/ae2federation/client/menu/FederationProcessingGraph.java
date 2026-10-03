@@ -896,10 +896,11 @@ public final class FederationProcessingGraph {
                         endpoint.has("claimEpoch") ? endpoint.get("claimEpoch").getAsLong() : 0L));
             }
             // Measured per lane: every pattern mapped to this Endpoint shares the Provider's channel to it.
-            long sent = laneAmount(endpoint, "laneSent");
-            long returned = laneAmount(endpoint, "laneReturned");
-            fact("lane", sent == 0 && returned == 0 ? tr("lane_idle")
-                    : tr("lane_flow", sent, returned).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
+            boolean sent = laneMoved(endpoint, "laneSent");
+            boolean returned = laneMoved(endpoint, "laneReturned");
+            fact("lane", !sent && !returned ? tr("lane_idle")
+                    : tr("lane_flow", laneAmounts(endpoint, "laneSent"), laneAmounts(endpoint, "laneReturned"))
+                            .withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
             boolean confirmed = wires.contains(new Wire(selection.slot(), selection.endpoint()));
             fact("state", !confirmed ? tr("wire_pending").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff))
                     : endpoint != null ? subnet(endpoint) : Component.empty());
@@ -1132,8 +1133,30 @@ public final class FederationProcessingGraph {
         return null;
     }
 
-    private static long laneAmount(JsonObject endpoint, String field) {
-        return endpoint != null && endpoint.has(field) ? endpoint.get(field).getAsLong() : 0L;
+    private static boolean laneMoved(JsonObject endpoint, String field) {
+        return endpoint != null && endpoint.has(field) && !endpoint.getAsJsonObject(field).isEmpty();
+    }
+
+    /** A lane's amounts over the flow window, one per resource type, each in that type's own unit. */
+    private static String laneAmounts(JsonObject endpoint, String field) {
+        if (!laneMoved(endpoint, field)) return "0";
+        var parts = new ArrayList<String>();
+        endpoint.getAsJsonObject(field).entrySet().forEach(entry -> {
+            long amount = entry.getValue().getAsLong();
+            parts.add(keyType(entry.getKey()).map(type -> type.formatAmount(amount, appeng.api.stacks.AmountFormat.FULL))
+                    .orElse(amount + " " + entry.getKey()));
+        });
+        return String.join(", ", parts);
+    }
+
+    private static java.util.Optional<appeng.api.stacks.AEKeyType> keyType(String id) {
+        var location = net.minecraft.resources.ResourceLocation.tryParse(id);
+        if (location == null) return java.util.Optional.empty();
+        try {
+            return java.util.Optional.of(appeng.api.stacks.AEKeyTypes.get(location));
+        } catch (IllegalArgumentException unknown) {
+            return java.util.Optional.empty();
+        }
     }
 
     private static Claim claim(JsonObject endpoint) {
@@ -1365,8 +1388,8 @@ public final class FederationProcessingGraph {
                 var endpoint = endpoint(wire.endpoint());
                 if (ends == null) continue;
                 var path = curve(ends);
-                if (laneAmount(endpoint, "laneSent") > 0) dots += flowDots(context, path, phase, false, FederationTheme.TEAL);
-                if (laneAmount(endpoint, "laneReturned") > 0) dots += flowDots(context, path, phase, true, FederationTheme.OK);
+                if (laneMoved(endpoint, "laneSent")) dots += flowDots(context, path, phase, false, FederationTheme.TEAL);
+                if (laneMoved(endpoint, "laneReturned")) dots += flowDots(context, path, phase, true, FederationTheme.OK);
             }
             drawnWireDots = dots;
             pendingWires.forEach((wire, sent) -> {

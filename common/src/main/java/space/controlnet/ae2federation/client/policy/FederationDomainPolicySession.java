@@ -1083,13 +1083,11 @@ public final class FederationDomainPolicySession {
                     .findFirst().orElse(null);
             if (entry == null) continue;
             var totals = laneTotals(entry, endpoint.endpointIdentity());
-            if (totals[0] == 0 && totals[2] == 0) continue;
+            if (!totals[0].active() && !totals[1].active()) continue;
             var row = new com.google.gson.JsonObject();
             row.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context, endpoint));
-            row.addProperty("events", totals[0]);
-            row.addProperty("amount", totals[1]);
-            row.addProperty("returnedEvents", totals[2]);
-            row.addProperty("returned", totals[3]);
+            row.addProperty("events", totals[0].events());
+            row.addProperty("returnedEvents", totals[1].events());
             out.add(row);
         }
         flowText = out.toString();
@@ -1533,33 +1531,36 @@ public final class FederationDomainPolicySession {
         return currentFederationDomain().map(federationDomain -> FederationDomainGraphProjection.endpointEntries(level, federationDomain)).orElse(List.of());
     }
 
-    /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window. */
+    /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window, by resource type. */
     private void addLaneFlow(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry,
             space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
         var totals = laneTotals(entry, endpoint);
-        if (totals[1] > 0) choice.addProperty("laneSent", totals[1]);
-        if (totals[3] > 0) choice.addProperty("laneReturned", totals[3]);
+        if (totals[0].active()) choice.add("laneSent", amountsJson(totals[0]));
+        if (totals[1].active()) choice.add("laneReturned", amountsJson(totals[1]));
     }
 
-    /**
-     * What the Provider's lanes to {@code endpoint} moved over the flow window: sent events and amount, then returned
-     * events and amount.
-     */
-    private long[] laneTotals(ProviderObservationRegistry.Entry entry,
+    private static com.google.gson.JsonObject amountsJson(
+            space.controlnet.ae2federation.observability.meter.LaneFlowTotals totals) {
+        var json = new com.google.gson.JsonObject();
+        totals.amounts().forEach(json::addProperty);
+        return json;
+    }
+
+    /** What the Provider's lanes to {@code endpoint} moved over the flow window: sent, then returned. */
+    private space.controlnet.ae2federation.observability.meter.LaneFlowTotals[] laneTotals(
+            ProviderObservationRegistry.Entry entry,
             space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
-        var totals = new long[4];
+        var totals = new space.controlnet.ae2federation.observability.meter.LaneFlowTotals[] {
+                new space.controlnet.ae2federation.observability.meter.LaneFlowTotals(),
+                new space.controlnet.ae2federation.observability.meter.LaneFlowTotals() };
         var controller = entry.controller().orElse(null);
         if (controller == null) return totals;
         var observability = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level);
         var provider = entry.identity().toString();
         for (int lane = 0; lane < entry.provider().lanes().size(); lane++) {
             if (!controller.laneEndpoint(lane).filter(endpoint::equals).isPresent()) continue;
-            for (int returned = 0; returned <= 1; returned++) {
-                var summary = observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
-                        .LaneKey(provider, lane, returned == 1));
-                totals[returned * 2] += summary.events();
-                totals[returned * 2 + 1] += summary.amount();
-            }
+            observability.collectLaneFlow(provider, lane, false, totals[0]);
+            observability.collectLaneFlow(provider, lane, true, totals[1]);
         }
         return totals;
     }

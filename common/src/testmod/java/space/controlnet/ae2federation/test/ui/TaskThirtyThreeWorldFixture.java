@@ -390,9 +390,11 @@ final class TaskThirtyThreeWorldFixture {
     static boolean processingFlowObserved(ServerContext context) {
         var provider = provider(context);
         var lane = provider.laneFor(endpoint(context).endpointIdentity()).orElse(-1);
-        return lane >= 0 && space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level())
-                .laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService.LaneKey(
-                        provider.providerIdentity().toString(), lane, false)).active();
+        if (lane < 0) return false;
+        var totals = new space.controlnet.ae2federation.observability.meter.LaneFlowTotals();
+        space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level())
+                .collectLaneFlow(provider.providerIdentity().toString(), lane, false, totals);
+        return totals.active();
     }
 
     static boolean endpointOwnedByProvider(ServerContext context) {
