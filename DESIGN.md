@@ -5,7 +5,7 @@
 **文档类型：** 产品概念、系统架构与实现验收基线  
 **模组名称：** AE2 Federation  
 **首个开发目标：** Minecraft 1.21.1 / NeoForge；当前只开发 NeoForge 版本。  
-**依赖：** Applied Energistics 2（AE2）；GUI 暂定 LDLib2。NeoForge、AE2、LDLib2 的具体发布版本或提交在 M0 联合锁定。  
+**依赖：** Applied Energistics 2（AE2）；GUI 使用 LDLib2。当前锁定 NeoForge 21.1.250、AE2 19.2.17、LDLib2 2.2.34（`gradle.properties` 与依赖校验文件为准）。  
 **代码与版本策略：** 一个 `common` 共享全部可复用实现，配合薄版本目录；按经过验证的兼容范围组织构建，不默认整个 Minecraft 版本系列共用一个 JAR。
 
 > AE2 Federation 让多个保持独立的 ME Network，通过可配置、可观测的 Federation Domain 共享能力。各网络继续使用自己的 AE2 存储、合成与自动化机制；Federation 保存网络之间的共享 Policy，并根据联邦域连通关系启用原生能力访问。
@@ -44,7 +44,7 @@
 
 整体范围包含 Storage、Crafting、Processing、Automation/Stocking、Energy 与可视化。早期讨论没有在现有记录中明确到字段、算法或版本的部分，均按“工程细化”处理。最终的 Processing 方向采用 **专用 ME Federation Pattern Provider**；“原版 Pattern Provider + 外接 Router”保留为架构取舍记录，不作为默认实施方案。
 
-本次技术选型以 **Minecraft 1.21.1 + NeoForge** 为首个开发基线，GUI **暂定 LDLib2**，并将 Agent 能否读取界面定义、预览、操作和诊断实际客户端界面纳入验收。初期集中实现一个版本，保留增加选定版本的能力；不承诺同步支持所有 Minecraft 小版本。相关设计见第 17.8—17.10、18.1、18.7—18.9 和 19.14—19.15 节。
+本次技术选型以 **Minecraft 1.21.1 + NeoForge** 为首个开发基线，GUI 采用 **LDLib2**，并将 Agent 能否读取界面定义、预览、操作和诊断实际客户端界面纳入验收。初期集中实现一个版本，保留增加选定版本的能力；不承诺同步支持所有 Minecraft 小版本。相关设计见第 17.8—17.10、18.1、18.7—18.9 和 19.14—19.15 节。
 
 当前明确以下产品基线，并以此替代旧文中的冲突设定：
 
@@ -229,7 +229,7 @@ Policy 不以显示名称、方块坐标或运行时 Grid 对象地址作为主�
 
 多个 Bridge 同时连接 A 与 B，只提供多个可用连接，不构成多份 A–B 规则，也不提高该关系的名义吞吐量。断开其中一条后，其他连接仍可使同一规则保持 active。
 
-Provider 的接线按第 3.3 节执行。Endpoint 继续承担后端 Subnet 与显式返回边界，其具体物理面布局仍按第 13.2 节验证；不能把 Provider 的五加一结构自动套用到 Endpoint。
+Provider 的接线按第 3.3 节执行。Endpoint 继续承担后端 Subnet 与显式返回边界，物理面布局见第 13.2 节：同样是一个 Federation 面加五个 ME 面，但这五个面连接的是加工子网，子网不因此加入联邦域。
 
 ### 3.2 Endpoint 的统一定位
 
@@ -238,7 +238,7 @@ Provider 的接线按第 3.3 节执行。Endpoint 继续承担后端 Subnet 与�
 - **Local：** 与原版 Pattern Provider 物理相邻，简化 Interface、独立子网供能与返回入口的搭建。
 - **Federated：** 接受已绑定 Federation Pattern Provider 的远端整批输入。
 
-两种模式共享后端 Subnet Storage 与返回机制。一个 Endpoint 同时只启用一个上游模式，不同时接受本地 Provider 和远端 Provider 的加工输入。
+两种模式共享后端 Subnet Storage 与返回机制。一个 Endpoint 同时只启用一个上游模式，不同时接受本地 Provider 和远端 Provider 的加工输入。模式由 Federation 面接触的对象决定：Federation Cable、Router 或 Federation Pattern Provider 的正面为 Federated，另一网络的原版 Pattern Provider 为 Local；切换前先排空并释放原归属。
 
 ### 3.3 Federation Pattern Provider 的方向与连接
 
@@ -883,7 +883,7 @@ Return Input 不应仅允许 Pattern 的主产物。玩家可能需要返回副�
 
 ### 13.1 目标行为
 
-原版 Pattern Provider 对着 Endpoint 的输入面时，后端仍是原生 Processing Subnet Storage。玩家在机器侧按原生方式配置多个 Storage Bus。
+原版 Pattern Provider 对着 Endpoint 的 Federation 面时，后端仍是原生 Processing Subnet Storage。玩家在机器侧按原生方式配置多个 Storage Bus。
 
 本地模式整合三种边界功能：
 
@@ -895,15 +895,17 @@ Return Input 不应仅允许 Pattern 的主产物。玩家可能需要返回副�
 
 ### 13.2 面与端口分离
 
-**工程细化：** 至少在逻辑上区分以下端口，具体方块连面布局可后定：
+**已确认接线：** Endpoint 与 Federation Pattern Provider 使用相同的 AE2 朝向：正面是 Federation 面，放置时贴向所点击的方块，可用扳手旋转；其余五个面共用一个节点，连接加工子网。原料直接进入子网的 ME 存储，机器把产物推回这五个面即返回所属 Provider。
+
+逻辑上仍区分以下端口：
 
 | 端口 | 行为 |
 |---|---|
-| Local Input | 面向原版 Provider，暴露兼容的 Subnet Storage 目标 |
-| Subnet ME Connection | 连接后端 Processing Subnet |
-| Return Input | 显式接收需要返回上游的资源 |
+| Local Input | Local 模式下，Federation 面上的原版 Provider 由此写入兼容的 Subnet Storage 目标 |
+| Subnet ME Connection | 其余五个面，连接后端 Processing Subnet |
+| Return Input | 其余五个面，显式接收需要返回上游的资源 |
 | Upstream Energy | 可选供能边界，不传递频道或合并数据 Grid |
-| Federation Port | Federation 模式的访问入口 |
+| Federation Port | 正面，Federation 模式的访问入口 |
 
 Return Input 的插入不能被误当成新的加工输入，Local Input 也不能把原料立即送回上游。
 
@@ -1176,7 +1178,7 @@ Crafting 的投影返回按此简化（2026-10-03 决定）：只在执行网络
 
 **已确认入口：** 右键任意 Router 或 Bridge，查看其所属联邦域的全部成员、拓扑、规则和运行信息。同一联邦域内的入口提供同一管理能力，不按所在位置裁剪成局部邻居视图。一个双网络 Bridge 联邦域也有完整管理界面。
 
-图中区分 ME 网络、连接组件、Provider、Endpoint，以及 Storage、Crafting、Processing 和供能关系。默认按成员或工厂分组，可展开详情；区分物理连接与实际生效能力，默认未配置的关系不能被画成已经共享。
+图中区分 ME 网络、连接组件、Provider、Endpoint，以及 Storage、Crafting、供能关系和加工映射；Endpoint 以小节点连到映射它的 Provider 所在网络。默认按成员或工厂分组，可展开详情；区分物理连接与实际生效能力，默认未配置的关系不能被画成已经共享。
 
 后台跨联邦域依赖可以用于解释真实来源及链式访问，但普通管理范围仍是当前联邦域。全局 Policy 表是配置存储方式，不意味着新增全服务器管理终端。
 
@@ -1184,7 +1186,7 @@ Crafting 的投影返回按此简化（2026-10-03 决定）：只在执行网络
 
 节点显示在线、缺电、缺频道、等待结果、输入受阻、返回拥堵、Policy 不允许、失联规则等简短标签。颜色之外还要有文字或图标，以便区分状态。
 
-连接上的流动效果来源于真实交付事件。流体、物品和能量使用各自数量单位；显示瞬时值还是统计窗口平均值必须明确。
+连接上的流动效果来源于真实交付事件。流体、物品和能量使用各自数量单位；显示瞬时值还是统计窗口平均值必须明确。加工连线详情显示该 Lane 最近 5 秒的发送量和返回量，按资源类型分列，各用其 AE2 单位，不把物品数与流体量相加。
 
 点击某条加工流，可查看：来源 Provider、目标 Endpoint、Pattern、实际送出资源、已知返回量和阻塞原因。若没有可信逐批关联，只显示“该 Lane 的累计返回”，不展示伪精确的批次进度。
 
@@ -1198,7 +1200,7 @@ Crafting 的投影返回按此简化（2026-10-03 决定）：只在执行网络
 | Titanium | 高炉 A、B | A 等待结果；B 可接受 |
 | Invar | 高炉 C | 可接受 |
 
-玩家可以从满足网络共享规则、当前可到达且没有归属冲突的 Endpoint 中多选目标；原型不增加玩家身份权限门槛。不能通过复制 Pattern 物品表达一对多。
+玩家可以从同一联邦域内、当前可到达且没有归属冲突的 Endpoint 中多选目标；映射 Endpoint 不需要网络对规则，Policy 中没有 Processing 能力。原型不增加玩家身份权限门槛。不能通过复制 Pattern 物品表达一对多。
 
 配置操作包括：添加目标、移除目标、打开 Endpoint 详情、复制映射配置、查看失效原因。错误使用玩家语言，例如“该入口已由另一台样板供应器使用”，而不是直接显示内部异常类名。
 
@@ -1255,9 +1257,9 @@ Router 和 Bridge 打开同一类联邦域管理界面。对选中的有方向�
 
 不新增 Matrix 方块。原型也不追加独立全局终端、手持管理器或安全控制器。
 
-### 17.8 GUI 框架：暂定 LDLib2
+### 17.8 GUI 框架：LDLib2
 
-**已确认的选型方向：** GUI 暂定使用 LDLib2。用户在 TeaCon 2026 的图形演示中看到的效果是选型线索；最终采用仍需通过本项目的图形规模、原生交互和开发工具原型验证。当前范围为 NeoForge，不为另一加载器同时维护第二套界面实现。
+**已采用：** GUI 使用 LDLib2。用户在 TeaCon 2026 的图形演示中看到的效果是选型线索；本项目的管理图、原生交互和 UI Test Harness 流程已在原型中跑通，大量节点下的图形性能仍按第 19 节测量。当前范围为 NeoForge，不为另一加载器同时维护第二套界面实现。
 
 LDLib2 提供 XML 界面定义、LSS 样式、基于 Taffy 的布局以及可复用组件，可减少在大型 Java Screen 中手工维护坐标、绘制与命中区域的工作。这里使用的是 LDLib2 的界面体系，具体语法和能力跟随锁定版本，不混用旧 LDLib 示例。[LDLib2 项目说明](https://github.com/Low-Drag-MC/LDLib2/blob/1.21/README.md)、[LDLib2 UI 文档](https://low-drag-mc.github.io/LowDragMC-Doc/en/ldlib2/ui/)
 
@@ -1757,7 +1759,7 @@ LDLib2 和 Agent 调试流程在 M0 即接受验证，不能到 M5 才首次确�
 
 | 问题 | 当前方向 | 完成标准 |
 |---|---|---|
-| 平台与依赖基线 | MC 1.21.1 / NeoForge；GUI 暂定 LDLib2 | 联合锁定 NeoForge、AE2、LDLib2 及工具链，运行代表性原型；决定已明确，不再作为加载器选型开放题 |
+| 平台与依赖基线 | MC 1.21.1 / NeoForge；GUI 使用 LDLib2 | 联合锁定 NeoForge、AE2、LDLib2 及工具链，运行代表性原型；决定已明确，不再作为加载器选型开放题 |
 | 共享构建 | 一个 `common` 与 `neoforge-1.21.1` 薄目标 | 业务、GUI 和资源共享；干净构建成功，专用服务器不触发客户端类加载 |
 | GUI 框架与 Agent 调试 | LDLib2 的实际资源、预览和测试工具优先 | 实际小图、资源交互和自动操作 / 截图流程通过；明确所选版本缺失能力及补充方式 |
 | 后续版本支持 | 按实际兼容边界增加选定目标 | 记录 MC 与依赖交集；共享源码和同 JAR 兼容分别验证，不承诺整个版本系列 |
@@ -1781,14 +1783,13 @@ LDLib2 和 Agent 调试流程在 M0 即接受验证，不能到 M5 才首次确�
 ### 20.3 尚未锁定的产品参数
 
 - Pattern 槽位数、Endpoint 上限，以及需要原型证据支持的频道或容量平衡。
-- Endpoint 具体物理面布局；Provider 的五个 ME 面和一个 Federation 面已确定。
 - 资源过滤界面的细节；Storage 链式共享作为独立开关已确定，初次创建规则的该开关初值仍为工程建议。
 - 有限返回缓冲容量、异常资源回收与显式清理失联 Policy 的界面方式。
 - 普通 Crafting Pattern 或特定第三方 Provider / 机器的实际兼容范围。
 
 以下工作已明确后置：正式美术与配方平衡、联邦域自身能源系统、跨维度与无线能力、玩家安全 / 团队权限。当前不增加主动区块加载功能，由其他加载机制负责。
 
-默认网络隔离、Router / Bridge 同等管理入口、全局 Policy 保存和自动恢复、原生 Crafting 规则、Provider 朝向、联邦域零耗能均已确定，不再列为开放产品问题。
+默认网络隔离、Router / Bridge 同等管理入口、全局 Policy 保存和自动恢复、原生 Crafting 规则、Provider 与 Endpoint 的朝向及面布局、联邦域零耗能均已确定，不再列为开放产品问题。
 
 ## 21. 架构决策记录
 
@@ -1797,7 +1798,7 @@ LDLib2 和 Agent 调试流程在 M0 即接受验证，不能到 M5 才首次确�
 | 模组名称为 AE2 Federation；游戏内相关名称保留 ME 前缀 | 已确认命名 | 项目名称使用 AE2 标识，方块与设备沿用 AE2 的游戏内术语习惯 |
 | 当前只开发 NeoForge 版本 | 已确认范围 | 集中服务选定的大型科技整合包场景，减少加载器、依赖和测试组合 |
 | 首个目标为 Minecraft 1.21.1 | 已确认开发基线 | 先完成关键路径，再按实际需要选择后续目标；具体依赖补丁版本在 M0 锁定 |
-| GUI 暂定 LDLib2 | 暂定选型，需原型验收 | 使用结构、样式与组件支持大型界面；实际图形性能和工具可用性需验证 |
+| GUI 使用 LDLib2 | 已采用 | 使用结构、样式与组件支持大型界面；原型与 UI Test Harness 已跑通，大图性能按第 19 节测量 |
 | Agent 友好的实际 GUI 开发闭环 | 已确认要求，流程为工程细化 | 共享界面定义能够修改、预览、操作、截图和诊断，不以编译通过代替运行验证 |
 | 一个 common 共享业务、AE2 集成、GUI 与资源 | 已确认代码组织 | 薄版本目录仅保留实际差异；客户端按运行侧隔离，不另建顶层 Core / Shared / Client 模块 |
 | 按已验证兼容范围建立构建目标 | 已确认版本策略 | 不机械覆盖每个小版本，也不默认大版本内兼容；全部依赖共同限制运行范围 |
@@ -1815,7 +1816,8 @@ LDLib2 和 Agent 调试流程在 M0 即接受验证，不能到 M5 才首次确�
 | 多 Bridge 不叠加吞吐量或能力 | 已确认行为 | 多个连接支撑同一网络对关系；最后共同连接失去才失活 |
 | Storage 链式共享由独立 Policy 控制 | 已确认规则 | 保留真实来源和过滤；多跳访问不自动激活无共同联邦域的直接规则 |
 | Crafting 供料、规划、执行与结果遵循原生 | 已确认纠正 | 撤销预先设定的远端任务 / 自定义供料协议，源码与原型验证具体接口 |
-| Provider 一个 Federation 面、五个本地 ME 面 | 已确认接线 | 两种连接隔离；不自动将同样面布局套用到 Endpoint |
+| Provider 一个 Federation 面、五个本地 ME 面 | 已确认接线 | 两种连接隔离 |
+| Endpoint 一个 Federation 面、五个加工子网 ME 面 | 已确认接线 | 子网不加入联邦域；同域任意 Federation Provider 可映射，无需规则；Federation 面接触的对象决定 Local / Federated |
 | 存储型 FE 属于 Storage，Energy Federation 为 ME 供能 | 已确认范围 | 按附属资源原生机制兼容，分别设置共享规则与数量单位 |
 | 联邦域原型零耗能 | 已确认阶段范围 | 不要求电源基站，也不凭空给 ME 网发电；自身能源系统后置 |
 | 当前同维度有线，不做主动区块加载 | 已确认阶段范围 | 无线和跨维度后续讨论；加载交给正常机制或其他模组 |
