@@ -10,9 +10,13 @@ import java.util.List;
  * unit-testable.
  */
 public final class HighlightSet<T> {
-    /** An outline blinks: lit this long, then dark for the rest of the period, which a player spots more easily. */
+    /**
+     * An outline blinks, which a player spots more easily: full brightness this long, then dim for the rest of the
+     * period. Dim, not dark, so the blocks stay findable between flashes.
+     */
     public static final long BLINK_ON_MILLIS = 500;
     public static final long BLINK_PERIOD_MILLIS = 800;
+    public static final float DIM_BRIGHTNESS = 0.2f;
 
     private final long durationMillis;
     private final int capacity;
@@ -25,9 +29,12 @@ public final class HighlightSet<T> {
     }
 
     public record Entry<T>(String dimension, T value, long startedAt, long expiresAt) {
-        /** Whether the outline is lit at {@code now}; it starts lit, so it shows the moment it is asked for. */
-        public boolean lit(long now) {
-            return Math.floorMod(now - startedAt, BLINK_PERIOD_MILLIS) < BLINK_ON_MILLIS;
+        /**
+         * The outline's brightness at {@code now}, 1 or {@link HighlightSet#DIM_BRIGHTNESS}; it starts at full, so it
+         * shows the moment it is asked for.
+         */
+        public float brightness(long now) {
+            return Math.floorMod(now - startedAt, BLINK_PERIOD_MILLIS) < BLINK_ON_MILLIS ? 1f : DIM_BRIGHTNESS;
         }
     }
 

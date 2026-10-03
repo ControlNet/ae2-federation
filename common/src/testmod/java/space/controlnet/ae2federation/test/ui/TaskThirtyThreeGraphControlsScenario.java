@@ -532,7 +532,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the sections are rebuilt", context -> context.mc().levelRenderer.hasRenderedAllSections())
                 .frames(5)
                 .check("no outline colour before the highlight (" + name + ")", context ->
-                        recordOutlinePixels(context, name + ".before") < 20)
+                        recordOutlinePixels(context, name + ".before") < 20
+                                && recordFaintOutlinePixels(context, name + ".before") < 100)
                 .step("highlight the hidden block", context -> {
                     int ground = context.<Integer>get(OCCLUDED_GROUND);
                     space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of(
@@ -544,9 +545,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 // The outline blinks, so a frame grabbed while it is dark shows nothing: wait for a lit one.
                 .waitUntil("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
                         recordOutlinePixels(context, name + ".after") > 400)
-                .waitUntil("the outline blinks dark while the highlight runs (" + name + ")", context ->
+                // Between flashes the outline dims rather than vanishing: no full colour, but a faint tint remains.
+                .waitUntil("the outline blinks dim while the highlight runs (" + name + ")", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1
-                                && recordOutlinePixels(context, name + ".dark") < 20);
+                                && recordOutlinePixels(context, name + ".dim") < 20
+                                && recordFaintOutlinePixels(context, name + ".dim") > 400);
     }
 
     /**
@@ -554,6 +557,20 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
      * over the line would tint it (green, blue or grey) and the count would drop.
      */
     private static int recordOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        return recordPixels(context, "outlinePixels." + label, (red, green, blue) -> red > 150 && blue > 150 && green < 100);
+    }
+
+    /** Pixels tinted toward the outline's magenta without its full colour: the outline drawn at its dim brightness. */
+    private static int recordFaintOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        return recordPixels(context, "faintOutlinePixels." + label, (red, green, blue) ->
+                !(red > 150 && blue > 150 && green < 100) && red - green > 25 && blue - green > 25);
+    }
+
+    private interface PixelTest {
+        boolean matches(int red, int green, int blue);
+    }
+
+    private static int recordPixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String key, PixelTest test) {
         var frame = com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.grab();
         try {
             int width = frame.getWidth();
@@ -565,11 +582,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     int red = abgr & 0xff;
                     int green = abgr >> 8 & 0xff;
                     int blue = abgr >> 16 & 0xff;
-                    if (red > 150 && blue > 150 && green < 100) count++;
+                    if (test.matches(red, green, blue)) count++;
                 }
             }
             context.attach("evidenceFor", "ui.graph-controls");
-            context.attach("outlinePixels." + label, Integer.toString(count));
+            context.attach(key, Integer.toString(count));
             return count;
         } finally {
             com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.closeQuietly(frame);

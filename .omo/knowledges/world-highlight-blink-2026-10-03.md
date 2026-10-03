@@ -7,8 +7,10 @@ The user asked for three GUI changes. Hiding live flow must also stop the quartz
 
 - `client/policy/HighlightSet<T>` (MC-free, `HighlightSetTest`) keeps the running highlights in order, oldest first,
   each with its own 10 s timer. Adding the same key again restarts that entry instead of adding a copy. Past capacity
-  (16 in `WorldHighlight`) the oldest entry ends. `Entry.lit(now)` blinks from the entry's own start: lit 500 ms, then
-  dark for the rest of an 800 ms period. It starts lit, so an outline shows the moment it is asked for.
+  (16 in `WorldHighlight`) the oldest entry ends. `Entry.brightness(now)` blinks from the entry's own start: full brightness
+  for 500 ms, then `DIM_BRIGHTNESS` (0.2) for the rest of an 800 ms period. It starts at full, so an outline shows the
+  moment it is asked for. The user asked for dim rather than dark (100% ↔ 20%), so the blocks stay findable between
+  flashes. The line and its halo alpha both scale with the brightness.
 - `WorldHighlight.show(...)` adds a highlight keyed by `(dimension, groups)`. An empty list is now a no-op. Use
   `WorldHighlight.clear()` to end everything (tests, teardown). `activeBlocks()` / `activeGroups()` sum over all running
   highlights.
@@ -22,8 +24,10 @@ The user asked for three GUI changes. Hiding live flow must also stop the quartz
 
 - A blinking outline breaks a pixel check that grabs one frame at a fixed time. Under Fabulous graphics the screenshot
   step took long enough that the later `FrameCapture.grab()` landed in the dark phase (0 pixels). The occluded check now
-  uses `waitUntil` for a lit frame (> 400 magenta pixels), then `waitUntil` for a dark frame (< 20) while the highlight is
-  still running. That second check also proves the blink.
+  uses `waitUntil` for a bright frame (> 400 full-magenta pixels). Then it uses `waitUntil` for a dim frame while the
+  highlight is still running: < 20 full-magenta pixels, but > 400 faint pixels (red and blue each > 25 above green). This
+  proves both the blink and that the outline dims rather than disappearing. Measured 2026-10-03: before the highlight,
+  0 / 0 pixels. Bright frame: 4,926 full. Dim frame: 0 full and 4,843 (Fancy) / 4,917 (Fabulous) faint.
 - Highlights from earlier scenarios in the same client can still be running. Before asserting an exact count, call
   `WorldHighlight.clear()`. `ui.endpoint` seeds one unrelated highlight and checks that the Endpoint's outline joins it
   (2 groups / 2 blocks), and that pressing again keeps 2.

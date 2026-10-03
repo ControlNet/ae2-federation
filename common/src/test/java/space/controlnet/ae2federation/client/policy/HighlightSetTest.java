@@ -1,7 +1,6 @@
 package space.controlnet.ae2federation.client.policy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -55,15 +54,15 @@ class HighlightSetTest {
     }
 
     @Test
-    void blinksStartingLitSoItShowsAtOnce() {
+    void blinksBetweenFullAndDimStartingFullSoItShowsAtOnce() {
         var set = new HighlightSet<String>(10_000, 16);
         set.add("a", OVERWORLD, "first", 1_000);
         var entry = set.active(1_000).get(0);
-        assertTrue(entry.lit(1_000));
-        assertTrue(entry.lit(1_000 + HighlightSet.BLINK_ON_MILLIS - 1));
-        assertFalse(entry.lit(1_000 + HighlightSet.BLINK_ON_MILLIS));
-        assertFalse(entry.lit(1_000 + HighlightSet.BLINK_PERIOD_MILLIS - 1));
-        assertTrue(entry.lit(1_000 + HighlightSet.BLINK_PERIOD_MILLIS));
+        assertEquals(1f, entry.brightness(1_000));
+        assertEquals(1f, entry.brightness(1_000 + HighlightSet.BLINK_ON_MILLIS - 1));
+        assertEquals(0.2f, entry.brightness(1_000 + HighlightSet.BLINK_ON_MILLIS));
+        assertEquals(0.2f, entry.brightness(1_000 + HighlightSet.BLINK_PERIOD_MILLIS - 1));
+        assertEquals(1f, entry.brightness(1_000 + HighlightSet.BLINK_PERIOD_MILLIS));
     }
 
     @Test

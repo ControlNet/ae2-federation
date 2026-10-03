@@ -91,11 +91,9 @@ public final class WorldHighlight {
         if (level == null) return;
         long now = System.currentTimeMillis();
         var dimension = level.dimension().location().toString();
-        // Each highlight blinks from its own start, so one just asked for is lit at once.
-        var groups = HIGHLIGHTS.active(now).stream()
-                .filter(entry -> entry.dimension().equals(dimension) && entry.lit(now))
-                .flatMap(entry -> entry.value().stream()).toList();
-        if (groups.isEmpty()) return;
+        // Each highlight blinks between full and dim from its own start, so one just asked for is bright at once.
+        var shown = HIGHLIGHTS.active(now).stream().filter(entry -> entry.dimension().equals(dimension)).toList();
+        if (shown.isEmpty()) return;
         var camera = event.getCamera().getPosition();
         // The level's own model-view matrix is gone by now; the event still carries the camera's rotation.
         var pose = new PoseStack();
@@ -103,16 +101,26 @@ public final class WorldHighlight {
         pose.translate(-camera.x, -camera.y, -camera.z);
         var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         var halo = buffers.getBuffer(HALO);
-        for (var group : groups) {
-            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, halo, box(block), 0.04f, 0.03f, 0.06f, 0.85f);
+        for (var entry : shown) {
+            float brightness = entry.brightness(now);
+            for (var group : entry.value()) {
+                for (var block : group.blocks()) {
+                    LevelRenderer.renderLineBox(pose, halo, box(block), 0.04f, 0.03f, 0.06f, 0.85f * brightness);
+                }
+            }
         }
         buffers.endBatch(HALO);
         var line = buffers.getBuffer(LINE);
-        for (var group : groups) {
-            float red = (group.color() >> 16 & 0xff) / 255f;
-            float green = (group.color() >> 8 & 0xff) / 255f;
-            float blue = (group.color() & 0xff) / 255f;
-            for (var block : group.blocks()) LevelRenderer.renderLineBox(pose, line, box(block), red, green, blue, 1f);
+        for (var entry : shown) {
+            float brightness = entry.brightness(now);
+            for (var group : entry.value()) {
+                float red = (group.color() >> 16 & 0xff) / 255f;
+                float green = (group.color() >> 8 & 0xff) / 255f;
+                float blue = (group.color() & 0xff) / 255f;
+                for (var block : group.blocks()) {
+                    LevelRenderer.renderLineBox(pose, line, box(block), red, green, blue, brightness);
+                }
+            }
         }
         buffers.endBatch(LINE);
     }
