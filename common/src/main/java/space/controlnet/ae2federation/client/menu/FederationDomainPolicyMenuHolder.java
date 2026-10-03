@@ -76,6 +76,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
 
+        // The footer takes room only while one of its messages has something to say. The root ticks it, because a
+        // hidden element does not tick and could not show itself again.
+        var footer = element(ui, "domain_footer", UIElement.class);
+        ui.rootElement.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.TICK, event -> {
+            boolean message = footer.getChildren().stream().anyMatch(child -> child.isDisplayed()
+                    && child instanceof Label label && !label.getText().getString().isEmpty());
+            if (footer.isDisplayed() != message) footer.setDisplay(message);
+        });
+
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
         currentWorkspace = workspace;

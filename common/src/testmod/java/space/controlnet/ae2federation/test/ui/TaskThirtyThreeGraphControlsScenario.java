@@ -265,6 +265,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the pair names the Routers that link it, with their positions", context -> context.el("#pair_title").text()
                         .matches("(?s).*Via the Router at -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
                 .screenshot("ui-policy-direction")
+                .waitUntil("with nothing to report the footer takes no room", context -> !context.el("#domain_footer")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("real policy revision advances", context ->
                         TaskFifteenWorldFixture.policyRevision(context)
@@ -272,6 +274,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitForText("#ack_status", "Storage rule enabled")
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitForText("#ack_status", "Storage rule enabled with re-export")
+                .waitUntil("the footer shows the result", context -> context.el("#domain_footer")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
                 .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "re-export")
                 .check("the third state is the re-export switch", context -> context.el(
                         TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)

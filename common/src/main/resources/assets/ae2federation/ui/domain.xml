@@ -136,7 +136,7 @@
                     </element>
                 </element>
             </element>
-            <element class="domain-footer">
+            <element id="domain_footer" class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>
                 <label id="processing_status" class="domain-status mapping-status"/>
                 <label id="request_status" class="domain-status request-status"/>
