@@ -321,12 +321,12 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && authority.authorized()
                 && (serverStatus.equals("ready") || serverStatus.equals("accepted") || serverStatus.equals("conflict")),
                 rejection != null);
-        boolean visible = pending || rejection != null;
+        // Only a rejection is written; while a request is in flight the lamp alone turns yellow.
+        boolean visible = !pending && rejection != null;
         message.setDisplay(visible);
         element(currentUi, "ack_status", Label.class).setDisplay(!visible);
         message.removeClass("request-error");
-        if (pending) message.setText(Component.translatable("ae2federation.ui.request.pending"));
-        else if (rejection != null) {
+        if (visible) {
             message.addClass("request-error");
             message.setText(Component.translatable("ae2federation.ui.request." + rejection.name().toLowerCase(java.util.Locale.ROOT)));
         }

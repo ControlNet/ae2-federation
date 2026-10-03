@@ -495,14 +495,14 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         var status = element(ui, "ack_status", Label.class);
         var message = element(ui, "request_status", Label.class);
         var rejection = authority.rejection();
-        boolean visible = pending || rejection != null;
+        // Only a rejection is written; while a request is in flight the lamp alone turns yellow.
+        boolean visible = !pending && rejection != null;
         message.setDisplay(visible);
         status.setDisplay(!visible);
         status.setText(tr("status." + (active ? "ready" : serverStatus.equals("noface") ? "noface"
                 : serverStatus.equals("pending") ? "pending" : "stale")));
         message.removeClass("request-error");
-        if (pending) message.setText(Component.translatable("ae2federation.ui.request.pending"));
-        else if (rejection != null) {
+        if (visible) {
             message.addClass("request-error");
             message.setText(Component.translatable("ae2federation.ui.request." + rejection.name().toLowerCase(java.util.Locale.ROOT)));
         }

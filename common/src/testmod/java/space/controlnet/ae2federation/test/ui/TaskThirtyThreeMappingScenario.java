@@ -80,15 +80,13 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitForText("#mapping_toggle", "Map #0 here")
                 .waitUntil("the map action is ready", context -> context.el("#mapping_toggle").isActive())
                 .hover("#mapping_toggle")
-                .step("rapid mapping clicks show waiting and submit once", context -> {
+                .step("rapid mapping clicks submit once without a footer message", context -> {
                     var bounds = context.el("#mapping_toggle").bounds();
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
-                    var waiting = context.el("#request_status").text();
-                    if (!waiting.equals("Saving…") || context.el("#mapping_toggle").isActive()) {
-                        throw new IllegalStateException("Missing request waiting text or duplicate-click guard");
+                    if (context.el("#request_status").isVisible() || context.el("#mapping_toggle").isActive()) {
+                        throw new IllegalStateException("A saving message is shown or the duplicate-click guard is missing");
                     }
-                    context.attach("requestWaitingText", waiting);
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })

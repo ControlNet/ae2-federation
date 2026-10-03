@@ -94,7 +94,6 @@
   "ae2federation.ui.mapping_feedback.rejected-domain-disconnected": "此供应器的联邦面不在该端点的域中，请先将它接入该域。",
   "ae2federation.ui.workspace.output_resource": "产物：%s × %s",
   "ae2federation.ui.workspace.input_resource": "输入：%s × %s",
-  "ae2federation.ui.request.pending": "保存中…",
   "ae2federation.ui.request.invalid_target": "所选对象已不可用，请重新选择。",
   "ae2federation.ui.request.wrong_thread": "服务器未能处理请求，请重新打开界面。",
   "ae2federation.ui.request.wrong_menu": "当前界面会话已失效，请重新打开。",

@@ -94,7 +94,6 @@
   "ae2federation.ui.mapping_feedback.rejected-domain-disconnected": "This provider's Federation face is not in the endpoint's domain. Connect it to the domain first.",
   "ae2federation.ui.workspace.output_resource": "Output: %s × %s",
   "ae2federation.ui.workspace.input_resource": "Input: %s × %s",
-  "ae2federation.ui.request.pending": "Saving…",
   "ae2federation.ui.request.invalid_target": "The selected object is no longer available. Choose it again.",
   "ae2federation.ui.request.wrong_thread": "The server could not process this request. Reopen the workspace.",
   "ae2federation.ui.request.wrong_menu": "This workspace is no longer active. Reopen it.",
