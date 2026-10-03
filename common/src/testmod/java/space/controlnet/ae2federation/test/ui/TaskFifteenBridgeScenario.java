@@ -23,7 +23,10 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
-                .waitForText("#ack_status", "Storage rule enabled")
+                .waitUntil("the switch shows the accepted rule and the footer stays hidden", context -> context
+                        .el(TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                        .hasClass("on") && !context.el("#domain_footer").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                        .isDisplayed())
                 .server("observe production Bridge mutation", context ->
                         TaskFifteenWorldFixture.observe(context, "ACCEPTED"))
                 .step("record Bridge policy outcome", context -> TaskFifteenScenarioSupport.attachPolicy(context, "ui.bridge"))

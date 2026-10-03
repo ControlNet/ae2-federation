@@ -270,14 +270,16 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .screenshot("ui-policy-direction")
                 .waitUntil("with nothing to report the footer takes no room", context -> !context.el("#domain_footer")
                         .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
+                .check("a rule not yet written reads as off", context -> context.el(TaskFifteenScenarioSupport.STORAGE_STATE)
+                        .text().equals("Off"))
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("real policy revision advances", context ->
                         TaskFifteenWorldFixture.policyRevision(context)
                                 > context.<Long>get("task33.policyBefore"))
-                .waitForText("#ack_status", "Storage rule enabled")
+                .waitUntil("the switch turns on", context -> storageSwitch(context).hasClass("on"))
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
-                .waitForText("#ack_status", "Storage rule enabled with re-export")
-                .waitUntil("the footer shows the result", context -> context.el("#domain_footer")
+                .waitUntil("the switch moves to re-export", context -> storageSwitch(context).hasClass("reexport"))
+                .check("an accepted edit leaves the footer hidden", context -> !context.el("#domain_footer")
                         .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
                 .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "re-export")
                 .check("the third state is the re-export switch", context -> context.el(
@@ -289,7 +291,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 1);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 1);
                 })
-                .waitForText("#ack_status", "Storage rule enabled")
+                .waitUntil("the switch steps back to plain on", context -> storageSwitch(context).hasClass("on")
+                        && !storageSwitch(context).hasClass("reexport"))
                 // The fixture's provider side may or may not have storage: a working rule has no tooltip, one waiting for
                 // storage only its reason. The server reports the runtime a moment after the switch, so wait for it.
                 .waitUntil("the switch has no tooltip, and the rule's state only says what needs attention", context -> {
@@ -299,13 +302,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && (shown.equals("Active") ? state.isEmpty()
                                     : state.equals(java.util.List.of("The other network has no storage it can share.")));
                 })
-                .check("the switch is plain on again", context -> {
-                    var toggle = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH)
-                            .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
-                    return toggle.hasClass("on") && !toggle.hasClass("reexport");
-                })
-                .check("each allowed operation is a chip", context -> context.all("#policy_terms_row_0_storage .term-chip").stream()
-                        .map(chip -> chip.text()).toList().equals(java.util.List.of("view", "insert", "extract")))
+                .check("a storage rule lists no operations", context -> context.all(".policy-terms-row").isEmpty())
                 .server("record authoritative policy result", context -> {
                     context.put("task33.policyRevision", Long.toString(TaskFifteenWorldFixture.policyRevision(context)));
                     context.put("task33.policyEnabled", Boolean.toString(TaskFifteenWorldFixture.policyEnabled(context)));
@@ -664,6 +661,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
         }
     }
 
+
+    private static com.lowdragmc.lowdraglib2.gui.ui.UIElement storageSwitch(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+    }
 
     private static float opacity(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
         return TaskThirtyThreeScenarioSupport.networkCard(context, networkUuid)

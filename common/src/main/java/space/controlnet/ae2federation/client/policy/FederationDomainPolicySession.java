@@ -53,7 +53,6 @@ public final class FederationDomainPolicySession {
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
     /** Rules the last accepted switch changed along with the selected one, named in the status line. */
-    private List<RuleLinks.Change> linkedChanges = List.of();
     private int mappingProviderIndex;
     /** The Provider being edited, so a Provider added or removed elsewhere in the domain does not change it. */
     private space.controlnet.ae2federation.processing.provider.ProviderIdentity mappingProviderIdentity;
@@ -364,7 +363,6 @@ public final class FederationDomainPolicySession {
                     row.addProperty("enabled", record.rule().enabled());
                     row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                     row.addProperty("revision", record.revision().value());
-                    row.add("terms", termsJson(record.rule()));
                     row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
                     rules.add(row);
                 });
@@ -911,7 +909,6 @@ public final class FederationDomainPolicySession {
                         service.configured(change.key()).map(record -> record.rule())
                                 .orElseGet(() -> defaults(change.key().capability())).withMode(change.mode())))
                 .toList();
-        linkedChanges = List.of();
         if (edits.isEmpty()) {
             state.selectionChanged();
             return true;
@@ -921,8 +918,6 @@ public final class FederationDomainPolicySession {
         if (!(result instanceof PolicyMutationResult.Accepted accepted)) return false;
         state.accepted();
         acknowledgmentId = "policy-" + accepted.revision().value();
-        linkedChanges = edits.stream().filter(edit -> !edit.key().equals(key))
-                .map(edit -> new RuleLinks.Change(edit.key(), RuleMode.of(edit.rule()))).toList();
         return true;
     }
 
@@ -948,18 +943,6 @@ public final class FederationDomainPolicySession {
             overviewText = NetworkOverview.describe(level, overviewMembers).toString();
         }
         return overviewText;
-    }
-
-    private static com.google.gson.JsonObject termsJson(space.controlnet.ae2federation.policy.PolicyRule rule) {
-        var terms = RuleTerms.of(rule);
-        var json = new com.google.gson.JsonObject();
-        var operations = new com.google.gson.JsonArray();
-        terms.operations().forEach(operations::add);
-        json.add("operations", operations);
-        json.addProperty("filter", terms.filter());
-        json.addProperty("filterEntries", terms.filterEntries());
-        json.addProperty("reexport", terms.reexport());
-        return json;
     }
 
     /**
@@ -1020,8 +1003,7 @@ public final class FederationDomainPolicySession {
                         row.addProperty("enabled", record.rule().enabled());
                         row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                         row.addProperty("revision", record.revision().value());
-                        row.add("terms", termsJson(record.rule()));
-                        row.addProperty("domain", domainId.value());
+                            row.addProperty("domain", domainId.value());
                         rulesOut.add(row);
                     });
         }
@@ -1333,10 +1315,8 @@ public final class FederationDomainPolicySession {
         }
         var key = selection.key();
         var configured = PolicyService.get(level).configured(key);
-        var stateText = configured.map(record -> record.rule().enabled()
-                ? Component.translatable("ae2federation.ui.domain.rule.on")
-                : Component.translatable("ae2federation.ui.domain.rule.off"))
-                .orElseGet(() -> Component.translatable("ae2federation.ui.domain.rule.unconfigured"));
+        var stateText = Component.translatable(configured.filter(record -> record.rule().enabled()).isPresent()
+                ? "ae2federation.ui.domain.rule.on" : "ae2federation.ui.domain.rule.off");
         return Component.translatable("ae2federation.ui.domain.rule",
                 Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)), stateText)
                 .append("\n\n").append(runtimeObservationText(key, configured.map(record -> record.rule()).orElse(null)));
@@ -1434,42 +1414,14 @@ public final class FederationDomainPolicySession {
             return Component.translatable("ae2federation.ui.workspace.device_scope." + deviceDomainAvailability.key());
         }
         return switch (state.status()) {
-            case READY -> Component.translatable("ae2federation.ui.domain.status.ready");
+            // The switch itself shows an accepted edit, so the footer has nothing to add.
+            case READY, ACCEPTED -> Component.translatable("ae2federation.ui.domain.status.ready");
             case PENDING -> Component.translatable("ae2federation.ui.domain.status.pending");
             case DISABLED -> Component.translatable("ae2federation.ui.domain.status.disabled", entrance.diagnostic());
-            case ACCEPTED -> acceptedText();
             case STALE_CONTEXT -> Component.translatable("ae2federation.ui.domain.status.stale_context");
             case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision");
             case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict");
         };
-    }
-
-    /**
-     * "Crafting rule enabled · also Storage rule enabled", from the rule the server just accepted
-     * and the rules linked to it.
-     */
-    private Component acceptedText() {
-        var key = selection.key();
-        var text = Component.translatable("ae2federation.ui.domain.status.accepted", capabilityName(key),
-                modeName(mode(PolicyService.get(level), key)));
-        for (var linked : linkedChanges) {
-            text.append(Component.translatable("ae2federation.ui.domain.status.accepted.also",
-                    capabilityName(linked.key()), modeName(linked.mode())));
-        }
-        return text;
-    }
-
-    private static Component capabilityName(PolicyKey key) {
-        return Component.translatable("ae2federation.ui.workspace.capability."
-                + key.capability().name().toLowerCase(java.util.Locale.ROOT));
-    }
-
-    private static Component modeName(RuleMode mode) {
-        return Component.translatable("ae2federation.ui.domain.status.accepted." + switch (mode) {
-            case DISABLED -> "off";
-            case ENABLED -> "on";
-            case REEXPORT -> "reexport";
-        });
     }
 
     public String statusCode() {
@@ -1627,7 +1579,6 @@ public final class FederationDomainPolicySession {
             return;
         }
         acknowledgmentId = "";
-        linkedChanges = List.of();
         refreshExpectedRevision();
     }
 
@@ -1676,7 +1627,6 @@ public final class FederationDomainPolicySession {
     private void reject(PolicyEditorSessionState.Status rejectedState) {
         state.reject(rejectedState);
         acknowledgmentId = "";
-        linkedChanges = List.of();
     }
 
     private static Optional<FederationDomainSnapshot> bridgeFederationDomain(ServerLevel level, BridgeRightClickContext bridge) {

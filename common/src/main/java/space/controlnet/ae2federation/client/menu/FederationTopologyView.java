@@ -1806,10 +1806,7 @@ final class FederationTopologyView {
         heading.addClass("pair-section-title");
         heading.setId("policy_section_title_energy");
         heading.setText(tr("energy_section", name(a), name(b)).withStyle(net.minecraft.ChatFormatting.BOLD));
-        var note = new Label();
-        note.addClass("pair-section-note");
-        note.setText(tr("energy_section_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        panel.addChildren(heading, note, row("energy", energy[0], energy[1], PolicyCapability.ME_POWER,
+        panel.addChildren(heading, row("energy", energy[0], energy[1], PolicyCapability.ME_POWER,
                 capabilityName(PolicyCapability.ME_POWER),
                 foreign == null));
         pairSections.addChild(panel);
@@ -1883,41 +1880,12 @@ final class FederationTopologyView {
         var flow = flows.get(ruleKey);
         if (flow != null && on) text.append("\n").append(flowText(flow));
         stateLabel.setText(text);
-        // The reason is the tooltip alone, not repeated under the state; off, unconfigured and working rules need
+        // The reason is the tooltip alone, not repeated under the state; off and working rules need
         // nothing from the player, so they have none.
         var attention = attention(rule, state);
         stateLabel.style(style -> style.tooltips(attention == null ? new Component[0] : new Component[] {attention}));
         row.addChild(head);
-        if (capability == PolicyCapability.STORAGE && rule != null && rule.has("terms")) row.addChild(terms(suffix, rule.getAsJsonObject("terms")));
         return row;
-    }
-
-    /**
-     * "Operations [view] [insert] [extract]", as the design lists a storage rule's terms: a green chip per allowed
-     * operation. Re-export is the switch's third state.
-     */
-    private static UIElement terms(String suffix, JsonObject terms) {
-        var font = net.minecraft.client.Minecraft.getInstance().font;
-        var line = new UIElement();
-        line.addClass("policy-terms-row");
-        line.setId("policy_terms_row_" + suffix);
-        java.util.function.BiFunction<Component, Integer, Label> word = (value, color) -> {
-            var label = text(value, color);
-            label.layout(style -> style.width(font.width(value) + 1).height(10));
-            return label;
-        };
-        line.addChild(word.apply(tr("terms_operations"), FederationTheme.DARK_MUTED));
-        var operations = terms.getAsJsonArray("operations");
-        if (operations.isEmpty()) line.addChild(word.apply(tr("operation.none"), FederationTheme.DARK_MUTED));
-        for (var value : operations) {
-            var name = tr("operation." + value.getAsString());
-            var chip = text(name, FederationTheme.OK);
-            chip.addClass("term-chip");
-            chip.layout(style -> style.width(font.width(name) + 5).height(10).paddingLeft(2).paddingTop(1));
-            chip.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, FederationTheme.OK)));
-            line.addChild(chip);
-        }
-        return line;
     }
 
     /** The readable name of another domain; its raw identity is internal. */
@@ -1969,8 +1937,8 @@ final class FederationTopologyView {
     }
 
     private static RuleState ruleState(JsonObject rule) {
-        if (rule == null) return new RuleState("unconfigured", FederationTheme.TEXT_MUTED, false);
-        if (!rule.get("enabled").getAsBoolean()) return new RuleState("off", FederationTheme.DARK_MUTED, false);
+        // A rule never written behaves exactly as one switched off, so it reads the same.
+        if (rule == null || !rule.get("enabled").getAsBoolean()) return new RuleState("off", FederationTheme.DARK_MUTED, false);
         var runtime = rule.getAsJsonObject("runtime");
         var code = runtime == null ? "unobserved" : runtime.get("code").getAsString();
         var backend = runtime != null && runtime.has("backend") ? runtime.get("backend").getAsString() : "";

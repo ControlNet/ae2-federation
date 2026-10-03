@@ -110,9 +110,8 @@ def verifyTaskFifteenReport = { List attachments, List controls, List captures, 
     ['ui.router', 'ui.bridge'].each { caseId ->
         def outcome = outcomes[caseId]
         def revision = outcome.policyRevision as long
-        def expectedStatus = "Storage rule enabled"
         if (outcome.mutationStatus != 'ACCEPTED' || revision <= 0L || outcome.policyEnabled != 'true'
-                || outcome.visibleStatus != expectedStatus) {
+                || outcome.visibleStatus != '' || outcome.visibleSwitch != 'on') {
             throw new GradleException("Task 15 server acknowledgment is invalid for ${caseId}")
         }
     }
@@ -226,7 +225,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
             || !captures.any { it.path.contains('world-network-highlight') }
             || !captures.any { it.path.contains('ui-graph-network-renamed') }
             || !captures.any { it.path.contains('ui-policy-reexport') }
-            || !controlsOutcome.visibleStatus.startsWith('Storage rule ')
+            || controlsOutcome.visibleStatus != ''
             || controlsOutcome.worldCaptures != 'router-overview,bridge-north,provider-host,endpoint-faces'
             || !captures.any { it.path.contains('world-router-overview') }
             || !captures.any { it.path.contains('world-multipart-bridge-north') }
