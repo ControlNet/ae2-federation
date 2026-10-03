@@ -127,6 +127,14 @@ public final class FederationProcessingGraph {
     private String structure = "";
     private String confirmedTarget = "";
     private boolean editable;
+    /** Where an Endpoint's energy switch sends; only the Provider screen shows the switch here. */
+    private @org.jetbrains.annotations.Nullable Consumer<String> setEndpointEnergy;
+    /**
+     * The energy switch shown last and what it showed. The facts are rebuilt with every choices update, which lane
+     * flow sends while the Endpoint works; an unchanged switch is kept, so such an update cannot drop a press on it.
+     */
+    private @org.jetbrains.annotations.Nullable Button energySwitch;
+    private String energySwitchShape = "";
     private Selection selection = Selection.NONE;
     private Component rejection = Component.empty();
     private String hoverEndpoint = "";
@@ -269,6 +277,10 @@ public final class FederationProcessingGraph {
     /** Where the cards' thumbnails read each network's blocks; the overview keeps them current. */
     void setNetworkBlocks(java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> source) {
         networkBlocks = source;
+    }
+
+    void onEndpointEnergy(Consumer<String> sender) {
+        setEndpointEnergy = sender;
     }
 
     void setEditable(boolean value) {
@@ -931,6 +943,18 @@ public final class FederationProcessingGraph {
                         : tr("returns_waiting", returnKinds(endpoint)).withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
                 // In use by this Provider is what the owner row already says.
                 if (!shownOnly && claim != Claim.IN_USE) fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
+                // Another Provider's Endpoint shows its switch locked, as its other facts are read-only.
+                if (setEndpointEnergy != null && endpoint.has("energyTarget")) {
+                    boolean active = editable && !shownOnly;
+                    var shape = endpoint.get("energyTarget").getAsString() + endpoint.get("energy").getAsBoolean() + active;
+                    if (energySwitch == null || !shape.equals(energySwitchShape)) {
+                        energySwitch = FederationTopologyView.energySwitch(endpoint, active, setEndpointEnergy);
+                        energySwitchShape = shape;
+                    } else if (energySwitch.getParent() != null) {
+                        energySwitch.getParent().removeChild(energySwitch);
+                    }
+                    fact("energy", FederationTopologyView.energyState(endpoint)).addChild(energySwitch);
+                }
                 if (chosen != null) {
                     boolean wiredHere = wires.contains(new Wire(selection.slot(), selection.endpoint()));
                     var name = Component.literal("#" + selection.slot() + " ").append(patternName.apply(chosen));
@@ -1026,19 +1050,24 @@ public final class FederationProcessingGraph {
     }
 
     /** One row of the detail's facts table: a muted name and its value, which wraps. */
-    private void fact(String key, Component value) {
+    private UIElement fact(String key, Component value) {
+        var text = new Label();
+        text.setText(value);
+        return fact(key, text);
+    }
+
+    private UIElement fact(String key, Label text) {
         var row = new UIElement();
         row.addClass("processing-fact");
         row.setId("processing_fact_" + key);
         var name = new Label();
         name.addClass("processing-fact-name");
         name.setText(tr("fact." + key));
-        var text = new Label();
         text.addClass("processing-fact-value");
         text.setId("processing_fact_value_" + key);
-        text.setText(value);
         row.addChildren(name, text);
         facts.addChild(row);
+        return row;
     }
 
     private static Component subnet(JsonObject endpoint) {

@@ -27,6 +27,7 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
     private final EndpointClaimAuthority claims;
     private final IGridNode subnetNode;
     private final EndpointRuntime runtime;
+    private volatile boolean sharesEnergy = true;
     private boolean closed;
 
     public EndpointTargetBinding(ServerLevel level, BlockPos position, Direction side,
@@ -118,6 +119,15 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
 
     public EndpointRuntime runtime() {
         return runtime;
+    }
+
+    /** Whether the subnet shares energy with the network of the Provider that claims this Endpoint. */
+    public boolean sharesEnergy() {
+        return sharesEnergy;
+    }
+
+    public void sharesEnergy(boolean value) {
+        sharesEnergy = value;
     }
 
     public boolean activateLocal(List<NativeLocalProvider> advisoryCandidates) {

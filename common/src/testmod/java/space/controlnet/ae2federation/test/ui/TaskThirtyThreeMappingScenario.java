@@ -483,6 +483,13 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("showcase: select one of its own Endpoints", context -> showcaseEndpoint(context, "in_use"))
                 .waitUntil("showcase: its own Endpoint's details", context ->
                         !context.all(".processing-endpoint.claim-in_use.selected").isEmpty())
+                .check("showcase: its own Endpoint's energy switch can be used", context ->
+                        context.el("#endpoint_energy_switch").isActive())
+                .click("#endpoint_energy_switch")
+                .waitUntil("showcase: the Provider screen turns its own Endpoint's sharing off", context ->
+                        context.el("#processing_fact_value_energy").text().equals("Off"))
+                .click("#endpoint_energy_switch")
+                .waitUntil("showcase: and on again", context -> context.el("#processing_fact_value_energy").text().equals("On"))
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-own")
                 .step("showcase: select an Endpoint another Provider owns", context ->
@@ -494,6 +501,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && context.el("#processing_detail_text").text().startsWith("Read-only: this Endpoint belongs to Provider @ "))
                 .check("showcase: only the owner edits it, so this screen offers no toggle", context ->
                         !context.el("#mapping_toggle").isVisible() && !context.el("#processing_unlink").isVisible())
+                .check("showcase: and its energy switch is locked", context ->
+                        !context.all("#endpoint_energy_switch").isEmpty() && !context.el("#endpoint_energy_switch").isActive())
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-other")
                 .closeScreen();

@@ -57,7 +57,8 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
     /** The mapping requests this screen takes; rule edits and choosing another Provider belong to the workspace. */
     private static final Set<FederationDomainPolicyAction> ACTIONS = EnumSet.of(FederationDomainPolicyAction.SELECT_TARGET,
             FederationDomainPolicyAction.SET_MAPPING, FederationDomainPolicyAction.PREPARE_RELEASE,
-            FederationDomainPolicyAction.RELEASE_ENDPOINT, FederationDomainPolicyAction.CANCEL_RELEASE);
+            FederationDomainPolicyAction.RELEASE_ENDPOINT, FederationDomainPolicyAction.CANCEL_RELEASE,
+            FederationDomainPolicyAction.SET_ENDPOINT_ENERGY);
     /** AE2's priority field range. */
     private static final int PRIORITY_LIMIT = 999_999_999;
     private static final int CHOICES_TICKS = 5;
@@ -97,6 +98,7 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
                 target -> send(FederationDomainPolicyAction.SELECT_TARGET, target), this::prepareRelease,
                 patterns::name, patterns::outputStack, patterns::facts);
         graph.setSlotElements(index -> slots.get(index));
+        graph.onEndpointEnergy(target -> send(FederationDomainPolicyAction.SET_ENDPOINT_ENERGY, target));
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         this.releaseDialog = releaseDialog;
         // As on the Federation screen, the footer takes room only while one of its messages has something to say.
@@ -444,6 +446,10 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             }
             case SET_MAPPING -> {
                 if (!session.setMapping(request.target())) return FederationDomainPolicyActionResult.INVALID_TARGET;
+            }
+            // Another Provider's Endpoint is read-only here, its switch included.
+            case SET_ENDPOINT_ENERGY -> {
+                if (!session.setEndpointEnergy(request.target(), true)) return FederationDomainPolicyActionResult.INVALID_TARGET;
             }
             default -> throw new IllegalStateException("Action outside the Provider screen: " + request.action());
         }

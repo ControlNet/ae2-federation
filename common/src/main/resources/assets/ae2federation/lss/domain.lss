@@ -83,7 +83,7 @@
 .stat-row { width: 100%; height: 10; flex-shrink: 0; flex-direction: row; gap-all: 5; align-items: center; }
 .domain-panel .stat-row .stat-name { width: 52; height: 9; flex-shrink: 0; text-color: #ffaaa4b2; }
 .stat-bar { flex: 1; min-width: 10; height: 5; }
-.domain-panel .stat-row .stat-value { width: 88; height: 9; flex-shrink: 0; horizontal-align: right; text-wrap: hide; }
+.domain-panel .stat-row .stat-value { min-width: 88; adaptive-width: true; height: 9; flex-shrink: 0; horizontal-align: right; text-wrap: hide; }
 .domain-panel .network-link { height: 18; padding-right: 12; }
 .domain-panel .network-link .__button_text__ { horizontal-align: left; }
 .domain-panel .paper-note { width: 100%; adaptive-height: true; flex-shrink: 0; padding-all: 3; text-wrap: wrap; text-color: #ff413f54; background: #fff2f2f2; }
@@ -184,4 +184,4 @@
 .domain-shell.compact #graph_search { width: 72; }
 .domain-shell.compact .domain-tab { display: none; }
 .domain-shell.compact .domain-panel .stat-row .stat-name { width: 44; }
-.domain-shell.compact .domain-panel .stat-row .stat-value { width: 80; }
+.domain-shell.compact .domain-panel .stat-row .stat-value { min-width: 80; }

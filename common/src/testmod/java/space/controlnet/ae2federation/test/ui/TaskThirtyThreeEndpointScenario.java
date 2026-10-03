@@ -112,7 +112,18 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .check("the Endpoint panel keeps its controls in the workspace", context ->
                         TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#graph_open", "#network_highlight", "#ack_status"))
                 .check("the domain's Endpoint offers its owner's mappings", context -> context.el("#graph_open").isActive())
-                .screenshot("ui-endpoint-direct").closeScreen()
+                .check("the Endpoint's last fact is its energy switch, on by default", context ->
+                        context.el("#endpoint_fact_energy").text().equals("On") && context.el("#endpoint_energy_switch").isActive())
+                .screenshot("ui-endpoint-direct")
+                .click("#endpoint_energy_switch")
+                .waitUntil("the switch turns the Endpoint's energy sharing off", context ->
+                        context.el("#endpoint_fact_energy").text().equals("Off") && !context.el("#endpoint_energy_switch")
+                                .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("on"))
+                .checkServer("the Endpoint keeps its energy switch off", context -> !TaskThirtyThreeWorldFixture.endpointSharesEnergy(context))
+                .click("#endpoint_energy_switch")
+                .waitUntil("and on again", context -> context.el("#endpoint_fact_energy").text().equals("On"))
+                .checkServer("the Endpoint keeps its energy switch on", TaskThirtyThreeWorldFixture::endpointSharesEnergy)
+                .closeScreen()
                 .server("place another production Endpoint", TaskThirtyThreeWorldFixture::placeSecondObservedEndpoint)
                 .serverTicks(4)
                 .waitUntilServer("both real endpoints are observed in the same domain", TaskThirtyThreeWorldFixture::secondEndpointObserved)

@@ -68,6 +68,7 @@ final class FederationTopologyView {
     /** The canvas layer the links are drawn on, whose coordinates a press is measured in to pick a link. */
     private UIElement linkLayer;
     private final Consumer<String> setPolicy;
+    private Consumer<String> setEndpointEnergy = target -> { };
     private final Consumer<String> rename;
     private final BiConsumer<String, String> openObject;
     private final Label title;
@@ -400,7 +401,8 @@ final class FederationTopologyView {
                     json.has("position") ? json.get("position").getAsString() : "",
                     json.has("ownerNetwork") ? json.get("ownerNetwork").getAsString() : "",
                     json.has("runtimeMode") ? json.get("runtimeMode").getAsString() : "UNBOUND",
-                    json.has("nodeReady") && json.get("nodeReady").getAsBoolean()));
+                    json.has("nodeReady") && json.get("nodeReady").getAsBoolean(),
+                    json.has("energyShared") && json.get("energyShared").getAsBoolean()));
             endpointFacts.put(json.get("id").getAsString(), json);
         }
         relatedRules.clear();
@@ -540,6 +542,11 @@ final class FederationTopologyView {
         var all = new ArrayList<>(rules.values());
         if (showRelated) all.addAll(relatedRules.values());
         return all;
+    }
+
+    /** Where an Endpoint's energy switch sends its {@code EndpointEnergyTarget}. */
+    void onEndpointEnergy(Consumer<String> sender) {
+        setEndpointEnergy = sender;
     }
 
     void setEditable(boolean value) {
@@ -1343,6 +1350,7 @@ final class FederationTopologyView {
                 endpointFact("native", host != null ? name(host) : json.has("nativeNetwork")
                         ? tr("network_name", json.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
                         : FederationWorkspace.tr("network_unconfirmed")));
+        if (json.has("energyTarget")) endpointDetail.addChild(endpointEnergyFact(json));
         boolean navigable = json.has("mappingNavigation") && json.get("mappingNavigation").getAsBoolean();
         devices.setDisplay(!local);
         devices.setText(FederationWorkspace.tr("endpoint_mapping"));
@@ -1422,17 +1430,67 @@ final class FederationTopologyView {
         locationNote.setDisplay(!here);
     }
 
+    /** The Endpoint's energy switch as one more fact row, worded as the pair's. */
+    private UIElement endpointEnergyFact(JsonObject json) {
+        var row = endpointFact("energy", energyState(json));
+        row.addChild(energySwitch(json, editable, setEndpointEnergy));
+        return row;
+    }
+
+    /**
+     * An Endpoint's energy switch setting: green On while its subnet shares the claiming Provider's energy, yellow On
+     * with the reason as its tooltip while it waits, grey Off. The Provider screen shows it too.
+     */
+    static Label energyState(JsonObject json) {
+        boolean on = json.get("energy").getAsBoolean();
+        boolean shared = json.has("energyShared") && json.get("energyShared").getAsBoolean();
+        int color = !on ? FederationTheme.DARK_MUTED : shared ? FederationTheme.OK : FederationTheme.WARN;
+        var state = new Label();
+        state.setText(tr("rule_state." + (on ? "on" : "off")).withStyle(Style.EMPTY.withColor(color & 0xffffff)));
+        // Undrawn, so tests tell a sharing Endpoint from a waiting one.
+        state.addClass(!on ? "health-off" : shared ? "health-active" : "health-waiting");
+        if (json.has("energyReason")) {
+            var reason = tr("endpoint_energy." + json.get("energyReason").getAsString());
+            state.style(style -> style.tooltips(reason));
+        }
+        return state;
+    }
+
+    /** The switch that turns an Endpoint's energy sharing on or off; locked, as a rule's is, when not {@code active}. */
+    static Button energySwitch(JsonObject json, boolean active, Consumer<String> send) {
+        boolean on = json.get("energy").getAsBoolean();
+        var toggle = new Button();
+        toggle.noText();
+        toggle.addClass("policy-switch");
+        toggle.setId("endpoint_energy_switch");
+        if (on) toggle.addClass("on");
+        var base = !active ? on ? FederationTheme.SWITCH_ON_LOCKED : FederationTheme.SWITCH_OFF_LOCKED
+                : on ? FederationTheme.SWITCH_ON : FederationTheme.SWITCH_OFF;
+        var hover = !active ? base : on ? FederationTheme.SWITCH_ON_HOVER : FederationTheme.SWITCH_OFF_HOVER;
+        toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
+        toggle.setActive(active);
+        var target = json.get("energyTarget").getAsString();
+        toggle.setOnClick(event -> {
+            if (active) send.accept(new space.controlnet.ae2federation.client.policy.EndpointEnergyTarget(target, !on).encode());
+        });
+        return toggle;
+    }
+
     private static UIElement endpointFact(String name, Component value) {
+        var text = new Label();
+        text.setText(value);
+        return endpointFact(name, text);
+    }
+
+    private static UIElement endpointFact(String name, Label text) {
         var row = new UIElement();
         row.addClass("endpoint-fact");
         row.setId("endpoint_fact_" + name + "_row");
         var caption = new Label();
         caption.addClass("endpoint-fact-name");
         caption.setText(tr("endpoint_fact." + name));
-        var text = new Label();
         text.addClass("endpoint-fact-value");
         text.setId("endpoint_fact_" + name);
-        text.setText(value);
         row.addChildren(caption, text);
         return row;
     }
@@ -1905,7 +1963,13 @@ final class FederationTopologyView {
         toggle.setId("policy_switch_" + suffix);
         if (on) toggle.addClass("on");
         if (mode == RuleMode.REEXPORT) toggle.addClass("reexport");
-        var base = switch (mode) {
+        // A locked switch is drawn at half strength here: the button's own textures take precedence over the
+        // stylesheet's disabled state.
+        var base = !editable ? switch (mode) {
+            case DISABLED -> FederationTheme.SWITCH_OFF_LOCKED;
+            case ENABLED -> FederationTheme.SWITCH_ON_LOCKED;
+            case REEXPORT -> FederationTheme.SWITCH_REEXPORT_LOCKED;
+        } : switch (mode) {
             case DISABLED -> FederationTheme.SWITCH_OFF;
             case ENABLED -> FederationTheme.SWITCH_ON;
             case REEXPORT -> FederationTheme.SWITCH_REEXPORT;
@@ -1915,7 +1979,8 @@ final class FederationTopologyView {
             case ENABLED -> FederationTheme.SWITCH_ON_HOVER;
             case REEXPORT -> FederationTheme.SWITCH_REEXPORT_HOVER;
         };
-        toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
+        var lit = editable ? hover : base;
+        toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(lit).pressedTexture(lit));
         toggle.setActive(editable);
         var observed = rule != null ? rule.get("revision").getAsLong() : revisions.getOrDefault(ruleKey, 0L);
         var policyKey = new PolicyKey(NetworkId.parse(consumer.id()), NetworkId.parse(provider.id()), capability);
@@ -2224,7 +2289,7 @@ final class FederationTopologyView {
     }
 
     /** {@code owner} is the id of the network whose Provider maps the Endpoint, or empty. */
-    private record EndpointNode(String id, String position, String owner, String mode, boolean ready) {
+    private record EndpointNode(String id, String position, String owner, String mode, boolean ready, boolean energy) {
     }
 
     /** Relationship lines behind the cards: configured pairs solid, unconfigured pairs of the selection dashed. */
@@ -2302,7 +2367,9 @@ final class FederationTopologyView {
                 if (place == null || place.link() == null) continue;
                 var owner = network(endpoint.owner());
                 boolean selected = endpoint.owner().equals(selectedNetwork) || endpoint.id().equals(selectedEndpoint);
-                line(context, new TopologyLink(place.link(), 0.5f), selected ? FederationTheme.SELECT : FederationTheme.EDGE,
+                // A subnet in its owner's energy pool is joined to it by a Quartz Fiber, as two sharing networks are.
+                if (endpoint.energy()) energyLine(context, new TopologyLink(place.link(), 0.5f), selected);
+                else line(context, new TopologyLink(place.link(), 0.5f), selected ? FederationTheme.SELECT : FederationTheme.EDGE,
                         selected ? 2f : 1.5f, false);
                 if (owner != null) endMark(context, new float[] {place.link().fromX(), place.link().fromY()}, owner.accent());
             }

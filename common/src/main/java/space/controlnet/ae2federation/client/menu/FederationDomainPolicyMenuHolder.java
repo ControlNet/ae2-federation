@@ -99,6 +99,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
                 target -> send(FederationDomainPolicyAction.RENAME_NETWORK, target), workspace::openObject);
         currentTopology = graphState;
+        graphState.onEndpointEnergy(target -> send(FederationDomainPolicyAction.SET_ENDPOINT_ENERGY, target));
         workspace.bindGraph(graphState);
         var choices = new BindableValue<String>("");
         choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : choicesText.get(session::workspaceChoices))
@@ -262,6 +263,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             }
             case NEXT_ENDPOINT -> session.nextEndpoint();
             case RELEASE_ENDPOINT -> session.releaseEndpoint();
+            case SET_ENDPOINT_ENERGY -> {
+                if (!session.setEndpointEnergy(request.target(), false)) {
+                    return FederationDomainPolicyActionResult.INVALID_TARGET;
+                }
+            }
         }
         accepted();
         return FederationDomainPolicyActionResult.ACCEPTED;
@@ -276,7 +282,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private static boolean mappingAction(FederationDomainPolicyAction action) {
         return switch (action) {
             case PREPARE_RELEASE, CANCEL_RELEASE, SELECT_TARGET, NEXT_MAPPING_PROVIDER, NEXT_MAPPING_SLOT,
-                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT -> true;
+                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT,
+                    SET_ENDPOINT_ENERGY -> true;
             case SET_POLICY, RENAME_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
         };
     }

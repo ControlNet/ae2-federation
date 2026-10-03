@@ -25,6 +25,9 @@ Lets a <ItemLink id="ae2federation:pattern_provider" /> on another network use y
 An Endpoint belongs to one Provider at a time. With an ordinary AE2 pattern provider block against its front, it
 works in local mode for that provider instead.
 
+While a Provider uses it, the Endpoint shares that Provider's network's ME power with the subnet, as a Quartz Fiber
+does, so the subnet needs no power of its own. The ME power switch in the Endpoint's panel turns this off.
+
 Right-click it to open the Federation screen for the domain its front joins.
 
 <RecipeFor id="ae2federation:processing_endpoint" />

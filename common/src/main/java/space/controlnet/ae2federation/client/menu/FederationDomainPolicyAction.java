@@ -19,7 +19,9 @@ public enum FederationDomainPolicyAction {
     /** Names a member network; the target is the network id and the new name. */
     RENAME_NETWORK(14),
     /** Sets one pattern-to-Endpoint wire to an explicit state; the target is a {@code MappingWireTarget}. */
-    SET_MAPPING(15);
+    SET_MAPPING(15),
+    /** Turns one Endpoint's energy sharing on or off; the target is an {@code EndpointEnergyTarget}. */
+    SET_ENDPOINT_ENERGY(16);
 
     private final int wireId;
 
@@ -32,7 +34,8 @@ public enum FederationDomainPolicyAction {
     }
 
     public boolean takesTarget() {
-        return this == SELECT_TARGET || this == SET_POLICY || this == RENAME_NETWORK || this == SET_MAPPING;
+        return this == SELECT_TARGET || this == SET_POLICY || this == RENAME_NETWORK || this == SET_MAPPING
+                || this == SET_ENDPOINT_ENERGY;
     }
 
     public static FederationDomainPolicyAction fromWireId(int wireId) {

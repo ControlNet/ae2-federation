@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.energy;
 
 import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridNode;
 import appeng.me.energy.IEnergyOverlayGridConnection;
 import appeng.me.service.EnergyService;
 import java.util.ArrayList;
@@ -26,6 +27,11 @@ import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRuntimeEndpoints;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
+import space.controlnet.ae2federation.processing.claim.ClaimState;
+import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
+import space.controlnet.ae2federation.processing.provider.ProviderIdentity;
+import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 
 /**
  * Shares energy between Federation networks the way Quartz Fibers do. An enabled, active ME power rule between two
@@ -33,14 +39,20 @@ import space.controlnet.ae2federation.policy.PolicyService;
  * way into one energy pool, which each member draws from and charges as its own ({@link FederationEnergyConnection}).
  * Sharing is mutual and transitive, like AE2's: A sharing with B and B with C puts A, B and C in one pool.
  *
+ * <p>A claimed Federated Endpoint whose switch is on joins its subnet's Grid to the network of the Provider that
+ * claims it the same way, so whoever uses the Endpoint powers it.
+ *
  * <p>Nothing runs per energy operation. Each change of who shares with whom re-forms the pools of the Grids it
  * touches at once ({@code EnergyService.invalidateOverlayEnergyGrid}): rule edits and topology publications reconcile
- * immediately, and each server tick reconciles again when the domain topology, any rule or any Grid identity changed.
+ * immediately, and each server tick reconciles again when the domain topology, any rule, any Grid identity or any
+ * Endpoint's claim, switch or Grids changed.
  */
 public final class EnergySharingService implements AutoCloseable {
     private static final Map<ServerLevel, EnergySharingService> SERVICES = new WeakHashMap<>();
-    private static final Comparator<IGrid> BY_NETWORK = Comparator.comparing(grid -> FederationDomainRegistryAccess
-            .confirmedNetworkId(grid).map(NetworkId::toString).orElse(""));
+    /** Network-id order; an Endpoint subnet has no confirmed id, so identity keeps its place stable between runs. */
+    private static final Comparator<IGrid> BY_NETWORK = Comparator.<IGrid, String>comparing(grid ->
+            FederationDomainRegistryAccess.confirmedNetworkId(grid).map(NetworkId::toString).orElse(""))
+            .thenComparingInt(System::identityHashCode);
 
     private final ServerLevel level;
     private final EnergyFederationDomainObserver federationDomains;
@@ -55,6 +67,9 @@ public final class EnergySharingService implements AutoCloseable {
     private Object reconciledPolicies;
     private long reconciledWatermark = Long.MIN_VALUE;
     private long reconciledEpoch = Long.MIN_VALUE;
+    private List<EndpointEdge> reconciledEndpoints = List.of();
+    /** The subnet nodes of the Endpoints whose subnet shares energy, for the Endpoint UI. */
+    private Set<IGridNode> sharingEndpoints = Set.of();
     private int reconciliations;
     private int dissolutions;
 
@@ -114,6 +129,16 @@ public final class EnergySharingService implements AutoCloseable {
             service.dissolutions++;
             reform(service.peers, Map.of());
         }
+    }
+
+    /** Whether the subnet behind {@code subnetNode} shares energy with its owner, reconciling first if an input changed. */
+    public static synchronized boolean sharesEndpoint(ServerLevel level, IGridNode subnetNode) {
+        var service = SERVICES.get(level);
+        if (service == null) {
+            return false;
+        }
+        service.reconcileIfChanged();
+        return service.sharingEndpoints.contains(subnetNode);
     }
 
     /** Read-only historical reason, discarded when policy or topology revisions no longer match. */
@@ -181,7 +206,7 @@ public final class EnergySharingService implements AutoCloseable {
         var policies = PolicyService.get(level);
         if (registry != reconciledRegistry || registry.topologyRevision() != reconciledTopology
                 || policies != reconciledPolicies || policies.highWatermark() != reconciledWatermark
-                || IdentityEpoch.current() != reconciledEpoch) {
+                || IdentityEpoch.current() != reconciledEpoch || !endpointEdges().equals(reconciledEndpoints)) {
             reconcileAll();
         }
     }
@@ -221,6 +246,17 @@ public final class EnergySharingService implements AutoCloseable {
                     .add(relationship.consumerGrid());
             pairs.add(pair(key));
         }
+        var endpoints = endpointEdges();
+        reconciledEndpoints = endpoints;
+        var sharing = Collections.newSetFromMap(new IdentityHashMap<IGridNode, Boolean>());
+        for (var edge : endpoints) {
+            if (linked.computeIfAbsent(edge.subnet(), EnergySharingService::hasConnection)
+                    && linked.computeIfAbsent(edge.owner(), EnergySharingService::hasConnection)) {
+                adjacency.computeIfAbsent(edge.subnet(), ignored -> new HashSet<>()).add(edge.owner());
+                adjacency.computeIfAbsent(edge.owner(), ignored -> new HashSet<>()).add(edge.subnet());
+                sharing.add(edge.node());
+            }
+        }
         var next = new IdentityHashMap<IGrid, List<Peer>>();
         adjacency.forEach((grid, neighbours) -> {
             var sorted = new ArrayList<>(neighbours);
@@ -236,6 +272,7 @@ public final class EnergySharingService implements AutoCloseable {
         var previous = peers;
         peers = Collections.unmodifiableMap(next);
         sharedPairs = Set.copyOf(pairs);
+        sharingEndpoints = Collections.unmodifiableSet(sharing);
         reform(previous, next);
     }
 
@@ -257,6 +294,38 @@ public final class EnergySharingService implements AutoCloseable {
                 service.invalidateOverlayEnergyGrid();
             }
         }
+    }
+
+    /**
+     * Each claimed Federated Endpoint whose switch is on, with its subnet's Grid and the Grid of the Provider that
+     * claims it, while both are loaded and distinct. Endpoints come in a stable order, so an unchanged set compares
+     * equal.
+     */
+    private List<EndpointEdge> endpointEdges() {
+        var bindings = EndpointTargetBinding.entries(level);
+        if (bindings.isEmpty()) {
+            return List.of();
+        }
+        var owners = new HashMap<ProviderIdentity, IGrid>();
+        for (var entry : ProviderObservationRegistry.entries(level)) {
+            var grid = entry.provider().getGrid();
+            if (grid != null) {
+                owners.put(entry.identity(), grid);
+            }
+        }
+        var edges = new ArrayList<EndpointEdge>();
+        for (var binding : bindings) {
+            if (!binding.sharesEnergy() || binding.runtime().configuredMode() != EndpointMode.FEDERATED
+                    || !(binding.claimState() instanceof ClaimState.Owned owned)) {
+                continue;
+            }
+            var subnet = binding.subnetNode().getGrid();
+            var owner = owners.get(owned.ownerIdentity().provider());
+            if (subnet != null && owner != null && subnet != owner) {
+                edges.add(new EndpointEdge(binding.subnetNode(), subnet, owner));
+            }
+        }
+        return edges;
     }
 
     private static boolean eligible(PolicyService policies, PolicyKey key) {
@@ -291,12 +360,17 @@ public final class EnergySharingService implements AutoCloseable {
         var previous = peers;
         peers = Map.of();
         sharedPairs = Set.of();
+        sharingEndpoints = Set.of();
+        reconciledEndpoints = List.of();
         diagnostics.clear();
         reform(previous, Map.of());
         federationDomains.clear();
     }
 
     private record Peer(IGrid grid, EnergyService service) {
+    }
+
+    private record EndpointEdge(IGridNode node, IGrid subnet, IGrid owner) {
     }
 
     public record CloseReceipt(boolean servicePresent, int sharedPairs) {

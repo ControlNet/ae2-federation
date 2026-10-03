@@ -446,6 +446,8 @@ public final class FederationDomainPolicySession {
             var choice = addChoice(root, "endpoint", id, shortId(id));
             choice.addProperty("mappingNavigation", navigationOwner(endpoint).isPresent());
             endpointFacts(choice, endpoint);
+            // Only a domain's Endpoint can be claimed, so only it has an energy switch.
+            energyFacts(choice, endpoint);
             endpoint.claimState().owner().ifPresent(owner -> {
                 // The network of the owning Provider: the topology draws the Endpoint beside it.
                 currentProviders().stream().filter(entry -> entry.identity().equals(owner.provider())).findFirst()
@@ -486,6 +488,31 @@ public final class FederationDomainPolicySession {
         FederationDomainRegistryAccess.confirmedNetworkId(endpoint.subnetNode().getGrid())
                 .ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
         endpoint.claimState().owner().ifPresent(owner -> choice.addProperty("owner", owner.provider().id().value().toString()));
+    }
+
+    /**
+     * The Endpoint's energy switch, whether its subnet shares the claiming Provider's energy now and, when it is on but
+     * does not, why not; the target its switch sends.
+     */
+    private void energyFacts(com.google.gson.JsonObject choice, EndpointTargetBinding endpoint) {
+        choice.addProperty("energyTarget", endpointChoiceId(endpoint.endpointIdentity()));
+        choice.addProperty("energy", endpoint.sharesEnergy());
+        boolean shared = space.controlnet.ae2federation.energy.EnergySharingService.sharesEndpoint(level,
+                endpoint.subnetNode());
+        choice.addProperty("energyShared", shared);
+        if (!endpoint.sharesEnergy() || shared) return;
+        String reason;
+        if (endpoint.runtime().configuredMode() != space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode.FEDERATED) {
+            reason = "local";
+        } else if (endpoint.claimState().owner().isEmpty()) {
+            reason = "unclaimed";
+        } else {
+            var owner = endpoint.claimState().owner().orElseThrow().provider();
+            var grid = ProviderObservationRegistry.entries(level).stream().filter(entry -> entry.identity().equals(owner))
+                    .map(entry -> entry.provider().getGrid()).filter(java.util.Objects::nonNull).findFirst().orElse(null);
+            reason = grid == null ? "owner_offline" : grid == endpoint.subnetNode().getGrid() ? "same_network" : "waiting";
+        }
+        choice.addProperty("energyReason", reason);
     }
 
     /** The pattern slots of the domain's Providers whose wires go to {@code endpoint}, with the Provider's position. */
@@ -529,6 +556,7 @@ public final class FederationDomainPolicySession {
             choice.addProperty("position", binding.runtime().position().toShortString());
             choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
             choice.addProperty("claimEpoch", binding.claimState().epoch().value());
+            energyFacts(choice, binding);
             addLaneFlow(choice, entry, endpoint);
             binding.claimState().owner().ifPresent(owner -> {
                 choice.addProperty("owner", owner.provider().id().value().toString());
@@ -1200,6 +1228,32 @@ public final class FederationDomainPolicySession {
         } else {
             toggleMapping();
         }
+        return true;
+    }
+
+    /**
+     * Turns one of the domain's Endpoints' energy sharing on or off. With {@code selectedProviderOnly} an Endpoint
+     * another Provider claims is refused, as the Provider screen edits only what its own Provider may.
+     */
+    public boolean setEndpointEnergy(String encoded, boolean selectedProviderOnly) {
+        if (!authorizeMappingAction()) return false;
+        var target = EndpointEnergyTarget.parse(encoded).orElse(null);
+        if (target == null) return false;
+        var binding = currentEndpoints().stream()
+                .filter(candidate -> endpointChoiceId(candidate.endpointIdentity()).equals(target.endpoint()))
+                .findFirst().orElse(null);
+        if (binding == null || !(level.getBlockEntity(binding.runtime().position())
+                instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint)) {
+            return false;
+        }
+        if (selectedProviderOnly) {
+            var provider = selectedProvider().map(ProviderObservationRegistry.Entry::identity).orElse(null);
+            if (provider == null || binding.claimState().owner().filter(owner -> !owner.provider().equals(provider))
+                    .isPresent()) {
+                return false;
+            }
+        }
+        endpoint.setShareEnergy(target.on());
         return true;
     }
 

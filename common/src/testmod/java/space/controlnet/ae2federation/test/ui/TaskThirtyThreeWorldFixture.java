@@ -625,6 +625,10 @@ final class TaskThirtyThreeWorldFixture {
                 && endpoint(context).claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned;
     }
 
+    static boolean endpointSharesEnergy(ServerContext context) {
+        return endpoint(context).shareEnergy();
+    }
+
     static boolean endpointClaimedByHost(ServerContext context) {
         return endpoint(context).claimState().owner()
                 .filter(owner -> owner.provider().equals(provider(context).providerIdentity())).isPresent();
