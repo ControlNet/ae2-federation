@@ -1,0 +1,119 @@
+package space.controlnet.ae2federation.qa;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The GuideME pages join AE2's own guide from {@code assets/ae2federation/ae2guide}; GuideME picks a page's
+ * {@code _zh_cn/} copy for Chinese. GuideME only reports broken links and ids when the page is opened in a client, so
+ * this pins what can be checked from the files.
+ */
+final class GuidePagesContractTest {
+    private static final Path ROOT = Path.of("..").toAbsolutePath().normalize();
+    private static final Path GUIDE = ROOT.resolve("common/src/main/resources/assets/ae2federation/ae2guide");
+    private static final Path CHINESE = GUIDE.resolve("_zh_cn");
+    private static final Set<String> FEDERATION_ITEMS = Set.of("federation_logic_processor", "bridge", "router", "cable",
+            "pattern_provider", "processing_endpoint");
+    /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
+    private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
+    private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
+            "pattern_provider", "fluix_glass_cable", "network_tool");
+    private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
+    private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
+
+    @Test
+    void everyPageHasAChineseCopyAndNoChinesePageIsOrphaned() throws IOException {
+        assertEquals(pages(GUIDE), pages(CHINESE));
+        assertTrue(pages(GUIDE).containsAll(Set.of("index.md", "getting-started.md", "mechanics.md",
+                "remote-processing.md", "troubleshooting.md")));
+    }
+
+    @Test
+    void pagesHangUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
+        for (var page : pages(GUIDE)) {
+            var english = frontmatter(GUIDE.resolve(page));
+            var chinese = frontmatter(CHINESE.resolve(page));
+            assertTrue(english.contains("navigation:"), page);
+            assertEquals(page.equals("index.md"), !english.contains("parent:"), page);
+            if (!page.equals("index.md")) assertTrue(english.contains("  parent: index.md\n"), page);
+            assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
+                    "Only the title may differ between " + page + " and its Chinese copy");
+        }
+    }
+
+    @Test
+    void linksPointAtPagesThatExist() throws IOException {
+        for (var root : Set.of(GUIDE, CHINESE)) {
+            for (var page : pages(root)) {
+                var links = LINK.matcher(Files.readString(root.resolve(page)));
+                while (links.find()) {
+                    var target = links.group(1);
+                    if (target.startsWith("ae2:")) {
+                        assertTrue(AE2_PAGES.contains(target.substring(4)), page + " -> " + target);
+                    } else {
+                        // Page ids are the English paths, so a Chinese copy links exactly as the English page does.
+                        var resolved = GUIDE.resolve(page).getParent().resolve(target).normalize();
+                        assertTrue(Files.isRegularFile(resolved) && resolved.startsWith(GUIDE), page + " -> " + target);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void itemIdsAreQualifiedAndRegistered() throws IOException {
+        for (var root : Set.of(GUIDE, CHINESE)) {
+            for (var page : pages(root)) {
+                var text = Files.readString(root.resolve(page));
+                assertTrue(!Pattern.compile("id=\"[a-z0-9_]+\"").matcher(text).find(),
+                        page + ": write ids with their namespace; a bare id would resolve against this page's");
+                var ids = ID.matcher(text);
+                while (ids.find()) {
+                    var known = switch (ids.group(1)) {
+                        case "ae2federation" -> FEDERATION_ITEMS;
+                        case "ae2" -> AE2_ITEMS;
+                        default -> Set.<String>of();
+                    };
+                    assertTrue(known.contains(ids.group(2)), page + ": " + ids.group());
+                }
+            }
+        }
+    }
+
+    @Test
+    void eachFederationItemHasOnePageForTheItemIndex() throws IOException {
+        var owners = new TreeMap<String, String>();
+        for (var page : pages(GUIDE)) {
+            var frontmatter = frontmatter(GUIDE.resolve(page));
+            var items = Pattern.compile("(?m)^- ae2federation:([a-z_]+)$").matcher(frontmatter);
+            while (items.find()) assertEquals(null, owners.put(items.group(1), page), items.group(1));
+        }
+        assertEquals(new TreeSet<>(FEDERATION_ITEMS), new TreeSet<>(owners.keySet()));
+    }
+
+    private static Set<String> pages(Path root) throws IOException {
+        var pages = new TreeSet<String>();
+        try (Stream<Path> files = Files.walk(root)) {
+            files.filter(path -> path.toString().endsWith(".md"))
+                    .filter(path -> root.equals(CHINESE) || !path.startsWith(CHINESE))
+                    .forEach(path -> pages.add(root.relativize(path).toString().replace('\\', '/')));
+        }
+        return pages;
+    }
+
+    private static String frontmatter(Path page) throws IOException {
+        var text = Files.readString(page);
+        assertTrue(text.startsWith("---\n"), page.toString());
+        return text.substring(4, text.indexOf("\n---\n", 4) + 1);
+    }
+}

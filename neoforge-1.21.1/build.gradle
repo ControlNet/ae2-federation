@@ -143,6 +143,20 @@ def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
     }
 }
 
+// GuideME preview: -PguideLanguage=zh_cn picks the language the pages open in.
+def prepareGuideClientOptions = tasks.register('prepareGuideClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-guide/options.txt')
+    def language = providers.gradleProperty('guideLanguage').getOrElse('en_us')
+    outputs.file(optionsFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText("onboardAccessibility:false\nguiScale:2\nlang:${language}\n", StandardCharsets.UTF_8.name())
+    }
+}
+
 def multiClientGameDirectory = providers.gradleProperty('federationMultiClientGameDir')
         .map { project.file(it) }.getOrElse(project.file('run-multiclient'))
 def multiClientPort = providers.gradleProperty('federationMultiClientPort').getOrElse('25565')
@@ -227,6 +241,22 @@ neoForge {
             gameDirectory = project.file('run-manual-client')
             sourceSet = sourceSets.main
             logLevel = org.slf4j.event.Level.INFO
+        }
+        // Opens AE2's guide on our pages at the title screen and compiles every Federation page, logging GuideME's
+        // errors; the pages reload while the client runs. -PguidePage=ae2federation:items/router.md opens another.
+        guideClient {
+            client()
+            gameDirectory = project.file('run-guide')
+            sourceSet = sourceSets.main
+            programArguments.addAll('--width', '1600', '--height', '960')
+            systemProperty('guideme.ae2.guide.sources',
+                    rootProject.file('common/src/main/resources/assets/ae2federation/ae2guide').absolutePath)
+            systemProperty('guideme.ae2.guide.sourcesNamespace', 'ae2federation')
+            systemProperty('guideme.validateAtStartup', 'ae2:guide')
+            systemProperty('guideme.showOnStartup',
+                    'ae2:guide!' + providers.gradleProperty('guidePage').getOrElse('ae2federation:index.md'))
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareGuideClientOptions)
         }
         gameTestServer {
             type = 'gameTestServer'
