@@ -643,6 +643,8 @@ final class FederationTopologyView {
             }
         }
         if (nearest == null) return;
+        // A link is picked from the canvas, not a Button, so it clicks the way the labels and cards do.
+        com.lowdragmc.lowdraglib2.gui.util.UISoundUtils.playButtonClickSound();
         selectedPair = nearest;
         selectedNetwork = "";
         selectedEndpoint = "";

@@ -95,7 +95,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .click("#graph_fit")
                 .step("select the first network", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
                 .waitUntil("the network panel replaces the pair editor", context -> !context.el("#pair_editor").isVisible())
-                .step("press on the link a third of the way along", context -> {
+                .step("press on the link a third of the way along, listening for the click", context -> {
+                    // Only this press is heard: the listener starts here, after the card click above.
+                    var heard = new java.util.ArrayList<String>();
+                    net.minecraft.client.sounds.SoundEventListener listener = (sound, events, range) ->
+                            heard.add(sound.getLocation().toString());
+                    net.minecraft.client.Minecraft.getInstance().getSoundManager().addListener(listener);
+                    context.put("link.sounds", heard);
+                    context.put("link.listener", listener);
                     var cards = context.all(".graph-node-member").stream().map(card -> card.bounds()).toList();
                     var a = cards.get(0);
                     var b = cards.get(1);
@@ -106,6 +113,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseUp(point[0], point[1], 0);
                 })
                 .waitUntil("a press on the link opens its pair", context -> context.el("#pair_editor").isVisible())
+                .check("a press on the link clicks like a button", context ->
+                        context.<java.util.List<String>>get("link.sounds").contains("minecraft:ui.button.click"))
+                .step("stop listening for sounds", context -> net.minecraft.client.Minecraft.getInstance().getSoundManager()
+                        .removeListener(context.get("link.listener")))
                 .frames(2).screenshot("ui-graph-link-pair-selected")
                 .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
