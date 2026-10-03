@@ -652,10 +652,6 @@ final class TaskThirtyThreeWorldFixture {
                 .orElseThrow().value().toString();
     }
 
-    static long providerInstanceEpoch(ServerContext context) {
-        return provider(context).providerIdentity().instanceEpoch().value();
-    }
-
     static void positionRouterOverviewCamera(ServerContext context) {
         var router = TaskFifteenWorldFixture.routerPosition(context);
         positionCamera(context, router.south(4).west(2).above(2), router);

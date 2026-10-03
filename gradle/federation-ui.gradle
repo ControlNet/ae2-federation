@@ -195,8 +195,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (endpoint.endpointMode != 'FEDERATED' || endpoint.endpointId == null || endpoint.endpointId.isBlank()
             || !endpoint.endpointDetail.contains('Configured mode: Federated')
             || !endpoint.endpointDetail.contains('Runtime mode: Federated')
-            || !endpoint.endpointIdentity?.contains(endpoint.endpointId)
-            || !endpoint.endpointIdentity?.contains('Claim epoch: 1')) {
+            || !endpoint.endpointIdentity?.contains(endpoint.endpointId)) {
         throw new GradleException('Task 33 live Endpoint diagnostic is invalid')
     }
     def multipart = outcomes['ui.multipart-attachments']
@@ -216,9 +215,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (conflict.claimConflict != 'Rejected'
             || conflict.processingOccupiedDrop != 'refused'
             || !captures.any { it.path.contains('ui-processing-drop-occupied') }
-            || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')
-            || !conflict.endpointIdentity?.contains('OWNER_CONFLICT')
-            || !conflict.endpointIdentity?.contains('Claim epoch: 1')) {
+            || !conflict.claimConflictResult.contains('Another Provider owns this endpoint')) {
         throw new GradleException('Task 33 Claim conflict was not visibly rejected by production authority')
     }
     def controlsOutcome = outcomes['ui.graph-controls']

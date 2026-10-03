@@ -90,8 +90,6 @@ final class FederationTopologyView {
     private final Button renameSave;
     private final UIElement stats;
     private final UIElement endpointDetail;
-    private final UIElement endpointIdentityPanel;
-    private final Label endpointIdentity;
     private final FederationMapPreview preview = new FederationMapPreview();
     private final UIElement location;
     private final Label locationNote;
@@ -209,8 +207,6 @@ final class FederationTopologyView {
         links = element(ui, "network_links", UIElement.class);
         networkDetail = element(ui, "network_detail", UIElement.class);
         endpointDetail = element(ui, "endpoint_detail", UIElement.class);
-        endpointIdentityPanel = element(ui, "endpoint_identity_panel", UIElement.class);
-        endpointIdentity = element(ui, "endpoint_identity", Label.class);
         pairEditor = element(ui, "pair_editor", UIElement.class);
         pairTitle = element(ui, "pair_title", Label.class);
         pairNote = element(ui, "pair_note", Label.class);
@@ -1222,7 +1218,7 @@ final class FederationTopologyView {
 
     /**
      * An Endpoint's panel, laid out as a network's: where it is on the map or in 3D among the blocks of the network it
-     * sits on, its modes and claim, the patterns whose wires go to it, and its identity and ownership.
+     * sits on, its modes and owner, and the patterns in effect on it.
      */
     private void renderEndpoint(EndpointNode endpoint) {
         var json = endpointFacts.get(endpoint.id());
@@ -1270,11 +1266,8 @@ final class FederationTopologyView {
                 endpointFact("configured", FederationWorkspace.tr("endpoint_mode." + string(json, "configuredMode"))),
                 endpointFact("runtime", FederationWorkspace.tr("endpoint_mode." + endpoint.mode())),
                 endpointFact("face", FederationWorkspace.tr("face." + string(json, "face"))),
-                endpointFact("return", FederationWorkspace.tr("return_binding."
-                        + (json.has("returnBinding") && json.get("returnBinding").getAsBoolean() ? "present" : "absent"))),
                 endpointFact("owner", json.has("ownerPosition") ? tr("endpoint_owner_at", json.get("ownerPosition").getAsString())
                         : json.has("owner") ? tr("endpoint_owner_unloaded") : FederationWorkspace.tr("unclaimed")),
-                endpointFact("claim", claimResult(claim.isEmpty() ? "NONE" : claim)),
                 endpointFact("native", host != null ? name(host) : json.has("nativeNetwork")
                         ? tr("network_name", json.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
                         : FederationWorkspace.tr("network_unconfirmed")));
@@ -1284,29 +1277,36 @@ final class FederationTopologyView {
         devices.setActive(endpointNavigation && navigable);
         devices.style(style -> style.tooltips(navigable ? new Component[0]
                 : new Component[] {FederationWorkspace.tr("endpoint_navigation_unavailable")}));
-        // The patterns whose wires go to this Endpoint, wherever their Provider is.
+        // The patterns in effect on this Endpoint: mapped to it and present in their slot, wherever their Provider is.
         var patterns = json.has("patterns") ? json.getAsJsonArray("patterns") : new JsonArray();
         linksHeading.setText(tr("endpoint_patterns", patterns.size()));
         if (patterns.isEmpty()) links.addChild(sectionNote(tr(local ? "endpoint_patterns_local" : "endpoint_patterns_none")));
+        var choices = new PatternChoices();
         for (var value : patterns) {
             var pattern = value.getAsJsonObject();
-            var label = pattern.get("label").getAsString();
-            var row = sectionNote(tr("endpoint_pattern", pattern.get("slot").getAsInt(),
-                    label.isEmpty() ? tr("endpoint_pattern_empty") : Component.literal(label),
-                    pattern.has("provider") ? pattern.get("provider").getAsString() : "?"));
-            row.addClass("endpoint-pattern");
-            links.addChild(row);
+            links.addChild(endpointPattern(pattern, choices));
         }
-        // Identity and ownership, with the epochs a claim is checked against.
-        var identityText = FederationWorkspace.tr("endpoint_identity", uuid, number(json, "instanceEpoch"),
-                json.has("owner") ? Component.literal(json.get("owner").getAsString()) : FederationWorkspace.tr("unclaimed"),
-                number(json, "claimEpoch"), number(json, "generation"), claim.isEmpty() ? "NONE" : claim);
-        if (json.has("ownerInstance")) {
-            identityText.append("\n").append(FederationWorkspace.tr("owner_instance_epoch", json.get("ownerInstance").getAsLong()));
-        }
-        identityText.append("\n\n").append(FederationWorkspace.tr("native_network", json.has("nativeNetwork")
-                ? Component.literal(json.get("nativeNetwork").getAsString()) : FederationWorkspace.tr("network_unconfirmed")));
-        endpointIdentity.setText(identityText);
+    }
+
+    /** One pattern as the wires view lists it: its first output's icon and name, then the Provider holding it. */
+    private static UIElement endpointPattern(JsonObject pattern, PatternChoices choices) {
+        var row = new UIElement();
+        row.addClass("endpoint-pattern");
+        var stack = choices.outputStack(pattern);
+        var icon = new UIElement();
+        icon.addClass("endpoint-pattern-icon");
+        if (!stack.isEmpty()) icon.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ItemStackTexture(stack)));
+        var lines = new UIElement();
+        lines.addClass("endpoint-pattern-lines");
+        var name = text(Component.literal("#" + pattern.get("slot").getAsInt() + " ").append(choices.name(pattern)),
+                FederationTheme.DARK_TEXT);
+        name.addClass("endpoint-pattern-name");
+        var provider = text(pattern.has("provider") ? tr("endpoint_pattern_provider", pattern.get("provider").getAsString())
+                : Component.empty(), FederationTheme.DARK_MUTED);
+        provider.addClass("endpoint-pattern-provider");
+        lines.addChildren(name, provider);
+        row.addChildren(icon, lines);
+        return row;
     }
 
     /** The map tile around the Endpoint, its own network's blocks tinted, and the in-world outline of its block. */
@@ -1390,7 +1390,6 @@ final class FederationTopologyView {
         pairEditor.setDisplay(pairEnds != null);
         var endpoint = endpointNodes.stream().filter(node -> node.id().equals(selectedEndpoint)).findFirst().orElse(null);
         endpointDetail.setDisplay(pairEnds == null && endpoint != null);
-        endpointIdentityPanel.setDisplay(pairEnds == null && endpoint != null);
         if (pairEnds != null) renderPair(network(pairEnds[0]), network(pairEnds[1]));
         else if (endpoint != null) renderEndpoint(endpoint);
         else renderNetwork(network(selectedNetwork));

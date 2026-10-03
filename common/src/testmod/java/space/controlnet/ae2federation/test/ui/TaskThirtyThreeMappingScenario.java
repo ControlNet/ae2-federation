@@ -330,7 +330,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
                 .check("narrow English Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                        context, "#endpoint_fact_configured", "#endpoint_fact_owner", "#network_links_heading"))
                 .screenshot("ui-english-narrow-endpoint")
                 .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))

@@ -111,10 +111,15 @@ final class TaskThirtyThreeScenarioSupport {
         return String.join("\n", lines);
     }
 
-    /** Records the selected Endpoint's panel: its facts and its identity and ownership. */
+    /** Records the selected Endpoint's panel: its facts and the full identity its caption's tooltip names. */
     static void attachEndpoint(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         context.attach("endpointDetail", endpointFacts(context));
-        context.attach("endpointIdentity", context.el("#endpoint_identity").text());
+        context.attach("endpointIdentity", endpointIdentity(context));
+    }
+
+    /** The selected Endpoint's full identity, which its caption shows shortened and its tooltip in full. */
+    static String endpointIdentity(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return String.join("\n", tooltipLines(context, "#network_identity"));
     }
 
     /** The element's tooltip, one string per line. */

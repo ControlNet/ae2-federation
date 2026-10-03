@@ -92,10 +92,6 @@
                         <element id="endpoint_detail" class="dark-panel"/>
                         <label id="network_links_heading" class="aside-heading"/>
                         <element id="network_links" class="network-links"/>
-                        <element id="endpoint_identity_panel" class="dark-panel">
-                            <label class="panel-caption"><lang key="ae2federation.ui.workspace.identity_ownership"/></label>
-                            <label id="endpoint_identity" class="panel-text"/>
-                        </element>
                     </element>
                     <element id="pair_editor" class="aside-section">
                         <label id="pair_title" class="aside-title"/>

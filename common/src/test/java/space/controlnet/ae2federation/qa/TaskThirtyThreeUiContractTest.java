@@ -26,7 +26,7 @@ final class TaskThirtyThreeUiContractTest {
         for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
                 "graph_search", "network_links", "pair_editor", "pair_sections", "processing_graph",
                 "processing_scroll", "processing_detail", "mapping_toggle", "processing_unlink", "processing_release",
-                "processing_status", "endpoint_detail", "endpoint_identity", "entrance_value", "members_value",
+                "processing_status", "endpoint_detail", "entrance_value", "members_value",
                 "ack_status" }) {
             assertTrue(xml.contains("id=\"" + id + "\""), "Missing stable Task 33 control #" + id);
         }

@@ -25,22 +25,26 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .check("the topology stays open", context -> context.el("#page_overview").isVisible())
                 .hover("#endpoint_detail")
                 .waitForTextContains("#endpoint_fact_configured", "Federated")
-                .checkTextContains("#endpoint_identity", "Claim epoch: 1")
                 .server("record live Endpoint identity", context -> {
                     context.put("task33.endpointId", TaskThirtyThreeWorldFixture.endpointId(context));
                     context.put("task33.nativeNetwork", TaskThirtyThreeWorldFixture.endpointNativeNetwork(context));
-                    context.put("task33.ownerInstance", TaskThirtyThreeWorldFixture.providerInstanceEpoch(context));
                 })
-                .check("the panel shows the full live endpoint identity", context ->
-                        context.el("#endpoint_identity").text().contains(context.<String>get("task33.endpointId")))
+                .check("the caption's tooltip names the full live endpoint identity", context ->
+                        TaskThirtyThreeScenarioSupport.endpointIdentity(context).contains(context.<String>get("task33.endpointId")))
+                .check("the panel keeps no identity and ownership diagnostics", context ->
+                        context.all("#endpoint_identity").isEmpty() && context.all("#endpoint_fact_return").isEmpty()
+                                && context.all("#endpoint_fact_claim").isEmpty())
                 .checkTextContains("#endpoint_fact_face", "Up")
                 .checkTextContains("#endpoint_fact_runtime", "Federated")
-                .check("the panel shows the actual native network and owner instance", context ->
-                        context.el("#endpoint_identity").text().contains(context.<String>get("task33.nativeNetwork"))
-                                && context.el("#endpoint_identity").text().contains("Owner instance epoch: " + context.get("task33.ownerInstance")))
-                .check("the panel lists the patterns mapped to the Endpoint", context ->
+                .check("the panel names the actual native network", context -> context.el("#endpoint_fact_native").text()
+                        .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("task33.nativeNetwork"))))
+                .check("the panel lists the patterns in effect by their output, with their Provider", context ->
                         !context.all(".endpoint-pattern").isEmpty()
-                                && context.el("#network_links_heading").text().startsWith("Bound patterns ("))
+                                && context.el("#network_links_heading").text().startsWith("Active patterns (")
+                                && context.el(".endpoint-pattern-name").text().startsWith("#")
+                                && !context.el(".endpoint-pattern-name").text().contains("Processing Pattern")
+                                && context.el(".endpoint-pattern-provider").text().startsWith("Provider ")
+                                && !context.all(".endpoint-pattern-icon").isEmpty())
                 .check("the panel maps the Endpoint's place", context -> context.el("#network_location").isVisible()
                         && context.el("#network_highlight").isActive())
                 .step("record Endpoint evidence", context -> {
@@ -65,7 +69,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                                 && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 2)
                 .waitUntil("the button reads as pressed while its outline runs", context ->
                         context.all("#network_highlight.selected").size() == 1)
-                .checkTextContains("#network_highlight", "Highlight this Endpoint")
+                .checkTextContains("#network_highlight", "Highlight Endpoint")
                 .step("press the highlight again", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
                 .waitUntil("pressing it again ends only its own outline and releases the button", context ->
@@ -103,8 +107,8 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                             && Math.abs(bounds.centerY() - window.getGuiScaledHeight() / 2f) <= 1;
                 })
                 .waitForTextContains("#endpoint_fact_configured", "Federated")
-                .check("direct inspection preserves native network identity", context ->
-                        context.el("#endpoint_identity").text().contains(context.<String>get("task33.nativeNetwork")))
+                .check("direct inspection preserves native network identity", context -> context.el("#endpoint_fact_native").text()
+                        .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("task33.nativeNetwork"))))
                 .check("the Endpoint panel keeps its controls in the workspace", context ->
                         TaskThirtyThreeScenarioSupport.withinWorkspace(context, "#graph_open", "#network_highlight", "#ack_status"))
                 .check("the domain's Endpoint offers its owner's mappings", context -> context.el("#graph_open").isActive())
@@ -117,17 +121,16 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .awaitModularUI()
                 .waitUntil("each endpoint of the domain is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 2)
                 .step("select the second Endpoint", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "12, -57, 13"))
-                .waitUntil("the panel shows the second Endpoint's identity", context -> context.el("#endpoint_identity").text()
-                        .contains(context.<String>get("endpoint.secondId")))
+                .waitUntil("the panel shows the second Endpoint's identity", context -> TaskThirtyThreeScenarioSupport
+                        .endpointIdentity(context).contains(context.<String>get("endpoint.secondId")))
                 .checkTextContains("#network_title", "12, -57, 13")
-                .checkTextContains("#endpoint_identity", "Unclaimed")
                 .checkTextContains("#endpoint_fact_owner", "Unclaimed")
                 .check("an unclaimed Endpoint has no patterns", context -> context.all(".endpoint-pattern").isEmpty())
                 .check("unclaimed endpoint has no invented owner navigation", context -> !context.el("#graph_open").isActive())
                 .screenshot("ui-endpoint-second-selected")
                 .step("return to the original Endpoint", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
-                .waitUntil("the original identity is shown again", context -> context.el("#endpoint_identity").text()
-                        .contains(context.<String>get("task33.endpointId")))
+                .waitUntil("the original identity is shown again", context -> TaskThirtyThreeScenarioSupport
+                        .endpointIdentity(context).contains(context.<String>get("task33.endpointId")))
                 .step("select the network whose Provider maps the endpoint", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("navigation.consumer")))
                 .waitUntil("a network selection replaces the Endpoint panel", context -> !context.el("#endpoint_detail").isVisible()
@@ -156,8 +159,9 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .waitUntil("the isolated Endpoint is shown alone, selected", context -> context.el("#endpoint_detail").isVisible()
                         && context.el("#network_title").text().contains("14, -57, 16"))
                 .check("the local panel preserves actual endpoint and network identities", context ->
-                        context.el("#endpoint_identity").text().contains(context.<String>get("endpoint.isolatedId"))
-                                && context.el("#endpoint_identity").text().contains(context.<String>get("endpoint.isolatedNetwork")))
+                        TaskThirtyThreeScenarioSupport.endpointIdentity(context).contains(context.<String>get("endpoint.isolatedId"))
+                                && context.el("#endpoint_fact_native").text().contains(
+                                        TaskThirtyThreeScenarioSupport.networkTag(context.get("endpoint.isolatedNetwork"))))
                 .check("domain-only actions are unavailable without a unique domain", context ->
                         !context.el("#graph_open").isVisible() && context.all(".endpoint-pattern").isEmpty())
                 .screenshot("ui-endpoint-no-domain")

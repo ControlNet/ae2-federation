@@ -468,8 +468,8 @@ public final class FederationDomainPolicySession {
     }
 
     /**
-     * What the topology's Endpoint panel shows of one Endpoint: where it is, its modes, face and return binding, its
-     * native network, and its identity and claim with their epochs.
+     * What the topology's Endpoint panel shows of one Endpoint: where it is, its modes and face, its native network,
+     * its identity, owner and the result of the last claim request.
      */
     private void endpointFacts(com.google.gson.JsonObject choice, EndpointTargetBinding endpoint) {
         var runtime = endpoint.runtime();
@@ -484,18 +484,11 @@ public final class FederationDomainPolicySession {
                 mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
                         ? "LOCAL" : "FEDERATED").orElse("UNBOUND"));
         choice.addProperty("face", runtime.federationFace().getSerializedName());
-        choice.addProperty("returnBinding", runtime.itemReturnContext().isPresent() || runtime.fluidReturnContext().isPresent());
         choice.addProperty("claimResult", endpoint.lastClaimResultCode());
         choice.addProperty("endpointIdentity", endpoint.endpointIdentity().id().value().toString());
-        choice.addProperty("instanceEpoch", endpoint.endpointIdentity().instanceEpoch().value());
-        choice.addProperty("claimEpoch", endpoint.claimState().epoch().value());
-        choice.addProperty("generation", runtime.generation());
         FederationDomainRegistryAccess.confirmedNetworkId(endpoint.subnetNode().getGrid())
                 .ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
-        endpoint.claimState().owner().ifPresent(owner -> {
-            choice.addProperty("owner", owner.provider().id().value().toString());
-            choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
-        });
+        endpoint.claimState().owner().ifPresent(owner -> choice.addProperty("owner", owner.provider().id().value().toString()));
     }
 
     /** The pattern slots of the domain's Providers whose wires go to {@code endpoint}, with the Provider's position. */
@@ -506,11 +499,12 @@ public final class FederationDomainPolicySession {
             if (controller == null) continue;
             var inventory = entry.provider().patternInventory();
             for (int slot = 0; slot < inventory.size(); slot++) {
-                if (!controller.endpointsForSlot(slot).contains(endpoint.endpointIdentity())) continue;
+                // A slot whose pattern was taken out keeps its wires, but nothing runs through them.
+                if (!controller.endpointsForSlot(slot).contains(endpoint.endpointIdentity())
+                        || inventory.getStackInSlot(slot).isEmpty()) continue;
                 var pattern = new com.google.gson.JsonObject();
                 pattern.addProperty("slot", slot);
-                var stack = inventory.getStackInSlot(slot);
-                pattern.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
+                patternSlot(pattern, entry, slot);
                 if (controller instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
                     pattern.addProperty("provider", entity.getBlockPos().toShortString());
                 }

@@ -71,9 +71,9 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-graph-scale-4")
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitForTextContains("#endpoint_fact_configured", "联邦")
-                .checkTextContains("#endpoint_identity", "归属世代：1")
+                .checkTextContains("#network_links_heading", "生效的样板")
                 .check("compact Endpoint panel text fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                        context, "#endpoint_fact_configured", "#endpoint_fact_owner", "#network_links_heading"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-endpoint-scale-4")
                 .click("#tab_mapping").frames(3)
                 .waitUntil("the wires view lists the Provider's patterns", context -> !context.all("#processing_pattern_0").isEmpty())
@@ -141,10 +141,10 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .click("#tab_overview").frames(3)
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
-                .step("reveal the Endpoint's identity", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#endpoint_identity"))
+                .step("reveal the Endpoint's patterns", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_links_heading"))
                 .frames(2)
                 .check("narrow Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context,
-                        "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_fact_native", "#endpoint_identity"))
+                        "#endpoint_fact_configured", "#endpoint_fact_owner", "#endpoint_fact_native", "#network_links_heading"))
                 .check("narrow Endpoint owner navigation fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(
                         context, "#graph_open"))
                 .screenshot("ui-chinese-narrow-endpoint")
