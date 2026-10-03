@@ -24,7 +24,6 @@
 .provider-return-swatch { width: 5; height: 5; flex-shrink: 0; }
 .domain-panel .provider-return-row .provider-return-where { width: 124; height: 9; flex-shrink: 0; text-wrap: hide; text-color: #ffd6d0e0; }
 .domain-panel .provider-return-row .provider-return-state { flex: 1; min-width: 0; height: 9; text-wrap: hide; }
-.domain-panel .provider-returns-note { flex-shrink: 0; }
 
 .pattern-slot-store { position: absolute; width: 0; height: 0; display: none; }
 .processing-pattern item-slot { width: 16; height: 16; flex-shrink: 0; }
@@ -32,4 +31,3 @@
 .provider-shell item-slot { background: built-in(ui-mc:RECT_1); }
 
 .domain-shell.compact .provider-lower { height: 80; }
-.domain-shell.compact .provider-returns-note { display: none; }

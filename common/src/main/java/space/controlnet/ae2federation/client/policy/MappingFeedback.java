@@ -32,6 +32,11 @@ public record MappingFeedback(String key, List<String> arguments, String tone) {
         return new MappingFeedback(key, List.of(), tone);
     }
 
+    /** A change that went through shows itself (the wire, the freed Endpoint), so its feedback stays unwritten. */
+    public boolean silent() {
+        return tone.equals("success");
+    }
+
     public String translationKey() {
         return "ae2federation.ui.mapping_feedback." + key;
     }

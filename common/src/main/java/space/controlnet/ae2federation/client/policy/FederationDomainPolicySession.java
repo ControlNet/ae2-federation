@@ -1271,6 +1271,7 @@ public final class FederationDomainPolicySession {
             return statusText();
         }
         var feedback = MappingFeedback.fromCode(mappingAcknowledgment);
+        if (feedback.silent()) return Component.empty();
         return Component.translatable(feedback.translationKey(), feedback.arguments().toArray());
     }
 

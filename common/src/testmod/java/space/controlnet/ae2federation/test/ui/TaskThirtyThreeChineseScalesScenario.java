@@ -70,10 +70,10 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-graph-scale-4")
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
-                .waitForTextContains("#endpoint_fact_configured", "联邦")
+                .waitForTextContains("#endpoint_fact_mode", "联邦")
                 .checkTextContains("#network_links_heading", "生效的样板")
                 .check("compact Endpoint panel text fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_owner", "#network_links_heading"))
+                        context, "#endpoint_fact_mode", "#endpoint_fact_owner", "#network_links_heading"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-endpoint-scale-4")
                 .click("#tab_mapping").frames(3)
                 .waitUntil("the wires view lists the Provider's patterns", context -> !context.all("#processing_pattern_0").isEmpty())
@@ -144,7 +144,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .step("reveal the Endpoint's patterns", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_links_heading"))
                 .frames(2)
                 .check("narrow Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context,
-                        "#endpoint_fact_configured", "#endpoint_fact_owner", "#endpoint_fact_native", "#network_links_heading"))
+                        "#endpoint_fact_mode", "#endpoint_fact_owner", "#endpoint_fact_native", "#network_links_heading"))
                 .check("narrow Endpoint owner navigation fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(
                         context, "#graph_open"))
                 .screenshot("ui-chinese-narrow-endpoint")
@@ -174,7 +174,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .server("open the Endpoint in compact Chinese viewport", TaskThirtyThreeWorldFixture::openEndpoint)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .waitForTextContains("#endpoint_fact_configured", "联邦")
+                .waitForTextContains("#endpoint_fact_mode", "联邦")
                 .check("compact Chinese endpoint explanation fits", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection", "#ack_status"))
                 .check("compact Chinese device entrance selects its Endpoint on the topology", context ->

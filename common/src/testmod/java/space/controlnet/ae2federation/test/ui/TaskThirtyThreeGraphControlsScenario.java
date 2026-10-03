@@ -146,8 +146,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         && context.el("#network_stat_channels").text().matches("\\d+ · \\d+ nodes")
                         && context.el("#network_stat_io").text().matches("\\+.* / −.* AE/t"))
                 .check("a confirmed member explains nothing more", context -> !context.el("#network_explain").isVisible())
-                .waitUntil("the card says the network is online and confirmed", context -> TaskThirtyThreeScenarioSupport
-                        .cardTexts(context, context.get("net.providerHost")).contains("Online · Identity confirmed"))
+                .waitUntil("an online, confirmed network's card has no state line", context -> {
+                    var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.providerHost"));
+                    return !texts.isEmpty() && texts.stream().noneMatch(text -> text.contains("Online")
+                            || text.contains("Identity") || text.contains("Waiting"));
+                })
                 .check("identity location is shown", context -> context.el("#network_identity").text().startsWith("Overworld · "))
                 .check("card shows live figures", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
@@ -182,8 +185,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .checkTextContains("#network_location_legend", "This network's blocks")
                 .check("the legend counts the tinted blocks", context ->
                         TaskThirtyThreeScenarioSupport.tooltipContains(context, "#network_location_legend", "Tinted: "))
-                .check("the map caption names its slice", context -> context.el("#network_location_caption").text()
-                        .matches("Top-down · Y -?\\d+ to -?\\d+"))
+                .check("the map has no caption and no dimmed-surroundings entry", context ->
+                        context.all("#network_location_caption").isEmpty()
+                                && !context.el("#network_location_legend").text().contains("Surroundings"))
                 .step("reveal the location map", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_location"))
                 .frames(2)
                 .hover("#network_highlight")
@@ -250,8 +254,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
                 .waitUntil("the Endpoint node is selected in place, its panel in the aside", context ->
                         context.el("#page_overview").isVisible() && context.el("#endpoint_detail").isVisible())
-                .waitForTextContains("#endpoint_fact_configured", "Federated")
-                .checkTextContains("#graph_selection", "Mapped by a Provider of ")
+                .waitForTextContains("#endpoint_fact_mode", "Federated")
+                .check("the owner is a fact row, not repeated above it", context -> !context.el("#network_explain").isVisible())
                 .step("select the Provider host network again", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("the network panel is back", context -> !context.el("#endpoint_detail").isVisible())
@@ -376,7 +380,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(3)
                 .check("the Endpoint's network runs on the shared pool, not a low-energy warning", context ->
                         TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.endpoint")).stream()
-                                .anyMatch(text -> text.contains("Online · Shared energy")))
+                                .anyMatch(text -> text.equals("Shared energy")))
                 .check("both networks of the pool read its one energy percentage, not their own cells", context -> {
                     var host = TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.providerHost"));
                     return host != null && host.equals(TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.endpoint")));
@@ -420,11 +424,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_note", "Read-only: this pair belongs to Bridge domain ")
+                .waitForTextContains("#pair_note", "Read-only: belongs to Bridge domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
-                .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
                 .checkTextContains("#scope_caption", "with connected domains (read-only)")
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
@@ -433,7 +436,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
                     return context.all(".related-network").size() > 0
                             && TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("related.id")) != null
-                            && texts.stream().anyMatch(text -> text.matches("(Online|No power) · Related: .+"));
+                            && texts.stream().anyMatch(text -> text.matches("(No power · )?Related: .+"));
                 })
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {

@@ -24,7 +24,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                         && context.el("#network_title").text().contains("10, -57, 13"))
                 .check("the topology stays open", context -> context.el("#page_overview").isVisible())
                 .hover("#endpoint_detail")
-                .waitForTextContains("#endpoint_fact_configured", "Federated")
+                .waitForTextContains("#endpoint_fact_mode", "Federated")
                 .server("record live Endpoint identity", context -> {
                     context.put("task33.endpointId", TaskThirtyThreeWorldFixture.endpointId(context));
                     context.put("task33.nativeNetwork", TaskThirtyThreeWorldFixture.endpointNativeNetwork(context));
@@ -35,7 +35,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                         context.all("#endpoint_identity").isEmpty() && context.all("#endpoint_fact_return").isEmpty()
                                 && context.all("#endpoint_fact_claim").isEmpty())
                 .checkTextContains("#endpoint_fact_face", "Up")
-                .checkTextContains("#endpoint_fact_runtime", "Federated")
+                .checkTextContains("#endpoint_fact_mode", "Federated")
                 .check("the panel names the actual native network", context -> context.el("#endpoint_fact_native").text()
                         .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("task33.nativeNetwork"))))
                 .check("the panel lists the patterns in effect by their output, with their Provider", context ->
@@ -106,7 +106,7 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                             && Math.abs(bounds.centerX() - window.getGuiScaledWidth() / 2f) <= 1
                             && Math.abs(bounds.centerY() - window.getGuiScaledHeight() / 2f) <= 1;
                 })
-                .waitForTextContains("#endpoint_fact_configured", "Federated")
+                .waitForTextContains("#endpoint_fact_mode", "Federated")
                 .check("direct inspection preserves native network identity", context -> context.el("#endpoint_fact_native").text()
                         .contains(TaskThirtyThreeScenarioSupport.networkTag(context.get("task33.nativeNetwork"))))
                 .check("the Endpoint panel keeps its controls in the workspace", context ->

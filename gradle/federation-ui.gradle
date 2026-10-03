@@ -184,7 +184,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     if (mapping.authoritativeMappingLanes != '[0]'
             || mapping.processingWire != 'mapped-unlinked'
             || !captures.any { it.path.contains('ui-processing-wire-selected') }
-            || mapping.mappingAck != 'Mapping updated for pattern slot 0.'
+            || mapping.mappingAck != ''
             // The wires view maps and unlinks slot 0 first, so the list toggle sees mapping generation 2.
             || mapping.mappingAckCode != 'accepted-0-2'
             || mapping.providerId == null || mapping.providerId.isBlank()) {
@@ -192,8 +192,7 @@ def verifyTaskThirtyThreeReport = { List attachments, List controls, List captur
     }
     def endpoint = outcomes['ui.endpoint']
     if (endpoint.endpointMode != 'FEDERATED' || endpoint.endpointId == null || endpoint.endpointId.isBlank()
-            || !endpoint.endpointDetail.contains('Configured mode: Federated')
-            || !endpoint.endpointDetail.contains('Runtime mode: Federated')
+            || !endpoint.endpointDetail.contains('Mode: Federated')
             || !endpoint.endpointIdentity?.contains(endpoint.endpointId)) {
         throw new GradleException('Task 33 live Endpoint diagnostic is invalid')
     }

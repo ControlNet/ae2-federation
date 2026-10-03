@@ -308,7 +308,6 @@ final class FederationTopologyView {
         locationLegend = element(ui, "network_location_legend", Label.class);
         highlight = element(ui, "network_highlight", Button.class);
         element(ui, "network_preview", UIElement.class).addChild(preview);
-        preview.setCaption(element(ui, "network_location_caption", Label.class));
         preview.setModeButtons(element(ui, "network_view_map", Button.class), element(ui, "network_view_3d", Button.class));
         // The button stays pressed while its blocks are outlined; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
@@ -506,7 +505,8 @@ final class FederationTopologyView {
             var flow = endpointFlows.get(endpoint.id());
             if (flow != null && shownIds.contains(endpoint.owner())) events += flow.get("events").getAsLong();
         }
-        throughput.setText(events == 0 ? tr("throughput.idle")
+        // An idle canvas says nothing; the line appears while rules deliver.
+        throughput.setText(events == 0 ? Component.empty()
                 : tr("throughput", events).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
     }
 
@@ -945,8 +945,8 @@ final class FederationTopologyView {
                             + ", " + facts.get("z").getAsInt()));
             var figures = energyFigures(facts);
             if (energy != null) energy[0] = figures == null ? -1 : figures.fraction();
-            // "Online · Identity confirmed", or what needs attention: an identity in doubt, then low energy. A related
-            // domain's network is not in this domain's graph; it reads online while its Grid has power.
+            // Nothing for an online, confirmed network; otherwise what needs attention: an identity in doubt, then low
+            // energy. A related domain's network is not in this domain's graph; it reads online while its Grid has power.
             var status = memberStatus.getOrDefault(network.member(), "pending");
             boolean online = network.foreign() ? facts != null && facts.has("powered") && facts.get("powered").getAsBoolean()
                     : status.equals("online");
@@ -967,13 +967,14 @@ final class FederationTopologyView {
                 detail = tr("card_shared_energy");
             } else {
                 stateColor = online ? FederationTheme.OK : FederationTheme.WARN;
-                detail = identityState.isEmpty() ? null : tr("identity.settled");
+                detail = null;
             }
-            // An identity in doubt takes the whole line: it is what the player has to act on.
+            // An identity in doubt takes the whole line: it is what the player has to act on. Being online is the
+            // normal case and goes unsaid.
             boolean doubt = !identityState.equals("settled") && !identityState.isEmpty();
-            var head = tr(online ? "card_online" : network.foreign() ? "card_unpowered" : "card_waiting");
-            lines[0].setText((doubt ? detail.copy() : detail == null ? head : tr("card_state", head, detail))
-                    .withStyle(Style.EMPTY.withColor(stateColor & 0xffffff)));
+            var head = online ? null : tr(network.foreign() ? "card_unpowered" : "card_waiting");
+            var line = doubt || head == null ? detail : detail == null ? head : tr("card_state", head, detail);
+            lines[0].setText(line == null ? Component.empty() : line.copy().withStyle(Style.EMPTY.withColor(stateColor & 0xffffff)));
             if (state != null) state[0] = stateColor;
             if (facts == null || !facts.has("energyMax")) {
                 lines[1].setText(tr("stats_unavailable"));
@@ -1016,11 +1017,6 @@ final class FederationTopologyView {
         }
         var energyRow = energyPillRow(a, b, font);
         if (energyRow != null) content.add(energyRow);
-        if (related) {
-            var lock = text(tr("related_lock"), FederationTheme.DARK_MUTED);
-            lock.layout(style -> style.height(9).width(font.width(tr("related_lock")) + 1));
-            content.add(lock);
-        }
         var border = selected ? FederationTheme.SELECT : 0xff47434f;
         var face = related
                 ? GuiTextureGroup.of(FederationTheme.solid(FederationTheme.WELL), FederationTheme.dashedBorder(selected ? FederationTheme.SELECT : 0xff8b83a0),
@@ -1062,10 +1058,6 @@ final class FederationTopologyView {
         var energy = energyChip(a, b);
         if (energy != null) {
             width = Math.max(width, font.width(ENERGY_PREFIX) + 6 + 3 + font.width(energy.text()) + 5);
-            rows++;
-        }
-        if (related) {
-            width = Math.max(width, font.width(tr("related_lock")) + 10);
             rows++;
         }
         float pillWidth = Math.max(48, width + 10 + (related ? 8 : 0));
@@ -1234,37 +1226,42 @@ final class FederationTopologyView {
         accent.style(style -> style.backgroundTexture(FederationTheme.solid(endpointColor(endpoint))));
         title.setText(endpointLabel(endpoint));
         var uuid = string(json, "endpointIdentity");
-        var shortId = uuid.length() > 8 ? uuid.substring(0, 4) + "…" + uuid.substring(uuid.length() - 3) : uuid;
         identity.setText(json.has("dimension")
-                ? tr("endpoint_identity_line", dimension(json.get("dimension").getAsString()), endpoint.position(), shortId)
-                : tr("endpoint_identity_short", shortId));
+                ? tr("endpoint_identity_line", dimension(json.get("dimension").getAsString()), endpoint.position())
+                : Component.empty());
         identity.style(style -> style.tooltips(Component.literal(uuid)));
         // What it is used for, what it moved lately, then why the last claim request went as it did. Without a
         // domain there is no Provider to name, only that the panel is read-only.
         boolean local = !json.has("mappingNavigation");
-        var explanation = Component.empty().append(local ? tr("endpoint_local_help")
-                : !endpoint.ready() ? tr("endpoint_node.not_ready")
-                : endpoint.mode().equals("LOCAL") ? tr("endpoint_node.local")
-                : owner != null ? tr("endpoint_node.mapped", name(owner)) : tr("endpoint_node.unmapped"));
+        // Its owner is a fact row below, so the box only says what stands out.
+        var notes = new ArrayList<Component>();
+        if (local) notes.add(tr("endpoint_local_help"));
+        else if (!endpoint.ready()) notes.add(tr("endpoint_node.not_ready"));
+        else if (endpoint.mode().equals("LOCAL")) notes.add(tr("endpoint_node.local"));
         var flow = endpointFlows.get(endpoint.id());
-        if (flow != null && flow.get("events").getAsLong() > 0) {
-            explanation.append("\n").append(tr("flow", flow.get("events").getAsLong()));
-        }
+        if (flow != null && flow.get("events").getAsLong() > 0) notes.add(tr("flow", flow.get("events").getAsLong()));
         if (flow != null && flow.get("returnedEvents").getAsLong() > 0) {
-            explanation.append("\n").append(tr("endpoint_node.returned", flow.get("returnedEvents").getAsLong()));
+            notes.add(tr("endpoint_node.returned", flow.get("returnedEvents").getAsLong()));
         }
         var claim = string(json, "claimResult");
         if (!claim.isEmpty() && !claim.equals("NONE") && !claim.equals("ACQUIRED") && !claim.equals("RETAINED")) {
-            explanation.append("\n").append(claimResult(claim).copy()
-                    .withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
+            notes.add(claimResult(claim).copy().withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
         }
+        var explanation = Component.empty();
+        for (int index = 0; index < notes.size(); index++) explanation.append(index == 0 ? "" : "\n").append(notes.get(index));
         detail.setText(explanation);
-        explain.setDisplay(true);
+        explain.setDisplay(!notes.isEmpty());
         renderEndpointLocation(endpoint, json, host);
         // The Endpoint's operation, one fact per row.
+        // One mode row while the configured and running modes agree, as they do once it settles.
+        var configured = string(json, "configuredMode");
+        if (configured.equals(endpoint.mode())) {
+            endpointDetail.addChild(endpointFact("mode", FederationWorkspace.tr("endpoint_mode." + configured)));
+        } else {
+            endpointDetail.addChildren(endpointFact("configured", FederationWorkspace.tr("endpoint_mode." + configured)),
+                    endpointFact("runtime", FederationWorkspace.tr("endpoint_mode." + endpoint.mode())));
+        }
         endpointDetail.addChildren(
-                endpointFact("configured", FederationWorkspace.tr("endpoint_mode." + string(json, "configuredMode"))),
-                endpointFact("runtime", FederationWorkspace.tr("endpoint_mode." + endpoint.mode())),
                 endpointFact("face", FederationWorkspace.tr("face." + string(json, "face"))),
                 endpointFact("owner", json.has("ownerPosition") ? tr("endpoint_owner_at", json.get("ownerPosition").getAsString())
                         : json.has("owner") ? tr("endpoint_owner_unloaded") : FederationWorkspace.tr("unclaimed")),
@@ -1334,9 +1331,7 @@ final class FederationTopologyView {
         var legend = Component.empty();
         if (!mask.isEmpty()) legend.append(Component.literal("■ ").append(FederationWorkspace.trLocation("legend_network"))
                 .withStyle(Style.EMPTY.withColor(color & 0xffffff))).append("  ");
-        legend.append(Component.literal("■ ").append(FederationWorkspace.trLocation("legend_around"))
-                .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        legend.append(Component.literal("  □ ").append(tr("endpoint_legend")).withStyle(Style.EMPTY.withColor(0xffffff)));
+        legend.append(Component.literal("□ ").append(tr("endpoint_legend")).withStyle(Style.EMPTY.withColor(0xffffff)));
         locationLegend.setText(legend);
         locationLegend.style(style -> style.tooltips(FederationWorkspace.trLocation("network_blocks", mask.size())));
         highlightDimension = dimension;
@@ -1418,16 +1413,15 @@ final class FederationTopologyView {
         title.setText(name(network));
         boolean canRename = renamable(network) && renaming.isEmpty();
         renameButton.setActive(canRename);
-        renameButton.style(style -> style.opacity(canRename ? 1f : 0.55f).tooltips(tr(canRename ? "rename_help"
-                : editable ? "rename_locked" : "rename_read_only")));
+        // A usable button needs no explanation; a greyed one says why.
+        renameButton.style(style -> style.opacity(canRename ? 1f : 0.55f).tooltips(canRename ? new Component[0]
+                : new Component[] {tr(editable ? "rename_locked" : "rename_read_only")}));
         var facts = overview.get(network.id());
-        var shortId = network.id().length() > 8
-                ? network.id().substring(0, 4) + "…" + network.id().substring(network.id().length() - 3) : network.id();
-        // "Overworld · 120, 12, -30 · network 3f9a…c21", as the design's line under the name.
+        // "Overworld · 120, 12, -30" under the name; the full identity is in the tooltip.
         identity.setText(facts != null && facts.has("x")
                 ? tr("network_identity_at", dimension(facts.get("dimension").getAsString()), facts.get("x").getAsInt() + ", "
-                        + facts.get("y").getAsInt() + ", " + facts.get("z").getAsInt(), shortId)
-                : tr("network_identity", shortId));
+                        + facts.get("y").getAsInt() + ", " + facts.get("z").getAsInt())
+                : Component.empty());
         identity.style(style -> style.tooltips(Component.literal(network.id())));
         var status = memberStatus.getOrDefault(network.member(), "pending");
         var identityState = identityState(network);
@@ -1470,13 +1464,9 @@ final class FederationTopologyView {
         var linked = others.stream().filter(other -> !linkSummary(network, other).getString().isEmpty()).toList();
         var unlinked = others.stream().filter(other -> !linked.contains(other)).toList();
         linksHeading.setText(tr("connections", linked.size()));
-        if (linked.isEmpty()) links.addChild(sectionNote(tr("connections_none")));
         var ordered = new ArrayList<>(linked);
         ordered.addAll(unlinked);
         for (var other : ordered) {
-            if (other == (unlinked.isEmpty() ? null : unlinked.getFirst())) {
-                links.addChild(sectionNote(tr("unconnected", unlinked.size())));
-            }
             var summary = linkSummary(network, other);
             var link = new Button();
             link.addClass("network-link");
@@ -1553,8 +1543,6 @@ final class FederationTopologyView {
         location.setDisplay(true);
         var legend = Component.literal("■ ").append(FederationWorkspace.trLocation("legend_network"))
                 .withStyle(Style.EMPTY.withColor(network.accent() & 0xffffff));
-        legend.append(Component.literal("  ■ ").append(FederationWorkspace.trLocation("legend_around"))
-                .withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         legend.append(Component.literal("  □ ").append(FederationWorkspace.trLocation("legend_controller"))
                 .withStyle(Style.EMPTY.withColor(0xffffff)));
         locationLegend.setText(legend);

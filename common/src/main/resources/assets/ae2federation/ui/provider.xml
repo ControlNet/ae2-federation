@@ -43,7 +43,6 @@
                         <element class="provider-returns">
                             <label class="domain-heading"><lang key="ae2federation.ui.provider.returns"/></label>
                             <scroller-view id="provider_return_list" class="dark-panel provider-return-list"/>
-                            <label class="paper-note provider-returns-note"><lang key="ae2federation.ui.provider.returns_note"/></label>
                         </element>
                     </element>
                 </element>
@@ -71,11 +70,10 @@
                     </scroller-view>
                 </element>
             </element>
-            <element class="domain-footer">
+            <element id="provider_footer" class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>
                 <label id="processing_status" class="domain-status mapping-status"/>
                 <label id="request_status" class="domain-status request-status"/>
-                <label id="provider_count" class="domain-status revision-status"/>
             </element>
         </element>
         <element id="pattern_slots" class="pattern-slot-store"/>

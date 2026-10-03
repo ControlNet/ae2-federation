@@ -190,6 +190,13 @@ final class TaskThirtyThreeScenarioSupport {
                 .defaultTimeoutMs(15_000).scenarioTimeoutMs(120_000);
     }
 
+    /** The server's mapping result code, which the feedback line carries as its tooltip even while it shows no text. */
+    static String mappingCode(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var tooltips = context.el("#processing_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                .getStyle().tooltips().asList();
+        return tooltips.isEmpty() ? "" : tooltips.getFirst().getString();
+    }
+
     static void attach(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {
         context.attach("caseId", caseId);
         context.attach("mappingAck", context.el("#processing_status").text());

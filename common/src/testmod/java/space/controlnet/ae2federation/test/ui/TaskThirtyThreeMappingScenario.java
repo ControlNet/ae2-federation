@@ -34,7 +34,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 // The whole row drags the pattern's wire, not only its port.
                 .drag("#processing_pattern_0", ".processing-endpoint")
                 .waitUntilServer("dropping a port maps the pattern", TaskThirtyThreeWorldFixture::mappingAccepted)
-                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
+                .waitUntil("the mapping is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("accepted-0-") && context.el("#processing_status").text().isEmpty())
                 .step("select the new wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "0"))
                 .waitForTextContains("#processing_detail_title", "#0 ")
                 .check("a mapped wire can be unlinked", context -> context.el("#processing_unlink").isActive())
@@ -92,7 +93,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
                 .waitUntilServer("real Provider mapping accepted", TaskThirtyThreeWorldFixture::mappingAccepted)
-                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
+                .waitUntil("the mapping is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("accepted-0-") && context.el("#processing_status").text().isEmpty())
                 .server("record authoritative mapping identity", context -> {
                     context.put("task33.providerId", TaskThirtyThreeWorldFixture.providerId(context));
                     context.put("task33.mappingLanes", TaskThirtyThreeWorldFixture.mappingLanes(context));
@@ -331,7 +333,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
                 .check("narrow English Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_owner", "#network_links_heading"))
+                        context, "#endpoint_fact_mode", "#endpoint_fact_owner", "#network_links_heading"))
                 .screenshot("ui-english-narrow-endpoint")
                 .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
@@ -367,7 +369,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#release_confirm")
                 .step("confirm release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_confirm"))
                 .waitUntilServer("confirmed release removes retained ownership", TaskThirtyThreeWorldFixture::endpointReleased)
-                .waitForTextContains("#processing_status", "Endpoint released. Its return path is closed.")
+                .waitUntil("the release is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("released-") && context.el("#processing_status").text().isEmpty())
                 .waitForText(".processing-endpoint-state", "Available · not claimed")
                 .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
                 .check("narrow English detail can expose its last control", context -> {
@@ -383,7 +386,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("map after a rule changed elsewhere", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_toggle"))
                 .waitUntilServer("the mapping claims the Endpoint for the host", TaskThirtyThreeWorldFixture::endpointClaimedByHost)
                 .waitUntil("the request completes without waiting", context -> !context.el("#request_status").isVisible())
-                .waitForTextContains("#processing_status", "Mapping updated")
+                .waitUntil("the mapping is accepted", context -> TaskThirtyThreeScenarioSupport.mappingCode(context)
+                        .startsWith("accepted-"))
                 .screenshot("ui-request-after-external-rule")
                 .step("restore English window", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))

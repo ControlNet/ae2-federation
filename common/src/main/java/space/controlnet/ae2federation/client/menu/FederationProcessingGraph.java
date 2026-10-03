@@ -587,7 +587,7 @@ public final class FederationProcessingGraph {
             boolean dragged = id.equals(hintSlot);
             round(pen, x + width + 2, y + height / 2, PORT, wireAccent, dragged ? FederationTheme.DARK_TITLE : PORT_FILL);
         })));
-        row.style(style -> style.backgroundTexture(rowFace(id)).tooltips(tr("pattern_help")));
+        row.style(style -> style.backgroundTexture(rowFace(id)));
         // Selecting a pattern is the click way to map it: then click an Endpoint and "Map".
         row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             patternPressed = true;
@@ -957,7 +957,8 @@ public final class FederationProcessingGraph {
                 }
                 if (endpoint.has("returnKinds")) fact("returns", returnKinds(endpoint) == 0 ? tr("returns_empty")
                         : tr("returns_waiting", returnKinds(endpoint)).withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
-                if (!shownOnly) fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
+                // In use by this Provider is what the owner row already says.
+                if (!shownOnly && claim != Claim.IN_USE) fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
                 if (chosen != null) {
                     boolean wiredHere = wires.contains(new Wire(selection.slot(), selection.endpoint()));
                     var name = Component.literal("#" + selection.slot() + " ").append(patternName.apply(chosen));
@@ -973,10 +974,10 @@ public final class FederationProcessingGraph {
             var targets = wires.stream().filter(value -> value.slot().equals(selection.slot())).map(value -> endpoint(value.endpoint()))
                     .filter(java.util.Objects::nonNull).map(value -> endpointName(value).getString()).toList();
             fact("targets", Component.literal(targets.isEmpty() ? "-" : String.join(", ", targets)));
-            text.append(Component.literal(text.getString().isEmpty() ? "" : "\n")).append(tr("pattern_selected_help"));
         } else {
+            // With nothing selected the panel stays empty, unless there is nothing to wire yet.
             title.setText(Component.empty());
-            text.append(tr(slots.isEmpty() || endpoints.isEmpty() ? "empty_help" : "help"));
+            if (slots.isEmpty() || endpoints.isEmpty()) text.append(tr("empty_help"));
         }
         title.setDisplay(wire || endpointSelected || patternSelected);
         if (!rejection.getString().isEmpty()) {

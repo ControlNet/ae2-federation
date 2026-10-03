@@ -67,8 +67,7 @@
 .rename-row #network_rename_field { width: 100%; }
 .network-stats { gap-all: 3; padding-horizontal: 6; }
 .location-panel { gap-all: 4; }
-.location-head { width: 100%; height: 12; flex-shrink: 0; flex-direction: row; gap-all: 4; align-items: center; }
-.domain-panel .location-head .panel-caption { flex: 1; min-width: 0; flex-shrink: 1; text-color: #ffd6d0e0; }
+.location-head { width: 100%; height: 12; flex-shrink: 0; flex-direction: row; gap-all: 4; align-items: center; justify-content: flex-end; }
 .map-mode-switch { height: 12; flex-shrink: 0; flex-direction: row; padding-all: 1; gap-all: 1; background: #ff17141e; }
 .domain-panel .map-mode-switch .map-mode { width: 24; height: 10; padding-all: 0; padding-bottom: 1; base-background: #00000000; hover-background: #ff47434f; pressed-background: #ff605a66; }
 .domain-panel .map-mode-switch .map-mode .__button_text__ { text-color: #ffaaa4b2; }

@@ -99,6 +99,13 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         graph.setSlotElements(index -> slots.get(index));
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         this.releaseDialog = releaseDialog;
+        // As on the Federation screen, the footer takes room only while one of its messages has something to say.
+        var footer = element(ui, "provider_footer", UIElement.class);
+        ui.rootElement.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.TICK, event -> {
+            boolean message = footer.getChildren().stream().anyMatch(child -> child.isDisplayed()
+                    && child instanceof Label label && !label.getText().getString().isEmpty());
+            if (footer.isDisplayed() != message) footer.setDisplay(message);
+        });
 
         setting(ui, player, "setting_blocking", FederationIcons.BLOCKING, Settings.BLOCKING_MODE, BLOCKING, "blocking");
         setting(ui, player, "setting_lock", FederationIcons.LOCK, Settings.LOCK_CRAFTING_MODE, LockCraftingMode.values(), "lock");
@@ -119,10 +126,11 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         sync(ui, () -> session == null ? "pending" : session.mappingStatusCode(), code -> {
             var label = element(ui, "processing_status", Label.class);
             var feedback = MappingFeedback.fromCode(code);
-            label.setText(Component.translatable(feedback.translationKey(), feedback.arguments().toArray()));
+            label.setText(feedback.silent() ? Component.empty()
+                    : Component.translatable(feedback.translationKey(), feedback.arguments().toArray()));
             for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
             label.addClass("feedback-" + feedback.tone());
-            label.setDisplay(!feedback.tone().equals("neutral"));
+            label.setDisplay(!feedback.tone().equals("neutral") && !feedback.silent());
         });
         var authoritySync = sync(ui, () -> authority.encode(this, player), value -> {
             authority.accept(value);
@@ -341,7 +349,6 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         // Without a domain on its Federation face the Provider still has its patterns and keeps its mappings.
         element(ui, "provider_summary", Label.class).setText(face ? tr("summary", used, slotChoices.size(), mappings, targets.size())
                 : tr(stale ? "summary_stale" : "summary_noface", used, slotChoices.size(), mappings));
-        element(ui, "provider_count", Label.class).setText(tr("count", used, slotChoices.size(), mappings));
         var notice = element(ui, "provider_noface", UIElement.class);
         notice.setDisplay(!face && !stale);
         element(ui, "provider_noface_text", Label.class).setText(tr("noface.text"));

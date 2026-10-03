@@ -48,10 +48,6 @@ public final class FederationMapPreview extends UIElement {
 
     /** No Map/3D switch: a card's thumbnail stays a map, drawn small next to the card's figures. */
     private final boolean thumbnail;
-    /** The panel caption naming the current view, kept in step with the switch; none for thumbnails. */
-    private com.lowdragmc.lowdraglib2.gui.ui.elements.Label caption;
-    /** The heights the map looks through, named in the caption as the design does ("slice Y 8–16"). */
-    private BlockMarks.Slice slice;
     /** The brightness of the shown blocks' outline in the world, zero while there is none; the panel blinks with it. */
     private java.util.function.DoubleSupplier highlight = () -> 0;
     /** Whether the outline is around the marked device rather than the network's blocks. */
@@ -95,17 +91,8 @@ public final class FederationMapPreview extends UIElement {
         if (scene != null) scene.setHighlight(highlight, onMarks);
     }
 
-    /** Names the current view in {@code label}: the top-down map or the 3D view of loaded blocks. */
-    void setCaption(com.lowdragmc.lowdraglib2.gui.ui.elements.Label label) {
-        caption = label;
-        applyMode();
-    }
-
     private void applyMode() {
         if (scene != null) scene.setDisplay(threeDimensional);
-        if (caption != null) caption.setText(threeDimensional ? FederationWorkspace.trLocation("caption_3d")
-                : slice == null ? FederationWorkspace.trLocation("caption_map")
-                : FederationWorkspace.trLocation("caption_slice", slice.bottom(), slice.top()));
         if (mapButton == null) return;
         mapButton.removeClass("selected");
         sceneButton.removeClass("selected");
@@ -160,13 +147,6 @@ public final class FederationMapPreview extends UIElement {
         this.marks = List.copyOf(marks);
         this.markColor = markColor;
         if (moved) nextSample = Long.MIN_VALUE;
-        var sliced = new java.util.ArrayList<BlockMarks.Mark>(mask);
-        sliced.addAll(marks);
-        var newSlice = BlockMarks.slice(sliced, SLICE_DEPTH).orElse(null);
-        if (!java.util.Objects.equals(newSlice, slice)) {
-            slice = newSlice;
-            applyMode();
-        }
         showInScene();
     }
 
@@ -174,7 +154,6 @@ public final class FederationMapPreview extends UIElement {
         center = null;
         mask = List.of();
         marks = List.of();
-        slice = null;
         colors = new int[0];
         sampledCells = 0;
         if (scene != null) scene.show(List.of(), 0, List.of(), 0);

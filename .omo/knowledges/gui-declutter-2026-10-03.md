@@ -52,3 +52,19 @@ Every candidate above was removed later the same day (the user took the recommen
 
 The claim-conflict evidence comes from the Endpoint explanation now, and the two broken self-test probes were fixed
 in de8c8d8. The crafting-holds-storage hint stays out, by the user's choice.
+
+## Second trim round (21 items)
+
+- Network card and panel: the normal state (online, confirmed) writes nothing, only abnormal states show; idle flow is
+  empty; no UUID fragment in network or Endpoint subtitles (the UUID stays in the tooltip); no map/3D captions; no
+  "Surroundings" legend entry; no "no rules" notes; related pills lose "Other domain · read only"; the read-only
+  banner reads "Read-only: belongs to %s".
+- Endpoint panel: no "Mapped by a Provider of ..." line (`#network_explain` hides when it has no notes);
+  Configured and Runtime mode merge into one `#endpoint_fact_mode` row when they agree.
+- Wires view and Provider screen: no help text with nothing selected (only `empty_help` when there are no slots or
+  Endpoints); success mapping feedback is silent (`MappingFeedback.silent()`), so tests read the raw code from the
+  `#processing_status` tooltip (`TaskThirtyThreeScenarioSupport.mappingCode`); an IN_USE Endpoint has no State fact;
+  the column reads "Pattern Provider"; no Federation-face phrase in the summary, no footer count, no return-buffer
+  note; the Provider footer auto-hides like the domain footer.
+- Tooltips: no `rename_help`, `pattern_help`, `pattern_selected_help`; `mode_help` is "Drag to rotate, scroll to zoom".
+- Still stale: `provider_editing_help` tells the player to drag "the pattern's port", though the whole row drags.

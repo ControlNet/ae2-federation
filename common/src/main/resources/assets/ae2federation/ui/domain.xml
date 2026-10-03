@@ -70,7 +70,6 @@
                         </element>
                         <element id="network_location" class="dark-panel location-panel">
                             <element class="location-head">
-                                <label id="network_location_caption" class="panel-caption"/>
                                 <element class="map-mode-switch">
                                     <button id="network_view_map" class="map-mode" text="ae2federation.ui.location.mode_map"/>
                                     <button id="network_view_3d" class="map-mode" text="ae2federation.ui.location.mode_3d"/>
