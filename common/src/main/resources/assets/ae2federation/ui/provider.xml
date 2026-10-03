@@ -68,7 +68,7 @@
                         <element class="processing-actions">
                             <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
                             <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
-                            <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                            <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                         </element>
                     </scroller-view>
                     <label id="processing_note" class="paper-note processing-note"/>

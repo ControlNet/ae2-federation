@@ -179,12 +179,18 @@ public final class FederationProcessingGraph {
         legend(legend, false);
         element(ui, "processing_note", Label.class).setText(tr("drop_note"));
         highlight = element(ui, "processing_highlight", Button.class);
-        highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
+        // Pressed while the selection is outlined in the world; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
-            var focus = focusMarks();
-            if (!focus.isEmpty()) space.controlnet.ae2federation.client.WorldHighlight.show(playerDimension(), focus,
-                    FederationTheme.SELECT);
+            var groups = focusGroups();
+            if (groups.getFirst().blocks().isEmpty()) return;
+            if (space.controlnet.ae2federation.client.WorldHighlight.brightness(playerDimension(), groups) > 0) {
+                space.controlnet.ae2federation.client.WorldHighlight.hide(playerDimension(), groups);
+            } else {
+                space.controlnet.ae2federation.client.WorldHighlight.show(playerDimension(), groups);
+            }
+            syncHighlight();
         });
+        highlight.addEventListener(UIEvents.TICK, event -> syncHighlight());
         unlink.setOnClick(event -> {
             if (selection.kind() != Kind.WIRE || !editable) return;
             setMapping.accept(new MappingWireTarget(selection.slot(), selection.endpoint(), false).encode());
@@ -980,7 +986,8 @@ public final class FederationProcessingGraph {
         // With nothing selected the aside holds only the help, as in the design.
         highlight.setDisplay(selection.kind() != Kind.NONE);
         highlight.setText(Component.translatable(wire ? "ae2federation.ui.processing.highlight_ends"
-                : "ae2federation.ui.location.highlight"));
+                : endpointSelected ? "ae2federation.ui.location.highlight_endpoint"
+                : "ae2federation.ui.processing.highlight_provider"));
         unlink.setActive(editable && wire && wires.contains(new Wire(selection.slot(), selection.endpoint())));
         // Release only applies to an Endpoint this Provider holds with no patterns left on it.
         boolean releasable = endpointSelected && releasable(selection.endpoint());
@@ -1078,6 +1085,20 @@ public final class FederationProcessingGraph {
         if (endpoint != null && endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(focus::add);
         if (selection.kind() != Kind.ENDPOINT) position(providerPosition).ifPresent(focus::add);
         return focus;
+    }
+
+    private List<space.controlnet.ae2federation.client.WorldHighlight.Group> focusGroups() {
+        return List.of(new space.controlnet.ae2federation.client.WorldHighlight.Group(focusMarks(), FederationTheme.SELECT));
+    }
+
+    /** The button reads as pressed exactly while the selection's outline runs, which ends on its own after a while. */
+    private void syncHighlight() {
+        var groups = focusGroups();
+        boolean on = !groups.getFirst().blocks().isEmpty()
+                && space.controlnet.ae2federation.client.WorldHighlight.brightness(playerDimension(), groups) > 0;
+        if (on == highlight.hasClass("selected")) return;
+        if (on) highlight.addClass("selected");
+        else highlight.removeClass("selected");
     }
 
     private static java.util.Optional<BlockMarks.Mark> position(String value) {

@@ -73,4 +73,24 @@ class HighlightSetTest {
         set.clear();
         assertTrue(set.active(1).isEmpty());
     }
+
+    @Test
+    void aRunningHighlightCanBeLookedUpUntilItEnds() {
+        var set = new HighlightSet<String>(10_000, 16);
+        set.add("a", OVERWORLD, "first", 1_000);
+        assertEquals(1_000, set.entry("a", 5_000).orElseThrow().startedAt());
+        assertTrue(set.entry("b", 5_000).isEmpty());
+        assertTrue(set.entry("a", 11_001).isEmpty());
+    }
+
+    @Test
+    void removingOneHighlightLeavesTheOthersRunning() {
+        var set = new HighlightSet<String>(10_000, 16);
+        set.add("a", OVERWORLD, "first", 0);
+        set.add("b", OVERWORLD, "second", 0);
+        set.remove("a");
+        assertTrue(set.entry("a", 1).isEmpty());
+        assertEquals(1, set.active(1).size());
+        assertEquals("second", set.active(1).get(0).value());
+    }
 }

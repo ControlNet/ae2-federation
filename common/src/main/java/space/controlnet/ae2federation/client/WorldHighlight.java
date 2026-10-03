@@ -64,9 +64,27 @@ public final class WorldHighlight {
 
     /** Outlines several groups, each in its own colour, as one highlight beside those still running. */
     public static void show(String dimension, List<Group> groups) {
-        var shown = groups.stream().filter(group -> !group.blocks().isEmpty()).toList();
+        var shown = shown(groups);
         if (shown.isEmpty()) return;
         HIGHLIGHTS.add(List.of(dimension, shown), dimension, shown, System.currentTimeMillis());
+    }
+
+    /** Ends the highlight of exactly these groups early, as asked for with {@link #show(String, List)}. */
+    public static void hide(String dimension, List<Group> groups) {
+        HIGHLIGHTS.remove(List.of(dimension, shown(groups)));
+    }
+
+    /**
+     * How bright the highlight of exactly these groups is right now, blinking in step with the outline in the world;
+     * zero while they are not highlighted.
+     */
+    public static float brightness(String dimension, List<Group> groups) {
+        long now = System.currentTimeMillis();
+        return HIGHLIGHTS.entry(List.of(dimension, shown(groups)), now).map(entry -> entry.brightness(now)).orElse(0f);
+    }
+
+    private static List<Group> shown(List<Group> groups) {
+        return groups.stream().filter(group -> !group.blocks().isEmpty()).toList();
     }
 
     /** Ends every running highlight. */

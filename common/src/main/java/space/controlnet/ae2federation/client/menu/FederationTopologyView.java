@@ -102,8 +102,6 @@ final class FederationTopologyView {
     private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightParts = List.of();
     private String highlightDimension = "";
     private int highlightColor;
-    /** When the world highlight of each network or Endpoint asked for from this view ends; several can run at once. */
-    private final Map<String, Long> highlightedUntil = new HashMap<>();
 
     private final List<Network> networks = new ArrayList<>();
     /**
@@ -316,21 +314,18 @@ final class FederationTopologyView {
         element(ui, "network_preview", UIElement.class).addChild(preview);
         preview.setCaption(element(ui, "network_location_caption", Label.class));
         preview.setModeButtons(element(ui, "network_view_map", Button.class), element(ui, "network_view_3d", Button.class));
-        highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
+        // The button stays pressed while its blocks are outlined; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
             if (highlightBlocks.isEmpty()) return;
-            if (highlightParts.size() > 1) {
-                space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightParts);
+            if (highlightBrightness() > 0) {
+                space.controlnet.ae2federation.client.WorldHighlight.hide(highlightDimension, highlightGroups());
             } else {
-                space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightBlocks, highlightColor);
+                space.controlnet.ae2federation.client.WorldHighlight.show(highlightDimension, highlightGroups());
             }
-            long now = System.currentTimeMillis();
-            highlightedUntil.values().removeIf(until -> until < now);
-            highlightedUntil.put(selectedEndpoint.isEmpty() ? selectedNetwork : selectedEndpoint,
-                    now + space.controlnet.ae2federation.client.WorldHighlight.DURATION_MILLIS);
-            locationNote.setText(highlightedText());
-            locationNote.setDisplay(true);
+            syncHighlight();
         });
+        highlight.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.TICK, event -> syncHighlight());
+        preview.setHighlight(this::highlightBrightness);
     }
 
     /** The design's segmented scope: this domain only, or also the related domains' networks, read-only. */
@@ -1348,13 +1343,13 @@ final class FederationTopologyView {
         highlightColor = FederationTheme.SELECT;
         highlightBlocks = List.of(anchor);
         highlightParts = List.of();
-        highlight.setText(FederationWorkspace.trLocation("highlight_timed"));
+        highlight.setText(FederationWorkspace.trLocation("highlight_endpoint"));
         boolean here = preview.inPlayerDimension();
         highlight.setActive(here);
-        boolean outlined = highlighted(endpoint.id());
-        locationNote.setText(outlined ? highlightedText()
-                : here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
-        locationNote.setDisplay(outlined || !here);
+        preview.setHighlightOnMarks(true);
+        syncHighlight();
+        locationNote.setText(here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
+        locationNote.setDisplay(!here);
     }
 
     private static UIElement endpointFact(String name, Component value) {
@@ -1575,15 +1570,15 @@ final class FederationTopologyView {
         highlightColor = network.accent();
         highlightBlocks = mask.isEmpty() ? List.of(anchor) : mask;
         highlightParts = identityParts(facts, dimension, network.accent());
-        highlight.setText(FederationWorkspace.trLocation(highlightParts.size() > 1 ? "highlight_parts" : "highlight_timed"));
+        highlight.setText(FederationWorkspace.trLocation(highlightParts.size() > 1 ? "highlight_parts" : "highlight_network"));
         boolean here = preview.inPlayerDimension();
         highlight.setActive(here);
+        preview.setHighlightOnMarks(false);
+        syncHighlight();
         locationLegend.style(style -> style.tooltips(FederationWorkspace.trLocation("network_blocks", mask.size())));
-        boolean outlined = highlighted(network.id());
-        // The legend explains the map; the note only reports an outline in progress or why nothing can be drawn.
-        locationNote.setText(outlined ? highlightedText()
-                : here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
-        locationNote.setDisplay(outlined || !here);
+        // The legend explains the map; the note only says why nothing can be drawn.
+        locationNote.setText(here ? Component.empty() : FederationWorkspace.trLocation("other_dimension", dimension(dimension)));
+        locationNote.setDisplay(!here);
     }
 
     /** Parts in the location's dimension with blocks, the first in the network's accent and the other in warning. */
@@ -1603,14 +1598,24 @@ final class FederationTopologyView {
         return groups;
     }
 
-    private boolean highlighted(String id) {
-        return System.currentTimeMillis() < highlightedUntil.getOrDefault(id, 0L);
+    /** The outline the highlight button asks for: the identity parts in their colours, or the blocks in one colour. */
+    private List<space.controlnet.ae2federation.client.WorldHighlight.Group> highlightGroups() {
+        return highlightParts.size() > 1 ? highlightParts
+                : List.of(new space.controlnet.ae2federation.client.WorldHighlight.Group(highlightBlocks, highlightColor));
     }
 
-    private Component highlightedText() {
-        if (highlightParts.size() > 1) return FederationWorkspace.trLocation("highlighted_parts", highlightParts.size(),
-                highlightParts.stream().mapToInt(group -> group.blocks().size()).sum());
-        return FederationWorkspace.trLocation("highlighted", highlightBlocks.size());
+    /** The selection's outline in the world as it blinks right now; zero while it is not outlined. */
+    private float highlightBrightness() {
+        return highlightBlocks.isEmpty() ? 0
+                : space.controlnet.ae2federation.client.WorldHighlight.brightness(highlightDimension, highlightGroups());
+    }
+
+    /** The highlight button reads as pressed exactly while its outline runs; the outline ends on its own after a while. */
+    private void syncHighlight() {
+        boolean on = highlightBrightness() > 0;
+        if (on == highlight.hasClass("selected")) return;
+        if (on) highlight.addClass("selected");
+        else highlight.removeClass("selected");
     }
 
     /**

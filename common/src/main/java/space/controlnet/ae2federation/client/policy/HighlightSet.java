@@ -55,6 +55,21 @@ public final class HighlightSet<T> {
         return new ArrayList<>(entries.values());
     }
 
+    /** The highlight {@code key} while it runs at {@code now}; empty once it has ended or was never started. */
+    public synchronized java.util.Optional<Entry<T>> entry(Object key, long now) {
+        var entry = entries.get(key);
+        if (entry != null && entry.expiresAt() < now) {
+            entries.remove(key);
+            entry = null;
+        }
+        return java.util.Optional.ofNullable(entry);
+    }
+
+    /** Ends the highlight {@code key} early; the others keep running. */
+    public synchronized void remove(Object key) {
+        entries.remove(key);
+    }
+
     public synchronized void clear() {
         entries.clear();
     }

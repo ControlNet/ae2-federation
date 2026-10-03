@@ -52,6 +52,10 @@ public final class FederationMapPreview extends UIElement {
     private com.lowdragmc.lowdraglib2.gui.ui.elements.Label caption;
     /** The heights the map looks through, named in the caption as the design does ("slice Y 8–16"). */
     private BlockMarks.Slice slice;
+    /** The brightness of the shown blocks' outline in the world, zero while there is none; the panel blinks with it. */
+    private java.util.function.DoubleSupplier highlight = () -> 0;
+    /** Whether the outline is around the marked device rather than the network's blocks. */
+    private boolean highlightOnMarks;
 
     FederationMapPreview() {
         this(false);
@@ -79,6 +83,18 @@ public final class FederationMapPreview extends UIElement {
         applyMode();
     }
 
+    /** Blinks the outlined blocks with {@code brightness}, the world outline's brightness or zero while there is none. */
+    void setHighlight(java.util.function.DoubleSupplier brightness) {
+        highlight = brightness;
+        if (scene != null) scene.setHighlight(brightness, highlightOnMarks);
+    }
+
+    /** Whether the world outline is around the marked device ({@code true}) or the network's blocks. */
+    void setHighlightOnMarks(boolean onMarks) {
+        highlightOnMarks = onMarks;
+        if (scene != null) scene.setHighlight(highlight, onMarks);
+    }
+
     /** Names the current view in {@code label}: the top-down map or the 3D view of loaded blocks. */
     void setCaption(com.lowdragmc.lowdraglib2.gui.ui.elements.Label label) {
         caption = label;
@@ -102,6 +118,7 @@ public final class FederationMapPreview extends UIElement {
             scene.layout(style -> style.positionType(dev.vfyjxf.taffy.style.TaffyPosition.ABSOLUTE).left(0).top(0)
                     .widthPercent(100).heightPercent(100));
             addChildAt(scene, 0);
+            scene.setHighlight(highlight, highlightOnMarks);
             showInScene();
             applyMode();
         }
@@ -264,6 +281,11 @@ public final class FederationMapPreview extends UIElement {
         float left = getPositionX() + (getSizeWidth() - cell * columns) / 2;
         float top = getPositionY() + (getSizeHeight() - cell * rows) / 2;
         var graphics = context.graphics;
+        // While the blocks are outlined in the world, the map blinks them in step: bright, then dim.
+        float glow = thumbnail ? 0 : (float) highlight.getAsDouble();
+        int maskTint = glow <= 0 || highlightOnMarks ? (thumbnail ? 0xc8000000 : 0xe6000000) | (maskColor & 0xffffff)
+                : 0xff000000 | (glow >= 1 ? mix(maskColor, 0xffffff, 0.45f) : mix(maskColor, 0x15131b, 0.6f));
+        int markRing = glow > 0 && highlightOnMarks && glow < 1 ? 0x50ffffff : 0xffffffff;
         var pose = graphics.pose();
         pose.pushPose();
         pose.translate(left, top, 0);
@@ -274,8 +296,7 @@ public final class FederationMapPreview extends UIElement {
             for (int index = 0; index < colors.length; index++) {
                 if (colors[index] != 0) graphics.fill(index % columns, index / columns, index % columns + 1, index / columns + 1, colors[index]);
             }
-            int tint = (thumbnail ? 0xc8000000 : 0xe6000000) | (maskColor & 0xffffff);
-            for (var block : mask) cell(graphics, block, tint, 0);
+            for (var block : mask) cell(graphics, block, maskTint, 0);
             if (thumbnail) for (var mark : marks) {
                 cell(graphics, mark, 0xff000000, -1);
                 cell(graphics, mark, markColor, 0);
@@ -291,10 +312,10 @@ public final class FederationMapPreview extends UIElement {
             int y0 = Math.round(top + z * cell) - 1;
             int x1 = Math.round(left + (x + 1) * cell) + 1;
             int y1 = Math.round(top + (z + 1) * cell) + 1;
-            graphics.fill(x0, y0, x1, y0 + 1, 0xffffffff);
-            graphics.fill(x0, y1 - 1, x1, y1, 0xffffffff);
-            graphics.fill(x0, y0, x0 + 1, y1, 0xffffffff);
-            graphics.fill(x1 - 1, y0, x1, y1, 0xffffffff);
+            graphics.fill(x0, y0, x1, y0 + 1, markRing);
+            graphics.fill(x0, y1 - 1, x1, y1, markRing);
+            graphics.fill(x0, y0, x0 + 1, y1, markRing);
+            graphics.fill(x1 - 1, y0, x1, y1, markRing);
         }
     }
 

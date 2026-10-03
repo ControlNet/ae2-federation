@@ -191,7 +191,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
                 .waitUntil("the network's blocks are outlined", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
-                .checkTextContains("#network_location_note", "for 10 s")
+                .waitUntil("the highlight button reads as pressed instead of a note saying so", context ->
+                        context.all("#network_highlight.selected").size() == 1
+                                && !context.el("#network_location_note").isVisible())
+                .checkTextContains("#network_highlight", "Highlight this network")
                 .click("#network_view_3d")
                 .waitUntil("the 3D preview draws the network's loaded blocks", context -> {
                     var preview = context.el("#network_preview .map-preview-tile")

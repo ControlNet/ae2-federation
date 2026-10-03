@@ -63,11 +63,15 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .waitUntil("the Endpoint's block is outlined beside the earlier highlight", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2
                                 && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 2)
-                .step("highlight the Endpoint again", context ->
+                .waitUntil("the button reads as pressed while its outline runs", context ->
+                        context.all("#network_highlight.selected").size() == 1)
+                .checkTextContains("#network_highlight", "Highlight this Endpoint")
+                .step("press the highlight again", context ->
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
-                .check("highlighting the same block again restarts it instead of adding a copy", context ->
-                        space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2
-                                && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 2)
+                .waitUntil("pressing it again ends only its own outline and releases the button", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 1
+                                && space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1
+                                && context.all("#network_highlight.selected").isEmpty())
                 .server("record actual contextual navigation endpoints", TaskThirtyThreeWorldFixture::recordEndpointNavigation)
                 .step("reveal the owner navigation", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#graph_open"))
                 .frames(2)

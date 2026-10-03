@@ -85,7 +85,7 @@
                             <label id="network_location_note" class="panel-text"/>
                         </element>
                         <element class="compact-actions network-actions">
-                            <button id="network_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                            <button id="network_highlight" text="ae2federation.ui.location.highlight_network"/>
                             <button id="graph_open" text="ae2federation.ui.topology.devices"/>
                         </element>
                         <element id="network_stats" class="dark-panel network-stats"/>
@@ -129,7 +129,7 @@
                             <element class="processing-actions">
                                 <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
                                 <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
-                                <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                                <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                             </element>
                         </scroller-view>
                         <label id="processing_note" class="paper-note processing-note"/>
