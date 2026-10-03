@@ -5,20 +5,20 @@ import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
-import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.domain.ObservedGrids;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
 final class EnergyFederationDomainObserver {
     private final ServerLevel level;
-    private final Map<NetworkId, IGrid> loadedGrids = new HashMap<>();
+    private final ObservedGrids observed = new ObservedGrids();
 
     EnergyFederationDomainObserver(ServerLevel level) {
         this.level = level;
     }
 
     void register(IGrid grid) {
-        FederationDomainRegistryAccess.confirmedNetworkId(grid).ifPresent(networkId -> loadedGrids.put(networkId, grid));
+        observed.add(grid);
     }
 
     void register(Iterable<IGrid> grids) {
@@ -26,7 +26,7 @@ final class EnergyFederationDomainObserver {
     }
 
     Map<PolicyKey, EnergyRelationship> relationships() {
-        discardStaleGrids();
+        var loadedGrids = observed.confirmed();
         var relationships = new HashMap<PolicyKey, EnergyRelationship>();
         for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
             var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
@@ -50,11 +50,6 @@ final class EnergyFederationDomainObserver {
     }
 
     void clear() {
-        loadedGrids.clear();
-    }
-
-    private void discardStaleGrids() {
-        loadedGrids.entrySet().removeIf(entry -> FederationDomainRegistryAccess.confirmedNetworkId(entry.getValue())
-                .filter(entry.getKey()::equals).isEmpty());
+        observed.clear();
     }
 }

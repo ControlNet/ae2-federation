@@ -31,6 +31,15 @@ fixture and the binding fixture name the first unmet condition in the timeout me
   the Bridge's domain, which no longer holds the Provider or Endpoint. It now projects `processingScope()`, which has one
   member network and one physical edge. The baseline `productionProjection` and the Task 34 report builder were updated
   to match. All three benchmarks and the Task 30/34 self-tests pass.
-- Product question (inferred, not verified in isolation): the storage and crafting observers forget a Grid during a
-  transient unconfirmed identity and re-learn it only from a bridge/router refresh. A split that heals without a block update beside a Federation block may leave the
-  rule unobserved.
+- Confirmed and fixed (2026-10-03). GameTest `storage.identity-split-recovers` puts a stray block carrying the
+  provider's id on a second Grid, waits for `AMBIGUOUS_SPLIT`, then joins the block to the provider Grid.
+  - Before the fix the crafting projection was withdrawn during the split and never came back; 1153 ticks after the heal
+    it was still missing.
+  - The storage mount was never reconciled on the identity change. A held projection failed closed on use (insert 0),
+    was dropped, and never came back either.
+  - Cause: the storage, crafting and energy observers removed a Grid from `loadedGrids` as soon as its id was
+    unconfirmed. Only a Bridge or Router refresh re-registered it, and a heal on the same Grids fires neither. Also,
+    `StorageMountService` never reconciled on an `IdentityEpoch` change, unlike the crafting and energy services.
+  - Fix: `domain/ObservedGrids` keeps observed Grids by identity, reads their confirmed id on each query and forgets only
+    emptied Grids. All three observers use it. `StorageMountService.tick` reconciles when `IdentityEpoch` changed and is
+    called from the level tick before crafting.

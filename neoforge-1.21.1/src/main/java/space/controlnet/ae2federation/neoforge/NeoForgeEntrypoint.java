@@ -13,6 +13,7 @@ import space.controlnet.ae2federation.CommonStartup;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
@@ -66,6 +67,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.flush(level);
+            StorageMountService.tick(level);
             CraftingProjectionService.tick(level);
         }
     }

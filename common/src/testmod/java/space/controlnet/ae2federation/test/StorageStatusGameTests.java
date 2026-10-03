@@ -1,5 +1,10 @@
 package space.controlnet.ae2federation.test;
 
+import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEItemKey;
+import appeng.blockentity.crafting.CraftingBlockEntity;
+import appeng.core.definitions.AEBlocks;
 import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.Set;
@@ -7,7 +12,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
+import space.controlnet.ae2federation.identity.IdentityStatus;
+import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
+import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.BindingDiagnostic.Reason;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyFilter;
@@ -17,6 +27,7 @@ import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
+import space.controlnet.ae2federation.test.automation.NativeAutomationFixture;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.storage.ChainStorageFixture;
@@ -147,5 +158,71 @@ public final class StorageStatusGameTests {
         if (!(policies.edit(new PolicyEdit(key, policies.revision(key), rule)) instanceof PolicyMutationResult.Accepted)) {
             throw new IllegalStateException("The rule edit must be accepted");
         }
+    }
+
+    /**
+     * The provider's identity splits for a moment (a stray block carrying its id sits on a second Grid) and heals on the
+     * same Grids, with no Federation block touched: storage and crafting stop while it is split and come back after.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 800, required = true, manualOnly = true)
+    public static void storageIdentitySplitRecovers(GameTestHelper helper) {
+        var fixture = new NativeAutomationFixture(helper);
+        var stray = new BlockPos(8, 6, 1);
+        var diamond = AEItemKey.of(Items.DIAMOND);
+        var phase = new int[1];
+        var heldDuringSplit = new String[1];
+        helper.succeedWhen(() -> {
+            var binding = fixture.binding();
+            var mounts = StorageMountService.get(helper.getLevel());
+            var crafting = CraftingProjectionService.get(helper.getLevel());
+            switch (phase[0]) {
+                case 0 -> {
+                    helper.assertTrue(fixture.ready(), "Waiting for shared Storage and Crafting capabilities");
+                    helper.setBlock(stray, AEBlocks.CRAFTING_STORAGE_1K.block());
+                    helper.<CraftingBlockEntity>getBlockEntity(stray).getMainNode().loadFromNBT(
+                            NetworkIdentityNodeSeed.managedNode("proxy", binding.key().providerNetworkId()));
+                    phase[0] = 1;
+                    helper.assertTrue(false, "Waiting for the provider identity to split");
+                }
+                case 1 -> {
+                    helper.assertTrue(identity(binding.providerGrid()) == IdentityStatus.AMBIGUOUS_SPLIT
+                                    && crafting.projectionCount(binding.key()) == 0,
+                            "Waiting for the split provider's crafting projection to be withdrawn");
+                    var held = mounts.projection(fixture.storageKey());
+                    heldDuringSplit[0] = Boolean.toString(held != null);
+                    helper.assertTrue(held == null
+                                    || held.insert(diamond, 3, Actionable.SIMULATE, IActionSource.empty()) == 0,
+                            "A split provider's storage must not accept items");
+                    phase[0] = 2;
+                    helper.assertTrue(false, "Waiting for the stray block to join the provider Grid");
+                }
+                case 2 -> {
+                    helper.assertTrue(binding.connectNativeCpu(stray)
+                                    && identity(binding.providerGrid()) == IdentityStatus.SETTLED,
+                            "Waiting for the provider identity to heal");
+                    phase[0] = 3;
+                    helper.assertTrue(false, "Waiting for storage and crafting to return");
+                }
+                default -> {
+                    var projection = mounts.projection(fixture.storageKey());
+                    helper.assertTrue(crafting.projectionCount(binding.key()) > 0 && projection != null,
+                            "Waiting for storage and crafting to return after the identity healed: crafting="
+                                    + CraftingProjectionService.status(helper.getLevel(), binding.key())
+                                    + " storage=" + StorageMountService.status(helper.getLevel(), fixture.storageKey()));
+                    helper.assertValueEqual(projection.insert(diamond, 3, Actionable.SIMULATE, IActionSource.empty()),
+                            3L, "The returned storage mount must accept items again");
+                    PolicyEvidence.write("storageidentitysplitrecovers", 6, java.util.Map.of(
+                            "splitStatus", IdentityStatus.AMBIGUOUS_SPLIT.name(),
+                            "heldMountDuringSplit", heldDuringSplit[0], "craftingReturned", "true",
+                            "storageReturned", "true"));
+                    fixture.close();
+                }
+            }
+        });
+    }
+
+    private static IdentityStatus identity(appeng.api.networking.IGrid grid) {
+        return grid.getService(NetworkIdentityService.class).settlement().status();
     }
 }

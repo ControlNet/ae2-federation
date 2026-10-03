@@ -6736,6 +6736,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'storage.alias-wrapper-semantics':
                 case 'storage.status-reasons':
                 case 'storage.status-reexport':
+                case 'storage.identity-split-recovers':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeProperties = new Properties()

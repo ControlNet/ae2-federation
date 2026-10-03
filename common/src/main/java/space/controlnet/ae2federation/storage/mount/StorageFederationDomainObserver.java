@@ -6,13 +6,14 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.domain.ObservedGrids;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyKey;
 
 final class StorageFederationDomainObserver {
     private final ServerLevel level;
-    private final Map<NetworkId, IGrid> loadedGrids = new HashMap<>();
+    private final ObservedGrids observed = new ObservedGrids();
 
     StorageFederationDomainObserver(ServerLevel level) {
         this.level = level;
@@ -23,11 +24,11 @@ final class StorageFederationDomainObserver {
     }
 
     void register(IGrid grid) {
-        FederationDomainRegistryAccess.confirmedNetworkId(grid).ifPresent(networkId -> loadedGrids.put(networkId, grid));
+        observed.add(grid);
     }
 
     Map<PolicyKey, StorageRelationship> relationships() {
-        discardStaleGrids();
+        var loadedGrids = observed.confirmed();
         var relationships = new HashMap<PolicyKey, StorageRelationship>();
         for (var federationDomain : FederationDomainRegistryAccess.get(level).federationDomains()) {
             var members = federationDomain.memberships().keySet().stream().map(loadedGrids::get)
@@ -47,8 +48,7 @@ final class StorageFederationDomainObserver {
     }
 
     Map<NetworkId, IGrid> loadedGrids() {
-        discardStaleGrids();
-        return Map.copyOf(loadedGrids);
+        return Map.copyOf(observed.confirmed());
     }
 
     Set<space.controlnet.ae2federation.domain.FederationDomainReference> references(StorageRelationship relationship) {
@@ -76,11 +76,6 @@ final class StorageFederationDomainObserver {
     }
 
     void clear() {
-        loadedGrids.clear();
-    }
-
-    private void discardStaleGrids() {
-        loadedGrids.entrySet().removeIf(entry -> FederationDomainRegistryAccess.confirmedNetworkId(entry.getValue())
-                .filter(entry.getKey()::equals).isEmpty());
+        observed.clear();
     }
 }

@@ -24,6 +24,7 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
 import space.controlnet.ae2federation.storage.subscription.SourceSubscriptionKey;
 import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.identity.IdentityEpoch;
 
 public final class StorageMountService implements AutoCloseable {
     private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
@@ -41,6 +42,8 @@ public final class StorageMountService implements AutoCloseable {
     private final LevelObservabilityService observability;
     private int removedProviderCount;
     private long sourceValidations;
+    /** The {@link IdentityEpoch} the last reconciliation saw. */
+    private long reconciledEpoch = Long.MIN_VALUE;
 
     private StorageMountService(ServerLevel level) {
         subscriptions = new StorageSubscriptionService(level::getGameTime);
@@ -76,6 +79,15 @@ public final class StorageMountService implements AutoCloseable {
         var skipped = dependencies.skippedSources(key);
         return inEffect.contains(key) ? new Status(true, Optional.empty(), source, skipped)
                 : new Status(false, dependencies.reason(key), source, skipped);
+    }
+
+    /**
+     * Reconciles the level's service when a network's identity changed since its last reconciliation: a split stops the
+     * network's relationships, and a heal starts them again, without a Federation block reporting either.
+     */
+    public static synchronized void tick(ServerLevel level) {
+        var service = SERVICES.get(level);
+        if (service != null && service.reconciledEpoch != IdentityEpoch.current()) service.reconcileAll();
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
@@ -164,6 +176,7 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        reconciledEpoch = IdentityEpoch.current();
         dependencies.refresh();
         var desired = dependencies.relationships();
         var desiredPolicies = new java.util.HashSet<PolicyKey>();
