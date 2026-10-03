@@ -16,7 +16,7 @@ public final class SharedEnergyEvidence {
             case "energycoldstart" -> decimal(facts, "providerDebit");
             case "energysharedtransitive" -> decimal(facts, "accepted");
             case "energyruleoffsplits" -> decimal(facts, "initialTransfer").add(decimal(facts, "reenabledExtracted"));
-            case "energydisconnectsplits" -> decimal(facts, "initialTransfer");
+            case "energydisconnectsplits", "energyadjacentrouters" -> decimal(facts, "initialTransfer");
             default -> throw new IllegalArgumentException("Unknown shared energy evidence case: " + testId);
         };
         evidence.put("extracted", extracted.movePointRight(9).toBigIntegerExact().toString());

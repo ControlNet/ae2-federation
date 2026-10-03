@@ -148,4 +148,4 @@ The following earlier implications remain discussion guidance:
 5. No new component name, ingredient count or output quantity has been approved. Preserve the user's rejection of
    the prior speculative coupling-component recipe and return to the acquisition process before another naming list.
 
-Product discussion: [survival playability](../../docs/ideas/survival-playability.md).
+Product discussion: [survival playability](../../docs/archive/ideas/survival-playability.md).

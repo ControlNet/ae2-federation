@@ -6865,6 +6865,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'energy.shared-transitive':
                 case 'energy.rule-off-splits':
                 case 'energy.disconnect-splits':
+                case 'energy.adjacent-routers':
                 case 'observe.native-flow-once':
                 case 'observe.scoped-snapshot':
                 case 'observe.close-cleanup':

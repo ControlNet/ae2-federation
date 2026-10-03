@@ -48,5 +48,12 @@ the face resolves as Federation.
   - `federationTaskTwelveEvidenceSelfTest`.
   - The domain merge-split, redundant-membership and partial-unload GameTests.
   - `identityrouterbeforecable` and `storagecontrollerdriverouter`.
-- Not covered: shared ME power across a direct Router pair. It goes through the same domain-driven energy overlay as
-  a path through Cable, but every `energy.*` case has Cable between its Routers.
+- `energy.adjacent-routers` / `energyadjacentrouters` (8 assertions, `test/energy/AdjacentRouterEnergyFixture`) covers
+  shared ME power across a direct Router pair, with no Cable.
+  - The consumer draws 250 AE from the provider's cell, and the provider is debited exactly that.
+  - Removing one Router stops the sharing, and a draw then takes nothing from the provider.
+  - The provider's own devices keep draining its cell while the test waits. So "the provider is unchanged" is
+    measured around the draw in the same tick, as `energy.disconnect-splits` does.
+  - The case sits outside the Task 31 canonical set, like `energy.switch-pair-level`. It has a manifest row, a
+    `SharedEnergyEvidence` case, and a line in the federationVerify energy fan-out.
+  - Mutation checked: with the face-hiding rule disabled, the test times out waiting for the Routers to link.

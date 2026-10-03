@@ -103,6 +103,7 @@
     {"id":"energy.rule-off-splits","backend":"gametest","testId":"energyruleoffsplits","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"energy.disconnect-splits","backend":"gametest","testId":"energydisconnectsplits","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"energy.switch-pair-level","backend":"gametest","testId":"energyswitchpairlevel","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"energy.adjacent-routers","backend":"gametest","testId":"energyadjacentrouters","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"observe.native-flow-once","backend":"gametest","testId":"observenativeflowonce","structure":"ae2federation_test:harness_native_smoke","assertions":7},
 {"id":"observe.scoped-snapshot","backend":"gametest","testId":"observescopedsnapshot","structure":"ae2federation_test:harness_native_smoke","assertions":16},
     {"id":"observe.close-cleanup","backend":"gametest","testId":"observeclosecleanup","structure":"ae2federation_test:harness_native_smoke","assertions":5},
