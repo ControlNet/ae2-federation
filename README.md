@@ -4,17 +4,16 @@
 ![NeoForge](https://img.shields.io/badge/NeoForge-21.1.250-F16436?style=flat-square)
 [![License](https://img.shields.io/github/license/ControlNet/ae2-federation?style=flat-square)](LICENSE)
 
-Connect separate **Applied Energistics 2 networks** to share storage, autocrafting, processing machines, and ME power while keeping each network independent.
+Link separate Applied Energistics 2 networks so they can share items, crafting, machines and power.
 
 ## Features
 
-- **Shared storage**: use another network's items and fluids from your own terminals.
-- **Remote autocrafting**: order from another network's pattern providers.
-- **Remote processing**: send patterns to machines on other networks with the Federation Pattern Provider.
-- **Shared ME power**: join two networks' energy with one switch.
-- **Your choice, per direction**: each network decides what the other may use. Nothing is shared until you switch it on.
-
-English and Simplified Chinese are included.
+- Use the items and fluids stored on another network.
+- Craft with another network's pattern providers.
+- Send processing jobs to machines on another network.
+- Share power between two networks.
+- Choose what each network shares. Everything starts off.
+- English and Simplified Chinese.
 
 ## Requirements
 
@@ -22,8 +21,6 @@ English and Simplified Chinese are included.
 - NeoForge **21.1.250**
 - Applied Energistics 2 **19.2.9 or newer**
 - LDLib2 **2.2.34 or newer**
-
-Install them on **both the client and the server**. Tested with AE2 19.2.17 and LDLib2 2.2.34 ([version notes](docs/compatibility/minimum-versions.md)).
 
 ## Installation
 

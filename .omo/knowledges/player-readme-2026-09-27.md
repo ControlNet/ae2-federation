@@ -19,4 +19,6 @@
   one Provider per Endpoint, subnets, return buffers) live in the AE2 in-game guide pages under `ae2guide/`.
 - Same day, the owner cut further: no survival/guide/JEI paragraph and no Getting started section at all. The README is
   now purpose, features, requirements, installation, feedback, development links and acknowledgements (264 words).
-  How to play lives only in the in-game guide; do not add setup steps back.
+  How to play lives only in the in-game guide; do not add setup steps back. Then also cut: the "while keeping each
+  network independent" clause, the client/server and tested-versions note under requirements. Features are plain
+  one-line sentences, no bold "Label: explanation" pattern (the owner found it too AI-sounding).
