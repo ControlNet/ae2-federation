@@ -32,9 +32,9 @@ import space.controlnet.ae2federation.client.policy.MappingWireTarget;
 /**
  * Processing wires for the domain's Pattern Providers: each Provider as a card of pattern rows with an output port on
  * the right edge, the Endpoints the selected Provider may use as cards with an input port on the left edge, and one
- * wire per mapped pattern and Endpoint. Dragging a port onto an Endpoint maps it; so does clicking a pattern, then an
- * Endpoint, then "Map". Clicking a wire offers to unlink it and clicking an Endpoint selects it for details and
- * release. The header search filters Providers, patterns and Endpoints. Every change is an explicit
+ * wire per mapped pattern and Endpoint. Dragging a pattern's row onto an Endpoint maps it; so does clicking a
+ * pattern, then an Endpoint, then "Map". Clicking a wire offers to unlink it and clicking an Endpoint selects it for
+ * details and release. The header search filters Providers, patterns and Endpoints. Every change is an explicit
  * {@link MappingWireTarget} request that the server checks against live ownership.
  */
 public final class FederationProcessingGraph {
@@ -46,6 +46,8 @@ public final class FederationProcessingGraph {
     private static final float THUMBNAIL_HEIGHT = 20;
     /** Radius of the round ports on the cards' edges. */
     private static final int PORT = 5;
+    /** How far the pressed pointer moves on a pattern row before it drags the pattern's wire. */
+    private static final float DRAG_THRESHOLD = 3;
     /** Width of a pattern row's port, whose ring is centred on the card's right edge. */
     private static final float PORT_WIDTH = 12;
     private static final int CARD_FACE = 0xff2c2735;
@@ -142,6 +144,10 @@ public final class FederationProcessingGraph {
     private String query = "";
     /** Set by a press on a pattern row, so the canvas does not also pick the wire that starts at its port. */
     private boolean patternPressed;
+    /** The pattern row a drag may start from: pressed outside its item slot and not yet moved far. */
+    private String pressedRow = "";
+    private float pressX;
+    private float pressY;
     private Selection pendingFocus;
     /**
      * The Provider screen's real pattern slots, by slot index; null in the domain workspace. With them every slot has a
@@ -201,6 +207,19 @@ public final class FederationProcessingGraph {
             if (selection.kind() == Kind.ENDPOINT && releasable(selection.endpoint())) release.run();
         });
         canvas.addEventListener(UIEvents.MOUSE_DOWN, this::pickWire);
+        // Any press or release elsewhere on the screen forgets the pressed row, so only its own press drags it.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressedRow = "", true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressedRow = "", true);
+        // A drag starts once the pressed pointer has moved a few pixels, wherever it now is, so a click still only
+        // selects and a quick move off the row still drags.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
+            var port = ports.get(pressedRow);
+            if (!editable || port == null || !port.isMouseDown(0) || dragged() != null) return;
+            if (Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
+            var slot = pressedRow;
+            pressedRow = "";
+            port.startDrag(new PortDrag(slot), null);
+        }, true);
     }
 
     UIElement root() {
@@ -569,11 +588,7 @@ public final class FederationProcessingGraph {
         port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
             boolean dragged = id.equals(hintSlot);
             round(pen, x + width + 2, y + height / 2, PORT, wireAccent, dragged ? FederationTheme.DARK_TITLE : PORT_FILL);
-        })).tooltips(tr("port_help")));
-        // A drag starts when the pressed pointer leaves the port, as LDLib2 drag sources do.
-        port.addEventListener(UIEvents.MOUSE_LEAVE, event -> {
-            if (editable && port.isMouseDown(0)) port.startDrag(new PortDrag(id), null);
-        }, true);
+        })));
         row.style(style -> style.backgroundTexture(rowFace(id)).tooltips(tr("pattern_help")));
         // Selecting a pattern is the click way to map it: then click an Endpoint and "Map".
         row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
@@ -581,8 +596,14 @@ public final class FederationProcessingGraph {
             selection = new Selection(Kind.PATTERN, id, "");
             rejection = Component.empty();
             render();
+            // The whole row drags its wire, except the item slot, whose clicks belong to the pattern in it.
+            boolean onSlot = event.target instanceof com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot;
+            pressedRow = event.button == 0 && !onSlot ? id : "";
+            pressX = event.x;
+            pressY = event.y;
             passSlotClick(event);
         });
+
         ports.put(id, port);
         return row;
     }

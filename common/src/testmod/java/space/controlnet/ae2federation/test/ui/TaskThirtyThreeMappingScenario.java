@@ -31,7 +31,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("the mapped Endpoint is shown as used by this Provider", context ->
                         context.el(".processing-endpoint-state").text().equals("Patterns mapped: 1"))
                 .screenshot("ui-processing-wires")
-                .drag("#processing_port_0", ".processing-endpoint")
+                // The whole row drags the pattern's wire, not only its port.
+                .drag("#processing_pattern_0", ".processing-endpoint")
                 .waitUntilServer("dropping a port maps the pattern", TaskThirtyThreeWorldFixture::mappingAccepted)
                 .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
                 .step("select the new wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "0"))
