@@ -241,6 +241,39 @@ public final class PatternProjectionGameTests {
         });
     }
 
+    /**
+     * Breaking the Federation link after the push: outputs that arrive while the networks are apart stay on the
+     * provider network, and the consumer's job keeps waiting, as a vanilla job does for an output that went elsewhere.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 800)
+    public static void projectionDisconnected(GameTestHelper helper) {
+        var fixture = new PatternProjectionFixture(helper);
+        var stage = new int[1];
+        helper.succeedWhen(() -> {
+            pushedTwoStone(helper, fixture, stage);
+            if (stage[0] == 4) {
+                fixture.disconnect();
+                stage[0] = 5;
+            }
+            if (stage[0] == 5) {
+                helper.assertValueEqual(fixture.projections(), 0, "Waiting for the patterns to be withdrawn");
+                helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
+                stage[0] = 6;
+            }
+            helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 2L,
+                    "The stone stays on the provider network");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 0L,
+                    "Nothing crosses the broken Federation link");
+            helper.assertValueEqual(fixture.busyConsumerCpus(), 1L, "The consumer's job keeps waiting");
+            helper.assertValueEqual(fixture.owed(stone()), 2L, "The debt stays while the consumer still waits");
+            PolicyEvidence.write("projectiondisconnected", 6, Map.of("patternsWithdrawn", "true",
+                    "outputOnProvider", "2", "consumerWaiting", "true"));
+            fixture.cancelConsumerJob();
+            fixture.close();
+        });
+    }
+
     /** A reload between the push and the return: the saved debt and the reloaded job meet again. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 1000)

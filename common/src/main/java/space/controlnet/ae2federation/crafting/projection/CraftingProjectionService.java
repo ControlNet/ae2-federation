@@ -68,6 +68,10 @@ public final class CraftingProjectionService implements AutoCloseable {
     private long reconciledWatermark = Long.MIN_VALUE;
     private long reconciledEpoch = Long.MIN_VALUE;
     private long ticks;
+    /** The Federation links of the domain topology {@link #linksRegistry} had at {@link #linksTopology}. */
+    private FederationLinks links;
+    private Object linksRegistry;
+    private long linksTopology = Long.MIN_VALUE;
 
     /** A rule's projection state for the pair editor: active with this many patterns, or why it is not. */
     public record Status(Optional<BindingDiagnostic.Reason> reason, int patterns) {
@@ -321,11 +325,25 @@ public final class CraftingProjectionService implements AutoCloseable {
         }
         wanted.forEach((grid, network) -> {
             if (routers.containsKey(grid)) return;
-            var router = new CraftingReturnRouter(network, grid, ledger,
-                    consumer -> federationDomains.grid(consumer).orElse(null));
+            // An output may return only while the networks are still linked; otherwise it stays where it arrived.
+            var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
+                    ? federationDomains.grid(consumer).orElse(null) : null);
             routers.put(grid, router);
             grid.getStorageService().addGlobalStorageProvider(router);
         });
+    }
+
+    /** Whether {@code first} and {@code second} are joined through Federation Domains now. */
+    private boolean linked(NetworkId first, NetworkId second) {
+        var registry = FederationDomainRegistryAccess.get(level);
+        var topology = registry.topologyRevision();
+        if (links == null || registry != linksRegistry || topology != linksTopology) {
+            links = FederationLinks.of(registry.federationDomains().stream()
+                    .map(federationDomain -> federationDomain.memberships().keySet()).toList());
+            linksRegistry = registry;
+            linksTopology = topology;
+        }
+        return links.linked(first, second);
     }
 
     /**

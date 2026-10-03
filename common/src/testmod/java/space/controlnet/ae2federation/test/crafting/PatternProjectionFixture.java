@@ -139,6 +139,11 @@ public final class PatternProjectionFixture implements AutoCloseable {
         accepted(policies.edit(new PolicyEdit(key, policies.revision(key), rule.withMode(mode))));
     }
 
+    /** Removes the Bridge, so the two networks no longer share a Federation Domain; both stay loaded. */
+    public void disconnect() {
+        bridge.removeFirstBridge();
+    }
+
     public int projections() {
         return CraftingProjectionService.get(helper.getLevel()).projectionCount(crafting());
     }

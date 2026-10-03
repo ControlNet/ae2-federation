@@ -6831,6 +6831,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-manual-return':
                 case 'crafting.projection-cancel':
                 case 'crafting.projection-revoked':
+                case 'crafting.projection-disconnected':
                 case 'crafting.projection-reload':
                 case 'crafting.projection-storage-required':
                 case 'crafting.projection-chain':

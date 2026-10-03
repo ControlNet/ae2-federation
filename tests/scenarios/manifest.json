@@ -79,6 +79,7 @@
     {"id":"crafting.projection-manual-return","backend":"gametest","testId":"projectionmanualreturn","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-cancel","backend":"gametest","testId":"projectioncancel","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"crafting.projection-revoked","backend":"gametest","testId":"projectionrevoked","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"crafting.projection-disconnected","backend":"gametest","testId":"projectiondisconnected","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"crafting.projection-reload","backend":"gametest","testId":"projectionreload","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-storage-required","backend":"gametest","testId":"projectionstoragerequired","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"crafting.projection-chain","backend":"gametest","testId":"projectionchain","structure":"ae2federation_test:harness_native_smoke","assertions":12},

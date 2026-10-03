@@ -46,6 +46,11 @@ edit. A save holding a crafting rule without its storage rule gets the storage r
     `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus stays on P.
   - A debt is dropped after two 20-tick looks in which C requests nothing, but never in the first 100 ticks, while
     CPUs in later chunks reconnect. A cancelled job's late outputs therefore stay on P.
+  - A return crosses only a live Federation link: P and C share a Federation Domain, or are joined through networks
+    the domains share, as a chained push is (`FederationLinks`). Switching the rule off keeps returns going, because C
+    paid the inputs. Outputs that arrive while the link is broken stay on P; they are not delivered later, and C's CPU
+    keeps waiting until the player cancels the job, as for a vanilla output that went elsewhere. After the link is
+    restored, outputs still owed return again.
 - **Re-export.** Crafting passes on as storage does (`CraftingReach`). With "C uses M" and "M uses S" set to
   re-export, S's providers are projected onto C too. The push and the return still go straight between C and S; M
   takes no part. A consumer never reaches itself, so mutual rules and rings are allowed, and there is no cycle guard.
@@ -56,11 +61,11 @@ edit. A save holding a crafting rule without its storage rule gets the storage r
 Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
 are abandoned on load.
 
-The GameTests are `crafting.projection-*`: request, remote materials, manual return, cancel, revoked, reload, storage
-required, chain, chain blocked and mutual. Run them with:
+The GameTests are `crafting.projection-*`: request, remote materials, manual return, cancel, revoked, disconnected,
+reload, storage required, chain, chain blocked and mutual. Run them with:
 
 ```sh
-./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.projection-request,crafting.projection-remote-materials,crafting.projection-manual-return,crafting.projection-cancel,crafting.projection-revoked,crafting.projection-reload,crafting.projection-storage-required,crafting.projection-chain,crafting.projection-chain-blocked,crafting.projection-mutual -PevidenceDir=.omo/evidence/crafting-projection --dependency-verification=strict --no-configuration-cache
+./gradlew :neoforge-1.21.1:federationVerify -Pcases=crafting.projection-request,crafting.projection-remote-materials,crafting.projection-manual-return,crafting.projection-cancel,crafting.projection-revoked,crafting.projection-disconnected,crafting.projection-reload,crafting.projection-storage-required,crafting.projection-chain,crafting.projection-chain-blocked,crafting.projection-mutual -PevidenceDir=.omo/evidence/crafting-projection --dependency-verification=strict --no-configuration-cache
 ```
 
 ## Pinned Sources

@@ -122,7 +122,10 @@ grid storage. That grid's `CraftingServiceStorage` only feeds that grid's CPUs. 
 ## Lifecycle
 
 - Rule disabled, storage forced off, or the common domain lost: withdraw the projections, so no new pushes happen.
-  Already pushed work still returns through the ledger, because network 1 paid the inputs.
+  Already pushed work still returns through the ledger, because network 1 paid the inputs, but only across a live
+  Federation link (`FederationLinks`, decided 2026-10-03). Outputs that arrive while the link is broken stay on the
+  executing network and are not delivered later; network 1's CPU waits until the player cancels. Deferred delivery
+  after reconnection (DESIGN 15.4) was judged not worth its complexity and bug risk.
 - R powered off or rebooting: R's `isBusy`/`pushPattern` refuse, and network 1's CPU waits, as for an offline vanilla
   provider. R's grid or chunk unloads: its projections are withdrawn.
 - World reload: network 1's CPU restores its job natively. Projections are rebuilt when rules and grids settle, and
