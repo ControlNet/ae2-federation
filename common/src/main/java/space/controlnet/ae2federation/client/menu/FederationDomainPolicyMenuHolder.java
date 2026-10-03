@@ -63,7 +63,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
         bind(ui, "ack_status", this::statusText);
-        bind(ui, "revision_status", () -> session == null ? Component.empty() : session.revisionsText());
         bind(ui, "processing_status", this::mappingStatusText);
         var mappingFeedback = new BindableValue<String>("pending");
         mappingFeedback.bind(DataBindingBuilder.stringS2C(this::currentMappingStatus).initialValue("pending")

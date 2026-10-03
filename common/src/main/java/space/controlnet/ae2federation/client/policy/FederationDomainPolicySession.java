@@ -1325,13 +1325,6 @@ public final class FederationDomainPolicySession {
                 .append(Component.translatable(links == 1 ? "ae2federation.ui.domain.links.one" : "ae2federation.ui.domain.links", links));
     }
 
-    /** The two server counters a stale edit is judged against: the rule store's and the domain topology's. */
-    public Component revisionsText() {
-        var policy = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).highWatermark().value();
-        var topology = FederationDomainRegistryAccess.get(level).topologyRevision();
-        return Component.translatable("ae2federation.ui.domain.revisions", policy, topology);
-    }
-
     public Component consumerText() {
         return selectionText("ae2federation.ui.domain.consumer", true);
     }
@@ -1351,8 +1344,7 @@ public final class FederationDomainPolicySession {
                 : Component.translatable("ae2federation.ui.domain.rule.off"))
                 .orElseGet(() -> Component.translatable("ae2federation.ui.domain.rule.unconfigured"));
         return Component.translatable("ae2federation.ui.domain.rule",
-                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)), stateText,
-                configured.map(record -> record.revision().value()).orElseGet(() -> PolicyService.get(level).revision(key).value()))
+                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)), stateText)
                 .append("\n\n").append(runtimeObservationText(key, configured.map(record -> record.rule()).orElse(null)));
     }
 
@@ -1453,20 +1445,19 @@ public final class FederationDomainPolicySession {
             case DISABLED -> Component.translatable("ae2federation.ui.domain.status.disabled", entrance.diagnostic());
             case ACCEPTED -> acceptedText();
             case STALE_CONTEXT -> Component.translatable("ae2federation.ui.domain.status.stale_context");
-            case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision",
-                    expectedRevision.value());
-            case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict", expectedRevision.value());
+            case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision");
+            case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict");
         };
     }
 
     /**
-     * "Server confirmed: Crafting rule on · revision 12 · also Storage rule on", from the rule the server just accepted
+     * "Crafting rule enabled · also Storage rule enabled", from the rule the server just accepted
      * and the rules linked to it.
      */
     private Component acceptedText() {
         var key = selection.key();
         var text = Component.translatable("ae2federation.ui.domain.status.accepted", capabilityName(key),
-                modeName(mode(PolicyService.get(level), key)), expectedRevision.value());
+                modeName(mode(PolicyService.get(level), key)));
         for (var linked : linkedChanges) {
             text.append(Component.translatable("ae2federation.ui.domain.status.accepted.also",
                     capabilityName(linked.key()), modeName(linked.mode())));

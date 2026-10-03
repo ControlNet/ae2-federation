@@ -494,7 +494,6 @@ final class FederationTopologyView {
         asideSignature = "";
         renderAside();
         updateThroughput();
-        updateEndpointNodes();
     }
 
     /** Deliveries of the shown networks' rules over the server's flow window. */
@@ -572,7 +571,6 @@ final class FederationTopologyView {
             rebuildGraph();
         }
         updateCards();
-        updateEndpointNodes();
         renderAside();
         applySearch();
     }
@@ -776,6 +774,8 @@ final class FederationTopologyView {
         var button = new Button();
         button.noText();
         button.addClass("graph-node-member");
+        // Not drawn: lets the UI tests find a network's card by its identity, whatever its name.
+        button.addClass("network-" + network.id());
         button.setId("graph_node_" + sanitize(network.member()));
         boolean selected = network.id().equals(selectedNetwork) || selectedPair.contains(network.id());
         if (network.foreign()) button.addClass("related-network");
@@ -823,7 +823,7 @@ final class FederationTopologyView {
         var swatch = new UIElement();
         swatch.layout(style -> style.width(6).height(6).flexShrink(0));
         swatch.style(style -> style.backgroundTexture(FederationTheme.solid(network.accent())));
-        // The name in bold, "Network 0A1F" by its identity tag while it has none; the full id is in the tooltip.
+        // The name in bold, "Network 0A1F" by its identity tag while it has none.
         var heading = text(name(network).copy().withStyle(net.minecraft.ChatFormatting.BOLD), FederationTheme.DARK_TITLE);
         heading.addClass("card-name");
         heading.setId("graph_node_name_" + sanitize(network.member()));
@@ -855,7 +855,6 @@ final class FederationTopologyView {
         figures.addChildren(cpus, channels);
         button.addChildren(top, energyRow, storageRow, figures);
         button.setOnClick(event -> selectNetwork(network.id()));
-        button.style(style -> style.tooltips(name(network), Component.literal(network.id())));
         cards.put(network.id(), button);
         cardLines.put(network.id(), new Label[] {stateLine, storageValue, positionLine, heading, energyValue, cpus, channels});
         return button;
@@ -905,26 +904,6 @@ final class FederationTopologyView {
     private int endpointColor(EndpointNode endpoint) {
         if (!endpoint.ready()) return FederationTheme.WARN;
         return !endpoint.mode().equals("LOCAL") && network(endpoint.owner()) != null ? FederationTheme.OK : FederationTheme.DARK_MUTED;
-    }
-
-    /** Each node's tooltip: where it is, who maps it, and what its owner sent it over the flow window. */
-    private void updateEndpointNodes() {
-        for (var endpoint : endpointNodes) {
-            var button = endpointButtons.get(endpoint.id());
-            if (button == null) continue;
-            var lines = new ArrayList<Component>();
-            lines.add(endpointLabel(endpoint));
-            var owner = network(endpoint.owner());
-            lines.add(!endpoint.ready() ? tr("endpoint_node.not_ready") : endpoint.mode().equals("LOCAL") ? tr("endpoint_node.local")
-                    : owner != null ? tr("endpoint_node.mapped", name(owner)) : tr("endpoint_node.unmapped"));
-            var flow = endpointFlows.get(endpoint.id());
-            if (flow != null && flow.get("events").getAsLong() > 0) lines.add(tr("flow", flow.get("events").getAsLong()));
-            if (flow != null && flow.get("returnedEvents").getAsLong() > 0) {
-                lines.add(tr("endpoint_node.returned", flow.get("returnedEvents").getAsLong()));
-            }
-            lines.add(tr("endpoint_node.open").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
-            button.style(style -> style.tooltips(lines.toArray(Component[]::new)));
-        }
     }
 
     /** The energy a card and the stats show: the shared pool for a network in one, else its own cells. */
@@ -1269,13 +1248,20 @@ final class FederationTopologyView {
                 ? tr("endpoint_identity_line", dimension(json.get("dimension").getAsString()), endpoint.position(), shortId)
                 : tr("endpoint_identity_short", shortId));
         identity.style(style -> style.tooltips(Component.literal(uuid)));
-        // What it is used for, as its node's tooltip says, then why the last claim request went as it did. Without a
+        // What it is used for, what it moved lately, then why the last claim request went as it did. Without a
         // domain there is no Provider to name, only that the panel is read-only.
         boolean local = !json.has("mappingNavigation");
         var explanation = Component.empty().append(local ? tr("endpoint_local_help")
                 : !endpoint.ready() ? tr("endpoint_node.not_ready")
                 : endpoint.mode().equals("LOCAL") ? tr("endpoint_node.local")
                 : owner != null ? tr("endpoint_node.mapped", name(owner)) : tr("endpoint_node.unmapped"));
+        var flow = endpointFlows.get(endpoint.id());
+        if (flow != null && flow.get("events").getAsLong() > 0) {
+            explanation.append("\n").append(tr("flow", flow.get("events").getAsLong()));
+        }
+        if (flow != null && flow.get("returnedEvents").getAsLong() > 0) {
+            explanation.append("\n").append(tr("endpoint_node.returned", flow.get("returnedEvents").getAsLong()));
+        }
         var claim = string(json, "claimResult");
         if (!claim.isEmpty() && !claim.equals("NONE") && !claim.equals("ACQUIRED") && !claim.equals("RETAINED")) {
             explanation.append("\n").append(claimResult(claim).copy()
@@ -1301,8 +1287,8 @@ final class FederationTopologyView {
         devices.setDisplay(!local);
         devices.setText(FederationWorkspace.tr("endpoint_mapping"));
         devices.setActive(endpointNavigation && navigable);
-        devices.style(style -> style.tooltips(FederationWorkspace.tr(navigable ? "endpoint_navigation_help"
-                : "endpoint_navigation_unavailable")));
+        devices.style(style -> style.tooltips(navigable ? new Component[0]
+                : new Component[] {FederationWorkspace.tr("endpoint_navigation_unavailable")}));
         // The patterns whose wires go to this Endpoint, wherever their Provider is.
         var patterns = json.has("patterns") ? json.getAsJsonArray("patterns") : new JsonArray();
         linksHeading.setText(tr("endpoint_patterns", patterns.size()));
@@ -1867,8 +1853,6 @@ final class FederationTopologyView {
         };
         toggle.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
         toggle.setActive(editable);
-        // A locked switch is drawn faded by its LSS texture; the read-only note says why it is locked.
-        toggle.style(style -> style.tooltips(switchTooltip(capability, rule, mode, heldByCrafting).toArray(Component[]::new)));
         var observed = rule != null ? rule.get("revision").getAsLong() : revisions.getOrDefault(ruleKey, 0L);
         var policyKey = new PolicyKey(NetworkId.parse(consumer.id()), NetworkId.parse(provider.id()), capability);
         // Left click steps forward and right click back, as AE2's setting buttons do, so a player can switch a rule
@@ -1891,13 +1875,15 @@ final class FederationTopologyView {
         head.addChild(toggle);
         var state = ruleState(rule);
         var stateCode = state.code() + (mode == RuleMode.REEXPORT ? "_reexport" : "");
-        var text = tr("rule_state." + stateCode, observed).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
+        var text = tr("rule_state." + stateCode).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
         if (flow != null && on) text.append("\n").append(flowText(flow));
-        if (state.explain()) text.append("\n").append(runtimeText(rule).copy().withStyle(
+        var attention = attention(rule, state);
+        if (attention != null) text.append("\n").append(attention.copy().withStyle(
                 Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         stateLabel.setText(text);
-        stateLabel.style(style -> style.tooltips(ruleSummary(capability, rule), runtimeText(rule)));
+        // Off, unconfigured and working rules need nothing from the player, so they have no tooltip.
+        stateLabel.style(style -> style.tooltips(attention == null ? new Component[0] : new Component[] {attention}));
         row.addChild(head);
         if (capability == PolicyCapability.STORAGE && rule != null && rule.has("terms")) row.addChild(terms(suffix, rule.getAsJsonObject("terms")));
         return row;
@@ -1979,30 +1965,6 @@ final class FederationTopologyView {
         return rule.has("reexport") && rule.get("reexport").getAsBoolean() ? RuleMode.REEXPORT : RuleMode.ENABLED;
     }
 
-    /**
-     * The rule's summary and runtime, then, for a rule that can be passed on, its three states with the current one
-     * marked and how the mouse buttons step through them. A storage rule crafting depends on cannot be switched off.
-     */
-    private static List<Component> switchTooltip(PolicyCapability capability, JsonObject rule, RuleMode mode,
-            boolean heldByCrafting) {
-        var lines = new ArrayList<Component>();
-        lines.add(ruleSummary(capability, rule));
-        lines.add(runtimeText(rule));
-        if (!RuleMode.REEXPORT.allowedFor(capability)) return lines;
-        for (var each : RuleMode.values()) {
-            var name = tr("mode." + each.name().toLowerCase(java.util.Locale.ROOT));
-            lines.add(each == mode ? tr("mode.current", name).withStyle(net.minecraft.ChatFormatting.WHITE)
-                    : tr("mode.other", name).withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        }
-        lines.add(tr("mode.hint").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        if (heldByCrafting) lines.add(tr("mode.storage_held").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
-        if (capability == PolicyCapability.CRAFTING) {
-            lines.add(tr("mode.crafting_storage").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        }
-        lines.add(tr("mode.reexport_note").withStyle(Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
-        return lines;
-    }
-
     private static RuleState ruleState(JsonObject rule) {
         if (rule == null) return new RuleState("unconfigured", FederationTheme.TEXT_MUTED, false);
         if (!rule.get("enabled").getAsBoolean()) return new RuleState("off", FederationTheme.DARK_MUTED, false);
@@ -2017,37 +1979,31 @@ final class FederationTopologyView {
         };
     }
 
-    private static Component ruleSummary(PolicyCapability capability, JsonObject rule) {
-        return Component.translatable("ae2federation.ui.domain.rule", capabilityName(capability),
-                rule == null ? Component.translatable("ae2federation.ui.domain.rule.unconfigured")
-                        : Component.translatable("ae2federation.ui.domain.rule." + switch (mode(rule)) {
-                            case DISABLED -> "off";
-                            case ENABLED -> "on";
-                            case REEXPORT -> "reexport";
-                        }),
-                rule == null ? 0 : rule.get("revision").getAsLong());
-    }
-
-    /** Rebuilds the server's runtime observation from its translation keys. */
-    private static Component runtimeText(JsonObject rule) {
+    /**
+     * What the player should know about a rule: why an enabled rule is not in effect, or which of the other network's
+     * storages a working storage rule cannot share. Null when there is nothing to act on.
+     */
+    private static Component attention(JsonObject rule, RuleState state) {
+        if (rule == null) return null;
         var prefix = "ae2federation.ui.domain.runtime.";
-        if (rule == null) return Component.translatable(prefix + "unconfigured");
         var runtime = rule.getAsJsonObject("runtime");
-        if (runtime == null) return Component.translatable(prefix + (rule.get("enabled").getAsBoolean() ? "unobserved" : "off"));
+        if (!state.explain()) {
+            if (runtime == null || !runtime.has("skipped") || !runtime.has("storage")) return null;
+            return Component.translatable(prefix + "storage_skipped", runtime.get("skipped").getAsInt(),
+                    Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString()));
+        }
+        if (runtime == null) return Component.translatable(prefix + "unobserved");
         var code = runtime.get("code").getAsString();
         if (code.equals("operation_missing")) return Component.translatable(prefix + code,
                 Component.translatable(prefix + "operation." + runtime.get("operation").getAsString()));
-        var text = Component.translatable(prefix + code);
-        if (runtime.has("backend")) text.append("\n").append(Component.translatable(prefix + "backend_reason",
-                Component.translatable(prefix + "backend." + runtime.get("backend").getAsString())));
-        if (runtime.has("storage")) {
-            var source = Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString());
-            text.append("\n").append(runtime.has("skipped") && code.equals("published")
-                    ? Component.translatable(prefix + "storage_skipped", runtime.get("skipped").getAsInt(), source)
-                    : Component.translatable(prefix + "storage_reason", source));
-        }
-        if (runtime.has("note")) text.append("\n").append(Component.translatable(prefix + "note."
-                + runtime.get("note").getAsString()));
+        // The most specific reasons the server gave, each on its own line; the code alone when it gave none.
+        var reasons = new ArrayList<Component>();
+        if (runtime.has("backend")) reasons.add(Component.translatable(prefix + "backend." + runtime.get("backend").getAsString()));
+        if (runtime.has("storage")) reasons.add(Component.translatable(prefix + "provenance." + runtime.get("storage").getAsString()));
+        if (runtime.has("note")) reasons.add(Component.translatable(prefix + "note." + runtime.get("note").getAsString()));
+        if (reasons.isEmpty()) return Component.translatable(prefix + code);
+        var text = Component.empty().append(reasons.getFirst());
+        reasons.stream().skip(1).forEach(reason -> text.append("\n").append(reason));
         return text;
     }
 

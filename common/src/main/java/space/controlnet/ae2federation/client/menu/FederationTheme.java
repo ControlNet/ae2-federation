@@ -110,6 +110,21 @@ public final class FederationTheme {
 
     private FederationTheme() {}
 
+    /** A rail button with {@code icon} on AE2's toolbar sprite. */
+    public static IGuiTexture toolbar(IGuiTexture icon) {
+        return new ToolbarButton(TOOLBAR, icon, 0);
+    }
+
+    /** The hovered rail button: AE2's lighter sprite, sprite and icon a pixel lower, as if pressed. */
+    public static IGuiTexture toolbarHover(IGuiTexture icon) {
+        return new ToolbarButton(TOOLBAR_HOVER, icon, 1);
+    }
+
+    /** The rail button of the open page, on AE2's focused toolbar sprite. */
+    public static IGuiTexture toolbarSelected(IGuiTexture icon) {
+        return new ToolbarButton(TOOLBAR_ACTIVE, icon, 0);
+    }
+
     /** Axis-aligned fills; painters only see this, so textures can be built where client classes are absent. */
     public interface Pen {
         void rect(float x, float y, float width, float height, int color);
@@ -223,6 +238,29 @@ public final class FederationTheme {
         void drawAt(net.minecraft.client.gui.GuiGraphics target, float mouseX, float mouseY, float x, float y,
                 float width, float height, float partialTicks) {
             sprite.draw(target, mouseX, mouseY, x, y, width, height, partialTicks);
+        }
+    }
+
+    /**
+     * AE2's 18x20 toolbar sprite with a 16x16 icon a pixel inside its top-left corner, both {@code drop} pixels lower,
+     * as AE2's {@code IconButton} and NeoECO's toolbar buttons draw them.
+     */
+    private static final class ToolbarButton implements IGuiTexture {
+        private final IGuiTexture background;
+        private final IGuiTexture icon;
+        private final int drop;
+
+        private ToolbarButton(IGuiTexture background, IGuiTexture icon, int drop) {
+            this.background = background;
+            this.icon = icon;
+            this.drop = drop;
+        }
+
+        @Override
+        public void draw(net.minecraft.client.gui.GuiGraphics target, float mouseX, float mouseY, float x, float y,
+                float width, float height, float partialTicks) {
+            background.draw(target, mouseX, mouseY, x, y + drop, width, height, partialTicks);
+            icon.draw(target, mouseX, mouseY, x + 1, y + 1 + drop, 16, 16, partialTicks);
         }
     }
 

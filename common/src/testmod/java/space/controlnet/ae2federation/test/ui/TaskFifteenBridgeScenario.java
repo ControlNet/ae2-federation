@@ -23,7 +23,7 @@ public final class TaskFifteenBridgeScenario implements UIScenario {
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
-                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
+                .waitForText("#ack_status", "Storage rule enabled")
                 .server("observe production Bridge mutation", context ->
                         TaskFifteenWorldFixture.observe(context, "ACCEPTED"))
                 .step("record Bridge policy outcome", context -> TaskFifteenScenarioSupport.attachPolicy(context, "ui.bridge"))

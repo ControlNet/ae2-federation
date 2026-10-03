@@ -22,10 +22,10 @@ public final class TaskFifteenStaleContextScenario implements UIScenario {
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("stale generation rejected", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0)
-                .waitForText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
+                .waitForText("#ack_status", "The domain changed. Reopen this editor.")
                 .check("other switches are inactive", context -> !context.el("#policy_switch_0_crafting").isActive())
                 .click("#policy_switch_0_crafting")
-                .checkText("#ack_status", "Rejected by server: Federation Domain topology changed; reopen this editor")
+                .checkText("#ack_status", "The domain changed. Reopen this editor.")
                 .check("stale submit remains inactive", context -> !context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).isActive())
                 .checkServer("stale edit did not mutate policy", context ->
                         TaskFifteenWorldFixture.policyRevision(context) == 0

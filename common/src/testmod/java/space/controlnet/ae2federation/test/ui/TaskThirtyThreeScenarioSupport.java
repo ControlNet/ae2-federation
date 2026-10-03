@@ -60,10 +60,9 @@ final class TaskThirtyThreeScenarioSupport {
     static com.lowdragmc.lowdraglib2.uitest.ElementRef networkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context,
             String networkUuid) {
         var tag = networkTag(networkUuid);
-        // A card names its network and carries the full identity in its tooltip, which holds after a rename.
+        // A card carries its network's identity as an undrawn class, which holds after a rename.
         return context.all(".graph-node-member").stream()
-                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips()
-                        .asList().stream().anyMatch(line -> line.getString().equals(networkUuid)))
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("network-" + networkUuid))
                 .findFirst().orElseThrow(() -> new IllegalStateException("No topology card for network " + tag));
     }
 
@@ -116,6 +115,17 @@ final class TaskThirtyThreeScenarioSupport {
     static void attachEndpoint(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         context.attach("endpointDetail", endpointFacts(context));
         context.attach("endpointIdentity", context.el("#endpoint_identity").text());
+    }
+
+    /** The element's tooltip, one string per line. */
+    static java.util.List<String> tooltipLines(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList()
+                .stream().map(net.minecraft.network.chat.Component::getString).toList();
+    }
+
+    /** Whether the element has no tooltip at all. */
+    static boolean noTooltip(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList().isEmpty();
     }
 
     static void selectFirstNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context) {

@@ -22,7 +22,7 @@ public final class TaskFifteenRouterScenario implements UIScenario {
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->
                         TaskFifteenWorldFixture.policyConfigured(context))
-                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
+                .waitForText("#ack_status", "Storage rule enabled")
                 .server("observe production Router mutation", context ->
                         TaskFifteenWorldFixture.observe(context, "ACCEPTED"))
                 .step("record Router policy outcome", context -> TaskFifteenScenarioSupport.attachPolicy(context, "ui.router"))

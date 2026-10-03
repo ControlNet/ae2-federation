@@ -257,8 +257,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")
                 .waitUntil("the Endpoint is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 1)
-                .waitUntil("the Endpoint's node shows the real delivery", context ->
-                        TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Delivered 1× in the last 5 s"))
+                .check("the Endpoint's node has no tooltip", context ->
+                        TaskThirtyThreeScenarioSupport.noTooltip(context, ".graph-node-endpoint"))
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
+                .waitForTextContains("#graph_selection", "Delivered 1× in the last 5 s")
                 .waitUntil("teal dots travel along the Endpoint's link", context -> context.el("#graph_flow_pulses")
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() > 0)
                 .waitForTextContains("#graph_throughput", "Flow · last 5 s: delivered 1×")
@@ -273,9 +275,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .step("record flow evidence", context -> {
                     context.attach("evidenceFor", "ui.mapping");
-                    context.attach("processingFlow", context.el(".graph-node-endpoint").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
-                            .getStyle().tooltips().asList().stream().map(net.minecraft.network.chat.Component::getString)
-                            .collect(java.util.stream.Collectors.joining("\n")));
+                    context.attach("processingFlow", context.el("#graph_selection").text());
                     context.attach("flowDots", context.get("task33.flowDots"));
                 })
                 .click("#graph_flow_toggle")
@@ -284,6 +284,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() == 0)
                 .click("#graph_flow_toggle")
                 .waitUntil("live flow is back on", context -> !context.el("#graph_throughput").text().equals("Live flow off"))
+                .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .waitUntil("the network's links are listed", context -> !context.all(".network-link").isEmpty())
+                .step("open the pair's rules again", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))
+                .waitUntil("pair editor returns", context -> context.el("#pair_editor").isVisible())
                 .step("scroll the pair editor back to its top", context ->
                         TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .click("#tab_mapping")

@@ -426,7 +426,6 @@ public final class PerformanceBenchmarkGameTests {
                 perf.nanosPerOp("graphSnapshotText", 2000, 300, session::graphSnapshotText);
                 perf.nanosPerOp("labels", 2000, 300, () -> {
                     session.membersText();
-                    session.revisionsText();
                     session.networkOverviewText();
                     session.pairFlowText();
                 });

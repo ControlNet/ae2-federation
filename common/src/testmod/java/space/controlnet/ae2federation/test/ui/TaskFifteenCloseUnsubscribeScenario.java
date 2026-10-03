@@ -28,7 +28,7 @@ public final class TaskFifteenCloseUnsubscribeScenario implements UIScenario {
                 })
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForTextContains(TaskFifteenScenarioSupport.STORAGE_STATE, "Off · revision")
+                .waitUntil("the storage rule reads off", context -> context.el(TaskFifteenScenarioSupport.STORAGE_STATE).text().equals("Off"))
                 .checkServer("menu close did not stop policy sharing", context ->
                         !TaskFifteenWorldFixture.policyEnabled(context))
                 .server("observe post-close production mutation", context ->
