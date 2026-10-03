@@ -17,3 +17,6 @@
   the Storage, Crafting and ME power switches, and one paragraph for remote processing. Remote crafting needs no
   section of its own (switch on Crafting, order from the terminal). Mechanism details (re-export chains, CPU side,
   one Provider per Endpoint, subnets, return buffers) live in the AE2 in-game guide pages under `ae2guide/`.
+- Same day, the owner cut further: no survival/guide/JEI paragraph and no Getting started section at all. The README is
+  now purpose, features, requirements, installation, feedback, development links and acknowledgements (264 words).
+  How to play lives only in the in-game guide; do not add setup steps back.

@@ -31,17 +31,6 @@ Install them on **both the client and the server**. Tested with AE2 19.2.17 and 
 2. Put the JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and its dependencies in the `mods/` folder.
 3. Launch Minecraft.
 
-Every block is craftable in survival. AE2's in-game guide has an **AE2 Federation** section with recipes and setup. JEI users need [AE2 JEI Integration](https://www.curseforge.com/minecraft/mc-mods/ae2-jei-integration) to see AE2 machine recipes.
-
-## Getting started
-
-1. Build two separate, powered ME networks.
-2. Connect them: an **ME Federation Bridge** for networks side by side, or an **ME Federation Router** (one network per face) and **ME Federation Cable** for networks further apart.
-3. Right-click the Router or Bridge, click the line between two networks, and switch on **Storage**, **Crafting** or **ME power**. Each rule works in one direction.
-4. Use your normal ME terminal.
-
-**Remote processing**: place an **ME Federation Pattern Provider** on your network and an **ME Federation Processing Endpoint** next to the machines, with both fronts on Federation Cable. Right-click the Provider, insert processing patterns, and drag each pattern onto an Endpoint. Results pushed into the Endpoint come back to your network.
-
 ## Feedback
 
 [Report a bug or suggest a feature](https://github.com/ControlNet/ae2-federation/issues). For bugs, include your mod versions, what happened, and logs or screenshots.
