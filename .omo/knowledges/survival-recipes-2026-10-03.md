@@ -13,8 +13,8 @@ the resources; the repository has no datagen.
 | 4 Router | shaped `CIC / SLN / CEC`: Cables in the corners, Import Bus top, Storage Bus left, Interface right, Export Bus bottom, native Logic Processor centre |
 
 - The processor is `material/MaterialRegistration.FEDERATION_LOGIC_PROCESSOR`. Its texture is the user-approved icon
-  edited from AE2's `logic_processor.png`. It is a CC BY-NC-SA 3.0 derivative, recorded in
-  `docs/compatibility/dependencies.md` and the README acknowledgements.
+  edited from AE2's `logic_processor.png`. It is a derivative of AE2's CC BY-NC-SA 3.0 art,
+  distributed like all the mod's art under CC BY-NC-SA 4.0; recorded in `docs/compatibility/dependencies.md`.
 - `mode: press` spends the top and bottom inputs. `inscribe` keeps them, like a press plate. AE2's `InscriberRecipe`
   codec makes `top` and `bottom` optional. `InscriberRecipes.findRecipe` also matches the recipe flipped, with the dust
   in the bottom slot.

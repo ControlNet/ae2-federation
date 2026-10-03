@@ -36,4 +36,6 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 - [LDLib2](https://github.com/Low-Drag-MC/LDLib2): the UI framework.
 - [NeoECO AE Extension](https://github.com/DancingSnow0517/NeoECOAEExtension): its LDLib2-based, AE2-styled GUI is the reference for ours.
 
-The Federation Logic Processor texture is edited from AE2's Logic Processor texture and, like AE2's art, is licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), not AGPL-3.0.
+## License
+
+The code is licensed under [AGPL-3.0](LICENSE). The art assets are licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
