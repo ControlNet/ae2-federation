@@ -1,8 +1,12 @@
-# Survival playability
+# Survival playability — archived discussion
+
+Archived after implementation on 2026-10-03. This document preserves the historical discussion, including
+superseded proposals and pre-implementation status statements. It is not the current feature specification.
+See [implemented survival playability](../../features/survival-playability.md) for current recipes and guide resources.
 
 Status: early availability, five recipes and an AE2-style GuideME guide confirmed; Federation Cable recipe remains under discussion. Not implemented.
 
-Discussion date: 2026-10-03. [Idea index](README.md).
+Discussion date: 2026-10-03. [Idea index](../../ideas/README.md).
 
 ## Intent
 
@@ -92,9 +96,9 @@ Whether Federation extends AE2's guide or supplies its own linked guide is an im
 
 The user approved this Federation Logic Processor icon and requested storing it with the idea:
 
-![Federation Logic Processor](assets/federation_logic_processor.png)
+![Federation Logic Processor](../../art/assets/federation_logic_processor.png)
 
-[Selected 16x16 transparent PNG](assets/federation_logic_processor.png).
+[Selected 16x16 transparent PNG](../../art/assets/federation_logic_processor.png).
 It was edited directly from AE2 19.2.17's native Logic Processor texture, retaining the gold base, dark chip and
 alpha mask while changing twelve pixels to introduce Fluix-colored nodes and connections. No image generation
 was used. The source is `src/main/resources/assets/ae2/textures/item/logic_processor.png` at AE2 commit
@@ -158,7 +162,7 @@ implementation-time validation. Future P2P and remote-connection ideas are outsi
 Inspection of the current registration code identifies four blocks and one cable-mounted part: Federation Cable,
 Router, Pattern Provider, Processing Endpoint, and Bridge (the part). The current README describes release 0.0.3
 as having no survival crafting recipes; no recipe resources or recipe-provider implementation were found in the
-inspected project source. See [inspection notes](../../.omo/knowledges/survival-playability-discussion-2026-10-03.md).
+inspected project source. See [inspection notes](../../../.omo/knowledges/survival-playability-discussion-2026-10-03.md).
 
 The following is a proposed starting point for discussion, not approved recipes:
 
@@ -187,7 +191,7 @@ ingredient allocation and output counts. They requested studying native AE2, Neo
 Energistics before further proposals. At that stage no common-component form or recipe was accepted; the later
 processor and device decisions are recorded above.
 
-The [source-based acquisition study](../../.omo/knowledges/survival-acquisition-ae2-addon-references-2026-10-03.md)
+The [source-based acquisition study](../../../.omo/knowledges/survival-acquisition-ae2-addon-references-2026-10-03.md)
 records four version-scoped examples: AE2 water transformation and Inscriber workflows; NeoECO's energized material
 family and processing; Lightning Tech's lightning transformations; and Data Energistics' meteorite, crystal,
 circuit and framework routes. Some of their costs, particularly Data Energistics' quantum-singularity processor,

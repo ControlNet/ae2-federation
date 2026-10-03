@@ -10,10 +10,14 @@ what the feature should do; it does not mean implementation has started or a rel
 | [Federation P2P](federation-p2p.md) | Direction and core behavior confirmed | Native AE2 P2P mode carrying Federation connectivity, including cross-dimensional support in its first release |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
-| [Survival playability](survival-playability.md) | Early availability, five recipes and GuideME documentation confirmed; cable recipe open | Obtainable basic Federation connections early in AE2 progression, with crafting, setup workflows and an AE2-style in-game guide |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
 Its name, appearance and detailed behavior remain undecided.
+
+## Implemented ideas
+
+- [Survival playability](../features/survival-playability.md): implemented recipes, processor icon and GuideME guide.
+  The [original discussion](../archive/ideas/survival-playability.md) is archived for historical context.
 
 ## Comparative research
 
@@ -53,3 +57,6 @@ choices remain for the future coding agent unless explicitly decided during disc
 
 When implementation begins, link the resulting design or implementation evidence and update the status. Retain
 the idea's history and links rather than presenting a future proposal as an already available feature.
+
+When an idea is implemented, move its discussion to `docs/archive/ideas/`, document current behavior in
+`docs/features/`, and link both from the implemented-ideas section. Historical proposals are not current requirements.

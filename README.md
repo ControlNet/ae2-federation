@@ -30,7 +30,7 @@ Regular builds and tests use AE2 19.2.17 and LDLib2 2.2.34; see the [minimum-ver
 2. Download the mod JAR from [GitHub Releases](https://github.com/ControlNet/ae2-federation/releases) and put it alongside its required mods in the instance's `mods/` folder.
 3. Launch Minecraft. For multiplayer, install the same mods on the server.
 
-Every block is crafted in survival from early AE2 materials, starting with a **Federation Logic Processor** pressed in the Inscriber from a Logic Processor and Fluix Dust. JEI or EMI shows the recipes, and AE2's in-game guide has an **AE2 Federation** section.
+Every block is crafted in survival from early AE2 materials, starting with a **Federation Logic Processor** pressed in the Inscriber from a Logic Processor and Fluix Dust. EMI shows the recipes; JEI users also need [AE2 JEI Integration](https://www.curseforge.com/minecraft/mc-mods/ae2-jei-integration) for AE2 machine recipes. AE2's in-game guide has an **AE2 Federation** section. See [survival recipes and guide resources](docs/features/survival-playability.md).
 
 ## Getting started
 

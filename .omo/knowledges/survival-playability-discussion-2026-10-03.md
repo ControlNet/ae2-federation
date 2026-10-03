@@ -5,7 +5,7 @@ topic is making the mod obtainable and usable in survival, including recipes, ma
 Asked to choose between early basic-AE2 access and a later mature-automation upgrade, the user selected early access.
 
 Maintain the confirmed direction and unconfirmed suggestions in
-[the survival idea](../../docs/ideas/survival-playability.md). Do not treat the assistant's earlier mid-game preference,
+[the survival idea](../../docs/archive/ideas/survival-playability.md). Do not treat the assistant's earlier mid-game preference,
 a tier system, storage-only entry functionality or any proposed recipe ingredients as accepted requirements.
 No current implementation/recipe audit or game validation was performed in this discussion.
 
@@ -105,7 +105,7 @@ No game recipes were implemented.
 
 The user approved the directly edited 16x16 processor icon and explicitly requested moving it from temporary
 storage into the idea directory. The unchanged selected PNG now lives at
-`docs/ideas/assets/federation_logic_processor.png`, linked from the survival idea. It derives from AE2 19.2.17
+`docs/art/assets/federation_logic_processor.png`, linked from the survival idea. It derives from AE2 19.2.17
 commit `db95d25ccc79f7bd55b504cf71522b57d60bf4f7`, preserving the native Logic Processor alpha mask and changing
 twelve pixels with native Fluix colors. No image-generation tool was used. The file move was verified by SHA256;
 the asset has not been integrated into runtime resources. Temporary comparison previews are not the selected texture.
