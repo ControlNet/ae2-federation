@@ -323,11 +323,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-disabled")
                 .server("enable rule without required request permission", TaskThirtyThreeWorldFixture::removeBrowserRuleOperation)
-                .waitUntil("missing operation is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("required operation is not allowed: crafting requests"))
-                .check("the blocked rule's tooltip is only its reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                .waitUntil("the blocked rule's tooltip is only its reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
                         TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
                         .equals(java.util.List.of("Runtime: required operation is not allowed: crafting requests.")))
+                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
+                        .ruleState(context, "crafting").contains("required operation"))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-operation-denied")
                 .server("enable the crafting rule", TaskThirtyThreeWorldFixture::enableCraftingRule)
@@ -336,8 +336,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(2).screenshot("ui-policy-runtime-crafting-active")
                 .server("switch the storage rule off through the API", context ->
                         TaskThirtyThreeWorldFixture.setCraftingStorage(context, false))
-                .waitUntil("missing storage is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("This direction's Storage rule is off"))
+                .waitUntil("missing storage is explained", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                        TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
+                        .stream().anyMatch(line -> line.contains("This direction's Storage rule is off")))
+                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
+                        .ruleState(context, "crafting").contains("Storage rule is off"))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-storage-required")
                 .server("switch the storage rule back on", context -> TaskThirtyThreeWorldFixture.setCraftingStorage(context, true))

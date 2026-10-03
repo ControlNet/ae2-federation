@@ -1878,11 +1878,10 @@ final class FederationTopologyView {
         var text = tr("rule_state." + stateCode).withStyle(Style.EMPTY.withColor(state.color() & 0xffffff));
         var flow = flows.get(ruleKey);
         if (flow != null && on) text.append("\n").append(flowText(flow));
-        var attention = attention(rule, state);
-        if (attention != null) text.append("\n").append(attention.copy().withStyle(
-                Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff)));
         stateLabel.setText(text);
-        // Off, unconfigured and working rules need nothing from the player, so they have no tooltip.
+        // The reason is the tooltip alone, not repeated under the state; off, unconfigured and working rules need
+        // nothing from the player, so they have none.
+        var attention = attention(rule, state);
         stateLabel.style(style -> style.tooltips(attention == null ? new Component[0] : new Component[] {attention}));
         row.addChild(head);
         if (capability == PolicyCapability.STORAGE && rule != null && rule.has("terms")) row.addChild(terms(suffix, rule.getAsJsonObject("terms")));

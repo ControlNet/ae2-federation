@@ -23,6 +23,7 @@
 - Rule switch tooltip (mode list, mouse hints, crafting-holds-storage and re-export notes) and the `topology.mode.*`
   keys. The state label's tooltip is only `attention(...)`: the reasons of an error/waiting rule without the "Last
   backend check:" headings, or the skipped-storage line of a working storage rule; none otherwise.
+- The reason is the tooltip alone (user's choice): the state line under a rule is only its state and recent flow.
 
 ## Test notes
 
