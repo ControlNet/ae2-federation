@@ -62,7 +62,8 @@ printed by the command (replace `<run-id>` with that attempt's run ID):
 The earlier [Task 40 QA receipt](../../.omo/evidence/task-40-qa/verification.md) is historical and BLOCKED, not a
 passing docs result or F1-F4 approval. F3's five `final.*` IDs have a BLOCKED backend; `federationUiTest` rejects them
 before client launch. Registration supplies no final-client screenshots or benchmark spot-check. Task 37 still has
-direct/subnet small 3/3 each and Federation 0/3, Task 38's soak is absent, and F1-F4 remain unapproved.
+direct/subnet small 3/3 each and no three source-matched Federation repetitions (single local Federation runs
+complete both windows since the identity settlement fix of 2026-09-26), Task 38's soak is absent, and F1-F4 remain unapproved.
 
 ```bash
 ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:federationVerify \

@@ -16,6 +16,7 @@ descriptive, not medians or a speedup claim.
 | `31e8533` all changes | 2,747 jobs / 547,697 ticks | 5,655 jobs / 90,480 units / 1,128,262 ticks | passes; persisted result consumed by `federationVerifyEvidence` |
 | `1e77d1d` final (Bridge refresh deferral) | 2,711 jobs / 541,898 ticks | 4,922 jobs in 606.6 s / 981,915 ticks | passes; persisted result consumed; ran while other GameTests used separate cores |
 | `4f81513` (retained Endpoints, return rebinding, alias rule, provisional identity) | 2,684 jobs / 536,612 ticks | 5,514 jobs / 1,105,030 ticks | passes; persisted result consumed; ran while the full GameTest regression used other cores |
+| `60879ea` (2026-10-03, after the crafting pattern projection redesign) | 4,813 jobs / 959,564 ticks | 10,099 jobs / 161,584 units / 2,012,865 ticks | the GameTest passed; run without `taskset`; the outer task then rejected the result as stale because tracked docs changed during the run, so no result was consumed |
 
 The stage diagnostics attribute the baseline's time to `TARGET_INPUT_CONTEXT` and `MACHINE_CALLBACK` with server-thread
 CPU equal to wall time. With the identity settlement cache the same stages cost about 0.6 ms of server-thread CPU per
@@ -27,7 +28,7 @@ Direct and native-subnet layouts were not re-run, so there is still no same-sour
 or soak. Task 37 remains incomplete.
 
 
-Started 2026-09-23 UTC. This is a chronological execution-status report, not a scale qualification. For the latest source-matched small snapshot, direct and native-subnet each have three complete 300-second warmup / 600-second sample repetitions. Federation failed the 256-job warmup after 27 jobs and has no accepted window or sample. Resource parity, late/ultra timing, full three-layout medians and Task 38 soak are absent. Earlier sections below describe historical checkpoints superseded by the [latest timed evidence](../../.omo/evidence/task-37-small-timed-first/verification.md). No performance budget was changed.
+Started 2026-09-23 UTC. This is a chronological execution-status report, not a scale qualification. For the source-matched small snapshot of 2026-09-24, direct and native-subnet each have three complete 300-second warmup / 600-second sample repetitions. Federation failed the 256-job warmup after 27 jobs in that snapshot; the section above shows the cause (per-read identity settlement) and single local Federation runs that complete both windows since `c371346`, but no three source-matched Federation repetitions exist yet. Resource parity, late/ultra timing, full three-layout medians and Task 38 soak are absent. Earlier sections below describe historical checkpoints superseded by the [latest timed evidence](../../.omo/evidence/task-37-small-timed-first/verification.md). No performance budget was changed.
 
 ## Implementation progress
 
