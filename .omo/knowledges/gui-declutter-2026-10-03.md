@@ -67,4 +67,6 @@ in de8c8d8. The crafting-holds-storage hint stays out, by the user's choice.
   the column reads "Pattern Provider"; no Federation-face phrase in the summary, no footer count, no return-buffer
   note; the Provider footer auto-hides like the domain footer.
 - Tooltips: no `rename_help`, `pattern_help`, `pattern_selected_help`; `mode_help` is "Drag to rotate, scroll to zoom".
-- Still stale: `provider_editing_help` tells the player to drag "the pattern's port", though the whole row drags.
+- Then: the Endpoint subtitle is only the dimension (the title has the position); the wires views' corner legend
+  (one-owner rule, dashed-card line) is gone, the guide explains both; `provider_editing_help` reads "Drag a pattern
+  onto an Endpoint to map it."

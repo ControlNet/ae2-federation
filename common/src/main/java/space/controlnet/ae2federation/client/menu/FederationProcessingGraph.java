@@ -98,9 +98,6 @@ public final class FederationProcessingGraph {
     /** The blocks of the network at a choice's {@code networkIndex} in a dimension, from the overview. */
     private java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> networkBlocks = (index, dimension) -> List.of();
     private final List<Runnable> thumbnailRefresh = new ArrayList<>();
-    private final Label legend;
-    /** The legend is measured on the first client frame: the UI tree is also built on the server, which has no font. */
-    private boolean legendMeasured;
     private int refreshTicks;
     private String providerPosition = "";
 
@@ -181,8 +178,6 @@ public final class FederationProcessingGraph {
         toEnd = element(ui, "processing_end_to", UIElement.class);
         fromLabel = element(ui, "processing_from_label", Label.class);
         toLabel = element(ui, "processing_to_label", Label.class);
-        legend = element(ui, "processing_legend", Label.class);
-        legend(legend, false);
         highlight = element(ui, "processing_highlight", Button.class);
         // Pressed while the selection is outlined in the world; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
@@ -228,7 +223,6 @@ public final class FederationProcessingGraph {
     /** Puts real item slots into the pattern rows, one per slot index; every slot then gets a row. */
     void setSlotElements(java.util.function.IntFunction<UIElement> elements) {
         slotElements = elements;
-        legend(legend, true);
     }
 
     /**
@@ -275,28 +269,6 @@ public final class FederationProcessingGraph {
     /** Where the cards' thumbnails read each network's blocks; the overview keeps them current. */
     void setNetworkBlocks(java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> source) {
         networkBlocks = source;
-    }
-
-    /** The legend's lines: the one-owner rule, and on the Provider screen its dashed cards. */
-    private static List<Component> legendLines(boolean providerScreen) {
-        var lines = new ArrayList<Component>();
-        lines.add(tr("legend_owner").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
-        // Only the Provider screen draws other Providers' Endpoints as dashed, read-only cards.
-        if (providerScreen) lines.add(tr("legend_readonly"));
-        return lines;
-    }
-
-    /** The boxed legend in the canvas corner: the one-owner rule in warning yellow. */
-    private static void legend(Label legend, boolean providerScreen) {
-        var lines = legendLines(providerScreen);
-        var text = Component.empty();
-        for (int line = 0; line < lines.size(); line++) text.append(line == 0 ? Component.empty() : Component.literal("\n")).append(lines.get(line));
-        legend.setText(text);
-        legend.layout(style -> style.height(lines.size() * 10 + 2));
-        legend.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
-            pen.rect(x, y, width, height, 0xff47434f);
-            pen.rect(x + 1, y + 1, width - 2, height - 2, 0xeb17141e);
-        })));
     }
 
     void setEditable(boolean value) {
@@ -1373,19 +1345,13 @@ public final class FederationProcessingGraph {
         Canvas() {
             setId("processing_canvas");
             layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(7).paddingAll(6)
-                    .paddingLeft(8).paddingRight(9).paddingBottom(34));
+                    .paddingLeft(8).paddingRight(9));
         }
 
         /** Cards switch to drop hints when a drag starts and back to their claim when it ends. */
         @Override
         public void screenTick() {
             super.screenTick();
-            if (!legendMeasured) {
-                legendMeasured = true;
-                var font = net.minecraft.client.Minecraft.getInstance().font;
-                int width = legendLines(slotElements != null).stream().mapToInt(font::width).max().orElse(0);
-                legend.layout(style -> style.width(width + 10));
-            }
             if (refreshTicks-- <= 0) {
                 refreshTicks = THUMBNAIL_REFRESH_TICKS;
                 thumbnailRefresh.forEach(Runnable::run);

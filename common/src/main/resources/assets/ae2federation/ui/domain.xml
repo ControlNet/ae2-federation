@@ -99,7 +99,6 @@
                 <element id="processing_graph" class="processing-graph">
                     <element class="processing-area">
                         <scroller-view id="processing_scroll" class="processing-scroll"/>
-                        <label id="processing_legend" class="processing-legend"/>
                     </element>
                     <element class="processing-aside">
                         <scroller-view id="processing_detail" class="processing-detail">

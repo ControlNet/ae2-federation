@@ -1226,9 +1226,8 @@ final class FederationTopologyView {
         accent.style(style -> style.backgroundTexture(FederationTheme.solid(endpointColor(endpoint))));
         title.setText(endpointLabel(endpoint));
         var uuid = string(json, "endpointIdentity");
-        identity.setText(json.has("dimension")
-                ? tr("endpoint_identity_line", dimension(json.get("dimension").getAsString()), endpoint.position())
-                : Component.empty());
+        // The title already names its position.
+        identity.setText(json.has("dimension") ? dimension(json.get("dimension").getAsString()) : Component.empty());
         identity.style(style -> style.tooltips(Component.literal(uuid)));
         // What it is used for, what it moved lately, then why the last claim request went as it did. Without a
         // domain there is no Provider to name, only that the panel is read-only.

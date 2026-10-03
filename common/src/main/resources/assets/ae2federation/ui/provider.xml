@@ -28,7 +28,6 @@
                 <element class="provider-main">
                     <element id="processing_graph" class="processing-area provider-canvas">
                         <scroller-view id="processing_scroll" class="processing-scroll"/>
-                        <label id="processing_legend" class="processing-legend"/>
                         <element id="provider_noface" class="provider-noface">
                             <label id="provider_noface_title" class="provider-noface-title"><lang key="ae2federation.ui.provider.noface.title"/></label>
                             <label id="provider_noface_text" class="provider-noface-text"/>

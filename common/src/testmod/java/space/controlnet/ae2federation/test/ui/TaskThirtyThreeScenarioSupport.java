@@ -117,7 +117,7 @@ final class TaskThirtyThreeScenarioSupport {
         context.attach("endpointIdentity", endpointIdentity(context));
     }
 
-    /** The selected Endpoint's full identity, which its caption shows shortened and its tooltip in full. */
+    /** The selected Endpoint's full identity, which its caption's tooltip names. */
     static String endpointIdentity(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         return String.join("\n", tooltipLines(context, "#network_identity"));
     }
