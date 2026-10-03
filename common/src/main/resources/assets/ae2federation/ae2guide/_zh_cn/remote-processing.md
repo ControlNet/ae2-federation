@@ -22,6 +22,34 @@ navigation:
 3. **放入样板**。 右键供应器， 把编码好的处理样板放进它的九个槽位。
 4. **映射每个样板**。 在接线图中把样板拖到端点上， 或者先点样板再点端点。 一个样板可以映射到多个端点， 一个端点也可以接收多个样板。 只有映射过的样板才能被请求。
 
+一个小例子： 供应器所在的网络通过另一个子网络上的熔炉加工。
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/remote_processing.snbt" />
+  <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
+    供应器所在的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
+    联邦样板供应器： 前面接联邦线缆， 背面接自己的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0.3 0.3" max="4 0.7 0.7">
+    联邦线缆
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
+    处理端点： 前面接联邦线缆， 顶面接机器子网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="3 3 1">
+    加工子网络， 有自己的电源
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0.125 2 0.125" max="0.875 2.3 0.875">
+    存储总线： 子网络的存储， 原料直接进入熔炉
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
+    漏斗： 把产物推入端点的侧面， 而不是前面
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
 供应器所在的网络发起合成时， 原料会进入子网络的ME存储， 再从那里送到机器。 机器（或管道）必须把产物推入端点前面以外的某个面。 产物先进入供应器中对应这个端点的回流缓冲， 再进入供应器所在的网络。 留在子网络存储里的产物不会返回。
 
 ## 一个端点只属于一个供应器

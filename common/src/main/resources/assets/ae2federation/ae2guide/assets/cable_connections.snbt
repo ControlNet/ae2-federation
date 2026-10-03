@@ -1,0 +1,18 @@
+{
+    DataVersion: 3955,
+    size: [5, 1, 1],
+    data: [
+        {pos: [4, 0, 0], state: "ae2federation:pattern_provider{facing:west}"},
+        {pos: [3, 0, 0], state: "ae2federation:cable"},
+        {pos: [2, 0, 0], state: "ae2federation:router"},
+        {pos: [1, 0, 0], state: "ae2federation:cable"},
+        {pos: [0, 0, 0], state: "ae2federation:processing_endpoint{facing:east}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2federation:pattern_provider{facing:west}",
+        "ae2federation:cable",
+        "ae2federation:router",
+        "ae2federation:processing_endpoint{facing:east}"
+    ]
+}

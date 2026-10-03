@@ -12,7 +12,19 @@ item_ids:
 
 # ME联邦线缆
 
-<ItemImage id="ae2federation:cable" scale="4" />
+<GameScene zoom="5" interactive={true} background="transparent">
+  <ImportStructure src="../assets/cable_connections.snbt" />
+  <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
+    联邦样板供应器： 用前面连接
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+    路由器： 任意一面都能连接
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
+    处理端点： 用前面连接
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
 
 联邦线缆把路由器、联邦样板供应器和处理端点连成一个[联邦域](../mechanics.md)。 它的每一面都能连接另一根联邦线缆、<ItemLink id="ae2federation:router" />的任意一面， 以及<ItemLink id="ae2federation:pattern_provider" />或<ItemLink id="ae2federation:processing_endpoint" />的前面。
 

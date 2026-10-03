@@ -31,6 +31,34 @@ The results come back to the Provider's network. Processing needs no rule in the
    Endpoint. One pattern can go to several Endpoints and one Endpoint can take several patterns. Only mapped
    patterns can be requested.
 
+A small example: the Provider's network processes through a furnace on a subnet of its own.
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/remote_processing.snbt" />
+  <BoxAnnotation color="#915dcd" min="5 0 0" max="7 2 1">
+    The Provider's network
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
+    Federation Pattern Provider: front on the Federation Cable, back on its own network
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0.3 0.3" max="4 0.7 0.7">
+    Federation Cable
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
+    Processing Endpoint: front on the Federation Cable, top face on the machine subnet
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="3 3 1">
+    Processing subnet, with its own power
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0.125 2 0.125" max="0.875 2.3 0.875">
+    Storage Bus: the subnet's storage, so the inputs go straight into the furnace
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
+    Hopper: pushes the results into a side of the Endpoint, not its front
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
 When the Provider's network crafts, the inputs go into the subnet's ME storage, and from there to the machines.
 Machines (or pipes) must push their results into one of the Endpoint's faces other than its front. They go to the
 Provider's return buffer for that Endpoint, then into the Provider's network. Results left in the subnet's storage

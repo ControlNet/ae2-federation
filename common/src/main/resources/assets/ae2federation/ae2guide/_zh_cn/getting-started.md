@@ -26,6 +26,20 @@ navigation:
 
 把<ItemLink id="ae2federation:bridge" />装在第一个网络的线缆上， 让它的外侧接触第二个网络的线缆或设备。 两个网络仍然是分开的， 桥接器只是为联邦把它们连起来。
 
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/bridge.snbt" />
+  <BoxAnnotation color="#915dcd" min="3.375 0 0" max="6 2 1">
+    网络A
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
+    网络B
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
+    桥接器： 装在网络A的线缆上， 外侧接触网络B的线缆
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
 ### 两个网络相距较远：路由器和联邦线缆
 
 <Row>
@@ -34,6 +48,26 @@ navigation:
 </Row>
 
 让<ItemLink id="ae2federation:router" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个路由器最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个路由器， 再用<ItemLink id="ae2federation:cable" />把路由器连起来。 不要把两个路由器面对面直接贴在一起， 中间一定要有联邦线缆。
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/router_cable.snbt" />
+  <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
+    网络A
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
+    路由器： 一面接网络A的线缆， 另一面接联邦线缆
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
+    两个路由器之间的联邦线缆
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+    路由器： 一面接网络B的线缆， 另一面接联邦线缆
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 2 1">
+    网络B
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
 
 ## 3. 打开共享
 

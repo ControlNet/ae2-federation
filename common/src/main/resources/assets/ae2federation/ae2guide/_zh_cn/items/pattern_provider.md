@@ -12,7 +12,7 @@ item_ids:
 
 # ME联邦样板供应器
 
-<ItemImage id="ae2federation:pattern_provider" scale="4" />
+<BlockImage id="ae2federation:pattern_provider" p:facing="south" scale="6" />
 
 通过<ItemLink id="ae2federation:processing_endpoint" />把处理样板发给其他网络上的机器。 参见[远程加工](../remote-processing.md)。
 

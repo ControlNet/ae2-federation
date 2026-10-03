@@ -12,7 +12,19 @@ item_ids:
 
 # ME Federation Cable
 
-<ItemImage id="ae2federation:cable" scale="4" />
+<GameScene zoom="5" interactive={true} background="transparent">
+  <ImportStructure src="../assets/cable_connections.snbt" />
+  <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
+    Federation Pattern Provider: connects by its front
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+    Router: connects by any face
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
+    Processing Endpoint: connects by its front
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
 
 Federation Cable links Routers, Federation Pattern Providers and Processing Endpoints into one
 [Federation domain](../mechanics.md). It connects on every side to another Federation Cable, to any face of a

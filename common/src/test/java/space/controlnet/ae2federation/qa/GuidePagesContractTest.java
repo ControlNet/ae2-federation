@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,7 @@ final class GuidePagesContractTest {
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
             "pattern_provider", "fluix_glass_cable", "network_tool");
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
+    private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
 
     @Test
@@ -120,6 +122,49 @@ final class GuidePagesContractTest {
             while (items.find()) assertEquals(null, owners.put(items.group(1), page), items.group(1));
         }
         assertEquals(new TreeSet<>(FEDERATION_ITEMS), new TreeSet<>(owners.keySet()));
+    }
+
+    @Test
+    void structureScenesResolveAndEveryStructureIsShown() throws IOException {
+        var used = new TreeSet<Path>();
+        for (var root : Set.of(GUIDE, CHINESE)) {
+            for (var page : pages(root)) {
+                var sources = STRUCTURE.matcher(Files.readString(root.resolve(page)));
+                while (sources.find()) {
+                    // Resolved against the page id, which is the English path for a Chinese copy too.
+                    var resolved = GUIDE.resolve(page).getParent().resolve(sources.group(1)).normalize();
+                    assertTrue(Files.isRegularFile(resolved) && resolved.startsWith(GUIDE.resolve("assets")),
+                            page + " -> " + sources.group(1));
+                    used.add(resolved);
+                }
+            }
+        }
+        try (Stream<Path> files = Files.list(GUIDE.resolve("assets"))) {
+            assertEquals(files.filter(path -> path.toString().endsWith(".snbt")).collect(
+                    Collectors.toCollection(TreeSet::new)), used);
+        }
+    }
+
+    /** GuideME rejects a whole scene when a block's state is missing from the palette, and only says so in a client. */
+    @Test
+    void everyStructureBlockStateIsInItsPalette() throws IOException {
+        try (Stream<Path> files = Files.list(GUIDE.resolve("assets"))) {
+            for (var structure : files.filter(path -> path.toString().endsWith(".snbt")).toList()) {
+                var text = Files.readString(structure);
+                var paletteStart = text.indexOf("palette: [");
+                assertTrue(text.contains("DataVersion: ") && paletteStart > 0, structure.toString());
+                var palette = new TreeSet<String>();
+                var entries = Pattern.compile("\"([^\"]+)\"").matcher(text.substring(paletteStart));
+                while (entries.find()) palette.add(entries.group(1));
+                var states = Pattern.compile("pos: \\[[^]]*], state: \"([^\"]+)\"").matcher(text.substring(0, paletteStart));
+                var blocks = 0;
+                while (states.find()) {
+                    assertTrue(palette.contains(states.group(1)), structure.getFileName() + ": " + states.group(1));
+                    blocks++;
+                }
+                assertTrue(blocks > 0, structure.toString());
+            }
+        }
     }
 
     private static Set<String> pages(Path root) throws IOException {

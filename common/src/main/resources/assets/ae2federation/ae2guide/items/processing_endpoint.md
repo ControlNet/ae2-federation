@@ -12,7 +12,7 @@ item_ids:
 
 # ME Federation Processing Endpoint
 
-<ItemImage id="ae2federation:processing_endpoint" scale="4" />
+<BlockImage id="ae2federation:processing_endpoint" p:facing="south" scale="6" />
 
 Lets a <ItemLink id="ae2federation:pattern_provider" /> on another network use your machines. See
 [Remote Processing](../remote-processing.md).

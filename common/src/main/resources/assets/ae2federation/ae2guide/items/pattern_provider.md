@@ -12,7 +12,7 @@ item_ids:
 
 # ME Federation Pattern Provider
 
-<ItemImage id="ae2federation:pattern_provider" scale="4" />
+<BlockImage id="ae2federation:pattern_provider" p:facing="south" scale="6" />
 
 Sends processing patterns to machines on other networks, through
 <ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Processing](../remote-processing.md).

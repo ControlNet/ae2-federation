@@ -30,6 +30,20 @@ Choose one of these. Both give you the same Federation screen.
 Place the <ItemLink id="ae2federation:bridge" /> on a cable of the first network, so that its outer side touches a
 cable or device of the second network. The two networks stay separate; the Bridge only connects them for Federation.
 
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/bridge.snbt" />
+  <BoxAnnotation color="#915dcd" min="3.375 0 0" max="6 2 1">
+    Network A
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
+    Network B
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
+    Bridge: on network A's cable, its outer side touching network B's cable
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
 ### Networks further apart: Routers and Federation Cable
 
 <Row>
@@ -41,6 +55,26 @@ Touch one face of a <ItemLink id="ae2federation:router" /> with an ME cable of t
 with an ME cable of the second network. One Router can take up to six networks, one per face. For networks far
 apart, give each its own Router and join the Routers with <ItemLink id="ae2federation:cable" />. Do not place two
 Routers face to face; always put Federation Cable between them.
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/router_cable.snbt" />
+  <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
+    Network A
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
+    Router: one face on network A's cable, another on Federation Cable
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
+    Federation Cable between the two Routers
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+    Router: one face on network B's cable, another on Federation Cable
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 2 1">
+    Network B
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
 
 ## 3. Switch sharing on
 

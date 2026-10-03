@@ -12,7 +12,7 @@ item_ids:
 
 # ME联邦处理端点
 
-<ItemImage id="ae2federation:processing_endpoint" scale="4" />
+<BlockImage id="ae2federation:processing_endpoint" p:facing="south" scale="6" />
 
 让另一个网络上的<ItemLink id="ae2federation:pattern_provider" />使用你的机器。 参见[远程加工](../remote-processing.md)。
 
