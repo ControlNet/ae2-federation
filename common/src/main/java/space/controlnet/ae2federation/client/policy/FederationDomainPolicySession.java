@@ -421,7 +421,6 @@ public final class FederationDomainPolicySession {
         if (pendingRelease != null && mappingAllowed) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
-            release.addProperty("epoch", pendingRelease.epoch().value());
             release.addProperty("lane", pendingRelease.lane());
             release.addProperty("position", currentEndpoints().stream()
                     .filter(binding -> binding.endpointIdentity().equals(pendingRelease.endpoint()))
@@ -643,7 +642,6 @@ public final class FederationDomainPolicySession {
         if (pendingRelease != null) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
-            release.addProperty("epoch", pendingRelease.epoch().value());
             release.addProperty("lane", pendingRelease.lane());
             release.addProperty("position", currentEndpoints().stream()
                     .filter(binding -> binding.endpointIdentity().equals(pendingRelease.endpoint()))
@@ -1278,10 +1276,6 @@ public final class FederationDomainPolicySession {
 
     public String mappingStatusCode() {
         return mappingAcknowledgment;
-    }
-
-    public Component entranceText() {
-        return entrance.label(level);
     }
 
     public Component membersText() {

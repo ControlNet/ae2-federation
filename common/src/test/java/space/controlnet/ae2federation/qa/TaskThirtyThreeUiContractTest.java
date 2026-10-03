@@ -26,7 +26,7 @@ final class TaskThirtyThreeUiContractTest {
         for (var id : new String[] { "domain_graph", "graph_zoom_in", "graph_zoom_out", "graph_fit",
                 "graph_search", "network_links", "pair_editor", "pair_sections", "processing_graph",
                 "processing_scroll", "processing_detail", "mapping_toggle", "processing_unlink", "processing_release",
-                "processing_status", "endpoint_detail", "entrance_value", "members_value",
+                "processing_status", "endpoint_detail", "members_value",
                 "ack_status" }) {
             assertTrue(xml.contains("id=\"" + id + "\""), "Missing stable Task 33 control #" + id);
         }
@@ -96,11 +96,11 @@ final class TaskThirtyThreeUiContractTest {
         assertTrue(!chineseScenario.contains("context.attach(\"largeQuantity\", \"4000000000\")"),
                 "Quantity evidence must be read from the rendered Pattern row");
 
-        var entrance = Files.readString(REPOSITORY_ROOT.resolve(
-                "common/src/main/java/space/controlnet/ae2federation/client/policy/FederationDomainPolicyEntrance.java"));
-        assertTrue(entrance.contains("label(ServerLevel level)")
-                        && entrance.contains("getCableConnectionLength(AECableType.GLASS)"),
-                "Visible multipart diagnostics must be derived from the live server-side part");
+        var fixture = Files.readString(REPOSITORY_ROOT.resolve(
+                "common/src/testmod/java/space/controlnet/ae2federation/test/ui/TaskThirtyThreeWorldFixture.java"));
+        assertTrue(fixture.contains("multipartBridge(context)")
+                        && fixture.contains("getCableConnectionLength(AECableType.GLASS)"),
+                "Multipart attachment evidence must be derived from the live server-side part");
 
         assertTrue(Files.isRegularFile(REPOSITORY_ROOT.resolve(
                 "common/src/main/resources/assets/ae2federation/lang/zh_cn.json")),

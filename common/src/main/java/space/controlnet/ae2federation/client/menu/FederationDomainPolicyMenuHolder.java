@@ -60,7 +60,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         document = Objects.requireNonNull(document, "Missing production Federation Domain policy UI " + XML);
         var ui = UI.of(document);
         currentUi = ui;
-        bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
         bind(ui, "ack_status", this::statusText);
         bind(ui, "processing_status", this::mappingStatusText);
@@ -336,9 +335,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         }
     }
 
-    private Component entranceText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.status.pending") : session.entranceText();
-    }
 
     private Component membersText() {
         return session == null ? Component.translatable("ae2federation.ui.domain.members.pending") : session.membersText();
@@ -391,10 +387,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var lamp = element(ui, "sync_lamp", UIElement.class);
         int tone = active ? FederationTheme.OK : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR;
         lamp.style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
-        // The lamp's word, in a darker shade of its colour so it reads on the light frame.
-        var sync = element(ui, "sync_text", Label.class);
-        sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
-        sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
         return active;
     }
 

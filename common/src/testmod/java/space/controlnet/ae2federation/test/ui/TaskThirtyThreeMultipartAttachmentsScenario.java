@@ -27,14 +27,12 @@ public final class TaskThirtyThreeMultipartAttachmentsScenario implements UIScen
                     return focus.isPresent() && context.all(".graph-node-member").stream()
                             .allMatch(card -> card.bounds().x() >= focus.get().bounds().x());
                 })
-                .checkText("#entrance_value", "ME Federation Bridge - side North / type bridge / cable extension 5.0")
                 .checkTextContains("#members_value", "2 networks · ")
                 .server("record real multipart attachment", context ->
                         context.put("task33.multipart", TaskThirtyThreeWorldFixture.multipartAttachment(context)))
                 .step("record multipart evidence", context -> {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.multipart-attachments");
                     context.attach("multipartAttachment", context.get("task33.multipart"));
-                    context.attach("visibleAttachment", context.el("#entrance_value").text());
                 })
                 .screenshot("ui-multipart-attachments")
                 .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).click("#graph_zoom_in")

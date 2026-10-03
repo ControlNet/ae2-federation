@@ -183,7 +183,6 @@ public final class FederationProcessingGraph {
         toLabel = element(ui, "processing_to_label", Label.class);
         legend = element(ui, "processing_legend", Label.class);
         legend(legend, false);
-        element(ui, "processing_note", Label.class).setText(tr("drop_note"));
         highlight = element(ui, "processing_highlight", Button.class);
         // Pressed while the selection is outlined in the world; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
@@ -278,17 +277,16 @@ public final class FederationProcessingGraph {
         networkBlocks = source;
     }
 
-    /** The legend's lines: the many-to-many rule, the one-owner rule, and on the Provider screen its dashed cards. */
+    /** The legend's lines: the one-owner rule, and on the Provider screen its dashed cards. */
     private static List<Component> legendLines(boolean providerScreen) {
         var lines = new ArrayList<Component>();
-        lines.add(tr("legend"));
         lines.add(tr("legend_owner").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
         // Only the Provider screen draws other Providers' Endpoints as dashed, read-only cards.
         if (providerScreen) lines.add(tr("legend_readonly"));
         return lines;
     }
 
-    /** The boxed legend in the canvas corner: the many-to-many rule, then the one-owner rule in warning yellow. */
+    /** The boxed legend in the canvas corner: the one-owner rule in warning yellow. */
     private static void legend(Label legend, boolean providerScreen) {
         var lines = legendLines(providerScreen);
         var text = Component.empty();
@@ -919,8 +917,7 @@ public final class FederationProcessingGraph {
                     : Component.literal("#" + selection.slot() + " ").append(patternName.apply(slot)),
                     endpoint == null ? Component.literal(selection.endpoint()) : endpointName(endpoint)));
             if (endpoint != null) {
-                fact("ownership", tr("ownership", providerPosition.isEmpty() ? "-" : providerPosition,
-                        endpoint.has("claimEpoch") ? endpoint.get("claimEpoch").getAsLong() : 0L));
+                fact("ownership", tr("ownership", providerPosition.isEmpty() ? "-" : providerPosition));
             }
             // Measured per lane: every pattern mapped to this Endpoint shares the Provider's channel to it.
             boolean sent = laneMoved(endpoint, "laneSent");
@@ -947,7 +944,6 @@ public final class FederationProcessingGraph {
                 fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
-                if (endpoint.has("claimEpoch")) fact("claim", tr("claim_epoch", endpoint.get("claimEpoch").getAsLong()));
                 var mapped = wires.stream().filter(value -> value.endpoint().equals(selection.endpoint()))
                         .map(value -> "#" + value.slot()).toList();
                 if (!shownOnly) fact("mapped", Component.literal(mapped.isEmpty() ? "-" : String.join(", ", mapped)));

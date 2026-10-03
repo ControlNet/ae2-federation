@@ -1767,10 +1767,10 @@ final class FederationTopologyView {
         pairTitle.setText(title);
         var positions = foreign == null && via != null ? viaPositions(via) : null;
         pairTitle.style(style -> style.tooltips(positions == null ? new Component[0] : new Component[] {positions}));
-        // Another domain's pair is shown for reference: only its configured rules, and where to change them.
-        pairNote.setText(foreign == null ? tr("pair_note") : tr("pair_read_only", domainName(foreign.domain())));
-        pairNote.removeClass("read-only-banner");
-        if (foreign != null) pairNote.addClass("read-only-banner");
+        // Another domain's pair is shown for reference: only its configured rules, and where to change them. This
+        // domain's own pairs need no note.
+        pairNote.setDisplay(foreign != null);
+        if (foreign != null) pairNote.setText(tr("pair_read_only", domainName(foreign.domain())));
         int section = 0;
         for (var direction : List.of(new Network[] {a, b}, new Network[] {b, a})) {
             var consumer = direction[0];

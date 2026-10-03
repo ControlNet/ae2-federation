@@ -34,10 +34,21 @@
 - `federationUiVerifierSelfTest` already failed before this change for `forged-task15-ack` (its regex `policy-N$`
   never matched the visible status) and `claim-conflict-success` (Task 33); Task 34's probes all reject.
 
-## Still shown, candidates to trim (not changed)
+## Trimmed afterwards (all done)
 
-Endpoint "Identity and ownership" panel (UUIDs, instance/claim/runtime epochs, result code, native network UUID);
-claim epochs on the processing page and in the release dialog; Endpoint facts "Return binding" and "Last claim
-result"; "后端未就绪" in the legend; "运行：" prefixes; the always-on pair note and energy note; the transient
-"waiting for server confirmation" texts. Note `ui.reject-claim-conflict`'s verifier reads `OWNER_CONFLICT` and
-`Claim epoch: 1` from the identity panel, so trimming it needs that evidence moved.
+Every candidate above was removed later the same day (the user took the recommendations as listed):
+
+- the Endpoint identity panel and the Return binding and Last claim result facts (90eb7cd);
+- the energy note (0df3463);
+- the rest in one commit after it:
+  - claim epochs on the wires view and in the release dialog;
+  - 尚未生效 in the legend;
+  - the "Runtime:" prefixes;
+  - the own-pair note (`#pair_note` is now only the read-only banner);
+  - the many-to-many legend line and the drag hint;
+  - the header's sync word and entrance line;
+  - the Provider ready footer;
+  - "Saving…" for pending requests.
+
+The claim-conflict evidence comes from the Endpoint explanation now, and the two broken self-test probes were fixed
+in de8c8d8. The crafting-holds-storage hint stays out, by the user's choice.

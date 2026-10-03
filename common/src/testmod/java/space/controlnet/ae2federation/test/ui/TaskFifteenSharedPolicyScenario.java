@@ -24,7 +24,7 @@ public final class TaskFifteenSharedPolicyScenario implements UIScenario {
                 .server("open the same policy from the real Bridge", TaskFifteenWorldFixture::openBridge)
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForTextContains("#entrance_value", "ME Federation Bridge - side ")
+                .waitForTextContains("#pair_title", "Via the Bridge at ")
                 .waitUntil("Bridge shows the Router's switch on", context -> context.elOpt(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                         .map(element -> element.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("on"))
                         .orElse(false))

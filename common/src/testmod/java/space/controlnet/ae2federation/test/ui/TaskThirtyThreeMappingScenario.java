@@ -46,8 +46,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click(".processing-endpoint")
                 .waitForText("#processing_fact_value_mapped", "#1")
                 .waitForTextContains("#processing_fact_value_network", "Subnet ready")
-                .check("the Endpoint detail names its claim epoch", context -> context.el("#processing_fact_value_claim").text()
-                        .matches("(?s).*Claim epoch \\d+.*"))
+                .check("the Endpoint detail shows no claim epoch", context -> context.all("#processing_fact_value_claim").isEmpty())
                 .check("an Endpoint still in use offers no release", context -> !context.el("#processing_release").isActive()
                         && !context.el("#processing_release").isVisible())
                 .waitUntil("the Endpoint thumbnail samples loaded terrain", context -> context.el("#processing_preview_to .map-thumbnail")
@@ -85,7 +84,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                     var waiting = context.el("#request_status").text();
-                    if (!waiting.contains("Waiting for server confirmation") || context.el("#mapping_toggle").isActive()) {
+                    if (!waiting.equals("Saving…") || context.el("#mapping_toggle").isActive()) {
                         throw new IllegalStateException("Missing request waiting text or duplicate-click guard");
                     }
                     context.attach("requestWaitingText", waiting);
@@ -323,7 +322,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .screenshot("ui-english-narrow-mapping")
                 .click("#tab_overview").frames(3)
                 .check("narrow English pair editor text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage"))
+                .check("an own pair has no note", context -> !context.el("#pair_note").isVisible())
                 .check("narrow English pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-english-narrow-policy")

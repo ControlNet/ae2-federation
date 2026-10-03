@@ -329,7 +329,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .server("enable rule without required request permission", TaskThirtyThreeWorldFixture::removeBrowserRuleOperation)
                 .waitUntil("the blocked rule's tooltip is only its reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
                         TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
-                        .equals(java.util.List.of("Runtime: required operation is not allowed: crafting requests.")))
+                        .equals(java.util.List.of("Required operation is not allowed: crafting requests.")))
                 .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
                         .ruleState(context, "crafting").contains("required operation"))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))

@@ -13,8 +13,6 @@
                     </element>
                     <element class="header-status">
                         <element id="sync_lamp" class="sync-lamp"/>
-                        <label id="sync_text" class="sync-text"/>
-                        <label class="domain-caption status-separator"><lang key="ae2federation.ui.workspace.separator"/></label>
                         <label id="provider_summary" class="domain-caption"/>
                     </element>
                 </element>
@@ -71,7 +69,6 @@
                             <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                         </element>
                     </scroller-view>
-                    <label id="processing_note" class="paper-note processing-note"/>
                 </element>
             </element>
             <element class="domain-footer">

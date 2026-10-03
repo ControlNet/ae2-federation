@@ -18,13 +18,9 @@
                     </element>
                     <element class="header-status">
                         <element id="sync_lamp" class="sync-lamp"/>
-                        <label id="sync_text" class="sync-text"/>
-                        <label class="domain-caption status-separator members-caption"><lang key="ae2federation.ui.workspace.separator"/></label>
                         <label id="members_value" class="domain-caption members-caption"/>
                         <label id="processing_summary" class="domain-caption members-caption"/>
                         <label id="scope_caption" class="domain-caption members-caption"/>
-                        <label class="domain-caption status-separator"><lang key="ae2federation.ui.workspace.separator"/></label>
-                        <label id="entrance_value" class="domain-caption"/>
                     </element>
                 </element>
                 <element id="header_graph_tools" class="header-tools">
@@ -95,7 +91,7 @@
                     </element>
                     <element id="pair_editor" class="aside-section">
                         <label id="pair_title" class="aside-title"/>
-                        <label id="pair_note" class="paper-note"><lang key="ae2federation.ui.topology.pair_note"/></label>
+                        <label id="pair_note" class="paper-note read-only-banner"/>
                         <element id="pair_sections" class="pair-sections"/>
                     </element>
                 </scroller-view>
@@ -128,7 +124,6 @@
                                 <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                             </element>
                         </scroller-view>
-                        <label id="processing_note" class="paper-note processing-note"/>
                     </element>
                 </element>
             </element>

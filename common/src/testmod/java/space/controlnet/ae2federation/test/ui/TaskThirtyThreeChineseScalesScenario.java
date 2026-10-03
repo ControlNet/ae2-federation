@@ -41,7 +41,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .waitForText("#domain_title", "ME 联邦域")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .check("localized pair editor fits compact aside", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-pair-editor")
                 .typeInto("#graph_search", "网络")
                 .check("localized network search matches", context -> !context.el("#graph_search_empty").isVisible())
@@ -188,10 +188,9 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .awaitModularUI().frames(5)
                 .waitForTextContains("#ack_status", "桥接器外侧")
                 .checkText("#bridge_diagnostic_title", "桥接器联邦域不可用")
-                .checkTextContains("#entrance_value", "侧面 北")
                 .check("Chinese Bridge diagnostics retain readable text", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#bridge_diagnostic_title",
-                                "#bridge_diagnostic_help", "#ack_status", "#entrance_value"))
+                                "#bridge_diagnostic_help", "#ack_status"))
                 .check("Chinese unavailable Bridge has no empty editor", context ->
                         !context.el("#workspace_tabs").isVisible() && context.el("#bridge_unavailable").isVisible()
                                 && !context.el("#page_mapping").isVisible())

@@ -17,7 +17,6 @@ public final class TaskFifteenRouterScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
-                .checkText("#entrance_value", "Opened from ME Federation Router")
                 .checkTextContains("#members_value", "2 networks · ")
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("server policy acknowledgment", context ->

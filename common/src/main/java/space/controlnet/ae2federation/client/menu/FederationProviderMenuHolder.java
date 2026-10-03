@@ -485,11 +485,6 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         int tone = active ? FederationTheme.OK : serverStatus.equals("pending") || serverStatus.equals("noface")
                 ? FederationTheme.WARN : FederationTheme.ERROR;
         element(ui, "sync_lamp", UIElement.class).style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
-        var sync = element(ui, "sync_text", Label.class);
-        sync.setText(tr("sync." + (active ? "active" : serverStatus.equals("noface") ? "noface"
-                : serverStatus.equals("pending") ? "pending" : "stale")));
-        sync.textStyle(style -> style.textColor(active ? 0xff20a94b
-                : tone == FederationTheme.WARN ? 0xff79541b : 0xff922e42));
         var status = element(ui, "ack_status", Label.class);
         var message = element(ui, "request_status", Label.class);
         var rejection = authority.rejection();
