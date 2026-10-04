@@ -61,6 +61,8 @@ back to A's CPU as soon as they enter network B. Network B needs no crafting CPU
 * **If the networks are disconnected** while a job runs, results that arrive in the meantime stay on network B and
   A's CPU keeps waiting; cancel the job on network A.
 
+For a complete build, see [Order from an Assembly Workshop](examples/remote-assembly.md).
+
 ## Federation Pattern Provider and Processing Endpoint
 
 A <ItemLink id="ae2federation:pattern_provider" /> on one network can send processing patterns to machines that
@@ -117,7 +119,8 @@ A small example: the Provider's network processes through a furnace on a subnet 
 When the Provider's network crafts, the inputs go into the subnet's ME storage, and from there to the machines.
 Machines (or pipes) must push their results into one of the Endpoint's faces other than its front. They go to the
 Provider's return buffer for that Endpoint, then into the Provider's network. Results left in the subnet's storage
-do not return.
+do not return. For a complete build with fuel, Blocking mode and a second furnace, see
+[Outsourced Furnaces](examples/endpoint-furnaces.md).
 
 ### One Provider per Endpoint
 
@@ -130,6 +133,7 @@ Two Endpoints mapped by the same Provider must sit on different subnets.
 
 ### Local mode
 
-An Endpoint can also serve an ordinary AE2 <ItemLink id="ae2:pattern_provider" /> block on another network: place
-that pattern provider against the Endpoint's front. The Endpoint then works in local mode and cannot take
-Federation patterns until the native provider is removed.
+An Endpoint can also serve an ordinary pattern provider on another network: place an AE2
+<ItemLink id="ae2:pattern_provider" />, as a block or as a part on a cable, against the Endpoint's front. Addon pattern
+providers work the same way. The Endpoint then works in local mode and cannot take Federation patterns until that
+pattern provider is removed.

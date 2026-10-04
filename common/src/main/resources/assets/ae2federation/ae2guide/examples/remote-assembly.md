@@ -1,0 +1,54 @@
+---
+navigation:
+  parent: examples/index.md
+  title: Order from an Assembly Workshop
+  icon: ae2:molecular_assembler
+  position: 20
+---
+
+# Order from an Assembly Workshop
+
+**Goal:** a workshop network already has <ItemLink id="ae2:pattern_provider" />s and
+<ItemLink id="ae2:molecular_assembler" />s holding its patterns. Order its recipes from your main network without
+moving the patterns or merging the networks.
+
+**You need:** the workshop network (network B), set up the usual AE2 way; your main network (network A) with a crafting
+CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:router" /> for each network and
+<ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they touch.
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="../assets/examples/remote_assembly.snbt" />
+  <BoxAnnotation color="#915dcd" min="7 0 0" max="9 2 1">
+    Network A: crafting terminal, crafting CPU and storage
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0 0" max="7 1 1">
+    A Router on each network, joined by Federation Cable
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 3 1">
+    Network B: pattern providers with their patterns, next to Molecular Assemblers
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
+## Build it
+
+1. **Leave the workshop as it is.** Its pattern providers keep their patterns, and its assemblers stay beside them.
+2. **Connect the two networks** with Routers and Federation Cable.
+3. **Switch on Crafting under "A uses B's"** in the Federation screen. This switches the same direction's Storage on
+   too, because A's CPU takes the ingredients from what A can see, which now includes B's storage.
+4. **Order from network A.** B's recipes are listed among A's craftables. Request one as usual.
+
+## How the job runs
+
+Network A's crafting CPU plans and runs the job. It sends each step's ingredients to B's pattern providers, B's
+assemblers craft as usual, and the results go back to A's CPU as soon as they enter network B. Network B needs no
+crafting CPU of its own, and its CPUs are not shared with A.
+
+Use this when the machines' network already has the patterns. If you want to keep the patterns on your own network
+and send them to machines elsewhere, use a Federation Pattern Provider instead; see
+[Outsourced Furnaces](endpoint-furnaces.md).
+
+## Try it
+
+Switch Crafting off: B's recipes disappear from A's terminal, and A can no longer order them. Remove A's crafting CPU
+and order again: AE2 reports that no CPU is available, as on any network, because the CPU is always the orderer's.

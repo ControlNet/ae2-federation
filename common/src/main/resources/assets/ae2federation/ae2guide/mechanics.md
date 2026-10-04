@@ -29,7 +29,7 @@ you switch a rule on.
 
 | Rule | What it allows | States |
 |---|---|---|
-| Storage | See, insert and extract the other network's items and fluids | Disabled, Enabled, Enabled with re-export |
+| Storage | See, insert and extract the other network's items, fluids and other resources | Disabled, Enabled, Enabled with re-export |
 | Crafting | Use the other network's pattern providers from your own terminals and automation | Disabled, Enabled, Enabled with re-export |
 | ME power | Join both networks' energy into one pool | Disabled, Enabled |
 

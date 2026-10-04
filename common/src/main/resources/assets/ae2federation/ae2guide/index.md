@@ -22,6 +22,7 @@ on, and each permission works in one direction.
 * [How Federation Works](mechanics.md): domains, rules, shared energy and the limits.
 * [Remote Crafting](remote-processing.md): order from another network's pattern providers, or send processing
   patterns to its machines.
+* [Examples](examples/index.md): complete builds for a shared warehouse, an assembly workshop and outsourced machines.
 * [Troubleshooting](troubleshooting.md): what the warnings in the Federation screen mean.
 
 ## Items and blocks

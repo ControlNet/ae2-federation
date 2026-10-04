@@ -28,7 +28,7 @@ final class GuidePagesContractTest {
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
-            "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler");
+            "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus");
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
@@ -40,14 +40,27 @@ final class GuidePagesContractTest {
                 "remote-processing.md", "troubleshooting.md")));
     }
 
+    /**
+     * Every page hangs under the Federation entry, directly or through another page: the examples hang under the
+     * examples page. GuideME resolves a parent against the namespace root, not relative to the page.
+     */
     @Test
     void pagesHangUnderTheFederationEntryAndChineseCopiesKeepTheirPlace() throws IOException {
-        for (var page : pages(GUIDE)) {
+        var pages = pages(GUIDE);
+        for (var page : pages) {
             var english = frontmatter(GUIDE.resolve(page));
             var chinese = frontmatter(CHINESE.resolve(page));
             assertTrue(english.contains("navigation:"), page);
             assertEquals(page.equals("index.md"), !english.contains("parent:"), page);
-            if (!page.equals("index.md")) assertTrue(english.contains("  parent: index.md\n"), page);
+            var ancestor = page;
+            for (int depth = 0; !ancestor.equals("index.md"); depth++) {
+                var parent = Pattern.compile("(?m)^  parent: (\\S+)$").matcher(frontmatter(GUIDE.resolve(ancestor)));
+                assertTrue(parent.find() && pages.contains(parent.group(1)) && depth < pages.size(),
+                        page + " must hang under index.md through existing pages");
+                ancestor = parent.group(1);
+            }
+            assertTrue(!page.startsWith("examples/") || page.equals("examples/index.md")
+                    || english.contains("  parent: examples/index.md\n"), page + " belongs under the examples page");
             assertEquals(english.replaceAll("(?m)^  title: .*$", ""), chinese.replaceAll("(?m)^  title: .*$", ""),
                     "Only the title may differ between " + page + " and its Chinese copy");
         }
@@ -139,7 +152,7 @@ final class GuidePagesContractTest {
                 }
             }
         }
-        try (Stream<Path> files = Files.list(GUIDE.resolve("assets"))) {
+        try (Stream<Path> files = Files.walk(GUIDE.resolve("assets"))) {
             assertEquals(files.filter(path -> path.toString().endsWith(".snbt")).collect(
                     Collectors.toCollection(TreeSet::new)), used);
         }
@@ -148,7 +161,7 @@ final class GuidePagesContractTest {
     /** GuideME rejects a whole scene when a block's state is missing from the palette, and only says so in a client. */
     @Test
     void everyStructureBlockStateIsInItsPalette() throws IOException {
-        try (Stream<Path> files = Files.list(GUIDE.resolve("assets"))) {
+        try (Stream<Path> files = Files.walk(GUIDE.resolve("assets"))) {
             for (var structure : files.filter(path -> path.toString().endsWith(".snbt")).toList()) {
                 var text = Files.readString(structure);
                 var paletteStart = text.indexOf("palette: [");

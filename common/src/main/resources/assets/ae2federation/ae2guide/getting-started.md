@@ -84,7 +84,7 @@ in the list on the right. The right side then shows that pair's rules in two gro
 each rule with a switch, and below them the shared energy switch. A rule works in its direction only.
 
 * Left-click a switch to step it forward (Disabled, Enabled, Enabled with re-export) and right-click to step back.
-* **Storage** lets one network see, insert and extract the other's items and fluids.
+* **Storage** lets one network see, insert and extract the other's items, fluids and other resources.
 * **Crafting** lets one network use the other's pattern providers. It switches the same direction's Storage on too.
 * **ME power** joins both networks' energy into one pool; it has a single switch for the pair.
 

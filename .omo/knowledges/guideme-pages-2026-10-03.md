@@ -135,3 +135,19 @@ and page ids did not change.
 
 `GuidePagesContractTest.AE2_ITEMS` gained `molecular_assembler`.
 
+
+## Examples section (2026-10-05)
+
+- `examples/index.md` (position 35, between Remote Crafting and Troubleshooting) lists its children with
+  `<SubPages icons={true} />`. Each example has `parent: examples/index.md` and imports its scene from
+  `../assets/examples/*.snbt`. `GuidePagesContractTest` checks that every page reaches `index.md` through existing
+  parents, that pages under `examples/` hang under the examples page, and walks `assets/` recursively.
+- **GuideME's sidebar shows two levels only:** a root node and its direct children (`GuideNavBar.recreateRows`, the
+  same in 21.1.1 and 21.1.19). The examples therefore never appear in the sidebar; they are reached through the
+  examples page, the entry page, search and links. The owner chose this over moving them under AE2's own
+  `ae2:example-setups/example-setups-index.md` root, flattening them under the Federation entry, or a new root.
+- **`guideme.validateAtStartup` compiles only the development source folder's pages** (`MutableGuide.validateAll`
+  iterates `developmentPages`). Pages that come from other resource packs load through the resource manager in the
+  dev client too (assets fall back to it), but are only compiled when opened.
+- Example scenes are written by hand. Screenshots: `runGuideClient` under `xvfb-run`; an Xlib click on the sidebar's
+  "AE2 Federation" arrow at (14, 157) in a 1600x960 window expands it.
