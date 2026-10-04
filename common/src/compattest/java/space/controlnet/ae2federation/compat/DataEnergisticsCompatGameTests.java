@@ -3,8 +3,15 @@ package space.controlnet.ae2federation.compat;
 import appeng.core.definitions.AEBlocks;
 import appeng.util.inv.AppEngInternalInventory;
 import java.util.List;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -21,6 +28,36 @@ public final class DataEnergisticsCompatGameTests {
     public static void adaptivePatternProviderCrafting(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, ADAPTIVE, "ae2:molecular_assembler",
                 List.of("ae2:1k_crafting_storage")).preparingProvider(entity -> fitPatternProvider(helper, entity));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's Data Energistics example and its exercise: after the job, the provider network's AE2 Pattern Provider
+     * is upgraded in place with an Adaptive Pattern Provider Upgrade, as its player does. With no provider fitted, the
+     * Adaptive Pattern Provider offers no patterns, so its recipe leaves the consumer. Once an AE2 Pattern Provider is
+     * fitted, the kept pattern returns and the consumer's next order runs through it.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void adaptiveUpgradeInPlace(GameTestHelper helper) {
+        var provider = AddonCraftingScene.PROVIDER;
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler",
+                List.of("ae2:1k_crafting_storage")).reorderingAfterwards(test -> {
+                    // Sneaking, so the item is used instead of the provider's screen opening.
+                    var player = test.makeMockPlayer(GameType.SURVIVAL);
+                    player.setShiftKeyDown(true);
+                    var stack = new ItemStack(AddonCraftingScene.item("data_energistics:adaptive_pattern_provider_upgrade"));
+                    player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+                    var absolute = test.absolutePos(provider);
+                    var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(Direction.UP, 0.5), Direction.UP,
+                            absolute, false);
+                    var result = stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND, hit));
+                    test.assertTrue(result.consumesAction(), "The upgrade must take the AE2 Pattern Provider: " + result);
+                    test.assertTrue(test.getBlockState(provider).is(AddonCraftingScene.block(ADAPTIVE)),
+                            "The upgrade must leave an Adaptive Pattern Provider, not " + test.getBlockState(provider));
+                }, test -> fitPatternProvider(test, test.getLevel().getBlockEntity(test.absolutePos(provider))),
+                (order, cpu, network) -> helper.assertTrue(helper.getBlockState(provider)
+                        .is(AddonCraftingScene.block(order == 1 ? "ae2:pattern_provider" : ADAPTIVE)),
+                        "Order " + order + " must run through " + helper.getBlockState(provider)));
         helper.succeedWhen(scene::tick);
     }
 

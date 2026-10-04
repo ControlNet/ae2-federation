@@ -34,7 +34,7 @@ public final class LightningTechCompatGameTests {
      * consumer's next order runs through the Overloaded Pattern Provider.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
-    public static void patternProviderUpgradedInPlace(GameTestHelper helper) {
+    public static void overloadedUpgradeInPlace(GameTestHelper helper) {
         var provider = AddonCraftingScene.PROVIDER;
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler",
                 List.of("ae2:1k_crafting_storage")).reorderingAfterwards(test -> {

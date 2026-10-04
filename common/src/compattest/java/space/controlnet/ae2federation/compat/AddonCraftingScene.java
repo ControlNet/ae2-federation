@@ -82,6 +82,7 @@ final class AddonCraftingScene {
     private BlockPos dismantlePart;
     private net.minecraft.world.level.block.state.BlockState dismantledState;
     private java.util.function.Consumer<GameTestHelper> reorderChange;
+    private java.util.function.Consumer<GameTestHelper> reorderRestore;
     private CpuCheck cpuCheck;
     /** The consumer CPU that took each order, found right after it took it. */
     private final List<appeng.api.networking.crafting.ICraftingCPU> tookOrders = new java.util.ArrayList<>();
@@ -150,6 +151,16 @@ final class AddonCraftingScene {
         reorderChange = change;
         cpuCheck = check;
         return this;
+    }
+
+    /**
+     * As {@link #reorderingAfterwards(java.util.function.Consumer, CpuCheck)}, where {@code change} takes the recipe
+     * away from the consumer: once it has left, {@code restore} brings it back before the consumer orders again.
+     */
+    AddonCraftingScene reorderingAfterwards(java.util.function.Consumer<GameTestHelper> change,
+            java.util.function.Consumer<GameTestHelper> restore, CpuCheck check) {
+        reorderRestore = restore;
+        return reorderingAfterwards(change, check);
     }
 
     /** Checks the consumer CPU that ran an order, the first being 1, against the provider network. */
@@ -437,7 +448,7 @@ final class AddonCraftingScene {
                 }
                 if (reorderChange != null && tookOrders.size() == 1) {
                     reorderChange.accept(helper);
-                    stage = 14;
+                    stage = reorderRestore != null ? 16 : 14;
                     helper.fail("Changed the world before ordering again");
                 }
                 if (dismantlePart != null) {
@@ -465,6 +476,13 @@ final class AddonCraftingScene {
                 begin();
                 stage = 15;
                 helper.fail("Planning the second order");
+            }
+            case 16 -> {
+                helper.assertFalse(consumerGrid().getCraftingService().isCraftable(output()),
+                        "Waiting for the changed provider's recipe to leave the consumer");
+                reorderRestore.accept(helper);
+                stage = 14;
+                helper.fail("Brought the recipe back");
             }
             case 15 -> {
                 helper.assertTrue(planFuture.isDone() && localPlanFuture.isDone(), "Waiting for the second plan");
