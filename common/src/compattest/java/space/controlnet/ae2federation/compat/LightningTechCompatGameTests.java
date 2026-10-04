@@ -1,14 +1,22 @@
 package space.controlnet.ae2federation.compat;
 
 import java.util.List;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /** Federation features with AE2 Lightning Tech's own blocks. */
 @PrefixGameTestTemplate(false)
 public final class LightningTechCompatGameTests {
     private static final String MENTAL_MATH_UNIT = "ae2lt:pigmee_mentalmath_unit";
+    private static final String OVERLOADED_PROVIDER = "ae2lt:overloaded_pattern_provider";
 
     private LightningTechCompatGameTests() {
     }
@@ -17,6 +25,30 @@ public final class LightningTechCompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void overloadedPatternProviderCrafting(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2lt:overloaded_pattern_provider", "ae2:molecular_assembler", List.of("ae2:1k_crafting_storage"));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's Lightning Tech example and its exercise: after the job, the provider network's AE2 Pattern Provider is
+     * upgraded in place with an Overloaded Pattern Provider Upgrade, as its player does. It keeps its pattern, and the
+     * consumer's next order runs through the Overloaded Pattern Provider.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void patternProviderUpgradedInPlace(GameTestHelper helper) {
+        var provider = AddonCraftingScene.PROVIDER;
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler",
+                List.of("ae2:1k_crafting_storage")).reorderingAfterwards(test -> {
+                    var player = test.makeMockPlayer(GameType.SURVIVAL);
+                    var stack = new ItemStack(AddonCraftingScene.item("ae2lt:overloaded_pattern_provider_upgrade"));
+                    player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+                    var absolute = test.absolutePos(provider);
+                    var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(Direction.UP, 0.5), Direction.UP,
+                            absolute, false);
+                    var result = stack.onItemUseFirst(new UseOnContext(player, InteractionHand.MAIN_HAND, hit));
+                    test.assertTrue(result.consumesAction(), "The upgrade must take the AE2 Pattern Provider: " + result);
+                }, (order, cpu, network) -> helper.assertTrue(helper.getBlockState(provider)
+                        .is(AddonCraftingScene.block(order == 1 ? "ae2:pattern_provider" : OVERLOADED_PROVIDER)),
+                        "Order " + order + " must run through " + helper.getBlockState(provider)));
         helper.succeedWhen(scene::tick);
     }
 
