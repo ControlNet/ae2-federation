@@ -745,12 +745,20 @@ final class FederationTopologyView {
         }
         float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
         raw.forEach(point -> point.mul(spread));
-        // Endpoints beside the network that maps them, on its outer side; the others wait below.
-        var cardCorners = new ArrayList<EndpointNodeLayout.Card>();
-        for (int i = 0; i < count; i++) cardCorners.add(new EndpointNodeLayout.Card(ordered.get(i).id(), raw.get(i).x, raw.get(i).y));
+        // Endpoints beside the network that maps them, on its outer side; the others wait below. Spread the cards
+        // further while one network's Endpoints would cover another card or its Endpoints.
         var nodes = endpointNodes.stream().map(endpoint -> new EndpointNodeLayout.Node(endpoint.id(),
                 index.containsKey(endpoint.owner()) ? endpoint.owner() : "", endpointWidth(endpoint, font))).toList();
-        var endpointsPlaced = EndpointNodeLayout.place(cardCorners, CARD_WIDTH, CARD_HEIGHT, nodes, ENDPOINT_HEIGHT);
+        var cardCorners = new ArrayList<EndpointNodeLayout.Card>();
+        var endpointsPlaced = List.<EndpointNodeLayout.Placed>of();
+        for (int attempt = 0; ; attempt++) {
+            cardCorners.clear();
+            for (int i = 0; i < count; i++) cardCorners.add(new EndpointNodeLayout.Card(ordered.get(i).id(), raw.get(i).x, raw.get(i).y));
+            endpointsPlaced = EndpointNodeLayout.place(cardCorners, CARD_WIDTH, CARD_HEIGHT, nodes, ENDPOINT_HEIGHT);
+            if (count <= 1 || attempt >= 12
+                    || EndpointNodeLayout.clear(cardCorners, CARD_WIDTH, CARD_HEIGHT, endpointsPlaced, ENDPOINT_HEIGHT)) break;
+            raw.forEach(point -> point.mul(1.15f));
+        }
         float minX = raw.stream().map(point -> point.x).min(Float::compare).orElse(0f);
         float minY = raw.stream().map(point -> point.y).min(Float::compare).orElse(0f);
         for (var place : endpointsPlaced) {

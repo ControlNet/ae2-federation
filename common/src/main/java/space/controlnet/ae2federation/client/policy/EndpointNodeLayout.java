@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client.policy;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,13 +11,24 @@ import java.util.List;
  * it, linked to that card, so nodes stay clear of the links between cards. A network left of the others keeps its
  * nodes on its left, one above them above it, and so on. Endpoints no shown network maps wait, unlinked, in a free row
  * below everything.
+ *
+ * <p>Each link leaves from its own point along the card's side, in the order of the nodes it reaches, so the links of
+ * one card never cross. Beside a card the nodes stand in one column of up to {@value #PER_COLUMN}; more lengthen it
+ * until a second column, set half a step lower, can put each of its nodes in a gap of the first, whose links bend
+ * between the card and the first column and run straight on through that gap. Above or below a card the same holds
+ * for rows of up to {@value #PER_ROW}, with vertical links.
  */
 public final class EndpointNodeLayout {
-    /** Space between a card and its first node, and between nodes. */
-    static final float GAP = 18;
-    static final float SPACING = 6;
-    /** Nodes per column beside a card or per row above or below it before a further one starts. */
-    private static final int PER_LINE = 3;
+    /** Space between a card and its first nodes. */
+    static final float GAP = 40;
+    /** Space between nodes, wide enough for a link to pass between two of them. */
+    static final float SPACING = 8;
+    /** Space between a first and a second column. */
+    static final float COLUMN_GAP = 12;
+    /** How close to the card's corners a link may leave. */
+    static final float ANCHOR_MARGIN = 14;
+    static final int PER_COLUMN = 5;
+    static final int PER_ROW = 3;
 
     private EndpointNodeLayout() {
     }
@@ -33,8 +45,7 @@ public final class EndpointNodeLayout {
     public record Placed(String id, float x, float y, float width, WireCurve link) {
         /** The same node and link moved by {@code (dx, dy)}. */
         public Placed moved(float dx, float dy) {
-            return new Placed(id, x + dx, y + dy, width, link == null ? null
-                    : new WireCurve(link.fromX() + dx, link.fromY() + dy, link.toX() + dx, link.toY() + dy));
+            return new Placed(id, x + dx, y + dy, width, link == null ? null : link.translated(dx, dy));
         }
     }
 
@@ -53,39 +64,11 @@ public final class EndpointNodeLayout {
         for (var entry : owned.entrySet()) {
             var card = byId.get(entry.getKey());
             var side = side(card, width, height, centerX, centerY, cards.size());
-            var group = entry.getValue();
-            for (int line = 0; line * PER_LINE < group.size(); line++) {
-                var members = group.subList(line * PER_LINE, Math.min(group.size(), (line + 1) * PER_LINE));
-                float lineWidth = (float) members.stream().mapToDouble(Node::width).max().orElse(0);
-                // Columns beside a card step outward by the widest node of the columns before.
-                float outward = GAP + line * (lineWidth + SPACING);
-                if (side == Side.LEFT || side == Side.RIGHT) {
-                    float columnHeight = members.size() * nodeHeight + (members.size() - 1) * SPACING;
-                    float top = card.y() + height / 2 - columnHeight / 2;
-                    for (int index = 0; index < members.size(); index++) {
-                        var node = members.get(index);
-                        float y = top + index * (nodeHeight + SPACING);
-                        float x = side == Side.LEFT ? card.x() - outward - node.width() : card.x() + width + outward;
-                        var link = side == Side.LEFT
-                                ? new WireCurve(card.x(), card.y() + height / 2, x + node.width(), y + nodeHeight / 2)
-                                : new WireCurve(card.x() + width, card.y() + height / 2, x, y + nodeHeight / 2);
-                        placed.put(node.id(), new Placed(node.id(), x, y, node.width(), link));
-                        bottom = Math.max(bottom, y + nodeHeight);
-                    }
-                } else {
-                    float rowWidth = (float) members.stream().mapToDouble(Node::width).sum() + (members.size() - 1) * SPACING;
-                    float left = card.x() + width / 2 - rowWidth / 2;
-                    float y = side == Side.ABOVE ? card.y() - GAP - line * (nodeHeight + SPACING) - nodeHeight
-                            : card.y() + height + GAP + line * (nodeHeight + SPACING);
-                    for (var node : members) {
-                        var link = side == Side.ABOVE
-                                ? new WireCurve(card.x() + width / 2, card.y(), left + node.width() / 2, y + nodeHeight)
-                                : new WireCurve(card.x() + width / 2, card.y() + height, left + node.width() / 2, y);
-                        placed.put(node.id(), new Placed(node.id(), left, y, node.width(), link));
-                        left += node.width() + SPACING;
-                    }
-                    bottom = Math.max(bottom, y + nodeHeight);
-                }
+            var group = side == Side.LEFT || side == Side.RIGHT ? beside(card, width, height, entry.getValue(), nodeHeight, side)
+                    : aboveOrBelow(card, width, height, entry.getValue(), nodeHeight, side);
+            for (var node : group) {
+                placed.put(node.id(), node);
+                bottom = Math.max(bottom, node.y() + nodeHeight);
             }
         }
         float left = cards.stream().map(Card::x).min(Float::compare).orElse(0f);
@@ -102,6 +85,111 @@ public final class EndpointNodeLayout {
             x += node.width() + SPACING;
         }
         return nodes.stream().map(node -> placed.get(node.id())).toList();
+    }
+
+    /** How many of {@code count} nodes the first line takes, so the rest fit in its gaps. */
+    private static int firstLine(int count, int perLine) {
+        return Math.max(Math.min(count, perLine), (count + 2) / 2);
+    }
+
+    /** Each link's point along a side of {@code length} centred on {@code centre}, at most {@code pitch} apart. */
+    private static float[] anchors(int count, float centre, float length, float pitch) {
+        var anchors = new float[count];
+        float step = count <= 1 ? 0 : Math.min(pitch, (length - 2 * ANCHOR_MARGIN) / (count - 1));
+        for (int index = 0; index < count; index++) anchors[index] = centre + (index - (count - 1) / 2f) * step;
+        return anchors;
+    }
+
+    private record Slot(Node node, float y, boolean second) {
+    }
+
+    private static List<Placed> beside(Card card, float width, float height, List<Node> group, float nodeHeight, Side side) {
+        float pitch = nodeHeight + SPACING;
+        int first = firstLine(group.size(), PER_COLUMN);
+        float top = card.y() + height / 2 - (first * nodeHeight + (first - 1) * SPACING) / 2;
+        var slots = new ArrayList<Slot>();
+        for (int index = 0; index < first; index++) slots.add(new Slot(group.get(index), top + index * pitch, false));
+        // The second column fills the first's middle gaps, half a step lower than the node above each gap.
+        int second = group.size() - first;
+        int start = (first - 1 - second) / 2;
+        for (int index = 0; index < second; index++) {
+            slots.add(new Slot(group.get(first + index), top + (start + index) * pitch + pitch / 2, true));
+        }
+        slots.sort(Comparator.comparingDouble(Slot::y));
+        float firstWidth = (float) group.subList(0, first).stream().mapToDouble(Node::width).max().orElse(0);
+        var anchors = anchors(slots.size(), card.y() + height / 2, height, pitch);
+        boolean left = side == Side.LEFT;
+        float edge = left ? card.x() - GAP : card.x() + width + GAP;
+        float fromX = left ? card.x() : card.x() + width;
+        var placed = new ArrayList<Placed>();
+        for (int index = 0; index < slots.size(); index++) {
+            var slot = slots.get(index);
+            var node = slot.node();
+            float outward = slot.second() ? firstWidth + COLUMN_GAP : 0;
+            float x = left ? edge - outward - node.width() : edge + outward;
+            float toX = left ? x + node.width() : x;
+            var link = new WireCurve(fromX, anchors[index], toX, slot.y() + nodeHeight / 2, false, edge);
+            placed.add(new Placed(node.id(), x, slot.y(), node.width(), link));
+        }
+        return placed;
+    }
+
+    private static List<Placed> aboveOrBelow(Card card, float width, float height, List<Node> group, float nodeHeight,
+            Side side) {
+        int first = firstLine(group.size(), PER_ROW);
+        var row = group.subList(0, first);
+        float rowWidth = (float) row.stream().mapToDouble(Node::width).sum() + (first - 1) * SPACING;
+        boolean above = side == Side.ABOVE;
+        float edge = above ? card.y() - GAP : card.y() + height + GAP;
+        float y = above ? edge - nodeHeight : edge;
+        float fromY = above ? card.y() : card.y() + height;
+        // Centres along the row: each first-row node, and in each middle gap the second row's node, one step further out.
+        var centres = new ArrayList<float[]>();
+        float x = card.x() + width / 2 - rowWidth / 2;
+        var gaps = new ArrayList<Float>();
+        for (int index = 0; index < first; index++) {
+            var node = row.get(index);
+            centres.add(new float[] {x + node.width() / 2, 0, index});
+            x += node.width() + SPACING;
+            gaps.add(x - SPACING / 2);
+        }
+        int second = group.size() - first;
+        int start = (first - 1 - second) / 2;
+        for (int index = 0; index < second; index++) centres.add(new float[] {gaps.get(start + index), 1, first + index});
+        centres.sort(Comparator.comparingDouble(centre -> centre[0]));
+        float averageWidth = rowWidth / first;
+        var anchors = anchors(centres.size(), card.x() + width / 2, width, averageWidth + SPACING);
+        var placed = new ArrayList<Placed>();
+        for (int index = 0; index < centres.size(); index++) {
+            var centre = centres.get(index);
+            var node = group.get((int) centre[2]);
+            float nodeY = centre[1] == 0 ? y : above ? y - nodeHeight - SPACING : y + nodeHeight + SPACING;
+            float toY = above ? nodeY + nodeHeight : nodeY;
+            var link = new WireCurve(anchors[index], fromY, centre[0], toY, true, edge);
+            placed.add(new Placed(node.id(), centre[0] - node.width() / 2, nodeY, node.width(), link));
+        }
+        return placed;
+    }
+
+    /** Whether no placed node covers a card or another node. */
+    public static boolean clear(List<Card> cards, float width, float height, List<Placed> placed, float nodeHeight) {
+        for (int index = 0; index < placed.size(); index++) {
+            var node = placed.get(index);
+            for (var card : cards) {
+                if (overlaps(node.x(), node.y(), node.width(), nodeHeight, card.x(), card.y(), width, height)) return false;
+            }
+            for (int other = index + 1; other < placed.size(); other++) {
+                var next = placed.get(other);
+                if (overlaps(node.x(), node.y(), node.width(), nodeHeight, next.x(), next.y(), next.width(), nodeHeight)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean overlaps(float ax, float ay, float aw, float ah, float bx, float by, float bw, float bh) {
+        return ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah;
     }
 
     /** The side of the card that faces away from the other cards; below when it is alone. */
