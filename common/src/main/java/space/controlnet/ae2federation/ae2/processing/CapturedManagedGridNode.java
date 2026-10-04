@@ -15,6 +15,12 @@ import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * The node a native PatternProviderLogic sees inside a Federation Pattern Provider. It captures the logic's services
+ * and forwards state queries to the provider's physical node, which its owner configures. AE2 lets any code configure a
+ * logic's node, and addons that mix into PatternProviderLogic do, so configuration that cannot reach the physical node
+ * is accepted and left out instead of failing.
+ */
 final class CapturedManagedGridNode implements IManagedGridNode {
     private final IManagedGridNode physicalNode;
     private final NativeProviderLaneServices services;
@@ -32,53 +38,42 @@ final class CapturedManagedGridNode implements IManagedGridNode {
 
     @Override
     public IManagedGridNode setFlags(GridFlags... flags) {
-        var created = physicalNode.getNode();
-        if (created == null) {
+        if (physicalNode.getNode() == null) {
             physicalNode.setFlags(flags);
-        } else {
-            // A Lane added after the physical node exists cannot change its flags; the owner configures them first.
-            for (var flag : flags) {
-                if (!created.hasFlag(flag)) {
-                    throw new IllegalStateException("Physical Provider node lacks native flag " + flag);
-                }
-            }
         }
+        // A Lane added after the physical node exists cannot change its flags; the owner configured them first.
         return this;
     }
 
     @Override
     public void destroy() {
-        throw new UnsupportedOperationException("Lane facades do not own the physical node");
     }
 
     @Override
     public void create(Level level, @Nullable BlockPos blockPos) {
-        throw new UnsupportedOperationException("Lane facades do not create the physical node");
     }
 
     @Override
     public void loadFromNBT(CompoundTag nodeData) {
-        throw new UnsupportedOperationException("Lane facades do not persist the physical node");
     }
 
     @Override
     public void saveToNBT(CompoundTag nodeData) {
-        throw new UnsupportedOperationException("Lane facades do not persist the physical node");
     }
 
     @Override
     public IManagedGridNode setExposedOnSides(Set<Direction> directions) {
-        throw new UnsupportedOperationException("Lane facades do not configure the physical node");
+        return this;
     }
 
     @Override
     public IManagedGridNode setIdlePowerUsage(double usagePerTick) {
-        throw new UnsupportedOperationException("Lane facades do not configure the physical node");
+        return this;
     }
 
     @Override
     public IManagedGridNode setVisualRepresentation(@Nullable appeng.api.stacks.AEItemKey representation) {
-        throw new UnsupportedOperationException("Lane facades do not configure the physical node");
+        return this;
     }
 
     @Override
@@ -93,17 +88,17 @@ final class CapturedManagedGridNode implements IManagedGridNode {
 
     @Override
     public IManagedGridNode setInWorldNode(boolean accessible) {
-        throw new UnsupportedOperationException("Lane facades do not configure the physical node");
+        return this;
     }
 
     @Override
     public IManagedGridNode setTagName(String tagName) {
-        throw new UnsupportedOperationException("Lane facades do not persist the physical node");
+        return this;
     }
 
     @Override
     public IManagedGridNode setGridColor(AEColor gridColor) {
-        throw new UnsupportedOperationException("Lane facades do not configure the physical node");
+        return this;
     }
 
     @Override
@@ -133,12 +128,10 @@ final class CapturedManagedGridNode implements IManagedGridNode {
 
     @Override
     public void setOwningPlayerId(int ownerPlayerId) {
-        throw new UnsupportedOperationException("Lane facades do not own security state");
     }
 
     @Override
     public void setOwningPlayer(Player ownerPlayer) {
-        throw new UnsupportedOperationException("Lane facades do not own security state");
     }
 
     @Override

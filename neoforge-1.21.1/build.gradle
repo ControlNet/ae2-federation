@@ -207,6 +207,8 @@ def requireArtifactEulaApproval = tasks.register('requireArtifactEulaApproval') 
 neoForge {
     version = neo_version
     validateAccessTransformers = true
+    // Unit tests may name Minecraft types, such as the AE2 node API's arguments, without starting the game.
+    addModdingDependenciesTo(sourceSets.test)
 
     runs {
         server {
