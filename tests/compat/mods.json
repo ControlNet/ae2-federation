@@ -1,4 +1,11 @@
 {
+  "advancedae@1.6.12-1.21.1": {
+    "name": "advancedae",
+    "version": "1.6.12-1.21.1",
+    "file": "AdvancedAE-1.6.12-1.21.1.jar",
+    "url": "https://cdn.modrinth.com/data/rxYaglEe/versions/ablTMAjP/AdvancedAE-1.6.12-1.21.1.jar",
+    "sha512": "ab61c57355649a967a0bcf6b9413cd6b62728d26e914543b3231eea33bde5571536bd589ae1ac026d46799711508c942284c3419e19ff5d5bf80f1045442f33a"
+  },
   "ae2-lightning-tech@2.1.1": {
     "name": "ae2-lightning-tech",
     "version": "2.1.1",
@@ -55,12 +62,33 @@
     "sha512": "fb90f83da5ea7db4e49e23232ff91ef5e7601196048ee82eebee59f228c7f52e56d796732d16751e7eed5081ffbd7d1b7df5be8b2fcc48bde02e43dfefc62f30",
     "version": "0.2.6"
   },
+  "appflux@1.21-2.1.5-neoforge": {
+    "name": "appflux",
+    "version": "1.21-2.1.5-neoforge",
+    "file": "AppliedFlux-1.21-2.1.5-neoforge.jar",
+    "url": "https://cdn.modrinth.com/data/oMgZ004U/versions/4x40hq9D/AppliedFlux-1.21-2.1.5-neoforge.jar",
+    "sha512": "27bb367ad2f6695a485e11bf6e9567a86eb2d817194f5bdb381d1e493c345e0055eefb727308ca28fd27cf170d4303788c22681c349065515841cfe7a8c4b01b"
+  },
+  "applied-mekanistics@1.6.3": {
+    "name": "applied-mekanistics",
+    "version": "1.6.3",
+    "file": "Applied-Mekanistics-1.6.3.jar",
+    "url": "https://cdn.modrinth.com/data/IiATswDj/versions/TpUCzFaW/Applied-Mekanistics-1.6.3.jar",
+    "sha512": "1a693c3c05862805bd88cf1265fd4b9b98b2da4efe986c9ff26efa0e675df14373983ffdf7ededb26f07864b6702fabc299ac1a06fb8fa35de0b341b596dbf9b"
+  },
   "appliedenhancements@1.1.0": {
     "name": "appliedenhancements",
     "file": "appliedenhancements-1.1.0.jar",
     "url": "https://mediafilez.forgecdn.net/files/9043/227/appliedenhancements-1.1.0.jar",
     "sha512": "261af9d69021247919026efecae074c5747f41c8ca7a48d38f6264c5785c1b2f3adc9eb13f9d5eae0f2d47f30891c7ade6daf1068d59a7d8bcdc4102e6df48f4",
     "version": "1.1.0"
+  },
+  "create@6.0.10+mc1.21.1": {
+    "name": "create",
+    "version": "6.0.10+mc1.21.1",
+    "file": "create-1.21.1-6.0.10.jar",
+    "url": "https://cdn.modrinth.com/data/LNytGWDc/versions/UjX6dr61/create-1.21.1-6.0.10.jar",
+    "sha512": "11cc8fc049d2f67f6548c7abfada6b82a3adb5c7ca410a742de04bbca76e03862c518721b88d806f6e6d768a4d68531fdb903a85859b25d1484d550cc7bafd4b"
   },
   "data-energistics@3.3.3": {
     "name": "data-energistics",
@@ -82,6 +110,20 @@
     "url": "https://mediafilez.forgecdn.net/files/9044/672/ExtendedAE-1.21-2.2.39-neoforge.jar",
     "sha512": "02d2f37e22361ef521536d3cc96350763271c03e41ed8e6ba970decd7620d4a34930486c5c5fb16ae35b77930340a77199d17194cba953d757fd987e12b4d6a1",
     "version": "2.2.39"
+  },
+  "functional-storage@1.21-1.5.7": {
+    "name": "functional-storage",
+    "version": "1.21-1.5.7",
+    "file": "functionalstorage-1.21.1-1.5.7.jar",
+    "url": "https://cdn.modrinth.com/data/cO40ZIg3/versions/FWnouoF2/functionalstorage-1.21.1-1.5.7.jar",
+    "sha512": "703292eb514d09ed34fb4cc889fc424a9816be145a931c29069a24ed6d21f5d9b46f4d8b3b1e224dabbdb95ecafe0fad32ad034debccf6545d89dd17cda634ce"
+  },
+  "geckolib@4.9.3": {
+    "name": "geckolib",
+    "version": "4.9.3",
+    "file": "geckolib-neoforge-1.21.1-4.9.3.jar",
+    "url": "https://cdn.modrinth.com/data/8BmcQJ2H/versions/Grwn5rUB/geckolib-neoforge-1.21.1-4.9.3.jar",
+    "sha512": "8dfa5f8c57224a5e34e5098367ea9819ca6dc9c11357cd3062c16da3455c8bd1a483098af7383debc4b9ce8e4d7ab3fdc799b415644eb829da83eb72a7335dfd"
   },
   "glodium@1.21-2.2": {
     "name": "glodium",
@@ -111,6 +153,20 @@
     "url": "https://cdn.modrinth.com/data/B1CBVXHX/versions/RIgL4A7W/ldlib2-neoforge-1.21.1-2.2.41-all.jar",
     "sha512": "4a1e76aa7e90f43f866a6cacc3a1ce0a4bf070517090234c9a56a9d431dc023a06fcbaeb15b83c9957e0387271670e581a58b799cfe5beac0a51f42442795925"
   },
+  "megacells@4.11.0": {
+    "name": "megacells",
+    "version": "4.11.0",
+    "file": "megacells-4.11.0.jar",
+    "url": "https://cdn.modrinth.com/data/jjuIRIVr/versions/RPG4EriK/megacells-4.11.0.jar",
+    "sha512": "a4d35f68a5103443930b132684bb30e715d7c92c8cb3b7c6b4151e728ae05b1d5d8d39ea33df0826f6cb5ca94dca5948a0b220119d76f5597d1e3cb881bfeca0"
+  },
+  "mekanism@10.7.19.85": {
+    "name": "mekanism",
+    "version": "10.7.19.85",
+    "file": "Mekanism-1.21.1-10.7.19.85.jar",
+    "url": "https://cdn.modrinth.com/data/Ce6I4WUE/versions/5KzzycBT/Mekanism-1.21.1-10.7.19.85.jar",
+    "sha512": "66745825330a98f3e4a5ea3a44aff8b00870f715c144edc38dd2f61b4240589600b58ae89efac3b54dbb5aa430b1059dac1a28fd71cac5cc9002bbeb5ba3f22b"
+  },
   "neoecoae@21.2.0": {
     "name": "neoecoae",
     "version": "21.2.0",
@@ -125,11 +181,32 @@
     "sha512": "f8dcc57db55749f7c29a1a503b162c4cdbcf36aa0a76b95b868f4767cf5ec8f4fd6b227de3ed38353a78a004776c0055d1bf727cf7d656d85e011fc2d23e989c",
     "version": "2.0.7"
   },
+  "sophisticated-core@1.21.1-1.5.5.2363": {
+    "name": "sophisticated-core",
+    "version": "1.21.1-1.5.5.2363",
+    "file": "sophisticatedcore-1.21.1-1.5.5.2363.jar",
+    "url": "https://cdn.modrinth.com/data/nmoqTijg/versions/nSoNwJfm/sophisticatedcore-1.21.1-1.5.5.2363.jar",
+    "sha512": "8bc1f6f05c0ca0722b58210283fb3deb31155d3185936053e92c90f41bc61220e49d23bf83791f09121afcbe30ba469c5a04134b1b8595591e33a2c1cfc16768"
+  },
+  "sophisticated-storage@1.21.1-1.6.1.2147": {
+    "name": "sophisticated-storage",
+    "version": "1.21.1-1.6.1.2147",
+    "file": "sophisticatedstorage-1.21.1-1.6.1.2147.jar",
+    "url": "https://cdn.modrinth.com/data/hMlaZH8f/versions/Hhf1IKFI/sophisticatedstorage-1.21.1-1.6.1.2147.jar",
+    "sha512": "d57d24b0965d5b249aed4b635adbb51a7bbde5187c470149d3d95b61cf9ac553a9dbd9b564bd82726ab83c99c31db82d915e85c8290995dba7c5aa1d7c0fea47"
+  },
   "thunderbolt-core@2.0.1": {
     "name": "thunderbolt-core",
     "version": "2.0.1",
     "file": "thunderbolt-2.0.1.jar",
     "url": "https://cdn.modrinth.com/data/M5jhzZXH/versions/TVoZndZv/thunderbolt-2.0.1.jar",
     "sha512": "a7c510765b53d5841f3f5b4e75b4e14cbaa2447afe88c3fa21286fee11c1d3bb5eca2db010d77f11c4eb689d1d6f4ab2c3ee4474e83857f3f9a15332b2a49a5b"
+  },
+  "titanium@1.21-4.0.50": {
+    "name": "titanium",
+    "version": "1.21-4.0.50",
+    "file": "titanium-1.21-4.0.50.jar",
+    "url": "https://cdn.modrinth.com/data/1Ro7m06l/versions/zCzYA9mW/titanium-1.21-4.0.50.jar",
+    "sha512": "8569e4d3331ba8a23f67bf46b0697d6a5a325deed696823cede68d8d4fef119669f1086767077af76013211617fef6c0cede310c5b7dfc1b3f9a7f37bf843908"
   }
 }

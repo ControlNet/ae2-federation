@@ -21,6 +21,7 @@ final class CompatTestClasses {
         groups.put("megacells", MegaCellsCompatGameTests.class);
         groups.put("advanced-ae", AdvancedAECompatGameTests.class);
         groups.put("create", CreateCompatGameTests.class);
+        groups.put("mekanism", MekanismCompatGameTests.class);
         return groups;
     }
 }

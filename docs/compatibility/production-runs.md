@@ -34,9 +34,17 @@ Every profile runs the `core` group:
 | `processingThreeEndpoints` | One Federation Pattern Provider runs processing jobs through three Endpoints with Blocking mode. |
 | `endpointSharedEnergy` | A claimed Endpoint powers its subnet from the Provider's network. |
 | `remoteCraftingPlacedBlocks`, `remoteProcessingPlacedBlocks` | The crafting scene with AE2's own placed blocks. This is the control for each addon's variant. |
+| `endpointFurnace` | The Federation Pattern Provider sends cobblestone through an Endpoint into a furnace; a hopper pushes the stone back into the Endpoint. This is the control for each mod machine's variant. |
 
 An addon group repeats the placed-block scene with the addon's own blocks, or shares one of the addon's cells.
 The `create` group processes through a real Create Millstone that a Creative Motor turns.
+
+In the Endpoint machine scene, the Endpoint's subnet stores the delivered input through a Storage Bus on the
+machine's input side, so the input goes straight into the machine. The product comes back the way a player would
+build it: through a hopper under the machine, or by the machine's own auto-eject into the Endpoint.
+The `mekanism` group does this with a Crusher. The `appmek` group does it with a Chemical Oxidizer, whose carbon is a
+chemical. A Mekanism machine starts with every side disabled, and a bare Creative Energy Cube block is empty, so the
+test sets the machine's sides and fills the cube the way a player's Configurator and the filled creative cube would.
 
 ## Addon profiles
 
@@ -58,6 +66,7 @@ These profiles run on every push except to master.
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 8/8 |
 | `aeallpattern` | AE All Pattern 0.2.6 | core only | 8/8 |
 | `neoecoae` | Neo ECO AE Extension 21.2.0 | core only | 8/8 |
+| `mekanism` | Mekanism 10.7.19, Applied Mekanistics 1.6.3 | Endpoint into a Crusher; Endpoint into a Chemical Oxidizer returning a chemical; sharing a chemical cell | 12/12 |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group | 10/10 |
 | `addons-all` | all of the above plus AE2 Extras | every addon group above, plus AE2 Extras' 1M crafting storage and 1M cell | 18/18 |
 
@@ -91,6 +100,13 @@ The first modpack runs found two bugs in AE2 Federation 0.0.4, both fixed on dev
   The Federation Pattern Provider's lanes rejected any service they did not know, so loading a Federation Pattern
   Provider beside Applied Flux crashed the server. Lanes now leave addon services out, so Applied Flux's energy
   distribution does not work on a Federation Pattern Provider.
+
+The Endpoint machine scene found one more, also fixed on dev:
+
+- **An Endpoint could not take back chemicals.** Applied Mekanistics adds Mekanism's chemical handler to every block
+  that exposes AE2's generic internal inventory, as AE2's own Pattern Provider does for its return inventory. The
+  Endpoint exposed only item and fluid returns, so a Mekanism machine could not eject a chemical into it. It now
+  exposes its return inventory that way on its five logistics faces.
 
 Other findings, all upstream behaviour:
 

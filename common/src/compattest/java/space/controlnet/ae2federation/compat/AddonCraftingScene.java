@@ -138,6 +138,12 @@ final class AddonCraftingScene {
         return BuiltInRegistries.BLOCK.get(key);
     }
 
+    static net.minecraft.world.item.Item item(String id) {
+        var key = ResourceLocation.parse(id);
+        if (!BuiltInRegistries.ITEM.containsKey(key)) throw new IllegalStateException("Item " + id + " is not registered");
+        return BuiltInRegistries.ITEM.get(key);
+    }
+
     /** Readies the provider as its player would before patterns go in, such as by fitting a part into it. */
     AddonCraftingScene preparingProvider(
             java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> prepare) {

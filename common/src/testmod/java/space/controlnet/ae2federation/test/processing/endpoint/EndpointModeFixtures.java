@@ -165,6 +165,11 @@ public final class EndpointModeFixtures implements AutoCloseable {
         return helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(ENDPOINT), face);
     }
 
+    /** AE2's generic return inventory, which addons such as Applied Mekanistics wrap for their own resource types. */
+    public appeng.api.behaviors.GenericInternalInventory genericCapability(Direction face) {
+        return helper.getLevel().getCapability(AECapabilities.GENERIC_INTERNAL_INV, helper.absolutePos(ENDPOINT), face);
+    }
+
     public Object storageCapability(Direction face) {
         return helper.getLevel().getCapability(AECapabilities.ME_STORAGE, helper.absolutePos(ENDPOINT), face);
     }

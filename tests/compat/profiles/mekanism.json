@@ -1,0 +1,18 @@
+{
+  "name": "mekanism",
+  "group": "addons",
+  "description": "Mekanism and Applied Mekanistics: machines, chemicals and chemical cells",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "mekanism@10.7.19.85",
+    "applied-mekanistics@1.6.3"
+  ],
+  "tests": [
+    "core",
+    "mekanism",
+    "appmek"
+  ]
+}

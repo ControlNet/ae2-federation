@@ -1,10 +1,16 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import java.util.HashSet;
 import java.util.List;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
@@ -70,6 +76,45 @@ public final class CoreCompatGameTests {
     @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
     public static void endpointSharedEnergy(GameTestHelper helper) {
         EndpointFederationFaceGameTests.endpointSubnetEnergy(helper);
+    }
+
+    /**
+     * The Federation Pattern Provider runs a processing job through an Endpoint into a vanilla furnace and gets the
+     * smelted stone back through a hopper: the control for every mod machine's variant of it.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointFurnace(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Furnace());
+        helper.succeedWhen(scene::tick);
+    }
+
+    private static final class Furnace implements EndpointMachineScene.Machine {
+        @Override
+        public String blockId() {
+            return "minecraft:furnace";
+        }
+
+        @Override
+        public AEKey input() {
+            return AEItemKey.of(Items.COBBLESTONE);
+        }
+
+        @Override
+        public AEKey output() {
+            return AEItemKey.of(Items.STONE);
+        }
+
+        /** Fuel, as a player puts it in. */
+        @Override
+        public void prepare(GameTestHelper helper, BlockPos position) {
+            helper.<FurnaceBlockEntity>getBlockEntity(position).setItem(1, new ItemStack(Items.COAL_BLOCK));
+        }
+
+        @Override
+        public String state(GameTestHelper helper, BlockPos position) {
+            var furnace = helper.<FurnaceBlockEntity>getBlockEntity(position);
+            return "input=" + furnace.getItem(0) + " fuel=" + furnace.getItem(1) + " result=" + furnace.getItem(2);
+        }
     }
 
     /**

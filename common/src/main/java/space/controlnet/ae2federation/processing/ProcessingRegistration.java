@@ -88,6 +88,10 @@ public final class ProcessingRegistration {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).fluidReturn(side).orElse(null));
+        // As on AE2's own Pattern Provider; Applied Mekanistics and other addons wrap it for their resource types.
+        event.registerBlockEntity(AECapabilities.GENERIC_INTERNAL_INV, ENDPOINT_BLOCK_ENTITY.get(),
+                (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
+                        : endpointRuntime(endpoint, side).genericReturn(side).orElse(null));
     }
 
     private static space.controlnet.ae2federation.processing.endpoint.EndpointRuntime endpointRuntime(

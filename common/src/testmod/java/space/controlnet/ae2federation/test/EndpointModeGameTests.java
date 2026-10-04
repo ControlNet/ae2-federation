@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.test;
 
+import appeng.api.stacks.AEItemKey;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.core.Direction;
@@ -183,6 +184,32 @@ public final class EndpointModeGameTests {
             facts.put("fluidAdapter", "GenericStackFluidStorage");
             facts.put("typedReturnContexts", "true");
             EndpointModeEvidence.write("endpointfivefacereturns", 16, facts);
+        });
+    }
+
+    /**
+     * Every logistics face also exposes the owner's return inventory as AE2's generic internal inventory, as AE2's own
+     * Pattern Provider does, so addons that wrap that capability (Applied Mekanistics' chemicals) can return their
+     * resources too. The Federation face exposes none.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 240, required = true, manualOnly = true)
+    public static void endpointGenericReturn(GameTestHelper helper) {
+        runLocal(helper, false, fixture -> {
+            helper.assertTrue(fixture.bindLocal(), "Local return owner must bind");
+            var returns = fixture.provider().getLogic().getReturnInv();
+            for (var face : EndpointModeFixtures.LOGISTICS_FACES) {
+                var generic = fixture.genericCapability(face);
+                helper.assertTrue(generic != null, "Face " + face + " must expose the generic return inventory");
+                helper.assertValueEqual(generic.insert(0, AEItemKey.of(Items.IRON_INGOT), 3,
+                        appeng.api.config.Actionable.MODULATE), 3L, "The generic return path must accept on " + face);
+                helper.assertValueEqual(returns.getAmount(0), 3L, "The return lands in the owner's return inventory");
+                fixture.clearReturn(fixture.provider());
+            }
+            helper.assertTrue(fixture.genericCapability(fixture.endpoint().federationFace()) == null,
+                    "The Federation face must expose no return path");
+            EndpointModeEvidence.write("endpointgenericreturn", 17, new LinkedHashMap<>(java.util.Map.of(
+                    "logisticsFaces", "5", "federationFaceExcluded", "true")));
         });
     }
 
