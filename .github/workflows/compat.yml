@@ -19,8 +19,9 @@ on:
 permissions:
   contents: read
 
+# A newer push replaces an older one, but a modpack run never cancels an addon run or the reverse.
 concurrency:
-  group: compat-${{ github.ref }}
+  group: compat-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
