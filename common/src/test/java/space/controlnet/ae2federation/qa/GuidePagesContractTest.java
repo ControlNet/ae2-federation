@@ -35,17 +35,20 @@ final class GuidePagesContractTest {
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
-            "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus");
+            "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
+            "1k_crafting_storage");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
             "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
             "appmek", Set.of("chemical_storage_cell_1k"),
             "create", Set.of("crushing_wheel", "chute"),
             "extendedae", Set.of("assembler_matrix_frame"),
+            "extendedae_plus", Set.of("4x_crafting_accelerator"),
             "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
+            "extendedae_plus", Set.of("introduction/devices/crafting_accelerator.md"),
             "neoecoae", Set.of("neoecoae_intro/storage_system.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");

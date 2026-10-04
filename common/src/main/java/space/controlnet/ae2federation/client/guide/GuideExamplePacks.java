@@ -13,6 +13,7 @@ public final class GuideExamplePacks {
             new Pack("guide_mekanism_appmek", List.of("mekanism", "appmek")),
             new Pack("guide_create", List.of("create")),
             new Pack("guide_extendedae", List.of("extendedae")),
+            new Pack("guide_extendedae_plus", List.of("extendedae_plus")),
             new Pack("guide_neoecoae", List.of("neoecoae")));
 
     private GuideExamplePacks() {
