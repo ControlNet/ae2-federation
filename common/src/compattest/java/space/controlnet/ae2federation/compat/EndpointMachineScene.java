@@ -116,6 +116,12 @@ final class EndpointMachineScene {
     private java.util.function.Consumer<ICraftingPlan> checkPlan = plan -> {
     };
     private boolean localPatternInstalled;
+    private boolean subnetEnergy = true;
+    private java.util.function.BiConsumer<GameTestHelper, BlockPos> interrupt;
+    private java.util.function.BiConsumer<GameTestHelper, BlockPos> repair;
+    private int interruptTicks;
+    private long resumeAt;
+    private String leaked;
     private int stage;
     private Future<ICraftingPlan> planFuture;
 
@@ -137,6 +143,25 @@ final class EndpointMachineScene {
     /** How many inputs the Provider's network stores and uses up; two unless set. */
     EndpointMachineScene requesting(long jobs) {
         this.jobs = jobs;
+        return this;
+    }
+
+    /** Leaves out the subnet's own energy cell, as the guide's builds do: the Endpoint powers its subnet. */
+    EndpointMachineScene poweredThroughEndpoint() {
+        subnetEnergy = false;
+        return this;
+    }
+
+    /**
+     * Breaks the machine's cell with {@code interrupt}, given the machine's position, just before the job is submitted;
+     * for {@code ticks}, longer than the machine takes to return a product, the job must wait with nothing returned,
+     * and then {@code repair} lets it finish, as the guide's exercise has its player do.
+     */
+    EndpointMachineScene interruptedBy(int ticks, java.util.function.BiConsumer<GameTestHelper, BlockPos> interrupt,
+            java.util.function.BiConsumer<GameTestHelper, BlockPos> repair) {
+        interruptTicks = ticks;
+        this.interrupt = interrupt;
+        this.repair = repair;
         return this;
     }
 
@@ -222,7 +247,7 @@ final class EndpointMachineScene {
                 }
                 helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
                         .setValue(BlockStateProperties.FACING, Direction.WEST));
-                helper.setBlock(SUBNET_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
+                if (subnetEnergy) helper.setBlock(SUBNET_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
                 machine.place(helper, machinePosition);
                 if (!machine.ejectsIntoEndpoint()) {
                     helper.setBlock(HOPPER, machine.collector());
@@ -278,12 +303,26 @@ final class EndpointMachineScene {
                 var plan = plan();
                 helper.assertFalse(plan.simulation(), "The inputs must be enough: " + plan.missingItems());
                 checkPlan.accept(plan);
+                if (interrupt != null) interrupt.accept(helper, machinePosition);
                 helper.assertTrue(grid().getCraftingService().submitJob(plan, null, null, false, IActionSource.empty())
                         .successful(), "The CPU must take the job");
-                stage = 4;
+                resumeAt = helper.getTick() + interruptTicks;
+                stage = interrupt == null ? 5 : 4;
                 helper.fail("Submitted the job");
             }
+            case 4 -> {
+                var returned = grid().getStorageService().getInventory().getAvailableStacks().get(machine.output());
+                var busy = grid().getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy());
+                if (leaked == null && (returned != 0 || !busy)) {
+                    leaked = "returned=" + returned + " busy=" + busy + " at tick " + helper.getTick();
+                }
+                helper.assertTrue(helper.getTick() >= resumeAt, "Waiting while the machine is cut off: " + diagnostics());
+                repair.accept(helper, machinePosition);
+                stage = 5;
+                helper.fail("Repaired the machine");
+            }
             default -> {
+                helper.assertTrue(leaked == null, "The job must wait while the machine is cut off: " + leaked);
                 var stored = grid().getStorageService().getInventory().getAvailableStacks();
                 helper.assertValueEqual(stored.get(machine.output()), requested(),
                         "Waiting for the machine's output to return through the Endpoint: " + diagnostics());

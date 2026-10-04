@@ -31,6 +31,19 @@ public final class MekanismCompatGameTests {
     }
 
     /**
+     * The guide's Crusher example as its player builds and tries it: the Endpoint powers the Crusher's subnet, and a
+     * job waits while the Crusher's top is switched off, then finishes once it takes items again. The Crusher takes
+     * 200 ticks a batch, so 300 ticks without gravel show that it never got the cobblestone.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
+    public static void endpointCrusherTopOff(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Crusher()).poweredThroughEndpoint().interruptedBy(300,
+                (test, crusher) -> MekanismSetup.configure(test, crusher, "ITEM", "NONE", Direction.UP, false),
+                (test, crusher) -> MekanismSetup.configure(test, crusher, "ITEM", "INPUT", Direction.UP, false));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * A fluid comes back through the Endpoint: the Federation Pattern Provider sends apples into a Nutritional Liquifier
      * standing on the Endpoint, which ejects the nutritional paste it makes, a fluid, down into the Endpoint.
      */
