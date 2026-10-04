@@ -21,7 +21,7 @@ public final class MekanismCompatGameTests {
     }
 
     /**
-     * The Federation Pattern Provider sends cobblestone through an Endpoint into a Crusher that a Creative Energy Cube
+     * The Federation Pattern Provider sends cobblestone through an Endpoint into a Crusher that a Basic Energy Cube
      * powers, and a hopper under the Crusher pushes the gravel back into the Endpoint.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
@@ -103,13 +103,13 @@ public final class MekanismCompatGameTests {
         }
 
         /**
-         * A filled Creative Energy Cube beside the Crusher, ejecting energy into it; the Crusher takes items on top,
+         * A charged Basic Energy Cube beside the Crusher, ejecting energy into it; the Crusher takes items on top,
          * gives its product at the bottom and takes energy from the cube's side, as a player configures them.
          */
         @Override
         public void prepare(GameTestHelper helper, BlockPos position) {
             var cube = position.west();
-            helper.setBlock(cube, AddonCraftingScene.block("mekanism:creative_energy_cube"));
+            helper.setBlock(cube, AddonCraftingScene.block("mekanism:basic_energy_cube"));
             MekanismSetup.fill(helper, cube);
             MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.EAST, true);
             MekanismSetup.configure(helper, position, "ITEM", "INPUT", Direction.UP, false);

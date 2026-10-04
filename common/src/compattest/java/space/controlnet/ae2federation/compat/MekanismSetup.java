@@ -60,7 +60,7 @@ final class MekanismSetup {
         return helper.getLevel().getCapability(typed, helper.absolutePos(position), side);
     }
 
-    /** Fills a Creative Energy Cube, as the filled cube from the creative tab is when placed. */
+    /** Fills an energy cube, as a cube charged before it is placed, or the filled creative cube, arrives. */
     static void fill(GameTestHelper helper, BlockPos position) {
         var tile = helper.getLevel().getBlockEntity(helper.absolutePos(position));
         try {
@@ -68,7 +68,7 @@ final class MekanismSetup {
             var max = (long) method(container.getClass(), "getMaxEnergy").invoke(container);
             container.getClass().getMethod("setEnergy", long.class).invoke(container, max);
         } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("The Creative Energy Cube at " + position + " could not be filled", exception);
+            throw new IllegalStateException("The energy cube at " + position + " could not be filled", exception);
         }
     }
 
