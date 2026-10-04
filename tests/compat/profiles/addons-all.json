@@ -1,7 +1,7 @@
 {
   "name": "addons-all",
   "group": "addons",
-  "description": "Every tested addon at once, as players install them",
+  "description": "Every tested addon that works with the others, at once, as players install them; AE All Pattern turns off ExtendedAE-Plus' Smart Doubling, so it runs in its own profiles",
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
@@ -15,7 +15,6 @@
     "ae2-wcwt@1.3.10",
     "thunderbolt-core@2.0.1",
     "ae2-lightning-tech@2.1.1",
-    "aeallpattern@0.2.6",
     "neoecoae@21.2.0",
     "data-energistics@3.3.3",
     "extendedae-plus@1.6.3",

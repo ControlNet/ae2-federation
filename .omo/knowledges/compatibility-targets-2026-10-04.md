@@ -177,7 +177,8 @@ What the scenes need, learned while building them:
   on any provider. No plan scales there. `smartDoublingProcessing` asserts that the consumer's plan scales exactly when
   the provider network's plan does, and `smartDoublingEndpoint` compares with a plain AE2 Pattern Provider.
   The `extendedae-plus-aeallpattern` profile (only those two mods) proves it is upstream: `smartDoublingNativeProvider`
-  asserts the mark is set exactly when `aeallpattern` is not loaded.
+  asserts the mark is set exactly when `aeallpattern` is not loaded. Since 2026-10-05 `addons-all` leaves AE All
+  Pattern out, so Smart Doubling is really on there.
 - **GameTest retries hide failures.** `succeedWhen` re-runs a failed stage every tick, so a stage that acts and then
   asserts reports whatever its retry hits. Build references once (cache in an `AtomicReference`), and check results
   that a later refresh could fix in the same tick, storing the result for the next phase.

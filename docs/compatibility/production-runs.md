@@ -112,7 +112,7 @@ These profiles run on every push except to master.
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels; an Item Vault and a Fluid Tank through a Storage Bus | 22/22 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 20/20 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 19/19 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence`, plus AE2 Extras and Neo ECO | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 58/58 |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 58/58 |
 
 ## Modpack profiles
 
@@ -185,8 +185,9 @@ Other findings, all upstream behaviour:
 - **AE All Pattern turns off ExtendedAE-Plus' Smart Doubling.** AE All Pattern replaces AE2's `updatePatterns` outright.
   ExtendedAE-Plus marks patterns at the end of that method, so with both loaded no provider's patterns get the mark
   and no plan scales. This happens without AE2 Federation's providers too: the `extendedae-plus-aeallpattern` profile
-  loads only those two mods and AE2's own Pattern Provider gets no mark. In `addons-all` the tests therefore compare
-  with the provider network's own plan and with a plain AE2 Pattern Provider.
+  loads only those two mods and AE2's own Pattern Provider gets no mark. Since the two mods do not work together,
+  `addons-all` leaves AE All Pattern out. It runs alone in `aeallpattern` and beside ExtendedAE-Plus in
+  `extendedae-plus-aeallpattern`.
 - **AE2Recursion** is **BLOCKED_LICENSE**: All Rights Reserved and obfuscated, like Recursive AE2 Pattern Provider.
 - **GregTech** is deferred. GTCEu 7.0.2, the last 1.21.1 release, fails on a dedicated server (see the
   [matrix](matrix.md)), and no mature 1.21.1 GregTech pack exists yet.
