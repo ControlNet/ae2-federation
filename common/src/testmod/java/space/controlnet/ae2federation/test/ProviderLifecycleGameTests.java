@@ -115,7 +115,8 @@ public final class ProviderLifecycleGameTests {
             setPattern(fixture, 0, Items.COBBLESTONE, Items.DIAMOND);
             helper.assertValueEqual(fixture.composition().patternInventory().size(), 3,
                     "Physical owner must expose all Pattern slots");
-            helper.assertTrue(fixture.composition().lanes().stream().allMatch(lane -> lane.getPatternInv().size() == 0),
+            helper.assertTrue(fixture.composition().lanes().stream()
+                    .allMatch(lane -> NativeProviderLaneFixtures.ownedPatternSlots(lane) == 0),
                     "Native Lanes must own no Pattern slots");
             helper.assertTrue(fixture.ownerSaveCalls() > 0, "Physical inventory mutation must save through its owner");
             helper.assertValueEqual(fixture.laneSaveCalls(), 0, "Pattern mutation must not save through Lane inventories");

@@ -62,7 +62,8 @@ Cross-network crafting is tested along both of Federation's paths with the addon
   machine where the mod has one. With ExtendedAE-Plus' Smart Doubling on the provider, the test also checks that the
   consumer's plan really uses the scaled patterns.
 - **Federation Pattern Provider and Endpoint.** Real machines from Mekanism, Create and ExtendedAE work behind an
-  Endpoint.
+  Endpoint. With ExtendedAE-Plus' Smart Doubling on the Federation Pattern Provider, its lanes' patterns carry the
+  same Smart Doubling mark as the pattern in a plain AE2 Pattern Provider.
 - **Addon CPUs on both paths.** A lone Quantum Computer Core, a Transfinite Compute Nexus or a Pigmee Mental Math Unit
   is the network's only CPU. Each runs jobs with its own CPU logic instead of AE2's, and each also cancels a projected
   job after the push.
@@ -90,7 +91,7 @@ These profiles run on every push except to master.
 |---|---|---|---|
 | `baseline`, `base-latest`, `neoforge-min` | — | core | 16/16 |
 | `extendedae` | ExtendedAE 2.2.39 | crafting and processing through the Extended Pattern Provider; crafting with the Extended Molecular Assembler; Endpoint into a Circuit Slicer; an Endpoint in Local mode under the Extended Pattern Provider; tag and mod storage buses; Infinity Cobblestone Cell | 24/24 |
-| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | the ExtendedAE group; crafting with a 4× Crafting Accelerator; processing with Smart Doubling; sharing a BigInteger cell | 27/27 |
+| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | the ExtendedAE group; crafting with a 4× Crafting Accelerator; processing with Smart Doubling, through projection and through an Endpoint; sharing a BigInteger cell | 28/28 |
 | `data-energistics` | Data Energistics 3.3.3 | crafting and processing through the Adaptive Pattern Provider | 18/18 |
 | `ae2-lightning-tech` | AE2 Lightning Tech 2.1.1, Thunderbolt Core 2.0.1 | crafting and processing through the Overloaded Pattern Provider; crafting through the Pigmee Pattern Provider; a Pigmee Mental Math Unit as the only CPU, including a cancelled job | 22/22 |
 | `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting and processing through the Pattern Disk Provider | 18/18 |
@@ -104,7 +105,7 @@ These profiles run on every push except to master.
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels; an Item Vault and a Fluid Tank through a Storage Bus | 20/20 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 18/18 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 17/17 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence`, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 43/43 |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence`, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 44/44 |
 
 ## Modpack profiles
 
@@ -137,19 +138,21 @@ The Endpoint machine scene found one more, also fixed on dev:
   Endpoint exposed only item and fluid returns, so a Mekanism machine could not eject a chemical into it. It now
   exposes its return inventory that way on its five logistics faces.
 
+The interaction tests found one more, also fixed on dev:
+
+- **Addon hooks on AE2's pattern refresh skipped the Federation Pattern Provider.** Its lanes read their patterns
+  themselves instead of through AE2's `updatePatterns`. So AE2 Lightning Tech's rule for overload patterns, AE All
+  Pattern's aggregate expansion and ExtendedAE-Plus' Smart Doubling never applied to them. Lanes now refresh through
+  AE2's own `updatePatterns`, and when an addon runs that refresh again by itself, the network sees the result at once.
+  `smartDoublingEndpoint` checks this with ExtendedAE-Plus. A dev GameTest checks a dropped pattern and an addon's own
+  refresh with a test-only stand-in for the addon hook.
+
 Limits found by the interaction tests, not yet changed:
 
 - **Local mode accepts only block-form providers built on AE2's provider block entity.** That covers AE2's, ExtendedAE's
   and MEGA's pattern providers. AE2's cable-part provider and providers with their own logic cannot run an Endpoint in
   Local mode. Those are the providers of Advanced AE, Pigmee, Pattern Disk and Data Energistics. They still work
   through pattern projection.
-- **A Federation Pattern Provider's lanes skip addon hooks on AE2's pattern refresh.** The lanes read their patterns
-  themselves instead of through AE2's `updatePatterns`. So these addon hooks never run for them:
-  - AE2 Lightning Tech's rule that overload patterns work only in its Overloaded Pattern Provider;
-  - AE All Pattern's aggregate pattern expansion;
-  - ExtendedAE-Plus' Smart Doubling marking.
-
-  Hooks on pushing a pattern do run.
 
 Other findings, all upstream behaviour:
 
@@ -166,8 +169,10 @@ Other findings, all upstream behaviour:
   `meteorite_pattern_provider` has a blockstate but no registered block.
 - **OmniSequence's infinite crafting storage** is part of the Omni-Computation Core multiblock and forms no CPU on its
   own. Its CPU mixins apply to AE2's own CPUs, which `core` covers.
-- **Smart Doubling stays off in `addons-all`.** With the other addons' planners loaded, the provider network's own plan
-  is not scaled either, so the consumer's is not. The test checks that both plans match.
+- **AE All Pattern turns off ExtendedAE-Plus' Smart Doubling.** AE All Pattern replaces AE2's `updatePatterns` outright.
+  ExtendedAE-Plus marks patterns at the end of that method, so with both loaded no provider's patterns get the mark
+  and no plan scales. In `addons-all` the tests therefore compare with the provider network's own plan and with a
+  plain AE2 Pattern Provider.
 - **AE2Recursion** is **BLOCKED_LICENSE**: All Rights Reserved and obfuscated, like Recursive AE2 Pattern Provider.
 - **GregTech** is deferred. GTCEu 7.0.2, the last 1.21.1 release, fails on a dedicated server (see the
   [matrix](matrix.md)), and no mature 1.21.1 GregTech pack exists yet.

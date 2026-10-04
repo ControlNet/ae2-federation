@@ -48,7 +48,6 @@ final class EndpointMachineScene {
     private static final BlockPos ENDPOINT = new BlockPos(5, 1, 3);
     private static final BlockPos SUBNET_ENERGY = new BlockPos(5, 1, 4);
     private static final BlockPos HOPPER = new BlockPos(5, 2, 3);
-    private static final long JOBS = 2;
 
     /** The machine a processing pattern names and how a player sets it up. */
     interface Machine {
@@ -107,6 +106,11 @@ final class EndpointMachineScene {
     private final BlockPos machinePosition;
     private boolean checkTerminal;
     private String localProviderId;
+    private long jobs = 2;
+    private java.util.function.Consumer<FederationPatternProviderBlockEntity> prepareProvider = provider -> {
+    };
+    private java.util.function.Consumer<ICraftingPlan> checkPlan = plan -> {
+    };
     private int stage;
     private Future<ICraftingPlan> planFuture;
 
@@ -123,6 +127,24 @@ final class EndpointMachineScene {
         this.machine = machine;
         this.cpuId = cpuId;
         machinePosition = machine.ejectsIntoEndpoint() ? HOPPER : HOPPER.above();
+    }
+
+    /** How many inputs the Provider's network stores and uses up; two unless set. */
+    EndpointMachineScene requesting(long jobs) {
+        this.jobs = jobs;
+        return this;
+    }
+
+    /** Sets up the Federation Pattern Provider before its pattern goes in, as its player would in its screen. */
+    EndpointMachineScene preparingProvider(java.util.function.Consumer<FederationPatternProviderBlockEntity> prepare) {
+        prepareProvider = prepare;
+        return this;
+    }
+
+    /** Checks the plan before it is submitted, such as how an addon rewrote it. */
+    EndpointMachineScene checkingPlan(java.util.function.Consumer<ICraftingPlan> check) {
+        checkPlan = check;
+        return this;
     }
 
     /**
@@ -198,6 +220,7 @@ final class EndpointMachineScene {
                 var pattern = pattern();
                 // succeedWhen retries this stage until the mapping is accepted, so the pattern goes in once.
                 if (provider().getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
+                    prepareProvider.accept(provider());
                     helper.assertTrue(provider().getTerminalPatternInventory().insertItem(0, pattern, false).isEmpty(),
                             "The Provider must take the processing pattern");
                 }
@@ -209,8 +232,8 @@ final class EndpointMachineScene {
             case 2 -> {
                 helper.assertTrue(grid().getCraftingService().isCraftable(machine.output()),
                         "Waiting for the Provider's pattern to be craftable");
-                helper.assertValueEqual(grid().getStorageService().getInventory().insert(machine.input(), JOBS,
-                        Actionable.MODULATE, IActionSource.empty()), JOBS, "The ME Chest must take the inputs");
+                helper.assertValueEqual(grid().getStorageService().getInventory().insert(machine.input(), jobs,
+                        Actionable.MODULATE, IActionSource.empty()), jobs, "The ME Chest must take the inputs");
                 begin();
                 stage = 3;
                 helper.fail("Planning the request");
@@ -219,6 +242,7 @@ final class EndpointMachineScene {
                 helper.assertTrue(planFuture.isDone(), "Waiting for the plan");
                 var plan = plan();
                 helper.assertFalse(plan.simulation(), "The inputs must be enough: " + plan.missingItems());
+                checkPlan.accept(plan);
                 helper.assertTrue(grid().getCraftingService().submitJob(plan, null, null, false, IActionSource.empty())
                         .successful(), "The CPU must take the job");
                 stage = 4;
@@ -269,7 +293,7 @@ final class EndpointMachineScene {
     }
 
     private long requested() {
-        return JOBS * machine.outputPerInput();
+        return jobs * machine.outputPerInput();
     }
 
     /** A cable up from the Endpoint's east face to a Storage Bus on the machine's input face. */

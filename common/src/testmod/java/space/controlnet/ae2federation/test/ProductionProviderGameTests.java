@@ -28,6 +28,7 @@ import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
+import space.controlnet.ae2federation.test.processing.AddonPatternHookEmulation;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Target;
 
@@ -353,6 +354,90 @@ public final class ProductionProviderGameTests {
                     writeEvidence("productionproviderlifecycle", 16, facts);
                     helper.succeed();
                 }
+            }
+        });
+    }
+
+    /**
+     * Addon hooks on AE2's pattern refresh reach the Provider's Lanes as they reach a native Pattern Provider. A
+     * test-only mixin stands in for an addon such as AE2 Lightning Tech, which drops patterns of its own kind inside
+     * {@code PatternProviderLogic.updatePatterns}. An addon's own re-run of that refresh reaches the network's crafting
+     * index. The Lane's view of its patterns adds none to saves or drops.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void providerNativePatternRefresh(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var rejected = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.EMERALD);
+        var phase = new int[] { 0 };
+        var indexedAtOnce = new boolean[1];
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                    AddonPatternHookEmulation.reject(rejected);
+                    scene.installPattern(0);
+                    scene.installPattern(1, rejected);
+                    for (int slot = 0; slot < 2; slot++) {
+                        var status = scene.map(slot, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping slot " + slot + ": " + status);
+                    }
+                    phase[0] = 1;
+                    helper.fail("Mapped a kept and a dropped Pattern to one Endpoint");
+                }
+                case 1 -> {
+                    var provider = scene.provider();
+                    helper.assertValueEqual(provider.laneCount(), 1, "Both Patterns go to one Lane");
+                    var lane = provider.lane(0);
+                    helper.assertTrue(AddonPatternHookEmulation.refreshed(lane),
+                            "AE2's own pattern refresh must run for the Lane");
+                    var outputs = lane.getAvailablePatterns().stream()
+                            .map(pattern -> pattern.getPrimaryOutput().what()).toList();
+                    helper.assertValueEqual(outputs, java.util.List.<appeng.api.stacks.AEKey>of(
+                            ProductionProviderScene.OUTPUT), "The Lane drops the Pattern the addon drops");
+                    helper.assertFalse(provider.getTerminalPatternInventory().getStackInSlot(1).isEmpty(),
+                            "The dropped Pattern stays in its slot, as in a native Pattern Provider");
+                    var registries = helper.getLevel().registryAccess();
+                    var saved = new net.minecraft.nbt.CompoundTag();
+                    lane.writeToNBT(saved, registries);
+                    helper.assertTrue(saved.getList("patterns", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty(),
+                            "A Lane saves no copy of the Provider's Patterns");
+                    var drops = new java.util.ArrayList<net.minecraft.world.item.ItemStack>();
+                    provider.addAdditionalDrops(helper.getLevel(), provider.getBlockPos(), drops);
+                    helper.assertValueEqual(drops.stream().filter(stack -> stack.is(AEItems.PROCESSING_PATTERN.asItem()))
+                            .mapToInt(net.minecraft.world.item.ItemStack::getCount).sum(), 2,
+                            "Breaking the Provider drops each Pattern once");
+                    phase[0] = 2;
+                    helper.fail("Checked the dropped Pattern");
+                }
+                case 2 -> {
+                    // Addons re-run the refresh on the logic itself, as AE All Pattern does when its async expansion
+                    // finishes and ExtendedAE-Plus does when Smart Doubling changes: the network must see the result
+                    // at once, not at Federation's next refresh, so it is checked in the same tick.
+                    var provider = scene.provider();
+                    var crafting = provider.getMainNode().getGrid().getCraftingService();
+                    helper.assertTrue(crafting.getCraftingFor(rejected).isEmpty(),
+                            "The network must not see the Pattern the addon drops");
+                    AddonPatternHookEmulation.reset();
+                    provider.lane(0).updatePatterns();
+                    indexedAtOnce[0] = !crafting.getCraftingFor(rejected).isEmpty();
+                    var status = scene.map(0, Target.A);
+                    helper.assertTrue(status.startsWith("accepted-"), "Unmapping slot 0: " + status);
+                    phase[0] = 3;
+                    helper.fail("Re-ran the Lane's refresh as an addon does and unmapped the kept Pattern");
+                }
+                case 3 -> {
+                    helper.assertTrue(indexedAtOnce[0],
+                            "An addon's own refresh of the Lane must reach the network's crafting index");
+                    var outputs = scene.provider().lane(0).getAvailablePatterns().stream()
+                            .map(pattern -> pattern.getPrimaryOutput().what()).toList();
+                    helper.assertValueEqual(outputs, java.util.List.<appeng.api.stacks.AEKey>of(rejected),
+                            "An unmapped Pattern leaves the Lane");
+                    writeEvidence("providernativepatternrefresh", 9, Map.of("laneNativeRefresh", "true",
+                            "addonDropApplied", "true", "addonRefreshIndexed", "true", "noDuplicatePatterns", "true"));
+                }
+                default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
             }
         });
     }

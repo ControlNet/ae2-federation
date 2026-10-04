@@ -135,20 +135,28 @@ What the scenes need, learned while building them:
   - All three drive projection and the Federation Pattern Provider.
 - **Runner.** `--tests` with an id outside the profile's groups fails that test with the missing block's error. It does
   not hang.
-- **Federation Pattern Provider lanes.** They override `PatternProviderLogic.updatePatterns` without calling super, so
-  addon hooks there never run for lanes:
-  - ae2lt's rejection of overload patterns;
-  - AE All Pattern's aggregate expansion;
-  - ExtendedAE-Plus' Smart Doubling marking.
-
-  Hooks in `pushPattern` and the 3-argument constructor do run. Whether lanes should match native providers here is
-  an open owner decision.
+- **Federation Pattern Provider lanes run AE2's own `updatePatterns`** (fixed on dev after 1a8cc4a; it used to be
+  overridden without super, so ae2lt's overload rejection, AE All Pattern's expansion and Smart Doubling skipped lanes).
+  - Each lane keeps its own pattern inventory as a read-only copy of its assigned owner slots, refilled with
+    `setItemDirect` before `super.updatePatterns()`. Its filter refuses insert and extract.
+  - `editingView` mutes the lane's own `onChangeInventory`/`saveChangedInventory` while it edits the copy. The copy is
+    left out of `writeToNBT`, `addDrops` and `clearContent`, so patterns are never duplicated.
+  - Addons call `updatePatterns()` on the logic themselves: AE All Pattern after its async expansion, ExtendedAE-Plus on
+    a setting change. AE2's `requestUpdate(mainNode)` then refreshes the physical node, which has no crafting provider,
+    so the lane calls back to `NativeProviderLaneComposition`, which runs `refreshGlobalCraftingProvider(lane)`. The
+    composition's own refreshes skip the callback.
+  - Tests: `providernativepatternrefresh` uses the test-only `AddonPatternHookEmulation` mixin;
+    `smartDoublingEndpoint` compares the lane's mark with a plain AE2 Pattern Provider placed off-network.
 - **Endpoint Local mode** (`EndpointCapabilityComposition.adjacentProviders`) accepts only a
   `PatternProviderBlockEntity` on the Federation face. That covers AE2's, ExtendedAE's and MEGA's block providers.
   It excludes AE2's cable-part provider and the own-logic providers of AdvancedAE, Pigmee, Pattern Disk and Data
   Energistics. Those still work through projection.
-- **Smart Doubling in `addons-all`.** With Thunderbolt, AE All Pattern and OmniSequence loaded, even the provider
-  network's own plan is not scaled. `smartDoublingProcessing` therefore asserts that the consumer's plan scales
-  exactly when the provider network's plan does. In `extendedae-plus`, both plans scale.
+- **Smart Doubling in `addons-all`.** AE All Pattern's `@Inject(HEAD, cancellable = true)` on `updatePatterns` cancels
+  AE2's body, so ExtendedAE-Plus' TAIL inject, which sets `ISmartDoublingAwarePattern.eap$setAllowScaling`, never runs
+  on any provider. No plan scales there. `smartDoublingProcessing` asserts that the consumer's plan scales exactly when
+  the provider network's plan does, and `smartDoublingEndpoint` compares with a plain AE2 Pattern Provider.
+- **GameTest retries hide failures.** `succeedWhen` re-runs a failed stage every tick, so a stage that acts and then
+  asserts reports whatever its retry hits. Build references once (cache in an `AtomicReference`), and check results
+  that a later refresh could fix in the same tick, storing the result for the next phase.
 - **Cancel.** Every addon CPU tested has a public `cancelJob()`: the Quantum Core, the Nexus and the Pigmee unit. After
   a cancel, a projected job's late output stays on the provider network, and `CraftingReturnLedger.owed` drops to 0.
