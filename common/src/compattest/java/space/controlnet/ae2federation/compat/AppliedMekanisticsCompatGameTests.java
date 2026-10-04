@@ -88,4 +88,17 @@ public final class AppliedMekanisticsCompatGameTests {
                     + MekanismSetup.chemicalHandler(helper, position.below(), Direction.UP);
         }
     }
+
+    /**
+     * The provider network shares hydrogen in a Basic Chemical Tank through AE2's Storage Bus, its side towards the bus
+     * set to input and output as a player sets it with the Configurator.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusChemicalTank(GameTestHelper helper) {
+        var hydrogen = AddonStorageScene.key(helper, "appmek:chemical", "mekanism:hydrogen");
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:basic_chemical_tank", hydrogen,
+                1000, 250, bus -> MekanismSetup.configure(helper, AddonStorageScene.BUS_TARGET, "CHEMICAL",
+                        "INPUT_OUTPUT", Direction.WEST, false));
+        helper.succeedWhen(scene::tick);
+    }
 }

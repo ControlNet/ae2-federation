@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import net.minecraft.core.BlockPos;
@@ -7,6 +8,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -85,5 +87,23 @@ public final class MekanismCompatGameTests {
             }
             return text.append(']').toString();
         }
+    }
+
+    /** The provider network shares iron in a Basic Bin through a Storage Bus. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusBin(GameTestHelper helper) {
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:basic_bin",
+                AEItemKey.of(Items.IRON_INGOT), 9, 4, bus -> {
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The provider network shares water in a Basic Fluid Tank through a Storage Bus. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusMekanismFluidTank(GameTestHelper helper) {
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:basic_fluid_tank",
+                AEFluidKey.of(Fluids.WATER), 4 * AEFluidKey.AMOUNT_BUCKET, AEFluidKey.AMOUNT_BUCKET, bus -> {
+                });
+        helper.succeedWhen(scene::tick);
     }
 }

@@ -18,6 +18,8 @@
     "core",
     "extendedae",
     "appmek",
-    "create"
+    "create",
+    "mekanism",
+    "sophisticated-storage"
   ]
 }

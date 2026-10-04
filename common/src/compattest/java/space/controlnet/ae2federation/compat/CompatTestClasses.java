@@ -22,6 +22,9 @@ final class CompatTestClasses {
         groups.put("advanced-ae", AdvancedAECompatGameTests.class);
         groups.put("create", CreateCompatGameTests.class);
         groups.put("mekanism", MekanismCompatGameTests.class);
+        groups.put("sophisticated-storage", SophisticatedStorageCompatGameTests.class);
+        groups.put("functional-storage", FunctionalStorageCompatGameTests.class);
+        groups.put("appflux", AppliedFluxCompatGameTests.class);
         return groups;
     }
 }

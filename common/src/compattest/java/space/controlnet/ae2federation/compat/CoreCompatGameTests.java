@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
@@ -133,6 +135,32 @@ public final class CoreCompatGameTests {
     public static void remoteProcessingPlacedBlocks(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
                 List.of("ae2:1k_crafting_storage"), true);
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The provider network shares a chest through AE2's Storage Bus: the control for every container's variant. */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusChest(GameTestHelper helper) {
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "minecraft:chest",
+                AEItemKey.of(Items.IRON_INGOT), 9, 4, bus -> {
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The provider network shares water in an AE2 Sky Stone Tank through a Storage Bus. */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusTank(GameTestHelper helper) {
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "ae2:sky_stone_tank",
+                AEFluidKey.of(Fluids.WATER), 4 * AEFluidKey.AMOUNT_BUCKET, AEFluidKey.AMOUNT_BUCKET, bus -> {
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The provider network shares water in a 1k ME Fluid Storage Cell. */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 400)
+    public static void fluidCellShared(GameTestHelper helper) {
+        var scene = new AddonStorageScene(helper, "ae2:fluid_storage_cell_1k", AEFluidKey.of(Fluids.WATER),
+                4 * AEFluidKey.AMOUNT_BUCKET, AEFluidKey.AMOUNT_BUCKET);
         helper.succeedWhen(scene::tick);
     }
 }

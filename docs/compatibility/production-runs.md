@@ -30,21 +30,31 @@ Every profile runs the `core` group:
 |---|---|
 | `federationCraftable` | Every Federation device is the output of at least one recipe, after the pack's recipe scripts. |
 | `storageShare` | A Storage rule shares an AE2 cell between two networks joined by Routers and Federation Cable. |
+| `storageBusChest`, `storageBusTank` | The same rule shares a chest and an AE2 Sky Stone Tank of water through AE2's Storage Bus. This is the control for each mod container's variant. |
+| `fluidCellShared` | The same rule shares water in an AE2 fluid cell. |
 | `remoteCrafting`, `remoteCraftingMaterials` | Pattern projection: the consumer's CPU crafts with the other network's Molecular Assembler pattern, with local or remote materials. |
 | `processingThreeEndpoints` | One Federation Pattern Provider runs processing jobs through three Endpoints with Blocking mode. |
 | `endpointSharedEnergy` | A claimed Endpoint powers its subnet from the Provider's network. |
 | `remoteCraftingPlacedBlocks`, `remoteProcessingPlacedBlocks` | The crafting scene with AE2's own placed blocks. This is the control for each addon's variant. |
 | `endpointFurnace` | The Federation Pattern Provider sends cobblestone through an Endpoint into a furnace; a hopper pushes the stone back into the Endpoint. This is the control for each mod machine's variant. |
 
-An addon group repeats the placed-block scene with the addon's own blocks, or shares one of the addon's cells.
-The `create` group processes through a real Create Millstone that a Creative Motor turns.
+Every storage test stores on the provider network, checks the consumer sees exactly that, takes some from the
+consumer, and stores it back from the consumer. The consumer network has no storage of its own, so what it stores can
+only go through the rule. When a rule mounts nothing, the failure names the reason the rule reports.
+
+An addon group repeats the placed-block scene with the addon's own blocks, shares one of the addon's cells, or shares
+one of the mod's containers through a Storage Bus.
 
 In the Endpoint machine scene, the Endpoint's subnet stores the delivered input through a Storage Bus on the
 machine's input side, so the input goes straight into the machine. The product comes back the way a player would
 build it: through a hopper under the machine, or by the machine's own auto-eject into the Endpoint.
-The `mekanism` group does this with a Crusher. The `appmek` group does it with a Chemical Oxidizer, whose carbon is a
-chemical. A Mekanism machine starts with every side disabled, and a bare Creative Energy Cube block is empty, so the
-test sets the machine's sides and fills the cube the way a player's Configurator and the filled creative cube would.
+
+Some mods need setup that a player does by hand, and the tests do the same through the mod's own classes:
+
+- A Mekanism machine or tank starts with every side disabled, and a bare Creative Energy Cube block is empty. The
+  tests set the sides, as the Configurator does, and fill the cube, as the filled creative cube is when placed.
+- ExtendedAE's tag and mod storage buses get their filter, as their screens set it.
+- A MEGA Bulk Cell is partitioned to iron, as in the Cell Workbench.
 
 ## Addon profiles
 
@@ -55,20 +65,25 @@ All addon profiles use NeoForge 21.1.250, AE2 19.2.18, GuideME 21.1.19 and LDLib
 
 These profiles run on every push except to master.
 
-| Profile | Addon versions | Addon tests | Result (2026-10-04) |
+| Profile | Mod versions | Mod tests | Result (2026-10-04) |
 |---|---|---|---|
-| `baseline`, `base-latest`, `neoforge-min` | — | core | 8/8 |
-| `extendedae` | ExtendedAE 2.2.39 | Extended Pattern Provider and Extended Molecular Assembler crafting | 10/10 |
-| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | crafting with a 4× Crafting Accelerator; sharing a BigInteger cell | 12/12 |
-| `data-energistics` | Data Energistics 3.3.3 | crafting and processing through the Adaptive Pattern Provider | 10/10 |
-| `ae2-lightning-tech` | AE2 Lightning Tech 2.1.1, Thunderbolt Core 2.0.1 | crafting through the Overloaded Pattern Provider | 9/9 |
-| `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting through the Pattern Disk Provider | 9/9 |
-| `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 8/8 |
-| `aeallpattern` | AE All Pattern 0.2.6 | core only | 8/8 |
-| `neoecoae` | Neo ECO AE Extension 21.2.0 | core only | 8/8 |
-| `mekanism` | Mekanism 10.7.19, Applied Mekanistics 1.6.3 | Endpoint into a Crusher; Endpoint into a Chemical Oxidizer returning a chemical; sharing a chemical cell | 12/12 |
-| `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group | 10/10 |
-| `addons-all` | all of the above plus AE2 Extras | every addon group above, plus AE2 Extras' 1M crafting storage and 1M cell | 18/18 |
+| `baseline`, `base-latest`, `neoforge-min` | — | core | 12/12 |
+| `extendedae` | ExtendedAE 2.2.39 | Extended Pattern Provider and Extended Molecular Assembler crafting; tag and mod storage buses; Infinity Cobblestone Cell | 17/17 |
+| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | the ExtendedAE group; crafting with a 4× Crafting Accelerator; sharing a BigInteger cell | 19/19 |
+| `data-energistics` | Data Energistics 3.3.3 | crafting and processing through the Adaptive Pattern Provider | 14/14 |
+| `ae2-lightning-tech` | AE2 Lightning Tech 2.1.1, Thunderbolt Core 2.0.1 | crafting through the Overloaded Pattern Provider | 13/13 |
+| `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting through the Pattern Disk Provider | 13/13 |
+| `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 12/12 |
+| `aeallpattern` | AE All Pattern 0.2.6 | core only | 12/12 |
+| `neoecoae` | Neo ECO AE Extension 21.2.0 | core only | 12/12 |
+| `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group | 17/17 |
+| `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting through the Advanced Pattern Provider | 13/13 |
+| `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 17/17 |
+| `mekanism` | Mekanism 10.7.19, Applied Mekanistics 1.6.3 | Endpoint into a Crusher; Endpoint into a Chemical Oxidizer returning a chemical; a Basic Bin, a Basic Fluid Tank and a Basic Chemical Tank through a Storage Bus; sharing a chemical cell | 18/18 |
+| `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels; an Item Vault and a Fluid Tank through a Storage Bus | 16/16 |
+| `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 14/14 |
+| `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 13/13 |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence`, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 25/25 |
 
 ## Modpack profiles
 
@@ -78,17 +93,10 @@ CDN and checked against their pinned SHA-512.
 
 | Profile | Pack | NeoForge, AE2 | Groups | Result (2026-10-04) |
 |---|---|---|---|---|
-| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create | 16/16 |
-| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create | 12/12 |
+| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux | 36/36 |
+| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 28/28 |
 
-The pack-only groups cover:
-
-- `advanced-ae`: crafting through Advanced AE's Advanced Pattern Provider.
-- `megacells`: processing through the MEGA Pattern Provider, crafting with a MEGA 1M Crafting Storage CPU, and
-  sharing a MEGA 1M cell.
-- `appmek`: sharing hydrogen in an Applied Mekanistics chemical cell.
-
-ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about three minutes.
+ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about four minutes.
 
 ## Findings
 
@@ -134,7 +142,7 @@ Downloads are cached in `$AE2F_COMPAT_CACHE`, which defaults to `~/.cache/ae2fed
 
 ```bash
 python3 tools/compat_run.py --list
-python3 tools/compat_run.py --accept-eula --group addons -j 12   # every addon profile, about 70 s
+python3 tools/compat_run.py --accept-eula --group addons -j 16   # every addon profile, about two minutes
 python3 tools/compat_run.py --accept-eula --group modpacks -j 2     # both packs, about four minutes after download
 python3 tools/compat_run.py --accept-eula extendedae --tests extendedae
 python3 tools/compat_run.py --accept-eula --bare addons-all     # the same mods without AE2 Federation
