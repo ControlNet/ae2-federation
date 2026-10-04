@@ -14,6 +14,7 @@
   ],
   "tests": [
     "core",
-    "extendedae"
+    "extendedae",
+    "omnisequence"
   ]
 }

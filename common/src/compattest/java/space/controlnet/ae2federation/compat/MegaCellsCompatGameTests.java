@@ -26,6 +26,14 @@ public final class MegaCellsCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** A MEGA Pattern Provider runs an Endpoint in Local mode, as AE2's own provider does. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalMegaPatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("megacells:mega_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
     /** The consumer's CPU is a MEGA 1M Crafting Storage. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void megaCellsCraftingStorageCrafting(GameTestHelper helper) {

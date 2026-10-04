@@ -35,9 +35,9 @@ public final class CreateCompatGameTests {
     }
 
     /**
-     * The Federation Pattern Provider sends cobblestone through an Endpoint into a pair of Crushing Wheels; the gravel
-     * they drop falls into a hopper, which pushes it into the Endpoint. The controller hands its product only to
-     * Create's own belts and chutes, so a hopper is how a player collects it into another block.
+     * The Federation Pattern Provider sends cobblestone through an Endpoint into a pair of Crushing Wheels. The
+     * controller hands the gravel to a Create Chute under it, which pushes it down into the Endpoint. The controller
+     * gives its product only to Create's own belts and chutes; otherwise it drops it as items in the world.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void endpointCrushingWheels(GameTestHelper helper) {
@@ -60,6 +60,11 @@ public final class CreateCompatGameTests {
         @Override
         public AEKey output() {
             return AEItemKey.of(Items.GRAVEL);
+        }
+
+        @Override
+        public net.minecraft.world.level.block.state.BlockState collector() {
+            return AddonCraftingScene.block("create:chute").defaultBlockState();
         }
 
         /** The wheels form the controller between them; the motors spin them in opposite directions, inwards. */

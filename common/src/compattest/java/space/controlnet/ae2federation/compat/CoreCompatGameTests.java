@@ -56,6 +56,13 @@ public final class CoreCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** A rule that allows viewing and taking but not storing: the consumer's store-back is refused. */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 400)
+    public static void extractOnlyRule(GameTestHelper helper) {
+        var scene = new AddonStorageScene(helper, "ae2:item_storage_cell_1k").extractOnly();
+        helper.succeedWhen(scene::tick);
+    }
+
     /** The consumer's own CPU crafts sticks with the provider network's Molecular Assembler pattern. */
     @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
     public static void remoteCrafting(GameTestHelper helper) {
@@ -90,7 +97,27 @@ public final class CoreCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
-    private static final class Furnace implements EndpointMachineScene.Machine {
+    /**
+     * After a job through an Endpoint, AE2's Pattern Access Terminal lists the Federation Pattern Provider once, with
+     * its pattern, and none of the lanes it runs inside.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 900)
+    public static void patternAccessTerminal(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Furnace()).checkingPatternAccessTerminal();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * Another network's AE2 Pattern Provider touches the Endpoint's Federation face and runs it in Local mode: the same
+     * furnace job without a Federation Pattern Provider. This is the control for each addon provider's variant.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalFurnace(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Furnace()).throughLocalProvider("ae2:pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+    static final class Furnace implements EndpointMachineScene.Machine {
         @Override
         public String blockId() {
             return "minecraft:furnace";
@@ -135,6 +162,17 @@ public final class CoreCompatGameTests {
     public static void remoteProcessingPlacedBlocks(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
                 List.of("ae2:1k_crafting_storage"), true);
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The consumer cancels the job after the provider pushed its inputs: the late output stays on the provider network.
+     * This is the control for each addon CPU's variant.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
+    public static void remoteProcessingCancel(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true).cancellingAfterPush();
         helper.succeedWhen(scene::tick);
     }
 

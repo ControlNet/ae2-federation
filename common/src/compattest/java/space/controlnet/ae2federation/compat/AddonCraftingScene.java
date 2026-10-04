@@ -10,6 +10,7 @@ import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import appeng.api.storage.MEStorage;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -29,6 +30,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
+import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -63,10 +65,17 @@ final class AddonCraftingScene {
     // Through the inventory a Pattern Access Terminal fills, which every provider keeps to its own rules.
     private java.util.function.BiPredicate<net.minecraft.world.level.block.entity.BlockEntity, ItemStack> installPattern =
             (entity, pattern) -> ((PatternContainer) entity).getTerminalPatternInventory().addItems(pattern).isEmpty();
+    private java.util.function.BiConsumer<ICraftingPlan, ICraftingPlan> checkPlan = (plan, local) -> {
+    };
+    private boolean cpuOnCable;
+    private boolean cancelAfterPush;
+    private long jobs = 2;
     private final BlockPos providerPos = BASE.east(2).north();
     private final BlockPos assemblerPos = providerPos.east();
+    private final BlockPos outputChestPos = providerPos.below();
     private int stage;
     private Future<ICraftingPlan> planFuture;
+    private Future<ICraftingPlan> localPlanFuture;
 
     AddonCraftingScene(GameTestHelper helper, String providerId, String assemblerId, List<String> cpuIds) {
         this(helper, providerId, assemblerId, cpuIds, false);
@@ -98,11 +107,25 @@ final class AddonCraftingScene {
         bridge.installStorageCells();
     }
 
-    /** The machine a processing pattern names: its block, what it makes from cobblestone, and how it runs. */
+    /** The machine a processing pattern names: its block, what it makes from what, and how it runs. */
     interface Machine {
         String blockId();
 
-        AEItemKey output();
+        default AEItemKey input() {
+            return COBBLESTONE;
+        }
+
+        AEKey output();
+
+        /** How much of {@link #output()} one input makes. */
+        default long outputPerInput() {
+            return 1;
+        }
+
+        /** A storage cell on the provider network for an output an item cell cannot hold; null when none is needed. */
+        default String outputCell() {
+            return null;
+        }
 
         /** Places what the machine needs besides its own block, such as a motor; the block is already placed. */
         default void placeAround(GameTestHelper helper, BlockPos position) {
@@ -158,6 +181,40 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /**
+     * Stacks the CPU blocks on a cable west of the consumer's cable instead of in a row: some addon CPUs connect only
+     * through their top and bottom.
+     */
+    AddonCraftingScene cpuOnCable() {
+        cpuOnCable = true;
+        return this;
+    }
+
+    /** How many inputs the consumer stores and uses up, two unless set: two planks make four sticks. */
+    AddonCraftingScene requesting(long jobs) {
+        this.jobs = jobs;
+        return this;
+    }
+
+    /**
+     * Cancels the consumer's job once the provider has pushed every input into the chest machine, then runs the
+     * machine: the late output stays on the provider network, nothing reaches the consumer and nothing stays owed.
+     */
+    AddonCraftingScene cancellingAfterPush() {
+        if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
+        cancelAfterPush = true;
+        return this;
+    }
+
+    /**
+     * Checks the consumer's plan before it is submitted, such as how an addon rewrote it, against the plan the provider
+     * network makes for the same request with its own pattern. That plan lacks the inputs, which are on the consumer.
+     */
+    AddonCraftingScene checkingPlan(java.util.function.BiConsumer<ICraftingPlan, ICraftingPlan> check) {
+        checkPlan = check;
+        return this;
+    }
+
     /** Runs the whole craft; call from {@code succeedWhen}. */
     void tick() {
         switch (stage) {
@@ -166,9 +223,24 @@ final class AddonCraftingScene {
                 helper.setBlock(providerPos, block(providerId));
                 helper.setBlock(assemblerPos, block(assemblerId));
                 if (machine != null) machine.placeAround(helper, assemblerPos);
-                // The CPU blocks run west from the consumer's cable, each touching the one before.
-                for (int index = 0; index < cpuIds.size(); index++) {
-                    helper.setBlock(BASE.west(index + 1), block(cpuIds.get(index)));
+                if (machine != null && machine.outputCell() != null) {
+                    helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
+                    helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
+                            .setCell(new ItemStack(item(machine.outputCell())));
+                }
+                if (cpuOnCable) {
+                    helper.assertTrue(appeng.api.parts.PartHelper.setPart(helper.getLevel(),
+                            helper.absolutePos(BASE.west()), null, null,
+                            appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
+                            "A cable must go west of the consumer's cable");
+                    for (int index = 0; index < cpuIds.size(); index++) {
+                        helper.setBlock(BASE.west().above(index + 1), block(cpuIds.get(index)));
+                    }
+                } else {
+                    // The CPU blocks run west from the consumer's cable, each touching the one before.
+                    for (int index = 0; index < cpuIds.size(); index++) {
+                        helper.setBlock(BASE.west(index + 1), block(cpuIds.get(index)));
+                    }
                 }
                 stage = 1;
                 helper.fail("Placed the provider, assembler and CPU");
@@ -209,30 +281,60 @@ final class AddonCraftingScene {
             case 4 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
-                var input = processing ? COBBLESTONE : PLANKS;
-                helper.assertValueEqual(consumerChest().insert(input, 2, Actionable.MODULATE, IActionSource.empty()),
-                        2L, "The consumer's chest must take the inputs");
+                var input = input();
+                helper.assertValueEqual(consumerChest().insert(input, jobs, Actionable.MODULATE, IActionSource.empty()),
+                        jobs, "The consumer's chest must take the inputs");
                 begin();
                 stage = 5;
                 helper.fail("Planning the request");
             }
             case 5 -> {
-                helper.assertTrue(planFuture.isDone(), "Waiting for the consumer's plan");
+                helper.assertTrue(planFuture.isDone() && localPlanFuture.isDone(), "Waiting for the consumer's plan");
                 var plan = plan();
                 helper.assertFalse(plan.simulation(), "The consumer's planks must be enough: " + plan.missingItems());
+                checkPlan.accept(plan, get(localPlanFuture));
                 helper.assertTrue(consumerGrid().getCraftingService()
                         .submitJob(plan, null, null, true, IActionSource.empty()).successful(),
                         "The consumer's CPU must take the job");
                 stage = 6;
                 helper.fail("Submitted the job");
             }
+            case 6 -> {
+                if (!cancelAfterPush) {
+                    stage = 9;
+                    helper.fail("Running the job");
+                }
+                helper.assertValueEqual(inChest(assemblerPos, Items.COBBLESTONE), jobs,
+                        "Waiting for the provider to push every input");
+                var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
+                helper.assertValueEqual(busy.size(), 1, "The consumer's CPU must be running the job");
+                cancel(busy.getFirst());
+                stage = 7;
+                helper.fail("Cancelled the consumer's job");
+            }
+            case 7 -> {
+                helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
+                        "The consumer's job must be cancelled");
+                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                        bridge.mainNetwork(), output()), 0L, "Waiting for the cancelled job's debt to be forgotten");
+                machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
+                stage = 8;
+                helper.fail("Ran the machine after the cancel");
+            }
+            case 8 -> {
+                helper.assertValueEqual(held(providerChest(), output()), jobs,
+                        "The late output stays on the provider network");
+                helper.assertValueEqual(held(consumerChest(), output()), 0L, "Nothing reaches the cancelled consumer");
+                helper.assertValueEqual(held(consumerChest(), input()), 0L, "The pushed inputs are not given back twice");
+            }
             default -> {
                 if (processing) machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "Waiting for the consumer's job to finish");
-                var made = held(consumerChest(), output()) + held(providerChest(), output());
-                helper.assertValueEqual(made, processing ? 2L : 4L, "The job must store exactly what was requested");
-                helper.assertValueEqual(held(consumerChest(), processing ? COBBLESTONE : PLANKS), 0L,
+                var made = held(consumerChest(), output()) + held(providerChest(), output())
+                        + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
+                helper.assertValueEqual(made, requested(), "The job must store exactly what was requested");
+                helper.assertValueEqual(held(consumerChest(), input()), 0L,
                         "The consumer's inputs were used");
             }
         }
@@ -271,7 +373,30 @@ final class AddonCraftingScene {
         return Objects.requireNonNull(bridge.providerChest().getOriginalCellInventory(0));
     }
 
-    private static long held(MEStorage storage, AEItemKey what) {
+    private long inChest(BlockPos position, net.minecraft.world.item.Item item) {
+        var chest = helper.<net.minecraft.world.level.block.entity.ChestBlockEntity>getBlockEntity(position);
+        long count = 0;
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).is(item)) count += chest.getItem(slot).getCount();
+        }
+        return count;
+    }
+
+    /** Cancels a CPU's job as its screen's Cancel button does; addon CPUs have their own classes for it. */
+    private static void cancel(appeng.api.networking.crafting.ICraftingCPU cpu) {
+        try {
+            cpu.getClass().getMethod("cancelJob").invoke(cpu);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(cpu.getClass().getName() + " cannot cancel its job", exception);
+        }
+    }
+
+    private MEStorage outputChest() {
+        return Objects.requireNonNull(helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(
+                outputChestPos).getOriginalCellInventory(0));
+    }
+
+    private static long held(MEStorage storage, AEKey what) {
         return storage.extract(what, Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
     }
 
@@ -299,12 +424,29 @@ final class AddonCraftingScene {
             }
         };
         planFuture = consumerGrid().getCraftingService().beginCraftingCalculation(helper.getLevel(), requester, output(),
-                processing ? 2 : 4, CalculationStrategy.REPORT_MISSING_ITEMS);
+                requested(), CalculationStrategy.REPORT_MISSING_ITEMS);
+        var localNode = bridge.providerChest().getMainNode().getNode();
+        localPlanFuture = bridge.outerGrid().getCraftingService().beginCraftingCalculation(helper.getLevel(),
+                new ICraftingSimulationRequester() {
+                    @Override
+                    public IActionSource getActionSource() {
+                        return IActionSource.empty();
+                    }
+
+                    @Override
+                    public IGridNode getGridNode() {
+                        return localNode;
+                    }
+                }, output(), requested(), CalculationStrategy.REPORT_MISSING_ITEMS);
     }
 
     private ICraftingPlan plan() {
+        return get(planFuture);
+    }
+
+    private static ICraftingPlan get(Future<ICraftingPlan> future) {
         try {
-            return planFuture.get();
+            return future.get();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Crafting calculation interrupted", exception);
@@ -313,13 +455,23 @@ final class AddonCraftingScene {
         }
     }
 
-    private AEItemKey output() {
+    /** Two planks make four sticks. */
+    private long requested() {
+        return processing ? jobs * machine.outputPerInput() : 2 * jobs;
+    }
+
+    private AEItemKey input() {
+        return processing ? machine.input() : PLANKS;
+    }
+
+    private AEKey output() {
         return processing ? machine.output() : STICKS;
     }
 
     private ItemStack processingPattern() {
-        return PatternDetailsHelper.encodeProcessingPattern(List.of(new appeng.api.stacks.GenericStack(COBBLESTONE, 1)),
-                List.of(new appeng.api.stacks.GenericStack(machine.output(), 1)));
+        return PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new appeng.api.stacks.GenericStack(machine.input(), 1)),
+                List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput())));
     }
 
     private ItemStack stickPattern() {

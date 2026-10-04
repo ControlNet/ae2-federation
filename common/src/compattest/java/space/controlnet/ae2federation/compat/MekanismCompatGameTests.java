@@ -3,6 +3,8 @@ package space.controlnet.ae2federation.compat;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
+import appeng.api.storage.MEStorage;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -26,6 +28,45 @@ public final class MekanismCompatGameTests {
     public static void endpointCrusher(GameTestHelper helper) {
         var scene = new EndpointMachineScene(helper, new Crusher());
         helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The consumer requests gravel; the provider network's AE2 Pattern Provider pushes cobblestone into a Crusher,
+     * which ejects the gravel back into the provider, as a player sets its side to input and output.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void crusherProcessing(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", List.of("ae2:1k_crafting_storage"),
+                new ProviderCrusher());
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** A Crusher east of the provider, taking and returning items on its west side, powered from its east. */
+    private static final class ProviderCrusher implements AddonCraftingScene.Machine {
+        @Override
+        public String blockId() {
+            return "mekanism:crusher";
+        }
+
+        @Override
+        public AEItemKey output() {
+            return AEItemKey.of(Items.GRAVEL);
+        }
+
+        @Override
+        public void placeAround(GameTestHelper helper, BlockPos position) {
+            var cube = position.east();
+            helper.setBlock(cube, AddonCraftingScene.block("mekanism:creative_energy_cube"));
+            MekanismSetup.fill(helper, cube);
+            MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.WEST, true);
+            MekanismSetup.configure(helper, position, "ITEM", "INPUT_OUTPUT", Direction.WEST, true);
+            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.EAST, false);
+        }
+
+        /** Nothing to move: the Crusher ejects into the provider by itself. */
+        @Override
+        public void collect(GameTestHelper helper, BlockPos position, MEStorage network) {
+        }
     }
 
     private static final class Crusher implements EndpointMachineScene.Machine {
@@ -95,6 +136,15 @@ public final class MekanismCompatGameTests {
         var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:basic_bin",
                 AEItemKey.of(Items.IRON_INGOT), 9, 4, bus -> {
                 });
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The same bin under a rule without Insert: the consumer takes iron but cannot store it back. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 400)
+    public static void storageBusBinExtractOnly(GameTestHelper helper) {
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:basic_bin",
+                AEItemKey.of(Items.IRON_INGOT), 9, 4, bus -> {
+                }).extractOnly();
         helper.succeedWhen(scene::tick);
     }
 

@@ -1,7 +1,14 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.config.Settings;
+import appeng.api.config.YesNo;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.util.IConfigManager;
 import java.util.List;
+import java.util.Set;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
@@ -17,6 +24,88 @@ public final class ExtendedAECompatGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void exPatternProviderCrafting(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "extendedae:ex_pattern_provider", "ae2:molecular_assembler", List.of("ae2:1k_crafting_storage"));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The same provider runs the remote request's processing pattern in a machine. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void exPatternProviderProcessing(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "extendedae:ex_pattern_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true);
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The Federation Pattern Provider sends a gold block through an Endpoint into ExtendedAE's Circuit Slicer, which
+     * joins the Endpoint's subnet for power and exports its prints down into the Endpoint.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointCircuitCutter(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CircuitCutter());
+        helper.succeedWhen(scene::tick);
+    }
+
+    private static final class CircuitCutter implements EndpointMachineScene.Machine {
+        @Override
+        public String blockId() {
+            return "extendedae:circuit_cutter";
+        }
+
+        @Override
+        public AEKey input() {
+            return AEItemKey.of(Items.GOLD_BLOCK);
+        }
+
+        @Override
+        public AEKey output() {
+            return AEItemKey.of(AddonCraftingScene.item("ae2:printed_logic_processor"));
+        }
+
+        @Override
+        public long outputPerInput() {
+            return 9;
+        }
+
+        @Override
+        public boolean ejectsIntoEndpoint() {
+            return true;
+        }
+
+        /** Auto-export on, down into the Endpoint, as its screen sets it. */
+        @Override
+        public void prepare(GameTestHelper helper, BlockPos position) {
+            var cutter = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+            try {
+                var settings = (IConfigManager) cutter.getClass().getMethod("getConfigManager").invoke(cutter);
+                settings.putSetting(Settings.AUTO_EXPORT, YesNo.YES);
+                @SuppressWarnings("unchecked")
+                var sides = (Set<Direction>) cutter.getClass().getMethod("getOutputSides").invoke(cutter);
+                sides.add(Direction.DOWN);
+            } catch (ReflectiveOperationException exception) {
+                throw new IllegalStateException("The Circuit Slicer's export could not be set", exception);
+            }
+        }
+
+        @Override
+        public String state(GameTestHelper helper, BlockPos position) {
+            var cutter = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+            try {
+                return "input=" + cutter.getClass().getMethod("getInput").invoke(cutter) + " output="
+                        + ((appeng.api.inventories.InternalInventory) cutter.getClass().getMethod("getOutput")
+                        .invoke(cutter)).getStackInSlot(0) + " progress="
+                        + cutter.getClass().getMethod("getProgress").invoke(cutter) + " powered="
+                        + ((appeng.blockentity.grid.AENetworkedPoweredBlockEntity) cutter).getMainNode().isActive();
+            } catch (ReflectiveOperationException exception) {
+                return exception.toString();
+            }
+        }
+    }
+
+    /** An Extended Pattern Provider runs an Endpoint in Local mode, as AE2's own provider does. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalExPatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("extendedae:ex_pattern_provider");
         helper.succeedWhen(scene::tick);
     }
 

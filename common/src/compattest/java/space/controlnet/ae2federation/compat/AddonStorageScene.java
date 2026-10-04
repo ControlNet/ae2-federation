@@ -15,6 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import space.controlnet.ae2federation.policy.PolicyEdit;
+import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
@@ -40,6 +41,7 @@ final class AddonStorageScene {
     private final long taken;
     private final IActionSource source = IActionSource.empty();
     private boolean infinite;
+    private boolean extractOnly;
     private int step;
 
     AddonStorageScene(GameTestHelper helper, String cellId) {
@@ -96,6 +98,15 @@ final class AddonStorageScene {
         return this;
     }
 
+    /**
+     * The rule lets the consumer view and take but not store: its store-back must be refused and leave the provider's
+     * storage as it was.
+     */
+    AddonStorageScene extractOnly() {
+        extractOnly = true;
+        return this;
+    }
+
     /** Each step runs once; {@code succeedWhen} retries the checks after it until they hold. */
     void tick() {
         if (step == 0 && fixtures.networksSettled()) {
@@ -106,7 +117,9 @@ final class AddonStorageScene {
         var key = fixtures.key();
         var policies = PolicyService.get(helper.getLevel());
         if (policies.revision(key).equals(PolicyRevision.NONE)) {
-            policies.edit(new PolicyEdit(key, PolicyRevision.NONE, PolicyRule.storageDefaults()));
+            policies.edit(new PolicyEdit(key, PolicyRevision.NONE, extractOnly
+                    ? PolicyRule.enabled(java.util.Set.of(PolicyOperation.VIEW, PolicyOperation.EXTRACT))
+                    : PolicyRule.storageDefaults()));
         }
         helper.assertTrue(StorageMountService.get(helper.getLevel()).projection(key) != null,
                 "The Storage rule must mount the provider's " + storage + ": "
@@ -137,6 +150,13 @@ final class AddonStorageScene {
         }
         helper.assertValueEqual(provider.getAvailableStacks().get(what), stored - taken,
                 "The provider network must keep the rest");
+        if (extractOnly) {
+            helper.assertValueEqual(consumer.insert(what, taken, Actionable.MODULATE, source), 0L,
+                    "A rule without Insert must refuse the consumer's " + what);
+            helper.assertValueEqual(provider.getAvailableStacks().get(what), stored - taken,
+                    "The refused store-back must leave the provider's " + storage + " as it was");
+            return;
+        }
         if (step == 3) {
             helper.assertValueEqual(consumer.insert(what, taken, Actionable.MODULATE, source), taken,
                     "The consumer network must store " + what + " back into the provider's " + storage);

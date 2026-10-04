@@ -25,6 +25,7 @@ final class CompatTestClasses {
         groups.put("sophisticated-storage", SophisticatedStorageCompatGameTests.class);
         groups.put("functional-storage", FunctionalStorageCompatGameTests.class);
         groups.put("appflux", AppliedFluxCompatGameTests.class);
+        groups.put("omnisequence", OmniSequenceCompatGameTests.class);
         return groups;
     }
 }

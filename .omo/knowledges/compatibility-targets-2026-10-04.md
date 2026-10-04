@@ -112,3 +112,43 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
   native state. GameTest `provider.reload-in-place`.
 - Not covered: a fresh load (structure placement, creative pick-block with block data) still copies the source
   Provider's identity and Lane bindings.
+
+## Interaction tests with addon machinery (2026-10-04)
+
+What the scenes need, learned while building them:
+
+- **Mekanism.** A new machine has every side NONE and a bare Creative Energy Cube is empty. `MekanismSetup` sets sides
+  by reflection (`getConfig()` → `getConfig(TransmissionType)` → `setDataType(DataType, RelativeSide)`, then
+  `sideChanged`) and fills the cube with `getEnergyContainer().setEnergy(max)`. Machine ENERGY supports only
+  NONE/INPUT. The Crusher's ITEM side supports INPUT_OUTPUT with ejecting, so it can eject back into an AE2 provider.
+- **Applied Mekanistics** adds Mekanism's chemical handler to every block with `AECapabilities.GENERIC_INTERNAL_INV`.
+  That is how an AE2 Pattern Provider takes back chemicals, and since 7555cad how the Endpoint does too.
+- **Create.** The Millstone takes rotation only from below. The Crushing Wheel controller forms between two wheels
+  (axis X) and gives its product only to Create's direct-input behaviours, so a hopper under it collects the drop.
+- **ExtendedAE Circuit Slicer.** It connects on every side except front and back. Auto-export needs
+  `Settings.AUTO_EXPORT` = YES plus a direction in `getOutputSides()`.
+- **ExtendedAE-Plus Smart Doubling** works through projection. With `EAPSettings.SMART_DOUBLING` on the provider
+  network's AE2 provider, the consumer's plan holds `ScaledProcessingPattern`s, and the job finishes exactly.
+- **Single-block addon CPUs.**
+  - `advanced_ae:quantum_core` connects only through its top and bottom, so the scenes stand it on a cable.
+  - `molecularmanipulator:transfinite_compute_nexus` and `ae2lt:pigmee_mentalmath_unit` connect on any side.
+  - All three drive projection and the Federation Pattern Provider.
+- **Runner.** `--tests` with an id outside the profile's groups fails that test with the missing block's error. It does
+  not hang.
+- **Federation Pattern Provider lanes.** They override `PatternProviderLogic.updatePatterns` without calling super, so
+  addon hooks there never run for lanes:
+  - ae2lt's rejection of overload patterns;
+  - AE All Pattern's aggregate expansion;
+  - ExtendedAE-Plus' Smart Doubling marking.
+
+  Hooks in `pushPattern` and the 3-argument constructor do run. Whether lanes should match native providers here is
+  an open owner decision.
+- **Endpoint Local mode** (`EndpointCapabilityComposition.adjacentProviders`) accepts only a
+  `PatternProviderBlockEntity` on the Federation face. That covers AE2's, ExtendedAE's and MEGA's block providers.
+  It excludes AE2's cable-part provider and the own-logic providers of AdvancedAE, Pigmee, Pattern Disk and Data
+  Energistics. Those still work through projection.
+- **Smart Doubling in `addons-all`.** With Thunderbolt, AE All Pattern and OmniSequence loaded, even the provider
+  network's own plan is not scaled. `smartDoublingProcessing` therefore asserts that the consumer's plan scales
+  exactly when the provider network's plan does. In `extendedae-plus`, both plans scale.
+- **Cancel.** Every addon CPU tested has a public `cancelJob()`: the Quantum Core, the Nexus and the Pigmee unit. After
+  a cancel, a projected job's late output stays on the provider network, and `CraftingReturnLedger.owed` drops to 0.

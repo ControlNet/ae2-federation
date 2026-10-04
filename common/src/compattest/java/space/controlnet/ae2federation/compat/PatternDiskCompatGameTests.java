@@ -27,6 +27,15 @@ public final class PatternDiskCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /** The same provider runs the remote request's processing pattern, from a disk, in a machine. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void patternDiskProviderProcessing(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2_pattern_disk:pattern_disk_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true).installingPatternsWith((entity, pattern) -> insertOnDisk(
+                helper, entity, pattern));
+        helper.succeedWhen(scene::tick);
+    }
+
     /**
      * Writes the pattern onto a new disk with Pattern Disk's public API and puts the disk into the provider, as its
      * Encoding Terminal and a player do. Called by reflection: the test mod does not build against the addon.

@@ -16,6 +16,7 @@ import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
+import appeng.helpers.patternprovider.PatternContainer;
 import appeng.me.helpers.IGridConnectedBlockEntity;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -80,6 +81,11 @@ final class EndpointMachineScene {
             return Direction.UP;
         }
 
+        /** What sits between the machine and the Endpoint and moves the product down into it: a hopper unless set. */
+        default net.minecraft.world.level.block.state.BlockState collector() {
+            return Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.DOWN);
+        }
+
         /** Places the machine; most machines are one block. */
         default void place(GameTestHelper helper, BlockPos position) {
             helper.setBlock(position, AddonCraftingScene.block(blockId()));
@@ -97,14 +103,45 @@ final class EndpointMachineScene {
 
     private final GameTestHelper helper;
     private final Machine machine;
+    private final String cpuId;
     private final BlockPos machinePosition;
+    private boolean checkTerminal;
+    private String localProviderId;
     private int stage;
     private Future<ICraftingPlan> planFuture;
 
     EndpointMachineScene(GameTestHelper helper, Machine machine) {
+        this(helper, machine, null);
+    }
+
+    /**
+     * With {@code cpuId}, the Provider network's only crafting CPU is that single block, standing on a cable in the
+     * CPU's place: some addon CPUs connect only through their top and bottom.
+     */
+    EndpointMachineScene(GameTestHelper helper, Machine machine, String cpuId) {
         this.helper = helper;
         this.machine = machine;
+        this.cpuId = cpuId;
         machinePosition = machine.ejectsIntoEndpoint() ? HOPPER : HOPPER.above();
+    }
+
+    /**
+     * Puts another mod's pattern provider ({@code providerId}) where the Federation Pattern Provider would be. Touching
+     * the Endpoint's Federation face, it runs the Endpoint in Local mode: it pushes the pattern's input into the
+     * Endpoint, and the Endpoint returns the product to it.
+     */
+    EndpointMachineScene throughLocalProvider(String providerId) {
+        localProviderId = providerId;
+        return this;
+    }
+
+    /**
+     * After the job, checks what AE2's Pattern Access Terminal lists on the Provider's network: the Provider once,
+     * holding its pattern, and none of its internal lanes.
+     */
+    EndpointMachineScene checkingPatternAccessTerminal() {
+        checkTerminal = true;
+        return this;
     }
 
     /** Runs the whole job; call from {@code succeedWhen}. */
@@ -119,16 +156,25 @@ final class EndpointMachineScene {
                     var cell = AddonCraftingScene.item(machine.outputCell());
                     helper.<MEChestBlockEntity>getBlockEntity(OUTPUT_CHEST).setCell(new net.minecraft.world.item.ItemStack(cell));
                 }
-                helper.setBlock(CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
-                helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
-                        .setValue(BlockStateProperties.FACING, Direction.EAST));
+                if (cpuId == null) {
+                    helper.setBlock(CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
+                } else {
+                    helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(CPU), null, null,
+                            AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null, "A cable must go at " + CPU);
+                    helper.setBlock(CPU.above(), AddonCraftingScene.block(cpuId));
+                }
+                if (localProviderId == null) {
+                    helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                            .setValue(BlockStateProperties.FACING, Direction.EAST));
+                } else {
+                    helper.setBlock(PROVIDER, AddonCraftingScene.block(localProviderId));
+                }
                 helper.setBlock(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
                         .setValue(BlockStateProperties.FACING, Direction.WEST));
                 helper.setBlock(SUBNET_ENERGY, AEBlocks.CREATIVE_ENERGY_CELL.block());
                 machine.place(helper, machinePosition);
                 if (!machine.ejectsIntoEndpoint()) {
-                    helper.setBlock(HOPPER, Blocks.HOPPER.defaultBlockState()
-                            .setValue(HopperBlock.FACING, Direction.DOWN));
+                    helper.setBlock(HOPPER, machine.collector());
                 }
                 placeStorageBus();
                 machine.prepare(helper, machinePosition);
@@ -140,12 +186,16 @@ final class EndpointMachineScene {
                         && node(CHEST).getGrid() == node(PROVIDER).getGrid(), "Waiting for the Provider's network");
                 helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(grid()).isPresent(),
                         "Waiting for the Provider network's identity");
+                if (localProviderId != null) {
+                    installLocalPattern();
+                    stage = 2;
+                    helper.fail("Put the pattern into " + localProviderId);
+                }
                 helper.assertTrue(provider().runtime().isPresent(), "Waiting for the Provider to start");
                 helper.assertTrue(binding() != null, "Waiting for the Endpoint to join the Provider's domain");
-                helper.assertFalse(grid().getCraftingService().getCpus().isEmpty(), "Waiting for the CPU");
-                var pattern = PatternDetailsHelper.encodeProcessingPattern(
-                        List.of(new GenericStack(machine.input(), 1)),
-                        List.of(new GenericStack(machine.output(), machine.outputPerInput())));
+                helper.assertFalse(grid().getCraftingService().getCpus().isEmpty(),
+                        "Waiting for the CPU" + (cpuId == null ? "" : " from " + cpuId));
+                var pattern = pattern();
                 // succeedWhen retries this stage until the mapping is accepted, so the pattern goes in once.
                 if (provider().getTerminalPatternInventory().getStackInSlot(0).isEmpty()) {
                     helper.assertTrue(provider().getTerminalPatternInventory().insertItem(0, pattern, false).isEmpty(),
@@ -181,8 +231,41 @@ final class EndpointMachineScene {
                 helper.assertTrue(grid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "Waiting for the job to finish");
                 helper.assertValueEqual(stored.get(machine.input()), 0L, "The inputs were used");
+                if (checkTerminal) checkPatternAccessTerminal();
             }
         }
+    }
+
+    private void installLocalPattern() {
+        helper.assertFalse(grid().getCraftingService().getCpus().isEmpty(), "Waiting for the CPU");
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(PROVIDER));
+        helper.assertTrue(entity instanceof PatternContainer, localProviderId + " is not a pattern container");
+        var patterns = ((PatternContainer) entity).getTerminalPatternInventory();
+        if (patterns.getStackInSlot(0).isEmpty()) {
+            helper.assertTrue(patterns.addItems(pattern()).isEmpty(), localProviderId + " refused the pattern");
+        }
+    }
+
+    private net.minecraft.world.item.ItemStack pattern() {
+        return PatternDetailsHelper.encodeProcessingPattern(List.of(new GenericStack(machine.input(), 1)),
+                List.of(new GenericStack(machine.output(), machine.outputPerInput())));
+    }
+
+    /** The containers AE2's Pattern Access Terminal lists, found the way its menu finds them. */
+    private void checkPatternAccessTerminal() {
+        var listed = new java.util.ArrayList<PatternContainer>();
+        for (var type : grid().getMachineClasses()) {
+            if (!PatternContainer.class.isAssignableFrom(type)) continue;
+            for (var machine : grid().getActiveMachines(type)) {
+                if (machine instanceof PatternContainer container && container.isVisibleInTerminal()) {
+                    listed.add(container);
+                }
+            }
+        }
+        helper.assertTrue(listed.size() == 1 && listed.getFirst() == provider(),
+                "AE2's Pattern Access Terminal must list the Provider once: " + listed);
+        helper.assertFalse(provider().getTerminalPatternInventory().getStackInSlot(0).isEmpty(),
+                "The terminal must show the Provider's pattern");
     }
 
     private long requested() {
@@ -218,9 +301,11 @@ final class EndpointMachineScene {
     }
 
     private String diagnostics() {
-        var lane = provider().laneCount() == 0 ? "no lane" : "send=" + provider().lane(0).hasPendingSend()
+        var lane = localProviderId != null ? "local=" + localProviderId : provider().laneCount() == 0 ? "no lane" : "send=" + provider().lane(0).hasPendingSend()
                 + " return=" + !provider().lane(0).getReturnInv().isEmpty();
-        return "cpuBusy=" + grid().getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy()) + " " + lane
+        return "cpuBusy=" + grid().getCraftingService().getCpus().stream().anyMatch(cpu -> cpu.isBusy()) + " cpus="
+                + grid().getCraftingService().getCpus().stream().map(cpu -> cpu.getClass().getSimpleName()).toList()
+                + " " + lane
                 + " input=" + grid().getStorageService().getInventory().getAvailableStacks().get(machine.input())
                 + " machine=" + machine.state(helper, machinePosition);
     }
