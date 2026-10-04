@@ -135,6 +135,8 @@ final class TaskThirtyThreeShowcaseFixture {
         names.rename(lab, "Sky Lab");
         rule(context, new PolicyKey(main, farm, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(smeltery, mine, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        // Crafting takes the Smeltery's materials through the same direction's storage rule.
+        rule(context, new PolicyKey(main, smeltery, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(main, smeltery, PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
         rule(context, new PolicyKey(lab, main, PolicyCapability.ME_POWER), PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
         rule(context, new PolicyKey(outpost, hall, PolicyCapability.STORAGE), PolicyRule.storageDefaults());

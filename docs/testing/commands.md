@@ -43,6 +43,17 @@ outlives each test, so every batch failure runs again alone: `SHARED` means it p
 is a real failure. `--no-isolate` skips that rerun. This runner is for iteration only. The required gate is
 `python3 -B tools/required_gametests.py`, which runs one server per test.
 
+The in-game guide pages under `assets/ae2federation/ae2guide/` join AE2's guide. To preview them, open a client at
+the title screen. GuideME compiles every page, logs any page errors, and reloads pages when you edit them:
+
+```bash
+./gradlew :neoforge-1.21.1:runGuideClient                                  # opens ae2federation:index.md
+./gradlew :neoforge-1.21.1:runGuideClient -PguidePage=ae2federation:items/router.md -PguideLanguage=zh_cn
+```
+
+Expected signal: one `Compiling ae2federation:...` log line per page and no `PageCompiler` warnings.
+`GuidePagesContractTest` checks the links, the ids and the Chinese copies without a client.
+
 ## Evidence verification
 
 Task 40 documentation QA selects exactly four registered IDs. Run this from the repository root against the current
@@ -62,7 +73,8 @@ printed by the command (replace `<run-id>` with that attempt's run ID):
 The earlier [Task 40 QA receipt](../../.omo/evidence/task-40-qa/verification.md) is historical and BLOCKED, not a
 passing docs result or F1-F4 approval. F3's five `final.*` IDs have a BLOCKED backend; `federationUiTest` rejects them
 before client launch. Registration supplies no final-client screenshots or benchmark spot-check. Task 37 still has
-direct/subnet small 3/3 each and Federation 0/3, Task 38's soak is absent, and F1-F4 remain unapproved.
+direct/subnet small 3/3 each and no three source-matched Federation repetitions (single local Federation runs
+complete both windows since the identity settlement fix of 2026-09-26), Task 38's soak is absent, and F1-F4 remain unapproved.
 
 ```bash
 ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:federationVerify \

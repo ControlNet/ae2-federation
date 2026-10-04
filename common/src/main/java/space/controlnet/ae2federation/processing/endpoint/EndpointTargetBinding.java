@@ -27,6 +27,7 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
     private final EndpointClaimAuthority claims;
     private final IGridNode subnetNode;
     private final EndpointRuntime runtime;
+    private volatile boolean sharesEnergy = true;
     private boolean closed;
 
     public EndpointTargetBinding(ServerLevel level, BlockPos position, Direction side,
@@ -110,6 +111,12 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         return subnetNode;
     }
 
+    /** Whether nothing is connected behind it: its subnet's Grid holds no node but its own. */
+    public boolean subnetAlone() {
+        var grid = subnetNode.getGrid();
+        return grid != null && grid.size() <= 1;
+    }
+
     @Override
     public java.util.Optional<EndpointModeGeneration.Federated> federatedMode(ProviderIdentity provider,
             ClaimEpoch claimEpoch) {
@@ -118,6 +125,15 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
 
     public EndpointRuntime runtime() {
         return runtime;
+    }
+
+    /** Whether the subnet shares energy with the network of the Provider that claims this Endpoint. */
+    public boolean sharesEnergy() {
+        return sharesEnergy;
+    }
+
+    public void sharesEnergy(boolean value) {
+        sharesEnergy = value;
     }
 
     public boolean activateLocal(List<NativeLocalProvider> advisoryCandidates) {

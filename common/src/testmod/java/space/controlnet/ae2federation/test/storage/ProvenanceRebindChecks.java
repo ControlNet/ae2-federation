@@ -24,8 +24,6 @@ import space.controlnet.ae2federation.identity.NetworkIdentityRegistry;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomainRegistry;
-import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
-import space.controlnet.ae2federation.storage.provenance.ProvenanceException;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 
@@ -54,6 +52,7 @@ public final class ProvenanceRebindChecks {
         private NativeSourceDomain reboundBefore;
         private NativeSourceDomain reboundAfter;
         private NativeSourceDomain slotBefore;
+        private NativeSourceDomain slotAfter;
         private IManagedGridNode providerNode;
         private int reboundGridBefore;
         private int slotGridBefore;
@@ -79,7 +78,7 @@ public final class ProvenanceRebindChecks {
                 case 2 -> capturePositiveReboundAndPrepareCollision();
                 case 3 -> removeCollisionGrid();
                 case 4 -> restoreCollisionGrid();
-                case 5 -> rejectFalseContinuityAndActivateMount();
+                case 5 -> acceptReboundWithoutFalseContinuityAndActivateMount();
                 case 6 -> captureMountAndReplaceSource();
                 case 7 -> verifyNewerMountIsolation();
                 default -> throw new IllegalStateException("Unexpected provenance repair phase");
@@ -161,7 +160,7 @@ public final class ProvenanceRebindChecks {
             helper.assertTrue(false, "Waiting for managed-slot collision rebound");
         }
 
-        private void rejectFalseContinuityAndActivateMount() {
+        private void acceptReboundWithoutFalseContinuityAndActivateMount() {
             helper.assertTrue(provenanceFixture.providerReady(providerNode),
                     "Waiting for collision callback node settlement");
             var providerGrid = providerNode.getNode().getGrid();
@@ -171,19 +170,15 @@ public final class ProvenanceRebindChecks {
             helper.assertTrue(System.identityHashCode(providerGrid) != slotGridBefore,
                     "Collision probe must use a new runtime IGrid");
             callbackAfter = ProvenanceEvidence.callback("provenancenativerebind", "slot-after", slotProvider);
-            ProvenanceException rejected = null;
-            try {
-                registry.discover(providerGrid);
-            } catch (ProvenanceException exception) {
-                rejected = exception;
-            }
-            helper.assertTrue(rejected != null, "Filtered callback-slot collision must reject rebound continuity");
-            helper.assertValueEqual(rejected.diagnostic(), ProvenanceDiagnostic.UNPROVEN_GRID_REBOUND,
-                    "False callback continuity must carry the rebound diagnostic");
+            slotAfter = registry.discover(providerGrid);
+            helper.assertTrue(!slotAfter.sources().getFirst().id().equals(slotBefore.sources().getFirst().id()),
+                    "Filtered callback-slot collision must not inherit the prior source identity");
             helper.assertValueEqual(callbackAfter.nativeSlot(), 0,
                     "Replacement callback replay must observe native source at slot zero");
-            helper.assertTrue(!registry.isCurrent(slotBefore), "Rejected rebound must invalidate the prior domain");
-            ProvenanceEvidence.rejection("provenancenativerebind", slotBefore, rejected.diagnostic());
+            helper.assertTrue(!registry.isCurrent(slotBefore) && registry.isCurrent(slotAfter),
+                    "The rebound must retire the prior generation");
+            helper.assertTrue(slotAfter.generation().value() > slotBefore.generation().value(),
+                    "The rebound must start a newer source generation");
             helper.assertTrue(mountFixture.networksSettled(), "Waiting for mount fixture identities");
             mountFixture.placeFirstBridge();
             phase = 6;
@@ -266,6 +261,7 @@ public final class ProvenanceRebindChecks {
             ProvenanceEvidence.domain("provenancenativerebind", "before", reboundBefore);
             ProvenanceEvidence.domain("provenancenativerebind", "after", reboundAfter);
             ProvenanceEvidence.domain("provenancenativerebind", "slot-before", slotBefore);
+            ProvenanceEvidence.domain("provenancenativerebind", "slot-after", slotAfter);
             var projectionBeforeId = Integer.toUnsignedString(System.identityHashCode(projectionBefore));
             var projectionAfterId = Integer.toUnsignedString(System.identityHashCode(projectionAfter));
             ProvenanceEvidence.mountIsolation("provenancenativerebind", projectionBeforeId, projectionAfterId,
@@ -294,8 +290,10 @@ public final class ProvenanceRebindChecks {
                     Map.entry("slotAfterNativeIndex", Integer.toString(callbackAfter.nativeSlot())),
                     Map.entry("slotManagedBefore", Integer.toString(callbackBefore.managedEntries())),
                     Map.entry("slotManagedAfter", Integer.toString(callbackAfter.managedEntries())),
-                    Map.entry("slotReboundDiagnostic", ProvenanceDiagnostic.UNPROVEN_GRID_REBOUND.name()),
-                    Map.entry("slotOldGenerationCurrent", "false"),
+                    Map.entry("slotSourceAfter", slotAfter.sources().getFirst().id().toString()),
+                    Map.entry("slotGenerationBefore", Long.toString(slotBefore.generation().value())),
+                    Map.entry("slotGenerationAfter", Long.toString(slotAfter.generation().value())),
+                    Map.entry("slotOldGenerationCurrent", "false"), Map.entry("slotNewGenerationCurrent", "true"),
                     Map.entry("mountProjectionBefore", projectionBeforeId),
                     Map.entry("mountProjectionAfter", projectionAfterId),
                     Map.entry("mountSourceGenerationBefore", Long.toString(mountSourceGenerationBefore)),

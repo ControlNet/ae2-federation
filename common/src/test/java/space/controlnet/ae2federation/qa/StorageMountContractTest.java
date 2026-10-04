@@ -43,7 +43,7 @@ final class StorageMountContractTest {
         assertTrue(mounts.contains("removeGlobalStorageProvider"));
         assertTrue(mounts.contains("Map<PolicyKey, MountedStorageRelationship>"));
         var dependencies = source("storage/mount/StorageDependencyIndex.java");
-        assertTrue(dependencies.contains("catch (ProvenanceException | StorageProvenanceException exception)"));
+        assertTrue(dependencies.contains("} catch (ProvenanceException exception) {\n            return false;"));
         assertTrue(dependencies.contains(
                 "relationship.revision().isCurrent(domain.generation(), policies::revision, registry::isCurrent)"));
         // Every operation re-evaluates its authority: in full, or, while nothing it reads changed since a full pass

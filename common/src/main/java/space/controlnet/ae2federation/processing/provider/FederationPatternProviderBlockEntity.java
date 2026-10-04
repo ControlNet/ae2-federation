@@ -106,6 +106,9 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 }
             };
 
+    /** Joins the energy pool of the subnets of the Endpoints this Provider claims. */
+    private final space.controlnet.ae2federation.energy.FederationEnergyConnection energyConnection =
+            new space.controlnet.ae2federation.energy.FederationEnergyConnection();
     private final NativeProviderOwnerLogic owner;
     private final MappedPatternProvider provider;
     private final List<LaneBinding> lanes = new ArrayList<>();
@@ -127,7 +130,9 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
 
     public FederationPatternProviderBlockEntity(BlockEntityType<?> type, BlockPos position, BlockState state) {
         super(type, position, state);
-        getMainNode().setFlags(GridFlags.REQUIRE_CHANNEL);
+        getMainNode().setFlags(GridFlags.REQUIRE_CHANNEL)
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection);
+        energyConnection.bind(this, getMainNode());
         owner = new NativeProviderOwnerLogic(getMainNode(), this, PATTERN_SLOTS);
         provider = new MappedPatternProvider(getMainNode(), this, owner.getPatternInv());
         owner.onPatternSlotChanged(provider::refreshPatternSlot);

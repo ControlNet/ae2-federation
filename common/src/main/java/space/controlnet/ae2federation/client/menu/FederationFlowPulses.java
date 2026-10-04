@@ -16,6 +16,8 @@ public final class FederationFlowPulses extends UIElement {
 
     private final Supplier<List<Flow>> flows;
     private int drawnDots;
+    /** Quartz beads the topology drew on shared-energy links in its last frame; they are live flow too. */
+    private static int drawnBeads;
 
     /** One direction of a link that delivered something; {@code returning} runs from the link's end to its start. */
     record Flow(TopologyLink link, boolean returning, float labelHalfWidth, float labelHalfHeight) {
@@ -31,6 +33,15 @@ public final class FederationFlowPulses extends UIElement {
     /** Dots drawn in the last frame, for tests and diagnostics. */
     public int drawnDots() {
         return drawnDots;
+    }
+
+    /** Quartz beads drawn on shared-energy links in the last frame, for tests and diagnostics. */
+    public static int drawnBeads() {
+        return drawnBeads;
+    }
+
+    static void beadsDrawn(int count) {
+        drawnBeads = count;
     }
 
     @Override

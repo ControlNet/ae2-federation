@@ -13,8 +13,6 @@
                     </element>
                     <element class="header-status">
                         <element id="sync_lamp" class="sync-lamp"/>
-                        <label id="sync_text" class="sync-text"/>
-                        <label class="domain-caption status-separator"><lang key="ae2federation.ui.workspace.separator"/></label>
                         <label id="provider_summary" class="domain-caption"/>
                     </element>
                 </element>
@@ -30,7 +28,6 @@
                 <element class="provider-main">
                     <element id="processing_graph" class="processing-area provider-canvas">
                         <scroller-view id="processing_scroll" class="processing-scroll"/>
-                        <label id="processing_legend" class="processing-legend"/>
                         <element id="provider_noface" class="provider-noface">
                             <label id="provider_noface_title" class="provider-noface-title"><lang key="ae2federation.ui.provider.noface.title"/></label>
                             <label id="provider_noface_text" class="provider-noface-text"/>
@@ -45,7 +42,6 @@
                         <element class="provider-returns">
                             <label class="domain-heading"><lang key="ae2federation.ui.provider.returns"/></label>
                             <scroller-view id="provider_return_list" class="dark-panel provider-return-list"/>
-                            <label class="paper-note provider-returns-note"><lang key="ae2federation.ui.provider.returns_note"/></label>
                         </element>
                     </element>
                 </element>
@@ -68,17 +64,15 @@
                         <element class="processing-actions">
                             <button id="processing_unlink" text="ae2federation.ui.processing.unlink"/>
                             <button id="processing_release" class="danger-action" text="ae2federation.ui.domain.mapping.release"/>
-                            <button id="processing_highlight" class="primary-action" text="ae2federation.ui.location.highlight"/>
+                            <button id="processing_highlight" text="ae2federation.ui.location.highlight_endpoint"/>
                         </element>
                     </scroller-view>
-                    <label id="processing_note" class="paper-note processing-note"/>
                 </element>
             </element>
-            <element class="domain-footer">
+            <element id="provider_footer" class="domain-footer">
                 <label id="ack_status" class="domain-status pending"/>
                 <label id="processing_status" class="domain-status mapping-status"/>
                 <label id="request_status" class="domain-status request-status"/>
-                <label id="provider_count" class="domain-status revision-status"/>
             </element>
         </element>
         <element id="pattern_slots" class="pattern-slot-store"/>

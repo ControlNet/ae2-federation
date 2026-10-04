@@ -5,7 +5,6 @@ import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
 import com.lowdragmc.lowdraglib2.uitest.ScenarioBuilder;
 import com.lowdragmc.lowdraglib2.uitest.ScenarioOptions;
 import com.lowdragmc.lowdraglib2.uitest.UIScenario;
-import space.controlnet.ae2federation.processing.claim.ClaimRejection;
 
 @LDLRegisterClient(name = "ui.reject-claim-conflict", group = "ae2federation", registry = UIScenario.REGISTRY,
         environment = RegistrationEnvironment.DEV_ONLY)
@@ -25,15 +24,13 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                         context.put("task33.claimConflict", TaskThirtyThreeWorldFixture.claimConflict(context)))
                 .checkServer("competing Claim is rejected", context ->
                         "Rejected".equals(context.get("task33.claimConflict")))
-                .waitForTextContains("#endpoint_fact_claim", "Another Provider owns this endpoint")
-                .checkTextContains("#endpoint_identity", ClaimRejection.OWNER_CONFLICT.name())
+                .waitForTextContains("#graph_selection", "Another Provider owns this endpoint")
                 .step("record Claim conflict evidence", context -> {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.reject-claim-conflict");
                     TaskThirtyThreeScenarioSupport.attachEndpoint(context);
                     context.attach("claimConflict", context.get("task33.claimConflict"));
-                    context.attach("claimConflictResult", TaskThirtyThreeScenarioSupport.endpointFacts(context));
-                    context.put("task33.claimConflictResult", TaskThirtyThreeScenarioSupport.endpointFacts(context));
-                    context.put("task33.claimConflictIdentity", context.el("#endpoint_identity").text());
+                    context.attach("claimConflictResult", context.el("#graph_selection").text());
+                    context.put("task33.claimConflictResult", context.el("#graph_selection").text());
                 })
                 .check("all font-cache accesses stayed on the render thread", context -> FontThreadEvidence.violations() == 0)
                 .screenshot("ui-claim-conflict-rejected")
@@ -84,7 +81,6 @@ public final class TaskThirtyThreeClaimConflictScenario implements UIScenario {
                     TaskThirtyThreeScenarioSupport.attach(context, "ui.reject-claim-conflict");
                     context.attach("claimConflict", context.get("task33.claimConflict"));
                     context.attach("claimConflictResult", context.get("task33.claimConflictResult"));
-                    context.attach("endpointIdentity", context.get("task33.claimConflictIdentity"));
                     context.attach("processingOccupiedDrop", "refused");
                 })
                 // A Federation Pattern Provider is a domain node: placing one renews the domain, so the open

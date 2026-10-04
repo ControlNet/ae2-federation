@@ -272,6 +272,87 @@ public final class EndpointFederationFaceGameTests {
         });
     }
 
+    /**
+     * A claimed Federated Endpoint shares its subnet's energy with the network of the Provider that claims it, as one
+     * pool: a subnet with no energy cell of its own is powered while the claim holds and its switch is on, and loses
+     * power when the switch is turned off or the Provider releases the claim.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void endpointSubnetEnergy(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.place(MEMBER_CHEST, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(), scene.member);
+        scene.place(HUB, ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.EAST), scene.member);
+        // The subnet has a chest but no energy cell: only the shared pool can power it.
+        scene.place(NEAR, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.WEST), scene.subnet);
+        scene.place(NEAR.above(), AEBlocks.ME_CHEST.block().defaultBlockState(), scene.subnet);
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            var provider = helper.<space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity>
+                    getBlockEntity(HUB);
+            var endpoint = helper.<EndpointBlockEntity>getBlockEntity(NEAR);
+            helper.assertTrue(provider.runtime().isPresent() && endpoint.binding() != null, "waiting for the devices");
+            var subnet = scene.node(NEAR);
+            helper.assertTrue(subnet != null && subnet.getGrid() != scene.node(HUB).getGrid(),
+                    "the subnet must stay its own Grid");
+            switch (phase[0]) {
+                case 0 -> {
+                    helper.assertTrue(endpoint.shareEnergy(), "an Endpoint shares energy by default");
+                    helper.assertFalse(subnet.isPowered(), "an unclaimed subnet without a cell must be unpowered");
+                    installPattern(provider);
+                    var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), endpoint.binding());
+                    helper.assertTrue(status.startsWith("accepted-"), "the Provider must map the Endpoint: " + status);
+                    phase[0] = 1;
+                    helper.fail("mapped the Endpoint");
+                }
+                case 1 -> {
+                    helper.assertTrue(endpoint.claimState() instanceof ClaimState.Owned, "the mapping must claim the Endpoint");
+                    helper.assertTrue(subnet.isPowered(), "the claimed subnet must share the Provider network's power");
+                    endpoint.setShareEnergy(false);
+                    var saved = endpoint.saveWithoutMetadata(helper.getLevel().registryAccess());
+                    helper.assertTrue(saved.contains("endpointShareEnergy") && !saved.getBoolean("endpointShareEnergy"),
+                            "the switch must persist");
+                    phase[0] = 2;
+                    helper.fail("turned sharing off");
+                }
+                case 2 -> {
+                    helper.assertFalse(subnet.isPowered(), "a subnet that stops sharing must lose power");
+                    endpoint.setShareEnergy(true);
+                    phase[0] = 3;
+                    helper.fail("turned sharing on");
+                }
+                case 3 -> {
+                    helper.assertTrue(subnet.isPowered(), "a subnet that shares again must be powered");
+                    var status = provider.toggleEndpoint(provider.mappedProvider().mappingHandle(0), endpoint.binding());
+                    helper.assertTrue(status.startsWith("accepted-"), "the Provider must unmap the Endpoint: " + status);
+                    phase[0] = 4;
+                    helper.fail("unmapped the Endpoint");
+                }
+                case 4 -> {
+                    helper.assertTrue(endpoint.claimState() instanceof ClaimState.Unclaimed, "unmapping must release the claim");
+                    helper.assertFalse(subnet.isPowered(), "a released subnet must lose power");
+                    helper.assertFalse(endpoint.binding().subnetAlone(), "the chest stands behind the Endpoint");
+                    helper.setBlock(NEAR.above(), net.minecraft.world.level.block.Blocks.AIR);
+                    phase[0] = 5;
+                    helper.fail("removed the chest");
+                }
+                default -> helper.assertTrue(endpoint.binding().subnetAlone(),
+                        "with the chest gone nothing stands behind the Endpoint");
+            }
+        });
+    }
+
+    private static void installPattern(space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity
+            provider) {
+        var inventory = provider.getTerminalPatternInventory();
+        if (!inventory.getStackInSlot(0).isEmpty()) return;
+        inventory.insertItem(0, PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 1)),
+                List.of(new GenericStack(AEItemKey.of(Items.DIAMOND), 1))), false);
+    }
+
     static final class Scene {
         private final GameTestHelper helper;
         final NetworkId member = NetworkId.create();

@@ -1,12 +1,12 @@
 import unittest
 
-from tools.required_gametests import required_test_ids, select_shard, verify_one
+from tools.required_gametests import gametest_command, required_test_ids, select_shard, verify_one
 
 
 class RequiredGameTestsTest(unittest.TestCase):
     def test_release_shards_cover_manifest_exactly_once(self):
         tests = required_test_ids()
-        partitions = [select_shard(tests, index, 8) for index in range(8)]
+        partitions = [select_shard(tests, index, 16) for index in range(16)]
         combined = [test for partition in partitions for test in partition]
         self.assertCountEqual(combined, tests)
         self.assertEqual(len(combined), len(set(combined)))
@@ -21,6 +21,14 @@ class RequiredGameTestsTest(unittest.TestCase):
         for index, count in ((-1, 8), (8, 8), (0, 0), (0, len(tests) + 1)):
             with self.subTest(index=index, count=count), self.assertRaises(ValueError):
                 select_shard(tests, index, count)
+
+    def test_each_test_gets_its_own_server_through_a_reused_gradle_daemon(self):
+        command = gametest_command("harnessnativesmoke")
+        self.assertIn("-PfederationGameTestId=harnessnativesmoke", command)
+        self.assertIn("-PfederationGameTestSelection=positive", command)
+        self.assertIn("--dependency-verification=strict", command)
+        # The server runs in its own process and level either way; the daemon only saves Gradle's start-up.
+        self.assertNotIn("--no-daemon", command)
 
     def test_completion_requires_one_successful_test(self):
         verify_one("harnessnativesmoke", "All 1 required tests passed :)", 0)

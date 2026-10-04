@@ -124,21 +124,29 @@ public final class StorageAliasSemanticsGameTests {
             waitFor("Advancing to the wrapper comparison");
         }
 
-        /** W wraps B, and B is mounted too: W's filter and priority must not be transferred onto bare B. */
+        /**
+         * W wraps B, and B is mounted too: W's filter and priority must not be transferred onto bare B, so W and B are
+         * skipped together while C and the chest are still shared.
+         */
         private void wrapperWithMountedDelegate() {
             var projection = mounts().projection(key());
-            helper.assertTrue(projection != null || mounts().lastDiagnostic(key()) != null,
-                    "Waiting for the relationship to mount or be diagnosed");
+            helper.assertTrue(projection != null
+                            && ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS == mounts().lastDiagnostic(key()),
+                    "Waiting for the relationship to mount without the unsafe alias group");
             var nativeLanding = nativeLanding(IRON);
             facts.put("nativeIronLanding", nativeLanding);
-            if (projection != null) {
-                var federationLanding = landing(projection, IRON);
-                facts.put("federationIronLanding", federationLanding);
-                helper.assertValueEqual(federationLanding, nativeLanding,
-                        "Federation must land iron where native AE2 does, not in the bare delegate");
-            }
+            var federationLanding = landing(projection, IRON);
+            facts.put("federationIronLanding", federationLanding);
+            helper.assertValueEqual(federationLanding, nativeLanding,
+                    "Federation must land iron where native AE2 does, not in the bare delegate");
             helper.assertValueEqual(nativeLanding, "C", "Native AE2 skips the filtering wrapper and uses C");
-            helper.assertTrue(projection == null, "A filtering wrapper aliasing a mounted handle must fail closed");
+            helper.assertTrue(mounts().sourceDomain(key()).sources().stream()
+                            .noneMatch(source -> source.storage() == filtered || source.storage() == bare),
+                    "Neither the filtering wrapper nor the delegate it aliases is exported");
+            bare.insert(GOLD, 2, Actionable.MODULATE, SOURCE);
+            helper.assertValueEqual(projection.getAvailableStacks().get(GOLD), 0L,
+                    "The skipped group's contents are not shared");
+            bare.extract(GOLD, 2, Actionable.MODULATE, SOURCE);
             helper.assertTrue(ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS == mounts().lastDiagnostic(key()),
                     "The unsafe alias carries an explicit diagnostic");
             facts.put("wrapperAndDelegateDiagnostic", "NON_TRANSPARENT_ALIAS");
@@ -151,7 +159,8 @@ public final class StorageAliasSemanticsGameTests {
         /** W alone: the source executes through W, so filter, access limits and priority stay native. */
         private void wrapperAloneKeepsNativeSemantics() {
             var projection = mounts().projection(key());
-            helper.assertTrue(projection != null, "Waiting for the wrapper-only relationship");
+            helper.assertTrue(projection != null && mounts().lastDiagnostic(key()) == null,
+                    "Waiting for the wrapper-only relationship");
             var domain = mounts().sourceDomain(key());
             helper.assertTrue(domain.sources().stream().anyMatch(source -> source.storage() == filtered)
                     && domain.sources().stream().noneMatch(source -> source.storage() == bare),
@@ -266,9 +275,16 @@ public final class StorageAliasSemanticsGameTests {
         }
 
         private void sharedUnderlyingWrappers() {
-            helper.assertTrue(mounts().projection(key()) == null, "Waiting for the shared-underlying diagnosis");
-            helper.assertTrue(ProvenanceDiagnostic.AMBIGUOUS_SHARED_DELEGATE == mounts().lastDiagnostic(key()),
+            var projection = mounts().projection(key());
+            helper.assertTrue(projection != null
+                            && ProvenanceDiagnostic.AMBIGUOUS_SHARED_DELEGATE == mounts().lastDiagnostic(key()),
                     "Two differently limited wrappers over one inventory cannot be deduplicated");
+            helper.assertTrue(mounts().sourceDomain(key()).sources().stream().noneMatch(source -> source.storage()
+                            == firstLimited || source.storage() == secondLimited || source.storage() == shared),
+                    "Both wrappers over the shared inventory are skipped");
+            helper.assertValueEqual(projection.getAvailableStacks().get(COPPER),
+                    bare.amount(COPPER) + independent.amount(COPPER) + forwarded.amount(COPPER),
+                    "The network's other storage is still shared");
             facts.put("sharedUnderlyingDiagnostic", "AMBIGUOUS_SHARED_DELEGATE");
             provider.remove(secondLimited);
             IStorageProvider.requestUpdate(providerNode);
@@ -277,18 +293,22 @@ public final class StorageAliasSemanticsGameTests {
         }
 
         private void dynamicDelegateOntoMountedHandle() {
-            if (mounts().projection(key()) != null && facts.get("limitedRestored") == null) {
+            if (mounts().projection(key()) != null && mounts().lastDiagnostic(key()) == null
+                    && facts.get("limitedRestored") == null) {
                 facts.put("limitedRestored", "true");
                 // Storage Bus retarget onto an inventory that is itself mounted.
                 SourceIndexFixtures.setDelegate(firstLimited, independent);
                 mounts().reconcileAll();
             }
             helper.assertTrue(facts.get("limitedRestored") != null, "Waiting for the restored relationship");
-            helper.assertTrue(mounts().projection(key()) == null, "A retarget onto a mounted handle must fail closed");
-            helper.assertTrue(ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS == mounts().lastDiagnostic(key()),
+            helper.assertTrue(mounts().projection(key()) != null
+                            && ProvenanceDiagnostic.NON_TRANSPARENT_ALIAS == mounts().lastDiagnostic(key()),
                     "The dynamic unsafe alias carries an explicit diagnostic");
+            helper.assertTrue(mounts().sourceDomain(key()).sources().stream()
+                            .noneMatch(source -> source.storage() == firstLimited || source.storage() == independent),
+                    "A retarget onto a mounted handle skips both");
             facts.put("dynamicRetargetDiagnostic", "NON_TRANSPARENT_ALIAS");
-            PolicyEvidence.write("storagealiaswrappersemantics", 35, facts);
+            PolicyEvidence.write("storagealiaswrappersemantics", 37, facts);
             fixtures.close();
         }
 

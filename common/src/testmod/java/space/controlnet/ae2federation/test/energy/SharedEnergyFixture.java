@@ -17,6 +17,7 @@ import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * Two native Grids joined by one Federation bridge: the main Grid holds no energy storage, the outer Grid holds one
@@ -90,7 +91,7 @@ public final class SharedEnergyFixture implements AutoCloseable {
     /** A policy editor session opened on the bridge by a player standing beside it. */
     public space.controlnet.ae2federation.client.policy.FederationDomainPolicySession session() {
         var context = bridge.firstBridgeContext();
-        var player = helper.makeMockServerPlayerInLevel();
+        var player = MockServerPlayers.inLevel(helper);
         player.setPos(net.minecraft.world.phys.Vec3.atCenterOf(context.position()).add(0, 1, 0));
         return space.controlnet.ae2federation.client.policy.FederationDomainPolicySession.forBridge(player, context);
     }

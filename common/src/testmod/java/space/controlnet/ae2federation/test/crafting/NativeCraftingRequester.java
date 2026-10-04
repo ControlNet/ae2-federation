@@ -163,20 +163,17 @@ public final class NativeCraftingRequester implements ICraftingRequester, AutoCl
 
     @Override
     public long insertCraftedItems(ICraftingLink link, AEKey what, long amount, Actionable mode) {
-        CraftingLifecycleAuthorityObservation.recordCallbackStart(this, link, what, amount, mode);
         var accepted = destination.insert(what, amount, mode, actionSource);
         if (mode == Actionable.MODULATE) {
             acceptedAmount += accepted;
             acceptedByKey.merge(what, accepted, Math::addExact);
         }
-        CraftingLifecycleAuthorityObservation.recordCallbackAccepted(this, link, what, amount, mode, accepted);
         MixedFactoryRuntimeReceipt.callback(this, link.getCraftingID(), what, amount, mode, accepted);
         return accepted;
     }
 
     @Override
     public void jobStateChange(ICraftingLink link) {
-        CraftingLifecycleAuthorityObservation.recordTerminal(this, link);
         stateChanges++;
         observedDone |= link.isDone();
         observedCanceled |= link.isCanceled();

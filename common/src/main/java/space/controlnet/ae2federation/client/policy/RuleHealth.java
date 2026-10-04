@@ -9,14 +9,15 @@ import java.util.Set;
 public enum RuleHealth {
     OFF, ACTIVE, WAITING, ERROR;
 
-    private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_cycle",
-            "crafting_cpu_missing", "crafting_provider_missing", "energy_connection_missing",
-            "domain_reference_missing");
+    private static final Set<String> BLOCKING_BACKENDS = Set.of("crafting_storage_required",
+            "energy_connection_missing", "domain_reference_missing", "storage_access_none", "storage_compile_budget");
 
-    public static RuleHealth of(boolean enabled, String code, String backend) {
+    /** {@code storage} is the storage source diagnostic; only an unsettled source network clears by waiting. */
+    public static RuleHealth of(boolean enabled, String code, String backend, String storage) {
         if (!enabled) return OFF;
         if (code.equals("published")) return ACTIVE;
         if (code.equals("operation_missing") || BLOCKING_BACKENDS.contains(backend)) return ERROR;
+        if (!storage.isEmpty() && !storage.equals("unsettled_origin")) return ERROR;
         return WAITING;
     }
 }

@@ -29,6 +29,8 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyRevision;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleLinks;
+import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.provider.PatternSlotHandle;
@@ -50,6 +52,7 @@ public final class FederationDomainPolicySession {
     private PolicyRevision expectedRevision = PolicyRevision.NONE;
     private final PolicyEditorSessionState state;
     private String acknowledgmentId = "";
+    /** Rules the last accepted switch changed along with the selected one, named in the status line. */
     private int mappingProviderIndex;
     /** The Provider being edited, so a Provider added or removed elsewhere in the domain does not change it. */
     private space.controlnet.ae2federation.processing.provider.ProviderIdentity mappingProviderIdentity;
@@ -358,8 +361,8 @@ public final class FederationDomainPolicySession {
                     row.addProperty("provider", record.key().providerNetworkId().value().toString());
                     row.addProperty("capability", record.key().capability().name());
                     row.addProperty("enabled", record.rule().enabled());
+                    row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                     row.addProperty("revision", record.revision().value());
-                    row.add("terms", termsJson(record.rule()));
                     row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
                     rules.add(row);
                 });
@@ -418,7 +421,6 @@ public final class FederationDomainPolicySession {
         if (pendingRelease != null && mappingAllowed) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
-            release.addProperty("epoch", pendingRelease.epoch().value());
             release.addProperty("lane", pendingRelease.lane());
             release.addProperty("position", currentEndpoints().stream()
                     .filter(binding -> binding.endpointIdentity().equals(pendingRelease.endpoint()))
@@ -444,6 +446,8 @@ public final class FederationDomainPolicySession {
             var choice = addChoice(root, "endpoint", id, shortId(id));
             choice.addProperty("mappingNavigation", navigationOwner(endpoint).isPresent());
             endpointFacts(choice, endpoint);
+            // Only a domain's Endpoint can be claimed, so only it has an energy switch.
+            energyFacts(choice, endpoint);
             endpoint.claimState().owner().ifPresent(owner -> {
                 // The network of the owning Provider: the topology draws the Endpoint beside it.
                 currentProviders().stream().filter(entry -> entry.identity().equals(owner.provider())).findFirst()
@@ -463,8 +467,8 @@ public final class FederationDomainPolicySession {
     }
 
     /**
-     * What the topology's Endpoint panel shows of one Endpoint: where it is, its modes, face and return binding, its
-     * native network, and its identity and claim with their epochs.
+     * What the topology's Endpoint panel shows of one Endpoint: where it is, its modes and face, its native network,
+     * its identity, owner and the result of the last claim request.
      */
     private void endpointFacts(com.google.gson.JsonObject choice, EndpointTargetBinding endpoint) {
         var runtime = endpoint.runtime();
@@ -474,23 +478,42 @@ public final class FederationDomainPolicySession {
         choice.addProperty("z", runtime.position().getZ());
         choice.addProperty("dimension", level.dimension().location().toString());
         choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
+        choice.addProperty("subnetAlone", endpoint.subnetAlone());
         choice.addProperty("configuredMode", runtime.configuredMode().name());
         choice.addProperty("runtimeMode", runtime.mode().map(mode ->
                 mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
                         ? "LOCAL" : "FEDERATED").orElse("UNBOUND"));
         choice.addProperty("face", runtime.federationFace().getSerializedName());
-        choice.addProperty("returnBinding", runtime.itemReturnContext().isPresent() || runtime.fluidReturnContext().isPresent());
         choice.addProperty("claimResult", endpoint.lastClaimResultCode());
         choice.addProperty("endpointIdentity", endpoint.endpointIdentity().id().value().toString());
-        choice.addProperty("instanceEpoch", endpoint.endpointIdentity().instanceEpoch().value());
-        choice.addProperty("claimEpoch", endpoint.claimState().epoch().value());
-        choice.addProperty("generation", runtime.generation());
         FederationDomainRegistryAccess.confirmedNetworkId(endpoint.subnetNode().getGrid())
                 .ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
-        endpoint.claimState().owner().ifPresent(owner -> {
-            choice.addProperty("owner", owner.provider().id().value().toString());
-            choice.addProperty("ownerInstance", owner.provider().instanceEpoch().value());
-        });
+        endpoint.claimState().owner().ifPresent(owner -> choice.addProperty("owner", owner.provider().id().value().toString()));
+    }
+
+    /**
+     * The Endpoint's energy switch, whether its subnet shares the claiming Provider's energy now and, when it is on but
+     * does not, why not; the target its switch sends.
+     */
+    private void energyFacts(com.google.gson.JsonObject choice, EndpointTargetBinding endpoint) {
+        choice.addProperty("energyTarget", endpointChoiceId(endpoint.endpointIdentity()));
+        choice.addProperty("energy", endpoint.sharesEnergy());
+        boolean shared = space.controlnet.ae2federation.energy.EnergySharingService.sharesEndpoint(level,
+                endpoint.subnetNode());
+        choice.addProperty("energyShared", shared);
+        if (!endpoint.sharesEnergy() || shared) return;
+        String reason;
+        if (endpoint.runtime().configuredMode() != space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode.FEDERATED) {
+            reason = "local";
+        } else if (endpoint.claimState().owner().isEmpty()) {
+            reason = "unclaimed";
+        } else {
+            var owner = endpoint.claimState().owner().orElseThrow().provider();
+            var grid = ProviderObservationRegistry.entries(level).stream().filter(entry -> entry.identity().equals(owner))
+                    .map(entry -> entry.provider().getGrid()).filter(java.util.Objects::nonNull).findFirst().orElse(null);
+            reason = grid == null ? "owner_offline" : grid == endpoint.subnetNode().getGrid() ? "same_network" : "waiting";
+        }
+        choice.addProperty("energyReason", reason);
     }
 
     /** The pattern slots of the domain's Providers whose wires go to {@code endpoint}, with the Provider's position. */
@@ -501,11 +524,12 @@ public final class FederationDomainPolicySession {
             if (controller == null) continue;
             var inventory = entry.provider().patternInventory();
             for (int slot = 0; slot < inventory.size(); slot++) {
-                if (!controller.endpointsForSlot(slot).contains(endpoint.endpointIdentity())) continue;
+                // A slot whose pattern was taken out keeps its wires, but nothing runs through them.
+                if (!controller.endpointsForSlot(slot).contains(endpoint.endpointIdentity())
+                        || inventory.getStackInSlot(slot).isEmpty()) continue;
                 var pattern = new com.google.gson.JsonObject();
                 pattern.addProperty("slot", slot);
-                var stack = inventory.getStackInSlot(slot);
-                pattern.addProperty("label", stack.isEmpty() ? "" : stack.getHoverName().getString());
+                patternSlot(pattern, entry, slot);
                 if (controller instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
                     pattern.addProperty("provider", entity.getBlockPos().toShortString());
                 }
@@ -532,7 +556,9 @@ public final class FederationDomainPolicySession {
         if (binding != null) {
             choice.addProperty("position", binding.runtime().position().toShortString());
             choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
+            choice.addProperty("subnetAlone", binding.subnetAlone());
             choice.addProperty("claimEpoch", binding.claimState().epoch().value());
+            energyFacts(choice, binding);
             addLaneFlow(choice, entry, endpoint);
             binding.claimState().owner().ifPresent(owner -> {
                 choice.addProperty("owner", owner.provider().id().value().toString());
@@ -646,7 +672,6 @@ public final class FederationDomainPolicySession {
         if (pendingRelease != null) {
             var release = new com.google.gson.JsonObject();
             release.addProperty("endpoint", pendingRelease.endpoint().id().value().toString());
-            release.addProperty("epoch", pendingRelease.epoch().value());
             release.addProperty("lane", pendingRelease.lane());
             release.addProperty("position", currentEndpoints().stream()
                     .filter(binding -> binding.endpointIdentity().equals(pendingRelease.endpoint()))
@@ -862,15 +887,13 @@ public final class FederationDomainPolicySession {
         }
         var service = PolicyService.get(level);
         var key = selection.key();
-        var current = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()));
-        var enabled = service.configured(key).isEmpty() || !current.enabled();
-        var result = service.edit(new PolicyEdit(key, expectedRevision, current.withEnabled(enabled)));
-        if (result instanceof PolicyMutationResult.Accepted accepted) {
-            expectedRevision = accepted.revision();
-            state.accepted();
-            acknowledgmentId = "policy-" + accepted.revision().value();
-        } else if (result instanceof PolicyMutationResult.Rejected rejected) {
-            expectedRevision = rejected.currentRevision();
+        if (!service.revision(key).equals(expectedRevision)) {
+            expectedRevision = service.revision(key);
+            reject(PolicyEditorSessionState.Status.STALE_REVISION);
+            return;
+        }
+        var enabled = service.configured(key).isEmpty() || !mode(service, key).enabled();
+        if (!applyLinked(service, key, enabled ? RuleMode.ENABLED : RuleMode.DISABLED)) {
             reject(PolicyEditorSessionState.Status.STALE_REVISION);
         }
     }
@@ -899,39 +922,35 @@ public final class FederationDomainPolicySession {
             state.conflicted();
             return true;
         }
-        // Energy is shared per pair, whichever way a rule names it: switching it off turns off the other way too.
-        var reverse = key.capability() == PolicyCapability.ME_POWER && !target.enabled()
-                ? new PolicyKey(key.providerNetworkId(), key.consumerNetworkId(), key.capability()) : null;
-        boolean reverseOn = reverse != null && enabled(service, reverse);
-        if (enabled(service, key) != target.enabled() && !apply(service, key, revision, target.enabled())) return true;
-        if (reverseOn) {
-            apply(service, reverse, service.revision(reverse), false);
-        } else if (enabled(service, key) == target.enabled() && acknowledgmentId.isEmpty()) {
-            state.selectionChanged();
-        }
+        if (!applyLinked(service, key, target.mode())) state.conflicted();
         return true;
     }
 
-    private static boolean enabled(PolicyService service, PolicyKey key) {
-        return service.configured(key).map(record -> record.rule().enabled()).orElse(false);
-    }
-
-    /** Switches {@code key}'s rule; false when the edit was refused as a conflict. */
-    private boolean apply(PolicyService service, PolicyKey key, PolicyRevision revision, boolean enabled) {
-        var rule = service.configured(key).map(record -> record.rule()).orElseGet(() -> defaults(key.capability()))
-                .withEnabled(enabled);
-        var result = service.edit(new PolicyEdit(key, revision, rule));
-        if (result instanceof PolicyMutationResult.Accepted accepted) {
-            expectedRevision = accepted.revision();
-            state.accepted();
-            acknowledgmentId = "policy-" + accepted.revision().value();
+    /**
+     * Sets {@code key} to {@code mode} with the rules linked to it, in one edit: a crafting rule brings its storage
+     * rule, and energy is one pool per pair. False when the edit was refused because a rule changed meanwhile.
+     */
+    private boolean applyLinked(PolicyService service, PolicyKey key, RuleMode mode) {
+        var edits = RuleLinks.of(key, mode, other -> mode(service, other)).stream()
+                .filter(change -> mode(service, change.key()) != change.mode())
+                .map(change -> new PolicyEdit(change.key(), service.revision(change.key()),
+                        service.configured(change.key()).map(record -> record.rule())
+                                .orElseGet(() -> defaults(change.key().capability())).withMode(change.mode())))
+                .toList();
+        if (edits.isEmpty()) {
+            state.selectionChanged();
             return true;
         }
-        if (result instanceof PolicyMutationResult.Rejected rejected) {
-            expectedRevision = rejected.currentRevision();
-            state.conflicted();
-        }
-        return false;
+        var result = service.editAll(edits);
+        expectedRevision = service.revision(key);
+        if (!(result instanceof PolicyMutationResult.Accepted accepted)) return false;
+        state.accepted();
+        acknowledgmentId = "policy-" + accepted.revision().value();
+        return true;
+    }
+
+    private static RuleMode mode(PolicyService service, PolicyKey key) {
+        return service.configured(key).map(record -> RuleMode.of(record.rule())).orElse(RuleMode.DISABLED);
     }
 
     /**
@@ -952,18 +971,6 @@ public final class FederationDomainPolicySession {
             overviewText = NetworkOverview.describe(level, overviewMembers).toString();
         }
         return overviewText;
-    }
-
-    private static com.google.gson.JsonObject termsJson(space.controlnet.ae2federation.policy.PolicyRule rule) {
-        var terms = RuleTerms.of(rule);
-        var json = new com.google.gson.JsonObject();
-        var operations = new com.google.gson.JsonArray();
-        terms.operations().forEach(operations::add);
-        json.add("operations", operations);
-        json.addProperty("filter", terms.filter());
-        json.addProperty("filterEntries", terms.filterEntries());
-        json.addProperty("reexport", terms.reexport());
-        return json;
     }
 
     /**
@@ -1022,9 +1029,9 @@ public final class FederationDomainPolicySession {
                         row.addProperty("provider", record.key().providerNetworkId().value().toString());
                         row.addProperty("capability", record.key().capability().name());
                         row.addProperty("enabled", record.rule().enabled());
+                        row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                         row.addProperty("revision", record.revision().value());
-                        row.add("terms", termsJson(record.rule()));
-                        row.addProperty("domain", domainId.value());
+                            row.addProperty("domain", domainId.value());
                         rulesOut.add(row);
                     });
         }
@@ -1080,13 +1087,11 @@ public final class FederationDomainPolicySession {
                     .findFirst().orElse(null);
             if (entry == null) continue;
             var totals = laneTotals(entry, endpoint.endpointIdentity());
-            if (totals[0] == 0 && totals[2] == 0) continue;
+            if (!totals[0].active() && !totals[1].active()) continue;
             var row = new com.google.gson.JsonObject();
             row.addProperty("endpoint", FederationDomainGraphProjection.endpointId(context, endpoint));
-            row.addProperty("events", totals[0]);
-            row.addProperty("amount", totals[1]);
-            row.addProperty("returnedEvents", totals[2]);
-            row.addProperty("returned", totals[3]);
+            row.addProperty("events", totals[0].events());
+            row.addProperty("returnedEvents", totals[1].events());
             out.add(row);
         }
         flowText = out.toString();
@@ -1228,6 +1233,32 @@ public final class FederationDomainPolicySession {
         return true;
     }
 
+    /**
+     * Turns one of the domain's Endpoints' energy sharing on or off. With {@code selectedProviderOnly} an Endpoint
+     * another Provider claims is refused, as the Provider screen edits only what its own Provider may.
+     */
+    public boolean setEndpointEnergy(String encoded, boolean selectedProviderOnly) {
+        if (!authorizeMappingAction()) return false;
+        var target = EndpointEnergyTarget.parse(encoded).orElse(null);
+        if (target == null) return false;
+        var binding = currentEndpoints().stream()
+                .filter(candidate -> endpointChoiceId(candidate.endpointIdentity()).equals(target.endpoint()))
+                .findFirst().orElse(null);
+        if (binding == null || !(level.getBlockEntity(binding.runtime().position())
+                instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint)) {
+            return false;
+        }
+        if (selectedProviderOnly) {
+            var provider = selectedProvider().map(ProviderObservationRegistry.Entry::identity).orElse(null);
+            if (provider == null || binding.claimState().owner().filter(owner -> !owner.provider().equals(provider))
+                    .isPresent()) {
+                return false;
+            }
+        }
+        endpoint.setShareEnergy(target.on());
+        return true;
+    }
+
     /** Prepares a target-specific confirmation or executes the matching, still-current prepared release. */
     public void releaseEndpoint() {
         if (!authorizeMappingAction()) {
@@ -1296,15 +1327,12 @@ public final class FederationDomainPolicySession {
             return statusText();
         }
         var feedback = MappingFeedback.fromCode(mappingAcknowledgment);
+        if (feedback.silent()) return Component.empty();
         return Component.translatable(feedback.translationKey(), feedback.arguments().toArray());
     }
 
     public String mappingStatusCode() {
         return mappingAcknowledgment;
-    }
-
-    public Component entranceText() {
-        return entrance.label(level);
     }
 
     public Component membersText() {
@@ -1324,13 +1352,6 @@ public final class FederationDomainPolicySession {
                 .append(Component.translatable(links == 1 ? "ae2federation.ui.domain.links.one" : "ae2federation.ui.domain.links", links));
     }
 
-    /** The two server counters a stale edit is judged against: the rule store's and the domain topology's. */
-    public Component revisionsText() {
-        var policy = space.controlnet.ae2federation.persistence.PolicySavedData.get(level).highWatermark().value();
-        var topology = FederationDomainRegistryAccess.get(level).topologyRevision();
-        return Component.translatable("ae2federation.ui.domain.revisions", policy, topology);
-    }
-
     public Component consumerText() {
         return selectionText("ae2federation.ui.domain.consumer", true);
     }
@@ -1345,13 +1366,10 @@ public final class FederationDomainPolicySession {
         }
         var key = selection.key();
         var configured = PolicyService.get(level).configured(key);
-        var stateText = configured.map(record -> record.rule().enabled()
-                ? Component.translatable("ae2federation.ui.domain.rule.on")
-                : Component.translatable("ae2federation.ui.domain.rule.off"))
-                .orElseGet(() -> Component.translatable("ae2federation.ui.domain.rule.unconfigured"));
+        var stateText = Component.translatable(configured.filter(record -> record.rule().enabled()).isPresent()
+                ? "ae2federation.ui.domain.rule.on" : "ae2federation.ui.domain.rule.off");
         return Component.translatable("ae2federation.ui.domain.rule",
-                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)), stateText,
-                configured.map(record -> record.revision().value()).orElseGet(() -> PolicyService.get(level).revision(key).value()))
+                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)), stateText)
                 .append("\n\n").append(runtimeObservationText(key, configured.map(record -> record.rule()).orElse(null)));
     }
 
@@ -1361,7 +1379,13 @@ public final class FederationDomainPolicySession {
     }
 
     /** The last observed runtime result of one rule, as translation keys rather than rendered text. */
-    record RuntimeObservation(String code, String operation, String backend, String storage) {
+    record RuntimeObservation(String code, String operation, String backend, String storage, int skipped,
+            String note) {
+        RuntimeObservation(String code, String operation, String backend, String storage) {
+            this(code, operation, backend, storage, 0, "");
+        }
+
+
         Component toComponent() {
             String prefix = "ae2federation.ui.domain.runtime.";
             if (code.equals("operation_missing")) return Component.translatable(prefix + code,
@@ -1369,8 +1393,12 @@ public final class FederationDomainPolicySession {
             var text = Component.translatable(prefix + code);
             if (!backend.isEmpty()) text.append("\n").append(Component.translatable(prefix + "backend_reason",
                     Component.translatable(prefix + "backend." + backend)));
-            if (!storage.isEmpty()) text.append("\n").append(Component.translatable(prefix + "storage_reason",
-                    Component.translatable(prefix + "provenance." + storage)));
+            if (!storage.isEmpty()) text.append("\n").append(skipped > 0 && code.equals("published")
+                    ? Component.translatable(prefix + "storage_skipped", skipped,
+                            Component.translatable(prefix + "provenance." + storage))
+                    : Component.translatable(prefix + "storage_reason",
+                            Component.translatable(prefix + "provenance." + storage)));
+            if (!note.isEmpty()) text.append("\n").append(Component.translatable(prefix + "note." + note));
             return text;
         }
 
@@ -1380,6 +1408,8 @@ public final class FederationDomainPolicySession {
             if (!operation.isEmpty()) json.addProperty("operation", operation);
             if (!backend.isEmpty()) json.addProperty("backend", backend);
             if (!storage.isEmpty()) json.addProperty("storage", storage);
+            if (skipped > 0) json.addProperty("skipped", skipped);
+            if (!note.isEmpty()) json.addProperty("note", note);
             return json;
         }
     }
@@ -1397,23 +1427,36 @@ public final class FederationDomainPolicySession {
                 return new RuntimeObservation("operation_missing", operation.name().toLowerCase(java.util.Locale.ROOT), "", "");
             }
         }
+        var storageStatus = key.capability() == PolicyCapability.STORAGE
+                ? space.controlnet.ae2federation.storage.mount.StorageMountService.status(level, key)
+                : Optional.<space.controlnet.ae2federation.storage.mount.StorageMountService.Status>empty();
         boolean published = switch (key.capability()) {
-            case STORAGE -> space.controlnet.ae2federation.storage.mount.StorageMountService.hasPublishedBinding(level, key);
-            case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.hasPublishedBinding(level, key);
+            case STORAGE -> storageStatus.map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::inEffect).orElse(false);
+            case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).map(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::active).orElse(false);
             case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.shares(level, key);
         };
-        if (published) return new RuntimeObservation("published", "", "", "");
-        var backendDiagnostic = switch (key.capability()) {
-            case CRAFTING -> space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(level, key);
-            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key);
-            default -> Optional.<space.controlnet.ae2federation.policy.BindingDiagnostic>empty();
-        };
-        var backend = backendDiagnostic.map(diagnostic -> diagnostic.reason().name().toLowerCase(java.util.Locale.ROOT)).orElse("");
-        var storage = "";
-        if (key.capability() == PolicyCapability.STORAGE) {
-            var diagnostic = space.controlnet.ae2federation.storage.mount.StorageMountService.lastDiagnosticIfPresent(level, key);
-            if (diagnostic != null) storage = diagnostic.name().toLowerCase(java.util.Locale.ROOT);
+        if (published) {
+            // A storage rule in effect may still leave some of the provider's storages out; say which kind.
+            var skipped = storageStatus.map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::skippedSources).orElse(0);
+            var source = skipped == 0 ? "" : storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::source)
+                    .map(diagnostic -> diagnostic.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+            if (key.capability() == PolicyCapability.CRAFTING) {
+                var pairStorage = new PolicyKey(key.consumerNetworkId(), key.providerNetworkId(), PolicyCapability.STORAGE);
+                return new RuntimeObservation("published", "", "", "", 0, RuntimeNotes.crafting(
+                        space.controlnet.ae2federation.storage.mount.StorageMountService.status(level, pairStorage)
+                                .map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::inEffect)));
+            }
+            return new RuntimeObservation("published", "", "", source, source.isEmpty() ? 0 : skipped, "");
         }
+        var backendReason = switch (key.capability()) {
+            case CRAFTING -> space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(level, key).flatMap(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.Status::reason);
+            case ME_POWER -> space.controlnet.ae2federation.energy.EnergySharingService.lastDiagnostic(level, key)
+                    .map(space.controlnet.ae2federation.policy.BindingDiagnostic::reason);
+            case STORAGE -> storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::reason);
+        };
+        var backend = backendReason.map(reason -> reason.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
+        var storage = storageStatus.flatMap(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::source)
+                .map(diagnostic -> diagnostic.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
         return new RuntimeObservation("unobserved", "", backend, storage);
     }
 
@@ -1422,25 +1465,14 @@ public final class FederationDomainPolicySession {
             return Component.translatable("ae2federation.ui.workspace.device_scope." + deviceDomainAvailability.key());
         }
         return switch (state.status()) {
-            case READY -> Component.translatable("ae2federation.ui.domain.status.ready");
+            // The switch itself shows an accepted edit, so the footer has nothing to add.
+            case READY, ACCEPTED -> Component.translatable("ae2federation.ui.domain.status.ready");
             case PENDING -> Component.translatable("ae2federation.ui.domain.status.pending");
             case DISABLED -> Component.translatable("ae2federation.ui.domain.status.disabled", entrance.diagnostic());
-            case ACCEPTED -> acceptedText();
             case STALE_CONTEXT -> Component.translatable("ae2federation.ui.domain.status.stale_context");
-            case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision",
-                    expectedRevision.value());
-            case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict", expectedRevision.value());
+            case STALE_REVISION -> Component.translatable("ae2federation.ui.domain.status.stale_revision");
+            case CONFLICT -> Component.translatable("ae2federation.ui.domain.status.conflict");
         };
-    }
-
-    /** "Server confirmed: Storage rule on · revision 12", from the rule the server just accepted. */
-    private Component acceptedText() {
-        var key = selection.key();
-        var enabled = PolicyService.get(level).configured(key).map(record -> record.rule().enabled()).orElse(false);
-        return Component.translatable("ae2federation.ui.domain.status.accepted",
-                Component.translatable("ae2federation.ui.workspace.capability." + key.capability().name().toLowerCase(java.util.Locale.ROOT)),
-                Component.translatable("ae2federation.ui.domain.status.accepted." + (enabled ? "on" : "off")),
-                expectedRevision.value());
     }
 
     public String statusCode() {
@@ -1487,33 +1519,36 @@ public final class FederationDomainPolicySession {
         return currentFederationDomain().map(federationDomain -> FederationDomainGraphProjection.endpointEntries(level, federationDomain)).orElse(List.of());
     }
 
-    /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window. */
+    /** Deliveries and returns over this Provider's lanes to one Endpoint, in the flow window, by resource type. */
     private void addLaneFlow(com.google.gson.JsonObject choice, ProviderObservationRegistry.Entry entry,
             space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
         var totals = laneTotals(entry, endpoint);
-        if (totals[1] > 0) choice.addProperty("laneSent", totals[1]);
-        if (totals[3] > 0) choice.addProperty("laneReturned", totals[3]);
+        if (totals[0].active()) choice.add("laneSent", amountsJson(totals[0]));
+        if (totals[1].active()) choice.add("laneReturned", amountsJson(totals[1]));
     }
 
-    /**
-     * What the Provider's lanes to {@code endpoint} moved over the flow window: sent events and amount, then returned
-     * events and amount.
-     */
-    private long[] laneTotals(ProviderObservationRegistry.Entry entry,
+    private static com.google.gson.JsonObject amountsJson(
+            space.controlnet.ae2federation.observability.meter.LaneFlowTotals totals) {
+        var json = new com.google.gson.JsonObject();
+        totals.amounts().forEach(json::addProperty);
+        return json;
+    }
+
+    /** What the Provider's lanes to {@code endpoint} moved over the flow window: sent, then returned. */
+    private space.controlnet.ae2federation.observability.meter.LaneFlowTotals[] laneTotals(
+            ProviderObservationRegistry.Entry entry,
             space.controlnet.ae2federation.processing.claim.EndpointIdentity endpoint) {
-        var totals = new long[4];
+        var totals = new space.controlnet.ae2federation.observability.meter.LaneFlowTotals[] {
+                new space.controlnet.ae2federation.observability.meter.LaneFlowTotals(),
+                new space.controlnet.ae2federation.observability.meter.LaneFlowTotals() };
         var controller = entry.controller().orElse(null);
         if (controller == null) return totals;
         var observability = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level);
         var provider = entry.identity().toString();
         for (int lane = 0; lane < entry.provider().lanes().size(); lane++) {
             if (!controller.laneEndpoint(lane).filter(endpoint::equals).isPresent()) continue;
-            for (int returned = 0; returned <= 1; returned++) {
-                var summary = observability.laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService
-                        .LaneKey(provider, lane, returned == 1));
-                totals[returned * 2] += summary.events();
-                totals[returned * 2 + 1] += summary.amount();
-            }
+            observability.collectLaneFlow(provider, lane, false, totals[0]);
+            observability.collectLaneFlow(provider, lane, true, totals[1]);
         }
         return totals;
     }

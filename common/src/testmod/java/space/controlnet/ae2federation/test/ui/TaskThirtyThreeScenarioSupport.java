@@ -60,10 +60,9 @@ final class TaskThirtyThreeScenarioSupport {
     static com.lowdragmc.lowdraglib2.uitest.ElementRef networkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context,
             String networkUuid) {
         var tag = networkTag(networkUuid);
-        // A card names its network and carries the full identity in its tooltip, which holds after a rename.
+        // A card carries its network's identity as an undrawn class, which holds after a rename.
         return context.all(".graph-node-member").stream()
-                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips()
-                        .asList().stream().anyMatch(line -> line.getString().equals(networkUuid)))
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("network-" + networkUuid))
                 .findFirst().orElseThrow(() -> new IllegalStateException("No topology card for network " + tag));
     }
 
@@ -112,10 +111,26 @@ final class TaskThirtyThreeScenarioSupport {
         return String.join("\n", lines);
     }
 
-    /** Records the selected Endpoint's panel: its facts and its identity and ownership. */
+    /** Records the selected Endpoint's panel: its facts and the full identity its caption's tooltip names. */
     static void attachEndpoint(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
         context.attach("endpointDetail", endpointFacts(context));
-        context.attach("endpointIdentity", context.el("#endpoint_identity").text());
+        context.attach("endpointIdentity", endpointIdentity(context));
+    }
+
+    /** The selected Endpoint's full identity, which its caption's tooltip names. */
+    static String endpointIdentity(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return String.join("\n", tooltipLines(context, "#network_identity"));
+    }
+
+    /** The element's tooltip, one string per line. */
+    static java.util.List<String> tooltipLines(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList()
+                .stream().map(net.minecraft.network.chat.Component::getString).toList();
+    }
+
+    /** Whether the element has no tooltip at all. */
+    static boolean noTooltip(com.lowdragmc.lowdraglib2.uitest.TestContext context, String selector) {
+        return context.el(selector).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).getStyle().tooltips().asList().isEmpty();
     }
 
     static void selectFirstNetworkCard(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
@@ -155,6 +170,12 @@ final class TaskThirtyThreeScenarioSupport {
         return context.el(ruleControl(context, "state", context.get("net.providerHost"), capability)).text();
     }
 
+    /** Whether the rule works: its state label names only the setting, and carries its health as an undrawn class. */
+    static boolean ruleActive(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
+        return context.el(ruleControl(context, "state", context.get("net.providerHost"), capability))
+                .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active");
+    }
+
     /** Scrolls the topology aside so a pair-editor row is in view for screenshots. */
     static void revealRule(com.lowdragmc.lowdraglib2.uitest.TestContext context, String capability) {
         revealInAside(context, ruleControl(context, "row", context.get("net.providerHost"), capability));
@@ -173,6 +194,13 @@ final class TaskThirtyThreeScenarioSupport {
     static void configure(com.lowdragmc.lowdraglib2.uitest.ScenarioOptions options, int guiScale) {
         options.tags("actual-client", "task-33").guiScale(guiScale)
                 .defaultTimeoutMs(15_000).scenarioTimeoutMs(120_000);
+    }
+
+    /** The server's mapping result code, which the feedback line carries as its tooltip even while it shows no text. */
+    static String mappingCode(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        var tooltips = context.el("#processing_status").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                .getStyle().tooltips().asList();
+        return tooltips.isEmpty() ? "" : tooltips.getFirst().getString();
     }
 
     static void attach(com.lowdragmc.lowdraglib2.uitest.TestContext context, String caseId) {

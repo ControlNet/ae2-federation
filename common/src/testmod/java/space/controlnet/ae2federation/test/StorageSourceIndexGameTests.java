@@ -158,6 +158,10 @@ public final class StorageSourceIndexGameTests {
                 new SourceIndexFixtures.MultiHandleProvider(5, first, second);
         private final SourceIndexFixtures.MultiHandleProvider globalProvider =
                 new SourceIndexFixtures.MultiHandleProvider(7, global);
+        private final SourceIndexFixtures.CountingStorage aggregated =
+                new SourceIndexFixtures.CountingStorage("aggregated", 64);
+        /** A complete Grid aggregate, as a Storage Bus on another network's Interface would mount. */
+        private final appeng.me.storage.NetworkStorage aggregate = new appeng.me.storage.NetworkStorage();
         private final Map<String, String> facts = new LinkedHashMap<>();
         private IManagedGridNode providerNode;
         private MEStorage held;
@@ -172,6 +176,8 @@ public final class StorageSourceIndexGameTests {
             first.insert(IRON, 4, Actionable.MODULATE, SOURCE);
             second.insert(AEItemKey.of(Items.GOLD_INGOT), 6, Actionable.MODULATE, SOURCE);
             global.insert(AEItemKey.of(Items.COPPER_INGOT), 8, Actionable.MODULATE, SOURCE);
+            aggregated.insert(AEItemKey.of(Items.EMERALD), 5, Actionable.MODULATE, SOURCE);
+            aggregate.mount(0, aggregated);
         }
 
         private void run() {
@@ -200,7 +206,8 @@ public final class StorageSourceIndexGameTests {
                 case 5 -> verifyGlobalRemoval();
                 case 6 -> verifyOpaqueDiagnosed();
                 case 7 -> verifyOpaqueRemovedAndRevoke();
-                case 8 -> verifyDisconnect();
+                case 8 -> verifyAggregateSkipped();
+                case 9 -> verifyDisconnect();
                 default -> throw new IllegalStateException("Unexpected lifecycle phase");
             }
         }
@@ -330,14 +337,24 @@ public final class StorageSourceIndexGameTests {
             waitFor("Waiting for opaque alias reconcile");
         }
 
+        /** The opaque wrapper and the handle it references are skipped; the rest of the network is still shared. */
         private void verifyOpaqueDiagnosed() {
-            helper.assertTrue(mounts().projection(key()) == null, "Unprovable opaque alias must fail closed");
-            helper.assertValueEqual(mounts().lastDiagnostic(key()),
-                    space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS,
-                    "Opaque alias must carry an explicit diagnostic");
+            var current = mounts().projection(key());
+            helper.assertTrue(current != null && current != held && mounts().lastDiagnostic(key())
+                            == space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic.OPAQUE_EXTERNAL_ALIAS,
+                    "Waiting for the remount without the opaque alias group");
+            helper.assertTrue(mounts().sourceDomain(key()).sources().stream()
+                            .noneMatch(source -> source.storage() == opaque || source.storage() == first),
+                    "Neither the unprovable opaque alias nor the handle it references is exported");
+            helper.assertValueEqual(current.getAvailableStacks().get(IRON), 0L,
+                    "The skipped group's contents are not shared");
+            helper.assertValueEqual(current.getAvailableStacks().get(AEItemKey.of(Items.DIAMOND)), 2L,
+                    "The network's other storage is still shared");
             helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
-                    "Held projection must not operate while the domain is diagnosed");
+                    "Held projection must not operate after the remount");
             facts.put("opaqueDiagnostic", "OPAQUE_EXTERNAL_ALIAS");
+            facts.put("opaqueGroupExported", "false");
+            facts.put("othersSharedBesideOpaque", "true");
             nodeProvider.remove(opaque);
             IStorageProvider.requestUpdate(providerNode);
             phase = 7;
@@ -346,7 +363,8 @@ public final class StorageSourceIndexGameTests {
 
         private void verifyOpaqueRemovedAndRevoke() {
             held = mounts().projection(key());
-            helper.assertTrue(held != null, "Removing the opaque alias must restore the relationship");
+            helper.assertTrue(held != null && mounts().lastDiagnostic(key()) == null,
+                    "Removing the opaque alias must restore the relationship");
             var ironBefore = first.amount(IRON);
             var policies = PolicyService.get(helper.getLevel());
             policies.edit(new PolicyEdit(key(), policies.revision(key()),
@@ -362,11 +380,44 @@ public final class StorageSourceIndexGameTests {
             helper.assertTrue(held != null, "Re-enabled Policy must remount");
             facts.put("revokedInsert", "0");
             facts.put("revokedExtract", "0");
+            nodeProvider.add(aggregate);
+            IStorageProvider.requestUpdate(providerNode);
             phase = 8;
-            waitFor("Advancing to disconnect verification");
+            waitFor("Waiting for the aggregate mount reconcile");
+        }
+
+        /** A mounted complete aggregate is skipped alone; the network's other storage is still shared. */
+        private void verifyAggregateSkipped() {
+            var current = mounts().projection(key());
+            var domain = mounts().sourceDomain(key());
+            helper.assertTrue(current != null && current != held && domain.skipped().size() == 1,
+                    "Waiting for the aggregate to be skipped");
+            var complete = space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic.COMPLETE_AGGREGATE;
+            helper.assertValueEqual(domain.skipped().getFirst().diagnostic(), complete,
+                    "The aggregate is skipped as a complete aggregate");
+            helper.assertValueEqual(mounts().lastDiagnostic(key()), complete, "The skip is reported for the rule");
+            helper.assertTrue(domain.sources().stream().noneMatch(source -> source.storage() == aggregate),
+                    "A complete aggregate is never an export source");
+            helper.assertValueEqual(current.getAvailableStacks().get(AEItemKey.of(Items.EMERALD)), 0L,
+                    "The aggregate's contents are not shared");
+            helper.assertValueEqual(current.getAvailableStacks().get(AEItemKey.of(Items.DIAMOND)), 2L,
+                    "The network's other storage is still shared");
+            var status = StorageMountService.status(helper.getLevel(), key()).orElseThrow();
+            helper.assertTrue(status.inEffect() && status.skippedSources() == 1,
+                    "The rule is in effect with one storage left out");
+            facts.put("aggregateDiagnostic", complete.name());
+            facts.put("aggregateExported", "false");
+            facts.put("othersSharedBesideAggregate", "true");
+            nodeProvider.remove(aggregate);
+            IStorageProvider.requestUpdate(providerNode);
+            phase = 9;
+            waitFor("Waiting for the aggregate removal reconcile");
         }
 
         private void verifyDisconnect() {
+            held = mounts().projection(key());
+            helper.assertTrue(held != null && mounts().sourceDomain(key()).skipped().isEmpty(),
+                    "Waiting for the remount without the aggregate");
             fixtures.removeFirstBridge();
             helper.assertValueEqual(held.insert(IRON, 1, Actionable.MODULATE, SOURCE), 0L,
                     "Disconnect must stop real insertion immediately");
@@ -374,7 +425,7 @@ public final class StorageSourceIndexGameTests {
                     "Disconnect must stop real extraction immediately");
             facts.put("disconnectedInsert", "0");
             facts.put("disconnectedExtract", "0");
-            PolicyEvidence.write("storagesourceindexlifecycle", 30, facts);
+            PolicyEvidence.write("storagesourceindexlifecycle", 40, facts);
             fixtures.close();
         }
 

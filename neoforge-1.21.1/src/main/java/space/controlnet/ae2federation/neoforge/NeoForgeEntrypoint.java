@@ -12,7 +12,9 @@ import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.material.MaterialRegistration;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
@@ -47,6 +49,7 @@ public final class NeoForgeEntrypoint {
         BridgeRegistration.register(modBus);
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
+        MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
@@ -66,7 +69,8 @@ public final class NeoForgeEntrypoint {
     private static void onLevelTick(LevelTickEvent.Post event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.flush(level);
-            space.controlnet.ae2federation.crafting.remote.RemoteCraftingService.tick(level);
+            StorageMountService.tick(level);
+            CraftingProjectionService.tick(level);
         }
     }
 
@@ -83,8 +87,7 @@ public final class NeoForgeEntrypoint {
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
             FederationBindingRefresh.closeLevel(level);
-            space.controlnet.ae2federation.crafting.remote.RemoteCraftingService.closeLevel(level);
-            CraftingBindingService.closeLevel(level);
+            CraftingProjectionService.closeLevel(level);
             EnergySharingService.closeLevel(level);
             LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);

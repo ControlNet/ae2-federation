@@ -22,10 +22,9 @@ import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 
 final class CraftingNativeSourceFixture {
-    private static final BlockPos BASE = new BlockPos(5, 3, 5);
-    private static final BlockPos PROVIDER = BASE.east(2).north();
-    private static final BlockPos ASSEMBLER = PROVIDER.east();
-    private static final BlockPos CPU = BASE.north(3);
+    private final BlockPos providerPos;
+    private final BlockPos assemblerPos;
+    private final BlockPos cpuPos;
 
     private final GameTestHelper helper;
     private final boolean withCpu;
@@ -35,24 +34,32 @@ final class CraftingNativeSourceFixture {
     private boolean replacementStarted;
 
     CraftingNativeSourceFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern) {
+        this(helper, new BlockPos(5, 3, 5), withCpu, withForbiddenPattern);
+    }
+
+    /** @param base the Bridge's cable position; the provider, assembler and CPU are placed relative to it */
+    CraftingNativeSourceFixture(GameTestHelper helper, BlockPos base, boolean withCpu, boolean withForbiddenPattern) {
         this.helper = helper;
+        providerPos = base.east(2).north();
+        assemblerPos = providerPos.east();
+        cpuPos = base.north(3);
         this.withCpu = withCpu;
         this.withForbiddenPattern = withForbiddenPattern;
     }
 
     boolean advanceInitialPlacement(NetworkId networkId) {
         if (placementStage == 0) {
-            helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block());
-            helper.setBlock(ASSEMBLER, AEBlocks.MOLECULAR_ASSEMBLER.block());
+            helper.setBlock(providerPos, AEBlocks.PATTERN_PROVIDER.block());
+            helper.setBlock(assemblerPos, AEBlocks.MOLECULAR_ASSEMBLER.block());
             provider().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
             assembler().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
-            BlockOrientation.EAST_UP.setOn(helper.getLevel(), helper.absolutePos(PROVIDER));
+            BlockOrientation.EAST_UP.setOn(helper.getLevel(), helper.absolutePos(providerPos));
             placementStage = 1;
             return false;
         }
         if (placementStage == 1) {
             if (withCpu) {
-                helper.setBlock(CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
+                helper.setBlock(cpuPos, AEBlocks.CRAFTING_STORAGE_1K.block());
                 cpu().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
             }
             placementStage = 2;
@@ -74,17 +81,17 @@ final class CraftingNativeSourceFixture {
     }
 
     void removeProvider() {
-        helper.setBlock(PROVIDER, Blocks.AIR);
+        helper.setBlock(providerPos, Blocks.AIR);
     }
 
     void removeCpu() {
-        helper.setBlock(CPU, Blocks.AIR);
+        helper.setBlock(cpuPos, Blocks.AIR);
     }
 
     void beginReplacement(NetworkId networkId) {
-        helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block());
+        helper.setBlock(providerPos, AEBlocks.PATTERN_PROVIDER.block());
         provider().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
-        BlockOrientation.EAST_UP.setOn(helper.getLevel(), helper.absolutePos(PROVIDER));
+        BlockOrientation.EAST_UP.setOn(helper.getLevel(), helper.absolutePos(providerPos));
         replacementStarted = true;
         patternInstalled = false;
     }
@@ -101,7 +108,7 @@ final class CraftingNativeSourceFixture {
     }
 
     PatternProviderBlockEntity provider() {
-        return helper.getBlockEntity(PROVIDER);
+        return helper.getBlockEntity(providerPos);
     }
 
     appeng.api.networking.IGridNode providerNode() {
@@ -130,11 +137,20 @@ final class CraftingNativeSourceFixture {
     }
 
     private MolecularAssemblerBlockEntity assembler() {
-        return helper.getBlockEntity(ASSEMBLER);
+        return helper.getBlockEntity(assemblerPos);
+    }
+
+    void placeCpu(NetworkId networkId) {
+        helper.setBlock(cpuPos, AEBlocks.CRAFTING_STORAGE_1K.block());
+        cpu().getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", networkId));
+    }
+
+    BlockPos cpuPosition() {
+        return cpuPos;
     }
 
     private CraftingBlockEntity cpu() {
-        return helper.getBlockEntity(CPU);
+        return helper.getBlockEntity(cpuPos);
     }
 
     private ItemStack stickPattern() {

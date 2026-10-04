@@ -34,3 +34,25 @@
 - Sources SHA-256: `746bffdcb93a71391edf219dece52b0287cff7095a0efe709f932ea2163b2414`.
 - User-facing release notes describe dependencies, installation, no survival recipes, and the optional cable preview. No Modrinth or CurseForge project was created; the owner will create those pages and upload the binary.
 - Release changes were merged back into `dev`; the published tag remains fixed.
+
+## Published v0.0.3 (2026-10-02)
+
+- Flow: `release/v0.0.3` from `dev` (commit "Prepare 0.0.3": `mod_version`, README version line and crafting
+  paragraph) → `git merge --no-ff release/v0.0.3 -m "Release 0.0.3"` on `master` → `git merge --no-ff master -m
+  "Merge release 0.0.3 back into dev"`. Master `a43cc3f`; tag `v0.0.3` created by CI points at it.
+- Release run 36968419366: build, platform preflight, eight GameTest groups (165 tests, each once, including the
+  `crafting.remote-*` cases), GitHub publish, Modrinth and CurseForge all succeeded.
+- Binary `ae2federation-neoforge-1.21.1-0.0.3.jar`, 1,289,571 bytes, SHA-256
+  `2bc4c27d61f0d7d96d55d6a6b85d9b17ffd778240d3cebf26b77f9e8be6a6d99`, identical to the local `artifact_verify.py
+  inspect` hash; sources SHA-256 `db92505d21457bc32720ce9f6d7ba2bf6e9dee04deb84993e4eb248666ea6cd6`.
+- Local pre-release gate: full manifest twice, federationVerify Tasks 26–29 and the remote crafting group, UI
+  harness, CI build, the five Python suites. The Task 40 docs QA suite fails on its README rule (it requires
+  qualification phrases the player README no longer has); it was failing before this release and is not run by the
+  release workflow.
+- `git rev-parse --short A B` fails with "Needed a single revision" in this setup; query one ref per call.
+- Release notes: CI's `--generate-notes` leaves only a "Full Changelog" line. Write player-facing notes in the 0.0.2
+  layout (title, dependency line, upgrade callout, sections, Full Changelog link), check them with
+  `python3 tools/privacy_guard.py message <file>`, then `gh release edit vX.Y.Z --notes-file <file>`. Modrinth and
+  CurseForge changelogs only link to the GitHub release, so they need no edit. Done for 0.0.3 after publication.
+- Since 2026-10-02 the release workflow runs GameTests in 16 shards, and Quick correctness on dev runs them in one
+  batch server (`dev_gametests.py --manifest --ci`); see `gametest-speed-2026-09-29.md`.

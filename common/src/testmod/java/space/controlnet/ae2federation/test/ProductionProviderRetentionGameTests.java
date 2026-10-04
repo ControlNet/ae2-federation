@@ -22,6 +22,7 @@ import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Target;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * Return ownership of work already inside a remote machine. The stand-in machine absorbs delivered input and returns
@@ -259,7 +260,7 @@ public final class ProductionProviderRetentionGameTests {
                         return;
                     }
                     if (testId.endsWith("cleanup")) {
-                        var player = helper.makeMockServerPlayerInLevel();
+                        var player = MockServerPlayers.inLevel(helper);
                         var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                         player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                         var session = FederationDomainPolicySession.forRouter(player, router);
@@ -294,7 +295,7 @@ public final class ProductionProviderRetentionGameTests {
                     helper.assertTrue(provider.releaseEndpoint(scene.endpoint(Target.B).endpointIdentity())
                             .startsWith("rejected-"), "Releasing an Endpoint without a retained Lane is rejected");
                     // Explicit release through the Domain management session opened at the Router.
-                    var player = helper.makeMockServerPlayerInLevel();
+                    var player = MockServerPlayers.inLevel(helper);
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);
@@ -324,7 +325,7 @@ public final class ProductionProviderRetentionGameTests {
                 case 90 -> {
                     var provider = scene.provider();
                     var endpoint = staleIdentity[0];
-                    var player = helper.makeMockServerPlayerInLevel();
+                    var player = MockServerPlayers.inLevel(helper);
                     var router = helper.absolutePos(ProductionProviderScene.ROUTER);
                     player.moveTo(router.getX() + 0.5, router.getY() + 1, router.getZ() + 0.5);
                     var session = FederationDomainPolicySession.forRouter(player, router);

@@ -24,6 +24,8 @@ final class FederationWorkspace {
     private final UI ui;
     private final Consumer<String> select;
     private final Map<String, String> confirmedSelections = new HashMap<>();
+    private final Map<String, com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture> icons =
+            Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING);
     private final Map<String, List<JsonObject>> choices = new HashMap<>();
     private boolean entranceApplied;
     private String navigationGroup;
@@ -40,12 +42,9 @@ final class FederationWorkspace {
         // The design's title is bold; the tab name after it is not.
         element("domain_title", Label.class).setText(Component.translatable("ae2federation.ui.domain.title")
                 .withStyle(net.minecraft.ChatFormatting.BOLD));
-        var icons = Map.of("overview", FederationIcons.TOPOLOGY, "mapping", FederationIcons.PROCESSING);
         for (var page : PAGES) {
             var tab = element("tab_" + page, Button.class);
             tab.noText();
-            tab.addChild(new UIElement().layout(style -> style.widthPercent(100).heightPercent(100))
-                    .style(style -> style.backgroundTexture(icons.get(page))));
             tab.style(style -> style.tooltips(tr(page)));
             tab.setOnClick(event -> show(page));
         }
@@ -104,6 +103,11 @@ final class FederationWorkspace {
             var button = element("tab_" + candidate, Button.class);
             button.removeClass("selected");
             if (candidate.equals(page)) button.addClass("selected");
+            // AE2's toolbar button: hovering or pressing drops it a pixel; the open page's tab is on the focused sprite.
+            var icon = icons.get(candidate);
+            var base = candidate.equals(page) ? FederationTheme.toolbarSelected(icon) : FederationTheme.toolbar(icon);
+            var hover = FederationTheme.toolbarHover(icon);
+            button.buttonStyle(style -> style.baseTexture(base).hoverTexture(hover).pressedTexture(hover));
         }
         element("graph_search", UIElement.class).setDisplay("overview".equals(page) || mapping);
     }

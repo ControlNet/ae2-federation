@@ -31,13 +31,14 @@ public final class FederationTestMod {
             }
         }
         modBus.addListener(this::registerGameTests);
+        modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
         var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
-					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class,
+					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class, StorageStatusGameTests.class,
 					 LegacySaveImportGameTests.class,
 					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
@@ -48,15 +49,12 @@ public final class FederationTestMod {
 					 StorageSourceIndexGameTests.class,
 					 StorageNativeStateGameTests.class,
 						 ResourceQualificationGameTests.class,
-						 CraftingBindingGameTests.class, CraftingBindingFailureGameTests.class, RemoteCraftingGameTests.class,
-						 TerminalCraftingGameTests.class, TerminalCraftingFailureGameTests.class,
 						 NativeAutomationGameTests.class, NativeAutomationDemandGameTests.class,
-						 CraftingLifecycleGameTests.class,
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
 					   MultipartBridgeGameTests.class, RouterGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
-					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class,
+					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,

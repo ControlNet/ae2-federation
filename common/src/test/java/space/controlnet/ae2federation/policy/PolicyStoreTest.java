@@ -101,6 +101,93 @@ final class PolicyStoreTest {
     }
 
     @Test
+    void editAllAppliesEveryEditWithItsOwnRevision() {
+        // Given
+        var store = new PolicyStore();
+        var crafting = new PolicyKey(NETWORK_A, NETWORK_B, PolicyCapability.CRAFTING);
+
+        // When
+        var result = store.editAll(java.util.List.of(
+                new PolicyEdit(crafting, PolicyRevision.NONE, PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))),
+                new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(true))));
+
+        // Then: the result is the first edit's, and each key advanced the watermark once.
+        assertEquals(new PolicyRevision(1), accepted(result).revision());
+        assertEquals(crafting, accepted(result).key());
+        assertEquals(new PolicyRevision(2), store.revision(A_USES_B));
+        assertEquals(2, store.nextRevision().value());
+    }
+
+    @Test
+    void editAllWithOneStaleEditAppliesNone() {
+        // Given
+        var store = new PolicyStore();
+        var crafting = new PolicyKey(NETWORK_A, NETWORK_B, PolicyCapability.CRAFTING);
+        var storage = accepted(store.edit(new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(true))));
+
+        // When: the storage edit expects no rule, but one exists.
+        var result = store.editAll(java.util.List.of(
+                new PolicyEdit(crafting, PolicyRevision.NONE, PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))),
+                new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(false))));
+
+        // Then
+        var rejected = assertInstanceOf(PolicyMutationResult.Rejected.class, result);
+        assertEquals(PolicyRejection.STALE_REVISION, rejected.reason());
+        assertEquals(storage.revision(), rejected.currentRevision());
+        assertTrue(store.configured(crafting).isEmpty());
+        assertEquals(storage, store.configured(A_USES_B).orElseThrow());
+        assertEquals(1, store.nextRevision().value());
+    }
+
+    @Test
+    void editAllRefusesTheSameKeyTwice() {
+        var store = new PolicyStore();
+        var edit = new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(true));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> store.editAll(java.util.List.of(edit, edit)));
+        assertEquals(0, store.storedEntryCount());
+    }
+
+    @Test
+    void savedCraftingRulesGainTheStorageRuleTheyNeed() {
+        // Given: a world saved before crafting needed storage.
+        var store = new PolicyStore();
+        var request = PolicyRule.enabled(Set.of(PolicyOperation.REQUEST));
+        var aUsesB = new PolicyKey(NETWORK_A, NETWORK_B, PolicyCapability.CRAFTING);
+        var bUsesA = new PolicyKey(NETWORK_B, NETWORK_A, PolicyCapability.CRAFTING);
+        var cUsesA = new PolicyKey(NETWORK_C, NETWORK_A, PolicyCapability.CRAFTING);
+        var cUsesAStorage = new PolicyKey(NETWORK_C, NETWORK_A, PolicyCapability.STORAGE);
+        store.edit(new PolicyEdit(aUsesB, PolicyRevision.NONE, request));
+        store.edit(new PolicyEdit(bUsesA, PolicyRevision.NONE, request.withEnabled(false)));
+        store.edit(new PolicyEdit(B_USES_A, PolicyRevision.NONE, storageRule(false)));
+        store.edit(new PolicyEdit(cUsesA, PolicyRevision.NONE, request));
+        var kept = accepted(store.edit(new PolicyEdit(cUsesAStorage, PolicyRevision.NONE,
+                storageRule(true).withMode(RuleMode.REEXPORT))));
+
+        // When
+        var added = store.requireStorageForCrafting();
+
+        // Then: only the enabled crafting rule without storage changed, and only its own direction.
+        assertEquals(1, added);
+        assertEquals(PolicyRule.storageDefaults(), store.configured(A_USES_B).orElseThrow().rule());
+        assertFalse(store.configured(B_USES_A).orElseThrow().rule().enabled());
+        assertEquals(kept, store.configured(cUsesAStorage).orElseThrow());
+        assertEquals(0, store.requireStorageForCrafting());
+    }
+
+    @Test
+    void savedCraftingRuleSwitchesOnItsDisabledStorageRuleKeepingItsOperations() {
+        var store = new PolicyStore();
+        store.edit(new PolicyEdit(new PolicyKey(NETWORK_A, NETWORK_B, PolicyCapability.CRAFTING), PolicyRevision.NONE,
+                PolicyRule.enabled(Set.of(PolicyOperation.REQUEST))));
+        store.edit(new PolicyEdit(A_USES_B, PolicyRevision.NONE, storageRule(false)));
+
+        assertEquals(1, store.requireStorageForCrafting());
+        assertEquals(storageRule(true), store.configured(A_USES_B).orElseThrow().rule());
+    }
+
+    @Test
     void storageRuleDefaultsReexportOff() {
         // Given
         var defaults = PolicyRule.storageDefaults();

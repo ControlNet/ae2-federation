@@ -6,10 +6,13 @@ import appeng.api.storage.MEStorage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
+import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationship;
 import space.controlnet.ae2federation.storage.dependency.EffectiveSourceRelationshipKey;
@@ -21,6 +24,7 @@ import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
 import space.controlnet.ae2federation.storage.subscription.SourceSubscriptionKey;
 import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
+import space.controlnet.ae2federation.identity.IdentityEpoch;
 
 public final class StorageMountService implements AutoCloseable {
     private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
@@ -28,6 +32,8 @@ public final class StorageMountService implements AutoCloseable {
     private final Map<PolicyKey, MountGeneration> mountGenerations = new HashMap<>();
     /** Advances before every change to {@link #mounts} or {@link #mountGenerations}. */
     private long mountsRevision;
+    /** The rules some current mount depends on, directly or as a re-export hop; replaced whole when mounts change. */
+    private Set<PolicyKey> inEffect = Set.of();
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private final StorageFederationDomainObserver federationDomains;
     private final StorageDependencyIndex dependencies;
@@ -36,6 +42,8 @@ public final class StorageMountService implements AutoCloseable {
     private final LevelObservabilityService observability;
     private int removedProviderCount;
     private long sourceValidations;
+    /** The {@link IdentityEpoch} the last reconciliation saw. */
+    private long reconciledEpoch = Long.MIN_VALUE;
 
     private StorageMountService(ServerLevel level) {
         subscriptions = new StorageSubscriptionService(level::getGameTime);
@@ -49,16 +57,37 @@ public final class StorageMountService implements AutoCloseable {
         return SERVICES.computeIfAbsent(level, StorageMountService::new);
     }
 
-    /** Last reconciliation snapshot only; does not create a service, reconcile, or authorize an operation. */
-    public static synchronized boolean hasPublishedBinding(ServerLevel level, PolicyKey key) {
-        var service = SERVICES.get(level);
-        return service != null && service.mounts.containsKey(key);
+    /**
+     * A storage rule's state for the pair editor: in effect, or why it shares nothing, and the provider network's last
+     * source diagnostic. {@code skippedSources} counts the provider's storages that are not shared.
+     */
+    public record Status(boolean inEffect, Optional<BindingDiagnostic.Reason> reason,
+            Optional<ProvenanceDiagnostic> source, int skippedSources) {
     }
 
-    /** Last source discovery failure, read without initiating discovery or reconciliation. */
-    public static synchronized ProvenanceDiagnostic lastDiagnosticIfPresent(ServerLevel level, PolicyKey key) {
+    /**
+     * {@code key}'s enabled rule as of the last reconciliation; empty while this level has none. Does not create a
+     * service, reconcile, or authorize an operation.
+     */
+    public static synchronized Optional<Status> status(ServerLevel level, PolicyKey key) {
         var service = SERVICES.get(level);
-        return service == null ? null : service.lastDiagnostic(key);
+        return service == null ? Optional.empty() : Optional.of(service.status(key));
+    }
+
+    private Status status(PolicyKey key) {
+        var source = Optional.ofNullable(dependencies.diagnostic(key));
+        var skipped = dependencies.skippedSources(key);
+        return inEffect.contains(key) ? new Status(true, Optional.empty(), source, skipped)
+                : new Status(false, dependencies.reason(key), source, skipped);
+    }
+
+    /**
+     * Reconciles the level's service when a network's identity changed since its last reconciliation: a split stops the
+     * network's relationships, and a heal starts them again, without a Federation block reporting either.
+     */
+    public static synchronized void tick(ServerLevel level) {
+        var service = SERVICES.get(level);
+        if (service != null && service.reconciledEpoch != IdentityEpoch.current()) service.reconcileAll();
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
@@ -147,6 +176,7 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     public void reconcileAll() {
+        reconciledEpoch = IdentityEpoch.current();
         dependencies.refresh();
         var desired = dependencies.relationships();
         var desiredPolicies = new java.util.HashSet<PolicyKey>();
@@ -156,6 +186,17 @@ public final class StorageMountService implements AutoCloseable {
                 .forEach(this::removeMount);
         desired.values().forEach(this::reconcileEffective);
         subscriptionPlanner.reconcile(mounts, mountGenerations);
+        refreshInEffect();
+    }
+
+    private void refreshInEffect() {
+        var next = new java.util.HashSet<PolicyKey>();
+        for (var mounted : mounts.values()) {
+            next.add(mounted.relationship().key());
+            var effective = dependencies.relationship(mounted.effectiveKey());
+            if (effective != null) next.addAll(effective.revision().policyRevisions().keySet());
+        }
+        inEffect = Set.copyOf(next);
     }
 
     public int mountedRelationshipCount() {
@@ -272,6 +313,7 @@ public final class StorageMountService implements AutoCloseable {
     public void remove(PolicyKey key) {
         removeMount(key);
         subscriptionPlanner.reconcile(mounts, mountGenerations);
+        refreshInEffect();
     }
 
     private void removeMount(PolicyKey key) {
@@ -382,6 +424,7 @@ public final class StorageMountService implements AutoCloseable {
         List.copyOf(mounts.values()).forEach(mounted -> mounted.relationship().consumerGrid()
                 .getService(IStorageService.class).removeGlobalStorageProvider(mounted.provider()));
         mounts.clear();
+        inEffect = Set.of();
         removedProviderCount += removed;
         mountGenerations.clear();
         dependencies.clear();
@@ -394,6 +437,7 @@ public final class StorageMountService implements AutoCloseable {
         if (mounts.get(mounted.relationship().key()) == mounted) {
             removeMount(mounted.relationship().key());
             subscriptionPlanner.reconcile(mounts, mountGenerations);
+            refreshInEffect();
         }
     }
 

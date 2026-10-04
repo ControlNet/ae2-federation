@@ -60,10 +60,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         document = Objects.requireNonNull(document, "Missing production Federation Domain policy UI " + XML);
         var ui = UI.of(document);
         currentUi = ui;
-        bind(ui, "entrance_value", this::entranceText);
         bind(ui, "members_value", this::membersText);
         bind(ui, "ack_status", this::statusText);
-        bind(ui, "revision_status", () -> session == null ? Component.empty() : session.revisionsText());
         bind(ui, "processing_status", this::mappingStatusText);
         var mappingFeedback = new BindableValue<String>("pending");
         mappingFeedback.bind(DataBindingBuilder.stringS2C(this::currentMappingStatus).initialValue("pending")
@@ -76,6 +74,15 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         mappingFeedback.addClass("state-sync");
         ui.rootElement.addChild(mappingFeedback);
+
+        // The footer takes room only while one of its messages has something to say. The root ticks it, because a
+        // hidden element does not tick and could not show itself again.
+        var footer = element(ui, "domain_footer", UIElement.class);
+        ui.rootElement.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.TICK, event -> {
+            boolean message = footer.getChildren().stream().anyMatch(child -> child.isDisplayed()
+                    && child instanceof Label label && !label.getText().getString().isEmpty());
+            if (footer.isDisplayed() != message) footer.setDisplay(message);
+        });
 
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         var workspace = new FederationWorkspace(ui, target -> send(FederationDomainPolicyAction.SELECT_TARGET, target));
@@ -92,6 +99,7 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
                 target -> send(FederationDomainPolicyAction.RENAME_NETWORK, target), workspace::openObject);
         currentTopology = graphState;
+        graphState.onEndpointEnergy(target -> send(FederationDomainPolicyAction.SET_ENDPOINT_ENERGY, target));
         workspace.bindGraph(graphState);
         var choices = new BindableValue<String>("");
         choices.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : choicesText.get(session::workspaceChoices))
@@ -255,6 +263,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             }
             case NEXT_ENDPOINT -> session.nextEndpoint();
             case RELEASE_ENDPOINT -> session.releaseEndpoint();
+            case SET_ENDPOINT_ENERGY -> {
+                if (!session.setEndpointEnergy(request.target(), false)) {
+                    return FederationDomainPolicyActionResult.INVALID_TARGET;
+                }
+            }
         }
         accepted();
         return FederationDomainPolicyActionResult.ACCEPTED;
@@ -269,7 +282,8 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
     private static boolean mappingAction(FederationDomainPolicyAction action) {
         return switch (action) {
             case PREPARE_RELEASE, CANCEL_RELEASE, SELECT_TARGET, NEXT_MAPPING_PROVIDER, NEXT_MAPPING_SLOT,
-                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT -> true;
+                    NEXT_MAPPING_LANE, TOGGLE_MAPPING, SET_MAPPING, NEXT_ENDPOINT, RELEASE_ENDPOINT,
+                    SET_ENDPOINT_ENERGY -> true;
             case SET_POLICY, RENAME_NETWORK, NEXT_CONSUMER, NEXT_PROVIDER, NEXT_CAPABILITY, TOGGLE_POLICY -> false;
         };
     }
@@ -307,19 +321,21 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (currentUi == null) return;
         var pending = authority.pending();
         var active = applyState(pending ? "pending" : serverStatus, currentUi);
-        if (currentTopology != null) currentTopology.setEditable(active && authority.authorized());
+        // The topology's switches keep their look while a request is in flight, as a second press is dropped until
+        // the reply anyway; locking them for that moment made every switch flash.
+        if (currentTopology != null) currentTopology.setEditable(active(serverStatus) && authority.authorized());
         if (currentWorkspace != null) currentWorkspace.setProcessingEditable(active && authority.authorized());
         var message = element(currentUi, "request_status", Label.class);
         var rejection = authority.rejection();
         if (currentWorkspace != null) currentWorkspace.updateNavigationAuthority(!pending && authority.authorized()
                 && (serverStatus.equals("ready") || serverStatus.equals("accepted") || serverStatus.equals("conflict")),
                 rejection != null);
-        boolean visible = pending || rejection != null;
+        // Only a rejection is written; while a request is in flight the lamp alone turns yellow.
+        boolean visible = !pending && rejection != null;
         message.setDisplay(visible);
         element(currentUi, "ack_status", Label.class).setDisplay(!visible);
         message.removeClass("request-error");
-        if (pending) message.setText(Component.translatable("ae2federation.ui.request.pending"));
-        else if (rejection != null) {
+        if (visible) {
             message.addClass("request-error");
             message.setText(Component.translatable("ae2federation.ui.request." + rejection.name().toLowerCase(java.util.Locale.ROOT)));
         }
@@ -328,9 +344,6 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         }
     }
 
-    private Component entranceText() {
-        return session == null ? Component.translatable("ae2federation.ui.domain.status.pending") : session.entranceText();
-    }
 
     private Component membersText() {
         return session == null ? Component.translatable("ae2federation.ui.domain.members.pending") : session.membersText();
@@ -378,16 +391,16 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             status.removeClass(state);
         }
         status.addClass(code);
-        var active = !code.equals("pending") && !code.equals("disabled")
-                && !code.equals("stale_context") && !code.equals("stale_revision");
+        var active = active(code);
         var lamp = element(ui, "sync_lamp", UIElement.class);
         int tone = active ? FederationTheme.OK : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR;
         lamp.style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
-        // The lamp's word, in a darker shade of its colour so it reads on the light frame.
-        var sync = element(ui, "sync_text", Label.class);
-        sync.setText(Component.translatable("ae2federation.ui.domain.sync." + (active ? "active" : code.equals("pending") ? "pending" : "stale")));
-        sync.textStyle(style -> style.textColor(active ? 0xff20a94b : code.equals("pending") ? 0xff79541b : 0xff922e42));
         return active;
+    }
+
+    private static boolean active(String code) {
+        return !code.equals("pending") && !code.equals("disabled") && !code.equals("stale_context")
+                && !code.equals("stale_revision");
     }
 
     private static <T> T element(UI ui, String id, Class<T> type) {

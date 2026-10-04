@@ -46,7 +46,10 @@
   managed-view filtering, duplicate collapse, and `SourceAliasId` construction; a filtered list is never re-enumerated.
 - The native negative replays `[managed, native-A]` from a persisted provider registration, tears down the original Grid,
   restores that exact provider lineage with `[native-B]`, and observes native slots `1` then `0`. The same settled origin
-  does not substitute for callback continuity: discovery emits `UNPROVEN_GRID_REBOUND` and invalidates the prior domain.
+  does not substitute for callback continuity: the new source takes the slot-`0` identity, never the old slot-`1` one,
+  and the rebound starts a newer generation that retires the prior domain. (Until 2026-10-03 discovery instead rejected
+  such a rebound as `UNPROVEN_GRID_REBOUND`. That was sticky: the registry kept rejecting the network until an old source
+  identity came back, and it guarded nothing the new generation does not.)
 - The mount lifecycle now captures projection A and its source/mount generations, replaces the native chest cell, and
   reconciles projection B with newer generations. Listing, insertion, and extraction through A all return zero; exact
   provider-removal counts remain unchanged after those stale calls, while B remains registered and performs native

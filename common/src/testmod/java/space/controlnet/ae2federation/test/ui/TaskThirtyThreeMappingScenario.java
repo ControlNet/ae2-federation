@@ -31,9 +31,11 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .check("the mapped Endpoint is shown as used by this Provider", context ->
                         context.el(".processing-endpoint-state").text().equals("Patterns mapped: 1"))
                 .screenshot("ui-processing-wires")
-                .drag("#processing_port_0", ".processing-endpoint")
+                // The whole row drags the pattern's wire, not only its port.
+                .drag("#processing_pattern_0", ".processing-endpoint")
                 .waitUntilServer("dropping a port maps the pattern", TaskThirtyThreeWorldFixture::mappingAccepted)
-                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
+                .waitUntil("the mapping is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("accepted-0-") && context.el("#processing_status").text().isEmpty())
                 .step("select the new wire", context -> TaskThirtyThreeScenarioSupport.clickWire(context, "0"))
                 .waitForTextContains("#processing_detail_title", "#0 ")
                 .check("a mapped wire can be unlinked", context -> context.el("#processing_unlink").isActive())
@@ -45,12 +47,12 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click(".processing-endpoint")
                 .waitForText("#processing_fact_value_mapped", "#1")
                 .waitForTextContains("#processing_fact_value_network", "Subnet ready")
-                .check("the Endpoint detail names its claim epoch", context -> context.el("#processing_fact_value_claim").text()
-                        .matches("(?s).*Claim epoch \\d+.*"))
+                .check("the Endpoint detail shows no claim epoch", context -> context.all("#processing_fact_value_claim").isEmpty())
                 .check("an Endpoint still in use offers no release", context -> !context.el("#processing_release").isActive()
                         && !context.el("#processing_release").isVisible())
                 .waitUntil("the Endpoint thumbnail samples loaded terrain", context -> context.el("#processing_preview_to .map-thumbnail")
                         .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sampledCells() > 0)
+                .step("end earlier highlights", context -> space.controlnet.ae2federation.client.WorldHighlight.clear())
                 .click("#processing_highlight")
                 .check("the selected Endpoint is outlined in the world", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1)
@@ -78,20 +80,19 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitForText("#mapping_toggle", "Map #0 here")
                 .waitUntil("the map action is ready", context -> context.el("#mapping_toggle").isActive())
                 .hover("#mapping_toggle")
-                .step("rapid mapping clicks show waiting and submit once", context -> {
+                .step("rapid mapping clicks submit once without a footer message", context -> {
                     var bounds = context.el("#mapping_toggle").bounds();
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
-                    var waiting = context.el("#request_status").text();
-                    if (!waiting.contains("Waiting for server confirmation") || context.el("#mapping_toggle").isActive()) {
-                        throw new IllegalStateException("Missing request waiting text or duplicate-click guard");
+                    if (context.el("#request_status").isVisible() || context.el("#mapping_toggle").isActive()) {
+                        throw new IllegalStateException("A saving message is shown or the duplicate-click guard is missing");
                     }
-                    context.attach("requestWaitingText", waiting);
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
                 .waitUntilServer("real Provider mapping accepted", TaskThirtyThreeWorldFixture::mappingAccepted)
-                .waitForTextContains("#processing_status", "Mapping updated for pattern slot 0.")
+                .waitUntil("the mapping is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("accepted-0-") && context.el("#processing_status").text().isEmpty())
                 .server("record authoritative mapping identity", context -> {
                     context.put("task33.providerId", TaskThirtyThreeWorldFixture.providerId(context));
                     context.put("task33.mappingLanes", TaskThirtyThreeWorldFixture.mappingLanes(context));
@@ -256,8 +257,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .click("#tab_overview")
                 .waitUntil("the Endpoint is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 1)
-                .waitUntil("the Endpoint's node shows the real delivery", context ->
-                        TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Delivered 1× in the last 5 s"))
+                .check("the Endpoint's node has no tooltip", context ->
+                        TaskThirtyThreeScenarioSupport.noTooltip(context, ".graph-node-endpoint"))
+                .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
+                .waitForTextContains("#graph_selection", "Delivered 1× in the last 5 s")
                 .waitUntil("teal dots travel along the Endpoint's link", context -> context.el("#graph_flow_pulses")
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() > 0)
                 .waitForTextContains("#graph_throughput", "Flow · last 5 s: delivered 1×")
@@ -272,9 +275,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .step("record flow evidence", context -> {
                     context.attach("evidenceFor", "ui.mapping");
-                    context.attach("processingFlow", context.el(".graph-node-endpoint").as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
-                            .getStyle().tooltips().asList().stream().map(net.minecraft.network.chat.Component::getString)
-                            .collect(java.util.stream.Collectors.joining("\n")));
+                    context.attach("processingFlow", context.el("#graph_selection").text());
                     context.attach("flowDots", context.get("task33.flowDots"));
                 })
                 .click("#graph_flow_toggle")
@@ -283,6 +284,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         .as(space.controlnet.ae2federation.client.menu.FederationFlowPulses.class).drawnDots() == 0)
                 .click("#graph_flow_toggle")
                 .waitUntil("live flow is back on", context -> !context.el("#graph_throughput").text().equals("Live flow off"))
+                .step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
+                .waitUntil("the network's links are listed", context -> !context.all(".network-link").isEmpty())
+                .step("open the pair's rules again", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".network-link"))
+                .waitUntil("pair editor returns", context -> context.el("#pair_editor").isVisible())
                 .step("scroll the pair editor back to its top", context ->
                         TaskThirtyThreeScenarioSupport.revealInAside(context, "#pair_title"))
                 .click("#tab_mapping")
@@ -317,7 +322,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .screenshot("ui-english-narrow-mapping")
                 .click("#tab_overview").frames(3)
                 .check("narrow English pair editor text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage"))
+                .check("an own pair has no note", context -> !context.el("#pair_note").isVisible())
                 .check("narrow English pair editor stays in workspace", context -> TaskThirtyThreeScenarioSupport.withinWorkspace(
                         context, "#topology_aside", "#policy_switch_0_storage"))
                 .screenshot("ui-english-narrow-policy")
@@ -325,7 +331,7 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
                 .check("narrow English Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                        context, "#endpoint_fact_mode", "#endpoint_fact_owner", "#network_links_heading"))
                 .screenshot("ui-english-narrow-endpoint")
                 .click("#tab_overview").step("select a network card", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard).frames(3)
                 .check("narrow English graph action fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open"))
@@ -361,7 +367,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .hover("#release_confirm")
                 .step("confirm release", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#release_confirm"))
                 .waitUntilServer("confirmed release removes retained ownership", TaskThirtyThreeWorldFixture::endpointReleased)
-                .waitForTextContains("#processing_status", "Endpoint released. Its return path is closed.")
+                .waitUntil("the release is accepted without a footer message", context -> TaskThirtyThreeScenarioSupport
+                        .mappingCode(context).startsWith("released-") && context.el("#processing_status").text().isEmpty())
                 .waitForText(".processing-endpoint-state", "Available · not claimed")
                 .repeat(30, steps -> steps.scroll("#processing_detail", -1)).frames(3)
                 .check("narrow English detail can expose its last control", context -> {
@@ -377,7 +384,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("map after a rule changed elsewhere", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#mapping_toggle"))
                 .waitUntilServer("the mapping claims the Endpoint for the host", TaskThirtyThreeWorldFixture::endpointClaimedByHost)
                 .waitUntil("the request completes without waiting", context -> !context.el("#request_status").isVisible())
-                .waitForTextContains("#processing_status", "Mapping updated")
+                .waitUntil("the mapping is accepted", context -> TaskThirtyThreeScenarioSupport.mappingCode(context)
+                        .startsWith("accepted-"))
                 .screenshot("ui-request-after-external-rule")
                 .step("restore English window", context ->
                         org.lwjgl.glfw.GLFW.glfwSetWindowSize(context.mc().getWindow().getWindow(), 1600, 960))
@@ -415,6 +423,17 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         context.all(".graph-node-endpoint").size() == 5)
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology")
+                .check("showcase: quartz beads drift along the shared-energy links", context ->
+                        space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() > 0)
+                .click("#graph_flow_toggle")
+                .waitForText("#graph_throughput", "Live flow off")
+                .frames(2)
+                .check("showcase: hiding live flow also stops the quartz beads", context ->
+                        space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() == 0)
+                .click("#graph_flow_toggle")
+                .waitUntil("showcase: live flow is back on", context ->
+                        !context.el("#graph_throughput").text().equals("Live flow off")
+                                && space.controlnet.ae2federation.client.menu.FederationFlowPulses.drawnBeads() > 0)
                 .step("showcase: select a network on the second Router", context -> showcaseSelect(context, "Sky Lab"))
                 .waitForTextContains("#network_title", "Sky Lab")
                 .hover("#domain_title").frames(5)
@@ -464,6 +483,13 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .step("showcase: select one of its own Endpoints", context -> showcaseEndpoint(context, "in_use"))
                 .waitUntil("showcase: its own Endpoint's details", context ->
                         !context.all(".processing-endpoint.claim-in_use.selected").isEmpty())
+                .check("showcase: its own Endpoint's energy switch can be used", context ->
+                        context.el("#endpoint_energy_switch").isActive())
+                .click("#endpoint_energy_switch")
+                .waitUntil("showcase: the Provider screen turns its own Endpoint's sharing off", context ->
+                        context.el("#processing_fact_value_energy").text().equals("Off"))
+                .click("#endpoint_energy_switch")
+                .waitUntil("showcase: and on again", context -> context.el("#processing_fact_value_energy").text().equals("On"))
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-own")
                 .step("showcase: select an Endpoint another Provider owns", context ->
@@ -475,6 +501,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         && context.el("#processing_detail_text").text().startsWith("Read-only: this Endpoint belongs to Provider @ "))
                 .check("showcase: only the owner edits it, so this screen offers no toggle", context ->
                         !context.el("#mapping_toggle").isVisible() && !context.el("#processing_unlink").isVisible())
+                .check("showcase: and its energy switch is locked", context ->
+                        !context.all("#endpoint_energy_switch").isEmpty() && !context.el("#endpoint_energy_switch").isActive())
                 .hover("#provider_title").frames(5)
                 .screenshot("ui-showcase-provider-other")
                 .closeScreen();

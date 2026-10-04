@@ -1,6 +1,5 @@
 package space.controlnet.ae2federation.test.mixed;
 
-import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.misc.InterfaceBlockEntity;
 import java.util.ArrayList;
@@ -14,12 +13,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import space.controlnet.ae2federation.crafting.terminal.NativeTerminalAdapter;
-import space.controlnet.ae2federation.crafting.terminal.NativeTerminalRequest;
 import space.controlnet.ae2federation.test.automation.AutomationAuthorityObservation;
 import space.controlnet.ae2federation.test.automation.AutomationNativeObservation;
 import space.controlnet.ae2federation.test.automation.NativeAutomationFixture;
 import space.controlnet.ae2federation.test.crafting.NativeCraftingRequester;
+import space.controlnet.ae2federation.test.crafting.ProviderCraftingOrder;
 import space.controlnet.ae2federation.test.crafting.TerminalNativeObservation;
 import space.controlnet.ae2federation.test.processing.NativeProviderLaneFixtures;
 import space.controlnet.ae2federation.test.processing.ProcessingNativeObservation;
@@ -34,12 +32,13 @@ public final class MixedFactoryScene implements AutoCloseable {
     private final NativeAutomationFixture automation;
     private final List<BlockPos> additionalCpus = new ArrayList<>();
     private final List<NativeCraftingRequester> requesters = new ArrayList<>();
-    private final List<NativeTerminalRequest> requests = new ArrayList<>();
+    private final List<ProviderCraftingOrder> requests = new ArrayList<>();
     private final List<Boolean> submitted = new ArrayList<>();
     private NativeProviderLaneFixtures processing;
     private MixedProcessingMachine machine;
     private InterfaceBlockEntity stockingInterface;
     private int stage;
+    private String waitingFor = "";
     private int blockedTicks;
     private int consumedStockingCycles;
     private boolean finished;
@@ -56,7 +55,24 @@ public final class MixedFactoryScene implements AutoCloseable {
     }
 
     public boolean ready() {
-        if (!automation.ready()) return false;
+        waitingFor = readiness();
+        return waitingFor.isEmpty();
+    }
+
+    /**
+     * The first readiness condition that does not hold yet, or empty once the scene can start. The provider network is
+     * completed before the rules are enabled: the added CPUs and the lane's node and energy cell carry the provider's
+     * network id, and until each joins the provider Grid a second live Grid claims that id and its identity reads as a
+     * split.
+     */
+    private String readiness() {
+        if (processing != null) {
+            additionalCpus.forEach(automation.binding()::connectNativeCpu);
+            processing.connectEnergy();
+            processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
+        }
+        var bindingWaiting = automation.binding().readiness();
+        if (!bindingWaiting.isEmpty()) return "automation-binding-" + bindingWaiting;
         if (processing == null) {
             for (var index = 1; index < profile.cpuLimit(); index++) {
                 var position = new BlockPos(3 + index, 3, 3);
@@ -68,16 +84,22 @@ public final class MixedFactoryScene implements AutoCloseable {
             processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
             processing.register();
             machine = new MixedProcessingMachine(helper, processing, topology);
-            return false;
+            return "processing-placed";
         }
-        if (additionalCpus.stream().anyMatch(position -> !automation.binding().connectNativeCpu(position))) return false;
-        processing.connectTo(automation.binding().sourceChest().getMainNode().getNode());
-        return processing.managedNode().getNode() != null
-                && processing.managedNode().getNode().getGrid() == automation.binding().providerGrid()
-                && automation.binding().sourceService().getCpus().size() == profile.cpuLimit()
-                && automation.binding().sourceService().isCraftable(AEItemKey.of(topology.chainResult()))
-                && topology.blockedRecipes().stream().allMatch(recipe ->
-                        automation.binding().sourceService().isCraftable(AEItemKey.of(recipe.output())));
+        if (additionalCpus.stream().anyMatch(position -> !automation.binding().connectNativeCpu(position))) return "cpus";
+        if (!processing.connectEnergy()) return "processing-energy";
+        var service = automation.binding().sourceService();
+        if (processing.managedNode().getNode() == null
+                || processing.managedNode().getNode().getGrid() != automation.binding().providerGrid()) {
+            return "processing-grid";
+        }
+        if (service.getCpus().size() != profile.cpuLimit()) return "cpu-count=" + service.getCpus().size();
+        if (!service.isCraftable(AEItemKey.of(topology.chainResult()))) return "chain-uncraftable";
+        for (var recipe : topology.blockedRecipes()) {
+            if (!service.isCraftable(AEItemKey.of(recipe.output()))) return "blocked-uncraftable";
+        }
+        var automationWaiting = automation.readiness();
+        return automationWaiting.isEmpty() ? "" : "automation-" + automationWaiting;
     }
 
     public boolean tick() {
@@ -91,7 +113,7 @@ public final class MixedFactoryScene implements AutoCloseable {
     }
 
     public String progress() {
-        return "stage=" + stage + ",blockedTicks=" + blockedTicks + ",busy="
+        return "stage=" + stage + (stage == 0 ? ",waiting=" + waitingFor : "") + ",blockedTicks=" + blockedTicks + ",busy="
                 + automation.binding().busyCpuCount() + ",cpus=" + automation.binding().sourceService().getCpus().size()
                 + ",requests=" + requests.size() + ",submitted=" + submitted.stream().filter(Boolean::booleanValue).count();
     }
@@ -152,13 +174,16 @@ public final class MixedFactoryScene implements AutoCloseable {
     private void beginRequests() {
         if (!automation.interfaceReady(stockingInterface, false) || requesters.stream().anyMatch(requester ->
                 !requester.isReady(automation.binding().sourceChest().getMainNode().getNode()))) return;
-        var terminal = NativeTerminalAdapter.discover(helper.getLevel(), automation.binding().consumerGrid(),
-                automation.binding().key().providerNetworkId(), IActionSource.empty()).orElseThrow();
-        for (var recipe : topology.blockedRecipes()) {
-            requests.add(terminal.begin(AEItemKey.of(recipe.output()), profile.requested("glass")).orElseThrow());
+        // Each order is planned and run on the provider network's own crafting service, by the requester at its index.
+        var grid = automation.binding().providerGrid();
+        var recipes = topology.blockedRecipes();
+        for (var index = 0; index < recipes.size(); index++) {
+            requests.add(ProviderCraftingOrder.begin(helper.getLevel(), grid, requesters.get(index).getActionableNode(),
+                    AEItemKey.of(recipes.get(index).output()), profile.requested("glass")));
         }
-        requests.add(terminal.begin(AEItemKey.of(topology.chainResult()), profile.requested("emeralds")).orElseThrow());
-        terminal.close();
+        requests.add(ProviderCraftingOrder.begin(helper.getLevel(), grid,
+                requesters.get(recipes.size()).getActionableNode(), AEItemKey.of(topology.chainResult()),
+                profile.requested("emeralds")));
         requests.forEach(ignored -> submitted.add(false));
         stage = 2;
     }
@@ -168,8 +193,7 @@ public final class MixedFactoryScene implements AutoCloseable {
         for (var index = 0; index < requests.size(); index++) {
             if (!submitted.get(index)) {
                 var requester = requesters.get(index);
-                submitted.set(index, requests.get(index).submitTracked(0, requester,
-                        requester::handleCrafting).isPresent());
+                submitted.set(index, requests.get(index).submitTracked(requester));
             }
         }
         if (submitted.stream().allMatch(Boolean::booleanValue)) stage = 3;

@@ -7,7 +7,6 @@ import space.controlnet.ae2federation.storage.provenance.FederationManagedStorag
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.controlnet.ae2federation.storage.provenance.NativeSourceDomain;
-import space.controlnet.ae2federation.storage.provenance.ProvenanceDiagnostic;
 
 public final class ProvenanceEvidence {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProvenanceEvidence.class);
@@ -27,9 +26,12 @@ public final class ProvenanceEvidence {
         }
     }
 
-    public static void rejection(String testId, NativeSourceDomain previous, ProvenanceDiagnostic diagnostic) {
-        LOGGER.info("AE2F_PROVENANCE_REJECTION testId={} origin={} generation={} diagnostic={} current=false",
-                testId, previous.origin().value(), previous.generation().value(), diagnostic);
+    public static void skipped(String testId, NativeSourceDomain domain) {
+        for (var skipped : domain.skipped()) {
+            LOGGER.info("AE2F_PROVENANCE_SKIP testId={} origin={} generation={} alias={} diagnostic={}",
+                    testId, domain.origin().value(), domain.generation().value(), skipped.alias(),
+                    skipped.diagnostic());
+        }
     }
 
     public static CallbackSnapshot callback(String testId, String phase, IStorageProvider provider) {

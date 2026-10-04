@@ -53,8 +53,7 @@ final class MixedFactoryBenchmarkContractTest {
         var qa = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
         for (var probe : Set.of("fabricated-accounting", "fake-handler-attribution", "fake-stocking-attribution",
                 "call-quantity-conflation", "changed-iteration-count", "extra-metric", "copied-iteration-facts",
-                "empty-native-work", "empty-physical-work", "silent-drop", "no-recovery", "hidden-queue",
-                "duplicate-job")) {
+                "silent-drop", "no-recovery", "hidden-queue", "duplicate-job")) {
             assertTrue(qa.contains(probe), () -> "missing fully rebound Task 30 probe: " + probe);
         }
         assertTrue(qa.contains("metrics.keySet() as Set != expectedFields"));

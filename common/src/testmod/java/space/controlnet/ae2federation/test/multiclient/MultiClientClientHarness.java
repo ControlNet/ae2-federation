@@ -189,11 +189,9 @@ public final class MultiClientClientHarness {
         var renderedMembers = text(screen, "members_value");
         var expectedStatus = Component.translatable("ae2federation.ui.domain.status.ready").getString();
         var expectedMembers = Component.translatable("ae2federation.ui.domain.members", 2).getString();
-        var expectedEntrance = Component.translatable("ae2federation.ui.domain.entrance.router").getString();
         var membersCurrent = renderedMembers.startsWith(expectedMembers + " · ");
         var current = status.hasClass("ready") && renderedStatus.equals(expectedStatus)
                 && membersCurrent
-                && text(screen, "entrance_value").equals(expectedEntrance)
                 && find(screen, STORAGE_SWITCH) != null && find(screen, STORAGE_SWITCH).isActive();
         refreshedStableFrames = current ? refreshedStableFrames + 1 : 0;
         if (refreshedStableFrames >= 3) {

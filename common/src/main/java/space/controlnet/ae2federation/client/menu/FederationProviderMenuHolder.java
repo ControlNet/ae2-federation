@@ -57,7 +57,8 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
     /** The mapping requests this screen takes; rule edits and choosing another Provider belong to the workspace. */
     private static final Set<FederationDomainPolicyAction> ACTIONS = EnumSet.of(FederationDomainPolicyAction.SELECT_TARGET,
             FederationDomainPolicyAction.SET_MAPPING, FederationDomainPolicyAction.PREPARE_RELEASE,
-            FederationDomainPolicyAction.RELEASE_ENDPOINT, FederationDomainPolicyAction.CANCEL_RELEASE);
+            FederationDomainPolicyAction.RELEASE_ENDPOINT, FederationDomainPolicyAction.CANCEL_RELEASE,
+            FederationDomainPolicyAction.SET_ENDPOINT_ENERGY);
     /** AE2's priority field range. */
     private static final int PRIORITY_LIMIT = 999_999_999;
     private static final int CHOICES_TICKS = 5;
@@ -97,8 +98,16 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
                 target -> send(FederationDomainPolicyAction.SELECT_TARGET, target), this::prepareRelease,
                 patterns::name, patterns::outputStack, patterns::facts);
         graph.setSlotElements(index -> slots.get(index));
+        graph.onEndpointEnergy(target -> send(FederationDomainPolicyAction.SET_ENDPOINT_ENERGY, target));
         var releaseDialog = new FederationReleaseDialog(ui, this::send);
         this.releaseDialog = releaseDialog;
+        // As on the Federation screen, the footer takes room only while one of its messages has something to say.
+        var footer = element(ui, "provider_footer", UIElement.class);
+        ui.rootElement.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.TICK, event -> {
+            boolean message = footer.getChildren().stream().anyMatch(child -> child.isDisplayed()
+                    && child instanceof Label label && !label.getText().getString().isEmpty());
+            if (footer.isDisplayed() != message) footer.setDisplay(message);
+        });
 
         setting(ui, player, "setting_blocking", FederationIcons.BLOCKING, Settings.BLOCKING_MODE, BLOCKING, "blocking");
         setting(ui, player, "setting_lock", FederationIcons.LOCK, Settings.LOCK_CRAFTING_MODE, LockCraftingMode.values(), "lock");
@@ -119,10 +128,11 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         sync(ui, () -> session == null ? "pending" : session.mappingStatusCode(), code -> {
             var label = element(ui, "processing_status", Label.class);
             var feedback = MappingFeedback.fromCode(code);
-            label.setText(Component.translatable(feedback.translationKey(), feedback.arguments().toArray()));
+            label.setText(feedback.silent() ? Component.empty()
+                    : Component.translatable(feedback.translationKey(), feedback.arguments().toArray()));
             for (var tone : new String[] {"neutral", "waiting", "success", "error"}) label.removeClass("feedback-" + tone);
             label.addClass("feedback-" + feedback.tone());
-            label.setDisplay(!feedback.tone().equals("neutral"));
+            label.setDisplay(!feedback.tone().equals("neutral") && !feedback.silent());
         });
         var authoritySync = sync(ui, () -> authority.encode(this, player), value -> {
             authority.accept(value);
@@ -341,7 +351,6 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         // Without a domain on its Federation face the Provider still has its patterns and keeps its mappings.
         element(ui, "provider_summary", Label.class).setText(face ? tr("summary", used, slotChoices.size(), mappings, targets.size())
                 : tr(stale ? "summary_stale" : "summary_noface", used, slotChoices.size(), mappings));
-        element(ui, "provider_count", Label.class).setText(tr("count", used, slotChoices.size(), mappings));
         var notice = element(ui, "provider_noface", UIElement.class);
         notice.setDisplay(!face && !stale);
         element(ui, "provider_noface_text", Label.class).setText(tr("noface.text"));
@@ -438,6 +447,10 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             case SET_MAPPING -> {
                 if (!session.setMapping(request.target())) return FederationDomainPolicyActionResult.INVALID_TARGET;
             }
+            // Another Provider's Endpoint is read-only here, its switch included.
+            case SET_ENDPOINT_ENERGY -> {
+                if (!session.setEndpointEnergy(request.target(), true)) return FederationDomainPolicyActionResult.INVALID_TARGET;
+            }
             default -> throw new IllegalStateException("Action outside the Provider screen: " + request.action());
         }
         choicesCache = null;
@@ -485,22 +498,17 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         int tone = active ? FederationTheme.OK : serverStatus.equals("pending") || serverStatus.equals("noface")
                 ? FederationTheme.WARN : FederationTheme.ERROR;
         element(ui, "sync_lamp", UIElement.class).style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
-        var sync = element(ui, "sync_text", Label.class);
-        sync.setText(tr("sync." + (active ? "active" : serverStatus.equals("noface") ? "noface"
-                : serverStatus.equals("pending") ? "pending" : "stale")));
-        sync.textStyle(style -> style.textColor(active ? 0xff20a94b
-                : tone == FederationTheme.WARN ? 0xff79541b : 0xff922e42));
         var status = element(ui, "ack_status", Label.class);
         var message = element(ui, "request_status", Label.class);
         var rejection = authority.rejection();
-        boolean visible = pending || rejection != null;
+        // Only a rejection is written; while a request is in flight the lamp alone turns yellow.
+        boolean visible = !pending && rejection != null;
         message.setDisplay(visible);
         status.setDisplay(!visible);
         status.setText(tr("status." + (active ? "ready" : serverStatus.equals("noface") ? "noface"
                 : serverStatus.equals("pending") ? "pending" : "stale")));
         message.removeClass("request-error");
-        if (pending) message.setText(Component.translatable("ae2federation.ui.request.pending"));
-        else if (rejection != null) {
+        if (visible) {
             message.addClass("request-error");
             message.setText(Component.translatable("ae2federation.ui.request." + rejection.name().toLowerCase(java.util.Locale.ROOT)));
         }

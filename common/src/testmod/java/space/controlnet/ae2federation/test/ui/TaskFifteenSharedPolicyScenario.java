@@ -18,13 +18,26 @@ public final class TaskFifteenSharedPolicyScenario implements UIScenario {
     @Override
     public void define(ScenarioBuilder scenario) {
         TaskFifteenScenarioSupport.open(scenario, TaskFifteenScenarioSupport.Entrance.ROUTER)
-                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                // Press and look in one frame, before the reply can land: locking every switch while the edit was
+                // in flight made them all flash.
+                .hover(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                .step("other switches keep their look while the edit is in flight", context -> {
+                    var bounds = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).bounds();
+                    context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+                    context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+                    if (!context.el("#ack_status").hasClass("pending")) {
+                        throw new AssertionError("the edit is not in flight right after the press");
+                    }
+                    if (!context.el("#policy_switch_0_crafting").isActive()) {
+                        throw new AssertionError("another switch locked while the edit was in flight");
+                    }
+                })
                 .waitUntilServer("Router edit accepted", TaskFifteenWorldFixture::policyConfigured)
                 .closeScreen()
                 .server("open the same policy from the real Bridge", TaskFifteenWorldFixture::openBridge)
                 .awaitScreen(ModularUIContainerScreen.class)
                 .awaitModularUI()
-                .waitForTextContains("#entrance_value", "ME Federation Bridge - side ")
+                .waitForTextContains("#pair_title", "Via the Bridge at ")
                 .waitUntil("Bridge shows the Router's switch on", context -> context.elOpt(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                         .map(element -> element.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("on"))
                         .orElse(false))

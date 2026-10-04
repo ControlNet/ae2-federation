@@ -32,9 +32,9 @@ import space.controlnet.ae2federation.client.policy.MappingWireTarget;
 /**
  * Processing wires for the domain's Pattern Providers: each Provider as a card of pattern rows with an output port on
  * the right edge, the Endpoints the selected Provider may use as cards with an input port on the left edge, and one
- * wire per mapped pattern and Endpoint. Dragging a port onto an Endpoint maps it; so does clicking a pattern, then an
- * Endpoint, then "Map". Clicking a wire offers to unlink it and clicking an Endpoint selects it for details and
- * release. The header search filters Providers, patterns and Endpoints. Every change is an explicit
+ * wire per mapped pattern and Endpoint. Dragging a pattern's row onto an Endpoint maps it; so does clicking a
+ * pattern, then an Endpoint, then "Map". Clicking a wire offers to unlink it and clicking an Endpoint selects it for
+ * details and release. The header search filters Providers, patterns and Endpoints. Every change is an explicit
  * {@link MappingWireTarget} request that the server checks against live ownership.
  */
 public final class FederationProcessingGraph {
@@ -46,6 +46,8 @@ public final class FederationProcessingGraph {
     private static final float THUMBNAIL_HEIGHT = 20;
     /** Radius of the round ports on the cards' edges. */
     private static final int PORT = 5;
+    /** How far the pressed pointer moves on a pattern row before it drags the pattern's wire. */
+    private static final float DRAG_THRESHOLD = 3;
     /** Width of a pattern row's port, whose ring is centred on the card's right edge. */
     private static final float PORT_WIDTH = 12;
     private static final int CARD_FACE = 0xff2c2735;
@@ -96,9 +98,6 @@ public final class FederationProcessingGraph {
     /** The blocks of the network at a choice's {@code networkIndex} in a dimension, from the overview. */
     private java.util.function.BiFunction<Integer, String, List<BlockMarks.Mark>> networkBlocks = (index, dimension) -> List.of();
     private final List<Runnable> thumbnailRefresh = new ArrayList<>();
-    private final Label legend;
-    /** The legend is measured on the first client frame: the UI tree is also built on the server, which has no font. */
-    private boolean legendMeasured;
     private int refreshTicks;
     private String providerPosition = "";
 
@@ -128,6 +127,14 @@ public final class FederationProcessingGraph {
     private String structure = "";
     private String confirmedTarget = "";
     private boolean editable;
+    /** Where an Endpoint's energy switch sends; only the Provider screen shows the switch here. */
+    private @org.jetbrains.annotations.Nullable Consumer<String> setEndpointEnergy;
+    /**
+     * The energy switch shown last and what it showed. The facts are rebuilt with every choices update, which lane
+     * flow sends while the Endpoint works; an unchanged switch is kept, so such an update cannot drop a press on it.
+     */
+    private @org.jetbrains.annotations.Nullable Button energySwitch;
+    private String energySwitchShape = "";
     private Selection selection = Selection.NONE;
     private Component rejection = Component.empty();
     private String hoverEndpoint = "";
@@ -142,6 +149,10 @@ public final class FederationProcessingGraph {
     private String query = "";
     /** Set by a press on a pattern row, so the canvas does not also pick the wire that starts at its port. */
     private boolean patternPressed;
+    /** The pattern row a drag may start from: pressed outside its item slot and not yet moved far. */
+    private String pressedRow = "";
+    private float pressX;
+    private float pressY;
     private Selection pendingFocus;
     /**
      * The Provider screen's real pattern slots, by slot index; null in the domain workspace. With them every slot has a
@@ -175,16 +186,19 @@ public final class FederationProcessingGraph {
         toEnd = element(ui, "processing_end_to", UIElement.class);
         fromLabel = element(ui, "processing_from_label", Label.class);
         toLabel = element(ui, "processing_to_label", Label.class);
-        legend = element(ui, "processing_legend", Label.class);
-        legend(legend, false);
-        element(ui, "processing_note", Label.class).setText(tr("drop_note"));
         highlight = element(ui, "processing_highlight", Button.class);
-        highlight.style(style -> style.tooltips(FederationWorkspace.trLocation("highlight_help")));
+        // Pressed while the selection is outlined in the world; pressing it again ends the outline early.
         highlight.setOnClick(event -> {
-            var focus = focusMarks();
-            if (!focus.isEmpty()) space.controlnet.ae2federation.client.WorldHighlight.show(playerDimension(), focus,
-                    FederationTheme.SELECT);
+            var groups = focusGroups();
+            if (groups.getFirst().blocks().isEmpty()) return;
+            if (space.controlnet.ae2federation.client.WorldHighlight.brightness(playerDimension(), groups) > 0) {
+                space.controlnet.ae2federation.client.WorldHighlight.hide(playerDimension(), groups);
+            } else {
+                space.controlnet.ae2federation.client.WorldHighlight.show(playerDimension(), groups);
+            }
+            syncHighlight();
         });
+        highlight.addEventListener(UIEvents.TICK, event -> syncHighlight());
         unlink.setOnClick(event -> {
             if (selection.kind() != Kind.WIRE || !editable) return;
             setMapping.accept(new MappingWireTarget(selection.slot(), selection.endpoint(), false).encode());
@@ -195,6 +209,19 @@ public final class FederationProcessingGraph {
             if (selection.kind() == Kind.ENDPOINT && releasable(selection.endpoint())) release.run();
         });
         canvas.addEventListener(UIEvents.MOUSE_DOWN, this::pickWire);
+        // Any press or release elsewhere on the screen forgets the pressed row, so only its own press drags it.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_DOWN, event -> pressedRow = "", true);
+        ui.rootElement.addEventListener(UIEvents.MOUSE_UP, event -> pressedRow = "", true);
+        // A drag starts once the pressed pointer has moved a few pixels, wherever it now is, so a click still only
+        // selects and a quick move off the row still drags.
+        ui.rootElement.addEventListener(UIEvents.MOUSE_MOVE, event -> {
+            var port = ports.get(pressedRow);
+            if (!editable || port == null || !port.isMouseDown(0) || dragged() != null) return;
+            if (Math.abs(event.x - pressX) + Math.abs(event.y - pressY) < DRAG_THRESHOLD) return;
+            var slot = pressedRow;
+            pressedRow = "";
+            port.startDrag(new PortDrag(slot), null);
+        }, true);
     }
 
     UIElement root() {
@@ -204,7 +231,6 @@ public final class FederationProcessingGraph {
     /** Puts real item slots into the pattern rows, one per slot index; every slot then gets a row. */
     void setSlotElements(java.util.function.IntFunction<UIElement> elements) {
         slotElements = elements;
-        legend(legend, true);
     }
 
     /**
@@ -253,27 +279,8 @@ public final class FederationProcessingGraph {
         networkBlocks = source;
     }
 
-    /** The legend's lines: the many-to-many rule, the one-owner rule, and on the Provider screen its dashed cards. */
-    private static List<Component> legendLines(boolean providerScreen) {
-        var lines = new ArrayList<Component>();
-        lines.add(tr("legend"));
-        lines.add(tr("legend_owner").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
-        // Only the Provider screen draws other Providers' Endpoints as dashed, read-only cards.
-        if (providerScreen) lines.add(tr("legend_readonly"));
-        return lines;
-    }
-
-    /** The boxed legend in the canvas corner: the many-to-many rule, then the one-owner rule in warning yellow. */
-    private static void legend(Label legend, boolean providerScreen) {
-        var lines = legendLines(providerScreen);
-        var text = Component.empty();
-        for (int line = 0; line < lines.size(); line++) text.append(line == 0 ? Component.empty() : Component.literal("\n")).append(lines.get(line));
-        legend.setText(text);
-        legend.layout(style -> style.height(lines.size() * 10 + 2));
-        legend.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
-            pen.rect(x, y, width, height, 0xff47434f);
-            pen.rect(x + 1, y + 1, width - 2, height - 2, 0xeb17141e);
-        })));
+    void onEndpointEnergy(Consumer<String> sender) {
+        setEndpointEnergy = sender;
     }
 
     void setEditable(boolean value) {
@@ -563,20 +570,22 @@ public final class FederationProcessingGraph {
         port.style(style -> style.backgroundTexture(FederationTheme.painted((pen, x, y, width, height) -> {
             boolean dragged = id.equals(hintSlot);
             round(pen, x + width + 2, y + height / 2, PORT, wireAccent, dragged ? FederationTheme.DARK_TITLE : PORT_FILL);
-        })).tooltips(tr("port_help")));
-        // A drag starts when the pressed pointer leaves the port, as LDLib2 drag sources do.
-        port.addEventListener(UIEvents.MOUSE_LEAVE, event -> {
-            if (editable && port.isMouseDown(0)) port.startDrag(new PortDrag(id), null);
-        }, true);
-        row.style(style -> style.backgroundTexture(rowFace(id)).tooltips(tr("pattern_help")));
+        })));
+        row.style(style -> style.backgroundTexture(rowFace(id)));
         // Selecting a pattern is the click way to map it: then click an Endpoint and "Map".
         row.addEventListener(UIEvents.MOUSE_DOWN, event -> {
             patternPressed = true;
             selection = new Selection(Kind.PATTERN, id, "");
             rejection = Component.empty();
             render();
+            // The whole row drags its wire, except the item slot, whose clicks belong to the pattern in it.
+            boolean onSlot = event.target instanceof com.lowdragmc.lowdraglib2.gui.ui.elements.ItemSlot;
+            pressedRow = event.button == 0 && !onSlot ? id : "";
+            pressX = event.x;
+            pressY = event.y;
             passSlotClick(event);
         });
+
         ports.put(id, port);
         return row;
     }
@@ -892,14 +901,14 @@ public final class FederationProcessingGraph {
                     : Component.literal("#" + selection.slot() + " ").append(patternName.apply(slot)),
                     endpoint == null ? Component.literal(selection.endpoint()) : endpointName(endpoint)));
             if (endpoint != null) {
-                fact("ownership", tr("ownership", providerPosition.isEmpty() ? "-" : providerPosition,
-                        endpoint.has("claimEpoch") ? endpoint.get("claimEpoch").getAsLong() : 0L));
+                fact("ownership", tr("ownership", providerPosition.isEmpty() ? "-" : providerPosition));
             }
             // Measured per lane: every pattern mapped to this Endpoint shares the Provider's channel to it.
-            long sent = laneAmount(endpoint, "laneSent");
-            long returned = laneAmount(endpoint, "laneReturned");
-            fact("lane", sent == 0 && returned == 0 ? tr("lane_idle")
-                    : tr("lane_flow", sent, returned).withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
+            boolean sent = laneMoved(endpoint, "laneSent");
+            boolean returned = laneMoved(endpoint, "laneReturned");
+            fact("lane", !sent && !returned ? tr("lane_idle")
+                    : tr("lane_flow", laneAmounts(endpoint, "laneSent"), laneAmounts(endpoint, "laneReturned"))
+                            .withStyle(Style.EMPTY.withColor(FederationTheme.TEAL & 0xffffff)));
             boolean confirmed = wires.contains(new Wire(selection.slot(), selection.endpoint()));
             fact("state", !confirmed ? tr("wire_pending").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff))
                     : endpoint != null ? subnet(endpoint) : Component.empty());
@@ -919,7 +928,6 @@ public final class FederationProcessingGraph {
                 fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
-                if (endpoint.has("claimEpoch")) fact("claim", tr("claim_epoch", endpoint.get("claimEpoch").getAsLong()));
                 var mapped = wires.stream().filter(value -> value.endpoint().equals(selection.endpoint()))
                         .map(value -> "#" + value.slot()).toList();
                 if (!shownOnly) fact("mapped", Component.literal(mapped.isEmpty() ? "-" : String.join(", ", mapped)));
@@ -933,7 +941,20 @@ public final class FederationProcessingGraph {
                 }
                 if (endpoint.has("returnKinds")) fact("returns", returnKinds(endpoint) == 0 ? tr("returns_empty")
                         : tr("returns_waiting", returnKinds(endpoint)).withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff)));
-                if (!shownOnly) fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
+                // In use by this Provider is what the owner row already says.
+                if (!shownOnly && claim != Claim.IN_USE) fact("state", tr("claim." + claim.code() + ".detail").withStyle(Style.EMPTY.withColor(claim.color() & 0xffffff)));
+                // Another Provider's Endpoint shows its switch locked, as its other facts are read-only.
+                if (setEndpointEnergy != null && endpoint.has("energyTarget")) {
+                    boolean active = editable && !shownOnly;
+                    var shape = endpoint.get("energyTarget").getAsString() + endpoint.get("energy").getAsBoolean() + active;
+                    if (energySwitch == null || !shape.equals(energySwitchShape)) {
+                        energySwitch = FederationTopologyView.energySwitch(endpoint, active, setEndpointEnergy);
+                        energySwitchShape = shape;
+                    } else if (energySwitch.getParent() != null) {
+                        energySwitch.getParent().removeChild(energySwitch);
+                    }
+                    fact("energy", FederationTopologyView.energyState(endpoint)).addChild(energySwitch);
+                }
                 if (chosen != null) {
                     boolean wiredHere = wires.contains(new Wire(selection.slot(), selection.endpoint()));
                     var name = Component.literal("#" + selection.slot() + " ").append(patternName.apply(chosen));
@@ -949,10 +970,10 @@ public final class FederationProcessingGraph {
             var targets = wires.stream().filter(value -> value.slot().equals(selection.slot())).map(value -> endpoint(value.endpoint()))
                     .filter(java.util.Objects::nonNull).map(value -> endpointName(value).getString()).toList();
             fact("targets", Component.literal(targets.isEmpty() ? "-" : String.join(", ", targets)));
-            text.append(Component.literal(text.getString().isEmpty() ? "" : "\n")).append(tr("pattern_selected_help"));
         } else {
+            // With nothing selected the panel stays empty, unless there is nothing to wire yet.
             title.setText(Component.empty());
-            text.append(tr(slots.isEmpty() || endpoints.isEmpty() ? "empty_help" : "help"));
+            if (slots.isEmpty() || endpoints.isEmpty()) text.append(tr("empty_help"));
         }
         title.setDisplay(wire || endpointSelected || patternSelected);
         if (!rejection.getString().isEmpty()) {
@@ -979,7 +1000,8 @@ public final class FederationProcessingGraph {
         // With nothing selected the aside holds only the help, as in the design.
         highlight.setDisplay(selection.kind() != Kind.NONE);
         highlight.setText(Component.translatable(wire ? "ae2federation.ui.processing.highlight_ends"
-                : "ae2federation.ui.location.highlight"));
+                : endpointSelected ? "ae2federation.ui.location.highlight_endpoint"
+                : "ae2federation.ui.processing.highlight_provider"));
         unlink.setActive(editable && wire && wires.contains(new Wire(selection.slot(), selection.endpoint())));
         // Release only applies to an Endpoint this Provider holds with no patterns left on it.
         boolean releasable = endpointSelected && releasable(selection.endpoint());
@@ -1028,23 +1050,31 @@ public final class FederationProcessingGraph {
     }
 
     /** One row of the detail's facts table: a muted name and its value, which wraps. */
-    private void fact(String key, Component value) {
+    private UIElement fact(String key, Component value) {
+        var text = new Label();
+        text.setText(value);
+        return fact(key, text);
+    }
+
+    private UIElement fact(String key, Label text) {
         var row = new UIElement();
         row.addClass("processing-fact");
         row.setId("processing_fact_" + key);
         var name = new Label();
         name.addClass("processing-fact-name");
         name.setText(tr("fact." + key));
-        var text = new Label();
         text.addClass("processing-fact-value");
         text.setId("processing_fact_value_" + key);
-        text.setText(value);
         row.addChildren(name, text);
         facts.addChild(row);
+        return row;
     }
 
     private static Component subnet(JsonObject endpoint) {
         if (!endpoint.has("nodeReady")) return Component.literal("-");
+        if (endpoint.has("subnetAlone") && endpoint.get("subnetAlone").getAsBoolean()) {
+            return tr("subnet_alone").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff));
+        }
         boolean ready = endpoint.get("nodeReady").getAsBoolean();
         return tr(ready ? "subnet_ready" : "subnet_not_ready").withStyle(Style.EMPTY.withColor(
                 (ready ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff));
@@ -1077,6 +1107,20 @@ public final class FederationProcessingGraph {
         if (endpoint != null && endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(focus::add);
         if (selection.kind() != Kind.ENDPOINT) position(providerPosition).ifPresent(focus::add);
         return focus;
+    }
+
+    private List<space.controlnet.ae2federation.client.WorldHighlight.Group> focusGroups() {
+        return List.of(new space.controlnet.ae2federation.client.WorldHighlight.Group(focusMarks(), FederationTheme.SELECT));
+    }
+
+    /** The button reads as pressed exactly while the selection's outline runs, which ends on its own after a while. */
+    private void syncHighlight() {
+        var groups = focusGroups();
+        boolean on = !groups.getFirst().blocks().isEmpty()
+                && space.controlnet.ae2federation.client.WorldHighlight.brightness(playerDimension(), groups) > 0;
+        if (on == highlight.hasClass("selected")) return;
+        if (on) highlight.addClass("selected");
+        else highlight.removeClass("selected");
     }
 
     private static java.util.Optional<BlockMarks.Mark> position(String value) {
@@ -1132,8 +1176,30 @@ public final class FederationProcessingGraph {
         return null;
     }
 
-    private static long laneAmount(JsonObject endpoint, String field) {
-        return endpoint != null && endpoint.has(field) ? endpoint.get(field).getAsLong() : 0L;
+    private static boolean laneMoved(JsonObject endpoint, String field) {
+        return endpoint != null && endpoint.has(field) && !endpoint.getAsJsonObject(field).isEmpty();
+    }
+
+    /** A lane's amounts over the flow window, one per resource type, each in that type's own unit. */
+    private static String laneAmounts(JsonObject endpoint, String field) {
+        if (!laneMoved(endpoint, field)) return "0";
+        var parts = new ArrayList<String>();
+        endpoint.getAsJsonObject(field).entrySet().forEach(entry -> {
+            long amount = entry.getValue().getAsLong();
+            parts.add(keyType(entry.getKey()).map(type -> type.formatAmount(amount, appeng.api.stacks.AmountFormat.FULL))
+                    .orElse(amount + " " + entry.getKey()));
+        });
+        return String.join(", ", parts);
+    }
+
+    private static java.util.Optional<appeng.api.stacks.AEKeyType> keyType(String id) {
+        var location = net.minecraft.resources.ResourceLocation.tryParse(id);
+        if (location == null) return java.util.Optional.empty();
+        try {
+            return java.util.Optional.of(appeng.api.stacks.AEKeyTypes.get(location));
+        } catch (IllegalArgumentException unknown) {
+            return java.util.Optional.empty();
+        }
     }
 
     private static Claim claim(JsonObject endpoint) {
@@ -1311,19 +1377,13 @@ public final class FederationProcessingGraph {
         Canvas() {
             setId("processing_canvas");
             layout(style -> style.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(7).paddingAll(6)
-                    .paddingLeft(8).paddingRight(9).paddingBottom(34));
+                    .paddingLeft(8).paddingRight(9));
         }
 
         /** Cards switch to drop hints when a drag starts and back to their claim when it ends. */
         @Override
         public void screenTick() {
             super.screenTick();
-            if (!legendMeasured) {
-                legendMeasured = true;
-                var font = net.minecraft.client.Minecraft.getInstance().font;
-                int width = legendLines(slotElements != null).stream().mapToInt(font::width).max().orElse(0);
-                legend.layout(style -> style.width(width + 10));
-            }
             if (refreshTicks-- <= 0) {
                 refreshTicks = THUMBNAIL_REFRESH_TICKS;
                 thumbnailRefresh.forEach(Runnable::run);
@@ -1365,8 +1425,8 @@ public final class FederationProcessingGraph {
                 var endpoint = endpoint(wire.endpoint());
                 if (ends == null) continue;
                 var path = curve(ends);
-                if (laneAmount(endpoint, "laneSent") > 0) dots += flowDots(context, path, phase, false, FederationTheme.TEAL);
-                if (laneAmount(endpoint, "laneReturned") > 0) dots += flowDots(context, path, phase, true, FederationTheme.OK);
+                if (laneMoved(endpoint, "laneSent")) dots += flowDots(context, path, phase, false, FederationTheme.TEAL);
+                if (laneMoved(endpoint, "laneReturned")) dots += flowDots(context, path, phase, true, FederationTheme.OK);
             }
             drawnWireDots = dots;
             pendingWires.forEach((wire, sent) -> {

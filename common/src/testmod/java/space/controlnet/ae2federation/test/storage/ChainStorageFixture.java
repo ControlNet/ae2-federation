@@ -19,7 +19,9 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
+import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.bridge.BridgeFixtures;
 
 public final class ChainStorageFixture implements AutoCloseable {
@@ -48,6 +50,11 @@ public final class ChainStorageFixture implements AutoCloseable {
         lineZ(2, 8, 5, 2, AEColor.BLUE);
         lineZ(2, 8, 5, 7, AEColor.GREEN);
         lineX(3, 6, 4, 7, AEColor.YELLOW);
+    }
+
+    /** Takes B's only cell out, so B has no storage of its own and can only pass A's on. */
+    public void emptyB() {
+        chest(B_CHEST).setCell(net.minecraft.world.item.ItemStack.EMPTY);
     }
 
     public boolean networksSettled() {
@@ -183,8 +190,23 @@ public final class ChainStorageFixture implements AutoCloseable {
         return new PolicyKey(consumer, provider, PolicyCapability.STORAGE);
     }
 
+    /**
+     * Switches off the rules a test configured, so the chain's networks, which reach past the test structure and stay
+     * in the level after it, leave no live relationship or storage listener for later tests.
+     */
     @Override
     public void close() {
-        fixtures.close();
+        try {
+            if (bridgesReady()) {
+                var policies = PolicyService.get(helper.getLevel());
+                for (var key : List.of(aToB(), aToC(), bToD(), cToD(), aToD(), bToA())) {
+                    policies.configured(key).filter(configured -> configured.rule().enabled())
+                            .ifPresent(configured -> policies.edit(new PolicyEdit(key, configured.revision(),
+                                    configured.rule().withEnabled(false))));
+                }
+            }
+        } finally {
+            fixtures.close();
+        }
     }
 }

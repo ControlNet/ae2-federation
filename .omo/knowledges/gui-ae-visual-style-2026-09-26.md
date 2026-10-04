@@ -1,5 +1,16 @@
 # AE-inspired visual theme, 2026-09-26
 
+> **Current state (2026-10-02):** Data Energistics is no longer a reference. Its gray-blue canvas palette was replaced
+> in the v2 redesign by a dark grid canvas (`FederationTheme.CANVAS` `#201E27`, `.domain-graph`). That canvas is
+> KilaGraph's node-editor look, not NeoECO's: NeoECO uses `#201E27` only as a progress-bar trough
+> (`.eco-host-stats-progress`) and dark only for small inset cards (`#2C2735` task cards, `BORDER_THICK_RT1` host
+> panels) inside a light frame. What is NeoECO in Federation: the light frame, buttons, hover/selected cyan, text
+> colours, accents and the dark inspector cards. Checked against NeoECO c33f736's `eco.lss`, `ComputationTaskCards`,
+> `NETextures` and GUI PNGs and the 2026-10-01 `ui.mapping` showcase screenshots. What remains in
+> `FederationTopologyView` (cursor-centred zoom, fit, picking a link by distance, selection emphasis) is ordinary
+> LDLib2 `GraphView` behaviour. Notes below and in `gui-ldlib2-reference-review-2026-09-26.md` that call Data
+> Energistics a graph reference are historical.
+
 The user explicitly emphasized NeoECO and Data Energistics as references for visual style, in addition to interaction ideas.
 Reviewed the existing local source snapshots and viewed NeoECO's background/button PNGs. NeoECO uses light gray-violet
 pixel bevels and centralized button/slot states (`NETextures`, `eco.lss`). Data Energistics' `CraftingPlanGraphPalette`

@@ -4,15 +4,22 @@ package space.controlnet.ae2federation.policy;
 public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, long topologyRevision) {
     public enum Reason {
         IDENTITY_UNCONFIRMED,
-        CRAFTING_PROVIDER_MISSING,
-        CRAFTING_CPU_MISSING,
-        CRAFTING_CYCLE,
+        /** A crafting rule without the REQUEST operation. */
+        CRAFTING_REQUEST_MISSING,
+        /** A crafting rule whose direction's storage rule is off: the CPU could not take the materials. */
+        CRAFTING_STORAGE_REQUIRED,
         POLICY_UNCONFIGURED,
         POLICY_DISABLED,
         NETWORK_PAIR_DISCONNECTED,
         BACKEND_UNREADY,
         DOMAIN_REFERENCE_MISSING,
-        ENERGY_CONNECTION_MISSING
+        ENERGY_CONNECTION_MISSING,
+        /** A storage rule whose operations and filters allow nothing. */
+        STORAGE_ACCESS_NONE,
+        /** The provider network has no storage it can share. */
+        STORAGE_SOURCE_EMPTY,
+        /** The level's storage relationships exceeded the dependency compiler's budget. */
+        STORAGE_COMPILE_BUDGET
     }
 
     public static Reason inactiveReason(PolicyActivationState state) {

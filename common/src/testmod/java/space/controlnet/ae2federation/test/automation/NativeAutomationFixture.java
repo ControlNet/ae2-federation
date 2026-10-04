@@ -21,7 +21,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -52,8 +52,14 @@ public final class NativeAutomationFixture implements AutoCloseable {
     }
 
     public boolean ready() {
-        if (!binding.ready()) {
-            return false;
+        return readiness().isEmpty();
+    }
+
+    /** The first readiness condition that does not hold yet, or empty once both rules work. */
+    public String readiness() {
+        var bindingWaiting = binding.readiness();
+        if (!bindingWaiting.isEmpty()) {
+            return "binding-" + bindingWaiting;
         }
         if (!authorized) {
             binding.enable();
@@ -63,11 +69,18 @@ public final class NativeAutomationFixture implements AutoCloseable {
             helper.assertTrue(result instanceof PolicyMutationResult.Accepted,
                     "Forward native Storage policy must be accepted");
             StorageMountService.get(helper.getLevel()).observeConnectedGrids(binding.consumerGrid(), binding.providerGrid());
+            CraftingProjectionService.get(helper.getLevel()).observeConnectedGrids(binding.consumerGrid(),
+                    binding.providerGrid());
             authorized = true;
-            return false;
+            return "authorizing";
         }
-        return CraftingBindingService.get(helper.getLevel()).capability(binding.key()).isPresent()
-                && StorageMountService.get(helper.getLevel()).projection(storageKey()) != null;
+        if (CraftingProjectionService.get(helper.getLevel()).projectionCount(binding.key()) == 0) {
+            return "projection:" + CraftingProjectionService.status(helper.getLevel(), binding.key());
+        }
+        if (StorageMountService.get(helper.getLevel()).projection(storageKey()) == null) {
+            return "storage:" + StorageMountService.status(helper.getLevel(), storageKey());
+        }
+        return "";
     }
 
     public InterfaceBlockEntity placeConsumerInterface(boolean second) {

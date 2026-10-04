@@ -390,9 +390,11 @@ final class TaskThirtyThreeWorldFixture {
     static boolean processingFlowObserved(ServerContext context) {
         var provider = provider(context);
         var lane = provider.laneFor(endpoint(context).endpointIdentity()).orElse(-1);
-        return lane >= 0 && space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level())
-                .laneFlow(new space.controlnet.ae2federation.observability.LevelObservabilityService.LaneKey(
-                        provider.providerIdentity().toString(), lane, false)).active();
+        if (lane < 0) return false;
+        var totals = new space.controlnet.ae2federation.observability.meter.LaneFlowTotals();
+        space.controlnet.ae2federation.observability.LevelObservabilityService.get(context.level())
+                .collectLaneFlow(provider.providerIdentity().toString(), lane, false, totals);
+        return totals.active();
     }
 
     static boolean endpointOwnedByProvider(ServerContext context) {
@@ -459,89 +461,53 @@ final class TaskThirtyThreeWorldFixture {
                 space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of())));
     }
 
-    static void observeUnavailableCraftingBackend(ServerContext context) {
-        var consumerGrid = provider(context).getMainNode().getGrid();
-        var providerGrid = endpoint(context).getMainNode().getGrid();
-        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid).orElseThrow();
-        var provider = FederationDomainRegistryAccess.confirmedNetworkId(providerGrid).orElseThrow();
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, provider,
-                space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING);
+    /** The provider host's network uses the Endpoint network's crafting, with the storage rule crafting needs. */
+    static void enableCraftingRule(ServerContext context) {
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
-        policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
+        var crafting = craftingKey(context);
+        setCraftingStorage(context, true);
+        var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(crafting, policies.revision(crafting),
                 space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of(
                         space.controlnet.ae2federation.policy.PolicyOperation.REQUEST))));
-        var bindings = space.controlnet.ae2federation.crafting.binding.CraftingBindingService.get(context.level());
-        bindings.observeConnectedGrids(consumerGrid, providerGrid);
-        var diagnostic = space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(context.level(), key).orElseThrow();
-        require(diagnostic.reason() == space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_PROVIDER_MISSING,
-                "Actual native backend must report its missing crafting provider");
-        for (int i = 0; i < 100; i++) {
-            require(space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(context.level(), key)
-                    .orElseThrow() == diagnostic, "Diagnostic reads must preserve the recorded observation");
-        }
+        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                "Crafting policy edit must be accepted");
+        require(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(context.level(), crafting)
+                .map(status -> status.active()).orElse(false), "An enabled crafting rule with its storage rule must be active");
     }
 
-    static void placeNativeCraftingProvider(ServerContext context) {
-        var position = state(context).endpointPosition().east(4);
-        require(context.level().isEmptyBlock(position), "Native crafting fixture position must be empty");
-        context.put("crafting.nativeProviderPosition", position);
-        context.level().setBlockAndUpdate(position, appeng.core.definitions.AEBlocks.PATTERN_PROVIDER.block().defaultBlockState());
-        var provider = (appeng.blockentity.crafting.PatternProviderBlockEntity) context.level().getBlockEntity(position);
-        var network = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        provider.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
+    /** Sets the crafting direction's storage rule through the policy service, which links no other rule. */
+    static void setCraftingStorage(ServerContext context, boolean enabled) {
+        var crafting = craftingKey(context);
+        var storage = new space.controlnet.ae2federation.policy.PolicyKey(crafting.consumerNetworkId(),
+                crafting.providerNetworkId(), space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+        var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+        var current = policies.configured(storage).map(record -> record.rule())
+                .orElseGet(space.controlnet.ae2federation.policy.PolicyRule::storageDefaults);
+        if (policies.configured(storage).isPresent() && current.enabled() == enabled) return;
+        var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(storage, policies.revision(storage),
+                current.withEnabled(enabled)));
+        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                "Storage policy edit must be accepted");
     }
 
-    static boolean nativeProviderHasNoCpu(ServerContext context) {
-        var position = context.<BlockPos>get("crafting.nativeProviderPosition");
-        var nativeProvider = (appeng.blockentity.crafting.PatternProviderBlockEntity) context.level().getBlockEntity(position);
-        if (nativeProvider == null || nativeProvider.getMainNode().getNode() == null) return false;
-        var node = nativeProvider.getMainNode().getNode();
-        var targetGrid = endpoint(context).getMainNode().getGrid();
-        if (node.getGrid() != targetGrid) {
-            GridHelper.createConnection(node, endpoint(context).getMainNode().getNode());
-            return false;
-        }
-        if (!node.isActive() || !node.hasGridBooted()) return false;
-        var consumerGrid = provider(context).getMainNode().getGrid();
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(
-                FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid).orElseThrow(),
-                FederationDomainRegistryAccess.confirmedNetworkId(targetGrid).orElseThrow(),
-                space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING);
-        var bindings = space.controlnet.ae2federation.crafting.binding.CraftingBindingService.get(context.level());
-        bindings.observeConnectedGrids(consumerGrid, targetGrid);
-        return space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(context.level(), key)
-                .filter(diagnostic -> diagnostic.reason() == space.controlnet.ae2federation.policy.BindingDiagnostic.Reason.CRAFTING_CPU_MISSING)
-                .isPresent();
-    }
-
-    static void setReverseCraftingRule(ServerContext context, boolean enabled) {
+    private static space.controlnet.ae2federation.policy.PolicyKey craftingKey(ServerContext context) {
         var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
         var target = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(target, consumer,
+        return new space.controlnet.ae2federation.policy.PolicyKey(consumer, target,
                 space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING);
-        var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
-        var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
-                space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of(
-                        space.controlnet.ae2federation.policy.PolicyOperation.REQUEST)).withEnabled(enabled)));
-        require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
-                "Reverse crafting policy edit must be accepted");
     }
 
     static void disableObservedCraftingRule(ServerContext context) {
-        var consumer = FederationDomainRegistryAccess.confirmedNetworkId(provider(context).getMainNode().getGrid()).orElseThrow();
-        var target = FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid()).orElseThrow();
-        var key = new space.controlnet.ae2federation.policy.PolicyKey(consumer, target,
-                space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING);
-        var before = space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(context.level(), key).orElseThrow();
+        var key = craftingKey(context);
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
         var result = policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(key, policies.revision(key),
                 policies.configured(key).orElseThrow().rule().withEnabled(false)));
         require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
                 "Observed crafting rule must accept a new disabled revision");
-        require(!before.matches(policies.revision(key), FederationDomainRegistryAccess.get(context.level()).snapshot().topologyRevision()),
-                "Previous backend observation must not match the actual new policy revision");
-        require(space.controlnet.ae2federation.crafting.binding.CraftingBindingService.lastDiagnostic(context.level(), key).isEmpty(),
-                "Disabled rule must not retain its prior backend failure");
+        require(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.get(context.level())
+                .projectionCount(key) == 0, "A disabled crafting rule must project nothing");
+        require(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(context.level(), key)
+                .map(status -> !status.active()).orElse(true), "A disabled crafting rule must not read as active");
         context.put("runtime.disabledRevision", policies.revision(key).value());
         context.put("runtime.disabledKey", key);
     }
@@ -659,6 +625,10 @@ final class TaskThirtyThreeWorldFixture {
                 && endpoint(context).claimState() instanceof space.controlnet.ae2federation.processing.claim.ClaimState.Owned;
     }
 
+    static boolean endpointSharesEnergy(ServerContext context) {
+        return endpoint(context).shareEnergy();
+    }
+
     static boolean endpointClaimedByHost(ServerContext context) {
         return endpoint(context).claimState().owner()
                 .filter(owner -> owner.provider().equals(provider(context).providerIdentity())).isPresent();
@@ -684,10 +654,6 @@ final class TaskThirtyThreeWorldFixture {
     static String endpointNativeNetwork(ServerContext context) {
         return FederationDomainRegistryAccess.confirmedNetworkId(endpoint(context).getMainNode().getGrid())
                 .orElseThrow().value().toString();
-    }
-
-    static long providerInstanceEpoch(ServerContext context) {
-        return provider(context).providerIdentity().instanceEpoch().value();
     }
 
     static void positionRouterOverviewCamera(ServerContext context) {
@@ -1075,8 +1041,6 @@ final class TaskThirtyThreeWorldFixture {
         if (state == null) {
             return;
         }
-        var nativeProvider = context.<BlockPos>get("crafting.nativeProviderPosition");
-        if (nativeProvider != null) context.level().setBlockAndUpdate(nativeProvider, Blocks.AIR.defaultBlockState());
         var isolatedEndpoint = context.<BlockPos>get("endpoint.isolatedPosition");
         if (isolatedEndpoint != null) {
             context.level().setBlockAndUpdate(isolatedEndpoint, Blocks.AIR.defaultBlockState());

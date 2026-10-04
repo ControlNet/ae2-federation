@@ -169,8 +169,11 @@ public final class LevelObservabilityService implements AutoCloseable {
         lastPairWindow.record(level.getGameTime(), amount);
     }
 
-    /** One Provider lane (the channel to one Endpoint); {@code provider} is the Provider identity's string form. */
-    public record LaneKey(String provider, int lane, boolean returned) {
+    /**
+     * One Provider lane (the channel to one Endpoint) in one direction, for one resource type: {@code provider} is the
+     * Provider identity's string form and {@code keyType} the AE key type id, so item counts and fluid volumes stay apart.
+     */
+    public record LaneKey(String provider, int lane, boolean returned, String keyType) {
     }
 
     /** Records what one lane actually delivered to its Endpoint, or what the Endpoint returned through it. */
@@ -180,12 +183,19 @@ public final class LevelObservabilityService implements AutoCloseable {
                 PAIR_FLOW_WINDOW_TICKS)).record(level.getGameTime(), amount);
     }
 
-    public space.controlnet.ae2federation.observability.meter.PairFlowWindow.Summary laneFlow(LaneKey key) {
-        var window = laneFlows.get(key);
-        if (window == null) return space.controlnet.ae2federation.observability.meter.PairFlowWindow.Summary.NONE;
-        var summary = window.summarize(level.getGameTime());
-        if (!summary.active()) laneFlows.remove(key);
-        return summary;
+    /** Adds what one lane moved in one direction over the flow window, by resource type, to {@code totals}. */
+    public void collectLaneFlow(String provider, int lane, boolean returned,
+            space.controlnet.ae2federation.observability.meter.LaneFlowTotals totals) {
+        var now = level.getGameTime();
+        var entries = laneFlows.entrySet().iterator();
+        while (entries.hasNext()) {
+            var entry = entries.next();
+            var key = entry.getKey();
+            if (key.lane() != lane || key.returned() != returned || !key.provider().equals(provider)) continue;
+            var summary = entry.getValue().summarize(now);
+            if (summary.active()) totals.add(key.keyType(), summary);
+            else entries.remove();
+        }
     }
 
     public space.controlnet.ae2federation.observability.meter.PairFlowWindow.Summary pairFlow(

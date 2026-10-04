@@ -47,37 +47,36 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final FederationPort routerFederationDomainPort;
     private final IManagedGridNode boundaryNode;
     private final FederationEnergyConnection energyConnection;
-    private final space.controlnet.ae2federation.crafting.remote.RemoteCraftingRequester craftingRequester;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
     private boolean dirty = true;
     private boolean nodeLoaded;
+    private boolean facesFederationPort;
 
-    /** @param changed marks the Router for saving, for the Crafting jobs this face's Grid runs for consumers */
-    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
-            Runnable changed) {
+    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort) {
         this.routerPosition = routerPosition.immutable();
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
         energyConnection = new FederationEnergyConnection();
-        craftingRequester = new space.controlnet.ae2federation.crafting.remote.RemoteCraftingRequester(
-                "ae2federation_crafting_face_" + face.getSerializedName(), this::node, changed);
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
                 .setIdlePowerUsage(0.0)
                 .setFlags(GridFlags.CANNOT_CARRY)
                 .setExposedOnSides(EnumSet.of(face))
-                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection)
-                .addService(appeng.api.networking.crafting.ICraftingRequester.class, craftingRequester);
+                .addService(appeng.me.energy.IEnergyOverlayGridConnection.class, energyConnection);
         energyConnection.bind(this, boundaryNode);
     }
 
     public void initialize(ServerLevel serverLevel) {
         level = serverLevel;
         var neighborPosition = routerPosition.relative(face);
-        var neighbor = serverLevel.isLoaded(neighborPosition)
+        var loaded = serverLevel.isLoaded(neighborPosition);
+        // Decided before the node exists, so two Routers placed face to face never join their faces for a tick.
+        hideNodeIfFederation(loaded && reciprocal(
+                serverLevel.getCapability(FederationPortCapability.BLOCK, neighborPosition, face.getOpposite())));
+        var neighbor = loaded && !facesFederationPort
                 ? GridHelper.getExposedNode(serverLevel, neighborPosition, face.getOpposite())
                 : null;
         if (!nodeLoaded && neighbor != null) {
@@ -146,13 +145,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
 
     public void loadFromNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         nodeLoaded = tag.contains("face_" + face.getSerializedName());
-        craftingRequester.readFromNBT(tag, registries);
         boundaryNode.loadFromNBT(tag);
     }
 
     public void saveToNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         boundaryNode.saveToNBT(tag);
-        craftingRequester.writeToNBT(tag, registries);
     }
 
     private RouterPortBinding resolve() {
@@ -164,16 +161,34 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         if (node == null) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
-        var nativeAttachment = NativeAttachmentResolver.resolve(level, routerPosition, face, node);
         var federationPort = federationCache.getCapability();
-        var validFederationPort = federationPort != null
-                && federationPort.ownerPosition().equals(neighborPosition)
-                && federationPort.outwardFace() == face.getOpposite()
-                && routerFederationDomainPort.connectsTo(federationPort);
+        var validFederationPort = reciprocal(federationPort);
+        // Hiding or showing the node updates its connections at once, so the native check below sees the result.
+        hideNodeIfFederation(validFederationPort);
+        var nativeAttachment = NativeAttachmentResolver.resolve(level, routerPosition, face, node);
         if (nativeAttachment.isPresent() == validFederationPort) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
         return nativeAttachment.<RouterPortBinding>map(RouterPortBinding.Native::new)
                 .orElseGet(() -> new RouterPortBinding.Federation(federationPort));
+    }
+
+    private boolean reciprocal(@Nullable FederationPort port) {
+        return port != null && port.ownerPosition().equals(routerPosition.relative(face))
+                && port.outwardFace() == face.getOpposite() && routerFederationDomainPort.connectsTo(port);
+    }
+
+    /**
+     * A face that touches a Federation port links through that port only, so its node is not exposed on the face.
+     * Another Router's face exposes a boundary node too: left exposed, AE2 would join the two into a native Grid of
+     * their own, and the face would count as native and Federation at once and stay disconnected. Once the port goes,
+     * the node is exposed again and connects to whatever native neighbour is there.
+     */
+    private void hideNodeIfFederation(boolean federation) {
+        if (federation == facesFederationPort) {
+            return;
+        }
+        facesFederationPort = federation;
+        boundaryNode.setExposedOnSides(federation ? EnumSet.noneOf(Direction.class) : EnumSet.of(face));
     }
 }

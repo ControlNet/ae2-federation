@@ -33,11 +33,14 @@ public final class StorageSubscriptionBoundaryGameTest {
         var phase = new int[1];
         var before = new long[2];
         var repair = new long[7];
+        var baseline = new int[1];
         var traceReceipt = new NativeCallbackTrace[1];
         helper.succeedWhen(() -> {
             helper.assertTrue(fixture.ready(), "Waiting for snapshot-race relationship");
             var mounts = fixture.mounts();
             if (phase[0] == 0) {
+                // Listeners of other networks still standing in the shared level are not this relationship's.
+                baseline[0] = mounts.activeSubscriptionCount();
                 fixture.configure(PolicyRule.storageDefaults());
                 before[0] = mounts.subscriptionSnapshotVersion(fixture.key());
                 before[1] = mounts.subscriptionEventVersion(fixture.key());
@@ -82,7 +85,9 @@ public final class StorageSubscriptionBoundaryGameTest {
                 helper.assertTrue(false, "Waiting to verify overflow retirement");
             }
             if (phase[0] == 2) {
-                helper.assertValueEqual(mounts.activeSubscriptionCount(), 0,
+                helper.assertValueEqual(mounts.activeSubscriptionCount(), baseline[0],
+                        "Snapshot overflow must retire the exact listener");
+                helper.assertValueEqual(mounts.subscriptionRegistrationId(fixture.key()), 0L,
                         "Snapshot overflow must retire the exact listener");
                 helper.assertValueEqual(mounts.subscriptionRemovalCount(), (int) repair[3] + 1,
                         "Snapshot overflow must produce one listener removal receipt");
@@ -94,7 +99,7 @@ public final class StorageSubscriptionBoundaryGameTest {
                 repair[4] = mounts.subscriptionRegistrationId(fixture.key());
                 helper.assertTrue(repair[4] != 0 && repair[4] != repair[2],
                         "Same-plan reconciliation must install a fresh listener after overflow");
-                helper.assertValueEqual(mounts.activeSubscriptionCount(), 1,
+                helper.assertValueEqual(mounts.activeSubscriptionCount(), baseline[0] + 1,
                         "Same-plan reconciliation must recover one active listener");
                 repair[5] = mounts.sourceEventCount();
                 fixture.source().insert(IRON, 1, Actionable.MODULATE, ACTION_SOURCE);

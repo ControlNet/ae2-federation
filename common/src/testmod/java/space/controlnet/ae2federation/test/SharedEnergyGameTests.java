@@ -5,6 +5,7 @@ import java.util.TreeMap;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.test.energy.AdjacentRouterEnergyFixture;
 import space.controlnet.ae2federation.test.energy.LargeSharedEnergyProof;
 import space.controlnet.ae2federation.test.energy.RingEnergyFixture;
 import space.controlnet.ae2federation.test.energy.SharedEnergyEvidence;
@@ -223,6 +224,52 @@ public final class SharedEnergyGameTests {
                     "Switching sharing on must enable only the named rule");
             helper.assertValueEqual(fixture.extract(100), 100.0, "The pair must share again");
             helper.succeed();
+        });
+    }
+
+    /**
+     * Two Routers placed face to face carry shared ME power with no Federation Cable between them: the consumer draws on
+     * the provider's cell, and removing one Router splits the pool at once.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void energyAdjacentRouters(GameTestHelper helper) {
+        var fixture = new AdjacentRouterEnergyFixture(helper);
+        var phase = new int[1];
+        var facts = new TreeMap<String, String>();
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(fixture.ready(), "Waiting for the adjacent Routers to link");
+                fixture.chargeProvider(1_000);
+                fixture.enable();
+                var before = fixture.providerStored();
+                var accepted = fixture.extractFromConsumer(250);
+                var after = fixture.providerStored();
+                helper.assertTrue(fixture.routersLinked(), "The touching Router faces must link with no native edge");
+                helper.assertTrue(fixture.shares(), "The ME power rule must share across the adjacent Routers");
+                helper.assertValueEqual(accepted, 250.0, "The consumer must draw on the provider's cell");
+                helper.assertValueEqual(before - after, accepted, "The provider's debit must equal the draw");
+                helper.assertTrue(fixture.consumerGrid() != fixture.providerGrid(), "The native Grids must stay distinct");
+                facts.put("routersLinked", "true");
+                facts.put("sharedWhileLinked", "true");
+                facts.put("initialTransfer", number(accepted));
+                facts.put("providerDebit", number(before - after));
+                facts.put("distinctGrids", "true");
+                fixture.removeProviderRouter();
+                phase[0] = 1;
+                helper.assertTrue(false, "Waiting for the pool to split");
+            }
+            helper.assertTrue(!fixture.shares(), "Removing a Router must stop the sharing");
+            // Measured around the draw itself: the provider's own devices keep using their idle power.
+            var providerBefore = fixture.providerStored();
+            var extracted = fixture.extractFromConsumer(100);
+            helper.assertValueEqual(extracted, 0.0, "The split consumer must draw nothing");
+            helper.assertValueEqual(fixture.providerStored(), providerBefore,
+                    "The split consumer's draw must not reach the provider's cell");
+            facts.put("sharedAfterRemoval", "false");
+            facts.put("extractedAfterRemoval", number(extracted));
+            SharedEnergyEvidence.write("energyadjacentrouters", 8, facts);
+            fixture.close();
         });
     }
 

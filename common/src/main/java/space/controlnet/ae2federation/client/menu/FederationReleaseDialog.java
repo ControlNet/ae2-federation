@@ -62,7 +62,7 @@ final class FederationReleaseDialog {
         var body = new Label();
         body.setId("release_consequence");
         body.setText(FederationWorkspace.tr("release_consequence", prepared.get("position").getAsString(),
-                prepared.get("endpoint").getAsString(), prepared.get("epoch").getAsLong()));
+                prepared.get("endpoint").getAsString()));
         body.textStyle(style -> style.fontSize(8).textWrap(TextWrap.WRAP).adaptiveHeight(true));
         body.layout(style -> style.widthPercent(100));
         dialog.addContent(body);

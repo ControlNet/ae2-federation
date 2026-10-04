@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:pattern_provider"
+    },
+    {
+      "item": "ae2federation:federation_logic_processor"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2federation:pattern_provider"
+  }
+}

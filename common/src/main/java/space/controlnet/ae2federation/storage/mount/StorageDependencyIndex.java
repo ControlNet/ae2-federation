@@ -5,8 +5,9 @@ import appeng.api.networking.IGridNode;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.ae2.storage.StorageProvenanceException;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
@@ -14,6 +15,7 @@ import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.policy.BackendStatus;
+import space.controlnet.ae2federation.policy.BindingDiagnostic;
 import space.controlnet.ae2federation.policy.PolicyActivationState;
 import space.controlnet.ae2federation.policy.PolicyKey;
 import space.controlnet.ae2federation.policy.PolicyRecord;
@@ -43,6 +45,9 @@ final class StorageDependencyIndex {
     private Map<PolicyKey, StorageRelationship> directRelationships = Map.of();
     private Map<OriginNetworkId, NativeSourceDomain> domains = Map.of();
     private Map<PolicyKey, ProvenanceDiagnostic> diagnostics = Map.of();
+    private Map<PolicyKey, BindingDiagnostic.Reason> reasons = Map.of();
+    private Map<NetworkId, Integer> skippedSources = Map.of();
+    private Set<NetworkId> loadedNetworks = Set.of();
     private DependencyCompilation compilation = new DependencyCompilation(Map.of(), 0, 0);
     private long compilationRevision;
     private long refreshCount;
@@ -60,28 +65,48 @@ final class StorageDependencyIndex {
         directRelationships = federationDomains.relationships();
         var nextDomains = new HashMap<OriginNetworkId, NativeSourceDomain>();
         var nextDiagnostics = new HashMap<PolicyKey, ProvenanceDiagnostic>();
-        for (var entry : federationDomains.loadedGrids().entrySet()) {
+        var sourceStates = new HashMap<NetworkId, StorageRuleReason.Source>();
+        var nextSkipped = new HashMap<NetworkId, Integer>();
+        var loaded = federationDomains.loadedGrids();
+        loadedNetworks = Set.copyOf(loaded.keySet());
+        for (var entry : loaded.entrySet()) {
             try {
                 var domain = provenance.discover(entry.getValue());
-                if (!domain.sources().isEmpty() && ready(domain)) {
+                var state = domain.sources().isEmpty() ? StorageRuleReason.Source.EMPTY
+                        : ready(domain) ? StorageRuleReason.Source.READY : StorageRuleReason.Source.UNREADY;
+                sourceStates.put(entry.getKey(), state);
+                if (state == StorageRuleReason.Source.READY) {
                     nextDomains.put(domain.origin(), domain);
                 }
+                if (!domain.skipped().isEmpty()) {
+                    // The rest of the network's storage is shared; the skipped handles are reported, never exported.
+                    nextSkipped.put(entry.getKey(), domain.skipped().size());
+                    var diagnostic = domain.skipped().getFirst().diagnostic();
+                    directRelationships.values().stream()
+                            .filter(relationship -> relationship.key().providerNetworkId().equals(entry.getKey()))
+                            .forEach(relationship -> nextDiagnostics.put(relationship.key(), diagnostic));
+                }
             } catch (ProvenanceException exception) {
+                sourceStates.put(entry.getKey(), StorageRuleReason.Source.REJECTED);
                 directRelationships.values().stream()
                         .filter(relationship -> relationship.key().providerNetworkId().equals(entry.getKey()))
                         .forEach(relationship -> nextDiagnostics.put(relationship.key(), exception.diagnostic()));
-            } catch (StorageProvenanceException exception) {
             }
         }
         domains = Map.copyOf(nextDomains);
         diagnostics = Map.copyOf(nextDiagnostics);
+        skippedSources = Map.copyOf(nextSkipped);
         var policies = PolicyService.get(level);
         var dependencies = new HashSet<DirectStorageDependency>();
+        var enabled = new HashMap<StorageRelationship, PolicyRecord.Configured>();
         for (var relationship : directRelationships.values()) {
             var configured = policies.configured(relationship.key()).orElse(null);
+            if (configured == null || !configured.rule().enabled()) {
+                continue;
+            }
+            enabled.put(relationship, configured);
             var references = federationDomains.references(relationship);
-            if (configured != null && configured.rule().enabled() && !references.isEmpty()
-                    && directActive(policies, relationship)) {
+            if (!references.isEmpty() && directActive(policies, relationship)) {
                 dependencies.add(new DirectStorageDependency(relationship.key(), configured.revision(),
                         configured.rule(), references));
             }
@@ -89,11 +114,37 @@ final class StorageDependencyIndex {
         var sources = domains.values().stream()
                 .map(domain -> new NativeSourceCandidate(domain.origin(), domain.generation()))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        var compileFailed = false;
         try {
             compilation = compiler.compile(sources, dependencies, federationDomains.topologyRevision(), ++compilationRevision);
         } catch (DependencyCompileException exception) {
             compilation = new DependencyCompilation(Map.of(), 0, 0);
+            compileFailed = true;
         }
+        var nextReasons = new HashMap<PolicyKey, BindingDiagnostic.Reason>();
+        for (var entry : enabled.entrySet()) {
+            var relationship = entry.getKey();
+            StorageRuleReason.classify(activation(policies, relationship, FederationDomainRegistryAccess.get(level)),
+                    federationDomains.references(relationship).isEmpty(),
+                    EffectiveStorageAuthority.from(entry.getValue().rule()).isEmpty(),
+                    sourceStates.getOrDefault(relationship.key().providerNetworkId(), StorageRuleReason.Source.EMPTY),
+                    compileFailed).ifPresent(reason -> nextReasons.put(relationship.key(), reason));
+        }
+        reasons = Map.copyOf(nextReasons);
+    }
+
+    /**
+     * Why {@code key}'s enabled storage rule shares nothing, as of the last refresh. A rule the refresh never paired
+     * has a network that is not loaded or not settled, or two loaded networks that share no Federation Domain.
+     */
+    Optional<BindingDiagnostic.Reason> reason(PolicyKey key) {
+        if (directRelationships.containsKey(key)) {
+            return Optional.ofNullable(reasons.get(key));
+        }
+        if (!loadedNetworks.contains(key.consumerNetworkId()) || !loadedNetworks.contains(key.providerNetworkId())) {
+            return Optional.of(BindingDiagnostic.Reason.IDENTITY_UNCONFIRMED);
+        }
+        return Optional.of(BindingDiagnostic.Reason.NETWORK_PAIR_DISCONNECTED);
     }
 
     Map<EffectiveSourceRelationshipKey, EffectiveSourceRelationship> relationships() {
@@ -131,6 +182,11 @@ final class StorageDependencyIndex {
 
     ProvenanceDiagnostic diagnostic(PolicyKey key) {
         return diagnostics.get(key);
+    }
+
+    /** The provider network's mounted handles left out of its domain at the last refresh. */
+    int skippedSources(PolicyKey key) {
+        return skippedSources.getOrDefault(key.providerNetworkId(), 0);
     }
 
     boolean current(EffectiveSourceRelationship relationship, NativeSourceDomain domain) {
@@ -307,7 +363,7 @@ final class StorageDependencyIndex {
             // separate scan of the same nodes would repeat that.
             var grid = domain.runtimeGrid();
             return (check != null ? provenance.discover(grid, check.probe) : provenance.discover(grid)) == domain;
-        } catch (ProvenanceException | StorageProvenanceException exception) {
+        } catch (ProvenanceException exception) {
             return false;
         }
     }
@@ -317,6 +373,9 @@ final class StorageDependencyIndex {
         directRelationships = Map.of();
         domains = Map.of();
         diagnostics = Map.of();
+        reasons = Map.of();
+        skippedSources = Map.of();
+        loadedNetworks = Set.of();
         compilation = new DependencyCompilation(Map.of(), 0, 0);
     }
 
@@ -326,8 +385,13 @@ final class StorageDependencyIndex {
 
     private static boolean directActive(PolicyService policies, StorageRelationship relationship,
             FederationDomainRegistry registry) {
+        return activation(policies, relationship, registry) == PolicyActivationState.ACTIVE;
+    }
+
+    private static PolicyActivationState activation(PolicyService policies, StorageRelationship relationship,
+            FederationDomainRegistry registry) {
         return policies.activation(relationship.key(), new PolicyRuntimeEndpoints(relationship.consumerGrid(),
-                relationship.providerGrid(), BackendStatus.READY), registry) == PolicyActivationState.ACTIVE;
+                relationship.providerGrid(), BackendStatus.READY), registry);
     }
 
     /**

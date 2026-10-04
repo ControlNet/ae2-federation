@@ -74,7 +74,7 @@ public final class PairFlowWindow {
         while (!buckets.isEmpty() && buckets.peekFirst().tick <= now - windowTicks) buckets.removeFirst();
     }
 
-    private static long saturatedAdd(long left, long right) {
+    static long saturatedAdd(long left, long right) {
         long sum = left + right;
         return ((left ^ sum) & (right ^ sum)) < 0 ? Long.MAX_VALUE : sum;
     }

@@ -1,9 +1,6 @@
 package space.controlnet.ae2federation.test.crafting;
 
 import appeng.api.config.Actionable;
-import appeng.api.networking.crafting.CalculationStrategy;
-import appeng.api.networking.crafting.ICraftingPlan;
-import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
@@ -13,13 +10,9 @@ import appeng.blockentity.crafting.CraftingBlockEntity;
 import appeng.api.networking.GridHelper;
 import appeng.core.definitions.AEBlocks;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
-import space.controlnet.ae2federation.crafting.binding.CraftingBindingService;
-import space.controlnet.ae2federation.crafting.binding.CraftingCapabilityBinding;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyDelete;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -32,8 +25,9 @@ import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 
 public final class CraftingBindingFixture implements AutoCloseable {
-    private static final BlockPos BASE = new BlockPos(5, 3, 5);
-    private static final BlockPos CONSUMER_CPU = BASE.south(2);
+    private static final BlockPos DEFAULT_BASE = new BlockPos(5, 3, 5);
+
+    private final BlockPos base;
 
     private final GameTestHelper helper;
     private final PolicyBridgeFixtures bridge;
@@ -41,8 +35,6 @@ public final class CraftingBindingFixture implements AutoCloseable {
     private final CraftingNativeSourceFixture nativeSource;
     private boolean bridgePlaced;
     private PolicyKey key;
-    private Future<ICraftingPlan> planFuture;
-    private ICraftingPlan plan;
 
     public CraftingBindingFixture(GameTestHelper helper, boolean withCpu) {
         this(helper, withCpu, false);
@@ -54,53 +46,48 @@ public final class CraftingBindingFixture implements AutoCloseable {
 
     public CraftingBindingFixture(GameTestHelper helper, boolean withCpu, boolean withForbiddenPattern,
             boolean withProviderFluidChest) {
+        this(helper, DEFAULT_BASE, withCpu, withForbiddenPattern, withProviderFluidChest);
+    }
+
+    private CraftingBindingFixture(GameTestHelper helper, BlockPos base, boolean withCpu, boolean withForbiddenPattern,
+            boolean withProviderFluidChest) {
         this.helper = helper;
         this.withCpu = withCpu;
-        nativeSource = new CraftingNativeSourceFixture(helper, withCpu, withForbiddenPattern);
-        bridge = new PolicyBridgeFixtures(helper, BASE, withProviderFluidChest);
+        this.base = base;
+        nativeSource = new CraftingNativeSourceFixture(helper, base, withCpu, withForbiddenPattern);
+        bridge = new PolicyBridgeFixtures(helper, base, withProviderFluidChest);
         bridge.installStorageCells();
     }
 
     public boolean ready() {
+        return readiness().isEmpty();
+    }
+
+    /** The first readiness condition that does not hold yet, or empty once both networks are bridged and settled. */
+    public String readiness() {
         if (!bridge.networksSettled()) {
-            return false;
+            return "settling:" + bridge.settlementDiagnostics();
         }
         if (!nativeSource.advanceInitialPlacement(bridge.outerNetwork())) {
-            return false;
+            return "placing-source";
         }
         if (!bridgePlaced) {
             bridge.placeFirstBridge();
             bridgePlaced = true;
-            return false;
+            return "placing-bridge";
         }
         if (!bridge.firstBridgeReady()) {
             bridge.refreshFirstBridge();
-            return false;
+            return "bridge";
         }
-        return nativeSource.initialReady(bridge.outerGrid())
-                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isPresent()
-                && space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isPresent();
-    }
-
-    public String readinessState() {
-        var mainGrid = bridge.mainGrid();
-        var outerGrid = bridge.outerGrid();
-        var mainSettlement = mainGrid.getService(
-                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement();
-        var outerSettlement = outerGrid.getService(
-                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement();
-        var networksSettled = bridge.networksSettled();
-        var firstBridgeReady = bridgePlaced && bridge.firstBridgeReady();
-        var providerOnSource = nativeSource.placementStage() > 0 && networksSettled
-                && provider().getMainNode().getGrid() == bridge.outerGrid();
-        var cpuCount = networksSettled ? sourceService().getCpus().size() : -1;
-        var craftable = networksSettled && sourceService().isCraftable(outputKey());
-        return "networksSettled=" + networksSettled + ",sameGrid=" + (mainGrid == outerGrid)
-                + ",mainIdentity=" + mainSettlement.status() + ",outerIdentity=" + outerSettlement.status()
-                + ",craftingPlacementStage=" + nativeSource.placementStage() + ",bridgePlaced=" + bridgePlaced
-                + ",firstBridgeReady=" + firstBridgeReady + ",providerOnSource=" + providerOnSource
-                + ",cpuCount=" + cpuCount + ",patternInstalled=" + nativeSource.patternInstalled()
-                + ",craftable=" + craftable;
+        if (!nativeSource.initialReady(bridge.outerGrid())) {
+            return "source";
+        }
+        if (space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.mainGrid()).isEmpty()
+                || space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid()).isEmpty()) {
+            return "confirming";
+        }
+        return "";
     }
 
     public PolicyKey key() {
@@ -116,108 +103,16 @@ public final class CraftingBindingFixture implements AutoCloseable {
                 PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST)))));
     }
 
-    public PolicyRevision setEnabled(PolicyRevision expected, boolean enabled) {
-        return accepted(PolicyService.get(helper.getLevel()).edit(new PolicyEdit(key(), expected,
-                PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST)).withEnabled(enabled))));
-    }
-
-    public PolicyMutationResult staleEdit(PolicyRevision expected) {
-        return PolicyService.get(helper.getLevel()).edit(new PolicyEdit(key(), expected,
-                PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST))));
-    }
-
     public PolicyRevision delete(PolicyRevision expected) {
         return accepted(PolicyService.get(helper.getLevel()).delete(new PolicyDelete(key(), expected)));
-    }
-
-    public CraftingBindingService bindings() {
-        return CraftingBindingService.get(helper.getLevel());
-    }
-
-    public CraftingCapabilityBinding binding() {
-        return bindings().capability(key()).orElseThrow();
-    }
-
-    public void addDuplicateBridge() {
-        bridge.placeSecondBridge();
-    }
-
-    public boolean duplicateBridgeReady() {
-        if (!bridge.secondBridgeReady()) {
-            bridge.refreshSecondBridge();
-            return false;
-        }
-        return true;
-    }
-
-    public void removeBridges() {
-        bridge.removeFirstBridge();
-        if (bridge.secondBridgeReady()) {
-            bridge.removeSecondBridge();
-        }
-    }
-
-    public void restoreBridge() {
-        bridge.placeFirstBridge();
-        bindings().reconcileAll();
-    }
-
-    public boolean restoredBridgeReady() {
-        if (!bridge.firstBridgeReady()) {
-            bridge.refreshFirstBridge();
-            return false;
-        }
-        bindings().observeConnectedGrids(consumerGrid(), providerGrid());
-        return bindings().capability(key()).isPresent();
     }
 
     public PolicyKey reverseKey() {
         return new PolicyKey(key().providerNetworkId(), key().consumerNetworkId(), PolicyCapability.CRAFTING);
     }
 
-    public PolicyRevision enableReverse() {
-        return accepted(PolicyService.get(helper.getLevel()).edit(new PolicyEdit(reverseKey(), PolicyRevision.NONE,
-                PolicyRule.enabled(java.util.Set.of(PolicyOperation.REQUEST)))));
-    }
-
-    public void removeProvider() {
-        nativeSource.removeProvider();
-        bindings().reconcileAll();
-    }
-
-    public void removeCpu() {
-        nativeSource.removeCpu();
-    }
-
-    public void beginProviderReplacement() {
-        nativeSource.beginReplacement(key().providerNetworkId());
-    }
-
-    public boolean replacementReady() {
-        if (space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.confirmedNetworkId(bridge.outerGrid())
-                .filter(key().providerNetworkId()::equals).isEmpty()) {
-            return false;
-        }
-        bridge.refreshFirstBridge();
-        if (!nativeSource.replacementReady(bridge.outerGrid())) {
-            return false;
-        }
-        bindings().reconcileAll();
-        return sourceService().isCraftable(outputKey()) && bindings().capability(key()).isPresent();
-    }
-
-    public java.util.UUID providerNodeId() {
-        return nativeSource.providerNodeId(providerGrid());
-    }
-
     public appeng.api.networking.IGridNode providerNode() {
         return nativeSource.providerNode();
-    }
-
-    public long commonFederationDomainCount() {
-        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
-        var providerFederationDomains = registry.federationdomainsFor(key().providerNetworkId());
-        return registry.federationdomainsFor(key().consumerNetworkId()).stream().filter(providerFederationDomains::contains).count();
     }
 
     public long topologyRevision() {
@@ -232,45 +127,6 @@ public final class CraftingBindingFixture implements AutoCloseable {
     public void insertMaterials(long amount) {
         helper.assertValueEqual(sourceStorage().insert(inputKey(), amount, Actionable.MODULATE, IActionSource.empty()),
                 amount, "Native source storage must accept materials");
-    }
-
-    public void begin(long amount) {
-        var node = sourceChest().getMainNode().getNode();
-        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
-            @Override
-            public IActionSource getActionSource() {
-                return IActionSource.empty();
-            }
-
-            @Override
-            public appeng.api.networking.IGridNode getGridNode() {
-                return node;
-            }
-        };
-        planFuture = binding().nativeService().orElseThrow().beginCraftingCalculation(helper.getLevel(), requester,
-                outputKey(), amount, CalculationStrategy.REPORT_MISSING_ITEMS);
-    }
-
-    public boolean planReady() {
-        if (plan != null) {
-            return true;
-        }
-        if (planFuture == null || !planFuture.isDone()) {
-            return false;
-        }
-        try {
-            plan = planFuture.get();
-            return true;
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Native crafting calculation interrupted", exception);
-        } catch (ExecutionException exception) {
-            throw new IllegalStateException("Native crafting calculation failed", exception);
-        }
-    }
-
-    public boolean submit() {
-        return binding().nativeService().orElseThrow().submitJob(plan, null, null, true, IActionSource.empty()).successful();
     }
 
     public long outputAmount() {
@@ -321,77 +177,6 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return cpuNode != null && sourceNode != null && cpuNode.getGrid() == sourceNode.getGrid();
     }
 
-    /** A crafting CPU on the consumer Grid, south of its chest, so the consumer can run its own native jobs. */
-    public void addConsumerCpu() {
-        helper.setBlock(CONSUMER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
-        helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode()
-                .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", key().consumerNetworkId()));
-    }
-
-    public boolean consumerCpuReady() {
-        var cpuNode = helper.<CraftingBlockEntity>getBlockEntity(CONSUMER_CPU).getMainNode().getNode();
-        var chestNode = consumerChest().getMainNode().getNode();
-        if (cpuNode == null || chestNode == null) {
-            return false;
-        }
-        if (cpuNode.getGrid() != chestNode.getGrid()) {
-            GridHelper.createConnection(cpuNode, chestNode);
-            return false;
-        }
-        return !consumerService().getCpus().isEmpty();
-    }
-
-    public appeng.api.networking.crafting.ICraftingService consumerService() {
-        return consumerGrid().getCraftingService();
-    }
-
-    /** Plans {@code amount} of the output on the consumer's own crafting service, as its ME Terminal does. */
-    public void beginOnConsumer(long amount) {
-        var node = consumerChest().getMainNode().getNode();
-        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
-            @Override
-            public IActionSource getActionSource() {
-                return IActionSource.empty();
-            }
-
-            @Override
-            public appeng.api.networking.IGridNode getGridNode() {
-                return node;
-            }
-        };
-        plan = null;
-        planFuture = consumerService().beginCraftingCalculation(helper.getLevel(), requester, outputKey(), amount,
-                CalculationStrategy.REPORT_MISSING_ITEMS);
-    }
-
-    public ICraftingPlan plan() {
-        return plan;
-    }
-
-    public boolean submitOnConsumer() {
-        return consumerService().submitJob(plan, null, null, true, IActionSource.empty()).successful();
-    }
-
-    public long consumerPhysicalOutputAmount() {
-        return java.util.Objects.requireNonNull(consumerChest().getOriginalCellInventory(0))
-                .extract(outputKey(), Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
-    }
-
-    /** Reloads the Bridge's cable bus from its saved data in one tick; see {@link PolicyBridgeFixtures}. */
-    public net.minecraft.nbt.CompoundTag reloadBridgeHost() {
-        return bridge.reloadFirstBridgeHost();
-    }
-
-    /** Cancels the consumer's running job, as a player does from its CPU's status screen. */
-    public void cancelConsumerJob() {
-        consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).map(CraftingCPUCluster.class::cast)
-                .forEach(CraftingCPUCluster::cancelJob);
-    }
-
-    public long busyConsumerCpuCount() {
-        return consumerService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
-    }
-
     public appeng.api.storage.MEStorage sourcePhysicalStorage() {
         return java.util.Objects.requireNonNull(sourceChest().getOriginalCellInventory(0));
     }
@@ -432,7 +217,7 @@ public final class CraftingBindingFixture implements AutoCloseable {
         return ((PolicyMutationResult.Accepted) result).revision();
     }
 
-    private static AEItemKey inputKey() {
+    public static AEItemKey inputKey() {
         return AEItemKey.of(Items.OAK_PLANKS);
     }
 

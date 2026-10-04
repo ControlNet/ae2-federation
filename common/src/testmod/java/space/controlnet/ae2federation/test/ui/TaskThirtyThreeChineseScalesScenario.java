@@ -41,7 +41,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .waitForText("#domain_title", "ME 联邦域")
                 .server("record the fixture's networks", TaskThirtyThreeWorldFixture::recordNetworks)
                 .check("localized pair editor fits compact aside", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#pair_title", "#pair_note", "#policy_section_title_0", "#policy_state_0_storage"))
+                        context, "#pair_title", "#policy_section_title_0", "#policy_state_0_storage"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-pair-editor")
                 .typeInto("#graph_search", "网络")
                 .check("localized network search matches", context -> !context.el("#graph_search_empty").isVisible())
@@ -50,7 +50,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                         context, context.get("net.providerHost")))
                 .waitUntil("localized network detail is shown", context -> context.el("#network_detail").isVisible())
                 .check("localized device counts are on the devices button", context ->
-                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "Pattern Provider：1"))
+                        TaskThirtyThreeScenarioSupport.tooltipContains(context, "#graph_open", "样板供应器：1"))
                 .check("localized network detail fits compact inspector", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#network_identity", "#network_stat_energy")
                                 && TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(context, "#graph_open", "#network_highlight"))
@@ -70,10 +70,10 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-graph-scale-4")
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
-                .waitForTextContains("#endpoint_fact_configured", "联邦")
-                .checkTextContains("#endpoint_identity", "归属世代：1")
+                .waitForTextContains("#endpoint_fact_mode", "联邦")
+                .checkTextContains("#network_links_heading", "生效的样板")
                 .check("compact Endpoint panel text fits its bounds", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(
-                        context, "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_identity"))
+                        context, "#endpoint_fact_mode", "#endpoint_fact_owner", "#network_links_heading"))
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-endpoint-scale-4")
                 .click("#tab_mapping").frames(3)
                 .waitUntil("the wires view lists the Provider's patterns", context -> !context.all("#processing_pattern_0").isEmpty())
@@ -141,10 +141,10 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .click("#tab_overview").frames(3)
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "10, -57, 13"))
                 .waitUntil("narrow Endpoint panel is shown", context -> context.el("#endpoint_detail").isVisible())
-                .step("reveal the Endpoint's identity", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#endpoint_identity"))
+                .step("reveal the Endpoint's patterns", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_links_heading"))
                 .frames(2)
                 .check("narrow Endpoint panel text fits", context -> TaskThirtyThreeScenarioSupport.wrappedTextFits(context,
-                        "#endpoint_fact_configured", "#endpoint_fact_claim", "#endpoint_fact_native", "#endpoint_identity"))
+                        "#endpoint_fact_mode", "#endpoint_fact_owner", "#endpoint_fact_native", "#network_links_heading"))
                 .check("narrow Endpoint owner navigation fits", context -> TaskThirtyThreeScenarioSupport.singleLineButtonTextFits(
                         context, "#graph_open"))
                 .screenshot("ui-chinese-narrow-endpoint")
@@ -174,7 +174,7 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .server("open the Endpoint in compact Chinese viewport", TaskThirtyThreeWorldFixture::openEndpoint)
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI().frames(5)
-                .waitForTextContains("#endpoint_fact_configured", "联邦")
+                .waitForTextContains("#endpoint_fact_mode", "联邦")
                 .check("compact Chinese endpoint explanation fits", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#graph_selection", "#ack_status"))
                 .check("compact Chinese device entrance selects its Endpoint on the topology", context ->
@@ -188,10 +188,9 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .awaitModularUI().frames(5)
                 .waitForTextContains("#ack_status", "桥接器外侧")
                 .checkText("#bridge_diagnostic_title", "桥接器联邦域不可用")
-                .checkTextContains("#entrance_value", "侧面 北")
                 .check("Chinese Bridge diagnostics retain readable text", context ->
                         TaskThirtyThreeScenarioSupport.wrappedTextFits(context, "#bridge_diagnostic_title",
-                                "#bridge_diagnostic_help", "#ack_status", "#entrance_value"))
+                                "#bridge_diagnostic_help", "#ack_status"))
                 .check("Chinese unavailable Bridge has no empty editor", context ->
                         !context.el("#workspace_tabs").isVisible() && context.el("#bridge_unavailable").isVisible()
                                 && !context.el("#page_mapping").isVisible())

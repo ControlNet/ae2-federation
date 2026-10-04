@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
+import appeng.me.energy.IEnergyOverlayGridConnection;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
@@ -21,6 +22,8 @@ import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
 import space.controlnet.ae2federation.domain.port.FederationPort;
+import space.controlnet.ae2federation.energy.EnergySharingService;
+import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 import space.controlnet.ae2federation.ae2.processing.endpoint.EndpointMode;
 import space.controlnet.ae2federation.processing.claim.ClaimEpoch;
 import space.controlnet.ae2federation.processing.claim.ClaimRequest;
@@ -40,9 +43,12 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     private static final String CLAIM_TAG = "endpointClaim";
     private static final String MODE_TAG = "endpointMode";
     private static final String GENERATION_TAG = "endpointModeGeneration";
+    private static final String SHARE_ENERGY_TAG = "endpointShareEnergy";
+    private final FederationEnergyConnection energyConnection = new FederationEnergyConnection();
     private EndpointClaimAuthority claims = new EndpointClaimAuthority(EndpointIdentity.create());
     private EndpointMode configuredMode = EndpointMode.LOCAL;
     private long generation;
+    private boolean shareEnergy = true;
     private @Nullable EndpointTargetBinding binding;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     private @Nullable CableFacePort federationPort;
@@ -51,6 +57,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     public EndpointBlockEntity(BlockPos position, BlockState state) {
         super(space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT_BLOCK_ENTITY.get(),
                 position, state);
+        // The subnet joins the energy pool of the network whose Provider claims this Endpoint.
+        getMainNode().addService(IEnergyOverlayGridConnection.class, energyConnection);
+        energyConnection.bind(this, getMainNode());
     }
 
     public Direction federationFace() {
@@ -169,6 +178,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         claims.withOnline(true);
         binding = new EndpointTargetBinding(serverLevel, worldPosition, federationFace(), claims, node, configuredMode,
                 generation);
+        binding.sharesEnergy(shareEnergy);
+        // Sharing is reconciled on the server tick of a level that has the service.
+        EnergySharingService.get(serverLevel);
         snapshotRuntime();
         setChanged();
     }
@@ -221,6 +233,8 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     @Override
     public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadTag(tag, registries);
+        // Saved before the switch existed: on, as for a new Endpoint.
+        shareEnergy = !tag.contains(SHARE_ENERGY_TAG, Tag.TAG_BYTE) || tag.getBoolean(SHARE_ENERGY_TAG);
         if (!tag.contains(CLAIM_TAG, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -241,6 +255,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         tag.put(CLAIM_TAG, ClaimStateCodec.save(claims.state()));
         tag.putString(MODE_TAG, configuredMode.name());
         tag.putLong(GENERATION_TAG, generation);
+        tag.putBoolean(SHARE_ENERGY_TAG, shareEnergy);
     }
 
     public EndpointIdentity endpointIdentity() {
@@ -249,6 +264,25 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
 
     public ClaimState claimState() {
         return claims.state();
+    }
+
+    /** Whether the subnet shares energy with the network of the Provider that claims this Endpoint. */
+    public boolean shareEnergy() {
+        return shareEnergy;
+    }
+
+    public void setShareEnergy(boolean value) {
+        if (shareEnergy == value) {
+            return;
+        }
+        shareEnergy = value;
+        if (binding != null) {
+            binding.sharesEnergy(value);
+        }
+        setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            EnergySharingService.reconcileIfPresent(serverLevel);
+        }
     }
 
     public ClaimResult claim(ClaimRequest request) {

@@ -95,7 +95,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .click("#graph_fit")
                 .step("select the first network", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
                 .waitUntil("the network panel replaces the pair editor", context -> !context.el("#pair_editor").isVisible())
-                .step("press on the link a third of the way along", context -> {
+                .step("press on the link a third of the way along, listening for the click", context -> {
+                    // Only this press is heard: the listener starts here, after the card click above.
+                    var heard = new java.util.ArrayList<String>();
+                    net.minecraft.client.sounds.SoundEventListener listener = (sound, events, range) ->
+                            heard.add(sound.getLocation().toString());
+                    net.minecraft.client.Minecraft.getInstance().getSoundManager().addListener(listener);
+                    context.put("link.sounds", heard);
+                    context.put("link.listener", listener);
                     var cards = context.all(".graph-node-member").stream().map(card -> card.bounds()).toList();
                     var a = cards.get(0);
                     var b = cards.get(1);
@@ -106,6 +113,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseUp(point[0], point[1], 0);
                 })
                 .waitUntil("a press on the link opens its pair", context -> context.el("#pair_editor").isVisible())
+                .check("a press on the link clicks like a button", context ->
+                        context.<java.util.List<String>>get("link.sounds").contains("minecraft:ui.button.click"))
+                .step("stop listening for sounds", context -> net.minecraft.client.Minecraft.getInstance().getSoundManager()
+                        .removeListener(context.get("link.listener")))
                 .frames(2).screenshot("ui-graph-link-pair-selected")
                 .click("#graph_fit")
                 .step("record zoom before network search", context -> context.put("graph.searchScale",
@@ -146,8 +157,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         && context.el("#network_stat_channels").text().matches("\\d+ · \\d+ nodes")
                         && context.el("#network_stat_io").text().matches("\\+.* / −.* AE/t"))
                 .check("a confirmed member explains nothing more", context -> !context.el("#network_explain").isVisible())
-                .waitUntil("the card says the network is online and confirmed", context -> TaskThirtyThreeScenarioSupport
-                        .cardTexts(context, context.get("net.providerHost")).contains("Online · Identity confirmed"))
+                .waitUntil("an online, confirmed network's card has no state line", context -> {
+                    var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.providerHost"));
+                    return !texts.isEmpty() && texts.stream().noneMatch(text -> text.contains("Online")
+                            || text.contains("Identity") || text.contains("Waiting"));
+                })
                 .check("identity location is shown", context -> context.el("#network_identity").text().startsWith("Overworld · "))
                 .check("card shows live figures", context -> context.all(".graph-node-member").stream()
                         .allMatch(card -> card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).allChildrenStream()
@@ -182,8 +196,9 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .checkTextContains("#network_location_legend", "This network's blocks")
                 .check("the legend counts the tinted blocks", context ->
                         TaskThirtyThreeScenarioSupport.tooltipContains(context, "#network_location_legend", "Tinted: "))
-                .check("the map caption names its slice", context -> context.el("#network_location_caption").text()
-                        .matches("Top-down · Y -?\\d+ to -?\\d+"))
+                .check("the map has no caption and no dimmed-surroundings entry", context ->
+                        context.all("#network_location_caption").isEmpty()
+                                && !context.el("#network_location_legend").text().contains("Surroundings"))
                 .step("reveal the location map", context -> TaskThirtyThreeScenarioSupport.revealInAside(context, "#network_location"))
                 .frames(2)
                 .hover("#network_highlight")
@@ -191,7 +206,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                         TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
                 .waitUntil("the network's blocks are outlined", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() > 1)
-                .checkTextContains("#network_location_note", "for 10 s")
+                .waitUntil("the highlight button reads as pressed instead of a note saying so", context ->
+                        context.all("#network_highlight.selected").size() == 1
+                                && !context.el("#network_location_note").isVisible())
+                .checkTextContains("#network_highlight", "Highlight network")
                 .click("#network_view_3d")
                 .waitUntil("the 3D preview draws the network's loaded blocks", context -> {
                     var preview = context.el("#network_preview .map-preview-tile")
@@ -240,14 +258,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("open the network's devices", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#graph_open"))
                 .waitUntil("Provider network opens mapping", context -> context.el("#page_mapping").isVisible())
                 .click("#tab_overview")
-                .check("the Endpoint is a node beside the network whose Provider maps it", context ->
+                .check("the Endpoint is a node beside the network, with no tooltip", context ->
                         context.all(".graph-node-endpoint").size() == 1
-                                && TaskThirtyThreeScenarioSupport.tooltipContains(context, ".graph-node-endpoint", "Mapped by a Provider of "))
+                                && TaskThirtyThreeScenarioSupport.noTooltip(context, ".graph-node-endpoint"))
                 .hover(".graph-node-endpoint")
                 .step("select the Endpoint node", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, ".graph-node-endpoint"))
                 .waitUntil("the Endpoint node is selected in place, its panel in the aside", context ->
                         context.el("#page_overview").isVisible() && context.el("#endpoint_detail").isVisible())
-                .waitForTextContains("#endpoint_fact_configured", "Federated")
+                .waitForTextContains("#endpoint_fact_mode", "Federated")
+                .check("the owner is a fact row, not repeated above it", context -> !context.el("#network_explain").isVisible())
                 .step("select the Provider host network again", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))
                 .waitUntil("the network panel is back", context -> !context.el("#endpoint_detail").isVisible())
@@ -264,14 +283,49 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the pair names the Routers that link it, with their positions", context -> context.el("#pair_title").text()
                         .matches("(?s).*Via the Router at -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
                 .screenshot("ui-policy-direction")
+                .waitUntil("with nothing to report the footer takes no room", context -> !context.el("#domain_footer")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
+                .check("a rule not yet written reads as off", context -> context.el(TaskFifteenScenarioSupport.STORAGE_STATE)
+                        .text().equals("Off"))
                 .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
                 .waitUntilServer("real policy revision advances", context ->
                         TaskFifteenWorldFixture.policyRevision(context)
                                 > context.<Long>get("task33.policyBefore"))
-                .waitForTextContains("#ack_status", "Server confirmed: Storage rule enabled")
-                .waitForTextContains("#policy_terms_0_storage", "Filter: all resources · Re-export: off")
-                .check("each allowed operation is a chip", context -> context.all("#policy_terms_row_0_storage .term-chip").stream()
-                        .map(chip -> chip.text()).toList().equals(java.util.List.of("view", "insert", "extract")))
+                .waitUntil("the switch turns on", context -> storageSwitch(context).hasClass("on"))
+                .click(TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                .waitUntil("the switch moves to re-export", context -> storageSwitch(context).hasClass("reexport"))
+                .check("an accepted edit leaves the footer hidden", context -> !context.el("#domain_footer")
+                        .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
+                .waitForText(TaskFifteenScenarioSupport.STORAGE_STATE, "On with re-export")
+                .check("the third state is the re-export switch", context -> context.el(
+                        TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class)
+                        .hasClass("reexport"))
+                .waitUntil("the graph shows the re-export at once, no longer in active green", context -> {
+                    var chips = context.all(".pill-chip.reexport");
+                    return !chips.isEmpty() && chips.stream().noneMatch(chip -> chip.as(
+                            com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement.class).getTextStyle().textColor()
+                            == space.controlnet.ae2federation.client.menu.FederationTheme.OK);
+                })
+                .frames(2).screenshot("ui-policy-reexport")
+                .step("right click steps back to enabled", context -> {
+                    var bounds = context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).bounds();
+                    context.input().mouseDown(bounds.centerX(), bounds.centerY(), 1);
+                    context.input().mouseUp(bounds.centerX(), bounds.centerY(), 1);
+                })
+                .waitUntil("the switch steps back to plain on", context -> storageSwitch(context).hasClass("on")
+                        && !storageSwitch(context).hasClass("reexport"))
+                .waitUntil("the graph drops the re-export with it", context -> context.all(".pill-chip.reexport").isEmpty())
+                // The fixture's provider side may or may not have storage: a working rule has no tooltip, one waiting for
+                // storage only its reason. The server reports the runtime a moment after the switch, so wait for it.
+                .waitUntil("the switch has no tooltip, and the rule's state only says what needs attention", context -> {
+                    var state = TaskThirtyThreeScenarioSupport.tooltipLines(context, TaskFifteenScenarioSupport.STORAGE_STATE);
+                    var label = context.el(TaskFifteenScenarioSupport.STORAGE_STATE);
+                    return TaskThirtyThreeScenarioSupport.noTooltip(context, TaskFifteenScenarioSupport.STORAGE_SWITCH)
+                            && label.text().equals("On")
+                            && (label.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active") ? state.isEmpty()
+                                    : state.equals(java.util.List.of("The other network has no storage it can share.")));
+                })
+                .check("a storage rule lists no operations", context -> context.all(".policy-terms-row").isEmpty())
                 .server("record authoritative policy result", context -> {
                     context.put("task33.policyRevision", Long.toString(TaskFifteenWorldFixture.policyRevision(context)));
                     context.put("task33.policyEnabled", Boolean.toString(TaskFifteenWorldFixture.policyEnabled(context)));
@@ -287,7 +341,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .server("policy detail reads preserve backend counters", TaskThirtyThreeWorldFixture::verifyPolicySnapshotReads)
                 .server("configure a disabled crafting rule", TaskThirtyThreeWorldFixture::installBrowserRule)
                 .waitUntil("pair editor shows the configured rule off", context ->
-                        TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").startsWith("Off · revision"))
+                        TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").equals("Off"))
                 .check("the rule's switch is off", context -> !context.el(TaskThirtyThreeScenarioSupport.ruleControl(context,
                         "switch", context.get("net.providerHost"), "crafting"))
                         .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("on"))
@@ -296,43 +350,38 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-disabled")
                 .server("enable rule without required request permission", TaskThirtyThreeWorldFixture::removeBrowserRuleOperation)
-                .waitUntil("missing operation is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("required operation is not allowed: crafting requests"))
+                .waitUntil("the blocked rule's tooltip is only its reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                        TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
+                        .equals(java.util.List.of("Required operation is not allowed: crafting requests.")))
+                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
+                        .ruleState(context, "crafting").contains("required operation"))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
                 .frames(2).screenshot("ui-policy-runtime-operation-denied")
-                .server("observe the actual unavailable crafting backend", TaskThirtyThreeWorldFixture::observeUnavailableCraftingBackend)
-                .waitUntil("missing provider is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("Last backend check: No active native crafting provider."))
-                .frames(2).screenshot("ui-policy-runtime-backend-missing")
-                .server("place a real native crafting provider", TaskThirtyThreeWorldFixture::placeNativeCraftingProvider)
-                .waitUntilServer("native provider is active but its grid has no CPU", TaskThirtyThreeWorldFixture::nativeProviderHasNoCpu)
-                .waitUntil("missing CPU is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("Last backend check: No native crafting CPU."))
-                .check("new backend observation replaces the missing-provider explanation", context ->
-                        !TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").contains("No active native crafting provider"))
-                .frames(2).screenshot("ui-policy-runtime-cpu-missing")
-                .server("enable a real reverse crafting rule", context -> TaskThirtyThreeWorldFixture.setReverseCraftingRule(context, true))
-                .waitUntil("cycle is explained", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("Last backend check: Crafting dependencies form a cycle."))
-                .check("cycle observation replaces CPU explanation", context ->
-                        !TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").contains("No native crafting CPU"))
-                .frames(2).screenshot("ui-policy-runtime-cycle")
-                .server("break the reverse crafting relationship", context -> TaskThirtyThreeWorldFixture.setReverseCraftingRule(context, false))
-                .waitUntil("missing CPU is explained again", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .contains("Last backend check: No native crafting CPU."))
-                .check("breaking the cycle removes its stale explanation", context ->
-                        !TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").contains("form a cycle"))
+                .server("enable the crafting rule", TaskThirtyThreeWorldFixture::enableCraftingRule)
+                .waitUntil("crafting is active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
+                .frames(2).screenshot("ui-policy-runtime-crafting-active")
+                .server("switch the storage rule off through the API", context ->
+                        TaskThirtyThreeWorldFixture.setCraftingStorage(context, false))
+                .waitUntil("missing storage is explained", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                        TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
+                        .stream().anyMatch(line -> line.contains("This direction's Storage rule is off")))
+                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
+                        .ruleState(context, "crafting").contains("Storage rule is off"))
+                .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
+                .frames(2).screenshot("ui-policy-runtime-storage-required")
+                .server("switch the storage rule back on", context -> TaskThirtyThreeWorldFixture.setCraftingStorage(context, true))
+                .waitUntil("crafting is active again", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
                 .server("disable the observed rule and reject its old diagnostic", TaskThirtyThreeWorldFixture::disableObservedCraftingRule)
-                .waitUntil("disabled rule shows its new revision", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "crafting")
-                        .equals("Off · revision " + context.get("runtime.disabledRevision")))
-                .check("disabled revision has no leftover backend reason", context ->
-                        !TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").contains("Last backend check"))
+                .waitUntil("the disabled rule reads off, with no leftover reason", context -> TaskThirtyThreeScenarioSupport
+                        .ruleState(context, "crafting").equals("Off"))
                 .frames(2).screenshot("ui-policy-runtime-revision-invalidated")
                 .checkServer("displaying a new revision does not authorize an outdated edit", TaskThirtyThreeWorldFixture::displayedRevisionDoesNotGrantAuthority)
                 .waitForTextContains("#ack_status", "Rule changed elsewhere")
                 .check("refused switch keeps the newer rule off", context ->
-                        TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").startsWith("Off · revision"))
+                        TaskThirtyThreeScenarioSupport.ruleState(context, "crafting").equals("Off"))
                 .screenshot("ui-policy-switch-conflict")
+                // A hovered rail tab drops a pixel on AE2's lighter sprite, as AE2's toolbar buttons do.
+                .hover("#tab_mapping").frames(2).screenshot("ui-rail-tab-hover")
                 .closeScreen()
                 .server("share energy with the Endpoint and remove its own energy cell", TaskThirtyThreeWorldFixture::removeEndpointEnergySource)
                 .waitUntilServer("the Endpoint runs on the shared energy pool", TaskThirtyThreeWorldFixture::endpointRunsOnSharedEnergy)
@@ -340,15 +389,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .awaitElement("#policy_section_title_0")
-                .waitUntil("the sharing energy rule is active", context -> TaskThirtyThreeScenarioSupport.ruleState(context, "me_power")
-                        .startsWith("Active · revision"))
+                .waitUntil("the sharing energy rule is active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "me_power"))
                 .step("reveal the energy rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "me_power"))
                 .frames(2).screenshot("ui-policy-runtime-energy-shared")
                 .step("select a network card so the shared link is drawn unselected", TaskThirtyThreeScenarioSupport::selectFirstNetworkCard)
                 .frames(3)
                 .check("the Endpoint's network runs on the shared pool, not a low-energy warning", context ->
                         TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("net.endpoint")).stream()
-                                .anyMatch(text -> text.contains("Online · Shared energy")))
+                                .anyMatch(text -> text.equals("Shared energy")))
                 .check("both networks of the pool read its one energy percentage, not their own cells", context -> {
                     var host = TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.providerHost"));
                     return host != null && host.equals(TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("net.endpoint")));
@@ -392,11 +440,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_note", "Read-only: this pair belongs to Bridge domain ")
+                .waitForTextContains("#pair_note", "Read-only: belongs to Bridge domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
-                .waitForTextContains("#pair_note", "Open it from that domain's Bridge or Router to edit.")
                 .checkTextContains("#scope_caption", "with connected domains (read-only)")
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
@@ -405,7 +452,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
                     return context.all(".related-network").size() > 0
                             && TaskThirtyThreeScenarioSupport.cardPercent(context, context.get("related.id")) != null
-                            && texts.stream().anyMatch(text -> text.matches("(Online|No power) · Related: .+"));
+                            && texts.stream().anyMatch(text -> text.matches("(No power · )?Related: .+"));
                 })
                 .screenshot("ui-scope-related")
                 .step("record scope evidence", context -> {
@@ -424,7 +471,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && policies.configured(context.get("related.far.rule")).isEmpty();
                 })
                 .check("the legend is shown in the canvas corner", context -> context.el("#graph_legend").isVisible()
-                        && context.el("#graph_legend").text().contains("A▸B = A uses B's capability"))
+                        && context.el("#graph_legend").text().contains("▸ points to the network that uses it"))
                 .click("#graph_legend_toggle")
                 .waitUntil("the legend folds away", context -> !context.el("#graph_legend").isVisible())
                 .click("#graph_legend_toggle")
@@ -439,6 +486,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     return text.contains("Contains: ") && text.contains(" · ") && text.contains("Disconnect them to recover.");
                 })
                 .waitForTextContains("#network_highlight", "Highlight both parts")
+                .step("end earlier highlights", context -> space.controlnet.ae2federation.client.WorldHighlight.clear())
                 .step("highlight both parts", context -> TaskThirtyThreeScenarioSupport.activateNavigation(context, "#network_highlight"))
                 .check("both parts are outlined in their own colours", context ->
                         space.controlnet.ae2federation.client.WorldHighlight.activeGroups() == 2)
@@ -480,7 +528,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 // A block hidden behind stained glass, water and stone, in the rain, keeps its outline's own colour
                 // under Fancy and Fabulous graphics alike; Fabulous composites the translucent layers after the level.
                 .teardown("restore Fancy graphics, the HUD and clear weather", context -> {
-                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    space.controlnet.ae2federation.client.WorldHighlight.clear();
                     context.mc().options.hideGui = false;
                     if (context.mc().options.graphicsMode().get() != net.minecraft.client.GraphicsStatus.FANCY) {
                         context.mc().options.graphicsMode().set(net.minecraft.client.GraphicsStatus.FANCY);
@@ -510,7 +558,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
 
     private static void occludedHighlight(ScenarioBuilder scenario, net.minecraft.client.GraphicsStatus mode, String name) {
         scenario.step("switch graphics to " + name, context -> {
-                    space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of());
+                    space.controlnet.ae2federation.client.WorldHighlight.clear();
                     context.mc().options.graphicsMode().set(mode);
                     context.mc().levelRenderer.allChanged();
                 })
@@ -520,7 +568,8 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .waitUntil("the sections are rebuilt", context -> context.mc().levelRenderer.hasRenderedAllSections())
                 .frames(5)
                 .check("no outline colour before the highlight (" + name + ")", context ->
-                        recordOutlinePixels(context, name + ".before") < 20)
+                        recordOutlinePixels(context, name + ".before") < 20
+                                && recordFaintOutlinePixels(context, name + ".before") < 100)
                 .step("highlight the hidden block", context -> {
                     int ground = context.<Integer>get(OCCLUDED_GROUND);
                     space.controlnet.ae2federation.client.WorldHighlight.show(OVERWORLD, java.util.List.of(
@@ -529,8 +578,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 })
                 .frames(3)
                 .screenshot("world-highlight-occluded-" + name)
-                .check("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
-                        recordOutlinePixels(context, name + ".after") > 400);
+                // The outline blinks, so a frame grabbed while it is dark shows nothing: wait for a lit one.
+                .waitUntil("the outline keeps its colour over glass, water, stone and rain (" + name + ")", context ->
+                        recordOutlinePixels(context, name + ".after") > 400)
+                // Between flashes the outline dims rather than vanishing: no full colour, but a faint tint remains.
+                .waitUntil("the outline blinks dim while the highlight runs (" + name + ")", context ->
+                        space.controlnet.ae2federation.client.WorldHighlight.activeBlocks() == 1
+                                && recordOutlinePixels(context, name + ".dim") < 20
+                                && recordFaintOutlinePixels(context, name + ".dim") > 400);
     }
 
     /**
@@ -538,6 +593,20 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
      * over the line would tint it (green, blue or grey) and the count would drop.
      */
     private static int recordOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        return recordPixels(context, "outlinePixels." + label, (red, green, blue) -> red > 150 && blue > 150 && green < 100);
+    }
+
+    /** Pixels tinted toward the outline's magenta without its full colour: the outline drawn at its dim brightness. */
+    private static int recordFaintOutlinePixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String label) {
+        return recordPixels(context, "faintOutlinePixels." + label, (red, green, blue) ->
+                !(red > 150 && blue > 150 && green < 100) && red - green > 25 && blue - green > 25);
+    }
+
+    private interface PixelTest {
+        boolean matches(int red, int green, int blue);
+    }
+
+    private static int recordPixels(com.lowdragmc.lowdraglib2.uitest.TestContext context, String key, PixelTest test) {
         var frame = com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.grab();
         try {
             int width = frame.getWidth();
@@ -549,11 +618,11 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     int red = abgr & 0xff;
                     int green = abgr >> 8 & 0xff;
                     int blue = abgr >> 16 & 0xff;
-                    if (red > 150 && blue > 150 && green < 100) count++;
+                    if (test.matches(red, green, blue)) count++;
                 }
             }
             context.attach("evidenceFor", "ui.graph-controls");
-            context.attach("outlinePixels." + label, Integer.toString(count));
+            context.attach(key, Integer.toString(count));
             return count;
         } finally {
             com.lowdragmc.lowdraglib2.uitest.capture.FrameCapture.closeQuietly(frame);
@@ -611,6 +680,10 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
         }
     }
 
+
+    private static com.lowdragmc.lowdraglib2.gui.ui.UIElement storageSwitch(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        return context.el(TaskFifteenScenarioSupport.STORAGE_SWITCH).as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class);
+    }
 
     private static float opacity(com.lowdragmc.lowdraglib2.uitest.TestContext context, String networkUuid) {
         return TaskThirtyThreeScenarioSupport.networkCard(context, networkUuid)

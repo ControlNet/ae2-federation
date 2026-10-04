@@ -42,7 +42,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, this::setChanged));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort));
         }
     }
 
