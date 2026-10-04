@@ -41,10 +41,12 @@ final class GuidePagesContractTest {
             "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
             "appmek", Set.of("chemical_storage_cell_1k"),
             "create", Set.of("crushing_wheel", "chute"),
-            "extendedae", Set.of("assembler_matrix_frame"));
+            "extendedae", Set.of("assembler_matrix_frame"),
+            "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
-            "extendedae", Set.of("epp_intro/assembler_matrix.md"));
+            "extendedae", Set.of("epp_intro/assembler_matrix.md"),
+            "neoecoae", Set.of("neoecoae_intro/storage_system.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
