@@ -14,6 +14,7 @@ public final class GuideExamplePacks {
             new Pack("guide_create", List.of("create")),
             new Pack("guide_extendedae", List.of("extendedae")),
             new Pack("guide_extendedae_plus", List.of("extendedae_plus")),
+            new Pack("guide_ae2lt", List.of("ae2lt")),
             new Pack("guide_neoecoae", List.of("neoecoae")));
 
     private GuideExamplePacks() {

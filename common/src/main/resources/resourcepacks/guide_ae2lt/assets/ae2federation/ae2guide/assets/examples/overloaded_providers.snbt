@@ -1,0 +1,32 @@
+{
+    DataVersion: 3955,
+    size: [9, 3, 1],
+    data: [
+        {pos: [8, 0, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [8, 1, 0], state: "ae2:1k_crafting_storage{formed:true,powered:true}", nbt: {core: 1b, id: "ae2:crafting_storage", visual: {}}},
+        {pos: [7, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_glass_cable", visual: {connections: ["east", "up", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
+        {pos: [7, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
+        {pos: [6, 0, 0], state: "ae2federation:router"},
+        {pos: [5, 0, 0], state: "ae2federation:cable"},
+        {pos: [4, 0, 0], state: "ae2federation:cable"},
+        {pos: [3, 0, 0], state: "ae2federation:router"},
+        {pos: [2, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_glass_cable", visual: {connections: ["east", "up", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [2, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_glass_cable", visual: {connections: ["down", "up", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [2, 2, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [1, 0, 0], state: "ae2lt:overloaded_pattern_provider{push_direction:all}"},
+        {pos: [1, 1, 0], state: "ae2lt:overloaded_pattern_provider{push_direction:all}"},
+        {pos: [0, 0, 0], state: "ae2:molecular_assembler{powered:true}", nbt: {id: "ae2:molecular_assembler", visual: {}}},
+        {pos: [0, 1, 0], state: "ae2:molecular_assembler{powered:true}", nbt: {id: "ae2:molecular_assembler", visual: {}}}
+    ],
+    entities: [],
+    palette: [
+        "ae2:energy_cell{fullness:4}",
+        "ae2:1k_crafting_storage{formed:true,powered:true}",
+        "ae2:cable_bus{light_level:0,waterlogged:false}",
+        "ae2:drive{facing:north,spin:0}",
+        "ae2federation:router",
+        "ae2federation:cable",
+        "ae2lt:overloaded_pattern_provider{push_direction:all}",
+        "ae2:molecular_assembler{powered:true}"
+    ]
+}

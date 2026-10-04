@@ -44,11 +44,13 @@ final class GuidePagesContractTest {
             "create", Set.of("crushing_wheel", "chute"),
             "extendedae", Set.of("assembler_matrix_frame"),
             "extendedae_plus", Set.of("4x_crafting_accelerator"),
+            "ae2lt", Set.of("overloaded_pattern_provider", "overloaded_pattern_provider_upgrade"),
             "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
             "extendedae_plus", Set.of("introduction/devices/crafting_accelerator.md"),
+            "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),
             "neoecoae", Set.of("neoecoae_intro/storage_system.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
