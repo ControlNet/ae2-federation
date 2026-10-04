@@ -50,6 +50,10 @@ final class AddonCraftingScene {
     private static final BlockPos BASE = new BlockPos(5, 3, 5);
     /** Where the provider stands: east of the provider network's last cable, which is west of it. */
     static final BlockPos PROVIDER = BASE.east(2).north();
+    /** The consumer's first CPU block, west of its cable; the others run on west from it. */
+    static final BlockPos FIRST_CPU = BASE.west();
+    /** The provider network's last cable. */
+    static final BlockPos PROVIDER_CABLE = PROVIDER.west();
     private static final AEItemKey PLANKS = AEItemKey.of(Items.OAK_PLANKS);
     private static final AEItemKey STICKS = AEItemKey.of(Items.STICK);
     private static final AEItemKey COBBLESTONE = AEItemKey.of(Items.COBBLESTONE);
@@ -77,6 +81,10 @@ final class AddonCraftingScene {
     private BlockPos providerPos = PROVIDER;
     private BlockPos dismantlePart;
     private net.minecraft.world.level.block.state.BlockState dismantledState;
+    private java.util.function.Consumer<GameTestHelper> reorderChange;
+    private CpuCheck cpuCheck;
+    /** The consumer CPU that took each order, found right after it took it. */
+    private final List<appeng.api.networking.crafting.ICraftingCPU> tookOrders = new java.util.ArrayList<>();
     private final BlockPos assemblerPos = PROVIDER.east();
     private final BlockPos outputChestPos = PROVIDER.below();
     private int stage;
@@ -132,6 +140,21 @@ final class AddonCraftingScene {
     AddonCraftingScene dismantlingAfterwards(BlockPos part) {
         dismantlePart = part;
         return this;
+    }
+
+    /**
+     * After the job, {@code change} alters the world as the guide's exercise has its player do, and the consumer orders
+     * again; the second job must finish exactly too. {@code check} sees each finished order's CPU.
+     */
+    AddonCraftingScene reorderingAfterwards(java.util.function.Consumer<GameTestHelper> change, CpuCheck check) {
+        reorderChange = change;
+        cpuCheck = check;
+        return this;
+    }
+
+    /** Checks the consumer CPU that ran an order, the first being 1, against the provider network. */
+    interface CpuCheck {
+        void check(int order, appeng.api.networking.crafting.ICraftingCPU cpu, IGrid provider);
     }
 
     /** The machine a processing pattern names: its block, what it makes from what, and how it runs. */
@@ -343,6 +366,7 @@ final class AddonCraftingScene {
                 helper.assertTrue(consumerGrid().getCraftingService()
                         .submitJob(plan, null, null, true, IActionSource.empty()).successful(),
                         "The consumer's CPU must take the job");
+                tookOrders.add(busyCpu());
                 stage = 6;
                 helper.fail("Submitted the job");
             }
@@ -402,9 +426,20 @@ final class AddonCraftingScene {
                         "Waiting for the consumer's job to finish");
                 var made = held(consumerChest(), output()) + held(providerChest(), output())
                         + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
-                helper.assertValueEqual(made, requested(), "The job must store exactly what was requested");
+                helper.assertValueEqual(made, requested() * tookOrders.size(),
+                        "The job must store exactly what was requested");
                 helper.assertValueEqual(held(consumerChest(), input()), 0L,
                         "The consumer's inputs were used");
+                if (cpuCheck != null) {
+                    var cpu = tookOrders.getLast();
+                    helper.assertTrue(cpu != null, "No consumer CPU was busy right after order " + tookOrders.size());
+                    cpuCheck.check(tookOrders.size(), cpu, bridge.outerGrid());
+                }
+                if (reorderChange != null && tookOrders.size() == 1) {
+                    reorderChange.accept(helper);
+                    stage = 14;
+                    helper.fail("Changed the world before ordering again");
+                }
                 if (dismantlePart != null) {
                     dismantledState = helper.getBlockState(dismantlePart);
                     helper.setBlock(dismantlePart, net.minecraft.world.level.block.Blocks.AIR);
@@ -419,9 +454,38 @@ final class AddonCraftingScene {
                 stage = 13;
                 helper.fail("Put the structure's block back");
             }
+            case 14 -> {
+                var cpus = consumerGrid().getCraftingService().getCpus();
+                helper.assertTrue(!cpus.isEmpty() && cpus.stream().noneMatch(cpu -> cpu.isBusy()),
+                        "Waiting for the consumer's CPU");
+                helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
+                        "Waiting for the provider's pattern on the consumer");
+                helper.assertValueEqual(consumerChest().insert(input(), jobs, Actionable.MODULATE, IActionSource.empty()),
+                        jobs, "The consumer's chest must take the second order's inputs");
+                begin();
+                stage = 15;
+                helper.fail("Planning the second order");
+            }
+            case 15 -> {
+                helper.assertTrue(planFuture.isDone() && localPlanFuture.isDone(), "Waiting for the second plan");
+                var plan = plan();
+                helper.assertFalse(plan.simulation(), "The second order's inputs must be enough: " + plan.missingItems());
+                helper.assertTrue(consumerGrid().getCraftingService()
+                        .submitJob(plan, null, null, true, IActionSource.empty()).successful(),
+                        "The consumer's CPU must take the second job");
+                tookOrders.add(busyCpu());
+                stage = 9;
+                helper.fail("Submitted the second job");
+            }
             case 13 -> helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                     "Waiting for the re-formed structure's recipes to return to the consumer");
         }
+    }
+
+    /** The consumer's only busy CPU, or null when none or several are busy. */
+    private appeng.api.networking.crafting.ICraftingCPU busyCpu() {
+        var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
+        return busy.size() == 1 ? busy.getFirst() : null;
     }
 
     /** What the provider reports, for a scene that never gets its pattern. */

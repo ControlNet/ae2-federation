@@ -13,6 +13,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -23,6 +24,7 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
 public final class ExtendedAEPlusCompatGameTests {
     /** Off every network of the Endpoint scene. */
     private static final BlockPos NATIVE_PROVIDER = new BlockPos(1, 1, 1);
+    private static final String ACCELERATOR = "extendedae_plus:4x_crafting_accelerator";
 
     private ExtendedAEPlusCompatGameTests() {
     }
@@ -30,7 +32,35 @@ public final class ExtendedAEPlusCompatGameTests {
     /** The consumer's CPU has an ExtendedAE-Plus 4x Crafting Accelerator. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void acceleratedCpuCrafting(GameTestHelper helper) {
-        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of("ae2:1k_crafting_storage", "extendedae_plus:4x_crafting_accelerator"));
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler", List.of("ae2:1k_crafting_storage", ACCELERATOR));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's accelerator example and its exercise: the consumer's CPU runs the order with the accelerator's four
+     * co-processors. Moved to a crafting storage on the provider network, the accelerator speeds up that network's CPU
+     * only, and the consumer's next order runs on its own CPU without co-processors.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void acceleratorMovedToWorkshop(GameTestHelper helper) {
+        var accelerator = AddonCraftingScene.FIRST_CPU.west();
+        var workshopCpu = AddonCraftingScene.PROVIDER_CABLE.above();
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "ae2:molecular_assembler",
+                List.of("ae2:1k_crafting_storage", ACCELERATOR)).reorderingAfterwards(test -> {
+                    test.setBlock(accelerator, Blocks.AIR);
+                    test.setBlock(workshopCpu, AEBlocks.CRAFTING_STORAGE_1K.block());
+                    test.setBlock(workshopCpu.above(), AddonCraftingScene.block(ACCELERATOR));
+                }, (order, cpu, provider) -> {
+                    if (order == 1) {
+                        helper.assertValueEqual(cpu.getCoProcessors(), 4, "The accelerated CPU's co-processors");
+                        return;
+                    }
+                    helper.assertTrue(provider.getCraftingService().getCpus().stream()
+                            .anyMatch(workshop -> workshop.getCoProcessors() == 4),
+                            "The accelerator must speed up the provider network's CPU");
+                    helper.assertValueEqual(cpu.getCoProcessors(), 0,
+                            "The consumer's own CPU, without the accelerator, runs the order");
+                });
         helper.succeedWhen(scene::tick);
     }
 
