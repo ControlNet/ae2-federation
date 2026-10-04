@@ -89,7 +89,8 @@ The first modpack runs found two bugs in AE2 Federation 0.0.4, both fixed on dev
   build refused it. It now requires NeoForge 21.1.216 or newer, the oldest that LDLib2 2.2.34 supports, and FML 4.
 - **Applied Flux crashed the server.** Applied Flux adds an energy distributor service to every AE2 Pattern Provider.
   The Federation Pattern Provider's lanes rejected any service they did not know, so loading a Federation Pattern
-  Provider beside Applied Flux crashed the server. Lanes now leave addon services out.
+  Provider beside Applied Flux crashed the server. Lanes now leave addon services out, so Applied Flux's energy
+  distribution does not work on a Federation Pattern Provider.
 
 Other findings, all upstream behaviour:
 
