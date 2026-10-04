@@ -45,6 +45,19 @@ public final class CreateCompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * The guide's Create example as its player builds and tries it: the Endpoint powers the wheels' subnet, and a job
+     * waits while the wheels stand still, then finishes once they turn again. The wheels crush a stone in well under
+     * 300 ticks, so 300 ticks without gravel show that none was crushed.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
+    public static void endpointCrushingWheelsStopped(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CrushingWheels()).poweredThroughEndpoint().interruptedBy(300,
+                (test, controller) -> CrushingWheels.turn(test, controller, 0),
+                (test, controller) -> CrushingWheels.turn(test, controller, 256));
+        helper.succeedWhen(scene::tick);
+    }
+
     /** Two Crushing Wheels north and south of the controller position, each turned by its own Creative Motor. */
     private static final class CrushingWheels implements EndpointMachineScene.Machine {
         @Override
@@ -78,6 +91,12 @@ public final class CreateCompatGameTests {
             helper.setBlock(position.south(), wheel);
         }
 
+        /** Sets both motors to {@code speed}, inwards, as a player sets them; 0 stops the wheels. */
+        static void turn(GameTestHelper helper, BlockPos controller, int speed) {
+            setSpeed(helper, controller.north().west(), speed);
+            setSpeed(helper, controller.south().west(), -speed);
+        }
+
         @Override
         public String state(GameTestHelper helper, BlockPos position) {
             var level = helper.getLevel();
@@ -107,6 +126,10 @@ public final class CreateCompatGameTests {
     private static void placeMotor(GameTestHelper helper, BlockPos position, int speed) {
         helper.setBlock(position, AddonCraftingScene.block("create:creative_motor").defaultBlockState()
                 .setValue(BlockStateProperties.FACING, Direction.EAST));
+        setSpeed(helper, position, speed);
+    }
+
+    private static void setSpeed(GameTestHelper helper, BlockPos position, int speed) {
         var entity = helper.getBlockEntity(position);
         try {
             var value = entity.getClass().getField("generatedSpeed").get(entity);
