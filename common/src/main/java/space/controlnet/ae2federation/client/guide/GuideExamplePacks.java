@@ -10,7 +10,8 @@ import java.util.function.Predicate;
  */
 public final class GuideExamplePacks {
     public static final List<Pack> ALL = List.of(new Pack("guide_mekanism", List.of("mekanism")),
-            new Pack("guide_mekanism_appmek", List.of("mekanism", "appmek")));
+            new Pack("guide_mekanism_appmek", List.of("mekanism", "appmek")),
+            new Pack("guide_create", List.of("create")));
 
     private GuideExamplePacks() {
     }

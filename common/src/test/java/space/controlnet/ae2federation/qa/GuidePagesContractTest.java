@@ -39,7 +39,8 @@ final class GuidePagesContractTest {
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
             "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
-            "appmek", Set.of("chemical_storage_cell_1k"));
+            "appmek", Set.of("chemical_storage_cell_1k"),
+            "create", Set.of("crushing_wheel", "chute"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
