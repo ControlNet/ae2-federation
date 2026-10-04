@@ -123,6 +123,12 @@ What the scenes need, learned while building them:
   NONE/INPUT. The Crusher's ITEM side supports INPUT_OUTPUT with ejecting, so it can eject back into an AE2 provider.
 - **Applied Mekanistics** adds Mekanism's chemical handler to every block with `AECapabilities.GENERIC_INTERNAL_INV`.
   That is how an AE2 Pattern Provider takes back chemicals, and since 7555cad how the Endpoint does too.
+- **Endpoint returns are type-generic.** Beside NeoForge's item and fluid handlers (for hoppers and chutes), the
+  Endpoint exposes `GENERIC_INTERNAL_INV` on its logistics faces. Addons wrap every block that has it: Applied
+  Mekanistics adds Mekanism's chemical handler, Applied Flux an FE `IEnergyStorage` (`FEGenericStackInvStorage`). Applied
+  Flux's `AFUtil.shouldTryCast` asks for an Induction Card only on `IUpgradeableObject`s and part hosts, so an Endpoint
+  always takes FE, including from generators or cables beside it. The owner chose (2026-10-05) to keep that, as the
+  Endpoint already takes any item a hopper pushes. FE returns through an Endpoint are untested.
 - **Create.** The Millstone takes rotation only from below. The Crushing Wheel controller forms between two wheels
   (axis X) and gives its product only to Create's direct-input behaviours, so a hopper under it collects the drop.
 - **ExtendedAE Circuit Slicer.** It connects on every side except front and back. Auto-export needs
