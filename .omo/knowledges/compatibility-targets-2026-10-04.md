@@ -87,3 +87,19 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
 - Create in a GameTest: a `create:creative_motor` with `FACING=UP` under a `create:millstone`, speed set through its
   public `generatedSpeed` ScrollValueBehaviour (`setValue(256)`); cobblestone mills to gravel in about 16 ticks.
 - Timings (60-core host): 15 profiles with `-j 16` take 3m14s; addon profiles 51–70 s each, CUS2 147 s, ATM10 193 s.
+
+## Addon tolerance audit (2026-10-04)
+
+- AE2's `ManagedGridNode.addService` is a `putInstance` (a later service of the same class replaces the earlier one)
+  and every node setter works after creation. The Federation Pattern Provider's `CapturedManagedGridNode` facade now
+  matches that: configuration calls are accepted and left out, flags are forwarded only before the physical node
+  exists, and a Lane keeps the first (AE2's own) ticker and crafting provider.
+- `PatternProviderLogicTargetBinding` uses MixinExtras `@WrapOperation` (bundled in NeoForge from 21.1.216; the
+  build already resolves `mixinextras-neoforge` 0.5.3), so another mod's wrapper of `ICraftingMachine.of` in
+  `pushPattern` chains instead of conflicting.
+- Client workaround mixins on GuideME/LDLib2 internals use `require = 0`; their targets exist in GuideME 21.1.15 and
+  21.1.19 and LDLib2 2.2.34 and 2.2.41. Server compat runs never load client mixins.
+- JUnit has the Minecraft classpath (`addModdingDependenciesTo(sourceSets.test)`), so classes naming Minecraft types
+  can be unit-tested; it writes empty `neoforge-1.21.1/logs/`, which is ignored.
+- Known low-risk strictness left as is: reloading an existing Federation Pattern Provider with a different Lane count
+  (`/data merge`, copy tools) throws; Lane composition requires the pattern inventory to keep its slot count.
