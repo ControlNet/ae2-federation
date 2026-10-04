@@ -23,9 +23,10 @@ final class NativeProviderLaneServices {
                 throw new IllegalStateException("PatternProviderLogic installed duplicate crafting providers");
             }
             provider = (ICraftingProvider) service;
-        } else {
-            throw new IllegalArgumentException("Unexpected PatternProviderLogic service: " + serviceClass.getName());
         }
+        // Other services come from addons that mix into every PatternProviderLogic, such as Applied Flux's energy
+        // distributor. A Lane composes only AE2's own ticker and crafting provider, so the addon's service is left out
+        // rather than added to the physical node once per Lane.
     }
 
     IGridTickable ticker() {

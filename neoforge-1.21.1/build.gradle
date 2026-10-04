@@ -540,6 +540,7 @@ tasks.named('runAppfluxGameTestServer').configure {
 tasks.withType(ProcessResources).configureEach {
     def metadataProperties = [
             mod_version: project.version.toString(),
+            neoforge_version_range: neoforge_version_range,
             ae2_version_range: ae2_version_range,
             ldlib2_version_range: ldlib2_version_range
     ]
