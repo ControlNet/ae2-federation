@@ -321,7 +321,9 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         if (currentUi == null) return;
         var pending = authority.pending();
         var active = applyState(pending ? "pending" : serverStatus, currentUi);
-        if (currentTopology != null) currentTopology.setEditable(active && authority.authorized());
+        // The topology's switches keep their look while a request is in flight, as a second press is dropped until
+        // the reply anyway; locking them for that moment made every switch flash.
+        if (currentTopology != null) currentTopology.setEditable(active(serverStatus) && authority.authorized());
         if (currentWorkspace != null) currentWorkspace.setProcessingEditable(active && authority.authorized());
         var message = element(currentUi, "request_status", Label.class);
         var rejection = authority.rejection();
@@ -389,12 +391,16 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             status.removeClass(state);
         }
         status.addClass(code);
-        var active = !code.equals("pending") && !code.equals("disabled")
-                && !code.equals("stale_context") && !code.equals("stale_revision");
+        var active = active(code);
         var lamp = element(ui, "sync_lamp", UIElement.class);
         int tone = active ? FederationTheme.OK : code.equals("pending") ? FederationTheme.WARN : FederationTheme.ERROR;
         lamp.style(style -> style.backgroundTexture(FederationTheme.solid(tone)));
         return active;
+    }
+
+    private static boolean active(String code) {
+        return !code.equals("pending") && !code.equals("disabled") && !code.equals("stale_context")
+                && !code.equals("stale_revision");
     }
 
     private static <T> T element(UI ui, String id, Class<T> type) {
