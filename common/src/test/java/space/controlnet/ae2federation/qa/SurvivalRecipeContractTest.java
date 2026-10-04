@@ -58,13 +58,13 @@ final class SurvivalRecipeContractTest {
     }
 
     @Test
-    void routerBatchHasCablesInTheCornersAndTheFourBusesAroundALogicProcessor() throws IOException {
+    void routerBatchHasCablesInTheCornersAndTheFourBusesAroundAFederationProcessor() throws IOException {
         var recipe = recipes().get("router");
         assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
         assertTrue(recipe.contains("\"pattern\":[\"CIC\",\"SLN\",\"CEC\"]"));
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
                 + "\"E\":{\"item\":\"ae2:export_bus\"},\"I\":{\"item\":\"ae2:import_bus\"},"
-                + "\"L\":{\"item\":\"ae2:logic_processor\"},\"N\":{\"item\":\"ae2:interface\"},"
+                + "\"L\":" + PROCESSOR + ",\"N\":{\"item\":\"ae2:interface\"},"
                 + "\"S\":{\"item\":\"ae2:storage_bus\"}}"));
     }
 

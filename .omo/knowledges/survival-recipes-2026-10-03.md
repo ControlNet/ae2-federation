@@ -10,7 +10,7 @@ the resources; the repository has no datagen.
 | 1 Pattern Provider | shapeless: `ae2:pattern_provider` (block item) + Federation Logic Processor |
 | 1 Processing Endpoint | shapeless: `ae2:interface` (block item) + Federation Logic Processor |
 | 16 Cable | shaped: 8 × `#ae2:glass_cable` (any colour, mixed) around a Federation Logic Processor |
-| 4 Router | shaped `CIC / SLN / CEC`: Cables in the corners, Import Bus top, Storage Bus left, Interface right, Export Bus bottom, native Logic Processor centre |
+| 4 Router | shaped `CIC / SLN / CEC`: Cables in the corners, Import Bus top, Storage Bus left, Interface right, Export Bus bottom, Federation Logic Processor centre (native Logic Processor until 2026-10-04) |
 
 - The processor is `material/MaterialRegistration.FEDERATION_LOGIC_PROCESSOR`. Its texture is the user-approved icon
   edited from AE2's `logic_processor.png`. It is a derivative of AE2's CC BY-NC-SA 3.0 art,
