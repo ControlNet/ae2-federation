@@ -40,7 +40,11 @@ final class GuidePagesContractTest {
     private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
             "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
             "appmek", Set.of("chemical_storage_cell_1k"),
-            "create", Set.of("crushing_wheel", "chute"));
+            "create", Set.of("crushing_wheel", "chute"),
+            "extendedae", Set.of("assembler_matrix_frame"));
+    /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
+    private static final Map<String, Set<String>> MOD_PAGES = Map.of(
+            "extendedae", Set.of("epp_intro/assembler_matrix.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
@@ -121,8 +125,12 @@ final class GuidePagesContractTest {
                     var links = LINK.matcher(Files.readString(root.resolve(page)));
                     while (links.find()) {
                         var target = links.group(1);
-                        if (target.startsWith("ae2:")) {
-                            assertTrue(AE2_PAGES.contains(target.substring(4)), page + " -> " + target);
+                        var qualified = Pattern.compile("([a-z0-9_]+):(.+)").matcher(target);
+                        if (qualified.matches()) {
+                            var known = qualified.group(1).equals("ae2") ? AE2_PAGES
+                                    : guide.mods().contains(qualified.group(1))
+                                            ? MOD_PAGES.getOrDefault(qualified.group(1), Set.of()) : Set.<String>of();
+                            assertTrue(known.contains(qualified.group(2)), page + " -> " + target);
                         } else {
                             // Page ids are the English paths, so a Chinese copy links exactly as the English page does.
                             var resolved = guide.root().resolve(page).getParent().resolve(target).normalize();
