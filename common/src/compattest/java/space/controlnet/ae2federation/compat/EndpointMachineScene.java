@@ -106,11 +106,16 @@ final class EndpointMachineScene {
     private final BlockPos machinePosition;
     private boolean checkTerminal;
     private String localProviderId;
+    private boolean localProviderPart;
+    private java.util.function.BiPredicate<Object, net.minecraft.world.item.ItemStack> installLocal =
+            (provider, pattern) -> provider instanceof PatternContainer container
+                    && container.getTerminalPatternInventory().addItems(pattern).isEmpty();
     private long jobs = 2;
     private java.util.function.Consumer<FederationPatternProviderBlockEntity> prepareProvider = provider -> {
     };
     private java.util.function.Consumer<ICraftingPlan> checkPlan = plan -> {
     };
+    private boolean localPatternInstalled;
     private int stage;
     private Future<ICraftingPlan> planFuture;
 
@@ -157,6 +162,20 @@ final class EndpointMachineScene {
         return this;
     }
 
+    /** As {@link #throughLocalProvider}, with a cable-part provider ({@code partItemId}) on a cable, facing the Endpoint. */
+    EndpointMachineScene throughLocalProviderPart(String partItemId) {
+        localProviderId = partItemId;
+        localProviderPart = true;
+        return this;
+    }
+
+    /** How the Local provider takes the pattern, for providers a player fills another way. */
+    EndpointMachineScene installingLocalPatternWith(
+            java.util.function.BiPredicate<Object, net.minecraft.world.item.ItemStack> install) {
+        installLocal = install;
+        return this;
+    }
+
     /**
      * After the job, checks what AE2's Pattern Access Terminal lists on the Provider's network: the Provider once,
      * holding its pattern, and none of its internal lanes.
@@ -188,6 +207,16 @@ final class EndpointMachineScene {
                 if (localProviderId == null) {
                     helper.setBlock(PROVIDER, ProcessingRegistration.PROVIDER.get().defaultBlockState()
                             .setValue(BlockStateProperties.FACING, Direction.EAST));
+                } else if (localProviderPart) {
+                    var level = helper.getLevel();
+                    var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+                            net.minecraft.resources.ResourceLocation.parse(localProviderId));
+                    helper.assertTrue(item instanceof appeng.api.parts.IPartItem<?>, localProviderId + " is not a part");
+                    helper.assertTrue(PartHelper.setPart(level, helper.absolutePos(PROVIDER), null, null,
+                            AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null
+                            && PartHelper.setPart(level, helper.absolutePos(PROVIDER), Direction.EAST, null,
+                                    (appeng.api.parts.IPartItem<?>) item) != null,
+                            localProviderId + " must go on a cable at " + PROVIDER);
                 } else {
                     helper.setBlock(PROVIDER, AddonCraftingScene.block(localProviderId));
                 }
@@ -232,6 +261,12 @@ final class EndpointMachineScene {
             case 2 -> {
                 helper.assertTrue(grid().getCraftingService().isCraftable(machine.output()),
                         "Waiting for the Provider's pattern to be craftable");
+                if (localProviderId != null) {
+                    var mode = binding() == null ? null : binding().runtime().mode().orElse(null);
+                    helper.assertTrue(mode instanceof space.controlnet.ae2federation.processing.endpoint
+                            .EndpointModeGeneration.Local, localProviderId + " must run the Endpoint in Local mode: "
+                            + mode);
+                }
                 helper.assertValueEqual(grid().getStorageService().getInventory().insert(machine.input(), jobs,
                         Actionable.MODULATE, IActionSource.empty()), jobs, "The ME Chest must take the inputs");
                 begin();
@@ -263,10 +298,12 @@ final class EndpointMachineScene {
     private void installLocalPattern() {
         helper.assertFalse(grid().getCraftingService().getCpus().isEmpty(), "Waiting for the CPU");
         var entity = helper.getLevel().getBlockEntity(helper.absolutePos(PROVIDER));
-        helper.assertTrue(entity instanceof PatternContainer, localProviderId + " is not a pattern container");
-        var patterns = ((PatternContainer) entity).getTerminalPatternInventory();
-        if (patterns.getStackInSlot(0).isEmpty()) {
-            helper.assertTrue(patterns.addItems(pattern()).isEmpty(), localProviderId + " refused the pattern");
+        Object provider = entity instanceof appeng.api.parts.IPartHost parts ? parts.getPart(Direction.EAST) : entity;
+        helper.assertTrue(provider instanceof PatternContainer, localProviderId + " is not a pattern container");
+        // succeedWhen retries this stage until the pattern is craftable, so the pattern goes in once.
+        if (!localPatternInstalled) {
+            helper.assertTrue(installLocal.test(provider, pattern()), localProviderId + " refused the pattern");
+            localPatternInstalled = true;
         }
     }
 
@@ -347,8 +384,12 @@ final class EndpointMachineScene {
     }
 
     private IGridNode node(BlockPos position) {
-        return helper.getLevel().getBlockEntity(helper.absolutePos(position)) instanceof IGridConnectedBlockEntity entity
-                ? entity.getMainNode().getNode() : null;
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        if (entity instanceof appeng.api.parts.IPartHost parts) {
+            var cable = parts.getPart(null);
+            return cable == null ? null : cable.getGridNode();
+        }
+        return entity instanceof IGridConnectedBlockEntity connected ? connected.getMainNode().getNode() : null;
     }
 
     private void begin() {

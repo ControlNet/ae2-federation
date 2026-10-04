@@ -58,4 +58,32 @@ public final class LightningTechCompatGameTests {
         var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace(), MENTAL_MATH_UNIT);
         helper.succeedWhen(scene::tick);
     }
+
+    /**
+     * The Pigmee provider is its own crafting provider with no AE2 logic, and the Overloaded one extends AE2's: both run
+     * the Endpoint in Local mode.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalPigmeePatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("ae2lt:pigmee_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalOverloadedPatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("ae2lt:overloaded_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+
+    /** The Bridge is removed while the Pigmee Mental Math Unit runs a job through the Pigmee provider. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void mentalMathUnitDisconnected(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2lt:pigmee_pattern_provider", "minecraft:chest",
+                List.of(MENTAL_MATH_UNIT), true).disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
 }

@@ -1,0 +1,19 @@
+{
+  "name": "extendedae-plus-aeallpattern",
+  "group": "addons",
+  "description": "ExtendedAE-Plus beside AE All Pattern only: AE All Pattern replaces AE2's pattern refresh, so Smart Doubling never marks a pattern",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "extendedae@2.2.39",
+    "extendedae-plus@1.6.3",
+    "aeallpattern@0.2.6"
+  ],
+  "tests": [
+    "core",
+    "extendedae-plus"
+  ]
+}

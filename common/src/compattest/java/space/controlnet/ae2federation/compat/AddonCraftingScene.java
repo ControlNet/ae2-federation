@@ -48,6 +48,8 @@ import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
  */
 final class AddonCraftingScene {
     private static final BlockPos BASE = new BlockPos(5, 3, 5);
+    /** Where the provider stands: east of the provider network's last cable, which is west of it. */
+    static final BlockPos PROVIDER = BASE.east(2).north();
     private static final AEItemKey PLANKS = AEItemKey.of(Items.OAK_PLANKS);
     private static final AEItemKey STICKS = AEItemKey.of(Items.STICK);
     private static final AEItemKey COBBLESTONE = AEItemKey.of(Items.COBBLESTONE);
@@ -69,10 +71,12 @@ final class AddonCraftingScene {
     };
     private boolean cpuOnCable;
     private boolean cancelAfterPush;
+    private boolean disconnectAfterPush;
     private long jobs = 2;
-    private final BlockPos providerPos = BASE.east(2).north();
-    private final BlockPos assemblerPos = providerPos.east();
-    private final BlockPos outputChestPos = providerPos.below();
+    private java.util.function.Consumer<GameTestHelper> placeStructure;
+    private BlockPos providerPos = PROVIDER;
+    private final BlockPos assemblerPos = PROVIDER.east();
+    private final BlockPos outputChestPos = PROVIDER.below();
     private int stage;
     private Future<ICraftingPlan> planFuture;
     private Future<ICraftingPlan> localPlanFuture;
@@ -105,6 +109,18 @@ final class AddonCraftingScene {
         this.machine = machine;
         bridge = new PolicyBridgeFixtures(helper, BASE);
         bridge.installStorageCells();
+    }
+
+    /**
+     * The provider is a multiblock with no assembler beside it: {@code place} builds it from {@link #PROVIDER}, which
+     * touches the provider network's cable, and its block at {@code patternContainer} takes the pattern and crafts.
+     */
+    static AddonCraftingScene structure(GameTestHelper helper, String name, List<String> cpuIds,
+            java.util.function.Consumer<GameTestHelper> place, BlockPos patternContainer) {
+        var scene = new AddonCraftingScene(helper, name, cpuIds, null, null);
+        scene.placeStructure = place;
+        scene.providerPos = patternContainer;
+        return scene;
     }
 
     /** The machine a processing pattern names: its block, what it makes from what, and how it runs. */
@@ -207,6 +223,17 @@ final class AddonCraftingScene {
     }
 
     /**
+     * Removes the Bridge once the provider has pushed every input into the chest machine, then runs the machine: the
+     * projected pattern leaves the consumer, the output stays on the provider network, the consumer's job keeps waiting
+     * for it and its debt stays owed, as a job waits for an output that went elsewhere.
+     */
+    AddonCraftingScene disconnectingAfterPush() {
+        if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
+        disconnectAfterPush = true;
+        return this;
+    }
+
+    /**
      * Checks the consumer's plan before it is submitted, such as how an addon rewrote it, against the plan the provider
      * network makes for the same request with its own pattern. That plan lacks the inputs, which are on the consumer.
      */
@@ -220,8 +247,12 @@ final class AddonCraftingScene {
         switch (stage) {
             case 0 -> {
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks");
-                helper.setBlock(providerPos, block(providerId));
-                helper.setBlock(assemblerPos, block(assemblerId));
+                if (placeStructure != null) {
+                    placeStructure.accept(helper);
+                } else {
+                    helper.setBlock(providerPos, block(providerId));
+                    helper.setBlock(assemblerPos, block(assemblerId));
+                }
                 if (machine != null) machine.placeAround(helper, assemblerPos);
                 if (machine != null && machine.outputCell() != null) {
                     helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
@@ -253,6 +284,11 @@ final class AddonCraftingScene {
             case 2 -> {
                 if (!bridge.firstBridgeReady()) bridge.refreshFirstBridge();
                 helper.assertTrue(bridge.firstBridgeReady(), "Waiting for the Bridge");
+                if (placeStructure != null) {
+                    helper.assertTrue(helper.getLevel().getBlockEntity(helper.absolutePos(providerPos))
+                            instanceof appeng.me.cluster.IAEMultiBlock<?> part && part.getCluster() != null,
+                            "Waiting for " + providerId + " to form");
+                }
                 helper.assertTrue(grid(providerPos) == bridge.outerGrid(),
                         providerId + " must join the provider network");
                 var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
@@ -300,7 +336,7 @@ final class AddonCraftingScene {
                 helper.fail("Submitted the job");
             }
             case 6 -> {
-                if (!cancelAfterPush) {
+                if (!cancelAfterPush && !disconnectAfterPush) {
                     stage = 9;
                     helper.fail("Running the job");
                 }
@@ -308,9 +344,31 @@ final class AddonCraftingScene {
                         "Waiting for the provider to push every input");
                 var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
                 helper.assertValueEqual(busy.size(), 1, "The consumer's CPU must be running the job");
+                if (disconnectAfterPush) {
+                    bridge.removeFirstBridge();
+                    stage = 10;
+                    helper.fail("Removed the Bridge");
+                }
                 cancel(busy.getFirst());
                 stage = 7;
                 helper.fail("Cancelled the consumer's job");
+            }
+            case 10 -> {
+                helper.assertFalse(consumerGrid().getCraftingService().isCraftable(output()),
+                        "Waiting for the provider's pattern to leave the consumer");
+                machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
+                stage = 11;
+                helper.fail("Ran the machine with the networks apart");
+            }
+            case 11 -> {
+                helper.assertValueEqual(held(providerChest(), output()), jobs,
+                        "The output stays on the provider network");
+                helper.assertValueEqual(held(consumerChest(), output()), 0L, "Nothing crosses the removed Bridge");
+                var busy = consumerGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).toList();
+                helper.assertValueEqual(busy.size(), 1, "The consumer's job keeps waiting");
+                helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(),
+                        bridge.mainNetwork(), output()), jobs, "The debt stays while the consumer still waits");
+                cancel(busy.getFirst());
             }
             case 7 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),

@@ -53,6 +53,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     private @Nullable CableFacePort federationPort;
     private boolean federationDomainDirty = true;
+    private boolean providerNodePending;
 
     public EndpointBlockEntity(BlockPos position, BlockState state) {
         super(space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT_BLOCK_ENTITY.get(),
@@ -101,6 +102,9 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         if (endpoint.configuredMode == EndpointMode.LOCAL && endpoint.binding != null
                 && endpoint.binding.runtime().mode().isEmpty() && level.getGameTime() % 20 == 0) {
             endpoint.reconcileMode();
+        } else if (endpoint.providerNodePending && level.getGameTime() % 5 == 0) {
+            // A block or part placed on the Federation face is known to be a provider only once it has its node.
+            endpoint.reconcileMode();
         }
     }
 
@@ -112,26 +116,28 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         reconcileMode();
     }
 
-    /** A native AE2 Pattern Provider (another network) on the Federation face that pushes into this Endpoint. */
+    /**
+     * A pattern provider of another network on the Federation face that pushes into this Endpoint: AE2's block or cable
+     * part, or an addon's.
+     */
     public boolean nativeProviderOnFederationFace() {
-        if (level == null) {
-            return false;
-        }
-        var front = worldPosition.relative(federationFace());
-        return level.isLoaded(front)
-                && level.getBlockEntity(front) instanceof appeng.blockentity.crafting.PatternProviderBlockEntity provider
-                && provider.getTargets().contains(federationFace().getOpposite());
+        return level instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && space.controlnet.ae2federation.ae2.processing.endpoint.LocalProviderLookup.find(serverLevel,
+                        worldPosition.relative(federationFace()), federationFace().getOpposite()).isPresent();
     }
 
     /**
-     * What touches the Federation face selects the mode: a native AE2 Pattern Provider selects Local, anything else
-     * (Federation Cable, Router, Federation Pattern Provider front, nothing) Federated. Local takes over by releasing a
+     * What touches the Federation face selects the mode: a pattern provider of another network selects Local, anything
+     * else (Federation Cable, Router, Federation Pattern Provider front, nothing) Federated. Local takes over by releasing a
      * Federated Claim first, so the owning Lane stops and its return path closes.
      */
     private void reconcileMode() {
         if (binding == null) {
             return;
         }
+        providerNodePending = level instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && space.controlnet.ae2federation.ae2.processing.endpoint.LocalProviderLookup.awaitingNode(serverLevel,
+                        worldPosition.relative(federationFace()), federationFace().getOpposite());
         if (nativeProviderOnFederationFace()) {
             if (configuredMode != EndpointMode.LOCAL) {
                 if (claims.state() instanceof ClaimState.Owned owned) {

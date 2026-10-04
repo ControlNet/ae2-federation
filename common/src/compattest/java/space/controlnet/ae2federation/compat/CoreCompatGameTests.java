@@ -201,4 +201,24 @@ public final class CoreCompatGameTests {
                 4 * AEFluidKey.AMOUNT_BUCKET, AEFluidKey.AMOUNT_BUCKET);
         helper.succeedWhen(scene::tick);
     }
+
+    /** AE2's cable-part Pattern Provider runs the Endpoint in Local mode, as the block does. */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalPatternProviderPart(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Furnace()).throughLocalProviderPart("ae2:cable_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+
+    /**
+     * The Bridge is removed after the provider pushed its inputs: the pattern leaves the consumer, the output stays on
+     * the provider network and the consumer's job keeps waiting. This is the control for the addon variants.
+     */
+    @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 600)
+    public static void remoteProcessingDisconnected(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true).disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
 }

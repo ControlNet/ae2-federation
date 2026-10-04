@@ -54,4 +54,32 @@ public final class AdvancedAECompatGameTests {
         var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace(), QUANTUM_CORE);
         helper.succeedWhen(scene::tick);
     }
+
+    /**
+     * Advanced AE's providers have their own logic, not AE2's, and still run the Endpoint in Local mode: the block and
+     * the cable part.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalAdvPatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("advanced_ae:adv_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalAdvPatternProviderPart(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProviderPart("advanced_ae:adv_pattern_provider_part");
+        helper.succeedWhen(scene::tick);
+    }
+
+
+    /** The Bridge is removed while the Quantum Core runs a job through an Advanced Pattern Provider. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void quantumCoreDisconnected(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "advanced_ae:adv_pattern_provider", "minecraft:chest",
+                List.of(QUANTUM_CORE), true).cpuOnCable().disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
 }

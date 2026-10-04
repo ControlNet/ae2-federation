@@ -10,6 +10,7 @@
     "neoecoae@21.2.0"
   ],
   "tests": [
-    "core"
+    "core",
+    "neoecoae"
   ]
 }

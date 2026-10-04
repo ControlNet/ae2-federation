@@ -273,6 +273,36 @@ public final class EndpointFederationFaceGameTests {
     }
 
     /**
+     * AE2's cable-part Pattern Provider on the Federation face selects Local mode as the block does: its push reaches
+     * the subnet, and a machine's output put into the Endpoint goes back into that part's return inventory.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void endpointFederationFaceLocalPart(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        scene.place(MEMBER_CHEST, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState(), scene.member);
+        var part = scene.nativeProviderPart(HUB);
+        scene.endpoint(NEAR, Direction.WEST);
+        helper.succeedWhen(() -> {
+            var endpoint = helper.<EndpointBlockEntity>getBlockEntity(NEAR);
+            var binding = endpoint.binding();
+            helper.assertTrue(binding != null, "Waiting for the Endpoint binding");
+            helper.assertTrue(binding.runtime().mode().orElse(null) instanceof EndpointModeGeneration.Local,
+                    "AE2's cable-part Pattern Provider on the Federation face must select Local mode");
+            helper.assertTrue(scene.nativePush(part.getLogic()), "The part must push into the Federation face");
+            helper.assertValueEqual(scene.subnetCount(NEAR), 1L, "Local input must reach the subnet storage");
+            var returned = helper.getLevel().getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+                    helper.absolutePos(NEAR), Direction.EAST);
+            helper.assertTrue(returned != null, "A Local Endpoint must take machine output on its logistics faces");
+            helper.assertTrue(returned.insertItem(0, new net.minecraft.world.item.ItemStack(Items.DIAMOND), false)
+                    .isEmpty(), "The Endpoint must take the machine's output");
+            var stack = part.getLogic().getReturnInv().getStack(0);
+            helper.assertTrue(stack != null && stack.what().equals(AEItemKey.of(Items.DIAMOND)),
+                    "The output must go back into the part's return inventory: " + stack);
+        });
+    }
+
+    /**
      * A claimed Federated Endpoint shares its subnet's energy with the network of the Provider that claims it, as one
      * pool: a subnet with no energy cell of its own is powered while the claim holds and its switch is on, and loses
      * power when the switch is turned off or the Provider releases the claim.
@@ -384,9 +414,26 @@ public final class EndpointFederationFaceGameTests {
                     .setValue(PatternProviderBlock.PUSH_DIRECTION, PushDirection.EAST), member);
         }
 
+        /** AE2's cable-part Pattern Provider of the member network, on a cable, facing east into the next block. */
+        appeng.parts.crafting.PatternProviderPart nativeProviderPart(BlockPos position) {
+            var level = helper.getLevel();
+            var at = helper.absolutePos(position);
+            var cable = appeng.api.parts.PartHelper.setPart(level, at, null, null,
+                    appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT));
+            var part = appeng.api.parts.PartHelper.setPart(level, at, Direction.EAST, null,
+                    appeng.core.definitions.AEParts.PATTERN_PROVIDER.get());
+            helper.assertTrue(cable != null && part != null, "The cable and the provider part must go at " + position);
+            cable.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", member));
+            part.getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", member));
+            return part;
+        }
+
         /** Pushes one cobblestone through the native Provider's processing pattern, as its crafting job would. */
         boolean nativePush(BlockPos position) {
-            var logic = helper.<PatternProviderBlockEntity>getBlockEntity(position).getLogic();
+            return nativePush(helper.<PatternProviderBlockEntity>getBlockEntity(position).getLogic());
+        }
+
+        boolean nativePush(appeng.helpers.patternprovider.PatternProviderLogic logic) {
             if (logic.getAvailablePatterns().isEmpty()) {
                 logic.getPatternInv().setItemDirect(0, PatternDetailsHelper.encodeProcessingPattern(
                         List.of(new GenericStack(AEItemKey.of(Items.COBBLESTONE), 1)),

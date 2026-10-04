@@ -32,6 +32,8 @@ final class AddonStorageScene {
     /** Beside the provider's ME Chest: a cable carrying the Storage Bus, and the block the bus faces. */
     private static final BlockPos BUS_CABLE = new BlockPos(10, 4, 5);
     static final BlockPos BUS_TARGET = new BlockPos(11, 4, 5);
+    /** East of the provider's ME Chest, through which a block placed there joins the provider network. */
+    static final BlockPos BESIDE_CHEST = BUS_CABLE;
 
     private final GameTestHelper helper;
     private final RouterStorageMountFixture fixtures;
@@ -42,6 +44,7 @@ final class AddonStorageScene {
     private final IActionSource source = IActionSource.empty();
     private boolean infinite;
     private boolean extractOnly;
+    private java.util.function.BooleanSupplier ready = () -> true;
     private int step;
 
     AddonStorageScene(GameTestHelper helper, String cellId) {
@@ -90,6 +93,19 @@ final class AddonStorageScene {
     }
 
     /**
+     * The provider network's only storage is a multiblock that {@code place} builds from {@link #BESIDE_CHEST}; the
+     * Storage rule is set once {@code ready} holds, which may also fit its storage cells.
+     */
+    static AddonStorageScene structure(GameTestHelper helper, String name,
+            java.util.function.Consumer<GameTestHelper> place, java.util.function.BooleanSupplier ready) {
+        var scene = new AddonStorageScene(name, helper, IRON, 9, 4);
+        scene.fixtures.providerChest().setCell(ItemStack.EMPTY);
+        place.accept(helper);
+        scene.ready = ready;
+        return scene;
+    }
+
+    /**
      * For storage that holds an endless amount of one resource and never changes, such as a creative infinity cell:
      * the consumer sees some and takes {@code taken}, and nothing is stored first.
      */
@@ -109,6 +125,7 @@ final class AddonStorageScene {
 
     /** Each step runs once; {@code succeedWhen} retries the checks after it until they hold. */
     void tick() {
+        helper.assertTrue(step > 0 || ready.getAsBoolean(), "Waiting for the provider's " + storage);
         if (step == 0 && fixtures.networksSettled()) {
             fixtures.connectRouters();
             step = 1;

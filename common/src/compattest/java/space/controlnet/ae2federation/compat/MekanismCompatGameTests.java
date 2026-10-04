@@ -31,6 +31,23 @@ public final class MekanismCompatGameTests {
     }
 
     /**
+     * A fluid comes back through the Endpoint: the Federation Pattern Provider sends apples into a Nutritional Liquifier
+     * standing on the Endpoint, which ejects the nutritional paste it makes, a fluid, down into the Endpoint.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLiquifierFluid(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Liquifier());
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** The same fluid return in Local mode, into the return inventory of another network's AE2 Pattern Provider. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalLiquifierFluid(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Liquifier()).throughLocalProvider("ae2:pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * The consumer requests gravel; the provider network's AE2 Pattern Provider pushes cobblestone into a Crusher,
      * which ejects the gravel back into the provider, as a player sets its side to input and output.
      */
@@ -156,4 +173,64 @@ public final class MekanismCompatGameTests {
                 });
         helper.succeedWhen(scene::tick);
     }
+
+    private static final class Liquifier implements EndpointMachineScene.Machine {
+        @Override
+        public String blockId() {
+            return "mekanism:nutritional_liquifier";
+        }
+
+        @Override
+        public AEKey input() {
+            return AEItemKey.of(Items.APPLE);
+        }
+
+        @Override
+        public AEKey output() {
+            var paste = net.minecraft.core.registries.BuiltInRegistries.FLUID.get(
+                    net.minecraft.resources.ResourceLocation.parse("mekanism:nutritional_paste"));
+            return AEFluidKey.of(paste);
+        }
+
+        @Override
+        public String outputCell() {
+            return "ae2:fluid_storage_cell_1k";
+        }
+
+        /** An apple feeds 4, and the Liquifier makes 50 mB of paste per point. */
+        @Override
+        public long outputPerInput() {
+            return 200;
+        }
+
+        @Override
+        public boolean ejectsIntoEndpoint() {
+            return true;
+        }
+
+        @Override
+        public Direction inputFace() {
+            return Direction.EAST;
+        }
+
+        /** Apples in on the Storage Bus side, paste ejected down into the Endpoint, energy from the cube behind. */
+        @Override
+        public void prepare(GameTestHelper helper, BlockPos position) {
+            var cube = position.west();
+            helper.setBlock(cube, AddonCraftingScene.block("mekanism:creative_energy_cube"));
+            MekanismSetup.fill(helper, cube);
+            MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.EAST, true);
+            MekanismSetup.configure(helper, position, "ITEM", "INPUT", Direction.EAST, false);
+            MekanismSetup.configure(helper, position, "FLUID", "OUTPUT", Direction.DOWN, true);
+            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.WEST, false);
+        }
+
+        @Override
+        public String state(GameTestHelper helper, BlockPos position) {
+            var fluids = helper.getLevel().getCapability(Capabilities.FluidHandler.BLOCK,
+                    helper.absolutePos(position.below()), Direction.UP);
+            return MekanismSetup.describe(helper, position) + " endpointFluidHandler=" + fluids;
+        }
+    }
+
 }

@@ -44,4 +44,17 @@ public final class DataEnergisticsCompatGameTests {
         slot.writeToNBT(tag, "provider_slot", registries);
         entity.loadWithComponents(tag, registries);
     }
+
+    /** Data Energistics' Adaptive Pattern Provider runs the Endpoint in Local mode once an AE2 provider is fitted. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalAdaptivePatternProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace()).throughLocalProvider(ADAPTIVE)
+                .installingLocalPatternWith((provider, pattern) -> {
+                    fitPatternProvider(helper, (BlockEntity) provider);
+                    return ((appeng.helpers.patternprovider.PatternContainer) provider).getTerminalPatternInventory()
+                            .addItems(pattern).isEmpty();
+                });
+        helper.succeedWhen(scene::tick);
+    }
+
 }

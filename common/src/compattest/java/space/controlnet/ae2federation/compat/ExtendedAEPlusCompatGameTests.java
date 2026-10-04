@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -85,6 +86,22 @@ public final class ExtendedAEPlusCompatGameTests {
                     }
                 });
         helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * Without Federation in the way: a plain AE2 Pattern Provider with Smart Doubling on marks its pattern exactly when
+     * AE All Pattern is not loaded. AE All Pattern cancels AE2's updatePatterns at its start and refreshes the patterns
+     * itself, so ExtendedAE-Plus' mark, added at the end of that method, is never set.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 100)
+    public static void smartDoublingNativeProvider(GameTestHelper helper) {
+        var pattern = appeng.api.crafting.PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new appeng.api.stacks.GenericStack(appeng.api.stacks.AEItemKey.of(Items.COBBLESTONE), 1)),
+                List.of(new appeng.api.stacks.GenericStack(appeng.api.stacks.AEItemKey.of(Items.STONE), 1)));
+        var aeAllPattern = ModList.get().isLoaded("aeallpattern");
+        helper.assertValueEqual(nativeMark(helper, pattern), !aeAllPattern,
+                "ExtendedAE-Plus' mark on a plain AE2 Pattern Provider with AE All Pattern loaded=" + aeAllPattern);
+        helper.succeed();
     }
 
     /** Whether a plain AE2 Pattern Provider, off any network, with Smart Doubling on, marks {@code pattern}. */

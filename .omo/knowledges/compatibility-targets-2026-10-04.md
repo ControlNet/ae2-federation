@@ -147,14 +147,37 @@ What the scenes need, learned while building them:
     composition's own refreshes skip the callback.
   - Tests: `providernativepatternrefresh` uses the test-only `AddonPatternHookEmulation` mixin;
     `smartDoublingEndpoint` compares the lane's mark with a plain AE2 Pattern Provider placed off-network.
-- **Endpoint Local mode** (`EndpointCapabilityComposition.adjacentProviders`) accepts only a
-  `PatternProviderBlockEntity` on the Federation face. That covers AE2's, ExtendedAE's and MEGA's block providers.
-  It excludes AE2's cable-part provider and the own-logic providers of AdvancedAE, Pigmee, Pattern Disk and Data
-  Energistics. Those still work through projection.
+- **Endpoint Local mode** goes through `LocalProviderLookup.find` (2026-10-05). A provider is whatever has
+  `node.getService(ICraftingProvider.class)`. The node comes from `IPartHost.getPart(targetSide)` or
+  `IGridConnectedBlockEntity.getMainNode()`. The ME Interface also exposes GENERIC_INTERNAL_INV, so that capability
+  alone does not identify a provider.
+  - Push side: `PatternProviderLogicHost.getTargets()`; else a reflective `getTargets()` (AdvancedAE's own host); else
+    a blockstate `PushDirection` property (Pigmee); else any side.
+  - Returns: `level.getCapability(GENERIC_INTERNAL_INV, pos, targetSide)` first, then `getLogic().getReturnInv()`.
+    ae2lt's Overloaded `getReturnInv()` is a paged view whose insert duplicates, and its capability is a new wrapper on
+    every query, so neither `claimDiscovered` nor `EndpointReturnOwner` compares return-inventory identity for Local.
+  - A provider placed this tick has no node yet: `awaitingNode` makes the Endpoint re-check every 5 ticks.
+- **ExpandedAE blocking modes.** It adds `blocking_type` (ALL/DEFAULT/SMART) and `@Overwrite`s
+  `PatternProviderLogic.findAdapter` with its own
+  `lu.kolja.expandedae.helper.pattern.PatternProviderTargetCache(ServerLevel, BlockPos, Direction, IActionSource,
+  ConfigManager)`. Federation's `PatternProviderLogicTargetBinding` replaces `findAdapter` for lanes, so
+  `FederationPatternProviderTargetCache.Binding.find` builds ExpandedAE's cache reflectively when present, cached per
+  binding and target, and otherwise uses AE2's `PatternProviderTarget.get`. Without that, Smart was reversed on lanes.
+- **Multiblocks.**
+  - ExtendedAE Assembler Matrix: a filled cuboid 3–7 per axis. Frames go on the edges and walls (or glass) on the
+    faces, with at least one `assembler_matrix_pattern` and one `assembler_matrix_crafter` inside, so the smallest is
+    4×3×3. The pattern core is a `PatternContainer`; the blocks implement `IAEMultiBlock`, formed when
+    `getCluster() != null`.
+  - Neo ECO (`NECraftingClusterCalculator` and `NEStorageClusterCalculator`): 3 high, 2 deep, at most 15 long, one
+    controller, mirroring detected. Only the interface block takes cable. A crafting pattern bus is a
+    `PatternContainer`. An empty `ECODriveBlockEntity.getCellStack()` returns null; `setCellStack` fits a cell.
+    `NeoEcoCompatGameTests` has the smallest layouts.
 - **Smart Doubling in `addons-all`.** AE All Pattern's `@Inject(HEAD, cancellable = true)` on `updatePatterns` cancels
   AE2's body, so ExtendedAE-Plus' TAIL inject, which sets `ISmartDoublingAwarePattern.eap$setAllowScaling`, never runs
   on any provider. No plan scales there. `smartDoublingProcessing` asserts that the consumer's plan scales exactly when
   the provider network's plan does, and `smartDoublingEndpoint` compares with a plain AE2 Pattern Provider.
+  The `extendedae-plus-aeallpattern` profile (only those two mods) proves it is upstream: `smartDoublingNativeProvider`
+  asserts the mark is set exactly when `aeallpattern` is not loaded.
 - **GameTest retries hide failures.** `succeedWhen` re-runs a failed stage every tick, so a stage that acts and then
   asserts reports whatever its retry hits. Build references once (cache in an `AtomicReference`), and check results
   that a later refresh could fix in the same tick, storing the result for the next phase.

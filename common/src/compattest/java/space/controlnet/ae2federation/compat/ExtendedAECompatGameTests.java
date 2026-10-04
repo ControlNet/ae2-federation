@@ -27,6 +27,34 @@ public final class ExtendedAECompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * ExtendedAE's Assembler Matrix crafts the remote request: a multiblock whose pattern core provides the pattern
+     * and whose crafter core crafts it, joined to the provider network through its frame.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void assemblerMatrixCrafting(GameTestHelper helper) {
+        var scene = AddonCraftingScene.structure(helper, "extendedae:assembler_matrix", List.of("ae2:1k_crafting_storage"),
+                ExtendedAECompatGameTests::placeAssemblerMatrix, AddonCraftingScene.PROVIDER.offset(1, 1, -1));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The smallest Assembler Matrix, 4 long, 3 high and 3 deep from the provider's spot: frames on its edges, walls on
+     * its faces, and inside a pattern core and then a crafter core.
+     */
+    private static void placeAssemblerMatrix(GameTestHelper helper) {
+        var start = AddonCraftingScene.PROVIDER.offset(0, 0, -2);
+        for (int x = 0; x < 4; x++) {
+            for (int y = 0; y < 3; y++) {
+                for (int z = 0; z < 3; z++) {
+                    int outer = (x == 0 || x == 3 ? 1 : 0) + (y == 1 ? 0 : 1) + (z == 1 ? 0 : 1);
+                    var part = outer >= 2 ? "frame" : outer == 1 ? "wall" : x == 1 ? "pattern" : "crafter";
+                    helper.setBlock(start.offset(x, y, z), AddonCraftingScene.block("extendedae:assembler_matrix_" + part));
+                }
+            }
+        }
+    }
+
     /** The same provider runs the remote request's processing pattern in a machine. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void exPatternProviderProcessing(GameTestHelper helper) {
@@ -150,4 +178,22 @@ public final class ExtendedAECompatGameTests {
             throw new IllegalStateException(target + " has no " + name, exception);
         }
     }
+
+    /** ExtendedAE's cable-part Pattern Provider runs the Endpoint in Local mode. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalExPatternProviderPart(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProviderPart("extendedae:ex_pattern_provider_part");
+        helper.succeedWhen(scene::tick);
+    }
+
+
+    /** The Bridge is removed after ExtendedAE's Pattern Provider pushed its inputs. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void exPatternProviderDisconnected(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "extendedae:ex_pattern_provider", "minecraft:chest",
+                List.of("ae2:1k_crafting_storage"), true).disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
 }

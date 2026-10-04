@@ -63,4 +63,14 @@ public final class PatternDiskCompatGameTests {
             throw new IllegalStateException("AE2 Pattern Disk's API changed", exception);
         }
     }
+
+    /** AE2 Pattern Disk's provider runs the Endpoint in Local mode, with its pattern written to a disk. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void endpointLocalPatternDiskProvider(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("ae2_pattern_disk:pattern_disk_provider")
+                .installingLocalPatternWith((provider, pattern) -> insertOnDisk(helper, (BlockEntity) provider, pattern));
+        helper.succeedWhen(scene::tick);
+    }
+
 }

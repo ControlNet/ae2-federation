@@ -45,4 +45,13 @@ public final class OmniSequenceCompatGameTests {
                 List.of("ae2:1k_crafting_storage"));
         helper.succeedWhen(scene::tick);
     }
+
+    /** The Bridge is removed while the Transfinite Compute Nexus runs a job. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void nexusDisconnected(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(NEXUS), true)
+                .disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
 }

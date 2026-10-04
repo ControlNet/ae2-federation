@@ -71,7 +71,7 @@ public final class EndpointRuntime {
         }
         var provider = composition.localProvider().orElseThrow();
         var local = new EndpointModeGeneration.Local(composition.generation(), provider);
-        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.logic().getReturnInv(),
+        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.returnInventory(),
                 Optional.empty()));
         mode = local;
         invalidateCapabilities();
