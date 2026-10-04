@@ -45,6 +45,20 @@ public final class AppliedMekanisticsCompatGameTests {
     }
 
     /**
+     * The guide's chemical example as its player builds and tries it: the Endpoint powers the oxidizer's subnet, and
+     * a job waits while the oxidizer's auto-eject for chemicals is off, then finishes once it is on again. The
+     * oxidizer takes 100 ticks a batch, so 300 ticks without carbon show that none came back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
+    public static void endpointOxidizerEjectOff(GameTestHelper helper) {
+        var scene = new EndpointMachineScene(helper, new Oxidizer(
+                AddonStorageScene.key(helper, "appmek:chemical", "mekanism:carbon"))).poweredThroughEndpoint()
+                .interruptedBy(300, (test, oxidizer) -> MekanismSetup.eject(test, oxidizer, "CHEMICAL", false),
+                        (test, oxidizer) -> MekanismSetup.eject(test, oxidizer, "CHEMICAL", true));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * The consumer requests carbon; the provider network's AE2 Pattern Provider pushes charcoal into a Chemical
      * Oxidizer, which ejects the carbon back into the provider. The provider network stores it in a chemical cell.
      */
@@ -135,16 +149,19 @@ public final class AppliedMekanisticsCompatGameTests {
             return Direction.EAST;
         }
 
-        /** Items in on the Storage Bus side, carbon ejected down into the Endpoint, energy from the cube behind. */
+        /**
+         * Items in on the Storage Bus side, carbon ejected down into the Endpoint, energy from a charged Basic Energy
+         * Cube on top, as the guide's example builds it.
+         */
         @Override
         public void prepare(GameTestHelper helper, BlockPos position) {
-            var cube = position.west();
-            helper.setBlock(cube, AddonCraftingScene.block("mekanism:creative_energy_cube"));
+            var cube = position.above();
+            helper.setBlock(cube, AddonCraftingScene.block("mekanism:basic_energy_cube"));
             MekanismSetup.fill(helper, cube);
-            MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.EAST, true);
+            MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.DOWN, true);
             MekanismSetup.configure(helper, position, "ITEM", "INPUT", Direction.EAST, false);
             MekanismSetup.configure(helper, position, "CHEMICAL", "OUTPUT", Direction.DOWN, true);
-            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.WEST, false);
+            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.UP, false);
         }
 
         @Override

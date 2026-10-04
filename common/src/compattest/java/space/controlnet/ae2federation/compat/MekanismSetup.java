@@ -48,6 +48,23 @@ final class MekanismSetup {
         }
     }
 
+    /** Turns a machine's auto-eject for one transmission type on or off, as the button in its side configuration does. */
+    static void eject(GameTestHelper helper, BlockPos position, String transmission, boolean ejecting) {
+        var tile = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        try {
+            var transmissionType = enumConstant(tile.getClass().getClassLoader(),
+                    "mekanism.common.lib.transmitter.TransmissionType", transmission);
+            var config = method(tile.getClass(), "getConfig").invoke(tile);
+            var info = config.getClass().getMethod("getConfig", transmissionType.getClass()).invoke(config,
+                    transmissionType);
+            info.getClass().getMethod("setEjecting", boolean.class).invoke(info, ejecting);
+            helper.assertValueEqual(info.getClass().getMethod("isEjecting").invoke(info), ejecting,
+                    position + " auto-eject for " + transmission);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Mekanism auto-eject failed at " + position, exception);
+        }
+    }
+
     /** Mekanism's chemical handler capability on one side of a block, or null when it has none. */
     static Object chemicalHandler(GameTestHelper helper, BlockPos position, Direction side) {
         var capability = net.neoforged.neoforge.capabilities.BlockCapability.getAll().stream()
