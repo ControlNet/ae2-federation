@@ -39,6 +39,18 @@ public final class ExtendedAECompatGameTests {
     }
 
     /**
+     * The guide's Assembler Matrix example and its exercise: after the remote job, breaking a wall of the matrix takes
+     * its recipes away from the consumer, and putting the wall back returns them.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void assemblerMatrixDismantled(GameTestHelper helper) {
+        var scene = AddonCraftingScene.structure(helper, "extendedae:assembler_matrix", List.of("ae2:1k_crafting_storage"),
+                ExtendedAECompatGameTests::placeAssemblerMatrix, AddonCraftingScene.PROVIDER.offset(1, 1, -1))
+                .dismantlingAfterwards(AddonCraftingScene.PROVIDER.offset(1, 1, -2));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * The smallest Assembler Matrix, 4 long, 3 high and 3 deep from the provider's spot: frames on its edges, walls on
      * its faces, and inside a pattern core and then a crafter core.
      */

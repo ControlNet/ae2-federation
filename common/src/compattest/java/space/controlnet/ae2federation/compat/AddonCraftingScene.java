@@ -75,6 +75,8 @@ final class AddonCraftingScene {
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
     private BlockPos providerPos = PROVIDER;
+    private BlockPos dismantlePart;
+    private net.minecraft.world.level.block.state.BlockState dismantledState;
     private final BlockPos assemblerPos = PROVIDER.east();
     private final BlockPos outputChestPos = PROVIDER.below();
     private int stage;
@@ -121,6 +123,15 @@ final class AddonCraftingScene {
         scene.placeStructure = place;
         scene.providerPos = patternContainer;
         return scene;
+    }
+
+    /**
+     * After the job, breaks the multiblock's block at {@code part}: its recipes must leave the consumer, and come back
+     * once the block is put back and the structure forms again, as the guide's exercise has its player do.
+     */
+    AddonCraftingScene dismantlingAfterwards(BlockPos part) {
+        dismantlePart = part;
+        return this;
     }
 
     /** The machine a processing pattern names: its block, what it makes from what, and how it runs. */
@@ -394,7 +405,22 @@ final class AddonCraftingScene {
                 helper.assertValueEqual(made, requested(), "The job must store exactly what was requested");
                 helper.assertValueEqual(held(consumerChest(), input()), 0L,
                         "The consumer's inputs were used");
+                if (dismantlePart != null) {
+                    dismantledState = helper.getBlockState(dismantlePart);
+                    helper.setBlock(dismantlePart, net.minecraft.world.level.block.Blocks.AIR);
+                    stage = 12;
+                    helper.fail("Broke the structure at " + dismantlePart);
+                }
             }
+            case 12 -> {
+                helper.assertFalse(consumerGrid().getCraftingService().isCraftable(output()),
+                        "Waiting for the broken structure's recipes to leave the consumer");
+                helper.setBlock(dismantlePart, dismantledState);
+                stage = 13;
+                helper.fail("Put the structure's block back");
+            }
+            case 13 -> helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
+                    "Waiting for the re-formed structure's recipes to return to the consumer");
         }
     }
 
