@@ -6726,6 +6726,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'provider.production-three-way':
                 case 'provider.production-revocation':
                 case 'provider.production-lifecycle':
+                case 'provider.reload-in-place':
                 case 'provider.production-release-cas-failure':
                 case 'provider.production-cleanup-buffers':
                 case 'provider.production-stale-cleanup':

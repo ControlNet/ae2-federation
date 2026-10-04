@@ -101,5 +101,14 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
   21.1.19 and LDLib2 2.2.34 and 2.2.41. Server compat runs never load client mixins.
 - JUnit has the Minecraft classpath (`addModdingDependenciesTo(sourceSets.test)`), so classes naming Minecraft types
   can be unit-tested; it writes empty `neoforge-1.21.1/logs/`, which is ignored.
-- Known low-risk strictness left as is: reloading an existing Federation Pattern Provider with a different Lane count
-  (`/data merge`, copy tools) throws; Lane composition requires the pattern inventory to keep its slot count.
+- A saved `PatternLaneMapping` loads into a Provider with a different Pattern slot count (an addon changing AE2's
+  Pattern Provider slots): shared slots keep their Lanes, extra saved slots are dropped, new slots start unmapped. A
+  save naming more Lanes than the Provider has still throws. The production Provider already sizes its mapping and
+  composition from the native pattern inventory, so the composition's size check cannot fail there.
+- Loading data into a running Federation Pattern Provider (`/data merge block`, tools writing into a placed block) no
+  longer throws on a different Lane count. It keeps the live identity and Lane bindings, adds missing Lanes unbound
+  (revision 1 via `retire()`, since `ProviderLaneIdentity` rejects revision 0), unmaps Patterns from unbound Lanes and
+  marks bound Lanes left with no Pattern as pending release, as an unmap does. A Lane the data does not name keeps its
+  native state. GameTest `provider.reload-in-place`.
+- Not covered: a fresh load (structure placement, creative pick-block with block data) still copies the source
+  Provider's identity and Lane bindings.

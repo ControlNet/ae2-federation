@@ -357,6 +357,89 @@ public final class ProductionProviderGameTests {
         });
     }
 
+    /**
+     * Loads saved data into a Provider that is already running, as {@code /data merge block} and tools that write data
+     * into an existing block do. A save with fewer Lanes must not drop the Provider's Lanes or Claims, and another
+     * Provider's save must neither move its identity nor its Claims to the running Provider.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void providerReloadInPlace(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var phase = new int[] { 0 };
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                    }
+                    scene.installPattern(0);
+                    for (var target : Target.values()) {
+                        var status = scene.map(0, target);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                    }
+                    scene.placeSecondProvider();
+                    phase[0] = 1;
+                    helper.fail("Mapped one Pattern to three Endpoints and placed a second Provider");
+                }
+                case 1 -> {
+                    var first = scene.provider();
+                    var second = scene.secondProvider();
+                    helper.assertTrue(second.runtime().isPresent(), "Waiting for the second Provider to start");
+                    var registries = helper.getLevel().registryAccess();
+                    var firstIdentity = first.providerIdentity();
+                    var secondIdentity = second.providerIdentity();
+                    var bound = new java.util.ArrayList<java.util.Optional<?>>();
+                    for (int lane = 0; lane < first.laneCount(); lane++) {
+                        bound.add(first.laneEndpoint(lane));
+                    }
+                    helper.assertValueEqual(bound.size(), 3, "One Lane per mapped Endpoint");
+                    var firstSave = first.saveWithoutMetadata(registries);
+                    var emptySave = second.saveWithoutMetadata(registries);
+
+                    first.loadWithComponents(emptySave, registries);
+                    helper.assertValueEqual(first.laneCount(), 3, "A save with no Lanes keeps the running Lanes");
+                    for (int lane = 0; lane < 3; lane++) {
+                        helper.assertValueEqual(first.laneEndpoint(lane), bound.get(lane),
+                                "Lane " + lane + " keeps its Endpoint");
+                    }
+                    helper.assertValueEqual(first.providerIdentity(), firstIdentity,
+                            "A running Provider keeps its identity");
+                    for (var target : Target.values()) {
+                        helper.assertTrue(first.retained(scene.binding(target).endpointIdentity()),
+                                "Endpoint " + target + " left with no Pattern waits for release, as after an unmap");
+                    }
+
+                    second.loadWithComponents(firstSave, registries);
+                    helper.assertValueEqual(second.laneCount(), 3, "Another Provider's save adds its Lane count");
+                    for (int lane = 0; lane < 3; lane++) {
+                        helper.assertTrue(second.laneEndpoint(lane).isEmpty(),
+                                "Lane " + lane + " added from another Provider's save is not bound");
+                        helper.assertTrue(second.mappedProvider().slotsForLane(lane).isEmpty(),
+                                "Lane " + lane + " added from another Provider's save has no Pattern");
+                    }
+                    helper.assertValueEqual(second.providerIdentity(), secondIdentity,
+                            "Another Provider's save does not move its identity");
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.endpoint(target).claimState() instanceof ClaimState.Owned owned
+                                && owned.ownerIdentity().provider().equals(firstIdentity),
+                                "Endpoint " + target + " is not claimed through another Provider's save");
+                    }
+
+                    first.loadWithComponents(firstSave, registries);
+                    helper.assertValueEqual(first.mappedProvider().lanesForSlot(0), java.util.Set.of(0, 1, 2),
+                            "The Provider's own save restores its mapping in place");
+                    helper.assertTrue(first.retainedEndpoints().isEmpty(),
+                            "Lanes mapped again by the Provider's own save no longer wait for release");
+                    writeEvidence("providerreloadinplace", 16, Map.of("smallerSaveKeepsLanes", "true",
+                            "foreignSaveKeepsIdentity", "true", "ownSaveRestoresMapping", "true"));
+                }
+                default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
+            }
+        });
+    }
+
     private static void requireReady(GameTestHelper helper, ProductionProviderScene scene) {
         var readiness = scene.topologyReadiness();
         helper.assertTrue("ready".equals(readiness), "Waiting for production topology: " + readiness);

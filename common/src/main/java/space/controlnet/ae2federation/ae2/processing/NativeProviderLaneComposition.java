@@ -216,7 +216,10 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
             ((AppEngInternalInventory) patternInventory).readFromNBT(tag, PATTERNS_TAG, registries);
         }
         for (int index = 0; index < lanes.size(); index++) {
-            lanes.get(index).readFromNBT(tag.getCompound("lane" + index), registries);
+            // A Lane the data does not name keeps its own state, as when a save with fewer Lanes is loaded in place.
+            if (tag.contains("lane" + index)) {
+                lanes.get(index).readFromNBT(tag.getCompound("lane" + index), registries);
+            }
         }
         refreshPatterns();
     }
