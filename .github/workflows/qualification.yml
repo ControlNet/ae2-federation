@@ -25,8 +25,10 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_artifact_verify.py -v
           PYTHONDONTWRITEBYTECODE=1 python3 tools/artifact_verify.py clean-build --report .omo/evidence/task-39-ci/clean-build.json
-      - name: Every required manifest GameTest (exact selected count)
-        run: PYTHONDONTWRITEBYTECODE=1 python3 -B tools/required_gametests.py
+      # One server runs every required manifest GameTest, as in quick.yml; the release workflow already runs each test
+      # in its own server, sharded, before anything is published.
+      - name: Every required manifest GameTest in one batch (exact selected count)
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -B tools/dev_gametests.py --manifest --ci --log gametest.log
       - name: Pinned compatibility matrix
         run: ./gradlew :neoforge-1.21.1:federationVerify -Pcases=compat.native-differential,compat.provider-hooks,compat.real-tech-line,compat.optional-absent,compat.reject-unsupported -PevidenceDir=.omo/evidence/task-36-ci --dependency-verification=strict --no-configuration-cache
       - name: Retain diagnostics
