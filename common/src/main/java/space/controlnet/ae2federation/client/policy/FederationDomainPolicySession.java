@@ -478,6 +478,7 @@ public final class FederationDomainPolicySession {
         choice.addProperty("z", runtime.position().getZ());
         choice.addProperty("dimension", level.dimension().location().toString());
         choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
+        choice.addProperty("subnetAlone", endpoint.subnetAlone());
         choice.addProperty("configuredMode", runtime.configuredMode().name());
         choice.addProperty("runtimeMode", runtime.mode().map(mode ->
                 mode instanceof space.controlnet.ae2federation.processing.endpoint.EndpointModeGeneration.Local
@@ -555,6 +556,7 @@ public final class FederationDomainPolicySession {
         if (binding != null) {
             choice.addProperty("position", binding.runtime().position().toShortString());
             choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
+            choice.addProperty("subnetAlone", binding.subnetAlone());
             choice.addProperty("claimEpoch", binding.claimState().epoch().value());
             energyFacts(choice, binding);
             addLaneFlow(choice, entry, endpoint);

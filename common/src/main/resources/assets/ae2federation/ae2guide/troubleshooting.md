@@ -53,5 +53,7 @@ reason.
 * **"Target is on the source network."** The Endpoint's subnet is the Provider's own network. Give the machines their
   own subnet.
 * **"Target networks overlap."** Two Endpoints of one Provider share a subnet. Give each its own subnet.
+* **"Nothing is connected behind it."** The Endpoint's other five faces touch no ME device, so its Provider has
+  nowhere to put inputs and its node on the topology turns yellow. Connect them to the machines' ME network.
 * **"Cannot release yet."** Results are still in the Endpoint's return buffer; they enter the Provider's network as
   soon as it has room.

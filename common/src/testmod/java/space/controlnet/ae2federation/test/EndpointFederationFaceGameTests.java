@@ -330,10 +330,16 @@ public final class EndpointFederationFaceGameTests {
                     phase[0] = 4;
                     helper.fail("unmapped the Endpoint");
                 }
-                default -> {
+                case 4 -> {
                     helper.assertTrue(endpoint.claimState() instanceof ClaimState.Unclaimed, "unmapping must release the claim");
                     helper.assertFalse(subnet.isPowered(), "a released subnet must lose power");
+                    helper.assertFalse(endpoint.binding().subnetAlone(), "the chest stands behind the Endpoint");
+                    helper.setBlock(NEAR.above(), net.minecraft.world.level.block.Blocks.AIR);
+                    phase[0] = 5;
+                    helper.fail("removed the chest");
                 }
+                default -> helper.assertTrue(endpoint.binding().subnetAlone(),
+                        "with the chest gone nothing stands behind the Endpoint");
             }
         });
     }

@@ -402,6 +402,7 @@ final class FederationTopologyView {
                     json.has("ownerNetwork") ? json.get("ownerNetwork").getAsString() : "",
                     json.has("runtimeMode") ? json.get("runtimeMode").getAsString() : "UNBOUND",
                     json.has("nodeReady") && json.get("nodeReady").getAsBoolean(),
+                    json.has("subnetAlone") && json.get("subnetAlone").getAsBoolean(),
                     json.has("energyShared") && json.get("energyShared").getAsBoolean()));
             endpointFacts.put(json.get("id").getAsString(), json);
         }
@@ -893,6 +894,8 @@ final class FederationTopologyView {
         button.layout(style -> style.positionType(TaffyPosition.ABSOLUTE).left(place.x()).top(place.y()).width(place.width())
                 .height(ENDPOINT_HEIGHT).paddingLeft(4).paddingRight(4).gapAll(3).flexDirection(FlexDirection.ROW)
                 .alignItems(AlignItems.CENTER));
+        // Undrawn, so tests read what the dot says.
+        button.addClass(endpointHealth(endpoint).cssClass());
         var dot = new UIElement();
         int color = endpointColor(endpoint);
         dot.layout(style -> style.width(5).height(5).flexShrink(0));
@@ -913,10 +916,18 @@ final class FederationTopologyView {
         return font.width(endpointLabel(endpoint)) + 4 + 5 + 3 + 4 + 2;
     }
 
-    /** Mapped and ready in the OK colour; waiting for its ME node in warning; Local or free in muted. */
+    private space.controlnet.ae2federation.client.policy.EndpointHealth endpointHealth(EndpointNode endpoint) {
+        return space.controlnet.ae2federation.client.policy.EndpointHealth.of(endpoint.mode(),
+                network(endpoint.owner()) != null, endpoint.ready(), endpoint.alone());
+    }
+
+    /** Usable in the OK colour; claimed but without its ME node or anything behind it in warning; Local or free muted. */
     private int endpointColor(EndpointNode endpoint) {
-        if (!endpoint.ready()) return FederationTheme.WARN;
-        return !endpoint.mode().equals("LOCAL") && network(endpoint.owner()) != null ? FederationTheme.OK : FederationTheme.DARK_MUTED;
+        return switch (endpointHealth(endpoint)) {
+            case ACTIVE -> FederationTheme.OK;
+            case WAITING -> FederationTheme.WARN;
+            case OFF -> FederationTheme.DARK_MUTED;
+        };
     }
 
     /** The energy a card and the stats show: the shared pool for a network in one, else its own cells. */
@@ -1326,6 +1337,7 @@ final class FederationTopologyView {
         // Its owner is a fact row below, so the box only says what stands out.
         var notes = new ArrayList<Component>();
         if (local) notes.add(tr("endpoint_local_help"));
+        else if (endpoint.alone()) notes.add(tr("endpoint_node.alone"));
         else if (!endpoint.ready()) notes.add(tr("endpoint_node.not_ready"));
         else if (endpoint.mode().equals("LOCAL")) notes.add(tr("endpoint_node.local"));
         var flow = endpointFlows.get(endpoint.id());
@@ -2297,7 +2309,8 @@ final class FederationTopologyView {
     }
 
     /** {@code owner} is the id of the network whose Provider maps the Endpoint, or empty. */
-    private record EndpointNode(String id, String position, String owner, String mode, boolean ready, boolean energy) {
+    private record EndpointNode(String id, String position, String owner, String mode, boolean ready, boolean alone,
+            boolean energy) {
     }
 
     /** Relationship lines behind the cards: configured pairs solid, unconfigured pairs of the selection dashed. */

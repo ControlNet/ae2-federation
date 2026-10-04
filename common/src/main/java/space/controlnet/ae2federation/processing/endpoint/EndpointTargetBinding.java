@@ -111,6 +111,12 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         return subnetNode;
     }
 
+    /** Whether nothing is connected behind it: its subnet's Grid holds no node but its own. */
+    public boolean subnetAlone() {
+        var grid = subnetNode.getGrid();
+        return grid != null && grid.size() <= 1;
+    }
+
     @Override
     public java.util.Optional<EndpointModeGeneration.Federated> federatedMode(ProviderIdentity provider,
             ClaimEpoch claimEpoch) {

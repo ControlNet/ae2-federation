@@ -1072,6 +1072,9 @@ public final class FederationProcessingGraph {
 
     private static Component subnet(JsonObject endpoint) {
         if (!endpoint.has("nodeReady")) return Component.literal("-");
+        if (endpoint.has("subnetAlone") && endpoint.get("subnetAlone").getAsBoolean()) {
+            return tr("subnet_alone").withStyle(Style.EMPTY.withColor(FederationTheme.WARN & 0xffffff));
+        }
         boolean ready = endpoint.get("nodeReady").getAsBoolean();
         return tr(ready ? "subnet_ready" : "subnet_not_ready").withStyle(Style.EMPTY.withColor(
                 (ready ? FederationTheme.OK : FederationTheme.WARN) & 0xffffff));

@@ -131,6 +131,9 @@ public final class TaskThirtyThreeEndpointScenario implements UIScenario {
                 .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
                 .awaitModularUI()
                 .waitUntil("each endpoint of the domain is a node on the graph", context -> context.all(".graph-node-endpoint").size() == 2)
+                .check("the claimed Endpoint's dot is green and the unclaimed one's grey, whatever its subnet", context ->
+                        context.all(".graph-node-endpoint.health-active").size() == 1
+                                && context.all(".graph-node-endpoint.health-off").size() == 1)
                 .step("select the second Endpoint", context -> TaskThirtyThreeScenarioSupport.selectEndpointNode(context, "12, -57, 13"))
                 .waitUntil("the panel shows the second Endpoint's identity", context -> TaskThirtyThreeScenarioSupport
                         .endpointIdentity(context).contains(context.<String>get("endpoint.secondId")))
