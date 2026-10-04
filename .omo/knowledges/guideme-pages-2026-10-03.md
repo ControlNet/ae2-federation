@@ -187,6 +187,8 @@ and page ids did not change.
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
 | `guide_extendedae_plus` | extendedae_plus | `examples/accelerated-cpu.md` | `acceleratorMovedToWorkshop` |
+| `guide_ae2lt` | ae2lt | `examples/overloaded-providers.md` | `overloadedUpgradeInPlace` |
+| `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
 | `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `storageSystemDismantled` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
@@ -205,4 +207,16 @@ and page ids did not change.
   the wheels with Creative Motors.
 - `AddonCraftingScene.reorderingAfterwards(change, check)` changes the world after the job and orders again; `check`
   sees the consumer CPU that took each order (found right after `submitJob`, as AE2 assigns it synchronously).
-- Not done: AE2 Lightning Tech, Data Energistics and OmniSequence examples (ideas 8, 9, 12).
+- `reorderingAfterwards(change, restore, check)`: after `change`, waits until the recipe has left the consumer, then
+  `restore` brings it back before the second order.
+- GameTest ids are the lowercased method names, across all compat classes: two classes with the same method name
+  collide in a profile that loads both (`addons-all`), and the wrong one runs.
+- In-place upgrades (checked in a client): Lightning Tech's Overloaded Pattern Provider Upgrade acts in
+  `onItemUseFirst`, so a plain right-click works. Data Energistics' Adaptive Pattern Provider Upgrade acts only in
+  `useOn`, so a plain right-click opens AE2's provider screen and the player must sneak. The upgraded Adaptive Pattern
+  Provider keeps the patterns but offers none (Pattern Access Terminal inventory size 0) until a provider is fitted
+  into its provider slot (Data Energistics 3.3.3).
+- Data Energistics 3.3.3 needs AE2 19.2.18, newer than the dev runs' 19.2.17. For a local guide render only:
+  `./gradlew :neoforge-1.21.1:runGuideClient -Pae2_version=19.2.18 --dependency-verification=lenient` (19.2.18 is not
+  in the verification metadata), and accept the experimental-settings prompt once per world.
+- Not done: the OmniSequence example (idea 12) needs the formed Matter Fabrication Well and its local research.
