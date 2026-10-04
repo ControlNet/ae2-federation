@@ -37,7 +37,9 @@ final class GuidePagesContractTest {
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
-    private static final Map<String, Set<String>> MOD_ITEMS = Map.of("mekanism", Set.of("crusher", "basic_energy_cube"));
+    private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
+            "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
+            "appmek", Set.of("chemical_storage_cell_1k"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
@@ -66,6 +68,10 @@ final class GuidePagesContractTest {
                 .collect(Collectors.toCollection(TreeSet::new)));
         for (var pack : GuideExamplePacks.ALL) {
             assertTrue(!pack.requiredMods().isEmpty(), pack.id());
+            for (var missing : pack.requiredMods()) {
+                assertTrue(!GuideExamplePacks.active(mod -> !mod.equals(missing)).contains(pack),
+                        pack.id() + " must stay off without " + missing);
+            }
             assertTrue(Files.readString(RESOURCES.resolve(pack.path()).resolve("pack.mcmeta")).contains("\"pack_format\": 34"),
                     pack.id());
             for (var language : List.of("en_us", "zh_cn")) {

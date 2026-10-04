@@ -9,7 +9,8 @@ import java.util.function.Predicate;
  * guide otherwise: GuideME has no filter of its own for that.
  */
 public final class GuideExamplePacks {
-    public static final List<Pack> ALL = List.of(new Pack("guide_mekanism", List.of("mekanism")));
+    public static final List<Pack> ALL = List.of(new Pack("guide_mekanism", List.of("mekanism")),
+            new Pack("guide_mekanism_appmek", List.of("mekanism", "appmek")));
 
     private GuideExamplePacks() {
     }
