@@ -177,3 +177,29 @@ and page ids did not change.
   afterwards. Search indexing reads only the page AST, so it does not place the blocks at startup.
 - Mekanism's energy cube draws its core only when charged and through Mekanism's own world render pass, so in a guide
   scene it shows as an empty frame; the annotation says it is charged.
+
+### Optional example packs so far (2026-10-05)
+
+| Pack | Required mods | Page | Tested build and "Try it" |
+|---|---|---|---|
+| `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
+| `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
+| `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
+| `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
+| `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `storageSystemDismantled` |
+
+- Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
+  structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
+  guide builds it) and `interruptedBy(ticks, cut, repair)`; `AddonCraftingScene` / `AddonStorageScene`
+  `.dismantlingAfterwards(part)`. The interrupt window must be longer than one machine batch (Crusher 200 ticks,
+  Chemical Oxidizer 100), or a no-op interruption still passes.
+- Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
+  Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
+- Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while
+  (`confirmedNetworkId` empty), so test code must not call `RouterStorageMountFixture.key()` then.
+- A pack may link to the guide pages of its required mods (`extendedae:epp_intro/assembler_matrix.md`,
+  `neoecoae:neoecoae_intro/storage_system.md`; both mods add pages to AE2's guide); `MOD_PAGES` lists them.
+- The Create Millstone compat test emulates the import of its output, so it is not a survival build; the Create page
+  uses the Crushing Wheels Endpoint build instead. The scene draws shafts to "your rotational power"; the test turns
+  the wheels with Creative Motors.
+- Not done: AE2 Lightning Tech, Data Energistics, ExtendedAE-Plus and OmniSequence examples (ideas 8-10, 12).
