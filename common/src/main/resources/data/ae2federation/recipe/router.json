@@ -12,7 +12,7 @@
       "item": "ae2:import_bus"
     },
     "L": {
-      "item": "ae2:logic_processor"
+      "item": "ae2federation:federation_logic_processor"
     },
     "N": {
       "item": "ae2:interface"

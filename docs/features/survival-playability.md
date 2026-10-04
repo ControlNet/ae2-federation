@@ -15,16 +15,16 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 | 1 Federation Logic Processor | 1 native Logic Processor + 1 Fluix Dust | Inscriber: processor in middle, dust on top, bottom empty; press mode consumes inputs |
 | 16 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Federation Logic Processor | Shaped: processor in center, cables around it |
 | 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Federation Logic Processor | Shapeless |
-| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 native Logic Processor | Shaped: cables in corners, import top, export bottom, storage left, interface right, native processor center |
+| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Federation Logic Processor | Shaped: cables in corners, import top, export bottom, storage left, interface right, Federation processor center |
 | 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Federation Logic Processor | Shapeless |
 | 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Federation Logic Processor | Shapeless |
 
-The Router uses the native Logic Processor. The other functional device recipes use the Federation Logic Processor.
+Every functional device recipe uses the Federation Logic Processor; the Router also takes four Federation Cables.
 Bridge and Router are alternative connection forms rather than a mandatory upgrade sequence.
 
 For a first setup with two Routers and sixteen placed Federation Cables, starting with none of these components:
 craft two cable batches and one Router batch. This costs sixteen native ME Glass Cables, three native Logic Processors,
-two Fluix Dust, and one each of the native Import Bus, Export Bus, Storage Bus and ME Interface. Four Federation Cables
+three Fluix Dust, and one each of the native Import Bus, Export Bus, Storage Bus and ME Interface. Four Federation Cables
 are consumed in the Router craft. After placing the setup, two Routers and twelve Federation Cables remain.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 

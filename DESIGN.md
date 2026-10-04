@@ -213,7 +213,7 @@ Policy 不以显示名称、方块坐标或运行时 Grid 对象地址作为主�
 
 以下是游戏内方块与组件的工作命名，沿用 ME 前缀；模组本身的名称为 AE2 Federation。Provider 的一个 Federation 面与五个 ME 面已确定；其他方块的具体连面和槽位数量仍可细化。正式外形和贴图在原型跑通后制作。
 
-**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Federation Logic Processor（联邦逻辑处理器）由 AE2 压印器把一个原生 Logic Processor（中槽）和一份 Fluix Dust（顶槽）一起压成。Bridge = Storage Bus + Quartz Fiber + 联邦逻辑处理器；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联邦逻辑处理器；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联邦逻辑处理器，出 16 根；Router = 4 根 Cable 在四角，Import Bus、Storage Bus、ME Interface、Export Bus 在四边，原生 Logic Processor 在中心，出 4 个。由原生方块合成时不继承其中的样板或配置。
+**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Federation Logic Processor（联邦逻辑处理器）由 AE2 压印器把一个原生 Logic Processor（中槽）和一份 Fluix Dust（顶槽）一起压成。Bridge = Storage Bus + Quartz Fiber + 联邦逻辑处理器；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联邦逻辑处理器；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联邦逻辑处理器，出 16 根；Router = 4 根 Cable 在四角，Import Bus、Storage Bus、ME Interface、Export Bus 在四边，联邦逻辑处理器在中心，出 4 个。由原生方块合成时不继承其中的样板或配置。
 
 | 组件 | 主要职责 | 关键边界 |
 |---|---|---|

@@ -51,8 +51,15 @@ public final class SurvivalRecipeGameTests {
                 grid(AEBlocks.INTERFACE.stack(), processor, null, null, null, null, null, null, null));
         assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 4,
                 grid(cable, AEParts.IMPORT_BUS.stack(), cable,
-                        AEParts.STORAGE_BUS.stack(), AEItems.LOGIC_PROCESSOR.stack(), AEBlocks.INTERFACE.stack(),
+                        AEParts.STORAGE_BUS.stack(), processor, AEBlocks.INTERFACE.stack(),
                         cable, AEParts.EXPORT_BUS.stack(), cable));
+        // The Router's centre takes the Federation processor too, not the native one.
+        var nativeRouter = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
+                grid(cable, AEParts.IMPORT_BUS.stack(), cable,
+                        AEParts.STORAGE_BUS.stack(), AEItems.LOGIC_PROCESSOR.stack(), AEBlocks.INTERFACE.stack(),
+                        cable, AEParts.EXPORT_BUS.stack(), cable), level);
+        helper.assertFalse(nativeRouter.isPresent(), "A native Logic Processor must not make Routers");
+        assertions++;
         // Any glass cable colour, mixed within one craft.
         var white = AEParts.GLASS_CABLE.stack(AEColor.WHITE);
         var fluix = AEParts.GLASS_CABLE.stack(AEColor.TRANSPARENT);
