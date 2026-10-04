@@ -1,0 +1,15 @@
+{
+  "name": "aeallpattern",
+  "group": "addons",
+  "description": "AE All Pattern: one pattern per machine, mixins into crafting route selection",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "aeallpattern@0.2.6"
+  ],
+  "tests": [
+    "core"
+  ]
+}

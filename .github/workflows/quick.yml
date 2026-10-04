@@ -30,6 +30,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_release_metadata.py -v
           python3 -m unittest discover -s tests -p test_required_gametests.py -v
           python3 -m unittest discover -s tests -p test_platform_release.py -v
+          python3 -m unittest discover -s tests -p test_compat_run.py -v
       - name: No personal paths or keys in tracked files
         run: |
           python3 -m unittest discover -s tests -p test_privacy_guard.py -v

@@ -59,6 +59,14 @@ def prettyPipesTest = sourceSets.create('prettyPipesTest') {
     runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
 }
 
+// Compatibility tests that run inside production servers beside other mods (tools/compat_run.py).
+def compatTest = sourceSets.create('compatTest') {
+    java.srcDir(rootProject.file('common/src/compattest/java'))
+    resources.srcDir(rootProject.file('common/src/compattest/resources'))
+    compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
+    runtimeClasspath += output + sourceSets.main.output + testmod.output + compileClasspath + configurations.runtimeClasspath
+}
+
 def gtceuTest = sourceSets.create('gtceuTest') {
     java.srcDir(rootProject.file('common/src/gtceutest/java'))
     compileClasspath += sourceSets.main.output + testmod.output + configurations.compileClasspath
@@ -492,6 +500,22 @@ tasks.register('federationTaskThirtyFivePacketProbe', JavaExec) {
         if (runtimeDirectory.exists()) {
             Files.walk(runtimeDirectory.toPath()).sorted(java.util.Comparator.reverseOrder()).forEach(Files::deleteIfExists)
         }
+    }
+}
+
+// The compatibility test mod: its own classes plus the testmod's fixtures and structures, without the testmod's mod
+// class or mixins, so the mods under test meet AE2 Federation alone. Kept out of build/libs: it is never released.
+tasks.register('compatTestJar', Jar) {
+    group = 'build'
+    description = 'Builds the production compatibility test mod for tools/compat_run.py.'
+    archiveBaseName = 'ae2federation-compat-tests'
+    archiveVersion = project.version.toString()
+    destinationDirectory = layout.buildDirectory.dir('compat')
+    from(compatTest.output)
+    from(testmod.output) {
+        exclude('META-INF/**', 'ae2federation_test.mixins.json', 'assets/**',
+                'space/controlnet/ae2federation/test/FederationTestMod.class',
+                'space/controlnet/ae2federation/test/mixin/**')
     }
 }
 

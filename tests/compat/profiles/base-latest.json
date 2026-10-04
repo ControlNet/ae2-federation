@@ -1,0 +1,14 @@
+{
+  "name": "base-latest",
+  "group": "addons",
+  "description": "AE2 19.2.18 and LDLib2 2.2.41, the versions every addon profile builds on",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41"
+  ],
+  "tests": [
+    "core"
+  ]
+}
