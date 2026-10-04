@@ -17,6 +17,10 @@ final class CompatTestClasses {
         groups.put("ae2-lightning-tech", LightningTechCompatGameTests.class);
         groups.put("ae2-pattern-disk", PatternDiskCompatGameTests.class);
         groups.put("ae2extras", AE2ExtrasCompatGameTests.class);
+        groups.put("appmek", AppliedMekanisticsCompatGameTests.class);
+        groups.put("megacells", MegaCellsCompatGameTests.class);
+        groups.put("advanced-ae", AdvancedAECompatGameTests.class);
+        groups.put("create", CreateCompatGameTests.class);
         return groups;
     }
 }

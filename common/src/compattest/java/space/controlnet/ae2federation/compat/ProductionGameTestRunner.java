@@ -30,6 +30,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.GameRules;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.gametest.GameTestHooks;
@@ -71,6 +72,7 @@ final class ProductionGameTestRunner {
         NeoForge.EVENT_BUS.addListener(runner::onServerStarted);
         NeoForge.EVENT_BUS.addListener(runner::onServerTick);
         NeoForge.EVENT_BUS.addListener(runner::onServerStopping);
+        NeoForge.EVENT_BUS.addListener(runner::onServerStopped);
     }
 
     private void onServerStarted(ServerStartedEvent event) {
@@ -135,6 +137,14 @@ final class ProductionGameTestRunner {
         if (tracker == null) return;
         LOGGER.error("AE2F_COMPAT_STOPPED_EARLY done={}/{}", tracker.getDoneCount(), tracker.getTotalCount());
         writeReport(event.getServer(), "The server stopped before every test finished");
+        tracker = null;
+    }
+
+    /** A crashed server skips the stopping event and only reports that it stopped. */
+    private void onServerStopped(ServerStoppedEvent event) {
+        if (tracker == null) return;
+        LOGGER.error("AE2F_COMPAT_CRASHED done={}/{}", tracker.getDoneCount(), tracker.getTotalCount());
+        writeReport(event.getServer(), "The server crashed before every test finished; see crash-reports/");
         tracker = null;
     }
 

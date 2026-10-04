@@ -3,8 +3,10 @@ package space.controlnet.ae2federation.compat;
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -17,7 +19,8 @@ import space.controlnet.ae2federation.test.storage.RouterStorageMountFixture;
 
 /**
  * Two networks joined by Routers and Federation Cable share storage through a Storage rule, with the provider's ME
- * Chest holding the cell named by registry id: iron stored on the provider is seen and taken by the consumer.
+ * Chest holding the cell named by registry id: what is stored on the provider (iron unless given another resource,
+ * such as a chemical) is seen and taken by the consumer.
  */
 final class AddonStorageScene {
     private static final AEItemKey IRON = AEItemKey.of(Items.IRON_INGOT);
@@ -25,12 +28,22 @@ final class AddonStorageScene {
     private final GameTestHelper helper;
     private final RouterStorageMountFixture fixtures;
     private final String cellId;
+    private final AEKey what;
+    private final long stored;
+    private final long taken;
     private final IActionSource source = IActionSource.empty();
     private int step;
 
     AddonStorageScene(GameTestHelper helper, String cellId) {
+        this(helper, cellId, IRON, 9, 4);
+    }
+
+    AddonStorageScene(GameTestHelper helper, String cellId, AEKey what, long stored, long taken) {
         this.helper = helper;
         this.cellId = cellId;
+        this.what = what;
+        this.stored = stored;
+        this.taken = taken;
         fixtures = new RouterStorageMountFixture(helper);
         var key = ResourceLocation.parse(cellId);
         helper.assertTrue(BuiltInRegistries.ITEM.containsKey(key), "Item " + cellId + " is not registered");
@@ -54,18 +67,31 @@ final class AddonStorageScene {
         var provider = fixtures.providerGrid().getStorageService().getInventory();
         var consumer = fixtures.consumerGrid().getStorageService().getInventory();
         if (step == 1) {
-            helper.assertValueEqual(provider.insert(IRON, 9, Actionable.MODULATE, source), 9L,
-                    "The provider network's " + cellId + " must store 9 iron");
+            helper.assertValueEqual(provider.insert(what, stored, Actionable.MODULATE, source), stored,
+                    "The provider network's " + cellId + " must store " + stored + " " + what);
             step = 2;
         }
-        helper.assertValueEqual(consumer.getAvailableStacks().get(IRON), 9L,
-                "The consumer network must see the provider's iron");
+        helper.assertValueEqual(consumer.getAvailableStacks().get(what), stored,
+                "The consumer network must see the provider's " + what);
         if (step == 2) {
-            helper.assertValueEqual(consumer.extract(IRON, 4, Actionable.MODULATE, source), 4L,
-                    "The consumer network must take iron from the provider");
+            helper.assertValueEqual(consumer.extract(what, taken, Actionable.MODULATE, source), taken,
+                    "The consumer network must take " + what + " from the provider");
             step = 3;
         }
-        helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
-                "The provider network must have 5 iron left");
+        helper.assertValueEqual(provider.getAvailableStacks().get(what), stored - taken,
+                "The provider network must keep the rest");
+    }
+
+    /**
+     * A resource of an addon's own key type from its saved form, such as {@code appmek:chemical} and
+     * {@code mekanism:hydrogen}, without building against the addon.
+     */
+    static AEKey key(GameTestHelper helper, String type, String id) {
+        var tag = new CompoundTag();
+        tag.putString("#t", type);
+        tag.putString("id", id);
+        var key = AEKey.fromTagGeneric(helper.getLevel().registryAccess(), tag);
+        helper.assertTrue(key != null, "No " + type + " resource " + id);
+        return key;
     }
 }

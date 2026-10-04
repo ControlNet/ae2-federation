@@ -8,7 +8,7 @@ with the test mod's runner, and reads its JSON report. Profiles run in parallel,
     python3 tools/compat_run.py --accept-eula baseline               # one profile
     python3 tools/compat_run.py --accept-eula --all -j 8             # every profile, eight servers at a time
     python3 tools/compat_run.py --accept-eula --group addons         # every profile in a group
-    python3 tools/compat_run.py --accept-eula --bare ae2extras     # the same mods without AE2 Federation
+    python3 tools/compat_run.py --accept-eula --bare addons-all    # the same mods without AE2 Federation
     python3 tools/compat_run.py --list
     python3 tools/compat_run.py --list --json --group addons        # profile names, for a CI matrix
     python3 tools/compat_run.py report build/compat-results           # Markdown table of summary JSON files
@@ -37,6 +37,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILES = ROOT / "tests/compat/profiles"
 RUNS = ROOT / "neoforge-1.21.1/build/compat/runs"
 CACHE = Path(os.environ.get("AE2F_COMPAT_CACHE", Path.home() / ".cache/ae2federation-compat"))
+# Seconds a server may keep running after it wrote its report before it is stopped.
+REPORTED_GRACE = 30
 USER_AGENT = "ae2federation-compat-tests (github.com/ControlNet/ae2-federation)"
 SERVER_PROPERTIES = """\
 level-type=minecraft\\:flat
@@ -117,8 +119,9 @@ def neoforge_server(version: str) -> Path:
     staging = home.with_name(home.name + ".staging")
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
+    # The installer writes its log beside where it runs.
     result = subprocess.run(["java", "-jar", str(installer), "--installServer", str(staging)],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, cwd=staging)
     if result.returncode != 0 or not (staging / marker.relative_to(home)).exists():
         raise RuntimeError(f"NeoForge {version} installer failed:\n{result.stdout[-2000:]}{result.stderr[-2000:]}")
     shutil.rmtree(home, ignore_errors=True)
@@ -227,11 +230,22 @@ def run_profile(name: str, profile: dict, tests: str, timeout: int) -> dict:
                f"-Dae2federation.compat.report={report}", *profile.get("jvmArgs", []),
                f"@libraries/net/neoforged/neoforge/{profile['neoforge']}/unix_args.txt", "nogui"]
     with log.open("w") as stream:
-        try:
-            exit_code = subprocess.run(command, cwd=directory, stdin=subprocess.DEVNULL, stdout=stream,
-                                       stderr=subprocess.STDOUT, timeout=timeout).returncode
-        except subprocess.TimeoutExpired:
-            exit_code = None
+        server = subprocess.Popen(command, cwd=directory, stdin=subprocess.DEVNULL, stdout=stream,
+                                  stderr=subprocess.STDOUT)
+        exit_code, reported = None, None
+        while time.monotonic() - started < timeout:
+            exit_code = server.poll()
+            if exit_code is not None:
+                break
+            if reported is None and report.exists():
+                reported = time.monotonic()
+            # Some packs leave threads running after the server has stopped; the report is what counts.
+            if reported is not None and time.monotonic() - reported > REPORTED_GRACE:
+                break
+            time.sleep(1)
+        if exit_code is None:
+            server.kill()
+            server.wait()
     seconds = round(time.monotonic() - started)
     if not report.exists():
         status = "timeout" if exit_code is None else "no-report"
@@ -270,9 +284,15 @@ def pin(source: str, value: str, version: str | None) -> dict:
         file = next((item for item in match["files"] if item["primary"]), match["files"][0])
         return {"name": value, "version": match["version_number"], "file": file["filename"], "url": file["url"],
                 "sha512": file["hashes"]["sha512"]}
-    target = CACHE / "pins" / Path(urllib.parse.urlparse(value).path).name
-    fetch(value, target)
-    return {"name": target.stem, "file": urllib.parse.unquote(target.name), "url": value, "sha512": sha512(target)}
+    file = urllib.parse.unquote(Path(urllib.parse.urlparse(value).path).name)
+    staging = CACHE / "pins" / file
+    fetch(value, staging)
+    digest = sha512(staging)
+    # Keep it where runs look for it, so a large pack is not downloaded again.
+    cached = CACHE / "downloads" / digest[:16] / file
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    staging.replace(cached)
+    return {"name": Path(file).stem, "file": file, "url": value, "sha512": digest}
 
 
 def report(directory: Path) -> str:

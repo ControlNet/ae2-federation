@@ -11,6 +11,7 @@ import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.storage.MEStorage;
+import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import java.util.List;
 import java.util.Objects;
@@ -56,12 +57,12 @@ final class AddonCraftingScene {
     private final String assemblerId;
     private final List<String> cpuIds;
     private final boolean processing;
+    private final Machine machine;
     private java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> prepareProvider = entity -> {
     };
     // Through the inventory a Pattern Access Terminal fills, which every provider keeps to its own rules.
     private java.util.function.BiPredicate<net.minecraft.world.level.block.entity.BlockEntity, ItemStack> installPattern =
-            (entity, pattern) -> ((PatternProviderLogicHost) entity).getTerminalPatternInventory().addItems(pattern)
-                    .isEmpty();
+            (entity, pattern) -> ((PatternContainer) entity).getTerminalPatternInventory().addItems(pattern).isEmpty();
     private final BlockPos providerPos = BASE.east(2).north();
     private final BlockPos assemblerPos = providerPos.east();
     private int stage;
@@ -77,13 +78,58 @@ final class AddonCraftingScene {
      */
     AddonCraftingScene(GameTestHelper helper, String providerId, String assemblerId, List<String> cpuIds,
             boolean processing) {
+        this(helper, providerId, cpuIds, processing ? new ChestMachine(assemblerId) : null, assemblerId);
+    }
+
+    /** A processing scene whose pattern goes through {@code machine}, a real machine beside the provider. */
+    AddonCraftingScene(GameTestHelper helper, String providerId, List<String> cpuIds, Machine machine) {
+        this(helper, providerId, cpuIds, machine, machine.blockId());
+    }
+
+    private AddonCraftingScene(GameTestHelper helper, String providerId, List<String> cpuIds, Machine machine,
+            String assemblerId) {
         this.helper = helper;
         this.providerId = providerId;
         this.assemblerId = assemblerId;
         this.cpuIds = cpuIds;
-        this.processing = processing;
+        this.processing = machine != null;
+        this.machine = machine;
         bridge = new PolicyBridgeFixtures(helper, BASE);
         bridge.installStorageCells();
+    }
+
+    /** The machine a processing pattern names: its block, what it makes from cobblestone, and how it runs. */
+    interface Machine {
+        String blockId();
+
+        AEItemKey output();
+
+        /** Places what the machine needs besides its own block, such as a motor; the block is already placed. */
+        default void placeAround(GameTestHelper helper, BlockPos position) {
+        }
+
+        /** Moves whatever the machine has made so far into the provider network. */
+        void collect(GameTestHelper helper, BlockPos position, MEStorage network);
+    }
+
+    /** A chest standing in for a furnace: the test turns whatever cobblestone the provider pushed into stone. */
+    private record ChestMachine(String blockId) implements Machine {
+        @Override
+        public AEItemKey output() {
+            return STONE;
+        }
+
+        @Override
+        public void collect(GameTestHelper helper, BlockPos position, MEStorage network) {
+            var chest = helper.<net.minecraft.world.level.block.entity.ChestBlockEntity>getBlockEntity(position);
+            long pushed = 0;
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                if (chest.getItem(slot).is(Items.COBBLESTONE)) pushed += chest.getItem(slot).getCount();
+            }
+            if (pushed == 0) return;
+            chest.clearContent();
+            network.insert(STONE, pushed, Actionable.MODULATE, IActionSource.empty());
+        }
     }
 
     static Block block(String id) {
@@ -113,6 +159,7 @@ final class AddonCraftingScene {
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks");
                 helper.setBlock(providerPos, block(providerId));
                 helper.setBlock(assemblerPos, block(assemblerId));
+                if (machine != null) machine.placeAround(helper, assemblerPos);
                 // The CPU blocks run west from the consumer's cable, each touching the one before.
                 for (int index = 0; index < cpuIds.size(); index++) {
                     helper.setBlock(BASE.west(index + 1), block(cpuIds.get(index)));
@@ -131,12 +178,13 @@ final class AddonCraftingScene {
                 helper.assertTrue(grid(providerPos) == bridge.outerGrid(),
                         providerId + " must join the provider network");
                 var entity = helper.getLevel().getBlockEntity(helper.absolutePos(providerPos));
-                helper.assertTrue(entity instanceof PatternProviderLogicHost,
-                        providerId + " must be an AE2 pattern provider, but is " + entity);
+                // Addons with their own provider logic still show it to AE2's Pattern Access Terminal.
+                helper.assertTrue(entity instanceof PatternContainer,
+                        providerId + " must be a pattern container, but is " + entity);
                 prepareProvider.accept(entity);
-                helper.assertTrue(installPattern.test(entity, processing ? stonePattern() : stickPattern()),
+                helper.assertTrue(installPattern.test(entity, processing ? processingPattern() : stickPattern()),
                         providerId + " refused the pattern");
-                ((PatternProviderLogicHost) entity).getLogic().updatePatterns();
+                if (entity instanceof PatternProviderLogicHost host) host.getLogic().updatePatterns();
                 stage = 3;
                 helper.fail("Installed the stick pattern");
             }
@@ -173,7 +221,7 @@ final class AddonCraftingScene {
                 helper.fail("Submitted the job");
             }
             default -> {
-                if (processing) runMachine();
+                if (processing) machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "Waiting for the consumer's job to finish");
                 var made = held(consumerChest(), output()) + held(providerChest(), output());
@@ -187,7 +235,7 @@ final class AddonCraftingScene {
     /** What the provider reports, for a scene that never gets its pattern. */
     private String providerState() {
         if (!(helper.getLevel().getBlockEntity(helper.absolutePos(providerPos)) instanceof PatternProviderLogicHost host)) {
-            return "not a pattern provider";
+            return "not an AE2 pattern provider logic host";
         }
         var logic = host.getLogic();
         return "patterns=" + logic.getAvailablePatterns().size() + " inventory=" + logic.getPatternInv().size()
@@ -260,25 +308,12 @@ final class AddonCraftingScene {
     }
 
     private AEItemKey output() {
-        return processing ? STONE : STICKS;
+        return processing ? machine.output() : STICKS;
     }
 
-    /** The machine: whatever cobblestone the provider pushed into the chest leaves as stone in the provider network. */
-    private void runMachine() {
-        var chest = helper.<net.minecraft.world.level.block.entity.ChestBlockEntity>getBlockEntity(assemblerPos);
-        long pushed = 0;
-        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-            if (chest.getItem(slot).is(Items.COBBLESTONE)) pushed += chest.getItem(slot).getCount();
-        }
-        if (pushed == 0) return;
-        chest.clearContent();
-        bridge.outerGrid().getStorageService().getInventory().insert(STONE, pushed, Actionable.MODULATE,
-                IActionSource.empty());
-    }
-
-    private static ItemStack stonePattern() {
+    private ItemStack processingPattern() {
         return PatternDetailsHelper.encodeProcessingPattern(List.of(new appeng.api.stacks.GenericStack(COBBLESTONE, 1)),
-                List.of(new appeng.api.stacks.GenericStack(STONE, 1)));
+                List.of(new appeng.api.stacks.GenericStack(machine.output(), 1)));
     }
 
     private ItemStack stickPattern() {

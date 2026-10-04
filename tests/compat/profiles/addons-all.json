@@ -23,6 +23,12 @@
     "omnisequence@2.0.7"
   ],
   "tests": [
-    "all"
+    "core",
+    "extendedae",
+    "extendedae-plus",
+    "data-energistics",
+    "ae2-lightning-tech",
+    "ae2-pattern-disk",
+    "ae2extras"
   ]
 }

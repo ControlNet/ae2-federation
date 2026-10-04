@@ -15,6 +15,8 @@ The capability-backed machines in internal GameTests are test-only fixtures, not
 Pipez and Sophisticated Storage are unsupported. They are not aliases for the qualified rows and are not replaced by test
 fixtures. `compat.reject-unsupported` verifies that a blocked row cannot be promoted to a support claim.
 
+[Production compatibility runs](production-runs.md) cover AE2 addons and modpacks in production servers.
+
 ## Reproduction
 
 ```bash
