@@ -122,8 +122,8 @@ CDN and checked against their pinned SHA-512.
 
 | Profile | Pack | NeoForge, AE2 | Groups | Result (2026-10-05) |
 |---|---|---|---|---|
-| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, expandedae | 63/63 |
-| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 46/46 |
+| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, expandedae | 66/66 |
+| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 49/49 |
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
 
