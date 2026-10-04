@@ -186,6 +186,7 @@ and page ids did not change.
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
+| `guide_extendedae_plus` | extendedae_plus | `examples/accelerated-cpu.md` | `acceleratorMovedToWorkshop` |
 | `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `storageSystemDismantled` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
@@ -202,4 +203,6 @@ and page ids did not change.
 - The Create Millstone compat test emulates the import of its output, so it is not a survival build; the Create page
   uses the Crushing Wheels Endpoint build instead. The scene draws shafts to "your rotational power"; the test turns
   the wheels with Creative Motors.
-- Not done: AE2 Lightning Tech, Data Energistics, ExtendedAE-Plus and OmniSequence examples (ideas 8-10, 12).
+- `AddonCraftingScene.reorderingAfterwards(change, check)` changes the world after the job and orders again; `check`
+  sees the consumer CPU that took each order (found right after `submitJob`, as AE2 assigns it synchronously).
+- Not done: AE2 Lightning Tech, Data Energistics and OmniSequence examples (ideas 8, 9, 12).
