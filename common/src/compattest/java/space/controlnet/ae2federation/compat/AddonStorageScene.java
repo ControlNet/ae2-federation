@@ -46,6 +46,8 @@ final class AddonStorageScene {
     private boolean extractOnly;
     private java.util.function.BooleanSupplier ready = () -> true;
     private int step;
+    private BlockPos dismantlePart;
+    private net.minecraft.world.level.block.state.BlockState dismantledState;
 
     AddonStorageScene(GameTestHelper helper, String cellId) {
         this(helper, cellId, IRON, 9, 4);
@@ -123,9 +125,31 @@ final class AddonStorageScene {
         return this;
     }
 
+    /**
+     * After the round trip, breaks the multiblock's block at {@code part}: its contents must leave the consumer, and
+     * come back once the block is put back and the structure forms again, as the guide's exercise has its player do.
+     */
+    AddonStorageScene dismantlingAfterwards(BlockPos part) {
+        dismantlePart = part;
+        return this;
+    }
+
     /** Each step runs once; {@code succeedWhen} retries the checks after it until they hold. */
     void tick() {
         helper.assertTrue(step > 0 || ready.getAsBoolean(), "Waiting for the provider's " + storage);
+        // Right after a multiblock breaks, the provider's grid can have no confirmed identity for a while, so only
+        // the consumer's view is read here.
+        if (step >= 5) {
+            var seen = fixtures.consumerGrid().getStorageService().getInventory().getAvailableStacks().get(what);
+            if (step == 5) {
+                helper.assertValueEqual(seen, 0L, "Waiting for the broken " + storage + " to leave the consumer");
+                helper.setBlock(dismantlePart, dismantledState);
+                step = 6;
+                helper.fail("Put the " + storage + "'s block back");
+            }
+            helper.assertValueEqual(seen, stored, "Waiting for the re-formed " + storage + " to return to the consumer");
+            return;
+        }
         if (step == 0 && fixtures.networksSettled()) {
             fixtures.connectRouters();
             step = 1;
@@ -181,6 +205,12 @@ final class AddonStorageScene {
         }
         helper.assertValueEqual(provider.getAvailableStacks().get(what), stored,
                 "What the consumer stored must reach the provider's " + storage);
+        if (dismantlePart != null) {
+            dismantledState = helper.getBlockState(dismantlePart);
+            helper.setBlock(dismantlePart, net.minecraft.world.level.block.Blocks.AIR);
+            step = 5;
+            helper.fail("Broke the " + storage + " at " + dismantlePart);
+        }
     }
 
     /**

@@ -40,6 +40,20 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
+     * The guide's storage-system example and its exercise: after the round trip, breaking the tail casing takes the
+     * shared items away from the consumer, and putting it back returns them.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void storageSystemDismantled(GameTestHelper helper) {
+        var start = AddonStorageScene.BESIDE_CHEST.offset(0, -1, -1);
+        var drive = start.offset(3, 1, 0);
+        var scene = AddonStorageScene.structure(helper, "neoecoae:storage_system_l4",
+                test -> placeStorageSystem(test, start), () -> fitCell(helper, drive))
+                .dismantlingAfterwards(start.offset(4, 1, 0));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
      * From the west, at {@code start} (bottom, north): the interface side with the interface between its input and
      * output hatches behind, the controller, a casing column, the worker between parallel cores with the vent between
      * pattern buses behind, and the end casing.
