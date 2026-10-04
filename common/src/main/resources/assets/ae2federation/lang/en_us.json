@@ -1,6 +1,7 @@
 {
   "mod.ae2federation.name": "AE2 Federation",
   "itemGroup.ae2federation.main": "AE2 Federation",
+  "ae2federation.pack.guide_mekanism": "AE2 Federation guide: Mekanism examples",
   "item.ae2federation.bridge": "ME Federation Bridge",
   "item.ae2federation.federation_logic_processor": "Federation Logic Processor",
   "block.ae2federation.router": "ME Federation Router",

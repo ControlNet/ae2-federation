@@ -254,11 +254,16 @@ neoForge {
         }
         // Opens AE2's guide on our pages at the title screen and compiles every Federation page, logging GuideME's
         // errors; the pages reload while the client runs. -PguidePage=ae2federation:items/router.md opens another.
+        // -PguideWorld=<name> then joins that singleplayer world, for pages whose blocks need a loaded world, such as
+        // Mekanism's machines; open them there with /guidemec ae2:guide open <page>.
         guideClient {
             client()
             gameDirectory = project.file('run-guide')
             sourceSet = sourceSets.main
             programArguments.addAll('--width', '1600', '--height', '960')
+            if (providers.gradleProperty('guideWorld').isPresent()) {
+                programArguments.addAll('--quickPlaySingleplayer', providers.gradleProperty('guideWorld').get())
+            }
             systemProperty('guideme.ae2.guide.sources',
                     rootProject.file('common/src/main/resources/assets/ae2federation/ae2guide').absolutePath)
             systemProperty('guideme.ae2.guide.sourcesNamespace', 'ae2federation')

@@ -151,3 +151,29 @@ and page ids did not change.
   dev client too (assets fall back to it), but are only compiled when opened.
 - Example scenes are written by hand. Screenshots: `runGuideClient` under `xvfb-run`; an Xlib click on the sidebar's
   "AE2 Federation" arrow at (14, 157) in a 1600x960 window expands it.
+
+## Examples that need other mods (2026-10-05)
+
+- GuideME has no per-page mod filter, so an example that needs another mod lives in a built-in client resource pack:
+  `common/src/main/resources/resourcepacks/<id>/` with its own `pack.mcmeta` (format 34) and the usual
+  `assets/ae2federation/ae2guide/` tree (pages, `_zh_cn/` copies, `assets/examples/*.snbt`). The page ids stay
+  `ae2federation:examples/...`, so `parent: examples/index.md` and `<SubPages>` pick them up with no base change.
+- `client/guide/GuideExamplePacks.ALL` lists each pack with its required mod ids. The NeoForge client entrypoint
+  registers, in `AddPackFindersEvent`, only the packs whose mods are all loaded, through
+  `addPackFinders(..., PackSource.BUILT_IN, alwaysActive=true, TOP)`. Without the mod the pack does not exist: its
+  pages, search entries, scenes and the examples-page list entry are all absent.
+- The pack shows in the Resource Packs screen as a required pack named by `ae2federation.pack.<id>`. Hiding it would
+  need building the `Pack` by hand with `.hidden()` and `addRepositorySource`; not done.
+- `GuidePagesContractTest` checks each pack like the base guide, plus: pack folders == `GuideExamplePacks.ALL`; a pack
+  page may link to or hang under base pages or its own pack, never another pack, and base pages never reach a pack;
+  a pack's scenes stay in its pack; item ids and scene palette namespaces are limited to minecraft, ae2,
+  ae2federation and the pack's required mods (`MOD_ITEMS` pins the other mods' item ids).
+- **Mekanism machines cannot be shown at the title screen:** their block entity reads a Mekanism config that loads
+  only with a world (`TileEntityMekanism.<init>`), and GuideME's dev `showOnStartup` calls `System.exit(1)` when the
+  page fails. Players open the guide in a world, where it works. To check such a page in the dev client:
+  `-PguideWorld=<world>` adds `--quickPlaySingleplayer` (the world must exist; create it once through the menus),
+  then type `/guidemec ae2:guide open ae2federation:examples/<page>.md` in chat. Put the mod's jar (SHA-checked,
+  e.g. from the compat runner's download cache) in the gitignored `neoforge-1.21.1/run-guide/mods` and remove it
+  afterwards. Search indexing reads only the page AST, so it does not place the blocks at startup.
+- Mekanism's energy cube draws its core only when charged and through Mekanism's own world render pass, so in a guide
+  scene it shows as an empty frame; the annotation says it is charged.
