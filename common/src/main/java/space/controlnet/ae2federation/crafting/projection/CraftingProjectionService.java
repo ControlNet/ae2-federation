@@ -356,7 +356,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         var seen = new HashSet<CraftingReturnLedger.Owed>();
         for (var owed : ledger.entries()) {
             var consumer = federationDomains.grid(owed.consumer()).orElse(null);
-            if (consumer == null || consumer.getCraftingService().getRequestedAmount(owed.key()) > 0) continue;
+            if (consumer == null || CraftingReturnRouter.waiting(consumer, owed.key(), owed.amount()) > 0) continue;
             var marker = new CraftingReturnLedger.Owed(owed.executing(), owed.consumer(), owed.key(), 0);
             if (idle.contains(marker)) {
                 ledger.drop(owed.executing(), owed.consumer(), owed.key());

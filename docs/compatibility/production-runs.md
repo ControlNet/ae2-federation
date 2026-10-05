@@ -104,7 +104,7 @@ These profiles run on every push except to master.
 | `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting and processing through the Pattern Disk Provider; an Endpoint in Local mode under it | 21/21 |
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 18/18 |
 | `aeallpattern` | AE All Pattern 0.2.6 | core only | 18/18 |
-| `neoecoae` | Neo ECO AE Extension 21.2.0 | crafting with a crafting system; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 21/21 |
+| `neoecoae` | Neo ECO AE Extension 21.2.0 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 22/22 |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group; a Transfinite Compute Nexus as the only CPU, including a cancelled job and the Bridge removed after the push; crafting inside a Molecular Sequence Rewrite Array; a Matter Fabrication Well's Pattern Assembly serving a remote order, whose recipe leaves and returns when a casing is broken and put back | 36/36 |
 | `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting and processing through the Advanced Pattern Provider; an Endpoint in Local mode under it, as a block and as a part; a lone Quantum Computer Core as the only CPU, including a cancelled job and the Bridge removed after the push | 26/26 |
 | `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; an Endpoint in Local mode under it; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 24/24 |
@@ -112,7 +112,7 @@ These profiles run on every push except to master.
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels, also as the guide builds it with the wheels stopped during a job; an Item Vault and a Fluid Tank through a Storage Bus | 23/23 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 20/20 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 19/19 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 64/64 |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 65/65 |
 
 ## Modpack profiles
 

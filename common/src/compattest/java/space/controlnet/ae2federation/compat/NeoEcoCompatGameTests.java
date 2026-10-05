@@ -1,5 +1,8 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.parts.PartHelper;
+import appeng.api.util.AEColor;
+import appeng.core.definitions.AEParts;
 import appeng.me.cluster.IAEMultiBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -17,6 +20,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  */
 @PrefixGameTestTemplate(false)
 public final class NeoEcoCompatGameTests {
+    /** The computation system's interface, at the end of the consumer's cable. */
+    private static final BlockPos COMPUTATION = AddonCraftingScene.FIRST_CPU.south(3).east(2);
+
     private NeoEcoCompatGameTests() {
     }
 
@@ -26,6 +32,19 @@ public final class NeoEcoCompatGameTests {
         var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
         var scene = AddonCraftingScene.structure(helper, "neoecoae:crafting_system_l4", List.of("ae2:1k_crafting_storage"),
                 test -> placeCraftingSystem(test, start), start.offset(3, 2, 1));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's example: Neo ECO's computation system, with a flash array in one of its drives, is the consumer's
+     * only CPU and orders from the provider network's crafting system.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemOrdering(GameTestHelper helper) {
+        var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
+        var scene = AddonCraftingScene.structure(helper, "neoecoae:crafting_system_l4", List.of(),
+                test -> placeCraftingSystem(test, start), start.offset(3, 2, 1))
+                .consumerCpuStructure(NeoEcoCompatGameTests::placeComputationSystem, () -> fitComputationCell(helper));
         helper.succeedWhen(scene::tick);
     }
 
@@ -106,8 +125,58 @@ public final class NeoEcoCompatGameTests {
         helper.setBlock(start.offset(1, 1, 0), facing("storage_system_l4", Direction.NORTH));
     }
 
+    /**
+     * The consumer's cable runs from west of its first cable south and east to the computation system's interface,
+     * which is on the system's west end, behind its controller; from there, as {@link #placeCraftingSystem}: the
+     * controller, a casing column, the transmitter between drives with the threading core between parallel cores
+     * behind, and the cooling controller at the end.
+     */
+    private static void placeComputationSystem(GameTestHelper helper) {
+        var cable = AddonCraftingScene.FIRST_CPU;
+        consumerCable(helper, cable);
+        for (int step = 1; step <= 3; step++) consumerCable(helper, cable.south(step));
+        consumerCable(helper, cable.south(3).east());
+        var start = COMPUTATION.offset(0, -1, -1);
+        for (int y = 0; y < 3; y++) {
+            helper.setBlock(start.offset(0, y, 0), block("computation_casing"));
+            helper.setBlock(start.offset(1, y, 1), block("computation_casing"));
+            helper.setBlock(start.offset(2, y, 0), block("computation_casing"));
+            helper.setBlock(start.offset(2, y, 1), block("computation_casing"));
+        }
+        helper.setBlock(start.offset(0, 2, 1), block("computation_casing"));
+        helper.setBlock(start.offset(0, 0, 1), block("computation_casing"));
+        helper.setBlock(start.offset(1, 2, 0), block("computation_casing"));
+        helper.setBlock(start.offset(1, 0, 0), block("computation_casing"));
+        helper.setBlock(start.offset(3, 2, 0), facing("computation_drive", Direction.NORTH));
+        helper.setBlock(start.offset(3, 1, 0), facing("computation_transmitter", Direction.NORTH));
+        helper.setBlock(start.offset(3, 0, 0), facing("computation_drive", Direction.NORTH));
+        helper.setBlock(start.offset(3, 2, 1), facing("computation_parallel_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(3, 1, 1), facing("computation_threading_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(3, 0, 1), facing("computation_parallel_core_l4", Direction.SOUTH));
+        helper.setBlock(start.offset(4, 2, 0), block("computation_casing"));
+        helper.setBlock(start.offset(4, 1, 0), facing("computation_cooling_controller_l4", Direction.EAST));
+        helper.setBlock(start.offset(4, 0, 0), block("computation_casing"));
+        for (int y = 0; y < 3; y++) helper.setBlock(start.offset(4, y, 1), block("computation_casing"));
+        helper.setBlock(COMPUTATION, block("computation_interface"));
+        helper.setBlock(start.offset(1, 1, 0), facing("computation_system_l4", Direction.NORTH));
+    }
+
+    private static void consumerCable(GameTestHelper helper, BlockPos position) {
+        helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(position), null, null,
+                AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null, "A cable must go at " + position);
+    }
+
+    /** Once the computation system has formed, puts a flash array into its upper drive as its player does. */
+    private static boolean fitComputationCell(GameTestHelper helper) {
+        return fitCell(helper, COMPUTATION.offset(3, 1, -1), "neoecoae:eco_computation_cell_l4");
+    }
+
     /** Once the storage system has formed, puts an ECO item cell into the drive as its player does. */
     private static boolean fitCell(GameTestHelper helper, BlockPos drive) {
+        return fitCell(helper, drive, "neoecoae:eco_item_storage_cell_16m");
+    }
+
+    private static boolean fitCell(GameTestHelper helper, BlockPos drive, String cell) {
         var entity = helper.getLevel().getBlockEntity(helper.absolutePos(drive));
         if (!(entity instanceof IAEMultiBlock<?> part) || part.getCluster() == null) return false;
         try {
@@ -115,12 +184,12 @@ public final class NeoEcoCompatGameTests {
             var held = (ItemStack) entity.getClass().getMethod("getCellStack").invoke(entity);
             if (held == null || held.isEmpty()) {
                 entity.getClass().getMethod("setCellStack", ItemStack.class)
-                        .invoke(entity, new ItemStack(AddonCraftingScene.item("neoecoae:eco_item_storage_cell_16m")));
+                        .invoke(entity, new ItemStack(AddonCraftingScene.item(cell)));
             }
             held = (ItemStack) entity.getClass().getMethod("getCellStack").invoke(entity);
             return held != null && !held.isEmpty();
         } catch (ReflectiveOperationException exception) {
-            throw new IllegalStateException("The ECO drive cannot take a cell", exception);
+            throw new IllegalStateException("The ECO drive at " + drive + " cannot take a cell", exception);
         }
     }
 

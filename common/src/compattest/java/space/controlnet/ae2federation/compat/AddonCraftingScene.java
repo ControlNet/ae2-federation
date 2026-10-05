@@ -78,6 +78,8 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
+    private java.util.function.Consumer<GameTestHelper> placeConsumerCpu;
+    private java.util.function.BooleanSupplier consumerCpuReady = () -> true;
     /** When a structure scene's provider is ready: by default, once its multiblock has formed. */
     private java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> structureReady =
             entity -> entity instanceof appeng.me.cluster.IAEMultiBlock<?> part && part.getCluster() != null;
@@ -150,6 +152,17 @@ final class AddonCraftingScene {
         scene.providerPos = patternContainer;
         scene.structureReady = ready;
         return scene;
+    }
+
+    /**
+     * The consumer's CPU is a multiblock, which {@code place} builds instead of the CPU blocks. The consumer orders once
+     * {@code ready} agrees; it is asked every tick and may finish the CPU as its player does.
+     */
+    AddonCraftingScene consumerCpuStructure(java.util.function.Consumer<GameTestHelper> place,
+            java.util.function.BooleanSupplier ready) {
+        placeConsumerCpu = place;
+        consumerCpuReady = ready;
+        return this;
     }
 
     /**
@@ -327,7 +340,9 @@ final class AddonCraftingScene {
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
                             .setCell(new ItemStack(item(machine.outputCell())));
                 }
-                if (cpuOnCable) {
+                if (placeConsumerCpu != null) {
+                    placeConsumerCpu.accept(helper);
+                } else if (cpuOnCable) {
                     helper.assertTrue(appeng.api.parts.PartHelper.setPart(helper.getLevel(),
                             helper.absolutePos(BASE.west()), null, null,
                             appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
@@ -375,6 +390,7 @@ final class AddonCraftingScene {
             case 3 -> {
                 helper.assertTrue(bridge.outerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider network to craft with " + providerId + ": " + providerState());
+                helper.assertTrue(consumerCpuReady.getAsBoolean(), "Waiting for the consumer's CPU structure");
                 helper.assertFalse(consumerGrid().getCraftingService().getCpus().isEmpty(),
                         "Waiting for the consumer's CPU from " + cpuIds);
                 helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid()).isPresent()

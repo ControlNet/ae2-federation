@@ -1,7 +1,7 @@
 {
   "name": "neoecoae",
   "group": "addons",
-  "description": "Neo ECO AE Extension: storage and crafting multiblocks, mixins into crafting and NetworkStorage",
+  "description": "Neo ECO AE Extension: storage, crafting and computation multiblocks, mixins into crafting and NetworkStorage",
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",

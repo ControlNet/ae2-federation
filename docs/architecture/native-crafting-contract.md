@@ -44,7 +44,11 @@ edit. A save holding a crafting rule without its storage rule gets the storage r
     lists nothing and extracts nothing.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
     `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus stays on P.
-  - A debt is dropped after two 20-tick looks in which C requests nothing, but never in the first 100 ticks, while
+  - AE2 counts only its own CPU clusters in `getRequestedAmount`. An addon's CPU that AE2 still lists in
+    `isRequesting`, such as Neo ECO's computation system, waits for an amount AE2 cannot tell. While no AE2 cluster
+    requests the key, the cap is then what the ledger owes C; if that CPU takes less, the rest lands in C's storage,
+    which paid the inputs.
+  - A debt is dropped after two 20-tick looks in which C requests nothing (by either measure), but never in the first 100 ticks, while
     CPUs in later chunks reconnect. A cancelled job's late outputs therefore stay on P.
   - A return crosses only a live Federation link: P and C share a Federation Domain, or are joined through networks
     the domains share, as a chained push is (`FederationLinks`). Switching the rule off keeps returns going, because C
