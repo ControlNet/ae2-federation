@@ -144,6 +144,7 @@
 {"id":"provider.production-revocation","backend":"gametest","testId":"productionproviderrevocation","structure":"ae2federation_test:harness_native_smoke","assertions":9},
 {"id":"provider.production-lifecycle","backend":"gametest","testId":"productionproviderlifecycle","structure":"ae2federation_test:harness_native_smoke","assertions":16},
 {"id":"provider.reload-in-place","backend":"gametest","testId":"providerreloadinplace","structure":"ae2federation_test:harness_native_smoke","assertions":16},
+{"id":"provider.copy-own-identity","backend":"gametest","testId":"providercopyownidentity","structure":"ae2federation_test:harness_native_smoke","assertions":18},
 {"id":"provider.native-pattern-refresh","backend":"gametest","testId":"providernativepatternrefresh","structure":"ae2federation_test:harness_native_smoke","assertions":9},
 {"id":"provider.production-unmap-retains-locked","backend":"gametest","testId":"productionproviderunmapretainslocked","structure":"ae2federation_test:harness_native_smoke","assertions":26},
 {"id":"provider.production-unmap-retains-unlocked","backend":"gametest","testId":"productionproviderunmapretainsunlocked","structure":"ae2federation_test:harness_native_smoke","assertions":26},

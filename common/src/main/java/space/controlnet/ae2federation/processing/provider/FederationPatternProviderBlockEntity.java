@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -179,6 +180,11 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (!(level instanceof ServerLevel serverLevel) || runtime != null) {
             return;
         }
+        var placements = ProviderPlacementRegistry.get(serverLevel);
+        if (!placements.place(identity.id(), placement())) {
+            becomeCopy();
+            placements.place(identity.id(), placement());
+        }
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         runtime = new ProviderRuntime(serverLevel, getMainNode(), federationDomainNodeId, provider, identity,
                 new ProviderOrientation(ProviderNodeWiring.face(federationFace())), this::laneRequest, domains);
@@ -256,12 +262,39 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         unloading = false;
     }
 
+    private GlobalPos placement() {
+        return GlobalPos.of(level.dimension(), worldPosition);
+    }
+
+    /**
+     * Turns this Provider, placed from a structure or an item that carries another Provider's data, into a Provider of
+     * its own: a new identity and no Endpoint, so the Claims stay with the Provider they were made for. It keeps its
+     * Patterns and Lane count; a Pattern mapped to a Lane is unmapped, as for any Lane with no Endpoint.
+     */
+    private void becomeCopy() {
+        identity = ProviderIdentity.create();
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            lanes.get(laneIndex).retire();
+            unmapLane(laneIndex);
+        }
+        saveChanges();
+    }
+
+    private void unmapLane(int laneIndex) {
+        for (var slot : provider.slotsForLane(laneIndex)) {
+            var remaining = new TreeSet<>(provider.lanesForSlot(slot));
+            remaining.remove(laneIndex);
+            provider.replaceMapping(provider.mappingHandle(slot), remaining);
+        }
+    }
+
     private void shutdown(boolean removedFromWorld) {
         if (level instanceof ServerLevel serverLevel && runtime != null) {
             detachReturns(serverLevel);
         }
         if (removedFromWorld && level instanceof ServerLevel serverLevel) {
             releaseAllClaims(serverLevel);
+            ProviderPlacementRegistry.get(serverLevel).remove(identity.id(), placement());
         }
         if (runtime != null) {
             provider.close();
@@ -829,11 +862,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
             var binding = lanes.get(laneIndex);
             if (binding.endpoint == null) {
-                for (var slot : provider.slotsForLane(laneIndex)) {
-                    var remaining = new TreeSet<>(provider.lanesForSlot(slot));
-                    remaining.remove(laneIndex);
-                    provider.replaceMapping(provider.mappingHandle(slot), remaining);
-                }
+                unmapLane(laneIndex);
                 continue;
             }
             var slotsAfter = provider.slotsForLane(laneIndex);
