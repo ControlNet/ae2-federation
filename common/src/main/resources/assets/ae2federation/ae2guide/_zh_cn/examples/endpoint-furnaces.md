@@ -41,6 +41,14 @@ navigation:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+联邦界面里会显示主网络， 以及连到它上面、 由它的供应器映射的两个端点。 输入沿着连线送出， 结果沿着它回来， 两个子网络用的都是你网络的电：
+
+<FederationTopology>
+  <Network key="main" label="主网络" color="#915dcd" column="0" row="0" details="合成CPU、终端|联邦样板供应器" />
+  <Endpoint key="first" label="端点 · 熔炉1" owner="main" energy="true" details="第一座熔炉的子网络" />
+  <Endpoint key="second" label="端点 · 熔炉2" owner="main" energy="true" details="第二座熔炉的子网络" />
+</FederationTopology>
+
 ## 先搭一座熔炉
 
 1. **放置供应器**， 前面接联邦线缆， 另一个面接你的网络。

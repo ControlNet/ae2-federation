@@ -44,6 +44,15 @@ hopper and <ItemLink id="ae2:storage_bus" /> per furnace; <ItemLink id="ae2feder
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen then shows your main network wired to the two Endpoints its Provider maps. Inputs go out along
+the wires and results come back, and both subnets run on your network's power:
+
+<FederationTopology>
+  <Network key="main" label="Main network" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Pattern Provider" />
+  <Endpoint key="first" label="Endpoint · furnace 1" owner="main" energy="true" details="First furnace subnet" />
+  <Endpoint key="second" label="Endpoint · furnace 2" owner="main" energy="true" details="Second furnace subnet" />
+</FederationTopology>
+
 ## Build one furnace first
 
 1. **Place the Provider** with its front on Federation Cable and another face on your network.

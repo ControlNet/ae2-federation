@@ -6,17 +6,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.ToIntFunction;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Capability;
+import space.controlnet.ae2federation.client.guide.TopologyDiagram.Endpoint;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Network;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram.Rule;
+import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
+import space.controlnet.ae2federation.client.policy.WireCurve;
 
 /**
  * Where a {@link TopologyDiagram} draws, in pixels from the diagram's top-left corner: the network cards on their grid,
  * a link per pair that has a rule or shares energy, the energy chip on the link and, beside it, one label per
  * direction with a chip per capability. As on the topology screen, a direction's label points at the network that
- * uses it. The legend sits under everything.
+ * uses it, and Processing Endpoints are small nodes wired to the network that maps them, placed by the screen's own
+ * {@link EndpointNodeLayout}. The legend sits under everything.
  */
-public record TopologyDiagramLayout(int width, int height, List<Card> cards, List<Link> links, int legendY) {
+public record TopologyDiagramLayout(int width, int height, List<Card> cards, List<Link> links,
+        List<EndpointNode> endpoints, int legendY) {
     static final int PAD = 8;
     static final int CHIP_HEIGHT = 11;
     static final int CHIP_GAP = 3;
@@ -24,6 +29,7 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
     static final int CAP = 4;
     static final int LINE_HEIGHT = 10;
     static final int LEGEND_HEIGHT = 2 * LINE_HEIGHT + 4;
+    static final int ENDPOINT_HEIGHT = 16;
     private static final int MIN_CARD_WIDTH = 64;
     private static final int MAX_CARD_WIDTH = 150;
     private static final int MIN_SQUEEZED_CARD_WIDTH = 44;
@@ -48,6 +54,10 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
     }
 
     public record Card(Network network, Rect rect) {
+    }
+
+    /** A Processing Endpoint's node, and its wire from the card of the network that maps it. */
+    public record EndpointNode(Endpoint endpoint, Rect rect, WireCurve link) {
     }
 
     /** One capability of one direction's label. */
@@ -107,6 +117,8 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
                     network.row() * (cardHeight + ROW_GAP), cardWidth, cardHeight)));
         }
 
+        var endpoints = placeEndpoints(diagram, cards, cardWidth, cardHeight, availableWidth, textWidth);
+
         var links = new ArrayList<Link>();
         for (var pair : pairs(diagram).entrySet()) {
             var from = cards.get(pair.getKey().get(0));
@@ -155,7 +167,7 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
             links.add(new Link(from.network(), to.network(), curve, energyChip, List.copyOf(labels)));
         }
 
-        // Labels may stand above the top row or below the bottom one: shift everything so they fit.
+        // Labels and Endpoints may stand above the top row or below the bottom one: shift everything so they fit.
         int top = 0;
         int bottom = rows * cardHeight + (rows - 1) * ROW_GAP;
         for (var link : links) {
@@ -163,6 +175,10 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
                 top = Math.min(top, label.rect().y());
                 bottom = Math.max(bottom, label.rect().y() + label.rect().height());
             }
+        }
+        for (var node : endpoints) {
+            top = Math.min(top, node.rect().y());
+            bottom = Math.max(bottom, node.rect().y() + node.rect().height());
         }
         int shift = PAD - top;
         var placedCards = cards.values().stream().map(card -> new Card(card.network(), card.rect().moved(0, shift))).toList();
@@ -172,9 +188,83 @@ public record TopologyDiagramLayout(int width, int height, List<Card> cards, Lis
                 link.labels().stream().map(label -> new Label(label.rect().moved(0, shift), label.capX(), label.capY(),
                         label.chips().stream().map(chip -> new Chip(chip.rule(), chip.text(), chip.rect().moved(0, shift)))
                                 .toList())).toList())).toList();
+        var placedEndpoints = endpoints.stream().map(node -> new EndpointNode(node.endpoint(), node.rect().moved(0, shift),
+                node.link().translated(0, shift))).toList();
         int legendY = bottom + shift + PAD;
         return new TopologyDiagramLayout(availableWidth, legendY + LEGEND_HEIGHT + PAD / 2, placedCards, placedLinks,
-                legendY);
+                placedEndpoints, legendY);
+    }
+
+    /**
+     * Places the Endpoints as the topology screen does, on the outer side of their network's card, and then moves the
+     * cards and nodes sideways together so they are centred. Where that is too wide for the page, each network's
+     * Endpoints hang under its card instead, slid along the row as far as needed to stay on the page.
+     */
+    private static List<EndpointNode> placeEndpoints(TopologyDiagram diagram, Map<String, Card> cards, int cardWidth,
+            int cardHeight, int availableWidth, ToIntFunction<String> textWidth) {
+        if (diagram.endpoints().isEmpty()) return List.of();
+        // The node's padding, its state dot and the gaps around them, as the screen measures it.
+        var nodes = diagram.endpoints().stream().map(endpoint -> new EndpointNodeLayout.Node(endpoint.key(),
+                endpoint.owner(), textWidth.applyAsInt(endpoint.label()) + 18)).toList();
+        var corners = cards.values().stream().map(card -> new EndpointNodeLayout.Card(card.network().key(),
+                card.rect().x(), card.rect().y())).toList();
+        var placed = EndpointNodeLayout.place(corners, cardWidth, cardHeight, nodes, ENDPOINT_HEIGHT);
+        if (fits(corners, cardWidth, cardHeight, placed, availableWidth)) {
+            var span = span(corners, cardWidth, placed);
+            int dx = Math.max(PAD, Math.round((availableWidth - (span[1] - span[0])) / 2f)) - Math.round(span[0]);
+            for (var entry : cards.entrySet()) {
+                var card = entry.getValue();
+                entry.setValue(new Card(card.network(), card.rect().moved(dx, 0)));
+            }
+            placed = placed.stream().map(node -> node.moved(dx, 0)).toList();
+        } else {
+            var below = new LinkedHashMap<String, EndpointNodeLayout.Placed>();
+            for (var corner : corners) {
+                var owned = nodes.stream().filter(node -> node.owner().equals(corner.id())).toList();
+                if (owned.isEmpty()) continue;
+                var group = EndpointNodeLayout.place(List.of(corner), cardWidth, cardHeight, owned, ENDPOINT_HEIGHT);
+                var span = span(List.of(), cardWidth, group);
+                float slide = Math.max(PAD - span[0], Math.min(0, availableWidth - PAD - span[1]));
+                for (var node : group) {
+                    // The wire still leaves the card where it did and now ends at the moved node.
+                    var link = node.link();
+                    below.put(node.id(), new EndpointNodeLayout.Placed(node.id(), node.x() + slide, node.y(), node.width(),
+                            new WireCurve(link.fromX(), link.fromY(), link.toX() + slide, link.toY(), link.vertical(),
+                                    link.bendEnd())));
+                }
+            }
+            placed = nodes.stream().map(node -> below.get(node.id())).toList();
+        }
+        var endpoints = new ArrayList<EndpointNode>();
+        for (int index = 0; index < placed.size(); index++) {
+            var node = placed.get(index);
+            endpoints.add(new EndpointNode(diagram.endpoints().get(index), new Rect(Math.round(node.x()),
+                    Math.round(node.y()), Math.round(node.width()), ENDPOINT_HEIGHT), node.link()));
+        }
+        return endpoints;
+    }
+
+    /** Whether {@code placed} covers no card or node, and the cards and nodes together fit the page's width. */
+    private static boolean fits(List<EndpointNodeLayout.Card> corners, int cardWidth, int cardHeight,
+            List<EndpointNodeLayout.Placed> placed, int availableWidth) {
+        if (!EndpointNodeLayout.clear(corners, cardWidth, cardHeight, placed, ENDPOINT_HEIGHT)) return false;
+        var span = span(corners, cardWidth, placed);
+        return span[1] - span[0] <= availableWidth - 2 * PAD;
+    }
+
+    /** The leftmost and rightmost x of the cards and nodes. */
+    private static float[] span(List<EndpointNodeLayout.Card> corners, int cardWidth, List<EndpointNodeLayout.Placed> placed) {
+        float left = Float.MAX_VALUE;
+        float right = -Float.MAX_VALUE;
+        for (var corner : corners) {
+            left = Math.min(left, corner.x());
+            right = Math.max(right, corner.x() + cardWidth);
+        }
+        for (var node : placed) {
+            left = Math.min(left, node.x());
+            right = Math.max(right, node.x() + node.width());
+        }
+        return new float[] {left, right};
     }
 
     /**

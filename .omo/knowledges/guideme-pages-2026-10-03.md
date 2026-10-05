@@ -262,6 +262,18 @@ and page ids did not change.
   the mixin.
 - `GuidePagesContractTest.topologyDiagramsDrawAndChineseCopiesShowTheSameNetworks`: every diagram parses without
   problems, and a Chinese copy differs only in labels and details (mutation checked: a flipped rule, an unknown key).
+- **Endpoints**: `<Endpoint key label owner energy="true|false" details />` draws the topology screen's small node
+  (well, green dot, label) wired to the owner network's card, a quartz rail when its subnet runs on the owner's power,
+  with teal dots both ways (inputs out, results back) and an end mark in the owner's colour. Placement reuses the
+  screen's `EndpointNodeLayout`: on the card's outer side, below a lone card; where that is too wide for the page,
+  each network's nodes hang under its card, slid back onto the page. Endpoint pages (furnaces, Create, Mekanism) and
+  the Bridge and Router item pages carry diagrams.
+- **Page width**: GuideME's content is about 280 px at the smallest (320 px virtual screen less nav bar and scrollbar)
+  and at most 420 (`DocumentScreen.getMaxWidth` 570 less the 150 px nav). The contract test lays every page diagram
+  out at 280 and 420 with a Minecraft-font width estimate (narrow ASCII glyphs, 9 px CJK) and fails on any overlap or
+  anything off the canvas (mutation checked with a long Endpoint label). Keep Endpoint labels short ("Endpoint ·
+  furnace 1"): two nodes under one card need about 264 px.
+- Match the diagram's left/right to the scene's camera: at yaw 195 higher x shows on the left (Router: A left).
 
 ## One power source per example (2026-10-05)
 

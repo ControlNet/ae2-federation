@@ -19,6 +19,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.client.guide.GuideExamplePacks;
 import space.controlnet.ae2federation.client.guide.TopologyDiagram;
+import space.controlnet.ae2federation.client.guide.TopologyDiagramLayout;
+import space.controlnet.ae2federation.client.guide.TopologyDiagramLayoutTest;
 
 /**
  * The GuideME pages join AE2's own guide from {@code assets/ae2federation/ae2guide}; GuideME picks a page's
@@ -284,6 +286,13 @@ final class GuidePagesContractTest {
                     }
                     assertEquals(withoutText(english.get(index).diagram()), withoutText(chinese.get(index).diagram()),
                             page + ": the Chinese copy's diagram " + index);
+                    for (var parsed : List.of(english.get(index), chinese.get(index))) {
+                        for (int width : TopologyDiagramLayoutTest.PAGE_WIDTHS) {
+                            TopologyDiagramLayoutTest.assertApartAndOnCanvas(TopologyDiagramLayout.of(parsed.diagram(),
+                                    width, GuidePagesContractTest::fontWidth, "Storage", "Crafting", "Energy"),
+                                    page + " at width " + width);
+                        }
+                    }
                     diagrams++;
                 }
             }
@@ -317,11 +326,24 @@ final class GuidePagesContractTest {
         return parsed;
     }
 
-    /** The diagram with every network's label and details left out. */
+    /** The diagram with every network's and Endpoint's label and details left out. */
     private static TopologyDiagram withoutText(TopologyDiagram diagram) {
         return new TopologyDiagram(diagram.networks().stream().map(network -> new TopologyDiagram.Network(network.key(),
                 "", network.color(), network.column(), network.row(), List.of())).toList(), diagram.rules(),
-                diagram.energy());
+                diagram.energy(), diagram.endpoints().stream().map(endpoint -> new TopologyDiagram.Endpoint(endpoint.key(),
+                        "", endpoint.owner(), endpoint.energy(), List.of())).toList());
+    }
+
+    /** Close to Minecraft's font: advances of its narrow ASCII glyphs, 6 for the rest, 9 for CJK from Unifont. */
+    private static int fontWidth(String text) {
+        return text.codePoints().map(point -> {
+            if (point >= 0x2E80) return 9;
+            if ("i!.,:;|'·".indexOf(point) >= 0) return 2;
+            if ("l`".indexOf(point) >= 0) return 3;
+            if ("It[] ".indexOf(point) >= 0) return 4;
+            if ("fk<>\"*()".indexOf(point) >= 0) return 5;
+            return 6;
+        }).sum();
     }
 
     /** The base guide, then each optional pack's guide folder with the mods it requires. */

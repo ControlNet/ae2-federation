@@ -9,13 +9,19 @@ import java.util.Optional;
 
 /**
  * A topology diagram as a guide page writes it in a {@code <FederationTopology>} tag: network cards on a grid, the rules
- * between them and the pairs that share energy. It describes an example build, not a live domain.
+ * between them, the pairs that share energy and the Processing Endpoints each network's Providers map. It describes an
+ * example build, not a live domain.
  */
-public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy) {
+public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy, List<Endpoint> endpoints) {
     public TopologyDiagram {
         networks = List.copyOf(networks);
         rules = List.copyOf(rules);
         energy = List.copyOf(energy);
+        endpoints = List.copyOf(endpoints);
+    }
+
+    public TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy) {
+        this(networks, rules, energy, List.of());
     }
 
     /** A network card at grid cell ({@code column}, {@code row}), framed in {@code color} (0xRRGGBB). */
@@ -31,6 +37,16 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
 
     /** The two networks share one energy pool. */
     public record Energy(String first, String second) {
+    }
+
+    /**
+     * A Processing Endpoint that a Provider on network {@code owner} maps; {@code energy} when its subnet runs on that
+     * network's power.
+     */
+    public record Endpoint(String key, String label, String owner, boolean energy, List<String> details) {
+        public Endpoint {
+            details = List.copyOf(details);
+        }
     }
 
     public enum Capability {
@@ -62,13 +78,15 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
     }
 
     /**
-     * Reads {@code <Network key label color column row details>}, {@code <Rule user source capability state>} and
-     * {@code <Energy first second>}; {@code details} separates its lines with "|".
+     * Reads {@code <Network key label color column row details>}, {@code <Rule user source capability state>},
+     * {@code <Energy first second>} and {@code <Endpoint key label owner energy details>}; {@code details} separates its
+     * lines with "|".
      */
     public static Parsed parse(List<Element> elements) {
         var networks = new ArrayList<Network>();
         var rules = new ArrayList<Rule>();
         var energy = new ArrayList<Energy>();
+        var endpoints = new ArrayList<Endpoint>();
         var problems = new ArrayList<String>();
         for (var element : elements) {
             switch (element.name()) {
@@ -81,9 +99,8 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
                         problems.add("A Network needs a key, a #RRGGBB color and whole column and row numbers");
                         continue;
                     }
-                    var details = element.attribute("details", "");
                     networks.add(new Network(key, element.attribute("label", key), Integer.parseInt(color.substring(1), 16),
-                            column, row, details.isEmpty() ? List.of() : List.of(details.split("\\|"))));
+                            column, row, details(element)));
                 }
                 case "Rule" -> {
                     var capability = Capability.parse(element.attribute("capability", ""));
@@ -97,12 +114,27 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
                             state.get()));
                 }
                 case "Energy" -> energy.add(new Energy(element.attribute("first", ""), element.attribute("second", "")));
+                case "Endpoint" -> {
+                    var key = element.attribute("key", "");
+                    var powered = element.attribute("energy", "false");
+                    if (key.isEmpty() || !powered.equals("true") && !powered.equals("false")) {
+                        problems.add("An Endpoint needs a key, and energy true or false");
+                        continue;
+                    }
+                    endpoints.add(new Endpoint(key, element.attribute("label", key), element.attribute("owner", ""),
+                            powered.equals("true"), details(element)));
+                }
                 default -> problems.add("Unknown FederationTopology element " + element.name());
             }
         }
-        var diagram = new TopologyDiagram(networks, rules, energy);
+        var diagram = new TopologyDiagram(networks, rules, energy, endpoints);
         problems.addAll(diagram.problems());
         return new Parsed(diagram, List.copyOf(problems));
+    }
+
+    private static List<String> details(Element element) {
+        var details = element.attribute("details", "");
+        return details.isEmpty() ? List.of() : List.of(details.split("\\|"));
     }
 
     private static Integer parseInt(String value) {
@@ -135,6 +167,12 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
             pair(problems, "Rule", rule.user(), rule.source());
             if (!rules.add(new Rule(rule.user(), rule.source(), rule.capability(), State.ACTIVE))) {
                 problems.add("The rule " + rule.user() + " uses " + rule.source() + "'s " + rule.capability() + " is listed twice");
+            }
+        }
+        for (var endpoint : endpoints) {
+            if (!keys.add(endpoint.key())) problems.add("Endpoint key \"" + endpoint.key() + "\" is used twice");
+            if (network(endpoint.owner()).isEmpty()) {
+                problems.add("Endpoint \"" + endpoint.key() + "\" names the unknown network \"" + endpoint.owner() + "\"");
             }
         }
         var pools = new HashSet<List<String>>();

@@ -29,7 +29,7 @@ import java.util.Set;
 public final class FederationTopologyTagCompiler extends BlockTagCompiler {
     public static final String TAG_NAME = "FederationTopology";
     private static final List<String> ATTRIBUTES = List.of("key", "label", "color", "column", "row", "details", "user",
-            "source", "capability", "state", "first", "second");
+            "source", "capability", "state", "first", "second", "owner", "energy");
 
     @Override
     public Set<String> getTagNames() {

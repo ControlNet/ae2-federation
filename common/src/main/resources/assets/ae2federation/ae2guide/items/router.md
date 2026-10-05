@@ -41,6 +41,16 @@ joined them.
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen shows each network as its own card. Here networks A and C both use network B's storage:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="1" details="Drive|Energy cell" />
+  <Network key="c" label="Network C" color="#5dcd70" column="1" row="0" details="Energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="2" row="1" details="Drive|Energy cell" />
+  <Rule user="a" source="b" capability="storage" />
+  <Rule user="c" source="b" capability="storage" />
+</FederationTopology>
+
 Right-click the Router to open the Federation screen for its domain, where you switch sharing on. See
 [Getting Started](../getting-started.md).
 

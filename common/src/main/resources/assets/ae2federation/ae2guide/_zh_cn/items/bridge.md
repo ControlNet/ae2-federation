@@ -32,6 +32,14 @@ item_ids:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+联邦界面里会并排显示这两个网络， 打开规则后它们之间就会连上线。 这里网络A使用网络B的存储：
+
+<FederationTopology>
+  <Network key="a" label="网络A" color="#915dcd" column="0" row="0" details="驱动器|能源元件" />
+  <Network key="b" label="网络B" color="#5CA7CD" column="1" row="0" details="驱动器|能源元件" />
+  <Rule user="a" source="b" capability="storage" />
+</FederationTopology>
+
 桥接器只和这两个网络组成一个小[联邦域](../mechanics.md)。 它不连接联邦线缆， 所以联邦样板供应器和处理端点不能通过它连到其他网络。
 
 右键它打开这两个网络的联邦界面。 如果连接不正确， 右键会改为显示问题所在， 参见[排错](../troubleshooting.md)。 和AE2的其他线缆部件一样， 潜行时用扳手可以把它拆下。

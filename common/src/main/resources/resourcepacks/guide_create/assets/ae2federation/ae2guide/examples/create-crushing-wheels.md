@@ -39,6 +39,14 @@ a <ItemLink id="ae2:storage_bus" />; rotational power for the wheels.
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen then shows your main network wired to the Endpoint its Provider maps. Inputs go out along the
+wire and results come back, and the subnet runs on your network's power:
+
+<FederationTopology>
+  <Network key="main" label="Main network" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Pattern Provider" />
+  <Endpoint key="wheels" label="Endpoint · wheels" owner="main" energy="true" details="Crushing Wheels subnet" />
+</FederationTopology>
+
 ## Build it
 
 1. **Place the Provider** with its front on Federation Cable and another face on your network.

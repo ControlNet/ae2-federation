@@ -26,8 +26,10 @@ import space.controlnet.ae2federation.client.policy.TopologyLink;
 /**
  * Draws a {@link TopologyDiagram} in the topology screen's style: network cards on the dark canvas, links between
  * them, the quartz rail and its beads where a pair shares energy, a label per direction pointing at the network that
- * uses it, and teal dots moving from the providing network to the user along every link with a rule. GuideME draws
- * the page every frame, so the dots and beads move. Hovering a card, chip or energy chip names it.
+ * uses it, and teal dots moving from the providing network to the user along every link with a rule. Processing
+ * Endpoints are small nodes wired to the network that maps them, with inputs going out and results coming back along
+ * the wire, which is a quartz rail when the subnet runs on that network's power. GuideME draws the page every frame,
+ * so the dots and beads move. Hovering a card, node, chip or energy chip names it.
  */
 public final class LytFederationTopology extends LytBlock implements InteractiveElement {
     private static final long PULSE_PERIOD = 1500;
@@ -38,6 +40,7 @@ public final class LytFederationTopology extends LytBlock implements Interactive
     private static final int CARD = 0xff2b2836;
     private static final int RAIL_OUTLINE = 0xff121016;
     private static final int DOT_OUTLINE = 0xff0b0a12;
+    private static final int NODE_BORDER = 0xff47434f;
 
     private final TopologyDiagram diagram;
     private TopologyDiagramLayout layout;
@@ -81,15 +84,36 @@ public final class LytFederationTopology extends LytBlock implements Interactive
                 curve(graphics, link.curve(), 2, FederationTheme.EDGE);
             }
         }
+        for (var node : layout.endpoints()) {
+            var wire = new TopologyLink(node.link(), 0.5f);
+            if (node.endpoint().energy()) {
+                curve(graphics, wire, 5, RAIL_OUTLINE);
+                curve(graphics, wire, 3, FederationTheme.QUARTZ);
+                curve(graphics, wire, 1, FederationTheme.QUARTZ_CORE);
+            } else {
+                curve(graphics, wire, 2, FederationTheme.EDGE);
+            }
+        }
         for (var link : layout.links()) {
-            if (link.sharesEnergy()) beads(graphics, link, now);
+            if (link.sharesEnergy()) beads(graphics, link.curve(), link.energyChip(), now);
             pulses(graphics, link, now);
+        }
+        for (var node : layout.endpoints()) {
+            var wire = new TopologyLink(node.link(), 0.5f);
+            if (node.endpoint().energy()) beads(graphics, wire, null, now);
+            // Inputs go out to the Endpoint, and results come back.
+            float phase = (now % PULSE_PERIOD) / (float) PULSE_PERIOD;
+            dots(graphics, wire.dots(phase, 2, false, 0, 0));
+            dots(graphics, wire.dots((phase + 0.25f) % 1f, 2, true, 0, 0));
+            diagram.network(node.endpoint().owner()).ifPresent(owner -> endMark(graphics, node.link().fromX(),
+                    node.link().fromY(), 0xff000000 | owner.color()));
         }
         for (var link : layout.links()) {
             if (link.sharesEnergy()) chip(graphics, font, link.energyChip(), energyName().getString(), FederationTheme.QUARTZ);
             for (var label : link.labels()) label(graphics, font, label);
         }
         for (var card : layout.cards()) card(graphics, font, card);
+        for (var node : layout.endpoints()) endpoint(graphics, font, node);
         legend(graphics, font);
         pose.popPose();
         // GuideME 21.1.1 does not flush before it changes the scissor; keep this page's drawing inside its clip.
@@ -131,26 +155,28 @@ public final class LytFederationTopology extends LytBlock implements Interactive
         for (var label : link.labels()) {
             // The label belongs to the user; the dots run from the other end towards it.
             boolean towardsStart = label.chips().getFirst().rule().user().equals(link.from().key());
-            var dots = link.curve().dots(phase, PULSE_DOTS, towardsStart, halfWidth, halfHeight);
-            for (int index = 0; index < dots.length; index += 2) {
-                int x = Math.round(dots[index]);
-                int y = Math.round(dots[index + 1]);
-                graphics.fill(x - 3, y - 3, x + 3, y + 3, DOT_OUTLINE);
-                graphics.fill(x - 2, y - 2, x + 2, y + 2, FederationTheme.TEAL);
-            }
+            dots(graphics, link.curve().dots(phase, PULSE_DOTS, towardsStart, halfWidth, halfHeight));
         }
     }
 
-    /** Quartz beads both ways along a shared-energy rail, as on the topology screen. */
-    private static void beads(GuiGraphics graphics, TopologyDiagramLayout.Link link, long now) {
+    private static void dots(GuiGraphics graphics, float[] dots) {
+        for (int index = 0; index < dots.length; index += 2) {
+            int x = Math.round(dots[index]);
+            int y = Math.round(dots[index + 1]);
+            graphics.fill(x - 3, y - 3, x + 3, y + 3, DOT_OUTLINE);
+            graphics.fill(x - 2, y - 2, x + 2, y + 2, FederationTheme.TEAL);
+        }
+    }
+
+    /** Quartz beads both ways along a shared-energy rail, as on the topology screen, kept off {@code chip} if any. */
+    private static void beads(GuiGraphics graphics, TopologyLink rail, Rect chip, long now) {
         float phase = (now % BEAD_PERIOD) / (float) BEAD_PERIOD;
         var pose = graphics.pose();
-        var chip = link.energyChip();
         for (int bead = 0; bead < BEADS; bead++) {
             float t = (phase + bead / (float) BEADS) % 1f;
-            var point = link.curve().curve().at(bead % 2 == 0 ? t : 1 - t);
-            if (chip.contains(point[0], point[1]) || new Rect(chip.x() - 3, chip.y() - 3, chip.width() + 6,
-                    chip.height() + 6).contains(point[0], point[1])) continue;
+            var point = rail.curve().at(bead % 2 == 0 ? t : 1 - t);
+            if (chip != null && new Rect(chip.x() - 3, chip.y() - 3, chip.width() + 6, chip.height() + 6)
+                    .contains(point[0], point[1])) continue;
             pose.pushPose();
             pose.translate(point[0], point[1], 0);
             pose.mulPose(Axis.ZP.rotationDegrees(45));
@@ -218,6 +244,25 @@ public final class LytFederationTopology extends LytBlock implements Interactive
         }
     }
 
+    /** Where an Endpoint's wire leaves its network's card, a mark in that network's colour. */
+    private static void endMark(GuiGraphics graphics, float pointX, float pointY, int color) {
+        int x = Math.round(pointX);
+        int y = Math.round(pointY);
+        graphics.fill(x - 3, y - 3, x + 3, y + 3, RAIL_OUTLINE);
+        graphics.fill(x - 2, y - 2, x + 2, y + 2, color);
+    }
+
+    /** "● Endpoint · furnace": a dot in the active colour, then the node's label. */
+    private static void endpoint(GuiGraphics graphics, Font font, TopologyDiagramLayout.EndpointNode node) {
+        var rect = node.rect();
+        graphics.fill(rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(), FederationTheme.WELL);
+        graphics.renderOutline(rect.x(), rect.y(), rect.width(), rect.height(), NODE_BORDER);
+        int middle = rect.y() + rect.height() / 2;
+        graphics.fill(rect.x() + 4, middle - 2, rect.x() + 9, middle + 3, FederationTheme.OK);
+        graphics.drawString(font, fit(font, node.endpoint().label(), rect.width() - 14), rect.x() + 12, middle - 4,
+                FederationTheme.DARK_TEXT, false);
+    }
+
     /** "■ active ■ energy shared" for the states this diagram uses, over "▸ points to the network that uses it". */
     private void legend(GuiGraphics graphics, Font font) {
         var states = EnumSet.noneOf(State.class);
@@ -227,7 +272,7 @@ public final class LytFederationTopology extends LytBlock implements Interactive
             if (!line.getSiblings().isEmpty()) line.append("  ");
             line.append(swatch(legendKey(state), stateColor(state)));
         }
-        if (!diagram.energy().isEmpty()) {
+        if (!diagram.energy().isEmpty() || diagram.endpoints().stream().anyMatch(TopologyDiagram.Endpoint::energy)) {
             if (!line.getSiblings().isEmpty()) line.append("  ");
             line.append(swatch("energy", FederationTheme.QUARTZ));
         }
@@ -257,6 +302,14 @@ public final class LytFederationTopology extends LytBlock implements Interactive
             if (link.sharesEnergy() && link.energyChip().contains(px, py)) {
                 return Optional.of(new TextTooltip(topology("energy_section", link.from().label(), link.to().label())));
             }
+        }
+        for (var node : layout.endpoints()) {
+            if (!node.rect().contains(px, py)) continue;
+            var lines = new java.util.ArrayList<Component>();
+            lines.add(Component.literal(node.endpoint().label()));
+            node.endpoint().details().forEach(detail -> lines.add(Component.literal(detail).withStyle(
+                    Style.EMPTY.withColor(FederationTheme.DARK_MUTED & 0xffffff))));
+            return Optional.of(new TextTooltip(lines));
         }
         for (var card : layout.cards()) {
             if (!card.rect().contains(px, py)) continue;

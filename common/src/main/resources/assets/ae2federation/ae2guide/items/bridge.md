@@ -34,6 +34,15 @@ uses no channel and no idle power.
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen shows the two networks side by side, and links them once you switch a rule on. Here network A
+uses network B's storage:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Drive|Energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Drive|Energy cell" />
+  <Rule user="a" source="b" capability="storage" />
+</FederationTopology>
+
 A Bridge forms a small [Federation domain](../mechanics.md) with just those two networks. It does not connect to
 Federation Cable, so Pattern Providers and Endpoints cannot reach other networks through it.
 

@@ -38,6 +38,16 @@ item_ids:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+联邦界面里每个网络都是一张单独的卡片。 这里网络A和网络C都使用网络B的存储：
+
+<FederationTopology>
+  <Network key="a" label="网络A" color="#915dcd" column="0" row="1" details="驱动器|能源元件" />
+  <Network key="c" label="网络C" color="#5dcd70" column="1" row="0" details="能源元件" />
+  <Network key="b" label="网络B" color="#5CA7CD" column="2" row="1" details="驱动器|能源元件" />
+  <Rule user="a" source="b" capability="storage" />
+  <Rule user="c" source="b" capability="storage" />
+</FederationTopology>
+
 右键路由器打开它所在联邦域的联邦界面， 在那里打开共享。 参见[入门](../getting-started.md)。
 
 <RecipeFor id="ae2federation:router" />
