@@ -1,0 +1,33 @@
+{
+    DataVersion: 3955,
+    size: [7, 4, 1],
+    data: [
+        {pos: [6, 0, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [5, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 4, channelsUp: 4, channelsWest: 4, connections: ["up", "west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
+        {pos: [4, 0, 0], state: "ae2federation:pattern_provider{facing:west}"},
+        {pos: [3, 0, 0], state: "ae2federation:cable"},
+        {pos: [2, 0, 0], state: "ae2federation:cable"},
+        {pos: [6, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
+        {pos: [5, 1, 0], state: "ae2:1k_crafting_storage{formed:true,powered:true}", nbt: {core: 1b, id: "ae2:crafting_storage", visual: {}}},
+        {pos: [2, 1, 0], state: "ae2federation:processing_endpoint{facing:down}"},
+        {pos: [1, 1, 0], state: "minecraft:hopper{enabled:true,facing:east}"},
+        {pos: [2, 2, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsDown: 1, channelsUp: 1, connections: ["down", "up"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [1, 2, 0], state: "mekanism:crusher{active:false,facing:north}"},
+        {pos: [0, 2, 0], state: "mekanism:basic_energy_cube{facing:east}"},
+        {pos: [2, 3, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsDown: 1, channelsWest: 1, connections: ["down", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [1, 3, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, connections: ["east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, down: {id: "ae2:storage_bus", visual: {missingChannel: 0b, powered: 1b}}}}
+    ],
+    entities: [],
+    palette: [
+        "ae2:energy_cell{fullness:4}",
+        "ae2:cable_bus{light_level:0,waterlogged:false}",
+        "ae2federation:pattern_provider{facing:west}",
+        "ae2federation:cable",
+        "ae2:drive{facing:north,spin:0}",
+        "ae2:1k_crafting_storage{formed:true,powered:true}",
+        "ae2federation:processing_endpoint{facing:down}",
+        "minecraft:hopper{enabled:true,facing:east}",
+        "mekanism:crusher{active:false,facing:north}",
+        "mekanism:basic_energy_cube{facing:east}"
+    ]
+}

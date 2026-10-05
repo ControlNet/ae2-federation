@@ -66,16 +66,29 @@ public final class PolicyBridgeFixtures implements AutoCloseable {
     }
 
     public void installStorageCells() {
+        installStorageCells(true);
+    }
+
+    /**
+     * Without {@code outerPowered} the outer network gets no energy cell of its own; it runs only once an ME power rule
+     * pools it with the main network's.
+     */
+    public void installStorageCells(boolean outerPowered) {
         helper.setBlock(firstPosition.south().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
-        helper.setBlock(firstPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        if (outerPowered) helper.setBlock(firstPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.<MEChestBlockEntity>getBlockEntity(firstPosition.south()).setCell(AEItems.ITEM_CELL_1K.stack());
         helper.<MEChestBlockEntity>getBlockEntity(firstPosition.north(2)).setCell(AEItems.ITEM_CELL_1K.stack());
         if (withProviderFluidChest) {
-            helper.setBlock(secondPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+            if (outerPowered) helper.setBlock(secondPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
             providerFluidChest().setCell(AEItems.FLUID_CELL_1K.stack());
         } else {
             bridges.nativePorts().createStorageProvider(Direction.SOUTH, secondPosition.north(2), callbackProbe);
         }
+    }
+
+    /** Gives the outer network an energy cell of its own after {@code installStorageCells(false)}. */
+    public void powerOuter() {
+        helper.setBlock(firstPosition.north(2).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
     }
 
     public MultipartBridgePart placeFirstBridge() {

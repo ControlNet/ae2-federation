@@ -7,7 +7,7 @@
   "modDevGradle": "2.0.146",
   "modRanges": {
     "minecraft": "[1.21.1]",
-    "neoforge": "[21.1.250]",
+    "neoforge": "[21.1.216,)",
     "ae2": "[19.2.9,)",
     "ldlib2": "[2.2.34,)"
   },

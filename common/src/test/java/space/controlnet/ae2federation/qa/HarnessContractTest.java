@@ -247,12 +247,12 @@ final class HarnessContractTest {
                 "common/src/main/java/space/controlnet/ae2federation/ae2/processing/endpoint/NativeLocalProvider.java"));
 
         assertTrue(source.contains("EndpointCallContext"));
-        assertTrue(source.contains("PatternProviderReturnInventory"));
+        assertTrue(source.contains("GenericInternalInventory"));
         assertTrue(source.contains("MEStorage"));
         assertTrue(source.contains("providerPosition().relative(candidate.targetSide()).equals(endpointPosition)"),
                 "Local ownership must require a physically adjacent Provider position");
-        assertTrue(source.contains("provider.getLogic() != candidate.logic()"),
-                "Local ownership must bind the physical native Provider block entity to its exact logic");
+        assertTrue(source.contains("provider.logic() != candidate.logic()"),
+                "Local ownership must bind the physical provider found again at that position to its exact logic");
         assertTrue(source.contains("GridHelper.getExposedNode(level, endpointPosition, face)"),
                 "Each allowed face must resolve through the native Endpoint integration surface");
         assertTrue(provider.contains("BlockPos providerPosition"),

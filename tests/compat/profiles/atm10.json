@@ -1,0 +1,31 @@
+{
+  "name": "atm10",
+  "group": "modpacks",
+  "description": "All the Mods 10 8.2: kitchen-sink pack with AE2, ExtendedAE, Advanced AE, MEGA Cells, Applied Mekanistics, Create and KubeJS recipe changes",
+  "neoforge": "21.1.251",
+  "pack": {
+    "name": "ServerFiles-8.2",
+    "file": "ServerFiles-8.2.zip",
+    "url": "https://mediafilez.forgecdn.net/files/8945/94/ServerFiles-8.2.zip",
+    "sha512": "0052a619f923007d1d365aa0f4d549ea742282996cc173bdb22cc7349951f4248b2fda5055ae9d7d09b1ab9ded4f0950933d2f5701b384d44602711e303b8082"
+  },
+  "mods": [
+    "ldlib2@2.2.41"
+  ],
+  "memory": "8G",
+  "timeout": 1800,
+  "tests": [
+    "core",
+    "extendedae",
+    "advanced-ae",
+    "megacells",
+    "appmek",
+    "create",
+    "mekanism",
+    "sophisticated-storage",
+    "functional-storage",
+    "appflux",
+    "appflux-mekanism",
+    "expandedae"
+  ]
+}

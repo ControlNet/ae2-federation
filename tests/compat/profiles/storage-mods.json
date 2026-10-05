@@ -1,0 +1,20 @@
+{
+  "name": "storage-mods",
+  "group": "addons",
+  "description": "Sophisticated Storage and Functional Storage, reached through AE2's Storage Bus",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "sophisticated-core@1.21.1-1.5.5.2363",
+    "sophisticated-storage@1.21.1-1.6.1.2147",
+    "titanium@1.21-4.0.50",
+    "functional-storage@1.21-1.5.7"
+  ],
+  "tests": [
+    "core",
+    "sophisticated-storage",
+    "functional-storage"
+  ]
+}

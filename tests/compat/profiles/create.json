@@ -1,0 +1,16 @@
+{
+  "name": "create",
+  "group": "addons",
+  "description": "Create: kinetic machines driven by Creative Motors",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "create@6.0.10+mc1.21.1"
+  ],
+  "tests": [
+    "core",
+    "create"
+  ]
+}

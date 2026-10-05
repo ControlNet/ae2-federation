@@ -1,0 +1,14 @@
+{
+  "name": "baseline",
+  "group": "addons",
+  "description": "AE2 Federation with only its own dependencies, at the build's pinned versions",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.17",
+    "guideme@21.1.19",
+    "ldlib2@2.2.34"
+  ],
+  "tests": [
+    "core"
+  ]
+}

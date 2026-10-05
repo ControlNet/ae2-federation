@@ -108,6 +108,11 @@ grid storage. That grid's `CraftingServiceStorage` only feeds that grid's CPUs. 
     vanilla CPU also takes awaited keys from any source.
   - The cap by `getRequestedAmount` (the sum of the clusters' `waitingFor`) is required. Anything above it would fall
     into the consumer's other mounts.
+  - 2026-10-05: `getRequestedAmount` sums only AE2's `CraftingCPUCluster`s, so an addon CPU (Neo ECO's
+    `ECOCraftingCPU`) got 0 and its remote results stayed on the executing network forever (`owed` swept to 0, the
+    CPU waiting). Neo ECO mixes its CPUs into `currentlyCrafting`, so `isRequesting` sees them.
+    `CraftingReturnRouter.waiting` now uses the owed amount as the cap when `getRequestedAmount` is 0 but
+    `isRequesting` is true, and the ledger sweep uses the same test. Found by `computationSystemOrdering`.
   - AE2's `NetworkStorage.insert` returns 0 on recursive use (`mountsInUse`), so a path that leads back into the
     executing grid cannot loop.
   - Same-priority tie: the executing grid's own `CraftingServiceStorage` and the router are both preferred at

@@ -1,0 +1,19 @@
+{
+  "name": "extendedae-plus",
+  "group": "addons",
+  "description": "ExtendedAE-Plus: mixins into CPU clusters, crafting simulation, provider ticking and the storage bus",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "extendedae@2.2.39",
+    "extendedae-plus@1.6.3"
+  ],
+  "tests": [
+    "core",
+    "extendedae",
+    "extendedae-plus"
+  ]
+}

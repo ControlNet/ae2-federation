@@ -8,8 +8,8 @@ navigation:
 
 # Getting Started
 
-You need two separate ME networks that each have power. Federation does not replace AE2's own cables or controllers;
-it only connects networks that already work on their own.
+You need two separate ME networks, and only one of them needs power: once they are connected, the other can run on
+it. Federation does not replace AE2's own cables or controllers; it only connects networks.
 
 ## 1. Make Federation Logic Processors
 
@@ -33,10 +33,10 @@ cable or device of the second network. The two networks stay separate; the Bridg
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/bridge.snbt" />
   <BoxAnnotation color="#915dcd" min="3.375 0 0" max="6 2 1">
-    Network A
+    Network A: its energy cell powers both networks
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
-    Network B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 1 1">
+    Network B: a drive and no power of its own
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
     Bridge: on network A's cable, its outer side touching network B's cable
@@ -59,7 +59,7 @@ face to face link directly, with no cable between them.
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/router_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
-    Network A
+    Network A: its energy cell powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
     Router: one face on network A's cable, another on Federation Cable
@@ -70,8 +70,8 @@ face to face link directly, with no cable between them.
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     Router: one face on network B's cable, another on Federation Cable
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 2 1">
-    Network B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
+    Network B: a drive and no power of its own
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -84,9 +84,12 @@ in the list on the right. The right side then shows that pair's rules in two gro
 each rule with a switch, and below them the shared energy switch. A rule works in its direction only.
 
 * Left-click a switch to step it forward (Disabled, Enabled, Enabled with re-export) and right-click to step back.
-* **Storage** lets one network see, insert and extract the other's items and fluids.
+* **Storage** lets one network see, insert and extract the other's items, fluids and other resources.
 * **Crafting** lets one network use the other's pattern providers. It switches the same direction's Storage on too.
 * **ME power** joins both networks' energy into one pool; it has a single switch for the pair.
+
+In the scenes above only network A has an energy cell, so switch **ME power** on first: network B then runs on A's
+power, and its drive comes online. Then switch on Storage under "A uses B's".
 
 ## 4. Check it works
 

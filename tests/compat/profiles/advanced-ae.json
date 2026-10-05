@@ -1,0 +1,17 @@
+{
+  "name": "advanced-ae",
+  "group": "addons",
+  "description": "AdvancedAE: its own pattern providers, Quantum Computer CPU, Reaction Chamber, mixins into the crafting service",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "geckolib@4.9.3",
+    "advancedae@1.6.12-1.21.1"
+  ],
+  "tests": [
+    "core",
+    "advanced-ae"
+  ]
+}

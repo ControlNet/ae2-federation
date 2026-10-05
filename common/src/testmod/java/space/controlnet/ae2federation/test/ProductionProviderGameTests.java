@@ -28,6 +28,7 @@ import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
 import space.controlnet.ae2federation.processing.provider.ProviderTargetState;
+import space.controlnet.ae2federation.test.processing.AddonPatternHookEmulation;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
 import space.controlnet.ae2federation.test.processing.ProductionProviderScene.Target;
 
@@ -353,6 +354,173 @@ public final class ProductionProviderGameTests {
                     writeEvidence("productionproviderlifecycle", 16, facts);
                     helper.succeed();
                 }
+            }
+        });
+    }
+
+    /**
+     * Addon hooks on AE2's pattern refresh reach the Provider's Lanes as they reach a native Pattern Provider. A
+     * test-only mixin stands in for an addon such as AE2 Lightning Tech, which drops patterns of its own kind inside
+     * {@code PatternProviderLogic.updatePatterns}. An addon's own re-run of that refresh reaches the network's crafting
+     * index. The Lane's view of its patterns adds none to saves or drops.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void providerNativePatternRefresh(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var rejected = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.EMERALD);
+        var phase = new int[] { 0 };
+        var indexedAtOnce = new boolean[1];
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    helper.assertTrue(scene.setAccess(Target.A, true), "Endpoint must connect to the domain");
+                    AddonPatternHookEmulation.reject(rejected);
+                    scene.installPattern(0);
+                    scene.installPattern(1, rejected);
+                    for (int slot = 0; slot < 2; slot++) {
+                        var status = scene.map(slot, Target.A);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping slot " + slot + ": " + status);
+                    }
+                    phase[0] = 1;
+                    helper.fail("Mapped a kept and a dropped Pattern to one Endpoint");
+                }
+                case 1 -> {
+                    var provider = scene.provider();
+                    helper.assertValueEqual(provider.laneCount(), 1, "Both Patterns go to one Lane");
+                    var lane = provider.lane(0);
+                    helper.assertTrue(AddonPatternHookEmulation.refreshed(lane),
+                            "AE2's own pattern refresh must run for the Lane");
+                    var outputs = lane.getAvailablePatterns().stream()
+                            .map(pattern -> pattern.getPrimaryOutput().what()).toList();
+                    helper.assertValueEqual(outputs, java.util.List.<appeng.api.stacks.AEKey>of(
+                            ProductionProviderScene.OUTPUT), "The Lane drops the Pattern the addon drops");
+                    helper.assertFalse(provider.getTerminalPatternInventory().getStackInSlot(1).isEmpty(),
+                            "The dropped Pattern stays in its slot, as in a native Pattern Provider");
+                    var registries = helper.getLevel().registryAccess();
+                    var saved = new net.minecraft.nbt.CompoundTag();
+                    lane.writeToNBT(saved, registries);
+                    helper.assertTrue(saved.getList("patterns", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty(),
+                            "A Lane saves no copy of the Provider's Patterns");
+                    var drops = new java.util.ArrayList<net.minecraft.world.item.ItemStack>();
+                    provider.addAdditionalDrops(helper.getLevel(), provider.getBlockPos(), drops);
+                    helper.assertValueEqual(drops.stream().filter(stack -> stack.is(AEItems.PROCESSING_PATTERN.asItem()))
+                            .mapToInt(net.minecraft.world.item.ItemStack::getCount).sum(), 2,
+                            "Breaking the Provider drops each Pattern once");
+                    phase[0] = 2;
+                    helper.fail("Checked the dropped Pattern");
+                }
+                case 2 -> {
+                    // Addons re-run the refresh on the logic itself, as AE All Pattern does when its async expansion
+                    // finishes and ExtendedAE-Plus does when Smart Doubling changes: the network must see the result
+                    // at once, not at Federation's next refresh, so it is checked in the same tick.
+                    var provider = scene.provider();
+                    var crafting = provider.getMainNode().getGrid().getCraftingService();
+                    helper.assertTrue(crafting.getCraftingFor(rejected).isEmpty(),
+                            "The network must not see the Pattern the addon drops");
+                    AddonPatternHookEmulation.reset();
+                    provider.lane(0).updatePatterns();
+                    indexedAtOnce[0] = !crafting.getCraftingFor(rejected).isEmpty();
+                    var status = scene.map(0, Target.A);
+                    helper.assertTrue(status.startsWith("accepted-"), "Unmapping slot 0: " + status);
+                    phase[0] = 3;
+                    helper.fail("Re-ran the Lane's refresh as an addon does and unmapped the kept Pattern");
+                }
+                case 3 -> {
+                    helper.assertTrue(indexedAtOnce[0],
+                            "An addon's own refresh of the Lane must reach the network's crafting index");
+                    var outputs = scene.provider().lane(0).getAvailablePatterns().stream()
+                            .map(pattern -> pattern.getPrimaryOutput().what()).toList();
+                    helper.assertValueEqual(outputs, java.util.List.<appeng.api.stacks.AEKey>of(rejected),
+                            "An unmapped Pattern leaves the Lane");
+                    writeEvidence("providernativepatternrefresh", 9, Map.of("laneNativeRefresh", "true",
+                            "addonDropApplied", "true", "addonRefreshIndexed", "true", "noDuplicatePatterns", "true"));
+                }
+                default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
+            }
+        });
+    }
+
+    /**
+     * Loads saved data into a Provider that is already running, as {@code /data merge block} and tools that write data
+     * into an existing block do. A save with fewer Lanes must not drop the Provider's Lanes or Claims, and another
+     * Provider's save must neither move its identity nor its Claims to the running Provider.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void providerReloadInPlace(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var phase = new int[] { 0 };
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                    }
+                    scene.installPattern(0);
+                    for (var target : Target.values()) {
+                        var status = scene.map(0, target);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                    }
+                    scene.placeSecondProvider();
+                    phase[0] = 1;
+                    helper.fail("Mapped one Pattern to three Endpoints and placed a second Provider");
+                }
+                case 1 -> {
+                    var first = scene.provider();
+                    var second = scene.secondProvider();
+                    helper.assertTrue(second.runtime().isPresent(), "Waiting for the second Provider to start");
+                    var registries = helper.getLevel().registryAccess();
+                    var firstIdentity = first.providerIdentity();
+                    var secondIdentity = second.providerIdentity();
+                    var bound = new java.util.ArrayList<java.util.Optional<?>>();
+                    for (int lane = 0; lane < first.laneCount(); lane++) {
+                        bound.add(first.laneEndpoint(lane));
+                    }
+                    helper.assertValueEqual(bound.size(), 3, "One Lane per mapped Endpoint");
+                    var firstSave = first.saveWithoutMetadata(registries);
+                    var emptySave = second.saveWithoutMetadata(registries);
+
+                    first.loadWithComponents(emptySave, registries);
+                    helper.assertValueEqual(first.laneCount(), 3, "A save with no Lanes keeps the running Lanes");
+                    for (int lane = 0; lane < 3; lane++) {
+                        helper.assertValueEqual(first.laneEndpoint(lane), bound.get(lane),
+                                "Lane " + lane + " keeps its Endpoint");
+                    }
+                    helper.assertValueEqual(first.providerIdentity(), firstIdentity,
+                            "A running Provider keeps its identity");
+                    for (var target : Target.values()) {
+                        helper.assertTrue(first.retained(scene.binding(target).endpointIdentity()),
+                                "Endpoint " + target + " left with no Pattern waits for release, as after an unmap");
+                    }
+
+                    second.loadWithComponents(firstSave, registries);
+                    helper.assertValueEqual(second.laneCount(), 3, "Another Provider's save adds its Lane count");
+                    for (int lane = 0; lane < 3; lane++) {
+                        helper.assertTrue(second.laneEndpoint(lane).isEmpty(),
+                                "Lane " + lane + " added from another Provider's save is not bound");
+                        helper.assertTrue(second.mappedProvider().slotsForLane(lane).isEmpty(),
+                                "Lane " + lane + " added from another Provider's save has no Pattern");
+                    }
+                    helper.assertValueEqual(second.providerIdentity(), secondIdentity,
+                            "Another Provider's save does not move its identity");
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.endpoint(target).claimState() instanceof ClaimState.Owned owned
+                                && owned.ownerIdentity().provider().equals(firstIdentity),
+                                "Endpoint " + target + " is not claimed through another Provider's save");
+                    }
+
+                    first.loadWithComponents(firstSave, registries);
+                    helper.assertValueEqual(first.mappedProvider().lanesForSlot(0), java.util.Set.of(0, 1, 2),
+                            "The Provider's own save restores its mapping in place");
+                    helper.assertTrue(first.retainedEndpoints().isEmpty(),
+                            "Lanes mapped again by the Provider's own save no longer wait for release");
+                    writeEvidence("providerreloadinplace", 16, Map.of("smallerSaveKeepsLanes", "true",
+                            "foreignSaveKeepsIdentity", "true", "ownSaveRestoresMapping", "true"));
+                }
+                default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
             }
         });
     }

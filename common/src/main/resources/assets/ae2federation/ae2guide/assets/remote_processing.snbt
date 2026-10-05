@@ -3,18 +3,17 @@
     size: [7, 3, 1],
     data: [
         {pos: [6, 0, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
-        {pos: [5, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_glass_cable", visual: {connections: ["east", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [5, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 2, channelsWest: 2, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [4, 0, 0], state: "ae2federation:pattern_provider{facing:west}"},
         {pos: [3, 0, 0], state: "ae2federation:cable"},
         {pos: [2, 0, 0], state: "ae2federation:cable"},
         {pos: [1, 0, 0], state: "ae2federation:processing_endpoint{facing:east}"},
         {pos: [0, 0, 0], state: "minecraft:hopper{enabled:true,facing:east}"},
         {pos: [6, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
-        {pos: [2, 1, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
-        {pos: [1, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_glass_cable", visual: {connections: ["down", "east", "up"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [1, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsDown: 1, channelsUp: 1, connections: ["down", "up"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [0, 1, 0], state: "minecraft:furnace{facing:north,lit:false}"},
-        {pos: [1, 2, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_glass_cable", visual: {connections: ["down", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
-        {pos: [0, 2, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_glass_cable", visual: {connections: ["east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, down: {id: "ae2:storage_bus", visual: {missingChannel: 0b, powered: 1b}}}}
+        {pos: [1, 2, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsDown: 1, channelsWest: 1, connections: ["down", "west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [0, 2, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 1, connections: ["east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, down: {id: "ae2:storage_bus", visual: {missingChannel: 0b, powered: 1b}}}}
     ],
     entities: [],
     palette: [

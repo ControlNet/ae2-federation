@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** LDLib2 2.2.34 checks physical distribution here; integrated-server menus must not touch glyph caches. */
 @Mixin(value = TextElement.class, remap = false)
 public abstract class LDLibTextThreadMixin {
-    @Inject(method = "recompute", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "recompute", at = @At("HEAD"), cancellable = true, require = 0)
     private void ae2federation$measureOnRenderThread(CallbackInfo callback) {
         // Server copies retain their text and bindings. Their independent client copies perform visual layout.
         if (!Minecraft.getInstance().isSameThread()) callback.cancel();

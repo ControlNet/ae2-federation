@@ -13,18 +13,14 @@ final class NativeProviderLaneServices {
     private long providerRefreshInvocations;
 
     <T extends IGridNodeService> void capture(Class<T> serviceClass, T service) {
-        if (serviceClass == IGridTickable.class) {
-            if (ticker != null) {
-                throw new IllegalStateException("PatternProviderLogic installed duplicate native tickers");
-            }
+        // PatternProviderLogic's constructor registers AE2's own ticker and crafting provider before any addon code
+        // runs. A Lane keeps those two. AE2 would let a later registration replace them; here it is left out, like
+        // services of other kinds that addons add to every PatternProviderLogic, such as Applied Flux's energy
+        // distributor, rather than being added to the physical node once per Lane.
+        if (serviceClass == IGridTickable.class && ticker == null) {
             ticker = (IGridTickable) service;
-        } else if (serviceClass == ICraftingProvider.class) {
-            if (provider != null) {
-                throw new IllegalStateException("PatternProviderLogic installed duplicate crafting providers");
-            }
+        } else if (serviceClass == ICraftingProvider.class && provider == null) {
             provider = (ICraftingProvider) service;
-        } else {
-            throw new IllegalArgumentException("Unexpected PatternProviderLogic service: " + serviceClass.getName());
         }
     }
 

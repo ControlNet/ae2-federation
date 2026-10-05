@@ -27,19 +27,32 @@ joined them.
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/router_hub.snbt" />
   <BoxAnnotation color="#915dcd" min="3 0 0" max="5 2 1">
-    Network A
+    Network A: its energy cell powers all three networks
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 2 1">
-    Network B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
+    Network B: a drive and no power of its own
   </BoxAnnotation>
   <BoxAnnotation color="#5dcd70" min="2 1 0" max="3 3 1">
-    Network C
+    Network C: a drive and no power of its own
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     One Router, three networks: each face joins the network it touches, and the networks stay separate
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
+
+The Federation screen shows each network as its own card. Here networks A and C both use network B's storage, and all three run on network A's energy cell
+through ME power:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="1" details="Drive|Energy cell" />
+  <Network key="c" label="Network C" color="#5dcd70" column="1" row="0" details="Drive" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="2" row="1" details="Drive" />
+  <Rule user="a" source="b" capability="storage" />
+  <Rule user="c" source="b" capability="storage" />
+  <Energy first="a" second="b" />
+  <Energy first="c" second="b" />
+</FederationTopology>
 
 Right-click the Router to open the Federation screen for its domain, where you switch sharing on. See
 [Getting Started](../getting-started.md).

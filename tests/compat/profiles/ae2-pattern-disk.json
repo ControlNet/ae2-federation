@@ -1,0 +1,17 @@
+{
+  "name": "ae2-pattern-disk",
+  "group": "addons",
+  "description": "AE2 Pattern Disk: pattern disks and its own pattern provider",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "ae2wtlib@19.5.1",
+    "ae2-pattern-disk@0.8.0"
+  ],
+  "tests": [
+    "core",
+    "ae2-pattern-disk"
+  ]
+}

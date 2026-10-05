@@ -5,10 +5,8 @@ import appeng.api.behaviors.GenericInternalInventory;
 import appeng.api.networking.GridHelper;
 import appeng.api.networking.IGridNode;
 import appeng.api.storage.MEStorage;
-import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.helpers.externalstorage.GenericStackFluidStorage;
 import appeng.helpers.externalstorage.GenericStackItemStorage;
-import appeng.helpers.patternprovider.PatternProviderReturnInventory;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -85,11 +83,11 @@ public final class EndpointCapabilityComposition {
         if (mode != EndpointMode.LOCAL || localProvider != null) {
             return false;
         }
+        var provider = LocalProviderLookup.find(level, candidate.providerPosition(), candidate.targetSide()).orElse(null);
         if (candidate.targetSide().getOpposite() != federationFace
                 || !candidate.providerPosition().relative(candidate.targetSide()).equals(endpointPosition)
-                || !(level.getBlockEntity(candidate.providerPosition()) instanceof PatternProviderBlockEntity provider)
-                || provider.getLogic() != candidate.logic()
-                || !provider.getTargets().contains(candidate.targetSide())
+                || provider == null
+                || provider.logic() != candidate.logic()
                 || localInputStorage().isEmpty()
                 || candidate.sourceNode().getGrid() == subnetNode.getGrid()
                 || candidate.sourceNode().getInWorldConnections().containsKey(candidate.targetSide())) {
@@ -101,21 +99,13 @@ public final class EndpointCapabilityComposition {
     }
 
     /**
-     * The native AE2 Pattern Provider on the Federation face that pushes into it. It belongs to another network, so it
-     * sits on the face that carries no subnet connection; a Provider on a subnet face would be part of the subnet.
+     * The pattern provider on the Federation face that pushes into it: AE2's block or cable part, or an addon's. It
+     * belongs to another network, so it sits on the face that carries no subnet connection; a Provider on a subnet face
+     * would be part of the subnet.
      */
     private List<NativeLocalProvider> adjacentProviders() {
-        var providerPosition = endpointPosition.relative(federationFace);
-        if (!level.isLoaded(providerPosition)
-                || !(level.getBlockEntity(providerPosition) instanceof PatternProviderBlockEntity provider)) {
-            return List.of();
-        }
-        var targetSide = federationFace.getOpposite();
-        var sourceNode = provider.getMainNode().getNode();
-        return sourceNode != null && provider.getTargets().contains(targetSide)
-                ? List.of(new NativeLocalProvider(provider.getLogic(), sourceNode, providerPosition, targetSide,
-                        provider.getLogic().getReturnInv()))
-                : List.of();
+        return LocalProviderLookup.find(level, endpointPosition.relative(federationFace), federationFace.getOpposite())
+                .map(List::of).orElse(List.of());
     }
 
     public void setMode(EndpointMode mode) {
@@ -203,11 +193,8 @@ public final class EndpointCapabilityComposition {
                 : Optional.empty();
     }
 
-    public Optional<PatternProviderReturnInventory> nativeReturnInventory() {
-        if (localProvider == null) {
-            return Optional.empty();
-        }
-        return Optional.of(localProvider.logic().getReturnInv());
+    public Optional<GenericInternalInventory> nativeReturnInventory() {
+        return Optional.ofNullable(localProvider).map(NativeLocalProvider::returnInventory);
     }
 
     public Direction federationFace() {

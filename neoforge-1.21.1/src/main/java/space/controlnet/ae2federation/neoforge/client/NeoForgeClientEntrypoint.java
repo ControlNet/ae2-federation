@@ -18,6 +18,7 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
+        modBus.addListener(NeoForgeClientEntrypoint::onAddPackFinders);
         ClientStartup.start(LOGGER);
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onArtifactJoin);
@@ -36,6 +37,17 @@ public final class NeoForgeClientEntrypoint {
         if (event.resourceInstance.resource == com.lowdragmc.lowdraglib2.editor.resource.TexturesResource.INSTANCE) {
             space.controlnet.ae2federation.client.menu.FederationTheme.register(
                     (com.lowdragmc.lowdraglib2.editor.resource.ResourceInstance<com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture>) event.resourceInstance);
+        }
+    }
+
+    private static void onAddPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {
+        for (var pack : space.controlnet.ae2federation.client.guide.GuideExamplePacks.active(
+                net.neoforged.fml.ModList.get()::isLoaded)) {
+            event.addPackFinders(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation", pack.path()),
+                    net.minecraft.server.packs.PackType.CLIENT_RESOURCES,
+                    net.minecraft.network.chat.Component.translatable(pack.nameKey()),
+                    net.minecraft.server.packs.repository.PackSource.BUILT_IN, true,
+                    net.minecraft.server.packs.repository.Pack.Position.TOP);
         }
     }
 

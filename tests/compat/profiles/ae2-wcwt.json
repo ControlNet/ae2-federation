@@ -1,0 +1,16 @@
+{
+  "name": "ae2-wcwt",
+  "group": "addons",
+  "description": "AE2 WCWT: wireless comprehensive work terminal",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "ae2wtlib@19.5.1",
+    "ae2-wcwt@1.3.10"
+  ],
+  "tests": [
+    "core"
+  ]
+}

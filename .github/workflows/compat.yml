@@ -1,0 +1,122 @@
+name: Compatibility
+
+# AE2 Federation's jar in production NeoForge servers beside other mods (tools/compat_run.py), one job per profile.
+# AE2 addon profiles run on every push; modpack profiles run on release and hotfix branches, weekly and on demand.
+# Each server's start accepts the Minecraft EULA (https://aka.ms/MinecraftEULA) for these test runs.
+# Third-party jars are cached for this repository's runs only and never uploaded as artifacts; only logs and reports are.
+
+on:
+  push:
+    branches-ignore: [master]
+  schedule:
+    - cron: '41 5 * * 0'
+  workflow_dispatch:
+    inputs:
+      groups:
+        description: 'Profile groups, space-separated (addons, modpacks)'
+        default: 'addons modpacks'
+
+permissions:
+  contents: read
+
+# A newer push replaces an older one, but a modpack run never cancels an addon run or the reverse.
+concurrency:
+  group: compat-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      profiles: ${{ steps.plan.outputs.profiles }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+      - name: Choose profile groups
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          REQUESTED: ${{ inputs.groups }}
+        run: |
+          groups="addons"
+          if [ "$EVENT" = schedule ]; then groups="addons modpacks"; fi
+          case "$REF" in release/*|hotfix/*) groups="addons modpacks" ;; esac
+          if [ "$EVENT" = workflow_dispatch ]; then groups="$REQUESTED"; fi
+          args=""
+          for group in $groups; do args="$args --group $group"; done
+          echo "profiles=$(python3 tools/compat_run.py --list --json $args)" >> "$GITHUB_OUTPUT"
+      - name: Build AE2 Federation and the compatibility test mod
+        run: ./gradlew :neoforge-1.21.1:jar :neoforge-1.21.1:compatTestJar --dependency-verification=strict --console=plain
+      - uses: actions/upload-artifact@v7
+        with:
+          name: federation-jars
+          path: |
+            neoforge-1.21.1/build/libs/ae2federation-*.jar
+            !neoforge-1.21.1/build/libs/*-sources.jar
+            neoforge-1.21.1/build/compat/ae2federation-compat-tests-*.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  profile:
+    needs: build
+    if: needs.build.outputs.profiles != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.build.outputs.profiles) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v8
+        with:
+          name: federation-jars
+          path: neoforge-1.21.1/build
+      # Pinned files never change under their hash, so the key changes only when the pins do.
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ae2federation-compat
+          key: compat-${{ matrix.profile }}-${{ hashFiles('tests/compat/mods.json', format('tests/compat/profiles/{0}.json', matrix.profile)) }}
+      - name: Run ${{ matrix.profile }}
+        run: python3 tools/compat_run.py --accept-eula --no-build ${{ matrix.profile }} --summary results/summary-${{ matrix.profile }}.json
+      - name: Keep the extracted pack, not its zip, in the cache
+        if: always()
+        run: find ~/.cache/ae2federation-compat/downloads -name '*.zip' -delete || true
+      - name: Retain logs and reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compat-${{ matrix.profile }}
+          path: |
+            results/
+            neoforge-1.21.1/build/compat/runs/*/server-console.log
+            neoforge-1.21.1/build/compat/runs/*/compat-report.json
+            neoforge-1.21.1/build/compat/runs/*/logs/latest.log
+            neoforge-1.21.1/build/compat/runs/*/crash-reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  summary:
+    needs: profile
+    if: always() && needs.profile.result != 'skipped'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: compat-*
+          path: results
+      - name: Results table
+        run: python3 tools/compat_run.py report results >> "$GITHUB_STEP_SUMMARY"

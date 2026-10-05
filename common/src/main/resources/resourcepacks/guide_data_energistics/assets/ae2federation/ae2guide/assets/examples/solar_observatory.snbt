@@ -1,0 +1,33 @@
+{
+    DataVersion: 3955,
+    size: [7, 2, 3],
+    data: [
+        {pos: [3, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsSouth: 1, connections: ["south"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
+        {pos: [5, 0, 1], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [4, 0, 1], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:green_smart_cable", visual: {channelsEast: 0, channelsUp: 0, channelsWest: 0, connections: ["up", "west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [3, 0, 1], state: "ae2federation:router"},
+        {pos: [2, 0, 1], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsEast: 2, channelsWest: 2, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [1, 0, 1], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "data_energistics:digital_storage_cell_1k", state: "not_empty"}}}},
+        {pos: [0, 0, 1], state: "data_energistics:astronomical_observatory{lit:true}"},
+        {pos: [6, 1, 1], state: "data_energistics:me_solar_panel{connect_east:false,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:false,connect_south_west:true,connect_west:true,facing:north,lit:true}"},
+        {pos: [5, 1, 1], state: "data_energistics:me_solar_panel{connect_east:true,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:true,connect_south_west:true,connect_west:true,facing:north,lit:true}"},
+        {pos: [4, 1, 1], state: "data_energistics:me_solar_panel{connect_east:true,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:true,connect_south_west:false,connect_west:false,facing:north,lit:true}"},
+        {pos: [6, 1, 2], state: "data_energistics:me_solar_panel{connect_east:false,connect_north:true,connect_north_east:false,connect_north_west:true,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:true,facing:north,lit:true}"},
+        {pos: [5, 1, 2], state: "data_energistics:me_solar_panel{connect_east:true,connect_north:true,connect_north_east:true,connect_north_west:true,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:true,facing:north,lit:true}"},
+        {pos: [4, 1, 2], state: "data_energistics:me_solar_panel{connect_east:true,connect_north:true,connect_north_east:true,connect_north_west:false,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:false,facing:north,lit:true}"}
+    ],
+    entities: [],
+    palette: [
+        "ae2:cable_bus{light_level:0,waterlogged:false}",
+        "ae2:energy_cell{fullness:4}",
+        "ae2federation:router",
+        "ae2:drive{facing:north,spin:0}",
+        "data_energistics:astronomical_observatory{lit:true}",
+        "data_energistics:me_solar_panel{connect_east:false,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:false,connect_south_west:true,connect_west:true,facing:north,lit:true}",
+        "data_energistics:me_solar_panel{connect_east:true,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:true,connect_south_west:true,connect_west:true,facing:north,lit:true}",
+        "data_energistics:me_solar_panel{connect_east:true,connect_north:false,connect_north_east:false,connect_north_west:false,connect_south:true,connect_south_east:true,connect_south_west:false,connect_west:false,facing:north,lit:true}",
+        "data_energistics:me_solar_panel{connect_east:false,connect_north:true,connect_north_east:false,connect_north_west:true,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:true,facing:north,lit:true}",
+        "data_energistics:me_solar_panel{connect_east:true,connect_north:true,connect_north_east:true,connect_north_west:true,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:true,facing:north,lit:true}",
+        "data_energistics:me_solar_panel{connect_east:true,connect_north:true,connect_north_east:true,connect_north_west:false,connect_south:false,connect_south_east:false,connect_south_west:false,connect_west:false,facing:north,lit:true}"
+    ]
+}

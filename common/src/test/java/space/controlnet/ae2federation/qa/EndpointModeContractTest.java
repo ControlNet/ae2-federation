@@ -15,13 +15,20 @@ final class EndpointModeContractTest {
     void taskSevenBaselineRemainsNativeAndBufferless() throws IOException {
         var composition = Files.readString(REPOSITORY_ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/ae2/processing/endpoint/EndpointCapabilityComposition.java"));
+        var lookup = Files.readString(REPOSITORY_ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/ae2/processing/endpoint/LocalProviderLookup.java"));
 
-        assertTrue(composition.contains("PatternProviderBlockEntity"));
+        // A Local provider is any provider AE2 knows as one (its node's crafting-provider service), with the native
+        // return inventory it offers to its neighbours.
+        assertTrue(composition.contains("LocalProviderLookup.find"));
+        assertTrue(lookup.contains("getService(ICraftingProvider.class)"));
+        assertTrue(lookup.contains("AECapabilities.GENERIC_INTERNAL_INV"));
+        assertTrue(lookup.contains("getReturnInv()"));
         assertTrue(composition.contains("GridHelper.getExposedNode"));
         assertTrue(composition.contains("GenericStackItemStorage"));
         assertTrue(composition.contains("GenericStackFluidStorage"));
-        assertTrue(composition.contains("getReturnInv()"));
         assertFalse(composition.contains("AppEngInternalInventory"));
+        assertFalse(lookup.contains("AppEngInternalInventory"));
     }
 
     @Test

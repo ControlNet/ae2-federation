@@ -11,6 +11,7 @@
     "CompatibilityGameTestPlacementMixin",
     "ProviderRuntimeReplayMixin",
     "FederationPatternProviderTargetCacheReplayTraceMixin",
+    "PatternProviderLogicAddonRefreshMixin",
     "PatternProviderLogicNativeEvidenceMixin",
     "PatternProviderLogicProcessingEvidenceMixin",
     "PatternProviderLogicReturnAccess",

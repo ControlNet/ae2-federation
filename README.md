@@ -1,7 +1,7 @@
 # AE2 Federation (NeoForge)
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-62B47A?style=flat-square)
-![NeoForge](https://img.shields.io/badge/NeoForge-21.1.250-F16436?style=flat-square)
+![NeoForge](https://img.shields.io/badge/NeoForge-21.1.216%2B-F16436?style=flat-square)
 [![License](https://img.shields.io/github/license/ControlNet/ae2-federation?style=flat-square)](LICENSE)
 
 Link separate Applied Energistics 2 networks so they can share items, crafting, machines and power.
@@ -16,7 +16,7 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 ## Requirements
 
 - Minecraft **1.21.1** / Java **21**
-- NeoForge **21.1.250**
+- NeoForge **21.1.216 or newer**
 - Applied Energistics 2 **19.2.9 or newer**
 - LDLib2 **2.2.34 or newer**
 

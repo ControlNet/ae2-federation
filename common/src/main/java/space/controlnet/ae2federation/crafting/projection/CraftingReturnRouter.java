@@ -40,6 +40,17 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
         return executingGrid;
     }
 
+    /**
+     * How much of {@code what} the consumer's CPUs still wait for, at most {@code owed}. AE2 counts only its own CPU
+     * clusters in the requested amount; an addon's CPU that it lists as requesting the key, such as Neo ECO's
+     * computation system, waits for an amount AE2 cannot tell, so it is taken to wait for all it is owed.
+     */
+    static long waiting(IGrid consumer, AEKey what, long owed) {
+        var crafting = consumer.getCraftingService();
+        long requested = crafting.getRequestedAmount(what);
+        return requested > 0 || !crafting.isRequesting(what) ? Math.min(requested, owed) : owed;
+    }
+
     @Override
     public void mountInventories(IStorageMounts storageMounts) {
         storageMounts.mount(storage, Integer.MAX_VALUE);
@@ -59,8 +70,7 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
                 if (handed >= amount) break;
                 var consumer = consumerGrids.apply(owed.getKey());
                 if (consumer == null || consumer == executingGrid) continue;
-                long waiting = consumer.getCraftingService().getRequestedAmount(what);
-                long offer = Math.min(amount - handed, Math.min(owed.getValue(), waiting));
+                long offer = Math.min(amount - handed, waiting(consumer, what, owed.getValue()));
                 if (offer <= 0) continue;
                 // The consumer's own crafting storage takes it for the waiting CPU, as for any insert there.
                 long accepted = consumer.getStorageService().getInventory().insert(what, offer, mode, source);

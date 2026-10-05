@@ -1,0 +1,16 @@
+{
+  "name": "megacells",
+  "group": "addons",
+  "description": "MEGA Cells: MEGA CPUs, bulk and fluid cells, MEGA Pattern Provider",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "megacells@4.11.0"
+  ],
+  "tests": [
+    "core",
+    "megacells"
+  ]
+}

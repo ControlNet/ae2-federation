@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.processing.endpoint;
 
+import appeng.api.behaviors.GenericInternalInventory;
 import appeng.api.networking.IGridNode;
 import appeng.api.storage.MEStorage;
 import appeng.helpers.patternprovider.PatternProviderLogic;
@@ -30,6 +31,7 @@ public final class EndpointRuntime {
     private EndpointModeGeneration mode;
     private EndpointItemReturnContext itemReturn;
     private EndpointFluidReturnContext fluidReturn;
+    private GenericInternalInventory genericReturn;
 
     public EndpointRuntime(ServerLevel level, BlockPos position, IGridNode subnetNode, Direction federationFace,
             EndpointClaimAuthority claims) {
@@ -69,7 +71,7 @@ public final class EndpointRuntime {
         }
         var provider = composition.localProvider().orElseThrow();
         var local = new EndpointModeGeneration.Local(composition.generation(), provider);
-        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.logic().getReturnInv(),
+        installReturnOwner(new EndpointReturnOwner(local, provider.logic(), provider.returnInventory(),
                 Optional.empty()));
         mode = local;
         invalidateCapabilities();
@@ -201,6 +203,11 @@ public final class EndpointRuntime {
                 : Optional.empty();
     }
 
+    /** The return inventory as AE2's generic internal inventory, which addons wrap for their own resource types. */
+    public Optional<GenericInternalInventory> genericReturn(Direction face) {
+        return logisticsFaces().contains(face) ? Optional.ofNullable(genericReturn) : Optional.empty();
+    }
+
     public Optional<EndpointModeGeneration> mode() {
         return Optional.ofNullable(mode);
     }
@@ -236,11 +243,13 @@ public final class EndpointRuntime {
     private void installReturnOwner(EndpointReturnOwner owner) {
         itemReturn = new EndpointItemReturnContext(level, owner);
         fluidReturn = new EndpointFluidReturnContext(level, owner);
+        genericReturn = new ObservedGenericReturnInventory(level, owner);
     }
 
     private void clearCurrentReturns() {
         itemReturn = null;
         fluidReturn = null;
+        genericReturn = null;
     }
 
     private void invalidateCapabilities() {

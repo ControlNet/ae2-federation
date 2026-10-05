@@ -135,3 +135,252 @@ and page ids did not change.
 
 `GuidePagesContractTest.AE2_ITEMS` gained `molecular_assembler`.
 
+
+## Examples section (2026-10-05)
+
+- `examples/index.md` (position 35, between Remote Crafting and Troubleshooting) lists its children with
+  `<SubPages icons={true} />`. Each example has `parent: examples/index.md` and imports its scene from
+  `../assets/examples/*.snbt`. `GuidePagesContractTest` checks that every page reaches `index.md` through existing
+  parents, that pages under `examples/` hang under the examples page, and walks `assets/` recursively.
+- **GuideME's sidebar shows two levels only:** a root node and its direct children (`GuideNavBar.recreateRows`, the
+  same in 21.1.1 and 21.1.19). The examples therefore never appear in the sidebar; they are reached through the
+  examples page, the entry page, search and links. The owner chose this over moving them under AE2's own
+  `ae2:example-setups/example-setups-index.md` root, flattening them under the Federation entry, or a new root.
+- **`guideme.validateAtStartup` compiles only the development source folder's pages** (`MutableGuide.validateAll`
+  iterates `developmentPages`). Pages that come from other resource packs load through the resource manager in the
+  dev client too (assets fall back to it), but are only compiled when opened.
+- Example scenes are written by hand. Screenshots: `runGuideClient` under `xvfb-run`; an Xlib click on the sidebar's
+  "AE2 Federation" arrow at (14, 157) in a 1600x960 window expands it.
+
+## Examples that need other mods (2026-10-05)
+
+- GuideME has no per-page mod filter, so an example that needs another mod lives in a built-in client resource pack:
+  `common/src/main/resources/resourcepacks/<id>/` with its own `pack.mcmeta` (format 34) and the usual
+  `assets/ae2federation/ae2guide/` tree (pages, `_zh_cn/` copies, `assets/examples/*.snbt`). The page ids stay
+  `ae2federation:examples/...`, so `parent: examples/index.md` and `<SubPages>` pick them up with no base change.
+- `client/guide/GuideExamplePacks.ALL` lists each pack with its required mod ids. The NeoForge client entrypoint
+  registers, in `AddPackFindersEvent`, only the packs whose mods are all loaded, through
+  `addPackFinders(..., PackSource.BUILT_IN, alwaysActive=true, TOP)`. Without the mod the pack does not exist: its
+  pages, search entries, scenes and the examples-page list entry are all absent.
+- The pack shows in the Resource Packs screen as a required pack named by `ae2federation.pack.<id>`. Hiding it would
+  need building the `Pack` by hand with `.hidden()` and `addRepositorySource`; not done.
+- `GuidePagesContractTest` checks each pack like the base guide, plus: pack folders == `GuideExamplePacks.ALL`; a pack
+  page may link to or hang under base pages or its own pack, never another pack, and base pages never reach a pack;
+  a pack's scenes stay in its pack; item ids and scene palette namespaces are limited to minecraft, ae2,
+  ae2federation and the pack's required mods (`MOD_ITEMS` pins the other mods' item ids).
+- **Mekanism machines cannot be shown at the title screen:** their block entity reads a Mekanism config that loads
+  only with a world (`TileEntityMekanism.<init>`), and GuideME's dev `showOnStartup` calls `System.exit(1)` when the
+  page fails. Players open the guide in a world, where it works. To check such a page in the dev client:
+  `-PguideWorld=<world>` adds `--quickPlaySingleplayer` (the world must exist; create it once through the menus),
+  then type `/guidemec ae2:guide open ae2federation:examples/<page>.md` in chat. Put the mod's jar (SHA-checked,
+  e.g. from the compat runner's download cache) in the gitignored `neoforge-1.21.1/run-guide/mods` and remove it
+  afterwards. Search indexing reads only the page AST, so it does not place the blocks at startup.
+- Mekanism's energy cube draws its core only when charged and through Mekanism's own world render pass, so in a guide
+  scene it shows as an empty frame; the annotation says it is charged.
+
+### Optional example packs so far (2026-10-05)
+
+| Pack | Required mods | Page | Tested build and "Try it" |
+|---|---|---|---|
+| `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
+| `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
+| `guide_mekanism` | mekanism | `examples/power-plant.md` | `inductionMatrixPowerPlant` |
+| `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
+| `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
+| `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
+| `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
+| `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
+| `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
+| `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
+| `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
+| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
+| `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
+
+- Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
+  structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
+  guide builds it) and `interruptedBy(ticks, cut, repair)`; `AddonCraftingScene` / `AddonStorageScene`
+  `.dismantlingAfterwards(part)`. The interrupt window must be longer than one machine batch (Crusher 200 ticks,
+  Chemical Oxidizer 100), or a no-op interruption still passes.
+- `RouterCraftingScene` (compattest) builds one Router with a provider network and consumer networks, each an ME
+  Chest; only the first member holds the energy cell and the others draw ME power from it. The ExtendedAE-Plus Super
+  Assembler Matrix has no `IAEMultiBlock`: formed means `eap$getSuperMatrixCluster() != null` on an outer block, and
+  patterns go in through `cluster.getPatternInventories()` plus `refreshCraftingProvider()` (both by reflection). Its
+  inner Hybrid Cores sit on their own one-node grid, so pattern container and readiness checks use an outer frame.
+  The mod's own matrix scene uses ExtendedAE's `assembler_matrix_glass`, so the pack requires extendedae too (a hard
+  dependency of ExtendedAE-Plus anyway).
+- Applied Flux's Flux Accessor draws FE (`FluxKey` FE) from its own grid's storage service, so a Storage rule is
+  enough for it to use another network's ME FE Storage Cells; a disabled rule unmounts them and it draws nothing.
+  It needs a channel. `GuidePagesContractTest.MOD_ITEMS`/`MOD_PAGES` are at `Map.of`'s 10-entry limit; switch to
+  `Map.ofEntries` for the next mod.
+- `EndpointChainScene` (compattest) builds a line of machines, each behind its own Endpoint on one Federation Cable
+  from one Provider; ordering the last product runs every step, intermediates returning to the Provider's network.
+  ATM10 unifies Mekanism's iron dust into All the Ores' own, so a test must read a machine's product from the loaded
+  recipes (`RecipeManager.getRecipeFor(mekanism:enriching, SingleRecipeInput)`), as a player encodes it, not hard-code
+  `mekanism:dust_iron`.
+- `RouterCraftingScene` takes several orders per consumer (`alsoOrdering`), all submitted in one tick: a refused job
+  fails the test even if a retry later succeeds, since a single AE2 CPU would otherwise pass by taking the second job
+  after the first finished. `poweredBy` moves the energy cell; `thenSwitchingOff` checks a rule's exercise. Advanced
+  AE's Quantum Computer renders as a dark glass cube in GuideME, as in its own guide; a 64k AE2 CPU in its place is
+  refused with `NO_SUITABLE_CPU_FOUND busy=1`.
+- AE2 Lightning Tech's Tianshu Supercomputer (7x7x7 CPU) and Matter Warping Matrix (7x11x7 crafting provider) are
+  built in tests from the mod's own guide scenes (`assets/ae2lt/ae2guide/assets/assemblies/*.snbt`, read through
+  `ModList`), unformed, controller last. Scene states are `id{prop:val}`; `BlockStateParser` needs `id[prop=val]`.
+  The Matrix Port has no `PatternContainer`: patterns go in through its `getPatternItemHandler()` (reflection), and it
+  takes ME cables only once formed. The Matrix inserts results into its own network, where `CraftingReturnRouter`
+  hands them back, so the foundry needs no storage (`RouterCraftingScene.withoutStorage()`). Breaking one casing
+  detaches the Port, and the foundry grid goes `AMBIGUOUS_SPLIT` ("Split pending") until the block is back; the
+  scene's `thenRemoving` runs alone after the break, since `network()` would wait on that identity. The old
+  overloaded-providers page was replaced; its compat tests stay.
+- Data Energistics' solar observatory (`SolarObservatoryScene`): an ME Solar Panel joins AE only through its bottom
+  face, and side-by-side panels share energy, so one panel on the network carries the array. The panels' own 160k AE
+  buffers are not in the grid's energy pool: without an energy cell the pooled networks hold only ~200 AE, and the
+  Astronomical Observatory, which takes 4,000 AE in one piece each tick, never runs (mutation-checked). Stellar Flux is
+  a `DigitalizationKey`, kept in a Digital Storage Cell. The test sets the day time to 14,000 (window 13,000-23,000)
+  and clear weather, and restores the day time on success; `setDayTime` is server-wide.
+- Mekanism's Induction Matrix forms in a GameTest from plain `setBlock`s (3x4x3 casing round a basic cell under a
+  basic provider, port in a face centre, never on an edge). Its port takes at most 102,400 FE a tick (basic provider),
+  so the test charges it over several ticks through the FE capability, a test-only stand-in for a charged matrix, then
+  `setActive(true)` (output; a player sneak-right-clicks with a Configurator). With small loads, three networks run on
+  an Energy Acceptor alone, with no energy cell. `RouterCraftingScene.member`, `withoutEnergyCell`,
+  `thenSwitchingOffPower` and `checkingAtEnd` support it; stage 4 now checks readiness before power, so a network
+  that brings its own source can start it once formed.
+- Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
+  Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
+- Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while
+  (`confirmedNetworkId` empty), so test code must not call `RouterStorageMountFixture.key()` then.
+- A pack may link to the guide pages of its required mods (`extendedae:epp_intro/assembler_matrix.md`,
+  `neoecoae:neoecoae_intro/storage_system.md`; both mods add pages to AE2's guide); `MOD_PAGES` lists them.
+- The Create Millstone compat test emulates the import of its output, so it is not a survival build; the Create page
+  uses the Crushing Wheels Endpoint build instead. The scene draws shafts to "your rotational power"; the test turns
+  the wheels with Creative Motors.
+- `AddonCraftingScene.reorderingAfterwards(change, check)` changes the world after the job and orders again; `check`
+  sees the consumer CPU that took each order (found right after `submitJob`, as AE2 assigns it synchronously).
+- `reorderingAfterwards(change, restore, check)`: after `change`, waits until the recipe has left the consumer, then
+  `restore` brings it back before the second order.
+- GameTest ids are the lowercased method names, across all compat classes: two classes with the same method name
+  collide in a profile that loads both (`addons-all`), and the wrong one runs.
+- In-place upgrades (checked in a client): Lightning Tech's Overloaded Pattern Provider Upgrade acts in
+  `onItemUseFirst`, so a plain right-click works. Data Energistics' Adaptive Pattern Provider Upgrade acts only in
+  `useOn`, so a plain right-click opens AE2's provider screen and the player must sneak. The upgraded Adaptive Pattern
+  Provider keeps the patterns but offers none (Pattern Access Terminal inventory size 0) until a provider is fitted
+  into its provider slot (Data Energistics 3.3.3).
+- Data Energistics 3.3.3 needs AE2 19.2.18, newer than the dev runs' 19.2.17. For a local guide render only:
+  `./gradlew :neoforge-1.21.1:runGuideClient -Pae2_version=19.2.18 --dependency-verification=lenient` (19.2.18 is not
+  in the verification metadata), and accept the experimental-settings prompt once per world.
+- Other mods' multiblocks in scenes: copy the block states and NBT of the mod's own formed guide scenes
+  (`assets/<mod>/ae2guide/scenes/*.nbt`; Neo ECO has `store_min`, `craft_min`, `comp_min`) and check the properties
+  against `blockstates/*.json`. Casings carry `formed:true` and `invisible:true/false`, and the formed look comes from
+  them; hand-typed unformed states rendered with the wrong textures. The Neo ECO scene builder turns them to run along
+  x and swaps L9 for the tested L4 tier.
+- The Neo ECO interfaces sit at the back of each structure, so the district scene looks from the back (yaw 15) to show
+  the interfaces, cables and Router.
+- `AddonCraftingScene.consumerCpuStructure(place, ready)` builds a multiblock CPU on the consumer instead of the CPU
+  blocks; `computationSystemOrdering` uses it and found that Federation returned nothing to Neo ECO's CPU (fixed in
+  `CraftingReturnRouter.waiting`, see `crafting-pattern-projection-design-2026-10-02.md`).
+- In a Chinese-locale client the join line is "Dev加入了游戏", not "Dev joined the game".
+- The Matter Fabrication Well test (`matterFabricationWell`) places the well from OmniSequence's blueprint and the
+  controller only after the provider cable has joined the network; placing both in one tick across chunks gave the
+  provider network an `AMBIGUOUS_MERGE` identity.
+- The OmniSequence scene is a corner of the well rebuilt from blocks dumped around the controller in a test run (a
+  temporary log, not committed): the 3-wide service channel in front of the controller, the Pattern Assembly's
+  service position on the channel's front step (controller offset 2, 0, -4), coils and cores behind. OmniSequence ships
+  no `.nbt` scenes; its blocks only carry `facing` (the assembly `push_direction`).
+
+## Topology diagrams in the guide (2026-10-05)
+
+- `<FederationTopology>` draws an example's networks in the topology screen's style: cards on the dark canvas, a link
+  per pair, a label per direction pointing at the user (chips in the rule state's colour), a quartz rail with beads
+  for shared energy, and teal dots moving from the providing network to the user. GuideME redraws the page every
+  frame, so the dots and beads move. Hovering a chip shows "A uses B's Crafting" and its state; the energy chip and the
+  cards have tooltips too.
+- **No public API adds a tag to someone else's guide.** GuideME 21.1.1 and 21.1.19 take tag compilers only through
+  `GuideBuilder.extension(TagCompiler.EXTENSION_POINT, ...)`; the built `MutableGuide.extensions` is final, and AE2
+  builds `ae2:guide` privately in `AppEngClient.createGuide()` with no hook. `mixin/client/GuideBuilderMixin` calls
+  `extension(...)` at the head of `GuideBuilder.build()` for `ae2:guide` only. `compileOnly guideme:21.1.1` (already in
+  the verification metadata); AE2 19.2.x accepts `guideme [21.1.1,)`.
+- Markup: `<Network key label color column row details="line|line" />`, `<Rule user source capability state />`
+  (`storage`/`crafting`; `active` default, `reexport`, `waiting`, `error`), `<Energy first second />`. `key`, not `id`:
+  the contract test rejects unqualified `id="..."`. Child tags only, self-closing; MdxAttrs rejects `{...}` values.
+- Code: `client/guide/TopologyDiagram` (parsing and validation, shared by the compiler and the contract test),
+  `TopologyDiagramLayout` (pure geometry, `TopologyDiagramLayoutTest`), `LytFederationTopology` (drawing; ends with
+  `guiGraphics().flush()` because 21.1.1 does not flush before changing the scissor), `FederationTopologyTagCompiler`
+  (no-op `index`, so search ignores the diagram). Chip and legend text reuse the topology screen's lang keys.
+- A page without the extension would show GuideME's red "Unhandled MDX element" paragraph; our pages always ship with
+  the mixin.
+- `GuidePagesContractTest.topologyDiagramsDrawAndChineseCopiesShowTheSameNetworks`: every diagram parses without
+  problems, and a Chinese copy differs only in labels and details (mutation checked: a flipped rule, an unknown key).
+- **Endpoints**: `<Endpoint key label owner energy="true|false" details />` draws the topology screen's small node
+  (well, green dot, label) wired to the owner network's card, a quartz rail when its subnet runs on the owner's power,
+  with teal dots both ways (inputs out, results back) and an end mark in the owner's colour. Placement reuses the
+  screen's `EndpointNodeLayout`: on the card's outer side, below a lone card; where that is too wide for the page,
+  each network's nodes hang under its card, slid back onto the page. Endpoint pages (furnaces, Create, Mekanism) and
+  the Bridge and Router item pages carry diagrams.
+- **Page width**: GuideME's content is about 280 px at the smallest (320 px virtual screen less nav bar and scrollbar)
+  and at most 420 (`DocumentScreen.getMaxWidth` 570 less the 150 px nav). The contract test lays every page diagram
+  out at 280 and 420 with a Minecraft-font width estimate (narrow ASCII glyphs, 9 px CJK) and fails on any overlap or
+  anything off the canvas (mutation checked with a long Endpoint label). Keep Endpoint labels short ("Endpoint ·
+  furnace 1"): two nodes under one card need about 264 px.
+- Match the diagram's left/right to the scene's camera: at yaw 195 higher x shows on the left (Router: A left).
+
+## One power source per example (2026-10-05)
+
+- The examples power only the ordering (or warehouse) network; every other network runs on it through the ME power
+  rule, which pools energy transitively. Endpoint subnets were already powered by their Endpoint.
+- Backed by the compat scenes: `AddonCraftingScene` gives the provider network no energy cell
+  (`PolicyBridgeFixtures.installStorageCells(false)`) and enables the ME power rule once the Bridge is up, before it
+  waits for the provider's multiblock or pattern; `disconnectingAfterPush` gives it back a cell (`powerOuter()`), since
+  apart from the consumer it must still run. `AddonStorageScene` does the same for the consumer
+  (`RouterStorageMountFixture(helper, false)` and `energyKey()`).
+- Removing a block from a hand-written scene must also drop the neighbouring AE2 cables'
+  `connections` entry toward it and any palette entry no block uses.
+
+## Neo ECO district relayout (2026-10-05)
+
+The owner asked whether the old layout (A: computation only; B: storage and crafting) could work. It could in theory
+(the Crafting rule switches on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
+inputs in A's chest. The page now puts the storage and computation systems on A and only the crafting system on B,
+with no power and no storage on B. `ecoDistrictOrdering` builds exactly that
+(`AddonCraftingScene.consumerStorageStructure`: the consumer's chest and the provider's chest lose their cells, the
+inputs go into A's ECO storage through the drive's `IStorageProvider.mountInventories`, and everything made must end
+there), then breaks a crafting-system casing for the page's "Try it".
+
+## Smart cables with AE2's channel counts (2026-10-05)
+
+- The owner asked for ME Smart Cables in every scene, with correct channel counts. Every AE2 cable in
+  `ae2guide/assets/**/*.snbt` is now `ae2:<colour>_smart_cable` (same colours: purple network A, light blue B, ...).
+- A cable's `visual` holds `channels<Side>: N` for each side in `connections` (AE2's own format, as
+  `CablePart.writeVisualStateToNBT` writes it); part sides are not in `connections` and get no count. GuideME draws
+  only what the file says.
+- The scenes have no controllers, so every network is ad hoc: AE2 gives every connection the network's total channel
+  count (`PathingService.calculateAdHocChannels` + `AdHocChannelUpdater`). A multiblock flagged `MULTIBLOCK` (Quantum
+  Computer, Assembler Matrix, Neo ECO systems, crafting CPUs) counts once. The Bridge, Router faces and the Endpoint
+  take no channel; the Federation Pattern Provider takes one.
+- **Truth comes from a server, not from a hand count.** The compat test `guideSceneCables` (core group, so every profile)
+  places each scene the loaded mods can show from the jar (`NbtUtils.snbtToStructure` + `StructureTemplate`), waits
+  40 ticks, and compares each cable's `writeVisualStateToNBT` connections and channels with the file. A mismatch logs
+  `AE2F_GUIDE_CABLE <scene> <pos> <AE2's tag>`; that log is what the values were written from. The addon multiblocks
+  formed from their guide states without special placement. AdvancedAE, Mekanism, Create and Applied Flux scenes need
+  their own profiles (`addons-all` lacks them); the packs also run the check against their own mod versions.
+- `GuidePagesContractTest.sceneCablesAreSmartCablesWithTheirChannels`: no glass cable, and a channel count toward every
+  connected side (mutation checked with one cable turned back to glass).
+- Coloured smart cables draw odd channels in the colour's dark variant and even ones in its light variant
+  (`CableBuilder`, `blackVariant`/`whiteVariant`), so a purple or light blue cable with one channel shows one dark
+  stripe. AE2's own guide uses fluix cables, whose variants are bright. That is AE2's look, not a rendering fault.
+- `bridge_part.snbt`'s lone cable lost its `down` connection toward the Bridge: AE2 lists none there. A cable on the
+  far side of a Bridge does list the connection toward it (bridge.snbt), and AE2 agrees.
+- Removing a block next to a cable changes that cable's `connections` and so its counts: rerun `guideSceneCables`
+  after any scene edit (`python3 tools/compat_run.py --accept-eula addons-all --tests guidescenecables`).
+
+## Remote Crafting page: one power source and topology diagrams (2026-10-05)
+
+- `native_projection.snbt` lost network B's energy cell; the page adds "Switch on ME power" as step 3, an annotation on
+  A's cell, and a diagram (A uses B's Crafting and Storage, energy shared). `remote_processing.snbt` lost the subnet's
+  cell; the subnet is "powered through the Endpoint", and a diagram shows the Endpoint under the Provider's network
+  with `energy="true"`. English and Chinese.
+- Then the owner asked for the same on the core pages. `bridge.snbt`, `router_cable.snbt` and `router_hub.snbt` keep
+  only network A's energy cell; network B's cell became its drive (the drive above it removed), and network C's cell
+  in the Router hub became a drive, so C has something to share (its cable now carries 1 channel). Getting Started
+  says only one network needs power and adds "switch ME power on first" to step 3; the Bridge and Router diagrams gain
+  `<Energy>` rails; Troubleshooting's "Not in effect yet" now says powered "by power of their own or through ME
+  power". An unpowered network still gets its identity and joins a domain (the compat scenes rely on that); only its
+  storage waits for power.

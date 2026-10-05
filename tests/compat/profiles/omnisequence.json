@@ -1,0 +1,20 @@
+{
+  "name": "omnisequence",
+  "group": "addons",
+  "description": "OmniSequence: Transfinite: virtual crafting CPU, mixins into CPU calculation and the Grid",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "extendedae@2.2.39",
+    "appliedenhancements@1.1.0",
+    "omnisequence@2.0.7"
+  ],
+  "tests": [
+    "core",
+    "extendedae",
+    "omnisequence"
+  ]
+}

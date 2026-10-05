@@ -30,31 +30,45 @@ final class PatternLaneMappingCodec {
         tag.put("assignments", assignments);
     }
 
+    /**
+     * Restores a saved mapping into {@code mapping}. The saved Pattern slot count may differ from the current one, as
+     * when an addon changes how many slots AE2's Pattern Provider has: slots both share keep their Lanes, saved slots
+     * past the end are dropped, and new slots start unmapped. The provider may also already have more Lanes than the
+     * save, as when it is reloaded in place; those Lanes start unmapped.
+     */
     static Set<Integer> read(PatternLaneMapping mapping, CompoundTag tag) {
-        if (tag.getInt("schema") != SCHEMA_VERSION || tag.getInt("patternSlots") != mapping.patternSlots()
-                || tag.getInt("laneCount") != mapping.laneCount()) {
+        var savedSlots = tag.getInt("patternSlots");
+        if (tag.getInt("schema") != SCHEMA_VERSION || savedSlots < 0 || tag.getInt("laneCount") > mapping.laneCount()) {
             throw new IllegalArgumentException("Pattern Lane mapping dimensions or schema do not match");
         }
         var assignments = tag.getList("assignments", Tag.TAG_COMPOUND);
-        if (assignments.size() != mapping.patternSlots()) {
+        var savedGenerations = tag.getLongArray("generations");
+        if (assignments.size() != savedSlots || savedGenerations.length != savedSlots) {
             throw new IllegalArgumentException("Pattern Lane mapping persistence is incomplete");
         }
-        var loaded = new ArrayList<Set<Integer>>(Collections.nCopies(mapping.patternSlots(), null));
+        var saved = new ArrayList<Set<Integer>>(Collections.nCopies(savedSlots, null));
         for (var raw : assignments) {
             var entry = (CompoundTag) raw;
             var slot = entry.getInt("slot");
-            if (slot < 0 || slot >= mapping.patternSlots() || loaded.get(slot) != null) {
+            if (slot < 0 || slot >= savedSlots || saved.get(slot) != null) {
                 throw new IllegalArgumentException("Invalid or duplicate persisted Pattern slot mapping");
             }
             var lanes = new TreeSet<Integer>();
             for (var lane : entry.getIntArray("lanes")) {
                 lanes.add(lane);
             }
-            loaded.set(slot, lanes);
+            saved.set(slot, lanes);
         }
-        if (loaded.contains(null)) {
-            throw new IllegalArgumentException("Missing persisted Pattern slot mapping");
+        var loaded = new ArrayList<Set<Integer>>();
+        var generations = mapping.generations();
+        for (int slot = 0; slot < mapping.patternSlots(); slot++) {
+            if (slot < savedSlots) {
+                loaded.add(saved.get(slot));
+                generations[slot] = savedGenerations[slot];
+            } else {
+                loaded.add(Set.of());
+            }
         }
-        return mapping.restore(loaded, tag.getLongArray("generations"));
+        return mapping.restore(loaded, generations);
     }
 }

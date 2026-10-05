@@ -29,6 +29,7 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
     private final List<NativeProviderLaneServices> services = new ArrayList<>();
     private final NativeProviderLaneTicker physicalTicker;
     private ICraftingService craftingService;
+    private boolean refreshingLanes;
 
     public NativeProviderLaneComposition(IManagedGridNode physicalNode, PatternProviderLogicHost ownerHost,
             List<? extends PatternProviderLogicHost> laneHosts, int patternSlots,
@@ -76,7 +77,8 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
         captured.ticker();
         services.add(captured);
         lanes.add(lane);
-        lane.updatePatterns();
+        lane.onPatternsRefreshed(() -> reindexAfterAddonRefresh(lane));
+        refreshLanePatterns(lane);
         if (craftingService != null) {
             craftingService.addGlobalCraftingProvider(lane);
         }
@@ -192,11 +194,31 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
         }
         for (var laneIndex : ordered) {
             var lane = lanes.get(laneIndex);
-            lane.updatePatterns();
+            refreshLanePatterns(lane);
             if (craftingService != null) {
                 craftingService.refreshGlobalCraftingProvider(lane);
                 services.get(laneIndex).recordProviderRefresh();
             }
+        }
+    }
+
+    private void refreshLanePatterns(NativeProviderLane lane) {
+        refreshingLanes = true;
+        try {
+            lane.updatePatterns();
+        } finally {
+            refreshingLanes = false;
+        }
+    }
+
+    /**
+     * An addon re-ran AE2's pattern refresh on the Lane itself, as AE All Pattern does when its async expansion
+     * finishes and ExtendedAE-Plus does when Smart Doubling changes. AE2 then asks the physical node's crafting
+     * provider to refresh, which a Lane is not, so the Lane's global registration is refreshed here.
+     */
+    private void reindexAfterAddonRefresh(NativeProviderLane lane) {
+        if (!refreshingLanes && craftingService != null) {
+            craftingService.refreshGlobalCraftingProvider(lane);
         }
     }
 
@@ -216,7 +238,10 @@ public final class NativeProviderLaneComposition implements InternalInventoryHos
             ((AppEngInternalInventory) patternInventory).readFromNBT(tag, PATTERNS_TAG, registries);
         }
         for (int index = 0; index < lanes.size(); index++) {
-            lanes.get(index).readFromNBT(tag.getCompound("lane" + index), registries);
+            // A Lane the data does not name keeps its own state, as when a save with fewer Lanes is loaded in place.
+            if (tag.contains("lane" + index)) {
+                lanes.get(index).readFromNBT(tag.getCompound("lane" + index), registries);
+            }
         }
         refreshPatterns();
     }

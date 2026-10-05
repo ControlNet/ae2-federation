@@ -84,6 +84,23 @@ public final class NativeProviderLaneFixtures implements MappedPatternProviderHo
         inspection = new NativeProviderInspection(helper, node, composition);
     }
 
+    /**
+     * The Pattern slots a Lane owns: slots that take or give a Pattern. A Lane's Pattern inventory is only its read-only
+     * view of the physical slots, so this must be 0.
+     */
+    public static int ownedPatternSlots(PatternProviderLogic lane) {
+        var inventory = lane.getPatternInv();
+        var probe = AEItems.PROCESSING_PATTERN.stack();
+        int owned = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (!inventory.extractItem(slot, 64, true).isEmpty()
+                    || inventory.insertItem(slot, probe.copy(), true).getCount() != probe.getCount()) {
+                owned++;
+            }
+        }
+        return owned;
+    }
+
     public static List<IntPredicate> sharedPatternAssignments() {
         return sharedPatternAssignments(3);
     }

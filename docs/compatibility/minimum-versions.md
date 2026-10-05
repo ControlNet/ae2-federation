@@ -6,11 +6,21 @@ Investigation date: 2026-09-27. Target: Minecraft 1.21.1 / NeoForge 21.1.250.
 | --- | --- | --- | --- |
 | Applied Energistics 2 | `[19.2.9,)` | 19.2.17 | Federation Provider Lanes require global crafting providers |
 | LDLib2 | `[2.2.34,)` | 2.2.34 | The production graph zoom controls require `GraphView.setScale(float)` |
+| NeoForge | `[21.1.216,)` | 21.1.250 | LDLib2 2.2.34 itself requires NeoForge 21.1.216 |
 
 Runtime ranges are defined in `gradle.properties` independently of the build
-pins and expanded into both production and testmod metadata. Minecraft,
-NeoForge and Java requirements are unchanged. An open upper range permits a
-newer dependency to load; it does not certify every future release.
+pins and expanded into both production and testmod metadata. Minecraft and Java
+requirements are unchanged. An open upper range permits a newer dependency to
+load; it does not certify every future release.
+
+NeoForge was pinned to exactly 21.1.250, and the FML loader to exactly 4.0.44,
+until 2026-10-04. That stopped the mod from loading in modpacks on any other
+NeoForge build, such as All the Mods 10 (21.1.251) and Create Ultimate
+Selection 2 (21.1.243). The lower bound is now the one LDLib2 2.2.34 declares,
+since nothing older can load that dependency. The loader range is FML 4, the
+line every NeoForge 21.1 build ships. The `neoforge-min` production
+compatibility profile runs the core tests on NeoForge 21.1.216 (see
+[production runs](production-runs.md)).
 
 ## Why these lower bounds
 

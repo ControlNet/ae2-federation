@@ -537,11 +537,18 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         var binding = new LaneBinding();
         binding.bind(endpoint.endpointIdentity(), position, epoch);
+        return appendLane(binding);
+    }
+
+    /** Appends a Lane with the owner's settings; a running Provider also binds it. */
+    private int appendLane(LaneBinding binding) {
         lanes.add(binding);
         var laneIndex = provider.addLane(new LaneHost(lanes.size() - 1));
         configManager.applyTo(provider.nativeLane(laneIndex));
         provider.nativeLane(laneIndex).setPriority(owner.getPriority());
-        runtime.bindLane(laneIndex, binding.revision);
+        if (runtime != null) {
+            runtime.bindLane(laneIndex, binding.revision);
+        }
         return laneIndex;
     }
 
@@ -792,18 +799,49 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         if (tag.getInt(SCHEMA_TAG) != SCHEMA) {
             throw new IllegalArgumentException("Unsupported Federation Pattern Provider schema");
         }
-        identity = ProviderIdentityCodec.load(tag.getCompound(IDENTITY_TAG));
-        owner.readFromNBT(tag.getCompound(OWNER_TAG), registries);
         var laneList = tag.getList(LANES_TAG, Tag.TAG_COMPOUND);
-        if (lanes.isEmpty()) {
+        if (runtime == null && lanes.isEmpty()) {
+            identity = ProviderIdentityCodec.load(tag.getCompound(IDENTITY_TAG));
+            owner.readFromNBT(tag.getCompound(OWNER_TAG), registries);
             for (var raw : laneList) {
                 lanes.add(LaneBinding.load((CompoundTag) raw));
                 provider.addLane(new LaneHost(lanes.size() - 1));
             }
-        } else if (lanes.size() != laneList.size()) {
-            throw new IllegalStateException("Federation Pattern Provider Lanes cannot be reloaded in place");
+            provider.readFromNBT(tag.getCompound(PROVIDER_TAG), registries);
+            return;
+        }
+        // Loaded into a Provider that already exists, as by /data merge block or a tool that writes data into a placed
+        // block. The data may come from another Provider, so the identity and the Lanes' Endpoint bindings stay as
+        // they are; Claims are only ever made by this Provider. Lanes the data has beyond the existing ones are added
+        // unbound, and a Pattern mapped to an unbound Lane is unmapped. A bound Lane left with no Pattern waits for
+        // release, as after the player unmaps it.
+        owner.readFromNBT(tag.getCompound(OWNER_TAG), registries);
+        while (lanes.size() < laneList.size()) {
+            var unbound = new LaneBinding();
+            unbound.retire();
+            appendLane(unbound);
+        }
+        var slotsBefore = new ArrayList<Set<Integer>>();
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            slotsBefore.add(provider.slotsForLane(laneIndex));
         }
         provider.readFromNBT(tag.getCompound(PROVIDER_TAG), registries);
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            var binding = lanes.get(laneIndex);
+            if (binding.endpoint == null) {
+                for (var slot : provider.slotsForLane(laneIndex)) {
+                    var remaining = new TreeSet<>(provider.lanesForSlot(slot));
+                    remaining.remove(laneIndex);
+                    provider.replaceMapping(provider.mappingHandle(slot), remaining);
+                }
+                continue;
+            }
+            var slotsAfter = provider.slotsForLane(laneIndex);
+            if (!slotsAfter.equals(slotsBefore.get(laneIndex))) {
+                binding.mappingRevision++;
+                binding.releasePending = slotsAfter.isEmpty();
+            }
+        }
     }
 
     // ---- nested types

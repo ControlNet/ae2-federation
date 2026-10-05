@@ -88,7 +88,8 @@ public final class ProviderLaneGameTests {
             helper.assertValueEqual(patterns, 1, "Encoded Pattern must have one drop owner");
             helper.assertValueEqual(fixture.composition().patternInventory().size(), 3,
                     "Only the physical inventory owns extractable Pattern slots");
-            helper.assertTrue(fixture.composition().lanes().stream().allMatch(lane -> lane.getPatternInv().size() == 0),
+            helper.assertTrue(fixture.composition().lanes().stream()
+                    .allMatch(lane -> NativeProviderLaneFixtures.ownedPatternSlots(lane) == 0),
                     "Native lanes must not own duplicate Pattern inventories");
             writeEvidence("lanesingledropowner", 3, Map.of("singleDropOwner", "true", "patternDrops", "1",
                     "lanePatternInventorySlots", "0"));

@@ -56,3 +56,21 @@
   CurseForge changelogs only link to the GitHub release, so they need no edit. Done for 0.0.3 after publication.
 - Since 2026-10-02 the release workflow runs GameTests in 16 shards, and Quick correctness on dev runs them in one
   batch server (`dev_gametests.py --manifest --ci`); see `gametest-speed-2026-09-29.md`.
+
+## Published v0.0.4 (2026-10-04)
+
+- Flow, done in a separate `git worktree` so the shared main tree stayed on `dev`: `release/v0.0.4` from `dev`
+  ("Prepare 0.0.4": only `mod_version`, the README has no version line any more) → a late fix landed on `dev`
+  (Router centre = Federation Logic Processor) and was merged into the release branch → Quick correctness green on
+  the release head → `git merge --no-ff` into `master` ("Release 0.0.4", `22684d7`, tag `v0.0.4` by CI) → `master`
+  merged back into `dev` ("Merge release 0.0.4 back into dev").
+- Release run 37175201014: build, platform preflight, 16 GameTest shards (164 distinct manifest tests, each in its own
+  server, all passed), GitHub, Modrinth and CurseForge publish all succeeded.
+- Binary `ae2federation-neoforge-1.21.1-0.0.4.jar`, 1,335,893 bytes, SHA-256
+  `9b06f5169f96ebe24dce862318f46ed3080bd0ee8bc45a42e20164850e8a819c`; sources SHA-256
+  `9bcc29c0fde75376a8f59fbbcc433c9906807073e542ac8ceac913bcd2f5928b`. Downloaded assets pass `sha256sum -c`, and the
+  jar's `router.json` and `neoforge.mods.toml` (0.0.4) were checked.
+- Player notes replaced the generated "Full Changelog" body. Keep each list item on one line, as in 0.0.3: GitHub
+  release bodies may render a wrapped line as a hard break. Upgrade callout for 0.0.4: 0.0.3 remote crafting jobs are
+  not carried over, a Crafting rule gains its Storage rule on load, claimed Endpoints share ME power by default.
+- The owner kept 0.0.x (not 0.1.0) because the build has not been played through in survival yet.

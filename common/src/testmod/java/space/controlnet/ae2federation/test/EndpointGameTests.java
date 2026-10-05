@@ -171,7 +171,8 @@ public final class EndpointGameTests {
             var target = composition.targetStorage(EndpointFixtures.FEDERATION_FACE, inputContext).orElseThrow();
             helper.assertValueEqual(target.insert(AEItemKey.of(Items.IRON_INGOT), 1, Actionable.MODULATE, IActionSource.empty()),
                     1L, "Capability-aware Local input must reach only subnet storage");
-            helper.assertTrue(composition.nativeReturnInventory().orElseThrow().isEmpty(),
+            helper.assertTrue(((appeng.helpers.externalstorage.GenericStackInv) composition.nativeReturnInventory()
+                    .orElseThrow()).isEmpty(),
                     "Input insertion must not loop into native return inventory");
             writeEvidence("endpointrejectcapabilityloop", 6, Map.of(
                     "loopAttempted", "true", "loopAccepted", "false", "inputContextReturnResolved", "false",
