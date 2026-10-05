@@ -190,6 +190,7 @@ and page ids did not change.
 | `guide_ae2lt` | ae2lt | `examples/overloaded-providers.md` | `overloadedUpgradeInPlace` |
 | `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
+| `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
   structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
@@ -233,4 +234,7 @@ and page ids did not change.
 - The Matter Fabrication Well test (`matterFabricationWell`) places the well from OmniSequence's blueprint and the
   controller only after the provider cable has joined the network; placing both in one tick across chunks gave the
   provider network an `AMBIGUOUS_MERGE` identity.
-- Not done: the OmniSequence guide pack (idea 12); its test is in place.
+- The OmniSequence scene is a corner of the well rebuilt from blocks dumped around the controller in a test run (a
+  temporary log, not committed): the 3-wide service channel in front of the controller, the Pattern Assembly's
+  service position on the channel's front step (controller offset 2, 0, -4), coils and cores behind. OmniSequence ships
+  no `.nbt` scenes; its blocks only carry `facing` (the assembly `push_direction`).

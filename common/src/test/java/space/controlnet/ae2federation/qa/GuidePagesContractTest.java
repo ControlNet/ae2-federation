@@ -48,7 +48,8 @@ final class GuidePagesContractTest {
             "data_energistics", Set.of("adaptive_pattern_provider", "adaptive_pattern_provider_upgrade"),
             "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface",
                     "crafting_system_l4", "crafting_pattern_bus", "crafting_interface", "computation_system_l4",
-                    "computation_drive", "eco_computation_cell_l4", "computation_interface"));
+                    "computation_drive", "eco_computation_cell_l4", "computation_interface"),
+            "molecularmanipulator", Set.of("matter_fabrication_controller", "matter_fabrication_pattern_assembly"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
@@ -56,7 +57,10 @@ final class GuidePagesContractTest {
             "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),
             "data_energistics", Set.of("items-blocks-machines/6.17_adaptive_pattern_provider.md"),
             "neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
-                    "neoecoae_intro/computation_system.md"));
+                    "neoecoae_intro/computation_system.md"),
+            "molecularmanipulator", Set.of("items-blocks-machines/matter_fabrication_well.md",
+                    "items-blocks-machines/matter_fabrication_research.md",
+                    "items-blocks-machines/matter_fabrication_pattern_assembly.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
