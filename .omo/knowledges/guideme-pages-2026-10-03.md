@@ -184,6 +184,7 @@ and page ids did not change.
 |---|---|---|---|
 | `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
 | `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
+| `guide_mekanism` | mekanism | `examples/power-plant.md` | `inductionMatrixPowerPlant` |
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
@@ -236,6 +237,13 @@ and page ids did not change.
   Astronomical Observatory, which takes 4,000 AE in one piece each tick, never runs (mutation-checked). Stellar Flux is
   a `DigitalizationKey`, kept in a Digital Storage Cell. The test sets the day time to 14,000 (window 13,000-23,000)
   and clear weather, and restores the day time on success; `setDayTime` is server-wide.
+- Mekanism's Induction Matrix forms in a GameTest from plain `setBlock`s (3x4x3 casing round a basic cell under a
+  basic provider, port in a face centre, never on an edge). Its port takes at most 102,400 FE a tick (basic provider),
+  so the test charges it over several ticks through the FE capability, a test-only stand-in for a charged matrix, then
+  `setActive(true)` (output; a player sneak-right-clicks with a Configurator). With small loads, three networks run on
+  an Energy Acceptor alone, with no energy cell. `RouterCraftingScene.member`, `withoutEnergyCell`,
+  `thenSwitchingOffPower` and `checkingAtEnd` support it; stage 4 now checks readiness before power, so a network
+  that brings its own source can start it once formed.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

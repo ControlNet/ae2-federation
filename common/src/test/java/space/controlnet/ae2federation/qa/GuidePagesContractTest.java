@@ -39,11 +39,12 @@ final class GuidePagesContractTest {
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "logic_processor", "fluix_dust", "quartz_fiber",
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
-            "1k_crafting_storage");
+            "1k_crafting_storage", "energy_acceptor");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
             Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
-                    "energized_smelter")),
+                    "energized_smelter", "induction_casing", "induction_port", "basic_induction_cell",
+                    "basic_induction_provider", "configurator")),
             Map.entry("appmek", Set.of("chemical_storage_cell_1k")),
             Map.entry("appflux", Set.of("flux_accessor", "fe_1k_cell")),
             Map.entry("advanced_ae", Set.of("quantum_core", "quantum_structure")),

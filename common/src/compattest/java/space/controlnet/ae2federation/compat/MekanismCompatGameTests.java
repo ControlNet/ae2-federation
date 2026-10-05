@@ -50,6 +50,97 @@ public final class MekanismCompatGameTests {
     }
 
     /**
+     * The guide's power plant: a plant network with a Mekanism Induction Matrix and an AE2 Energy Acceptor powers a
+     * workshop and a district through ME power, with no energy cell on any network. The district orders sticks from
+     * the workshop's pattern provider and assembler. The matrix is charged through its port as the test begins, a
+     * test-only stand-in for a charged matrix, and must have given up energy by the end. The exercise switches off ME
+     * power for the workshop: it goes dark and sticks leave the district's craftables.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1200)
+    public static void inductionMatrixPowerPlant(GameTestHelper helper) {
+        var scene = new RouterCraftingScene(helper, new BlockPos(18, 1, 18));
+        // The Energy Acceptor sits on a cable at the plant's start; the matrix's port is just beyond it.
+        var acceptor = scene.start(Direction.NORTH).above();
+        var port = acceptor.north();
+        long[] charged = {-1};
+        scene.member("plant", Direction.NORTH, (test, start, outward) -> placePowerPlant(test, start), acceptor,
+                        entity -> charged[0] >= 0 || chargedMatrix(helper, port, charged))
+                .provider("workshop", Direction.EAST, RouterCraftingScene::placeAssemblyProvider,
+                        scene.start(Direction.EAST), RouterCraftingScene::patternProvider,
+                        RouterCraftingScene.sticksPattern(helper))
+                .consumer("district", Direction.SOUTH, RouterCraftingScene::placeCpu, RouterCraftingScene::formed,
+                        RouterCraftingScene.STICKS, 8, RouterCraftingScene.PLANKS, 4, "workshop")
+                .poweredBy("plant")
+                .withoutEnergyCell()
+                .thenSwitchingOffPower("workshop", RouterCraftingScene.STICKS, "district")
+                .checkingAtEnd(() -> helper.assertTrue(matrixEnergy(helper, port) < charged[0],
+                        "The networks must have run on the matrix's energy: it still holds " + matrixEnergy(helper, port)
+                                + " of " + charged[0] + " FE"));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** FE the test charges the matrix with: plenty for the three networks, and small enough to read back as an int. */
+    private static final int MATRIX_CHARGE = 1_000_000;
+
+    /**
+     * An ME cable at {@code start}, an Energy Acceptor on it, and beyond that a 3x4x3 Induction Matrix whose port, in
+     * the middle of its south face, touches the acceptor: induction casing round a basic cell under a basic provider.
+     */
+    private static void placePowerPlant(GameTestHelper helper, BlockPos start) {
+        helper.assertTrue(appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(start), null, null,
+                appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT)) != null,
+                "A cable must carry the Energy Acceptor");
+        helper.setBlock(start.above(), appeng.core.definitions.AEBlocks.ENERGY_ACCEPTOR.block());
+        var casing = AddonCraftingScene.block("mekanism:induction_casing");
+        for (int x = -1; x <= 1; x++) {
+            for (int y = 0; y <= 3; y++) {
+                for (int z = 1; z <= 3; z++) {
+                    var position = start.offset(x, y, -z);
+                    boolean inside = x == 0 && z == 2 && (y == 1 || y == 2);
+                    if (!inside) helper.setBlock(position, casing);
+                }
+            }
+        }
+        helper.setBlock(start.offset(0, 1, -2), AddonCraftingScene.block("mekanism:basic_induction_cell"));
+        helper.setBlock(start.offset(0, 2, -2), AddonCraftingScene.block("mekanism:basic_induction_provider"));
+        helper.setBlock(start.offset(0, 1, -1), AddonCraftingScene.block("mekanism:induction_port"));
+    }
+
+    /**
+     * Once the matrix at {@code port} has formed, charges it with {@link #MATRIX_CHARGE} FE through the port, over as
+     * many ticks as the port needs, and turns the port to output, into the Energy Acceptor; notes the charge in {@code
+     * charged}.
+     */
+    private static boolean chargedMatrix(GameTestHelper helper, BlockPos port, long[] charged) {
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(port));
+        try {
+            var multiblock = entity.getClass().getMethod("getMultiblock").invoke(entity);
+            helper.assertTrue((boolean) multiblock.getClass().getMethod("isFormed").invoke(multiblock),
+                    "Waiting for the Induction Matrix to form");
+            var energy = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(port),
+                    Direction.SOUTH);
+            helper.assertTrue(energy != null, "The induction port must take FE");
+            // The port takes only so much a tick, set by the provider's tier.
+            energy.receiveEnergy(MATRIX_CHARGE - energy.getEnergyStored(), false);
+            helper.assertTrue(energy.getEnergyStored() >= MATRIX_CHARGE, "Charging the matrix: "
+                    + energy.getEnergyStored() + " FE");
+            entity.getClass().getMethod("setActive", boolean.class).invoke(entity, true);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The induction port cannot be read", exception);
+        }
+        charged[0] = matrixEnergy(helper, port);
+        return true;
+    }
+
+    /** FE the matrix holds, read through its port. */
+    private static long matrixEnergy(GameTestHelper helper, BlockPos port) {
+        var energy = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(port),
+                Direction.SOUTH);
+        helper.assertTrue(energy != null, "The induction port must report its FE");
+        return energy.getEnergyStored();
+    }
+
+    /**
      * The guide's ore line: one Provider maps iron ore to an Enrichment Chamber's Endpoint and iron dust to an Energized
      * Smelter's, so ordering iron ingots runs both, the dust returning to the Provider's network between them. Each
      * machine takes 200 ticks an item. The exercise takes the Smelter's hopper away for 900 ticks, longer than enriching

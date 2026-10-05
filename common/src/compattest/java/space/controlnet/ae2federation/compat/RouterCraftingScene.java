@@ -73,6 +73,12 @@ final class RouterCraftingScene implements AutoCloseable {
     private AEItemKey lost;
     private String loser;
     private int removal;
+    private boolean ownPower;
+    private String unpowered;
+    private AEItemKey dark;
+    private String darkConsumer;
+    private boolean unpoweredDone;
+    private Runnable endCheck;
 
     /** Places the networks' chests; {@code center} is where the Router goes once every network stands. */
     RouterCraftingScene(GameTestHelper helper, BlockPos center) {
@@ -173,6 +179,42 @@ final class RouterCraftingScene implements AutoCloseable {
         return this;
     }
 
+    /**
+     * A network that neither crafts nor orders: {@code placement} builds it, and its block at {@code readyAt} (relative
+     * to the test) must be on its network once {@code ready} agrees.
+     */
+    RouterCraftingScene member(String name, Direction face, Placement placement, BlockPos readyAt,
+            Predicate<BlockEntity> ready) {
+        var member = new Member(name, face, placement, ready);
+        member.patternContainer = readyAt;
+        members.add(member);
+        return this;
+    }
+
+    /** The network {@link #poweredBy} names brings its own power source, so no energy cell is placed. */
+    RouterCraftingScene withoutEnergyCell() {
+        ownPower = true;
+        return this;
+    }
+
+    /**
+     * After every order, ME power between {@code name} and the powering network is switched off, as the guide's
+     * exercise has its player do: {@code name} must lose power and {@code gone} leave {@code consumer}'s craftables,
+     * while {@code consumer} stays powered.
+     */
+    RouterCraftingScene thenSwitchingOffPower(String name, AEItemKey gone, String consumer) {
+        unpowered = name;
+        dark = gone;
+        darkConsumer = consumer;
+        return this;
+    }
+
+    /** Runs {@code check}, which fails the test by assertion, after everything else. */
+    RouterCraftingScene checkingAtEnd(Runnable check) {
+        endCheck = check;
+        return this;
+    }
+
     /** The last consumer also orders {@code amount} of {@code order}, at the same time and on the same CPU. */
     RouterCraftingScene alsoOrdering(AEItemKey order, long amount, AEItemKey input, long inputAmount) {
         members.getLast().orders.add(new Order(order, amount, input, inputAmount));
@@ -226,7 +268,7 @@ final class RouterCraftingScene implements AutoCloseable {
                     if (member.storage) chest(member).setCell(AEItems.ITEM_CELL_1K.stack());
                 }
                 // As the guide's examples have it, one energy cell powers every network through the ME power rule.
-                helper.setBlock(chestPosition(power().face).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+                if (!ownPower) helper.setBlock(chestPosition(power().face).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
                 stage = 1;
                 helper.fail("Placed the networks' chests");
             }
@@ -259,11 +301,12 @@ final class RouterCraftingScene implements AutoCloseable {
             }
             case 4 -> {
                 for (var member : members) {
-                    helper.assertTrue(grid(member).getEnergyService().isNetworkPowered(),
-                            "Waiting for the ME power rule to power " + member.name);
                     var entity = helper.getLevel().getBlockEntity(helper.absolutePos(member.patternContainer));
+                    // Before power: a network that brings its own source may only start it once it has formed.
                     helper.assertTrue(member.ready.test(entity), "Waiting for " + member.name + "'s "
                             + (member.consumer() ? "CPU" : "crafter") + " to form");
+                    helper.assertTrue(grid(member).getEnergyService().isNetworkPowered(),
+                            "Waiting for the ME power rule to power " + member.name);
                     helper.assertTrue(entity != null && grid(entity) == grid(member),
                             member.name + "'s " + entity + " must join its network, but is on " + describe(grid(entity))
                                     + "; its start block is on "
@@ -391,6 +434,23 @@ final class RouterCraftingScene implements AutoCloseable {
                             consumer.name + " must still craft " + kept);
                 }
                 if (removed != null) removing();
+                if (unpowered != null) {
+                    var member = named(unpowered);
+                    var key = new PolicyKey(network(member), network(power()), PolicyCapability.ME_POWER);
+                    if (!unpoweredDone) {
+                        var policies = PolicyService.get(helper.getLevel());
+                        policies.configured(key).ifPresent(record -> rule(key, record.rule().withEnabled(false)));
+                        unpoweredDone = true;
+                        helper.fail("Switched off ME power for " + member.name);
+                    }
+                    helper.assertFalse(grid(member).getEnergyService().isNetworkPowered(),
+                            "Waiting for " + member.name + " to lose power");
+                    helper.assertFalse(grid(named(darkConsumer)).getCraftingService().isCraftable(dark),
+                            "Waiting for " + dark + " to leave " + darkConsumer + "'s craftables");
+                    helper.assertTrue(grid(named(darkConsumer)).getEnergyService().isNetworkPowered(),
+                            darkConsumer + " must stay powered");
+                }
+                if (endCheck != null) endCheck.run();
                 close();
             }
         }
