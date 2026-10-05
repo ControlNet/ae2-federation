@@ -23,7 +23,8 @@ public final class DataEnergisticsCompatGameTests {
     private DataEnergisticsCompatGameTests() {
     }
 
-    /** The guide's Data Energistics example; see {@link SolarObservatoryScene}. */
+    /** The guide's Data Energistics example; see {@link SolarObservatoryScene}. It sets the time of day to night. */
+    @RunsAlone
     @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1200)
     public static void solarObservatory(GameTestHelper helper) {
         var scene = new SolarObservatoryScene(helper, new net.minecraft.core.BlockPos(18, 1, 18));

@@ -11,10 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestBatch;
@@ -24,9 +26,9 @@ import net.minecraft.gametest.framework.GameTestRegistry;
 import net.minecraft.gametest.framework.GameTestRunner;
 import net.minecraft.gametest.framework.GameTestTicker;
 import net.minecraft.gametest.framework.MultipleTestTracker;
-import net.minecraft.gametest.framework.StructureGridSpawner;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.GameRules;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -40,9 +42,10 @@ import org.slf4j.Logger;
  * Runs the selected compatibility GameTests in an ordinary (production) dedicated server, then stops it.
  *
  * <p>NeoForge registers and ticks GameTests only outside production, so this registers the test methods with vanilla's
- * {@link GameTestRegistry} itself and ticks {@link GameTestTicker} from the server tick. Each test is its own batch, so
- * tests run one after another and never share the level with a running test. The report is a JSON file; the server log
- * also gets vanilla's summary lines.
+ * {@link GameTestRegistry} itself and ticks {@link GameTestTicker} from the server tick. Tests run side by side, up to
+ * {@code ae2federation.compat.parallel} at a time (default 1, one after another), each in a {@link CellGridSpawner}
+ * cell of its own; a {@link RunsAlone} test gets a batch of its own. The report is a JSON file; the server log also gets
+ * vanilla's summary lines.
  */
 final class ProductionGameTestRunner {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -52,13 +55,16 @@ final class ProductionGameTestRunner {
 
     private final List<String> requested;
     private final Path report;
+    private final int parallel;
+    private final Set<String> alone = new HashSet<>();
     private MultipleTestTracker tracker;
     private List<GameTestInfo> infos = List.of();
     private long started;
 
-    private ProductionGameTestRunner(List<String> requested, Path report) {
+    private ProductionGameTestRunner(List<String> requested, Path report, int parallel) {
         this.requested = requested;
         this.report = report;
+        this.parallel = parallel;
     }
 
     /** Starts the run when {@code ae2federation.compat.tests} names tests or groups; {@code all} selects every test. */
@@ -68,7 +74,8 @@ final class ProductionGameTestRunner {
         var report = Path.of(System.getProperty("ae2federation.compat.report", "compat-report.json"));
         var requested = Arrays.stream(selection.split(",")).map(String::trim).filter(id -> !id.isEmpty())
                 .map(id -> id.toLowerCase(Locale.ROOT)).distinct().toList();
-        var runner = new ProductionGameTestRunner(requested, report);
+        var parallel = Math.max(1, Integer.getInteger("ae2federation.compat.parallel", 1));
+        var runner = new ProductionGameTestRunner(requested, report, parallel);
         NeoForge.EVENT_BUS.addListener(runner::onServerStarted);
         NeoForge.EVENT_BUS.addListener(runner::onServerTick);
         NeoForge.EVENT_BUS.addListener(runner::onServerStopping);
@@ -85,17 +92,13 @@ final class ProductionGameTestRunner {
             rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, server);
             rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
             level.setWeatherParameters(20_000_000, 20_000_000, false, false);
-            var batches = new ArrayList<GameTestBatch>();
-            for (int index = 0; index < functions.size(); index++) {
-                var info = GameTestBatchFactory.toGameTestInfo(functions.get(index), 0, level);
-                batches.add(GameTestBatchFactory.toGameTestBatch(List.of(info), functions.get(index).testName(), index));
-            }
-            var runner = GameTestRunner.Builder.fromBatches(batches, level)
-                    .newStructureSpawner(new StructureGridSpawner(ORIGIN, 8, false)).build();
+            var runner = GameTestRunner.Builder.fromBatches(batches(functions, level), level)
+                    .newStructureSpawner(new CellGridSpawner(ORIGIN, 8)).build();
             infos = List.copyOf(runner.getTestInfos());
             tracker = new MultipleTestTracker(infos);
             started = System.nanoTime();
-            LOGGER.info("AE2F_COMPAT_START tests={}", functions.stream().map(TestFunction::testName).toList());
+            LOGGER.info("AE2F_COMPAT_START parallel={} tests={}", parallel,
+                    functions.stream().map(TestFunction::testName).toList());
             runner.start();
         } catch (RuntimeException exception) {
             LOGGER.error("AE2F_COMPAT_SETUP_FAILED", exception);
@@ -111,8 +114,9 @@ final class ProductionGameTestRunner {
             try {
                 GameTestTicker.SINGLETON.tick();
             } catch (RuntimeException exception) {
-                // A test that throws something other than an assertion would stop the server; it fails instead, and
-                // the run goes on with the next test.
+                // A test that throws something other than an assertion would stop the server; it fails instead, with
+                // every other test still running beside it, since the ticker does not say which one threw, and the run
+                // goes on with the next batch.
                 LOGGER.error("AE2F_COMPAT_TEST_THREW", exception);
                 infos.stream().filter(info -> info.hasStarted() && !info.isDone()).forEach(info -> info.fail(exception));
             }
@@ -148,6 +152,30 @@ final class ProductionGameTestRunner {
         tracker = null;
     }
 
+    /**
+     * The fewest batches of at most {@link #parallel} tests, all about the same size, in the selected order; a
+     * {@link RunsAlone} test is a batch of its own, first. Vanilla starts a batch's tests together and the next batch
+     * once all of them are done. The spawner never reuses a cell, so a test never starts where an earlier one ran.
+     */
+    private List<GameTestBatch> batches(List<TestFunction> functions, ServerLevel level) {
+        var batches = new ArrayList<GameTestBatch>();
+        var shared = new ArrayList<GameTestInfo>();
+        for (var function : functions) {
+            var info = GameTestBatchFactory.toGameTestInfo(function, 0, level);
+            if (alone.contains(function.testName())) {
+                batches.add(GameTestBatchFactory.toGameTestBatch(List.of(info), function.testName(), batches.size()));
+            } else {
+                shared.add(info);
+            }
+        }
+        var size = Math.ceilDiv(shared.size(), Math.max(1, Math.ceilDiv(shared.size(), parallel)));
+        for (int from = 0; from < shared.size(); from += size) {
+            batches.add(GameTestBatchFactory.toGameTestBatch(
+                    List.copyOf(shared.subList(from, Math.min(from + size, shared.size()))), "compat", batches.size()));
+        }
+        return batches;
+    }
+
     private List<TestFunction> select(Map<String, Class<?>> groups) {
         var byName = new LinkedHashMap<String, Method>();
         var byGroup = new LinkedHashMap<String, List<String>>();
@@ -174,6 +202,11 @@ final class ProductionGameTestRunner {
         wanted.stream().distinct().forEach(id -> GameTestRegistry.register(byName.get(id)));
         var functions = new ArrayList<>(GameTestRegistry.getAllTestFunctions());
         functions.removeAll(before);
+        for (var function : functions) {
+            var name = function.testName().toLowerCase(Locale.ROOT);
+            var method = byName.get(name.substring(name.lastIndexOf('.') + 1));
+            if (method != null && method.isAnnotationPresent(RunsAlone.class)) alone.add(function.testName());
+        }
         return functions;
     }
 

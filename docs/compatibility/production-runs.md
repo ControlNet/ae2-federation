@@ -24,6 +24,11 @@ NeoForge does not run GameTests in production. To work around this, the test mod
 GameTest API and ticks them from its own server tick handler. Then it writes the report and stops the server. The test
 mod has no mixins, because the addons mix into the same AE2 classes that the development test mod does.
 
+Tests run side by side, 32 at a time by default (`-p`). Each gets a cell of whole chunks with room around its template,
+because most scenes build well past it. A test marked `@RunsAlone`, such as the solar observatory, which sets the time
+of day, runs by itself. A test that fails only beside others can be run again with `-p 1`, which runs one test at a
+time.
+
 Every profile runs the `core` group:
 
 | Test | Checks |
@@ -207,6 +212,7 @@ python3 tools/compat_run.py --list
 python3 tools/compat_run.py --accept-eula --group addons -j 16   # every addon profile, about two minutes
 python3 tools/compat_run.py --accept-eula --group modpacks -j 2     # both packs, about four minutes after download
 python3 tools/compat_run.py --accept-eula extendedae --tests extendedae
+python3 tools/compat_run.py --accept-eula -p 1 extendedae          # one test at a time
 python3 tools/compat_run.py --accept-eula --bare addons-all     # the same mods without AE2 Federation
 ```
 

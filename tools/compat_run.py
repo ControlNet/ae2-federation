@@ -7,6 +7,7 @@ with the test mod's runner, and reads its JSON report. Profiles run in parallel,
 
     python3 tools/compat_run.py --accept-eula baseline               # one profile
     python3 tools/compat_run.py --accept-eula --all -j 8             # every profile, eight servers at a time
+    python3 tools/compat_run.py --accept-eula -p 1 baseline          # one test at a time, to rule out a neighbour
     python3 tools/compat_run.py --accept-eula --group addons         # every profile in a group
     python3 tools/compat_run.py --accept-eula --bare addons-all    # the same mods without AE2 Federation
     python3 tools/compat_run.py --list
@@ -217,7 +218,7 @@ def run_bare(name: str, profile: dict, timeout: int) -> dict:
     return result
 
 
-def run_profile(name: str, profile: dict, tests: str, timeout: int) -> dict:
+def run_profile(name: str, profile: dict, tests: str, timeout: int, parallel: int = 1) -> dict:
     directory = RUNS / name
     started = time.monotonic()
     try:
@@ -227,7 +228,8 @@ def run_profile(name: str, profile: dict, tests: str, timeout: int) -> dict:
     report = directory / "compat-report.json"
     log = directory / "server-console.log"
     command = ["java", f"-Xmx{profile.get('memory', '4G')}", f"-Dae2federation.compat.tests={tests}",
-               f"-Dae2federation.compat.report={report}", *profile.get("jvmArgs", []),
+               f"-Dae2federation.compat.report={report}", f"-Dae2federation.compat.parallel={parallel}",
+               *profile.get("jvmArgs", []),
                f"@libraries/net/neoforged/neoforge/{profile['neoforge']}/unix_args.txt", "nogui"]
     with log.open("w") as stream:
         server = subprocess.Popen(command, cwd=directory, stdin=subprocess.DEVNULL, stdout=stream,
@@ -330,6 +332,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="with --list: the selected profile names as JSON")
     parser.add_argument("--tests", help="comma-separated test ids, overriding each profile's own list")
     parser.add_argument("-j", "--jobs", type=int, default=4)
+    parser.add_argument("-p", "--parallel", type=int, default=32,
+                        help="tests run side by side in each server; 1 runs them one after another")
     parser.add_argument("--no-build", action="store_true", help="use the jars Gradle already built")
     parser.add_argument("--bare", action="store_true",
                         help="start each profile without AE2 Federation, to see whether a failure is its own")
@@ -369,7 +373,7 @@ def main() -> int:
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         futures = {(pool.submit(run_bare, name, profiles[name], profiles[name].get("timeout", 900)) if args.bare else
                     pool.submit(run_profile, name, profiles[name], args.tests or ",".join(profiles[name]["tests"]),
-                                profiles[name].get("timeout", 900))): name for name in dict.fromkeys(names)}
+                                profiles[name].get("timeout", 900), args.parallel)): name for name in dict.fromkeys(names)}
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
             results.append(result)
