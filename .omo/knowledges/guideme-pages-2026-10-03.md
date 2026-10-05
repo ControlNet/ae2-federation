@@ -191,7 +191,7 @@ and page ids did not change.
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
-| `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
+| `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 
@@ -230,6 +230,12 @@ and page ids did not change.
   detaches the Port, and the foundry grid goes `AMBIGUOUS_SPLIT` ("Split pending") until the block is back; the
   scene's `thenRemoving` runs alone after the break, since `network()` would wait on that identity. The old
   overloaded-providers page was replaced; its compat tests stay.
+- Data Energistics' solar observatory (`SolarObservatoryScene`): an ME Solar Panel joins AE only through its bottom
+  face, and side-by-side panels share energy, so one panel on the network carries the array. The panels' own 160k AE
+  buffers are not in the grid's energy pool: without an energy cell the pooled networks hold only ~200 AE, and the
+  Astronomical Observatory, which takes 4,000 AE in one piece each tick, never runs (mutation-checked). Stellar Flux is
+  a `DigitalizationKey`, kept in a Digital Storage Cell. The test sets the day time to 14,000 (window 13,000-23,000)
+  and clear weather, and restores the day time on success; `setDayTime` is server-wide.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

@@ -23,6 +23,13 @@ public final class DataEnergisticsCompatGameTests {
     private DataEnergisticsCompatGameTests() {
     }
 
+    /** The guide's Data Energistics example; see {@link SolarObservatoryScene}. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1200)
+    public static void solarObservatory(GameTestHelper helper) {
+        var scene = new SolarObservatoryScene(helper, new net.minecraft.core.BlockPos(18, 1, 18));
+        helper.succeedWhen(scene::tick);
+    }
+
     /** Data Energistics' Adaptive Pattern Provider, holding an AE2 Pattern Provider, serves the remote craft. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void adaptivePatternProviderCrafting(GameTestHelper helper) {
