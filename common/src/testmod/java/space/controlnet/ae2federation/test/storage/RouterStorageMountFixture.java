@@ -20,12 +20,23 @@ public final class RouterStorageMountFixture implements AutoCloseable {
     private final GameTestHelper helper;
     private final RouterFixtures routers;
 
+    private final boolean consumerPowered;
+
     public RouterStorageMountFixture(GameTestHelper helper) {
+        this(helper, true);
+    }
+
+    /**
+     * Without {@code consumerPowered} the consumer network gets no energy cell of its own; it runs only once an ME
+     * power rule pools it with the provider's.
+     */
+    public RouterStorageMountFixture(GameTestHelper helper, boolean consumerPowered) {
         this.helper = helper;
+        this.consumerPowered = consumerPowered;
         routers = new RouterFixtures(helper);
         routers.placeNativeDevice(LEFT, Direction.NORTH);
         routers.placeNativeDevice(RIGHT, Direction.NORTH);
-        helper.setBlock(LEFT.north().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+        if (consumerPowered) helper.setBlock(LEFT.north().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         helper.setBlock(RIGHT.north().below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
         consumerChest().setCell(AEItems.ITEM_CELL_1K.stack());
         providerChest().setCell(AEItems.ITEM_CELL_1K.stack());
@@ -34,7 +45,7 @@ public final class RouterStorageMountFixture implements AutoCloseable {
     public boolean networksSettled() {
         return FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid()).isPresent()
                 && FederationDomainRegistryAccess.confirmedNetworkId(providerGrid()).isPresent()
-                && routers.nativeDeviceNode(LEFT, Direction.NORTH).isActive()
+                && (!consumerPowered || routers.nativeDeviceNode(LEFT, Direction.NORTH).isActive())
                 && routers.nativeDeviceNode(RIGHT, Direction.NORTH).isActive()
                 && routers.nativeDeviceNode(LEFT, Direction.NORTH).hasGridBooted()
                 && routers.nativeDeviceNode(RIGHT, Direction.NORTH).hasGridBooted();
@@ -64,6 +75,11 @@ public final class RouterStorageMountFixture implements AutoCloseable {
 
     public IGrid providerGrid() {
         return routers.nativeDeviceNode(RIGHT, Direction.NORTH).getGrid();
+    }
+
+    /** The ME power rule in which the consumer draws on the provider's energy. */
+    public PolicyKey energyKey() {
+        return new PolicyKey(key().consumerNetworkId(), key().providerNetworkId(), PolicyCapability.ME_POWER);
     }
 
     public PolicyKey key() {

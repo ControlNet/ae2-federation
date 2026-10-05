@@ -69,7 +69,9 @@ final class AddonStorageScene {
         this.what = what;
         this.stored = stored;
         this.taken = taken;
-        fixtures = new RouterStorageMountFixture(helper);
+        // As the guide's warehouse is built, the consumer has no power of its own: the ME power rule shares the
+        // provider's.
+        fixtures = new RouterStorageMountFixture(helper, false);
         // The consumer's only storage is what the rule shares, so what it stores can only go to the provider.
         fixtures.consumerChest().setCell(ItemStack.EMPTY);
     }
@@ -161,7 +163,11 @@ final class AddonStorageScene {
             policies.edit(new PolicyEdit(key, PolicyRevision.NONE, extractOnly
                     ? PolicyRule.enabled(java.util.Set.of(PolicyOperation.VIEW, PolicyOperation.EXTRACT))
                     : PolicyRule.storageDefaults()));
+            policies.edit(new PolicyEdit(fixtures.energyKey(), PolicyRevision.NONE,
+                    PolicyRule.enabled(java.util.Set.of(PolicyOperation.SUPPLY))));
         }
+        helper.assertTrue(fixtures.consumerGrid().getEnergyService().isNetworkPowered(),
+                "Waiting for the ME power rule to power the consumer network");
         helper.assertTrue(StorageMountService.get(helper.getLevel()).projection(key) != null,
                 "The Storage rule must mount the provider's " + storage + ": "
                         + StorageMountService.status(helper.getLevel(), key) + "; the provider network itself has "

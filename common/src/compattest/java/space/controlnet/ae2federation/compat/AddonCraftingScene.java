@@ -80,6 +80,9 @@ final class AddonCraftingScene {
     private java.util.function.Consumer<GameTestHelper> placeStructure;
     private java.util.function.Consumer<GameTestHelper> placeConsumerCpu;
     private java.util.function.BooleanSupplier consumerCpuReady = () -> true;
+    private java.util.function.Consumer<GameTestHelper> placeConsumerStorage;
+    /** The consumer's own storage when it is not its ME Chest; null until that storage is ready. */
+    private java.util.function.Supplier<MEStorage> consumerStorage;
     /** When a structure scene's provider is ready: by default, once its multiblock has formed. */
     private java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> structureReady =
             entity -> entity instanceof appeng.me.cluster.IAEMultiBlock<?> part && part.getCluster() != null;
@@ -94,6 +97,7 @@ final class AddonCraftingScene {
     private final BlockPos assemblerPos = PROVIDER.east();
     private final BlockPos outputChestPos = PROVIDER.below();
     private int stage;
+    private boolean energyShared;
     private Future<ICraftingPlan> planFuture;
     private Future<ICraftingPlan> localPlanFuture;
 
@@ -124,7 +128,9 @@ final class AddonCraftingScene {
         this.processing = machine != null;
         this.machine = machine;
         bridge = new PolicyBridgeFixtures(helper, BASE);
-        bridge.installStorageCells();
+        // As the guide's examples build it, the provider network has no power of its own: the ME power rule shares
+        // the consumer's.
+        bridge.installStorageCells(false);
     }
 
     /**
@@ -264,6 +270,18 @@ final class AddonCraftingScene {
         return BuiltInRegistries.ITEM.get(key);
     }
 
+    /**
+     * The consumer keeps its items in a multiblock that {@code place} builds on its cable instead of its ME Chest, which
+     * is left without a cell: the inputs are stored there, and the made output and used inputs are counted there.
+     * {@code storage} gives that multiblock's storage once it is ready, else null.
+     */
+    AddonCraftingScene consumerStorageStructure(java.util.function.Consumer<GameTestHelper> place,
+            java.util.function.Supplier<MEStorage> storage) {
+        placeConsumerStorage = place;
+        consumerStorage = storage;
+        return this;
+    }
+
     /** Readies the provider as its player would before patterns go in, such as by fitting a part into it. */
     AddonCraftingScene preparingProvider(
             java.util.function.Consumer<net.minecraft.world.level.block.entity.BlockEntity> prepare) {
@@ -311,6 +329,8 @@ final class AddonCraftingScene {
     AddonCraftingScene disconnectingAfterPush() {
         if (!(machine instanceof ChestMachine)) throw new IllegalStateException("Only the chest machine can wait");
         disconnectAfterPush = true;
+        // Apart from the consumer, the provider network still runs, as one with its own power does.
+        bridge.powerOuter();
         return this;
     }
 
@@ -339,6 +359,12 @@ final class AddonCraftingScene {
                     helper.setBlock(outputChestPos, appeng.core.definitions.AEBlocks.ME_CHEST.block());
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
                             .setCell(new ItemStack(item(machine.outputCell())));
+                }
+                if (placeConsumerStorage != null) {
+                    // As the guide's district has it, the provider network has no storage at all.
+                    bridge.consumerChest().setCell(ItemStack.EMPTY);
+                    bridge.providerChest().setCell(ItemStack.EMPTY);
+                    placeConsumerStorage.accept(helper);
                 }
                 if (placeConsumerCpu != null) {
                     placeConsumerCpu.accept(helper);
@@ -370,6 +396,12 @@ final class AddonCraftingScene {
                 helper.assertTrue(bridge.networksSettled(), "Waiting for both networks: " + bridge.settlementDiagnostics());
                 if (!bridge.firstBridgeReady()) bridge.refreshFirstBridge();
                 helper.assertTrue(bridge.firstBridgeReady(), "Waiting for the Bridge");
+                if (!energyShared) {
+                    enableEnergy();
+                    energyShared = true;
+                }
+                helper.assertTrue(bridge.outerGrid().getEnergyService().isNetworkPowered(),
+                        "Waiting for the ME power rule to power the provider network");
                 if (placeStructure != null) {
                     helper.assertTrue(structureReady.test(helper.getLevel().getBlockEntity(helper.absolutePos(providerPos))),
                             "Waiting for " + providerId + " to form");
@@ -391,6 +423,8 @@ final class AddonCraftingScene {
                 helper.assertTrue(bridge.outerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider network to craft with " + providerId + ": " + providerState());
                 helper.assertTrue(consumerCpuReady.getAsBoolean(), "Waiting for the consumer's CPU structure");
+                helper.assertTrue(consumerStorage == null || consumerStorage.get() != null,
+                        "Waiting for the consumer's storage structure");
                 helper.assertFalse(consumerGrid().getCraftingService().getCpus().isEmpty(),
                         "Waiting for the consumer's CPU from " + cpuIds);
                 helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid()).isPresent()
@@ -474,6 +508,10 @@ final class AddonCraftingScene {
                 if (processing) machine.collect(helper, assemblerPos, bridge.outerGrid().getStorageService().getInventory());
                 helper.assertTrue(consumerGrid().getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                         "Waiting for the consumer's job to finish");
+                if (consumerStorage != null) {
+                    helper.assertValueEqual(held(consumerChest(), output()), requested() * tookOrders.size(),
+                            "The consumer's own storage must hold everything made");
+                }
                 var made = held(consumerChest(), output()) + held(providerChest(), output())
                         + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
                 helper.assertValueEqual(made, requested() * tookOrders.size(),
@@ -570,12 +608,16 @@ final class AddonCraftingScene {
         return bridge.mainGrid();
     }
 
+    /** The consumer's own storage: its ME Chest's cell, or the multiblock that replaces it. */
     private MEStorage consumerChest() {
+        if (consumerStorage != null) return Objects.requireNonNull(consumerStorage.get(), "The consumer's storage");
         return Objects.requireNonNull(bridge.consumerChest().getOriginalCellInventory(0));
     }
 
+    /** The provider's ME Chest's cell; an empty storage when it has none. */
     private MEStorage providerChest() {
-        return Objects.requireNonNull(bridge.providerChest().getOriginalCellInventory(0));
+        var cell = bridge.providerChest().getOriginalCellInventory(0);
+        return cell != null ? cell : appeng.me.storage.NullInventory.of();
     }
 
     private long inChest(BlockPos position, net.minecraft.world.item.Item item) {
@@ -603,6 +645,15 @@ final class AddonCraftingScene {
 
     private static long held(MEStorage storage, AEKey what) {
         return storage.extract(what, Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
+    }
+
+    /** The provider network draws on the consumer's energy cell; either direction pools both. */
+    private void enableEnergy() {
+        var policies = PolicyService.get(helper.getLevel());
+        var energy = new PolicyKey(bridge.outerNetwork(), bridge.mainNetwork(), PolicyCapability.ME_POWER);
+        var result = policies.edit(new PolicyEdit(energy, policies.revision(energy),
+                PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY))));
+        helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "The ME power rule was refused: " + result);
     }
 
     private void enableRules() {

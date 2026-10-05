@@ -3,7 +3,10 @@ package space.controlnet.ae2federation.compat;
 import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.core.definitions.AEParts;
+import appeng.api.storage.IStorageProvider;
+import appeng.api.storage.MEStorage;
 import appeng.me.cluster.IAEMultiBlock;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -22,6 +25,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class NeoEcoCompatGameTests {
     /** The computation system's interface, at the end of the consumer's cable. */
     private static final BlockPos COMPUTATION = AddonCraftingScene.FIRST_CPU.south(3).east(2);
+    /** The consumer's storage system, from its bottom north-west corner, three blocks south of the computation system. */
+    private static final BlockPos CONSUMER_STORAGE = COMPUTATION.south(3).offset(0, -1, -1);
+    private static final BlockPos CONSUMER_DRIVE = CONSUMER_STORAGE.offset(3, 1, 0);
 
     private NeoEcoCompatGameTests() {
     }
@@ -36,8 +42,8 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
-     * The guide's example: Neo ECO's computation system, with a flash array in one of its drives, is the consumer's
-     * only CPU and orders from the provider network's crafting system.
+     * Neo ECO's computation system, with a flash array in one of its drives, is the consumer's only CPU and orders from
+     * the provider network's crafting system.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void computationSystemOrdering(GameTestHelper helper) {
@@ -45,6 +51,24 @@ public final class NeoEcoCompatGameTests {
         var scene = AddonCraftingScene.structure(helper, "neoecoae:crafting_system_l4", List.of(),
                 test -> placeCraftingSystem(test, start), start.offset(3, 2, 1))
                 .consumerCpuStructure(NeoEcoCompatGameTests::placeComputationSystem, () -> fitComputationCell(helper));
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's district and its exercise: the consumer keeps its items in an ECO storage system and runs its jobs on
+     * an ECO computation system, and orders from the provider network's ECO crafting system, which has no power of its
+     * own. Breaking a casing of the crafting system then takes its recipes away from the consumer, and putting it back
+     * returns them.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
+    public static void ecoDistrictOrdering(GameTestHelper helper) {
+        var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
+        var scene = AddonCraftingScene.structure(helper, "neoecoae:crafting_system_l4", List.of(),
+                test -> placeCraftingSystem(test, start), start.offset(3, 2, 1))
+                .consumerCpuStructure(NeoEcoCompatGameTests::placeComputationSystem, () -> fitComputationCell(helper))
+                .consumerStorageStructure(NeoEcoCompatGameTests::placeConsumerStorageSystem,
+                        () -> fitCell(helper, CONSUMER_DRIVE) ? mountedStorage(helper, CONSUMER_DRIVE) : null)
+                .dismantlingAfterwards(start.offset(4, 1, 0));
         helper.succeedWhen(scene::tick);
     }
 
@@ -159,6 +183,25 @@ public final class NeoEcoCompatGameTests {
         for (int y = 0; y < 3; y++) helper.setBlock(start.offset(4, y, 1), block("computation_casing"));
         helper.setBlock(COMPUTATION, block("computation_interface"));
         helper.setBlock(start.offset(1, 1, 0), facing("computation_system_l4", Direction.NORTH));
+    }
+
+    /**
+     * Past the computation system's cable, the consumer's cable runs on south and east to an ECO storage system laid
+     * out as in {@link #placeStorageSystem}, its interface on its west end.
+     */
+    private static void placeConsumerStorageSystem(GameTestHelper helper) {
+        var cable = AddonCraftingScene.FIRST_CPU;
+        for (int step = 4; step <= 6; step++) consumerCable(helper, cable.south(step));
+        consumerCable(helper, cable.south(6).east());
+        placeStorageSystem(helper, CONSUMER_STORAGE);
+    }
+
+    /** The storage an ECO drive mounts into its network, as AE2 asks it for: the drive's cell inventory. */
+    private static MEStorage mountedStorage(GameTestHelper helper, BlockPos drive) {
+        var mounted = new ArrayList<MEStorage>();
+        ((IStorageProvider) helper.getLevel().getBlockEntity(helper.absolutePos(drive)))
+                .mountInventories((inventory, priority) -> mounted.add(inventory));
+        return mounted.isEmpty() ? null : mounted.getFirst();
     }
 
     private static void consumerCable(GameTestHelper helper, BlockPos position) {
