@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.client.guide.GuideExamplePacks;
+import space.controlnet.ae2federation.client.guide.TopologyDiagram;
 
 /**
  * The GuideME pages join AE2's own guide from {@code assets/ae2federation/ae2guide}; GuideME picks a page's
@@ -263,6 +264,64 @@ final class GuidePagesContractTest {
                 assertTrue(blocks > 0, structure.toString());
             }
         }
+    }
+
+    /**
+     * GuideME shows a broken {@code <FederationTopology>} only as an error on the opened page. Each diagram must draw,
+     * and a Chinese copy's diagram may differ from the English one only in its labels and details.
+     */
+    @Test
+    void topologyDiagramsDrawAndChineseCopiesShowTheSameNetworks() throws IOException {
+        var diagrams = 0;
+        for (var guide : guides()) {
+            for (var page : pages(guide.root())) {
+                var english = topologies(guide.root().resolve(page));
+                var chinese = topologies(guide.root().resolve("_zh_cn").resolve(page));
+                assertEquals(english.size(), chinese.size(), page + ": the Chinese copy's diagrams");
+                for (int index = 0; index < english.size(); index++) {
+                    for (var parsed : List.of(english.get(index), chinese.get(index))) {
+                        assertTrue(parsed.problems().isEmpty(), page + ": " + parsed.problems());
+                    }
+                    assertEquals(withoutText(english.get(index).diagram()), withoutText(chinese.get(index).diagram()),
+                            page + ": the Chinese copy's diagram " + index);
+                    diagrams++;
+                }
+            }
+        }
+        assertTrue(diagrams > 0, "No page draws a topology diagram");
+    }
+
+    private static final Pattern TOPOLOGY = Pattern.compile("<FederationTopology>(.*?)</FederationTopology>", Pattern.DOTALL);
+    private static final Pattern TOPOLOGY_ELEMENT = Pattern.compile("<(\\w+)((?:\\s+\\w+=\"[^\"]*\")*)\\s*/>");
+    private static final Pattern ATTRIBUTE = Pattern.compile("(\\w+)=\"([^\"]*)\"");
+
+    private static List<TopologyDiagram.Parsed> topologies(Path page) throws IOException {
+        var parsed = new ArrayList<TopologyDiagram.Parsed>();
+        var blocks = TOPOLOGY.matcher(Files.readString(page));
+        while (blocks.find()) {
+            var elements = new ArrayList<TopologyDiagram.Element>();
+            var body = blocks.group(1);
+            var tags = TOPOLOGY_ELEMENT.matcher(body);
+            var rest = new StringBuilder();
+            while (tags.find()) {
+                tags.appendReplacement(rest, "");
+                var attributes = new java.util.LinkedHashMap<String, String>();
+                var pairs = ATTRIBUTE.matcher(tags.group(2));
+                while (pairs.find()) attributes.put(pairs.group(1), pairs.group(2));
+                elements.add(new TopologyDiagram.Element(tags.group(1), attributes));
+            }
+            tags.appendTail(rest);
+            assertTrue(rest.toString().isBlank(), page + ": only self-closing tags go inside a topology: " + rest);
+            parsed.add(TopologyDiagram.parse(elements));
+        }
+        return parsed;
+    }
+
+    /** The diagram with every network's label and details left out. */
+    private static TopologyDiagram withoutText(TopologyDiagram diagram) {
+        return new TopologyDiagram(diagram.networks().stream().map(network -> new TopologyDiagram.Network(network.key(),
+                "", network.color(), network.column(), network.row(), List.of())).toList(), diagram.rules(),
+                diagram.energy());
     }
 
     /** The base guide, then each optional pack's guide folder with the mods it requires. */
