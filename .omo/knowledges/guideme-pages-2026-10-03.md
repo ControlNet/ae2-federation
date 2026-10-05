@@ -186,6 +186,7 @@ and page ids did not change.
 | `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
+| `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
@@ -215,6 +216,11 @@ and page ids did not change.
   ATM10 unifies Mekanism's iron dust into All the Ores' own, so a test must read a machine's product from the loaded
   recipes (`RecipeManager.getRecipeFor(mekanism:enriching, SingleRecipeInput)`), as a player encodes it, not hard-code
   `mekanism:dust_iron`.
+- `RouterCraftingScene` takes several orders per consumer (`alsoOrdering`), all submitted in one tick: a refused job
+  fails the test even if a retry later succeeds, since a single AE2 CPU would otherwise pass by taking the second job
+  after the first finished. `poweredBy` moves the energy cell; `thenSwitchingOff` checks a rule's exercise. Advanced
+  AE's Quantum Computer renders as a dark glass cube in GuideME, as in its own guide; a 64k AE2 CPU in its place is
+  refused with `NO_SUITABLE_CPU_FOUND busy=1`.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.compat;
 
 import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -82,4 +84,53 @@ public final class AdvancedAECompatGameTests {
         helper.succeedWhen(scene::tick);
     }
 
+    /**
+     * The guide's quantum lab: a network whose only CPU is a formed 7x7x7 Quantum Computer, built as Advanced AE's own
+     * guide shows it and holding the only energy cell, uses a sawmill network's planks pattern and a joinery network's
+     * sticks pattern on one Router. It orders eight sticks from a log, which needs both networks in turn, and four
+     * planks from another log at the same time: the Quantum Computer runs both jobs at once, which a single AE2
+     * crafting CPU cannot. The exercise switches the lab's Crafting rule on the joinery off: sticks leave the lab's
+     * craftables, and planks stay.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1200)
+    public static void quantumComputerLab(GameTestHelper helper) {
+        var scene = new RouterCraftingScene(helper, new BlockPos(18, 1, 18));
+        scene.provider("sawmill", Direction.EAST, RouterCraftingScene::placeAssemblyProvider,
+                        scene.start(Direction.EAST), RouterCraftingScene::patternProvider,
+                        RouterCraftingScene.planksPattern(helper))
+                .provider("joinery", Direction.WEST, RouterCraftingScene::placeAssemblyProvider,
+                        scene.start(Direction.WEST), RouterCraftingScene::patternProvider,
+                        RouterCraftingScene.sticksPattern(helper))
+                .consumer("lab", Direction.SOUTH, AdvancedAECompatGameTests::placeQuantumComputer,
+                        RouterCraftingScene::formed, RouterCraftingScene.STICKS, 8, RouterCraftingScene.LOG, 1,
+                        "sawmill", "joinery")
+                .alsoOrdering(RouterCraftingScene.PLANKS, 4, RouterCraftingScene.LOG, 1)
+                .poweredBy("lab")
+                .thenSwitchingOff("lab", "joinery", RouterCraftingScene.STICKS, RouterCraftingScene.PLANKS);
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * Advanced AE's guide Quantum Computer, 7 blocks each way from {@code start}, the middle of one bottom edge: Quantum
+     * Structure on the outside, Quantum Accelerators inside, and up the middle a Multi-Threader, a Data Entangler, the
+     * Quantum Core and a 256M Quantum Storage.
+     */
+    private static void placeQuantumComputer(GameTestHelper helper, BlockPos start, Direction outward) {
+        var across = outward.getClockWise();
+        for (int along = 0; along < 7; along++) {
+            for (int y = 0; y < 7; y++) {
+                for (int side = -3; side <= 3; side++) {
+                    var shell = along == 0 || along == 6 || y == 0 || y == 6 || side == -3 || side == 3;
+                    var block = shell ? "quantum_structure"
+                            : along == 3 && side == 0 && y == 1 ? "quantum_multi_threader"
+                            : along == 3 && side == 0 && y == 2 ? "data_entangler"
+                            : along == 3 && side == 0 && y == 3 ? "quantum_core"
+                            : along == 3 && side == 0 && y == 4 ? "quantum_storage_256"
+                            : "quantum_accelerator";
+                    helper.setBlock(start.relative(outward, along).relative(across, side).above(y),
+                            AddonCraftingScene.block("advanced_ae:" + block));
+                }
+            }
+        }
+    }
 }

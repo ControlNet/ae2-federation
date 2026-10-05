@@ -41,32 +41,35 @@ final class GuidePagesContractTest {
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
             "1k_crafting_storage");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
-    private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
-            "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
-                    "energized_smelter"),
-            "appmek", Set.of("chemical_storage_cell_1k"),
-            "appflux", Set.of("flux_accessor", "fe_1k_cell"),
-            "create", Set.of("crushing_wheel", "chute"),
-            "extendedae", Set.of("assembler_matrix_frame"),
-            "extendedae_plus", Set.of("super_assembler_matrix_frame"),
-            "ae2lt", Set.of("overloaded_pattern_provider", "overloaded_pattern_provider_upgrade"),
-            "data_energistics", Set.of("adaptive_pattern_provider", "adaptive_pattern_provider_upgrade"),
-            "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface",
-                    "crafting_system_l4", "crafting_pattern_bus", "crafting_interface", "computation_system_l4",
-                    "computation_drive", "eco_computation_cell_l4", "computation_interface"),
-            "molecularmanipulator", Set.of("matter_fabrication_controller", "matter_fabrication_pattern_assembly"));
+    private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
+            Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
+                    "energized_smelter")),
+            Map.entry("appmek", Set.of("chemical_storage_cell_1k")),
+            Map.entry("appflux", Set.of("flux_accessor", "fe_1k_cell")),
+            Map.entry("advanced_ae", Set.of("quantum_core", "quantum_structure")),
+            Map.entry("create", Set.of("crushing_wheel", "chute")),
+            Map.entry("extendedae", Set.of("assembler_matrix_frame")),
+            Map.entry("extendedae_plus", Set.of("super_assembler_matrix_frame")),
+            Map.entry("ae2lt", Set.of("overloaded_pattern_provider", "overloaded_pattern_provider_upgrade")),
+            Map.entry("data_energistics", Set.of("adaptive_pattern_provider", "adaptive_pattern_provider_upgrade")),
+            Map.entry("neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m",
+                    "storage_interface", "crafting_system_l4", "crafting_pattern_bus", "crafting_interface",
+                    "computation_system_l4", "computation_drive", "eco_computation_cell_l4", "computation_interface")),
+            Map.entry("molecularmanipulator", Set.of("matter_fabrication_controller",
+                    "matter_fabrication_pattern_assembly")));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
-    private static final Map<String, Set<String>> MOD_PAGES = Map.of(
-            "appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md"),
-            "extendedae", Set.of("epp_intro/assembler_matrix.md"),
-            "extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md"),
-            "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),
-            "data_energistics", Set.of("items-blocks-machines/6.17_adaptive_pattern_provider.md"),
-            "neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
-                    "neoecoae_intro/computation_system.md"),
-            "molecularmanipulator", Set.of("items-blocks-machines/matter_fabrication_well.md",
+    private static final Map<String, Set<String>> MOD_PAGES = Map.ofEntries(
+            Map.entry("appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md")),
+            Map.entry("advanced_ae", Set.of("aae_intro/quantum_computer.md")),
+            Map.entry("extendedae", Set.of("epp_intro/assembler_matrix.md")),
+            Map.entry("extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md")),
+            Map.entry("ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md")),
+            Map.entry("data_energistics", Set.of("items-blocks-machines/6.17_adaptive_pattern_provider.md")),
+            Map.entry("neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
+                    "neoecoae_intro/computation_system.md")),
+            Map.entry("molecularmanipulator", Set.of("items-blocks-machines/matter_fabrication_well.md",
                     "items-blocks-machines/matter_fabrication_research.md",
-                    "items-blocks-machines/matter_fabrication_pattern_assembly.md"));
+                    "items-blocks-machines/matter_fabrication_pattern_assembly.md")));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);

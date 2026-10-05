@@ -46,10 +46,10 @@ import space.controlnet.ae2federation.test.router.RouterFixtures;
 
 /**
  * Networks on the faces of one Router, as the guide's hub examples build them. Each network starts as an ME Chest with
- * an item cell beside its face; only the first network has an energy cell, and the others run on it through the ME
- * power rule. Beside each chest, outwards, a consumer gets its crafting CPU and a provider its crafter, both placed as a
+ * an item cell beside its face; only the first network (or the one named by {@link #poweredBy}) has an energy cell,
+ * and the others run on it through the ME power rule. Beside each chest, outwards, a consumer gets its crafting CPU and a provider its crafter, both placed as a
  * player places them, so they join the chest's network. Each consumer uses the providers it names, and every consumer
- * orders at once, each on its own CPU; every order must finish exactly and leave nothing owed.
+ * places its orders at once on its own CPU; every order must finish exactly and leave nothing owed.
  */
 final class RouterCraftingScene implements AutoCloseable {
     static final AEItemKey LOG = AEItemKey.of(Items.OAK_LOG);
@@ -62,6 +62,12 @@ final class RouterCraftingScene implements AutoCloseable {
     private final List<Member> members = new ArrayList<>();
     private final Set<PolicyKey> configured = new LinkedHashSet<>();
     private int stage;
+    private String refused;
+    private String powering;
+    private String[] switchOff;
+    private AEItemKey gone;
+    private AEItemKey kept;
+    private boolean switchedOff;
 
     /** Places the networks' chests; {@code center} is where the Router goes once every network stands. */
     RouterCraftingScene(GameTestHelper helper, BlockPos center) {
@@ -86,12 +92,7 @@ final class RouterCraftingScene implements AutoCloseable {
         java.util.function.BiPredicate<BlockEntity, ItemStack> install = (entity, pattern) -> entity instanceof
                 PatternContainer container && container.getTerminalPatternInventory().addItems(pattern).isEmpty();
         List<Member> sources = List.of();
-        AEItemKey order;
-        long amount;
-        AEItemKey input;
-        long inputAmount;
-        Future<ICraftingPlan> planFuture;
-        ICraftingPlan plan;
+        final List<Order> orders = new ArrayList<>();
 
         Member(String name, Direction face, Placement placement, Predicate<BlockEntity> ready) {
             this.name = name;
@@ -101,7 +102,25 @@ final class RouterCraftingScene implements AutoCloseable {
         }
 
         boolean consumer() {
-            return order != null;
+            return !orders.isEmpty();
+        }
+    }
+
+    /** {@code amount} of {@code what}, made from {@code inputAmount} of {@code input} in the consumer's own chest. */
+    private static final class Order {
+        final AEItemKey what;
+        final long amount;
+        final AEItemKey input;
+        final long inputAmount;
+        Future<ICraftingPlan> planFuture;
+        ICraftingPlan plan;
+        boolean submitted;
+
+        Order(AEItemKey what, long amount, AEItemKey input, long inputAmount) {
+            this.what = what;
+            this.amount = amount;
+            this.input = input;
+            this.inputAmount = inputAmount;
         }
     }
 
@@ -131,10 +150,7 @@ final class RouterCraftingScene implements AutoCloseable {
     RouterCraftingScene consumer(String name, Direction face, Placement placement, Predicate<BlockEntity> cpuReady,
             AEItemKey order, long amount, AEItemKey input, long inputAmount, String... sources) {
         var member = new Member(name, face, placement, cpuReady);
-        member.order = order;
-        member.amount = amount;
-        member.input = input;
-        member.inputAmount = inputAmount;
+        member.orders.add(new Order(order, amount, input, inputAmount));
         member.patternContainer = chestPosition(face).relative(face);
         member.sources = new ArrayList<>();
         members.add(member);
@@ -142,6 +158,29 @@ final class RouterCraftingScene implements AutoCloseable {
             ((ArrayList<Member>) member.sources).add(members.stream().filter(other -> other.name.equals(source))
                     .findFirst().orElseThrow(() -> new IllegalArgumentException("Name the provider " + source + " first")));
         }
+        return this;
+    }
+
+    /** The last consumer also orders {@code amount} of {@code order}, at the same time and on the same CPU. */
+    RouterCraftingScene alsoOrdering(AEItemKey order, long amount, AEItemKey input, long inputAmount) {
+        members.getLast().orders.add(new Order(order, amount, input, inputAmount));
+        return this;
+    }
+
+    /** The network named {@code name} holds the energy cell instead of the first one. */
+    RouterCraftingScene poweredBy(String name) {
+        powering = name;
+        return this;
+    }
+
+    /**
+     * After every order, {@code consumer}'s Crafting rule on {@code source} is switched off, as the guide's exercise has
+     * its player do: {@code gone} must stop being craftable there while {@code kept} still is.
+     */
+    RouterCraftingScene thenSwitchingOff(String consumer, String source, AEItemKey gone, AEItemKey kept) {
+        switchOff = new String[] {consumer, source};
+        this.gone = gone;
+        this.kept = kept;
         return this;
     }
 
@@ -164,7 +203,7 @@ final class RouterCraftingScene implements AutoCloseable {
                     chest(member).setCell(AEItems.ITEM_CELL_1K.stack());
                 }
                 // As the guide's examples have it, one energy cell powers every network through the ME power rule.
-                helper.setBlock(chestPosition(members.getFirst().face).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
+                helper.setBlock(chestPosition(power().face).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
                 stage = 1;
                 helper.fail("Placed the networks' chests");
             }
@@ -186,9 +225,10 @@ final class RouterCraftingScene implements AutoCloseable {
                         instanceof RouterPortBinding.Native), "Waiting for the Router's faces to join the networks");
                 helper.assertValueEqual(Set.copyOf(grids()).size(), members.size(), "Each face must be its own network");
                 helper.assertTrue(settled() && sharedDomain(), "Waiting for one Federation domain");
-                var first = members.getFirst();
-                for (var member : members.subList(1, members.size())) {
-                    rule(new PolicyKey(network(member), network(first), PolicyCapability.ME_POWER),
+                var power = power();
+                for (var member : members) {
+                    if (member == power) continue;
+                    rule(new PolicyKey(network(member), network(power), PolicyCapability.ME_POWER),
                             PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
                 }
                 stage = 4;
@@ -233,50 +273,94 @@ final class RouterCraftingScene implements AutoCloseable {
             }
             case 5 -> {
                 for (var member : consumers()) {
-                    helper.assertTrue(grid(member).getCraftingService().isCraftable(member.order),
-                            "Waiting for the providers' patterns on " + member.name);
+                    for (var order : member.orders) {
+                        helper.assertTrue(grid(member).getCraftingService().isCraftable(order.what),
+                                "Waiting for the providers' patterns of " + order.what + " on " + member.name);
+                    }
                 }
                 for (var member : consumers()) {
-                    helper.assertValueEqual(storage(member).insert(member.input, member.inputAmount,
-                            Actionable.MODULATE, IActionSource.empty()), member.inputAmount, "The chest must take the inputs");
-                    member.planFuture = grid(member).getCraftingService().beginCraftingCalculation(helper.getLevel(),
-                            requester(member), member.order, member.amount, CalculationStrategy.REPORT_MISSING_ITEMS);
+                    for (var order : member.orders) {
+                        helper.assertValueEqual(storage(member).insert(order.input, order.inputAmount,
+                                Actionable.MODULATE, IActionSource.empty()), order.inputAmount,
+                                "The chest must take the inputs");
+                    }
+                    for (var order : member.orders) {
+                        order.planFuture = grid(member).getCraftingService().beginCraftingCalculation(
+                                helper.getLevel(), requester(member), order.what, order.amount,
+                                CalculationStrategy.REPORT_MISSING_ITEMS);
+                    }
                 }
                 stage = 6;
                 helper.fail("Started every consumer's plan");
             }
             case 6 -> {
                 for (var member : consumers()) {
-                    helper.assertTrue(planReady(member), "Waiting for " + member.name + "'s plan");
-                    helper.assertFalse(member.plan.simulation(), member.name + "'s own inputs must be enough");
+                    for (var order : member.orders) {
+                        helper.assertTrue(planReady(order), "Waiting for " + member.name + "'s plan");
+                        helper.assertFalse(order.plan.simulation(), member.name + "'s own inputs must be enough for "
+                                + order.what + ": " + order.plan.missingItems());
+                    }
                 }
                 for (var member : consumers()) {
-                    helper.assertTrue(grid(member).getCraftingService().submitJob(member.plan, null, null, true,
-                            IActionSource.empty()).successful(), member.name + "'s own CPU must take the job");
+                    for (var order : member.orders) {
+                        // succeedWhen retries this stage until every job is taken, so each job goes in once.
+                        if (order.submitted) continue;
+                        var result = grid(member).getCraftingService().submitJob(order.plan, null, null, true,
+                                IActionSource.empty());
+                        if (!result.successful() && refused == null) {
+                            refused = member.name + "'s CPU refused the job for " + order.what + ": "
+                                    + result.errorCode() + " " + result.errorDetail();
+                        }
+                        helper.assertTrue(result.successful(), member.name + "'s own CPU must take the job for "
+                                + order.what + ": " + result.errorCode() + " " + result.errorDetail());
+                        order.submitted = true;
+                    }
                 }
                 stage = 7;
                 helper.fail("Submitted every order");
             }
             default -> {
+                // Every job is ordered at once, so a CPU that can run only one job at a time must not pass by
+                // taking the next one after the first is done.
+                helper.assertTrue(refused == null, "Every job must be taken when it is ordered: " + refused);
                 for (var member : consumers()) {
                     helper.assertTrue(grid(member).getCraftingService().getCpus().stream().noneMatch(cpu -> cpu.isBusy()),
                             "Waiting for " + member.name + "'s job to finish");
                 }
                 var orders = new java.util.HashMap<AEItemKey, Long>();
-                consumers().forEach(member -> orders.merge(member.order, member.amount, Long::sum));
+                consumers().forEach(member -> member.orders.forEach(order -> orders.merge(order.what, order.amount,
+                        Long::sum)));
                 for (var order : orders.entrySet()) {
                     helper.assertValueEqual(total(order.getKey()), order.getValue(),
                             "The orders must store exactly what was ordered of " + order.getKey());
                 }
                 for (var member : consumers()) {
-                    helper.assertValueEqual(total(member.input), 0L, member.name + "'s inputs must be used up");
+                    for (var order : member.orders) {
+                        helper.assertValueEqual(total(order.input), 0L, member.name + "'s inputs must be used up");
+                    }
                     for (var source : members) {
                         if (source == member) continue;
-                        for (var key : List.of(member.order, PLANKS, STICKS)) {
+                        var keys = new LinkedHashSet<AEItemKey>(List.of(PLANKS, STICKS));
+                        member.orders.forEach(order -> keys.add(order.what));
+                        for (var key : keys) {
                             helper.assertValueEqual(CraftingReturnLedger.get(helper.getLevel()).owed(network(source),
                                     network(member), key), 0L, source.name + " must owe " + member.name + " nothing");
                         }
                     }
+                }
+                if (switchOff != null) {
+                    var consumer = named(switchOff[0]);
+                    var key = new PolicyKey(network(consumer), network(named(switchOff[1])), PolicyCapability.CRAFTING);
+                    if (!switchedOff) {
+                        var policies = PolicyService.get(helper.getLevel());
+                        policies.configured(key).ifPresent(record -> rule(key, record.rule().withEnabled(false)));
+                        switchedOff = true;
+                        helper.fail("Switched off " + consumer.name + "'s Crafting rule on " + switchOff[1]);
+                    }
+                    helper.assertFalse(grid(consumer).getCraftingService().isCraftable(gone),
+                            "Waiting for " + gone + " to leave " + consumer.name + "'s craftables");
+                    helper.assertTrue(grid(consumer).getCraftingService().isCraftable(kept),
+                            consumer.name + " must still craft " + kept);
                 }
                 close();
             }
@@ -304,6 +388,17 @@ final class RouterCraftingScene implements AutoCloseable {
         helper.setBlock(start, AEBlocks.CRAFTING_STORAGE_1K.block());
     }
 
+    /** An AE2 Pattern Provider at {@code start} with a Molecular Assembler beyond it, which crafts its patterns. */
+    static void placeAssemblyProvider(GameTestHelper helper, BlockPos start, Direction outward) {
+        helper.setBlock(start, AEBlocks.PATTERN_PROVIDER.block());
+        helper.setBlock(start.relative(outward), AEBlocks.MOLECULAR_ASSEMBLER.block());
+    }
+
+    /** Whether {@code entity} is a pattern provider. */
+    static boolean patternProvider(BlockEntity entity) {
+        return entity instanceof PatternProviderLogicHost;
+    }
+
     /** Four sticks from two planks. */
     static ItemStack sticksPattern(GameTestHelper helper) {
         return craftingPattern(helper, new ItemStack(Items.OAK_PLANKS), ItemStack.EMPTY, ItemStack.EMPTY,
@@ -315,15 +410,24 @@ final class RouterCraftingScene implements AutoCloseable {
         return craftingPattern(helper, new ItemStack(Items.OAK_LOG));
     }
 
+    private Member named(String name) {
+        return members.stream().filter(member -> member.name.equals(name)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No network named " + name));
+    }
+
+    private Member power() {
+        return powering == null ? members.getFirst() : named(powering);
+    }
+
     private List<Member> consumers() {
         return members.stream().filter(Member::consumer).toList();
     }
 
-    private boolean planReady(Member member) {
-        if (member.plan != null) return true;
-        if (!member.planFuture.isDone()) return false;
+    private boolean planReady(Order order) {
+        if (order.plan != null) return true;
+        if (!order.planFuture.isDone()) return false;
         try {
-            member.plan = member.planFuture.get();
+            order.plan = order.planFuture.get();
             return true;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
