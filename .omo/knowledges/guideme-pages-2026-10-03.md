@@ -189,7 +189,7 @@ and page ids did not change.
 | `guide_extendedae_plus` | extendedae_plus | `examples/accelerated-cpu.md` | `acceleratorMovedToWorkshop` |
 | `guide_ae2lt` | ae2lt | `examples/overloaded-providers.md` | `overloadedUpgradeInPlace` |
 | `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
-| `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `storageSystemDismantled` |
+| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
   structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
@@ -219,4 +219,18 @@ and page ids did not change.
 - Data Energistics 3.3.3 needs AE2 19.2.18, newer than the dev runs' 19.2.17. For a local guide render only:
   `./gradlew :neoforge-1.21.1:runGuideClient -Pae2_version=19.2.18 --dependency-verification=lenient` (19.2.18 is not
   in the verification metadata), and accept the experimental-settings prompt once per world.
-- Not done: the OmniSequence example (idea 12) needs the formed Matter Fabrication Well and its local research.
+- Other mods' multiblocks in scenes: copy the block states and NBT of the mod's own formed guide scenes
+  (`assets/<mod>/ae2guide/scenes/*.nbt`; Neo ECO has `store_min`, `craft_min`, `comp_min`) and check the properties
+  against `blockstates/*.json`. Casings carry `formed:true` and `invisible:true/false`, and the formed look comes from
+  them; hand-typed unformed states rendered with the wrong textures. The Neo ECO scene builder turns them to run along
+  x and swaps L9 for the tested L4 tier.
+- The Neo ECO interfaces sit at the back of each structure, so the district scene looks from the back (yaw 15) to show
+  the interfaces, cables and Router.
+- `AddonCraftingScene.consumerCpuStructure(place, ready)` builds a multiblock CPU on the consumer instead of the CPU
+  blocks; `computationSystemOrdering` uses it and found that Federation returned nothing to Neo ECO's CPU (fixed in
+  `CraftingReturnRouter.waiting`, see `crafting-pattern-projection-design-2026-10-02.md`).
+- In a Chinese-locale client the join line is "Dev加入了游戏", not "Dev joined the game".
+- The Matter Fabrication Well test (`matterFabricationWell`) places the well from OmniSequence's blueprint and the
+  controller only after the provider cable has joined the network; placing both in one tick across chunks gave the
+  provider network an `AMBIGUOUS_MERGE` identity.
+- Not done: the OmniSequence guide pack (idea 12); its test is in place.
