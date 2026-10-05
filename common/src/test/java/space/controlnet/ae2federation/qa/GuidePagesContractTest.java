@@ -278,6 +278,31 @@ final class GuidePagesContractTest {
     }
 
     /**
+     * Scenes use AE2's smart cables, which show each side's channels, and every cable records them. The compatibility
+     * test {@code guideSceneCables} checks the counts against AE2's own in a server.
+     */
+    @Test
+    void sceneCablesAreSmartCablesWithTheirChannels() throws IOException {
+        var cable = Pattern.compile("cable: \\{id: \"ae2:(\\w+)\", visual: \\{([^}]*)}");
+        for (var guide : guides()) {
+            for (var structure : structures(guide.root())) {
+                var cables = cable.matcher(Files.readString(structure));
+                while (cables.find()) {
+                    assertTrue(cables.group(1).endsWith("_smart_cable"),
+                            structure.getFileName() + " has a " + cables.group(1));
+                    var connections = Pattern.compile("\"(\\w+)\"").matcher(cables.group(2));
+                    while (connections.find()) {
+                        var side = connections.group(1);
+                        assertTrue(cables.group(2).contains("channels" + Character.toUpperCase(side.charAt(0))
+                                + side.substring(1) + ": "), structure.getFileName() + ": no channel count toward "
+                                + side + " in {" + cables.group(2) + "}");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * GuideME shows a broken {@code <FederationTopology>} only as an error on the opened page. Each diagram must draw,
      * and a Chinese copy's diagram may differ from the English one only in its labels and details.
      */

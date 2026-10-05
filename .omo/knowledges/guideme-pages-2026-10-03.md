@@ -343,3 +343,39 @@ with no power and no storage on B. `ecoDistrictOrdering` builds exactly that
 (`AddonCraftingScene.consumerStorageStructure`: the consumer's chest and the provider's chest lose their cells, the
 inputs go into A's ECO storage through the drive's `IStorageProvider.mountInventories`, and everything made must end
 there), then breaks a crafting-system casing for the page's "Try it".
+
+## Smart cables with AE2's channel counts (2026-10-05)
+
+- The owner asked for ME Smart Cables in every scene, with correct channel counts. Every AE2 cable in
+  `ae2guide/assets/**/*.snbt` is now `ae2:<colour>_smart_cable` (same colours: purple network A, light blue B, ...).
+- A cable's `visual` holds `channels<Side>: N` for each side in `connections` (AE2's own format, as
+  `CablePart.writeVisualStateToNBT` writes it); part sides are not in `connections` and get no count. GuideME draws
+  only what the file says.
+- The scenes have no controllers, so every network is ad hoc: AE2 gives every connection the network's total channel
+  count (`PathingService.calculateAdHocChannels` + `AdHocChannelUpdater`). A multiblock flagged `MULTIBLOCK` (Quantum
+  Computer, Assembler Matrix, Neo ECO systems, crafting CPUs) counts once. The Bridge, Router faces and the Endpoint
+  take no channel; the Federation Pattern Provider takes one.
+- **Truth comes from a server, not from a hand count.** The compat test `guideSceneCables` (core group, so every profile)
+  places each scene the loaded mods can show from the jar (`NbtUtils.snbtToStructure` + `StructureTemplate`), waits
+  40 ticks, and compares each cable's `writeVisualStateToNBT` connections and channels with the file. A mismatch logs
+  `AE2F_GUIDE_CABLE <scene> <pos> <AE2's tag>`; that log is what the values were written from. The addon multiblocks
+  formed from their guide states without special placement. AdvancedAE, Mekanism, Create and Applied Flux scenes need
+  their own profiles (`addons-all` lacks them); the packs also run the check against their own mod versions.
+- `GuidePagesContractTest.sceneCablesAreSmartCablesWithTheirChannels`: no glass cable, and a channel count toward every
+  connected side (mutation checked with one cable turned back to glass).
+- Coloured smart cables draw odd channels in the colour's dark variant and even ones in its light variant
+  (`CableBuilder`, `blackVariant`/`whiteVariant`), so a purple or light blue cable with one channel shows one dark
+  stripe. AE2's own guide uses fluix cables, whose variants are bright. That is AE2's look, not a rendering fault.
+- `bridge_part.snbt`'s lone cable lost its `down` connection toward the Bridge: AE2 lists none there. A cable on the
+  far side of a Bridge does list the connection toward it (bridge.snbt), and AE2 agrees.
+- Removing a block next to a cable changes that cable's `connections` and so its counts: rerun `guideSceneCables`
+  after any scene edit (`python3 tools/compat_run.py --accept-eula addons-all --tests guidescenecables`).
+
+## Remote Crafting page: one power source and topology diagrams (2026-10-05)
+
+- `native_projection.snbt` lost network B's energy cell; the page adds "Switch on ME power" as step 3, an annotation on
+  A's cell, and a diagram (A uses B's Crafting and Storage, energy shared). `remote_processing.snbt` lost the subnet's
+  cell; the subnet is "powered through the Endpoint", and a diagram shows the Endpoint under the Provider's network
+  with `energy="true"`. English and Chinese.
+- Still one cell per network: `bridge.snbt`, `router_cable.snbt` and `router_hub.snbt` (Getting Started, Bridge and
+  Router pages). Left as they are pending the owner's call, since Getting Started would then also need the ME power rule.

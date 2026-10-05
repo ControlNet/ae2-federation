@@ -49,6 +49,13 @@ public final class CoreCompatGameTests {
         helper.succeed();
     }
 
+    /** Every guide scene the loaded mods can show draws its cables as AE2 would; see {@link GuideSceneCables}. */
+    @GameTest(templateNamespace = TEMPLATES, template = "scale_36_empty", timeoutTicks = 2400)
+    public static void guideSceneCables(GameTestHelper helper) {
+        var scene = new GuideSceneCables(helper);
+        helper.succeedWhen(scene::tick);
+    }
+
     /** Two networks joined by Routers and Federation Cable share storage through a Storage rule. */
     @GameTest(templateNamespace = TEMPLATES, template = "harness_native_smoke", timeoutTicks = 400)
     public static void storageShare(GameTestHelper helper) {
