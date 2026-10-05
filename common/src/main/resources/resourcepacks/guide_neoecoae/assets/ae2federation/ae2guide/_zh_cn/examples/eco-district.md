@@ -19,10 +19,10 @@ navigation:
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_district.snbt" />
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="5 3 2">
-    网络B的仓库： 最小的ECO存储系统， 通讯接口在它右端的背面
+    网络B的仓库： 最小的ECO存储系统（这里看到的是背面）， 通讯接口接在网络B的线缆上
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="5 0 0" max="10 3 2">
-    网络B的工厂： 最小的ECO合成系统， 通讯接口在它右端的背面
+    网络B的工厂： 最小的ECO合成系统（这里看到的是背面）， 通讯接口接在网络B的线缆上
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="3 1 2" max="10 2 3">
     网络B的线缆接着两个通讯接口， 还有这个网络自己的电源
@@ -31,12 +31,12 @@ navigation:
     路由器： 每个网络占一个面
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="11 0 0" max="16 3 2">
-    网络A的CPU： 最小的ECO计算系统， 通讯接口在它右端的背面
+    网络A的CPU： 最小的ECO计算系统（这里看到的是背面）， 通讯接口接在网络A的线缆上
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="11 1 2" max="17 2 3">
     网络A的线缆接着计算系统的通讯接口， 还有一个合成终端和这个网络自己的电源
   </BoxAnnotation>
-  <IsometricCamera yaw="195" pitch="30" />
+  <IsometricCamera yaw="15" pitch="30" />
 </GameScene>
 
 ## 搭建

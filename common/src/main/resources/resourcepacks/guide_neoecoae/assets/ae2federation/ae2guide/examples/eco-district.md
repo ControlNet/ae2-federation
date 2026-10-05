@@ -30,10 +30,10 @@ because Neo ECO AE Extension is installed.
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_district.snbt" />
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="5 3 2">
-    Network B's warehouse: the smallest ECO storage system, its interface at the back of its right end
+    Network B's warehouse: the smallest ECO storage system, seen from the back, its interface on network B's cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="5 0 0" max="10 3 2">
-    Network B's factory: the smallest ECO crafting system, its interface at the back of its right end
+    Network B's factory: the smallest ECO crafting system, seen from the back, its interface on network B's cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="3 1 2" max="10 2 3">
     Network B's cable on both interfaces, with the network's own power
@@ -42,12 +42,12 @@ because Neo ECO AE Extension is installed.
     Router: one face per network
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="11 0 0" max="16 3 2">
-    Network A's CPU: the smallest ECO computation system, its interface at the back of its right end
+    Network A's CPU: the smallest ECO computation system, seen from the back, its interface on network A's cable
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="11 1 2" max="17 2 3">
     Network A's cable on the computation system's interface, with a crafting terminal and the network's own power
   </BoxAnnotation>
-  <IsometricCamera yaw="195" pitch="30" />
+  <IsometricCamera yaw="15" pitch="30" />
 </GameScene>
 
 ## Build it
