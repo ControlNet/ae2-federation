@@ -183,6 +183,7 @@ and page ids did not change.
 | Pack | Required mods | Page | Tested build and "Try it" |
 |---|---|---|---|
 | `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
+| `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
@@ -209,6 +210,11 @@ and page ids did not change.
   enough for it to use another network's ME FE Storage Cells; a disabled rule unmounts them and it draws nothing.
   It needs a channel. `GuidePagesContractTest.MOD_ITEMS`/`MOD_PAGES` are at `Map.of`'s 10-entry limit; switch to
   `Map.ofEntries` for the next mod.
+- `EndpointChainScene` (compattest) builds a line of machines, each behind its own Endpoint on one Federation Cable
+  from one Provider; ordering the last product runs every step, intermediates returning to the Provider's network.
+  ATM10 unifies Mekanism's iron dust into All the Ores' own, so a test must read a machine's product from the loaded
+  recipes (`RecipeManager.getRecipeFor(mekanism:enriching, SingleRecipeInput)`), as a player encodes it, not hard-code
+  `mekanism:dust_iron`.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

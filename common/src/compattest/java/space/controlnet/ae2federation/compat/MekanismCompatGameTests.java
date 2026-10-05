@@ -7,9 +7,15 @@ import appeng.api.storage.MEStorage;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -41,6 +47,37 @@ public final class MekanismCompatGameTests {
                 (test, crusher) -> MekanismSetup.configure(test, crusher, "ITEM", "NONE", Direction.UP, false),
                 (test, crusher) -> MekanismSetup.configure(test, crusher, "ITEM", "INPUT", Direction.UP, false));
         helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's ore line: one Provider maps iron ore to an Enrichment Chamber's Endpoint and iron dust to an Energized
+     * Smelter's, so ordering iron ingots runs both, the dust returning to the Provider's network between them. Each
+     * machine takes 200 ticks an item. The exercise takes the Smelter's hopper away for 900 ticks, longer than enriching
+     * both ores and smelting one dust: no ingot may return until the hopper is back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 3200)
+    public static void endpointOreLine(GameTestHelper helper) {
+        var dust = enriched(helper, new ItemStack(Items.IRON_ORE));
+        var scene = new EndpointChainScene(helper, 2,
+                new PoweredMachine("mekanism:enrichment_chamber", AEItemKey.of(Items.IRON_ORE), AEItemKey.of(dust),
+                        dust.getCount()),
+                new PoweredMachine("mekanism:energized_smelter", AEItemKey.of(dust), AEItemKey.of(Items.IRON_INGOT), 1))
+                .cuttingOff(1, 900);
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * What the Enrichment Chamber makes from {@code input}, read from the loaded recipes as a player reads it off the
+     * machine: a modpack may change it, as All the Mods unifies Mekanism's iron dust into its own.
+     */
+    private static ItemStack enriched(GameTestHelper helper, ItemStack input) {
+        @SuppressWarnings("unchecked")
+        var type = (RecipeType<Recipe<SingleRecipeInput>>) BuiltInRegistries.RECIPE_TYPE.get(
+                ResourceLocation.parse("mekanism:enriching"));
+        var level = helper.getLevel();
+        var recipe = level.getRecipeManager().getRecipeFor(type, new SingleRecipeInput(input), level).orElseThrow(
+                () -> new IllegalStateException("No enriching recipe for " + input));
+        return recipe.value().assemble(new SingleRecipeInput(input), level.registryAccess());
     }
 
     /**
@@ -96,6 +133,29 @@ public final class MekanismCompatGameTests {
         /** Nothing to move: the Crusher ejects into the provider by itself. */
         @Override
         public void collect(GameTestHelper helper, BlockPos position, MEStorage network) {
+        }
+    }
+
+    /**
+     * A Mekanism machine powered by a charged Basic Energy Cube on its west, taking items on top and giving its product
+     * at the bottom, as a player configures them.
+     */
+    private record PoweredMachine(String blockId, AEKey input, AEKey output, long outputPerInput)
+            implements EndpointMachineScene.Machine {
+        @Override
+        public void prepare(GameTestHelper helper, BlockPos position) {
+            var cube = position.west();
+            helper.setBlock(cube, AddonCraftingScene.block("mekanism:basic_energy_cube"));
+            MekanismSetup.fill(helper, cube);
+            MekanismSetup.configure(helper, cube, "ENERGY", "OUTPUT", Direction.EAST, true);
+            MekanismSetup.configure(helper, position, "ITEM", "INPUT", Direction.UP, false);
+            MekanismSetup.configure(helper, position, "ITEM", "OUTPUT", Direction.DOWN, false);
+            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.WEST, false);
+        }
+
+        @Override
+        public String state(GameTestHelper helper, BlockPos position) {
+            return MekanismSetup.describe(helper, position);
         }
     }
 

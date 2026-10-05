@@ -42,7 +42,8 @@ final class GuidePagesContractTest {
             "1k_crafting_storage");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
-            "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
+            "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
+                    "energized_smelter"),
             "appmek", Set.of("chemical_storage_cell_1k"),
             "appflux", Set.of("flux_accessor", "fe_1k_cell"),
             "create", Set.of("crushing_wheel", "chute"),
