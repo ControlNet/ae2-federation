@@ -68,6 +68,11 @@ final class RouterCraftingScene implements AutoCloseable {
     private AEItemKey gone;
     private AEItemKey kept;
     private boolean switchedOff;
+    private BlockPos removed;
+    private net.minecraft.world.level.block.state.BlockState removedState;
+    private AEItemKey lost;
+    private String loser;
+    private int removal;
 
     /** Places the networks' chests; {@code center} is where the Router goes once every network stands. */
     RouterCraftingScene(GameTestHelper helper, BlockPos center) {
@@ -93,6 +98,7 @@ final class RouterCraftingScene implements AutoCloseable {
                 PatternContainer container && container.getTerminalPatternInventory().addItems(pattern).isEmpty();
         List<Member> sources = List.of();
         final List<Order> orders = new ArrayList<>();
+        boolean storage = true;
 
         Member(String name, Direction face, Placement placement, Predicate<BlockEntity> ready) {
             this.name = name;
@@ -161,6 +167,12 @@ final class RouterCraftingScene implements AutoCloseable {
         return this;
     }
 
+    /** The last network's chest stays empty, so it has no storage of its own. */
+    RouterCraftingScene withoutStorage() {
+        members.getLast().storage = false;
+        return this;
+    }
+
     /** The last consumer also orders {@code amount} of {@code order}, at the same time and on the same CPU. */
     RouterCraftingScene alsoOrdering(AEItemKey order, long amount, AEItemKey input, long inputAmount) {
         members.getLast().orders.add(new Order(order, amount, input, inputAmount));
@@ -184,6 +196,17 @@ final class RouterCraftingScene implements AutoCloseable {
         return this;
     }
 
+    /**
+     * After every order, the block at {@code block} is broken and put back, as the guide's exercise has its player do:
+     * {@code key} must leave {@code downstream}'s craftables while it is gone and come back once it is in place again.
+     */
+    RouterCraftingScene thenRemoving(BlockPos block, AEItemKey key, String downstream) {
+        removed = block;
+        lost = key;
+        loser = downstream;
+        return this;
+    }
+
     /** Where {@code face}'s network keeps its chest. */
     BlockPos chestPosition(Direction face) {
         return center.relative(face);
@@ -200,7 +223,7 @@ final class RouterCraftingScene implements AutoCloseable {
             case 0 -> {
                 for (var member : members) {
                     routers.placeNativeDevice(center, member.face);
-                    chest(member).setCell(AEItems.ITEM_CELL_1K.stack());
+                    if (member.storage) chest(member).setCell(AEItems.ITEM_CELL_1K.stack());
                 }
                 // As the guide's examples have it, one energy cell powers every network through the ME power rule.
                 helper.setBlock(chestPosition(power().face).below(), AEBlocks.CREATIVE_ENERGY_CELL.block());
@@ -320,6 +343,11 @@ final class RouterCraftingScene implements AutoCloseable {
                 helper.fail("Submitted every order");
             }
             default -> {
+                if (removal > 0) {
+                    removing();
+                    close();
+                    return;
+                }
                 // Every job is ordered at once, so a CPU that can run only one job at a time must not pass by
                 // taking the next one after the first is done.
                 helper.assertTrue(refused == null, "Every job must be taken when it is ordered: " + refused);
@@ -362,9 +390,33 @@ final class RouterCraftingScene implements AutoCloseable {
                     helper.assertTrue(grid(consumer).getCraftingService().isCraftable(kept),
                             consumer.name + " must still craft " + kept);
                 }
+                if (removed != null) removing();
                 close();
             }
         }
+    }
+
+    /**
+     * Breaks the block {@link #thenRemoving} names and puts it back. Once it is broken, a network may split and lose
+     * its identity until it is back, so this alone runs on the later ticks.
+     */
+    private void removing() {
+        var downstream = grid(named(loser)).getCraftingService();
+        if (removal == 0) {
+            removedState = helper.getBlockState(removed);
+            helper.setBlock(removed, net.minecraft.world.level.block.Blocks.AIR);
+            removal = 1;
+            helper.fail("Broke the block at " + removed);
+        }
+        if (removal == 1) {
+            helper.assertFalse(downstream.isCraftable(lost),
+                    "Waiting for " + lost + " to leave " + loser + "'s craftables");
+            helper.setBlock(removed, removedState);
+            removal = 2;
+            helper.fail("Put the block at " + removed + " back");
+        }
+        helper.assertTrue(downstream.isCraftable(lost),
+                "Waiting for " + lost + " to come back to " + loser + "'s craftables");
     }
 
     /** A crafting pattern for the recipe that {@code items}, laid out row by row in a 3x3 grid, make. */
@@ -456,6 +508,7 @@ final class RouterCraftingScene implements AutoCloseable {
     private long total(AEItemKey key) {
         long total = 0;
         for (var member : members) {
+            if (!member.storage) continue;
             total += storage(member).extract(key, Long.MAX_VALUE, Actionable.SIMULATE, IActionSource.empty());
         }
         return total;
@@ -511,7 +564,11 @@ final class RouterCraftingScene implements AutoCloseable {
     }
 
     private NetworkId network(Member member) {
-        return FederationDomainRegistryAccess.confirmedNetworkId(grid(member)).orElseThrow();
+        var id = FederationDomainRegistryAccess.confirmedNetworkId(grid(member));
+        helper.assertTrue(id.isPresent(), "Waiting for " + member.name + "'s identity: " + grid(member).getService(
+                space.controlnet.ae2federation.identity.NetworkIdentityService.class).settlement() + " on "
+                + describe(grid(member)));
+        return id.get();
     }
 
     private void rule(PolicyKey key, PolicyRule rule) {

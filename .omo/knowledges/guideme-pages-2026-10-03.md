@@ -190,7 +190,7 @@ and page ids did not change.
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
-| `guide_ae2lt` | ae2lt | `examples/overloaded-providers.md` | `overloadedUpgradeInPlace` |
+| `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
@@ -221,6 +221,15 @@ and page ids did not change.
   after the first finished. `poweredBy` moves the energy cell; `thenSwitchingOff` checks a rule's exercise. Advanced
   AE's Quantum Computer renders as a dark glass cube in GuideME, as in its own guide; a 64k AE2 CPU in its place is
   refused with `NO_SUITABLE_CPU_FOUND busy=1`.
+- AE2 Lightning Tech's Tianshu Supercomputer (7x7x7 CPU) and Matter Warping Matrix (7x11x7 crafting provider) are
+  built in tests from the mod's own guide scenes (`assets/ae2lt/ae2guide/assets/assemblies/*.snbt`, read through
+  `ModList`), unformed, controller last. Scene states are `id{prop:val}`; `BlockStateParser` needs `id[prop=val]`.
+  The Matrix Port has no `PatternContainer`: patterns go in through its `getPatternItemHandler()` (reflection), and it
+  takes ME cables only once formed. The Matrix inserts results into its own network, where `CraftingReturnRouter`
+  hands them back, so the foundry needs no storage (`RouterCraftingScene.withoutStorage()`). Breaking one casing
+  detaches the Port, and the foundry grid goes `AMBIGUOUS_SPLIT` ("Split pending") until the block is back; the
+  scene's `thenRemoving` runs alone after the break, since `network()` would wait on that identity. The old
+  overloaded-providers page was replaced; its compat tests stay.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while
