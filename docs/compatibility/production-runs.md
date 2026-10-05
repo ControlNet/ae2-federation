@@ -101,8 +101,8 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 |---|---|---|---|
 | `baseline`, `base-latest`, `neoforge-min` | — | core | 18/18 |
 | `extendedae` | ExtendedAE 2.2.39 | crafting and processing through the Extended Pattern Provider; crafting with the Extended Molecular Assembler and with an Assembler Matrix, which also gives up and regains its recipes when a wall is broken and put back; Endpoint into a Circuit Slicer; an Endpoint in Local mode under the Extended Pattern Provider, as a block and as a part; the Bridge removed after the push; tag and mod storage buses; Infinity Cobblestone Cell | 30/30 |
-| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | the ExtendedAE group; crafting with a 4× Crafting Accelerator, and again after it moves to the provider network's CPU; processing with Smart Doubling, through projection and through an Endpoint; the Smart Doubling mark on a plain AE2 Pattern Provider; sharing a BigInteger cell | 36/36 |
-| `extendedae-plus-aeallpattern` | ExtendedAE-Plus 1.6.3, AE All Pattern 0.2.6 | the ExtendedAE-Plus group, which here checks that no Smart Doubling mark is set | 24/24 |
+| `extendedae-plus` | ExtendedAE-Plus 1.6.3 | the ExtendedAE group; crafting with a 4× Crafting Accelerator, and again after it moves to the provider network's CPU; processing with Smart Doubling, through projection and through an Endpoint; the Smart Doubling mark on a plain AE2 Pattern Provider; sharing a BigInteger cell; a Super Assembler Matrix on a Router serving two networks' orders at once | 37/37 |
+| `extendedae-plus-aeallpattern` | ExtendedAE-Plus 1.6.3, AE All Pattern 0.2.6 | the ExtendedAE-Plus group, which here checks that no Smart Doubling mark is set | 25/25 |
 | `data-energistics` | Data Energistics 3.3.3 | crafting and processing through the Adaptive Pattern Provider; crafting again after an AE2 Pattern Provider is upgraded into one in place and a provider is fitted; an Endpoint in Local mode under it | 22/22 |
 | `ae2-lightning-tech` | AE2 Lightning Tech 2.1.1, Thunderbolt Core 2.0.1 | crafting and processing through the Overloaded Pattern Provider, and crafting again after an AE2 Pattern Provider is upgraded into one in place; crafting through the Pigmee Pattern Provider; an Endpoint in Local mode under each; a Pigmee Mental Math Unit as the only CPU, including a cancelled job and the Bridge removed after the push | 28/28 |
 | `ae2-pattern-disk` | AE2 Pattern Disk 0.8.0, AE2WTLib 19.5.1 | crafting and processing through the Pattern Disk Provider; an Endpoint in Local mode under it | 21/21 |
@@ -116,7 +116,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels, also as the guide builds it with the wheels stopped during a job; an Item Vault and a Fluid Tank through a Storage Bus | 23/23 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 20/20 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 19/19 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 66/66 |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 67/67 |
 
 ## Modpack profiles
 

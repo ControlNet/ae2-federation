@@ -186,7 +186,7 @@ and page ids did not change.
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
-| `guide_extendedae_plus` | extendedae_plus | `examples/accelerated-cpu.md` | `acceleratorMovedToWorkshop` |
+| `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
 | `guide_ae2lt` | ae2lt | `examples/overloaded-providers.md` | `overloadedUpgradeInPlace` |
 | `guide_data_energistics` | data_energistics | `examples/adaptive-providers.md` | `adaptiveUpgradeInPlace` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
@@ -197,6 +197,13 @@ and page ids did not change.
   guide builds it) and `interruptedBy(ticks, cut, repair)`; `AddonCraftingScene` / `AddonStorageScene`
   `.dismantlingAfterwards(part)`. The interrupt window must be longer than one machine batch (Crusher 200 ticks,
   Chemical Oxidizer 100), or a no-op interruption still passes.
+- `RouterCraftingScene` (compattest) builds one Router with a provider network and consumer networks, each an ME
+  Chest; only the first member holds the energy cell and the others draw ME power from it. The ExtendedAE-Plus Super
+  Assembler Matrix has no `IAEMultiBlock`: formed means `eap$getSuperMatrixCluster() != null` on an outer block, and
+  patterns go in through `cluster.getPatternInventories()` plus `refreshCraftingProvider()` (both by reflection). Its
+  inner Hybrid Cores sit on their own one-node grid, so pattern container and readiness checks use an outer frame.
+  The mod's own matrix scene uses ExtendedAE's `assembler_matrix_glass`, so the pack requires extendedae too (a hard
+  dependency of ExtendedAE-Plus anyway).
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

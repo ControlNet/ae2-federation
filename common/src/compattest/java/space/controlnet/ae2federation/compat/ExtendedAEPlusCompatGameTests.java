@@ -29,6 +29,78 @@ public final class ExtendedAEPlusCompatGameTests {
     private ExtendedAEPlusCompatGameTests() {
     }
 
+    /**
+     * The guide's hub example: one factory network's Super Assembler Matrix serves two districts on the same Router,
+     * each ordering sticks at once on its own CPU, while the factory runs on the first district's power.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 900)
+    public static void superAssemblerMatrixHub(GameTestHelper helper) {
+        var center = new BlockPos(18, 2, 18);
+        var scene = new RouterCraftingScene(helper, center);
+        // The matrix's frame that touches the factory's chest: the matrix's outer blocks join the network and take
+        // patterns for the Hybrid Cores inside, which have no network connection of their own.
+        var core = center.east(2);
+        scene.provider("factory", net.minecraft.core.Direction.EAST, ExtendedAEPlusCompatGameTests::placeSuperAssemblerMatrix,
+                        core, ExtendedAEPlusCompatGameTests::superMatrixFormed, RouterCraftingScene.sticksPattern(helper))
+                .installingPatternsWith(ExtendedAEPlusCompatGameTests::installInSuperMatrix)
+                .consumer("first district", net.minecraft.core.Direction.WEST, RouterCraftingScene::placeCpu,
+                        RouterCraftingScene::formed, RouterCraftingScene.STICKS, 4, RouterCraftingScene.PLANKS, 2, "factory")
+                .consumer("second district", net.minecraft.core.Direction.NORTH, RouterCraftingScene::placeCpu,
+                        RouterCraftingScene::formed, RouterCraftingScene.STICKS, 4, RouterCraftingScene.PLANKS, 2, "factory");
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Whether {@code entity} belongs to a formed Super Assembler Matrix, which keeps its own cluster, not AE2's. */
+    private static boolean superMatrixFormed(BlockEntity entity) {
+        if (entity == null) return false;
+        try {
+            return entity.getClass().getMethod("eap$getSuperMatrixCluster").invoke(entity) != null;
+        } catch (ReflectiveOperationException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Puts a pattern into a formed Super Assembler Matrix as its own screen does: into the pattern slots of its Hybrid
+     * Cores, which the matrix gathers.
+     */
+    private static boolean installInSuperMatrix(BlockEntity entity, ItemStack pattern) {
+        try {
+            var cluster = entity.getClass().getMethod("eap$getSuperMatrixCluster").invoke(entity);
+            var inventories = (appeng.api.inventories.InternalInventory[]) cluster.getClass()
+                    .getMethod("getPatternInventories").invoke(cluster);
+            for (var inventory : inventories) {
+                if (inventory.addItems(pattern.copy()).isEmpty()) {
+                    cluster.getClass().getMethod("refreshCraftingProvider").invoke(cluster);
+                    return true;
+                }
+            }
+            return false;
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("The Super Assembler Matrix's pattern slots are unavailable", exception);
+        }
+    }
+
+    /**
+     * The smallest Super Assembler Matrix, 3 blocks each way from {@code start}: frames on its edges, walls on its
+     * faces and a Hybrid Core inside. {@code start}, touching the network's chest, is the middle of one bottom edge.
+     */
+    private static void placeSuperAssemblerMatrix(GameTestHelper helper, BlockPos start, net.minecraft.core.Direction outward) {
+        var across = outward.getClockWise();
+        for (int along = 0; along < 3; along++) {
+            for (int y = 0; y < 3; y++) {
+                for (int side = -1; side <= 1; side++) {
+                    int outer = (along == 1 ? 0 : 1) + (y == 1 ? 0 : 1) + (side == 0 ? 0 : 1);
+                    var block = outer >= 2 ? "extendedae_plus:super_assembler_matrix_frame"
+                            : outer == 1 ? "extendedae_plus:super_assembler_matrix_wall"
+                            : "extendedae_plus:assembler_matrix_hybrid_plus";
+                    helper.setBlock(start.relative(outward, along).above(y).relative(across, side),
+                            AddonCraftingScene.block(block));
+                }
+            }
+        }
+    }
+
     /** The consumer's CPU has an ExtendedAE-Plus 4x Crafting Accelerator. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void acceleratedCpuCrafting(GameTestHelper helper) {
@@ -37,7 +109,7 @@ public final class ExtendedAEPlusCompatGameTests {
     }
 
     /**
-     * The guide's accelerator example and its exercise: the consumer's CPU runs the order with the accelerator's four
+     * A consumer orders from an assembly workshop: its CPU runs the order with the accelerator's four
      * co-processors. Moved to a crafting storage on the provider network, the accelerator speeds up that network's CPU
      * only, and the consumer's next order runs on its own CPU without co-processors.
      */

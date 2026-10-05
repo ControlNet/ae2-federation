@@ -46,7 +46,7 @@ final class GuidePagesContractTest {
             "appmek", Set.of("chemical_storage_cell_1k"),
             "create", Set.of("crushing_wheel", "chute"),
             "extendedae", Set.of("assembler_matrix_frame"),
-            "extendedae_plus", Set.of("4x_crafting_accelerator"),
+            "extendedae_plus", Set.of("super_assembler_matrix_frame"),
             "ae2lt", Set.of("overloaded_pattern_provider", "overloaded_pattern_provider_upgrade"),
             "data_energistics", Set.of("adaptive_pattern_provider", "adaptive_pattern_provider_upgrade"),
             "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface",
@@ -56,7 +56,7 @@ final class GuidePagesContractTest {
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
-            "extendedae_plus", Set.of("introduction/devices/crafting_accelerator.md"),
+            "extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md"),
             "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),
             "data_energistics", Set.of("items-blocks-machines/6.17_adaptive_pattern_provider.md"),
             "neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
