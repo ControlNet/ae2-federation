@@ -78,6 +78,9 @@ final class AddonCraftingScene {
     private boolean disconnectAfterPush;
     private long jobs = 2;
     private java.util.function.Consumer<GameTestHelper> placeStructure;
+    /** When a structure scene's provider is ready: by default, once its multiblock has formed. */
+    private java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> structureReady =
+            entity -> entity instanceof appeng.me.cluster.IAEMultiBlock<?> part && part.getCluster() != null;
     private BlockPos providerPos = PROVIDER;
     private BlockPos dismantlePart;
     private net.minecraft.world.level.block.state.BlockState dismantledState;
@@ -135,6 +138,21 @@ final class AddonCraftingScene {
     }
 
     /**
+     * A structure whose block at {@code patternContainer} takes a processing pattern for {@code machine}, the
+     * structure itself, and crafts once {@code ready} says so; {@code place} may take several ticks, so {@code ready}
+     * is asked every tick until it agrees.
+     */
+    static AddonCraftingScene processingStructure(GameTestHelper helper, String name, List<String> cpuIds,
+            Machine machine, java.util.function.Consumer<GameTestHelper> place, BlockPos patternContainer,
+            java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> ready) {
+        var scene = new AddonCraftingScene(helper, name, cpuIds, machine, null);
+        scene.placeStructure = place;
+        scene.providerPos = patternContainer;
+        scene.structureReady = ready;
+        return scene;
+    }
+
+    /**
      * After the job, breaks the multiblock's block at {@code part}: its recipes must leave the consumer, and come back
      * once the block is put back and the structure forms again, as the guide's exercise has its player do.
      */
@@ -176,9 +194,14 @@ final class AddonCraftingScene {
             return COBBLESTONE;
         }
 
+        /** What one craft takes: by default one {@link #input()}. */
+        default java.util.Map<AEItemKey, Long> inputs() {
+            return java.util.Map.of(input(), 1L);
+        }
+
         AEKey output();
 
-        /** How much of {@link #output()} one input makes. */
+        /** How much of {@link #output()} one craft makes. */
         default long outputPerInput() {
             return 1;
         }
@@ -322,16 +345,18 @@ final class AddonCraftingScene {
                 helper.fail("Placed the provider, assembler and CPU");
             }
             case 1 -> {
+                // What stage 0 placed can join a network, whose identity then settles again.
+                helper.assertTrue(bridge.networksSettled(), "Waiting for both networks to settle again");
                 bridge.placeFirstBridge();
                 stage = 2;
                 helper.fail("Placed the Bridge");
             }
             case 2 -> {
+                helper.assertTrue(bridge.networksSettled(), "Waiting for both networks: " + bridge.settlementDiagnostics());
                 if (!bridge.firstBridgeReady()) bridge.refreshFirstBridge();
                 helper.assertTrue(bridge.firstBridgeReady(), "Waiting for the Bridge");
                 if (placeStructure != null) {
-                    helper.assertTrue(helper.getLevel().getBlockEntity(helper.absolutePos(providerPos))
-                            instanceof appeng.me.cluster.IAEMultiBlock<?> part && part.getCluster() != null,
+                    helper.assertTrue(structureReady.test(helper.getLevel().getBlockEntity(helper.absolutePos(providerPos))),
                             "Waiting for " + providerId + " to form");
                 }
                 helper.assertTrue(grid(providerPos) == bridge.outerGrid(),
@@ -362,9 +387,7 @@ final class AddonCraftingScene {
             case 4 -> {
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
-                var input = input();
-                helper.assertValueEqual(consumerChest().insert(input, jobs, Actionable.MODULATE, IActionSource.empty()),
-                        jobs, "The consumer's chest must take the inputs");
+                storeInputs("The consumer's chest must take the inputs");
                 begin();
                 stage = 5;
                 helper.fail("Planning the request");
@@ -439,8 +462,9 @@ final class AddonCraftingScene {
                         + (processing && machine.outputCell() != null ? held(outputChest(), output()) : 0);
                 helper.assertValueEqual(made, requested() * tookOrders.size(),
                         "The job must store exactly what was requested");
-                helper.assertValueEqual(held(consumerChest(), input()), 0L,
-                        "The consumer's inputs were used");
+                for (var input : inputs().keySet()) {
+                    helper.assertValueEqual(held(consumerChest(), input), 0L, "The consumer's inputs were used");
+                }
                 if (cpuCheck != null) {
                     var cpu = tookOrders.getLast();
                     helper.assertTrue(cpu != null, "No consumer CPU was busy right after order " + tookOrders.size());
@@ -471,8 +495,7 @@ final class AddonCraftingScene {
                         "Waiting for the consumer's CPU");
                 helper.assertTrue(consumerGrid().getCraftingService().isCraftable(output()),
                         "Waiting for the provider's pattern on the consumer");
-                helper.assertValueEqual(consumerChest().insert(input(), jobs, Actionable.MODULATE, IActionSource.empty()),
-                        jobs, "The consumer's chest must take the second order's inputs");
+                storeInputs("The consumer's chest must take the second order's inputs");
                 begin();
                 stage = 15;
                 helper.fail("Planning the second order");
@@ -621,6 +644,20 @@ final class AddonCraftingScene {
         }
     }
 
+    /** Stores every input of {@link #jobs} crafts in the consumer's chest. */
+    private void storeInputs(String message) {
+        for (var input : inputs().entrySet()) {
+            var amount = input.getValue() * jobs;
+            helper.assertValueEqual(consumerChest().insert(input.getKey(), amount, Actionable.MODULATE,
+                    IActionSource.empty()), amount, message + ": " + input.getKey());
+        }
+    }
+
+    /** What one craft takes. */
+    private java.util.Map<AEItemKey, Long> inputs() {
+        return processing ? machine.inputs() : java.util.Map.of(PLANKS, 1L);
+    }
+
     /** Two planks make four sticks. */
     private long requested() {
         return processing ? jobs * machine.outputPerInput() : 2 * jobs;
@@ -636,7 +673,8 @@ final class AddonCraftingScene {
 
     private ItemStack processingPattern() {
         return PatternDetailsHelper.encodeProcessingPattern(
-                List.of(new appeng.api.stacks.GenericStack(machine.input(), 1)),
+                machine.inputs().entrySet().stream()
+                        .map(input -> new appeng.api.stacks.GenericStack(input.getKey(), input.getValue())).toList(),
                 List.of(new appeng.api.stacks.GenericStack(machine.output(), machine.outputPerInput())));
     }
 
