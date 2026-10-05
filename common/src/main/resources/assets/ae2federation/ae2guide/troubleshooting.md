@@ -29,7 +29,7 @@ reason.
 ## Rules
 
 * **"Not in effect yet: the server has not started using this rule."** Wait a moment; if it stays, check that both
-  networks are loaded and powered.
+  networks are loaded and powered, by power of their own or through ME power.
 * **"One of the two networks is not loaded, or its identity is not settled yet."** Load the other network's chunks,
   or wait until it has finished starting.
 * **"This direction's Storage rule is off."** Crafting takes the other network's materials through storage; switch

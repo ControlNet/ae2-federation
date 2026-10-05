@@ -8,7 +8,7 @@ navigation:
 
 # 入门
 
-你需要两个各自有电的独立ME网络。 联邦不会取代AE2自己的线缆和控制器， 只是把本来就能单独工作的网络连起来。
+你需要两个独立的ME网络， 只要其中一个有电： 连起来以后， 另一个可以用它的电运行。 联邦不会取代AE2自己的线缆和控制器， 只是把网络连起来。
 
 ## 1. 制作联邦逻辑处理器
 
@@ -29,10 +29,10 @@ navigation:
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/bridge.snbt" />
   <BoxAnnotation color="#915dcd" min="3.375 0 0" max="6 2 1">
-    网络A
+    网络A： 它的能源元件给两个网络供电
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
-    网络B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 1 1">
+    网络B： 一个驱动器， 没有自己的电源
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
     桥接器： 装在网络A的线缆上， 外侧接触网络B的线缆
@@ -52,7 +52,7 @@ navigation:
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/router_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
-    网络A
+    网络A： 它的能源元件给两个网络供电
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
     路由器： 一面接网络A的线缆， 另一面接联邦线缆
@@ -63,8 +63,8 @@ navigation:
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
     路由器： 一面接网络B的线缆， 另一面接联邦线缆
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 2 1">
-    网络B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
+    网络B： 一个驱动器， 没有自己的电源
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -77,6 +77,8 @@ navigation:
 * **存储**： 让一个网络查看、存入和取出另一个网络的物品、流体和其他资源。
 * **合成**： 让一个网络使用另一个网络的样板供应器。 开启它会同时开启同方向的存储。
 * **ME能量**： 把两个网络的能量合成一个能量池； 每对网络只有一个开关。
+
+上面的场景里只有网络A有能源元件， 所以先打开**ME能量**： 网络B从此靠A的电运行， 它的驱动器随之上线。 然后再打开“A使用B的”存储规则。
 
 ## 4. 检查是否生效
 

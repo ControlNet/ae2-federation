@@ -23,10 +23,10 @@ uses no channel and no idle power.
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />
   <BoxAnnotation color="#915dcd" min="3.375 0 0" max="6 2 1">
-    Network A
+    Network A: its energy cell powers both networks
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 2 1">
-    Network B
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 1 1">
+    Network B: a drive and no power of its own
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
     Bridge: on network A's cable, its outer side touching network B's cable
@@ -35,12 +35,13 @@ uses no channel and no idle power.
 </GameScene>
 
 The Federation screen shows the two networks side by side, and links them once you switch a rule on. Here network A
-uses network B's storage:
+uses network B's storage, and both run on network A's energy cell through ME power:
 
 <FederationTopology>
   <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Drive|Energy cell" />
-  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Drive|Energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Drive" />
   <Rule user="a" source="b" capability="storage" />
+  <Energy first="a" second="b" />
 </FederationTopology>
 
 A Bridge forms a small [Federation domain](../mechanics.md) with just those two networks. It does not connect to

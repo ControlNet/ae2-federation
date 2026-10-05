@@ -377,5 +377,10 @@ there), then breaks a crafting-system casing for the page's "Try it".
   A's cell, and a diagram (A uses B's Crafting and Storage, energy shared). `remote_processing.snbt` lost the subnet's
   cell; the subnet is "powered through the Endpoint", and a diagram shows the Endpoint under the Provider's network
   with `energy="true"`. English and Chinese.
-- Still one cell per network: `bridge.snbt`, `router_cable.snbt` and `router_hub.snbt` (Getting Started, Bridge and
-  Router pages). Left as they are pending the owner's call, since Getting Started would then also need the ME power rule.
+- Then the owner asked for the same on the core pages. `bridge.snbt`, `router_cable.snbt` and `router_hub.snbt` keep
+  only network A's energy cell; network B's cell became its drive (the drive above it removed), and network C's cell
+  in the Router hub became a drive, so C has something to share (its cable now carries 1 channel). Getting Started
+  says only one network needs power and adds "switch ME power on first" to step 3; the Bridge and Router diagrams gain
+  `<Energy>` rails; Troubleshooting's "Not in effect yet" now says powered "by power of their own or through ME
+  power". An unpowered network still gets its identity and joins a domain (the compat scenes rely on that); only its
+  storage waits for power.
