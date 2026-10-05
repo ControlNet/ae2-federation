@@ -129,15 +129,21 @@ grid storage. That grid's `CraftingServiceStorage` only feeds that grid's CPUs. 
 - Rule disabled, storage forced off, or the common domain lost: withdraw the projections, so no new pushes happen.
   Already pushed work still returns through the ledger, because network 1 paid the inputs, but only across a live
   Federation link (`FederationLinks`, decided 2026-10-03). Outputs that arrive while the link is broken stay on the
-  executing network and are not delivered later; network 1's CPU waits until the player cancels. Deferred delivery
-  after reconnection (DESIGN 15.4) was judged not worth its complexity and bug risk.
+  executing network. Deferred delivery (DESIGN 15.4) was first judged not worth its risk; the owner asked for it on
+  2026-10-06. The router now counts what it could not hand to an unreachable consumer as `held` in the ledger row
+  (MODULATE only, capped at `owed`), and `sweepLedger` hands back `min(held, waiting)` from the executing network's
+  own mounts (NativeMountLedger snapshot without Federation-managed providers/storages and `CraftingServiceStorage`),
+  lowest priority first, into the consumer's inventory. Taking from the whole executing inventory would take the
+  consumer's own items through a reverse storage rule. A full-storage retry can count more than really landed; that
+  is bounded by `owed` and nets out when the output lands. GameTest `crafting.projection-disconnected` (player uses
+  the held stone up; the job waits without touching the consumer's own stone; refilled, the job finishes). Waiting
+  for sweeps needs `ledgerSweeps()`: the first sweep runs only after `STARTUP_TICKS`.
 - R powered off or rebooting: R's `isBusy`/`pushPattern` refuse, and network 1's CPU waits, as for an offline vanilla
   provider. R's grid or chunk unloads: its projections are withdrawn.
 - World reload: network 1's CPU restores its job natively. Projections are rebuilt when rules and grids settle, and
   the ledger reloads from `SavedData`.
-- Known limitation: if the consumer is not loaded when the output arrives, the router declines (it cannot read
-  `getRequestedAmount`). The output stays on the executing network and the consumer's CPU keeps waiting until the
-  player cancels.
+- Consumer not loaded when the output arrives: the router finds no consumer grid, as when unlinked, so the output is
+  held the same way and handed back once the consumer loads (not separately GameTested: same branch).
 
 ## Crafting cycles
 

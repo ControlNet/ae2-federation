@@ -68,6 +68,7 @@ public final class CraftingProjectionService implements AutoCloseable {
     private long reconciledWatermark = Long.MIN_VALUE;
     private long reconciledEpoch = Long.MIN_VALUE;
     private long ticks;
+    private long sweeps;
     /** The Federation links of the domain topology {@link #linksRegistry} had at {@link #linksTopology}. */
     private FederationLinks links;
     private Object linksRegistry;
@@ -139,6 +140,11 @@ public final class CraftingProjectionService implements AutoCloseable {
     public int projectionCount(NetworkId consumer, NetworkId executing) {
         var entry = projected.get(new Pair(consumer, executing));
         return entry == null ? 0 : entry.projections().size();
+    }
+
+    /** How many times the ledger was looked at, for tests and diagnostics. */
+    public long ledgerSweeps() {
+        return sweeps;
     }
 
     /** Whether {@code grid} carries a return router, for tests and diagnostics. */
@@ -325,7 +331,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         }
         wanted.forEach((grid, network) -> {
             if (routers.containsKey(grid)) return;
-            // An output may return only while the networks are still linked; otherwise it stays where it arrived.
+            // An output returns only while the networks are linked; otherwise it is held where it arrived.
             var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
                     ? federationDomains.grid(consumer).orElse(null) : null);
             routers.put(grid, router);
@@ -347,17 +353,25 @@ public final class CraftingProjectionService implements AutoCloseable {
     }
 
     /**
-     * Forgets debts whose loaded consumer has waited for nothing of that key on two looks in a row: its job finished
-     * or was cancelled, and what still arrives stays on the executing network. A consumer that is not loaded keeps
-     * its debts.
+     * Hands back what the executing networks hold for consumers that can take it again, then forgets debts whose loaded
+     * consumer has waited for nothing of that key on two looks in a row: its job finished or was cancelled, and what
+     * still arrives, or is held, stays on the executing network. A consumer that is not loaded keeps its debts.
      */
     private void sweepLedger() {
+        sweeps++;
         var ledger = CraftingReturnLedger.get(level);
+        for (var owed : ledger.entries()) {
+            if (owed.held() <= 0 || !linked(owed.executing(), owed.consumer())) continue;
+            var consumer = federationDomains.grid(owed.consumer()).orElse(null);
+            var executing = federationDomains.grid(owed.executing()).orElse(null);
+            if (consumer == null || executing == null || consumer == executing) continue;
+            CraftingReturnRouter.handBackHeld(ledger, owed.executing(), executing, owed, consumer);
+        }
         var seen = new HashSet<CraftingReturnLedger.Owed>();
         for (var owed : ledger.entries()) {
             var consumer = federationDomains.grid(owed.consumer()).orElse(null);
             if (consumer == null || CraftingReturnRouter.waiting(consumer, owed.key(), owed.amount()) > 0) continue;
-            var marker = new CraftingReturnLedger.Owed(owed.executing(), owed.consumer(), owed.key(), 0);
+            var marker = new CraftingReturnLedger.Owed(owed.executing(), owed.consumer(), owed.key(), 0, 0);
             if (idle.contains(marker)) {
                 ledger.drop(owed.executing(), owed.consumer(), owed.key());
             } else {

@@ -18,17 +18,27 @@ import space.controlnet.ae2federation.identity.NetworkId;
  * outputs and container items under (the network whose provider ran it, the consumer whose CPU pushed it, key). The
  * executing network's return router hands that much back to the consumer as it arrives. Saved with the world, so
  * outputs that arrive after a reload still reach the job waiting for them.
+ *
+ * <p>An output that arrives while its consumer cannot take it, because the networks are not linked or the consumer is
+ * not loaded, stays in the executing network's storage and is counted as held for that consumer, at most what is owed.
+ * Once the consumer can take it again, that much is handed back from the executing network's own storage.
  */
 public final class CraftingReturnLedger extends SavedData {
     private static final String DATA_NAME = "ae2federation_crafting_returns";
     private static final Factory<CraftingReturnLedger> FACTORY =
             new Factory<>(CraftingReturnLedger::new, CraftingReturnLedger::load);
 
-    public record Owed(NetworkId executing, NetworkId consumer, AEKey key, long amount) {
+    /** {@code held} of the {@code amount} owed arrived while the consumer could not take it. */
+    public record Owed(NetworkId executing, NetworkId consumer, AEKey key, long amount, long held) {
+    }
+
+    private static final class Debt {
+        private long owed;
+        private long held;
     }
 
     /** Executing network, then key, then consumer, in insertion order so returns are handed out deterministically. */
-    private final Map<NetworkId, Map<AEKey, Map<NetworkId, Long>>> owed = new LinkedHashMap<>();
+    private final Map<NetworkId, Map<AEKey, Map<NetworkId, Debt>>> owed = new LinkedHashMap<>();
 
     public static CraftingReturnLedger get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
@@ -37,7 +47,8 @@ public final class CraftingReturnLedger extends SavedData {
     void add(NetworkId executing, NetworkId consumer, AEKey key, long amount) {
         if (amount <= 0) return;
         owed.computeIfAbsent(executing, ignored -> new LinkedHashMap<>())
-                .computeIfAbsent(key, ignored -> new LinkedHashMap<>()).merge(consumer, amount, Long::sum);
+                .computeIfAbsent(key, ignored -> new LinkedHashMap<>())
+                .computeIfAbsent(consumer, ignored -> new Debt()).owed += amount;
         setDirty();
     }
 
@@ -49,7 +60,20 @@ public final class CraftingReturnLedger extends SavedData {
 
     /** How much of {@code key} {@code executing}'s machines still owe {@code consumer}, for tests and diagnostics. */
     public long owed(NetworkId executing, NetworkId consumer, AEKey key) {
-        return consumers(executing, key).getOrDefault(consumer, 0L);
+        var debt = debt(executing, consumer, key);
+        return debt == null ? 0 : debt.owed;
+    }
+
+    /** How much of what {@code consumer} is owed waits in {@code executing}'s storage, for tests and diagnostics. */
+    public long held(NetworkId executing, NetworkId consumer, AEKey key) {
+        var debt = debt(executing, consumer, key);
+        return debt == null ? 0 : debt.held;
+    }
+
+    private Debt debt(NetworkId executing, NetworkId consumer, AEKey key) {
+        var keys = owed.get(executing);
+        var consumers = keys == null ? null : keys.get(key);
+        return consumers == null ? null : consumers.get(consumer);
     }
 
     boolean owesAnything(NetworkId executing) {
@@ -60,22 +84,44 @@ public final class CraftingReturnLedger extends SavedData {
     Map<NetworkId, Long> consumers(NetworkId executing, AEKey key) {
         var keys = owed.get(executing);
         var consumers = keys == null ? null : keys.get(key);
-        return consumers == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(consumers));
+        if (consumers == null) return Map.of();
+        var amounts = new LinkedHashMap<NetworkId, Long>();
+        consumers.forEach((consumer, debt) -> amounts.put(consumer, debt.owed));
+        return amounts;
     }
 
-    /** Lowers what {@code executing} owes {@code consumer} of {@code key}, by what was just handed back. */
-    void take(NetworkId executing, NetworkId consumer, AEKey key, long amount) {
+    /**
+     * Lowers what {@code executing} owes {@code consumer} of {@code key}, by what was just handed back: by
+     * {@code held} of what waited in the executing network's storage and the rest as it arrived.
+     */
+    void take(NetworkId executing, NetworkId consumer, AEKey key, long amount, long held) {
         if (amount <= 0) return;
-        var keys = owed.get(executing);
-        var consumers = keys == null ? null : keys.get(key);
-        var current = consumers == null ? null : consumers.get(consumer);
-        if (current == null) return;
-        if (current <= amount) {
+        var debt = debt(executing, consumer, key);
+        if (debt == null) return;
+        if (debt.owed <= amount) {
             drop(executing, consumer, key);
-        } else {
-            consumers.put(consumer, current - amount);
+            return;
+        }
+        debt.owed -= amount;
+        debt.held = Math.min(debt.owed, Math.max(0, debt.held - held));
+        setDirty();
+    }
+
+    /**
+     * Counts {@code amount} of {@code key} as left in {@code executing}'s storage for {@code consumer}, which could not
+     * take it, at most what is owed.
+     *
+     * @return how much was counted
+     */
+    long hold(NetworkId executing, NetworkId consumer, AEKey key, long amount) {
+        var debt = debt(executing, consumer, key);
+        if (debt == null || amount <= 0) return 0;
+        long counted = Math.min(amount, debt.owed - debt.held);
+        if (counted > 0) {
+            debt.held += counted;
             setDirty();
         }
+        return Math.max(0, counted);
     }
 
     /** Forgets a debt: the consumer's job no longer waits for the key (it finished or was cancelled). */
@@ -90,8 +136,8 @@ public final class CraftingReturnLedger extends SavedData {
 
     List<Owed> entries() {
         var entries = new java.util.ArrayList<Owed>();
-        owed.forEach((executing, keys) -> keys.forEach((key, consumers) -> consumers.forEach((consumer, amount) ->
-                entries.add(new Owed(executing, consumer, key, amount)))));
+        owed.forEach((executing, keys) -> keys.forEach((key, consumers) -> consumers.forEach((consumer, debt) ->
+                entries.add(new Owed(executing, consumer, key, debt.owed, debt.held)))));
         return List.copyOf(entries);
     }
 
@@ -104,6 +150,7 @@ public final class CraftingReturnLedger extends SavedData {
             row.put("consumer", NbtUtils.createUUID(entry.consumer().value()));
             row.put("key", entry.key().toTagGeneric(registries));
             row.putLong("amount", entry.amount());
+            row.putLong("held", entry.held());
             list.add(row);
         }
         tag.put("owed", list);
@@ -117,8 +164,10 @@ public final class CraftingReturnLedger extends SavedData {
             var key = AEKey.fromTagGeneric(registries, row.getCompound("key"));
             // A key whose item or fluid no longer exists (a removed mod) is owed to nobody.
             if (key == null) continue;
-            ledger.add(new NetworkId(NbtUtils.loadUUID(row.get("executing"))),
-                    new NetworkId(NbtUtils.loadUUID(row.get("consumer"))), key, row.getLong("amount"));
+            var executing = new NetworkId(NbtUtils.loadUUID(row.get("executing")));
+            var consumer = new NetworkId(NbtUtils.loadUUID(row.get("consumer")));
+            ledger.add(executing, consumer, key, row.getLong("amount"));
+            ledger.hold(executing, consumer, key, row.getLong("held"));
         }
         ledger.setDirty(false);
         return ledger;

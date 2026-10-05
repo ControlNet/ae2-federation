@@ -72,8 +72,9 @@ back to A's CPU as soon as they enter network B. Network B needs no crafting CPU
 * **Level emitters with a Crafting Card** on network B are not offered to network A.
 * **Leftovers stay on network B:** byproducts the pattern does not list, and the results of a job cancelled on
   network A. Network A still sees them through the Storage rule.
-* **If the networks are disconnected** while a job runs, results that arrive in the meantime stay on network B and
-  A's CPU keeps waiting; cancel the job on network A.
+* **If the networks are disconnected** while a job runs, or network A is not loaded, results that arrive in the
+  meantime wait in network B's storage and A's CPU keeps waiting. Once the networks are linked again, network B hands
+  them to the job. If someone on network B uses them up first, the job waits until network B stores that much again.
 
 For a complete build, see [Order from an Assembly Workshop](examples/remote-assembly.md).
 

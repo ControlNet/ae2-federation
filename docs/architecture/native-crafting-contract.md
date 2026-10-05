@@ -52,9 +52,12 @@ edit. A save holding a crafting rule without its storage rule gets the storage r
     CPUs in later chunks reconnect. A cancelled job's late outputs therefore stay on P.
   - A return crosses only a live Federation link: P and C share a Federation Domain, or are joined through networks
     the domains share, as a chained push is (`FederationLinks`). Switching the rule off keeps returns going, because C
-    paid the inputs. Outputs that arrive while the link is broken stay on P; they are not delivered later, and C's CPU
-    keeps waiting until the player cancels the job, as for a vanilla output that went elsewhere. After the link is
-    restored, outputs still owed return again.
+    paid the inputs. An output that arrives while the link is broken, or while C is not loaded, stays in P's storage
+    and is counted as held for C (`CraftingReturnLedger`), at most what is owed. Each 20-tick look then hands C, once
+    it is linked and loaded, what is held and its CPUs still wait for, taken only from P's own mounts (never
+    Federation's mounts of other networks' storage, which may be C's). If P's players used it up, C waits until P
+    stores that much again. When storage on P is full the output may stay in the machine while it is counted as held;
+    the hand-back then takes P's stock early, and the output fills P again when it lands, so P loses nothing.
 - **Re-export.** Crafting passes on as storage does (`CraftingReach`). With "C uses M" and "M uses S" set to
   re-export, S's providers are projected onto C too. The push and the return still go straight between C and S; M
   takes no part. A consumer never reaches itself, so mutual rules and rings are allowed, and there is no cycle guard.

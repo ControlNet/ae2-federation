@@ -8,6 +8,8 @@ import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixtur
 import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.MIDDLE;
 import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixture.SOURCE;
 
+import appeng.api.config.Actionable;
+import appeng.api.networking.security.IActionSource;
 import java.util.Map;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -243,13 +245,17 @@ public final class PatternProjectionGameTests {
 
     /**
      * Breaking the Federation link after the push: outputs that arrive while the networks are apart stay on the
-     * provider network, and the consumer's job keeps waiting, as a vanilla job does for an output that went elsewhere.
+     * provider network, held for the consumer, whose job keeps waiting. A player there uses that stone up before the
+     * link comes back. The job then keeps waiting: it is handed stone only from the provider network's own storage,
+     * never the consumer's own stone that the provider network sees through a storage rule of its own. Once the
+     * provider network stores stone again, the job gets what is held for it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
-            required = true, timeoutTicks = 800)
+            required = true, timeoutTicks = 1200)
     public static void projectionDisconnected(GameTestHelper helper) {
         var fixture = new PatternProjectionFixture(helper);
         var stage = new int[1];
+        var sweepsBefore = new long[1];
         helper.succeedWhen(() -> {
             pushedTwoStone(helper, fixture, stage);
             if (stage[0] == 4) {
@@ -261,15 +267,46 @@ public final class PatternProjectionGameTests {
                 helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the stone");
                 stage[0] = 6;
             }
-            helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 2L,
-                    "The stone stays on the provider network");
-            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 0L,
-                    "Nothing crosses the broken Federation link");
-            helper.assertValueEqual(fixture.busyConsumerCpus(), 1L, "The consumer's job keeps waiting");
-            helper.assertValueEqual(fixture.owed(stone()), 2L, "The debt stays while the consumer still waits");
-            PolicyEvidence.write("projectiondisconnected", 6, Map.of("patternsWithdrawn", "true",
-                    "outputOnProvider", "2", "consumerWaiting", "true"));
-            fixture.cancelConsumerJob();
+            if (stage[0] == 6) {
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 2L,
+                        "The stone stays on the provider network");
+                helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 0L,
+                        "Nothing crosses the broken Federation link");
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 1L, "The consumer's job keeps waiting");
+                helper.assertValueEqual(fixture.owed(stone()), 2L, "The debt stays while the consumer still waits");
+                helper.assertValueEqual(fixture.heldForConsumer(stone()), 2L, "The stone is held for the consumer");
+                helper.assertValueEqual(fixture.providerChest().extract(stone(), 2, Actionable.MODULATE,
+                        IActionSource.empty()), 2L, "A player on the provider network uses the stone up");
+                fixture.putInConsumer(stone(), 5);
+                fixture.setRule(fixture.reverseStorage(), RuleMode.ENABLED);
+                fixture.reconnect();
+                stage[0] = 7;
+            }
+            if (stage[0] == 7) {
+                helper.assertTrue(fixture.connected(), "Waiting for the Federation link to come back");
+                helper.assertValueEqual(fixture.held(fixture.providerGrid().getStorageService().getInventory(), stone()),
+                        5L, "Waiting for the provider network to see the consumer's stone");
+                sweepsBefore[0] = fixture.ledgerSweeps();
+                stage[0] = 8;
+            }
+            if (stage[0] == 8) {
+                helper.assertTrue(fixture.ledgerSweeps() - sweepsBefore[0] >= 3, "Letting three ledger sweeps pass");
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 1L,
+                        "The job waits while the provider network stores no stone");
+                helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 5L,
+                        "The consumer's own stone is not handed to its job");
+                helper.assertValueEqual(fixture.heldForConsumer(stone()), 2L, "The stone stays held for the consumer");
+                fixture.putInProvider(stone(), 2);
+                stage[0] = 9;
+            }
+            helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the held stone to reach the job");
+            helper.assertValueEqual(fixture.owed(stone()), 0L, "Nothing is owed once the job has its stone");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 7L,
+                    "The job stores its two stone beside the consumer's own five");
+            helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 0L,
+                    "The provider network keeps none of the consumer's stone");
+            PolicyEvidence.write("projectiondisconnected", 18, Map.of("patternsWithdrawn", "true",
+                    "outputHeldOnProvider", "2", "consumerStockUntouched", "true", "handedBackAfterReconnect", "2"));
             fixture.close();
         });
     }

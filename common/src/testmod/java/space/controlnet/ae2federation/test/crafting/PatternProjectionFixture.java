@@ -121,6 +121,11 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return new PolicyKey(bridge.mainNetwork(), bridge.outerNetwork(), PolicyCapability.STORAGE);
     }
 
+    /** The provider network using the consumer's storage, the reverse of {@link #storage()}. */
+    public PolicyKey reverseStorage() {
+        return new PolicyKey(bridge.outerNetwork(), bridge.mainNetwork(), PolicyCapability.STORAGE);
+    }
+
     /** The consumer uses the provider's crafting, with the storage rule crafting needs, in one edit. */
     public void enableRules() {
         var policies = PolicyService.get(helper.getLevel());
@@ -144,6 +149,15 @@ public final class PatternProjectionFixture implements AutoCloseable {
         bridge.removeFirstBridge();
     }
 
+    /** Places the Bridge again, so the two networks share a Federation Domain once more. */
+    public void reconnect() {
+        bridge.placeFirstBridge();
+    }
+
+    public boolean connected() {
+        return bridge.firstBridgeReady();
+    }
+
     public int projections() {
         return CraftingProjectionService.get(helper.getLevel()).projectionCount(crafting());
     }
@@ -152,12 +166,20 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return CraftingProjectionService.status(helper.getLevel(), crafting());
     }
 
+    public long ledgerSweeps() {
+        return CraftingProjectionService.get(helper.getLevel()).ledgerSweeps();
+    }
+
     public boolean providerRouted() {
         return CraftingProjectionService.get(helper.getLevel()).routes(providerGrid());
     }
 
     public long owed(AEKey key) {
         return CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), key);
+    }
+
+    public long heldForConsumer(AEKey key) {
+        return CraftingReturnLedger.get(helper.getLevel()).held(bridge.outerNetwork(), bridge.mainNetwork(), key);
     }
 
     /** Plans {@code amount} of {@code what} on the consumer's own crafting service, as its ME Terminal does. */
