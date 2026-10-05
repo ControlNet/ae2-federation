@@ -38,6 +38,8 @@ public final class AppliedFluxMekanismCompatGameTests {
     private static final int MORE_COBBLESTONE = 8;
     /** How long the Crusher is watched once the rule is off, enough for its buffer to run out several times. */
     private static final int WATCHED_TICKS = 500;
+    /** How long a job waits for the Induction Card: longer than the Crusher takes for one cobblestone (200 ticks). */
+    private static final int CARD_LEFT_OUT_TICKS = 300;
 
     private AppliedFluxMekanismCompatGameTests() {
     }
@@ -168,29 +170,40 @@ public final class AppliedFluxMekanismCompatGameTests {
     }
 
     /**
-     * The Induction Card sends FE across Federation: the Provider's network keeps FE in an FE cell, and the Crusher
-     * sitting on the Provider's Endpoint, with no power of its own, crushes the job's cobblestone on that FE alone.
+     * The guide's Crusher on the Provider's FE: the Provider's network keeps FE in an FE cell, and the Crusher sitting on
+     * the Provider's Endpoint, with no power of its own and no energy cell on its subnet, crushes the job's cobblestone
+     * on that FE alone. The guide's exercise: ordered before the Induction Card is in, the job waits with nothing back
+     * for longer than one crush; with the card in, it finishes.
      */
-    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1600)
     public static void inductionCardPowersEndpointMachine(GameTestHelper helper) {
         var fe = AppliedFluxCompatGameTests.fluxKey();
         var card = AddonCraftingScene.item("appflux:induction_card");
         long[] stored = {-1};
-        var scene = new EndpointMachineScene(helper, new FluxPoweredCrusher()).preparingProvider(provider -> {
-            var storage = provider.getMainNode().getGrid().getStorageService().getInventory();
-            helper.assertValueEqual(storage.insert(fe, STORED, Actionable.MODULATE, IActionSource.empty()), STORED,
-                    "The FE cell must store " + STORED + " FE");
-            helper.assertTrue(provider.upgrades().toItemHandler().insertItem(0, new ItemStack(card), false).isEmpty(),
-                    "The Provider must take the Induction Card");
-            stored[0] = STORED;
-        });
+        var scene = new EndpointMachineScene(helper, new FluxPoweredCrusher()).poweredThroughEndpoint()
+                .preparingProvider(provider -> {
+                    var storage = provider.getMainNode().getGrid().getStorageService().getInventory();
+                    helper.assertValueEqual(storage.insert(fe, STORED, Actionable.MODULATE, IActionSource.empty()),
+                            STORED, "The FE cell must store " + STORED + " FE");
+                    stored[0] = STORED;
+                })
+                .interruptedBy(CARD_LEFT_OUT_TICKS, (test, crusher) -> helper.assertTrue(
+                        provider(helper).upgrades().getInstalledUpgrades(card) == 0,
+                        "The job must be ordered before the Induction Card goes in"),
+                        (test, crusher) -> helper.assertTrue(provider(helper).upgrades().toItemHandler()
+                                .insertItem(0, new ItemStack(card), false).isEmpty(),
+                                "The Provider must take the Induction Card"));
         helper.succeedWhen(() -> {
             scene.tick();
-            // The scene's Provider stands at (4, 1, 3).
-            var left = helper.<FederationPatternProviderBlockEntity>getBlockEntity(new BlockPos(4, 1, 3)).getMainNode()
-                    .getGrid().getStorageService().getInventory().getAvailableStacks().get(fe);
+            var left = provider(helper).getMainNode().getGrid().getStorageService().getInventory()
+                    .getAvailableStacks().get(fe);
             helper.assertTrue(left < stored[0], "The Crusher's FE must come from the Provider's network: " + left);
         });
+    }
+
+    /** The Provider in {@link EndpointMachineScene}, which stands at (4, 1, 3). */
+    private static FederationPatternProviderBlockEntity provider(GameTestHelper helper) {
+        return helper.getBlockEntity(new BlockPos(4, 1, 3));
     }
 
     /**

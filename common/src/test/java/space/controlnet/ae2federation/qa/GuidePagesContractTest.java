@@ -46,7 +46,7 @@ final class GuidePagesContractTest {
                     "energized_smelter", "induction_casing", "induction_port", "basic_induction_cell",
                     "basic_induction_provider", "configurator")),
             Map.entry("appmek", Set.of("chemical_storage_cell_1k")),
-            Map.entry("appflux", Set.of("flux_accessor", "fe_1k_cell")),
+            Map.entry("appflux", Set.of("flux_accessor", "fe_1k_cell", "induction_card")),
             Map.entry("advanced_ae", Set.of("quantum_core", "quantum_structure")),
             Map.entry("create", Set.of("crushing_wheel", "chute")),
             Map.entry("extendedae", Set.of("assembler_matrix_frame")),

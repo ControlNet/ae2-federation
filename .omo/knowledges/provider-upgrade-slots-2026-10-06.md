@@ -61,6 +61,16 @@ The UI harness has no AF client. For a local look only (never commit), temporari
 - The Provider invalidates its six neighbours' capabilities on ready and on rotation.
 - Our registration precedes AF's LOWEST `FEGenericStackInvStorage` on the Endpoint; ours is null on other faces, so the
   Endpoint still takes FE returns there.
-- Tests (appflux-mekanism): `inductionCardPowersEndpointMachine` (Crusher on the Endpoint, no own power; red before
-  the relay), `providerEnergyFollowsTheLink` (cable relay one-sided, AF through cables and a Router, stops when the
+- Tests (appflux-mekanism): `inductionCardPowersEndpointMachine` (the guide's build: Crusher on the Endpoint, no own
+  power, no subnet energy cell; ordered before the card goes in, the job waits 300 ticks with nothing back, then
+  finishes once the card is in; red before the relay, and red with the card in from the start), `providerEnergyFollowsTheLink` (cable relay one-sided, AF through cables and a Router, stops when the
   Endpoint leaves the domain).
+
+## Guide example (2026-10-06)
+
+`guide_appflux_mekanism` pack, `examples/induction-crusher.md` ("A Crusher on the Provider's FE", position 46), scene
+`induction_crusher.snbt`: main network (energy cell, crafting terminal, CPU, drive with item and FE cells), Provider,
+one Federation Cable, Endpoint facing the cable, Crusher on the Endpoint's top, subnet cable with a Storage Bus on the
+Crusher's side. Its "Try it" (order before the card is in) is `inductionCardPowersEndpointMachine`.
+`guideSceneCables` in the appflux-mekanism profile confirmed the channel counts. `GuidePagesContractTest.MOD_ITEMS`
+allows `appflux:induction_card`.
