@@ -19,7 +19,7 @@ public final class AppliedFluxCompatGameTests {
     }
 
     /** Applied Flux's FE resource, from its own classes, since this test mod does not build against Applied Flux. */
-    private static AEKey fluxKey() {
+    static AEKey fluxKey() {
         try {
             var loader = AppliedFluxCompatGameTests.class.getClassLoader();
             var type = loader.loadClass("com.glodblock.github.appflux.common.me.key.type.EnergyType");

@@ -44,6 +44,7 @@ final class GuidePagesContractTest {
     private static final Map<String, Set<String>> MOD_ITEMS = Map.of(
             "mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer"),
             "appmek", Set.of("chemical_storage_cell_1k"),
+            "appflux", Set.of("flux_accessor", "fe_1k_cell"),
             "create", Set.of("crushing_wheel", "chute"),
             "extendedae", Set.of("assembler_matrix_frame"),
             "extendedae_plus", Set.of("super_assembler_matrix_frame"),
@@ -55,6 +56,7 @@ final class GuidePagesContractTest {
             "molecularmanipulator", Set.of("matter_fabrication_controller", "matter_fabrication_pattern_assembly"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
+            "appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md"),
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
             "extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md"),
             "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),

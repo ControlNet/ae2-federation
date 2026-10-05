@@ -11,6 +11,7 @@ import java.util.function.Predicate;
 public final class GuideExamplePacks {
     public static final List<Pack> ALL = List.of(new Pack("guide_mekanism", List.of("mekanism")),
             new Pack("guide_mekanism_appmek", List.of("mekanism", "appmek")),
+            new Pack("guide_appflux_mekanism", List.of("appflux", "mekanism")),
             new Pack("guide_create", List.of("create")),
             new Pack("guide_extendedae", List.of("extendedae")),
             new Pack("guide_extendedae_plus", List.of("extendedae_plus", "extendedae")),

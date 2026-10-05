@@ -1,0 +1,19 @@
+{
+  "name": "appflux-mekanism",
+  "group": "addons",
+  "description": "Applied Flux with Mekanism: a Flux Accessor runs a Mekanism machine on FE shared from another network",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "appflux@1.21-2.1.5-neoforge",
+    "mekanism@10.7.19.85"
+  ],
+  "tests": [
+    "core",
+    "appflux",
+    "appflux-mekanism"
+  ]
+}

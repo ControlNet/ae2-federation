@@ -184,6 +184,7 @@ and page ids did not change.
 |---|---|---|---|
 | `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
 | `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
+| `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
@@ -204,6 +205,10 @@ and page ids did not change.
   inner Hybrid Cores sit on their own one-node grid, so pattern container and readiness checks use an outer frame.
   The mod's own matrix scene uses ExtendedAE's `assembler_matrix_glass`, so the pack requires extendedae too (a hard
   dependency of ExtendedAE-Plus anyway).
+- Applied Flux's Flux Accessor draws FE (`FluxKey` FE) from its own grid's storage service, so a Storage rule is
+  enough for it to use another network's ME FE Storage Cells; a disabled rule unmounts them and it draws nothing.
+  It needs a channel. `GuidePagesContractTest.MOD_ITEMS`/`MOD_PAGES` are at `Map.of`'s 10-entry limit; switch to
+  `Map.ofEntries` for the next mod.
 - Recipes the pages state were read from the jars: Chemical Oxidizer 1 charcoal -> 20 mB carbon; Create Crushing
   Wheels have no cobblestone crushing recipe and use the milling one, 1 cobblestone -> 1 gravel.
 - Right after a multiblock breaks, the provider grid can have no confirmed network identity for a while

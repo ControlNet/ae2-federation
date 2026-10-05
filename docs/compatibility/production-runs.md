@@ -116,6 +116,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels, also as the guide builds it with the wheels stopped during a job; an Item Vault and a Fluid Tank through a Storage Bus | 23/23 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 20/20 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell | 19/19 |
+| `appflux-mekanism` | Applied Flux 2.1.5, Mekanism 10.7.19 | the Applied Flux group; a Flux Accessor running a Mekanism Crusher on FE shared from another network's FE cell, which stops drawing once the Storage rule is off | 20/20 |
 | `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 67/67 |
 
 ## Modpack profiles
@@ -126,7 +127,7 @@ CDN and checked against their pinned SHA-512.
 
 | Profile | Pack | NeoForge, AE2 | Groups | Result (2026-10-05) |
 |---|---|---|---|---|
-| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, expandedae | 67/67 |
+| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, appflux-mekanism, expandedae | 68/68 |
 | `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 49/49 |
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
