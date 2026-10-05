@@ -24,12 +24,16 @@ from them.
 1. **Connect the two networks** with a Bridge or Routers; see [Getting Started](getting-started.md).
 2. **Switch on "A uses B's" Crafting** in the Federation screen. It switches the same direction's Storage on too,
    because A's crafting CPU takes the ingredients from what A can see.
-3. **Order from network A.** A's terminals list B's patterns among A's own craftables. Request one as usual.
+3. **Switch on ME power** for the pair. Network B then runs on network A's power and needs no energy cell of its own.
+4. **Order from network A.** A's terminals list B's patterns among A's own craftables. Request one as usual.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/native_projection.snbt" />
   <BoxAnnotation color="#915dcd" min="5 1 0" max="6 2 1">
     Network A's crafting CPU: plans and runs the job
+  </BoxAnnotation>
+  <BoxAnnotation color="#915dcd" min="5 0 0" max="6 1 1">
+    Network A's energy cell: powers both networks through ME power
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="4.125 0.125 0" max="4.875 0.875 0.2">
     Network A's crafting terminal: lists network B's patterns to order
@@ -45,6 +49,16 @@ from them.
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
+
+In the Federation screen:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Pattern provider|Molecular Assembler" />
+  <Rule user="a" source="b" capability="crafting" />
+  <Rule user="a" source="b" capability="storage" />
+  <Energy first="a" second="b" />
+</FederationTopology>
 
 Network A's crafting CPU plans and runs the job, with the materials network A can see, which include network B's
 storage. It pushes each step's ingredients to B's pattern provider, the machine works as usual, and the results go
@@ -78,7 +92,8 @@ The results come back to the Provider's network. Processing needs no rule in the
 
 1. **The machines' network.** Build a small ME network (a processing subnet) whose storage feeds the machines, for
    example with storage buses or interfaces facing them, the usual AE2 way. Place the Endpoint so that one of its
-   ME faces joins this subnet. The subnet must not be the Provider's own network.
+   ME faces joins this subnet. The subnet must not be the Provider's own network. While the Provider uses the
+   Endpoint, the Endpoint powers the subnet from the Provider's network, so the subnet needs no power of its own.
 2. **Face both fronts to the Federation side.** Both blocks have one Federation face, their front, which faces the
    block you clicked when placing them. Click Federation Cable (or a Router) to place them, or put the two fronts
    against each other. The Provider's other five faces join its own ME network like a normal pattern provider, and
@@ -104,8 +119,8 @@ A small example: the Provider's network processes through a furnace on a subnet 
   <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
     Processing Endpoint: front on the Federation Cable, top face on the machine subnet
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="3 3 1">
-    Processing subnet, with its own power
+  <BoxAnnotation color="#5CA7CD" min="1 1 0" max="2 3 1">
+    Processing subnet, powered through the Endpoint
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="0.125 2 0.125" max="0.875 2.3 0.875">
     Storage Bus: the subnet's storage, so the inputs go straight into the furnace
@@ -115,6 +130,13 @@ A small example: the Provider's network processes through a furnace on a subnet 
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
+
+In the Federation screen, the Endpoint hangs under the Provider's network, and its subnet runs on that network's power:
+
+<FederationTopology>
+  <Network key="main" label="Provider's network" color="#915dcd" column="0" row="0" details="Pattern Provider|Storage, energy cell" />
+  <Endpoint key="furnace" label="Endpoint · furnace" owner="main" energy="true" details="Furnace subnet" />
+</FederationTopology>
 
 When the Provider's network crafts, the inputs go into the subnet's ME storage, and from there to the machines.
 Machines (or pipes) must push their results into one of the Endpoint's faces other than its front. They go to the
