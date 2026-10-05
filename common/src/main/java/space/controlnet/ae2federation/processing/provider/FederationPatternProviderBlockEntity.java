@@ -11,6 +11,9 @@ import appeng.api.orientation.RelativeSide;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.util.IConfigManager;
 import appeng.blockentity.grid.AENetworkedBlockEntity;
+import appeng.api.upgrades.IUpgradeInventory;
+import appeng.api.upgrades.IUpgradeableObject;
+import appeng.api.upgrades.UpgradeInventories;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import java.util.ArrayList;
@@ -346,6 +349,15 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     @Override
     public ItemStack getMainMenuIcon() {
         return ProcessingRegistration.PROVIDER_ITEM.get().getDefaultInstance();
+    }
+
+    /**
+     * The owner logic's upgrade slots: AE2's Pattern Provider has none, and an addon that adds them to AE2's provider
+     * logic, such as Applied Flux, adds them to the owner too, so the Provider has as many as AE2's own would.
+     */
+    public IUpgradeInventory upgrades() {
+        return (Object) owner instanceof IUpgradeableObject upgradeable ? upgradeable.getUpgrades()
+                : UpgradeInventories.empty();
     }
 
     public MappedPatternProvider mappedProvider() {

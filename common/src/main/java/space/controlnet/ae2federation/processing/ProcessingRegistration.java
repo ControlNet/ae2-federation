@@ -10,6 +10,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -23,6 +24,7 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapabili
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
+import space.controlnet.ae2federation.processing.provider.ProviderUpgradeCards;
 
 public final class ProcessingRegistration {
     private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks("ae2federation");
@@ -62,6 +64,9 @@ public final class ProcessingRegistration {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(ProcessingRegistration::registerCapabilities);
+        // Addons register their cards in their own setup, whose order among mods is not fixed; load complete is after all.
+        modBus.addListener(FMLLoadCompleteEvent.class,
+                event -> event.enqueueWork(() -> ProviderUpgradeCards.inherit(PROVIDER_ITEM.get())));
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

@@ -23,6 +23,9 @@ Sends processing patterns to machines on other networks, through
 
 Right-click it to insert up to nine encoded patterns and map each to Endpoints. It also has blocking mode, crafting
 lock, priority and visibility in the Pattern Access Terminal, like AE2's <ItemLink id="ae2:pattern_provider" />.
+If an addon gives AE2's Pattern Provider upgrade slots, this Provider has the same slots, under **Upgrades** in its
+screen, and takes the same cards. Applied Flux's Induction Card, for example, sends the network's FE into machines
+touching the Provider.
 Breaking it drops its patterns and anything waiting to be sent or returned.
 
 <RecipeFor id="ae2federation:pattern_provider" />

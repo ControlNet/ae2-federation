@@ -81,7 +81,8 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
   stops any server 30 s after its report appears. A crash fires `ServerStoppedEvent` but not `ServerStoppingEvent`;
   the test mod writes a partial report from either.
 - Applied Flux mixes `initUpgrade` into the `PatternProviderLogic` constructor and adds an `IEnergyDistributor` node
-  service; anything wrapping `IManagedGridNode.addService` must tolerate unknown services.
+  service; anything wrapping `IManagedGridNode.addService` must tolerate unknown services. Lanes drop them; the
+  owner logic forwards them to the physical node (2026-10-06, see `provider-upgrade-slots-2026-10-06.md`).
 - MEGA Pattern Provider filters its slots to processing patterns. Advanced AE providers are not
   `PatternProviderLogicHost` but are AE2 `PatternContainer`s. AppMek keys: `#t=appmek:chemical`, `id=mekanism:hydrogen`.
 - Create in a GameTest: a `create:creative_motor` with `FACING=UP` under a `create:millstone`, speed set through its

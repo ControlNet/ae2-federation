@@ -5,6 +5,7 @@ import appeng.api.config.Setting;
 import appeng.api.config.Settings;
 import appeng.api.config.YesNo;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.upgrades.Upgrades;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.lowdragmc.lowdraglib2.gui.factory.PlayerUIMenuType;
@@ -64,6 +65,15 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
     private static final int CHOICES_TICKS = 5;
     private static final YesNo[] BLOCKING = {YesNo.NO, YesNo.YES};
     private static final YesNo[] TERMINAL = {YesNo.YES, YesNo.NO};
+    /**
+     * The upgrade slots both sides make, the most this screen shows. The client cannot know before the screen opens
+     * how many the Provider has, and both sides must add the same slots in the same order, so both make this many and
+     * the client shows as many as the server reports; the server binds the rest to an inventory that takes nothing.
+     */
+    private static final int UPGRADE_SLOTS = 8;
+    /** Slots per column, as AE2's upgrade panel stacks them; the compact screen's lower area fits three. */
+    private static final int UPGRADE_ROWS = 4;
+    private static final int COMPACT_UPGRADE_ROWS = 3;
 
     private final @Nullable FederationDomainPolicySession session;
     private final FederationMenuAuthority authority;
@@ -75,6 +85,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
     private JsonObject choices = new JsonObject();
     private @Nullable String choicesCache;
     private int choicesAge;
+    private List<ItemSlot> upgradeSlots = List.of();
+    private int upgradeCount;
+    private boolean compact;
 
     FederationProviderMenuHolder(@Nullable FederationDomainPolicySession session) {
         this.session = session;
@@ -94,6 +107,7 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         var ui = UI.of(Objects.requireNonNull(document, "Missing Federation Pattern Provider UI " + XML));
         currentUi = ui;
         var slots = patternSlots(ui);
+        upgradeSlots = upgradeSlots(ui);
         graph = new FederationProcessingGraph(ui, target -> send(FederationDomainPolicyAction.SET_MAPPING, target),
                 target -> send(FederationDomainPolicyAction.SELECT_TARGET, target), this::prepareRelease,
                 patterns::name, patterns::outputStack, patterns::facts);
@@ -150,7 +164,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             @Override
             public void init(int screenWidth, int screenHeight) {
                 ui.rootElement.removeClass("compact");
-                if (screenHeight < 280) ui.rootElement.addClass("compact");
+                compact = screenHeight < 280;
+                if (compact) ui.rootElement.addClass("compact");
+                arrangeUpgrades();
                 var size = space.controlnet.ae2federation.client.policy.WorkspaceSize.fit(screenWidth, screenHeight);
                 ui.rootElement.layout(style -> style.width(size.width()).height(size.height()));
                 super.init(screenWidth, screenHeight);
@@ -185,6 +201,79 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             slots.add(slot);
         }
         return slots;
+    }
+
+    /**
+     * The Provider's upgrade slots, AE2's own upgrade inventory of its owner logic, hidden until the first choices say
+     * how many it has. The server binds that inventory; the client binds a mirror that vanilla slot sync fills. Both
+     * accept only the cards the Provider takes, as AE2's upgrade slots do.
+     */
+    private List<ItemSlot> upgradeSlots(UI ui) {
+        var store = element(ui, "pattern_slots", UIElement.class);
+        var upgrades = provider().map(FederationPatternProviderBlockEntity::upgrades).orElse(null);
+        IItemHandlerModifiable handler = upgrades != null ? (IItemHandlerModifiable) upgrades.toItemHandler()
+                : new ItemStackHandler(UPGRADE_SLOTS) {
+                    @Override
+                    public boolean isItemValid(int slot, ItemStack stack) {
+                        return Upgrades.getMaxInstallable(stack.getItem(),
+                                space.controlnet.ae2federation.processing.ProcessingRegistration.PROVIDER_ITEM.get()) > 0;
+                    }
+
+                    @Override
+                    public int getSlotLimit(int slot) {
+                        return 1;
+                    }
+                };
+        int bound = upgrades != null ? Math.min(upgrades.size(), UPGRADE_SLOTS) : UPGRADE_SLOTS;
+        var none = new ItemStackHandler(UPGRADE_SLOTS) {
+            @Override
+            public boolean isItemValid(int slot, ItemStack stack) {
+                return false;
+            }
+        };
+        var slots = new ArrayList<ItemSlot>();
+        for (int index = 0; index < UPGRADE_SLOTS; index++) {
+            var slot = new FederationUpgradeSlot();
+            slot.setId("upgrade_slot_" + index);
+            slot.bind(index < bound
+                    ? new ItemHandlerSlot(handler, index).setCanTake(viewer -> session == null || session.isStillValid(viewer))
+                    : new ItemHandlerSlot(none, index).setCanPlace(stack -> false).setCanTake(viewer -> false));
+            slot.setDisplay(false);
+            store.addChild(slot);
+            slots.add(slot);
+        }
+        return slots;
+    }
+
+    /** Stacks the Provider's upgrade slots in columns, as AE2 does, and hides the column when it has none. */
+    private void arrangeUpgrades() {
+        if (currentUi == null || upgradeSlots.isEmpty()) return;
+        var column = element(currentUi, "provider_upgrades", UIElement.class);
+        var grid = element(currentUi, "provider_upgrade_slots", UIElement.class);
+        var store = element(currentUi, "pattern_slots", UIElement.class);
+        for (var child : List.copyOf(grid.getChildren())) {
+            for (var slot : List.copyOf(child.getChildren())) {
+                child.removeChild(slot);
+                store.addChild(slot);
+            }
+            grid.removeChild(child);
+        }
+        int rows = compact ? COMPACT_UPGRADE_ROWS : UPGRADE_ROWS;
+        UIElement current = null;
+        for (int index = 0; index < upgradeSlots.size(); index++) {
+            var slot = upgradeSlots.get(index);
+            boolean shown = index < upgradeCount;
+            slot.setDisplay(shown);
+            if (!shown) continue;
+            if (index % rows == 0) {
+                current = new UIElement();
+                current.addClass("provider-upgrade-column");
+                grid.addChild(current);
+            }
+            store.removeChild(slot);
+            current.addChild(slot);
+        }
+        column.setDisplay(upgradeCount > 0);
     }
 
     /**
@@ -356,6 +445,11 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
         element(ui, "provider_noface_text", Label.class).setText(tr("noface.text"));
         element(ui, "provider_noface_kept", Label.class).setText(tr(mappings > 0 ? "noface.kept" : "noface.none", mappings));
         renderReturns(ui, targets);
+        int upgrades = choices.has("upgrades") ? Math.min(choices.get("upgrades").getAsInt(), UPGRADE_SLOTS) : 0;
+        if (upgrades != upgradeCount) {
+            upgradeCount = upgrades;
+            arrangeUpgrades();
+        }
         var selected = choices.getAsJsonObject("selected");
         graph.accept(slotChoices, targets, selected.has("target") ? selected.get("target").getAsString() : "", position,
                 objects(choices, "processingProviders"), names);

@@ -372,6 +372,7 @@
   "ae2federation.ui.provider.priority": "优先级",
   "ae2federation.ui.provider.priority_help": "优先级：同一样板有多个供应器时，AE2 优先使用数值更高的。",
   "ae2federation.ui.provider.inventory": "物品栏",
+  "ae2federation.ui.provider.upgrades": "升级",
   "ae2federation.ui.provider.returns": "回流缓冲 · 按端点",
   "ae2federation.ui.provider.returns_none": "还没有端点绑定到此供应器。",
   "ae2federation.ui.provider.returns_empty": "空",

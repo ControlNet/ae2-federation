@@ -39,6 +39,10 @@
                             <label class="domain-heading"><lang key="ae2federation.ui.provider.inventory"/></label>
                             <inventory-slots id="player_inventory"/>
                         </element>
+                        <element id="provider_upgrades" class="provider-upgrades">
+                            <label class="domain-heading"><lang key="ae2federation.ui.provider.upgrades"/></label>
+                            <element id="provider_upgrade_slots" class="provider-upgrade-slots"/>
+                        </element>
                         <element class="provider-returns">
                             <label class="domain-heading"><lang key="ae2federation.ui.provider.returns"/></label>
                             <scroller-view id="provider_return_list" class="dark-panel provider-return-list"/>

@@ -109,6 +109,8 @@ public final class FederationTheme {
     public static final IGuiTexture TOOLBAR = sprite(AE2_STATES, 176, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_HOVER = sprite(AE2_STATES, 212, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_ACTIVE = sprite(AE2_STATES, 194, 128, 18, 20);
+    /** AE2's empty upgrade slot icon ({@code Icon.BACKGROUND_UPGRADE}), at the 40% AE2 draws slot icons with. */
+    public static final IGuiTexture UPGRADE_SLOT = tinted(AE2_STATES, 240, 208, 16, 16, 0x66ffffff);
 
     private FederationTheme() {}
 

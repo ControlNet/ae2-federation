@@ -372,6 +372,7 @@
   "ae2federation.ui.provider.priority": "Priority",
   "ae2federation.ui.provider.priority_help": "Priority: AE2 prefers Providers with a higher number for the same pattern.",
   "ae2federation.ui.provider.inventory": "Inventory",
+  "ae2federation.ui.provider.upgrades": "Upgrades",
   "ae2federation.ui.provider.returns": "Return buffers · by Endpoint",
   "ae2federation.ui.provider.returns_none": "No Endpoint is bound to this Provider yet.",
   "ae2federation.ui.provider.returns_empty": "Empty",

@@ -625,6 +625,7 @@ public final class FederationDomainPolicySession {
                 : deviceDomainAvailability.key());
         if (provider == null) return root.toString();
         root.addProperty("position", provider.getBlockPos().toShortString());
+        root.addProperty("upgrades", provider.upgrades().size());
         var inventory = provider.mappedProvider().patternInventory();
         int used = 0;
         for (int slot = 0; slot < inventory.size(); slot++) {
