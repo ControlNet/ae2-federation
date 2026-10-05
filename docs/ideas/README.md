@@ -16,6 +16,8 @@ Its name, appearance and detailed behavior remain undecided.
 
 ## Implemented ideas
 
+- [GuideME use-case tutorials](../features/guideme-use-cases.md): implemented bilingual examples and optional-mod tutorial packs.
+  The [original discussion](../archive/ideas/guideme-use-cases.md) is archived for historical context.
 - [Survival playability](../features/survival-playability.md): implemented recipes, processor icon and GuideME guide.
   The [original discussion](../archive/ideas/survival-playability.md) is archived for historical context.
 
