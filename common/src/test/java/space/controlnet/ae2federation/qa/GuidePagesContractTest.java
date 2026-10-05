@@ -46,14 +46,17 @@ final class GuidePagesContractTest {
             "extendedae_plus", Set.of("4x_crafting_accelerator"),
             "ae2lt", Set.of("overloaded_pattern_provider", "overloaded_pattern_provider_upgrade"),
             "data_energistics", Set.of("adaptive_pattern_provider", "adaptive_pattern_provider_upgrade"),
-            "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface"));
+            "neoecoae", Set.of("storage_system_l4", "eco_drive", "eco_item_storage_cell_16m", "storage_interface",
+                    "crafting_system_l4", "crafting_pattern_bus", "crafting_interface", "computation_system_l4",
+                    "computation_drive", "eco_computation_cell_l4", "computation_interface"));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.of(
             "extendedae", Set.of("epp_intro/assembler_matrix.md"),
             "extendedae_plus", Set.of("introduction/devices/crafting_accelerator.md"),
             "ae2lt", Set.of("overloaded-network/overloaded-pattern-provider.md"),
             "data_energistics", Set.of("items-blocks-machines/6.17_adaptive_pattern_provider.md"),
-            "neoecoae", Set.of("neoecoae_intro/storage_system.md"));
+            "neoecoae", Set.of("neoecoae_intro/storage_system.md", "neoecoae_intro/crafting_system.md",
+                    "neoecoae_intro/computation_system.md"));
     private static final Pattern LINK = Pattern.compile("]\\(([^)#]+)(#[^)]*)?\\)");
     private static final Pattern STRUCTURE = Pattern.compile("<ImportStructure src=\"([^\"]+)\"");
     private static final Pattern ID = Pattern.compile("(?:id=\"|icon: |^- )([a-z0-9_]+):([a-z0-9_/.]+)", Pattern.MULTILINE);
