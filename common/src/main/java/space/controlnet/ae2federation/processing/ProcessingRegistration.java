@@ -24,6 +24,7 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapabili
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
+import space.controlnet.ae2federation.processing.provider.ProviderEnergyRelay;
 import space.controlnet.ae2federation.processing.provider.ProviderUpgradeCards;
 
 public final class ProcessingRegistration {
@@ -93,6 +94,11 @@ public final class ProcessingRegistration {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).fluidReturn(side).orElse(null));
+        // FE a Provider sends out of its Federation face goes on to the machines at its Endpoints, whatever sends it.
+        event.registerBlock(Capabilities.EnergyStorage.BLOCK,
+                (level, position, state, blockEntity, side) -> ProviderEnergyRelay.facing(level, position, side),
+                ENDPOINT.get(), space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get(),
+                space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
         // As on AE2's own Pattern Provider; Applied Mekanistics and other addons wrap it for their resource types.
         event.registerBlockEntity(AECapabilities.GENERIC_INTERNAL_INV, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null

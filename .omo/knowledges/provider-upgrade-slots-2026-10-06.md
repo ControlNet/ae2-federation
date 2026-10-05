@@ -48,7 +48,19 @@ The UI harness has no AF client. For a local look only (never commit), temporari
   keeps through save, distributor on the node; fails when owner forwarding is disabled).
 - Compat `appflux-mekanism`: `inductionCardPowersAdjacentMachine` (no FE before the card, Crusher powered after).
 
-## Open
+## FE across Federation (owner chose option 1, 2026-10-06)
 
-FE to machines behind Endpoints is not done: a lane's authorized target is the Endpoint's input storage (its
-subnet), not a machine, so "forward FE to the Endpoint's machines" needs an owner decision on the destination.
+- A lane's authorized target is the Endpoint's subnet input (`AuthorizedNativeTarget.position` is the Endpoint,
+  `side` the face opposite its Federation face), not a machine. The owner chose: FE goes to machines touching the
+  Endpoints the Provider holds.
+- `ProviderEnergyRelay`: `Capabilities.EnergyStorage.BLOCK` registered on the Endpoint, Router and Federation Cable;
+  it answers only when asked from the side of a Provider whose Federation face points at it. AF's ticker sends into
+  it like into any neighbour. Targets come from `FederationPatternProviderTargetCache.authorized(lane)` (the same
+  resolution pushes use), deduplicated per Endpoint, every face but the Federation face, skipping Federation blocks
+  and other relays; filled in turn with a rotating start (AF simulates, extracts, then receives for real).
+- The Provider invalidates its six neighbours' capabilities on ready and on rotation.
+- Our registration precedes AF's LOWEST `FEGenericStackInvStorage` on the Endpoint; ours is null on other faces, so the
+  Endpoint still takes FE returns there.
+- Tests (appflux-mekanism): `inductionCardPowersEndpointMachine` (Crusher on the Endpoint, no own power; red before
+  the relay), `providerEnergyFollowsTheLink` (cable relay one-sided, AF through cables and a Router, stops when the
+  Endpoint leaves the domain).

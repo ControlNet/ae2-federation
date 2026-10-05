@@ -168,6 +168,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         rebuildFederationCache();
         withdrawFederationDomainNode();
+        invalidateNeighbourCapabilities();
     }
 
     /** The Federation port capability exists only on the front face. */
@@ -201,6 +202,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         }
         rebuildFederationCache();
         federationDomainDirty = true;
+        invalidateNeighbourCapabilities();
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state,
@@ -358,6 +360,55 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
     public IUpgradeInventory upgrades() {
         return (Object) owner instanceof IUpgradeableObject upgradeable ? upgradeable.getUpgrades()
                 : UpgradeInventories.empty();
+    }
+
+    /**
+     * The FE handlers of the machines touching the Endpoints this Provider's Lanes may push to now, each face of each
+     * Endpoint once, except its Federation face and Federation blocks. {@link ProviderEnergyRelay} fills them.
+     */
+    List<net.neoforged.neoforge.energy.IEnergyStorage> endpointEnergyTargets() {
+        if (!(level instanceof ServerLevel serverLevel) || runtime == null) {
+            return List.of();
+        }
+        var endpoints = new java.util.LinkedHashMap<BlockPos, Direction>();
+        for (var lane : provider.nativeLanes()) {
+            space.controlnet.ae2federation.ae2.processing.FederationPatternProviderTargetCache.authorized(lane)
+                    .filter(target -> target.level() == serverLevel)
+                    // Lanes reach an Endpoint through the face opposite its Federation face.
+                    .ifPresent(target -> endpoints.putIfAbsent(target.position(), target.side().getOpposite()));
+        }
+        var targets = new ArrayList<net.neoforged.neoforge.energy.IEnergyStorage>();
+        endpoints.forEach((endpoint, federation) -> {
+            for (var face : Direction.values()) {
+                var machine = endpoint.relative(face);
+                if (face == federation || !serverLevel.isLoaded(machine) || federationBlock(serverLevel, machine)) {
+                    continue;
+                }
+                var energy = serverLevel.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK,
+                        machine, face.getOpposite());
+                if (energy != null && !(energy instanceof ProviderEnergyRelay)) {
+                    targets.add(energy);
+                }
+            }
+        });
+        return targets;
+    }
+
+    /** Federation devices next to an Endpoint are not machines: FE sent into them would only travel on. */
+    private static boolean federationBlock(ServerLevel level, BlockPos position) {
+        var block = level.getBlockState(position).getBlock();
+        return block == ProcessingRegistration.ENDPOINT.get() || block == ProcessingRegistration.PROVIDER.get()
+                || block == space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+                || block == space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get();
+    }
+
+    /** The block in front answers with an FE relay only while this Provider faces it; tell the neighbours to ask again. */
+    private void invalidateNeighbourCapabilities() {
+        if (level instanceof ServerLevel serverLevel) {
+            for (var direction : Direction.values()) {
+                serverLevel.invalidateCapabilities(worldPosition.relative(direction));
+            }
+        }
     }
 
     public MappedPatternProvider mappedProvider() {

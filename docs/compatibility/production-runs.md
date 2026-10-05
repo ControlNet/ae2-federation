@@ -122,7 +122,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `create` | Create 6.0.10 | processing through a Millstone; Endpoint into Crushing Wheels, also as the guide builds it with the wheels stopped during a job; an Item Vault and a Fluid Tank through a Storage Bus | 24/24 |
 | `storage-mods` | Sophisticated Storage 1.6.1, Functional Storage 1.5.7 | a Sophisticated Storage chest and a Functional Storage drawer through a Storage Bus | 21/21 |
 | `appflux` | Applied Flux 2.1.5 | sharing FE in an FE cell; the Federation Pattern Provider's upgrade slots, as many as AE2's Pattern Provider has, taking and keeping the Induction Card and refusing a card AE2's provider refuses | 21/21 |
-| `appflux-mekanism` | Applied Flux 2.1.5, Mekanism 10.7.19 | the Applied Flux group; a Flux Accessor running a Mekanism Crusher on FE shared from another network's FE cell, which stops drawing once the Storage rule is off; the Induction Card in a Federation Pattern Provider powering a Crusher touching it, and no FE sent before the card goes in | 23/23 |
+| `appflux-mekanism` | Applied Flux 2.1.5, Mekanism 10.7.19 | the Applied Flux group; a Flux Accessor running a Mekanism Crusher on FE shared from another network's FE cell, which stops drawing once the Storage rule is off; the Induction Card in a Federation Pattern Provider powering a Crusher touching it, and no FE sent before the card goes in; the card powering a Crusher that sits on the Provider's Endpoint with no power of its own; the card's FE reaching an energy cube beside an Endpoint across Federation Cables and a Router, and stopping once that Endpoint leaves the domain | 25/25 |
 | `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 70/70 |
 
 ## Modpack profiles
@@ -148,7 +148,8 @@ The first modpack runs found two bugs in AE2 Federation 0.0.4, both fixed on dev
   The Federation Pattern Provider's lanes rejected any service they did not know, so loading a Federation Pattern
   Provider beside Applied Flux crashed the server. Lanes now leave addon services out; the Provider's owner logic
   hands them to the Provider's node once, as AE2's own Pattern Provider has them, and the Provider has the upgrade
-  slots Applied Flux gives AE2's, so its Induction Card powers machines touching the Provider.
+  slots Applied Flux gives AE2's, so its Induction Card powers machines touching the Provider and, through its
+  Federation face, machines touching the Endpoints it holds.
 
 The Endpoint machine scene found one more, also fixed on dev:
 

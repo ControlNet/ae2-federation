@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.compat;
 
 import appeng.api.config.Actionable;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import appeng.api.networking.security.IActionSource;
 import appeng.blockentity.storage.MEChestBlockEntity;
 import appeng.core.definitions.AEBlocks;
@@ -21,6 +23,7 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
+import space.controlnet.ae2federation.test.processing.ProductionProviderScene;
 import space.controlnet.ae2federation.test.storage.RouterStorageMountFixture;
 
 /** Applied Flux's FE storage shared with a network that runs Mekanism machines on it. */
@@ -162,6 +165,156 @@ public final class AppliedFluxMekanismCompatGameTests {
                     + "holds " + storage.getAvailableStacks().get(fe) + " FE, " + MekanismSetup.describe(helper, crusher));
             helper.assertTrue(storage.getAvailableStacks().get(fe) < STORED, "The Crusher's FE must come from the network");
         });
+    }
+
+    /**
+     * The Induction Card sends FE across Federation: the Provider's network keeps FE in an FE cell, and the Crusher
+     * sitting on the Provider's Endpoint, with no power of its own, crushes the job's cobblestone on that FE alone.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
+    public static void inductionCardPowersEndpointMachine(GameTestHelper helper) {
+        var fe = AppliedFluxCompatGameTests.fluxKey();
+        var card = AddonCraftingScene.item("appflux:induction_card");
+        long[] stored = {-1};
+        var scene = new EndpointMachineScene(helper, new FluxPoweredCrusher()).preparingProvider(provider -> {
+            var storage = provider.getMainNode().getGrid().getStorageService().getInventory();
+            helper.assertValueEqual(storage.insert(fe, STORED, Actionable.MODULATE, IActionSource.empty()), STORED,
+                    "The FE cell must store " + STORED + " FE");
+            helper.assertTrue(provider.upgrades().toItemHandler().insertItem(0, new ItemStack(card), false).isEmpty(),
+                    "The Provider must take the Induction Card");
+            stored[0] = STORED;
+        });
+        helper.succeedWhen(() -> {
+            scene.tick();
+            // The scene's Provider stands at (4, 1, 3).
+            var left = helper.<FederationPatternProviderBlockEntity>getBlockEntity(new BlockPos(4, 1, 3)).getMainNode()
+                    .getGrid().getStorageService().getInventory().getAvailableStacks().get(fe);
+            helper.assertTrue(left < stored[0], "The Crusher's FE must come from the Provider's network: " + left);
+        });
+    }
+
+    /**
+     * The Provider's FE reaches an Endpoint across Federation Cables and a Router, into a Basic Energy Cube touching
+     * that Endpoint, and only while the Provider may push to it: once the Endpoint leaves the domain no FE goes.
+     * The Federation Cable in front of the Provider answers with the relay only on the Provider's side.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
+    public static void providerEnergyFollowsTheLink(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        // West of Endpoint A, which looks north at the Router.
+        var cube = new BlockPos(6, 1, 4);
+        helper.setBlock(cube, AddonCraftingScene.block("mekanism:basic_energy_cube"));
+        MekanismSetup.configure(helper, cube, "ENERGY", "INPUT", Direction.EAST, false);
+        helper.<MEChestBlockEntity>getBlockEntity(ProductionProviderScene.SOURCE_CHEST)
+                .setCell(new ItemStack(AddonCraftingScene.item("appflux:fe_1k_cell")));
+        var fe = AppliedFluxCompatGameTests.fluxKey();
+        var card = AddonCraftingScene.item("appflux:induction_card");
+        var level = helper.getLevel();
+        int[] step = {0};
+        long[] watched = {0, 0, 0};
+        helper.succeedWhen(() -> {
+            var energy = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(cube), Direction.EAST);
+            helper.assertTrue(energy != null, "The cube must take FE from the Endpoint's side");
+            var relay = level.getCapability(Capabilities.EnergyStorage.BLOCK,
+                    helper.absolutePos(ProductionProviderScene.CABLE_NEAR), Direction.WEST);
+            if (step[0] == 0) {
+                var readiness = scene.topologyReadiness();
+                helper.assertTrue("ready".equals(readiness), "Waiting for production topology: " + readiness);
+                helper.assertTrue(scene.setAccess(ProductionProviderScene.Target.A, true), "Endpoint A must connect");
+                scene.installPattern(0);
+                var status = scene.map(0, ProductionProviderScene.Target.A);
+                helper.assertTrue(status.startsWith("accepted-"), "Mapping A: " + status);
+                step[0] = 1;
+                helper.fail("Mapped the pattern to Endpoint A");
+            }
+            var storage = scene.sourceGrid().getStorageService().getInventory();
+            if (step[0] == 1) {
+                helper.assertTrue(relay != null, "The Federation Cable must relay FE from the Provider's side");
+                helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK,
+                        helper.absolutePos(ProductionProviderScene.CABLE_NEAR), Direction.EAST) == null,
+                        "The Federation Cable must not relay FE from any other side");
+                helper.assertTrue(relay.receiveEnergy(1_000, true) > 0, "Waiting for the relay to reach the cube");
+                helper.assertValueEqual(storage.insert(fe, STORED, Actionable.MODULATE, IActionSource.empty()), STORED,
+                        "The FE cell must store " + STORED + " FE");
+                helper.assertTrue(scene.provider().upgrades().toItemHandler().insertItem(0, new ItemStack(card), false)
+                        .isEmpty(), "The Provider must take the Induction Card");
+                step[0] = 2;
+            }
+            if (step[0] == 2) {
+                helper.assertTrue(energy.getEnergyStored() > 0 && storage.getAvailableStacks().get(fe) < STORED,
+                        "Waiting for the card's FE to reach the cube: cube " + energy.getEnergyStored() + ", network "
+                        + storage.getAvailableStacks().get(fe));
+                helper.assertTrue(scene.setAccess(ProductionProviderScene.Target.A, false), "Endpoint A must disconnect");
+                watched[0] = helper.getTick();
+                step[0] = 3;
+            }
+            if (step[0] == 3) {
+                helper.assertTrue(helper.getTick() - watched[0] >= 20, "Letting the disconnect settle");
+                helper.assertValueEqual(relay.receiveEnergy(1_000, true), 0,
+                        "A disconnected Endpoint must get no FE through the relay");
+                watched[0] = helper.getTick();
+                watched[1] = energy.getEnergyStored();
+                watched[2] = storage.getAvailableStacks().get(fe);
+                step[0] = 4;
+            }
+            helper.assertTrue(helper.getTick() - watched[0] >= 100, "Watching the cube after the disconnect");
+            helper.assertValueEqual((long) energy.getEnergyStored(), watched[1],
+                    "The cube must get no FE once its Endpoint left the domain");
+            helper.assertValueEqual(storage.getAvailableStacks().get(fe), watched[2],
+                    "No FE may leave the network once the Endpoint left the domain");
+        });
+    }
+
+    /**
+     * A Crusher on the Endpoint with no energy source but the Endpoint below it: cobblestone in from the subnet's
+     * Storage Bus on its east face, gravel ejected down into the Endpoint, energy taken from below.
+     */
+    private static final class FluxPoweredCrusher implements EndpointMachineScene.Machine {
+        @Override
+        public String blockId() {
+            return "mekanism:crusher";
+        }
+
+        @Override
+        public AEKey input() {
+            return AEItemKey.of(Items.COBBLESTONE);
+        }
+
+        @Override
+        public AEKey output() {
+            return AEItemKey.of(Items.GRAVEL);
+        }
+
+        /** The Provider network's FE: an FE cell in the scene's second ME Chest. */
+        @Override
+        public String outputCell() {
+            return "appflux:fe_1k_cell";
+        }
+
+        @Override
+        public boolean ejectsIntoEndpoint() {
+            return true;
+        }
+
+        @Override
+        public Direction inputFace() {
+            return Direction.EAST;
+        }
+
+        @Override
+        public void prepare(GameTestHelper helper, BlockPos position) {
+            MekanismSetup.configure(helper, position, "ITEM", "INPUT", Direction.EAST, false);
+            MekanismSetup.configure(helper, position, "ITEM", "OUTPUT", Direction.DOWN, true);
+            MekanismSetup.configure(helper, position, "ENERGY", "INPUT", Direction.DOWN, false);
+        }
+
+        @Override
+        public String state(GameTestHelper helper, BlockPos position) {
+            var energy = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(position),
+                    Direction.DOWN);
+            return "energy=" + (energy == null ? "-" : energy.getEnergyStored()) + " "
+                    + MekanismSetup.describe(helper, position);
+        }
     }
 
     private static int gravel(GameTestHelper helper) {
