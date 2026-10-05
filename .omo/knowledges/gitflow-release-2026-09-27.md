@@ -74,3 +74,19 @@
   release bodies may render a wrapped line as a hard break. Upgrade callout for 0.0.4: 0.0.3 remote crafting jobs are
   not carried over, a Crafting rule gains its Storage rule on load, claimed Endpoints share ME power by default.
 - The owner kept 0.0.x (not 0.1.0) because the build has not been played through in survival yet.
+
+## Published v0.0.5 (2026-10-05)
+
+- Same flow as 0.0.4 in a separate worktree: `release/v0.0.5` from `dev` ("Prepare 0.0.5": only `mod_version`) →
+  Quick correctness and Compatibility (addon and modpack profiles) green on the release head → `git merge --no-ff`
+  into `master` ("Release 0.0.5", `5f8b61e`, tag `v0.0.5` by CI) → `master` merged back into `dev`.
+- Release run 37311588158: build, platform preflight, 16 GameTest shards, GitHub, Modrinth and CurseForge publish
+  all succeeded.
+- Binary `ae2federation-neoforge-1.21.1-0.0.5.jar`, 1,511,268 bytes, SHA-256
+  `a463220aa3b3cd35b2ce151e81733b3db4f067f714b2699401347ddd13b8c9ab`, identical to the local
+  `artifact_verify.py inspect` hash; sources SHA-256 `2d72829b6ea930f38267ff0f7a7d868ea6edbda45bc7d75aa76b5c0b7d88fc06`.
+  The jar's `neoforge.mods.toml` reads version 0.0.5, NeoForge `[21.1.216,)`, FML `[4,)`.
+- `test_artifact_verify.py` needs the built jar; run it after `./gradlew :neoforge-1.21.1:build`, as CI does, or
+  its tests error with FileNotFoundError.
+- Notes: upgrade callout says worlds load as they are (no save-format change since 0.0.4, only more lenient loading)
+  and that 0.0.4 refused other NeoForge builds; sections "Modpacks and addons" and "In-game guide".
