@@ -12,14 +12,15 @@ navigation:
 <ItemLink id="ae2:molecular_assembler" />s holding its patterns. Order its recipes from your main network without
 moving the patterns or merging the networks.
 
-**You need:** the workshop network (network B), set up the usual AE2 way; your main network (network A) with a crafting
-CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:router" /> for each network and
-<ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they touch.
+**You need:** the workshop network (network B), set up the usual AE2 way but with no power of its own; your main network
+(network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:router" /> for
+each network and <ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they
+touch.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/remote_assembly.snbt" />
   <BoxAnnotation color="#915dcd" min="7 0 0" max="9 2 1">
-    Network A: crafting terminal, crafting CPU and storage
+    Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="7 1 1">
     A Router on each network, joined by Federation Cable
@@ -30,13 +31,25 @@ CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:router" /> f
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen then shows the two networks and the rules between them:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Pattern providers|Molecular Assemblers" />
+  <Rule user="a" source="b" capability="crafting" />
+  <Rule user="a" source="b" capability="storage" />
+  <Energy first="a" second="b" />
+</FederationTopology>
+
 ## Build it
 
 1. **Leave the workshop as it is.** Its pattern providers keep their patterns, and its assemblers stay beside them.
 2. **Connect the two networks** with Routers and Federation Cable.
 3. **Switch on Crafting under "A uses B's"** in the Federation screen. This switches the same direction's Storage on
    too, because A's CPU takes the ingredients from what A can see, which now includes B's storage.
-4. **Order from network A.** B's recipes are listed among A's craftables. Request one as usual.
+4. **Switch on ME power** for the pair. The two networks then share one energy pool, so network B runs on network A's
+   power.
+5. **Order from network A.** B's recipes are listed among A's craftables. Request one as usual.
 
 ## How the job runs
 

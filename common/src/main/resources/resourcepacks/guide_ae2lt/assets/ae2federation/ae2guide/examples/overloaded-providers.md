@@ -14,13 +14,13 @@ network keeps ordering from it. This page appears because AE2 Lightning Tech is 
 
 **You need:** the workshop network (network B) with <ItemLink id="ae2:pattern_provider" />s next to
 <ItemLink id="ae2:molecular_assembler" />s; an <ItemLink id="ae2lt:overloaded_pattern_provider_upgrade" /> for each
-provider; your main network (network A) with a crafting CPU, a crafting terminal and storage; a
+provider; your main network (network A) with a crafting CPU, a crafting terminal, storage and power; a
 <ItemLink id="ae2federation:router" /> for each network and <ItemLink id="ae2federation:cable" /> between them.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/overloaded_providers.snbt" />
   <BoxAnnotation color="#915dcd" min="7 0 0" max="9 2 1">
-    Network A: crafting terminal, crafting CPU and storage
+    Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="7 1 1">
     A Router on each network, joined by Federation Cable
@@ -31,10 +31,20 @@ provider; your main network (network A) with a crafting CPU, a crafting terminal
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+The Federation screen then shows the two networks and the rules between them:
+
+<FederationTopology>
+  <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
+  <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Overloaded Pattern Providers|Molecular Assemblers" />
+  <Rule user="a" source="b" capability="crafting" />
+  <Rule user="a" source="b" capability="storage" />
+  <Energy first="a" second="b" />
+</FederationTopology>
+
 ## Build it
 
 1. **Start from the assembly workshop example:** the two networks connected, with Crafting switched on under
-   "A uses B's".
+   "A uses B's" and ME power on for the pair.
 2. **Use an Overloaded Pattern Provider Upgrade on each of B's pattern providers.** Each one becomes an Overloaded
    Pattern Provider and keeps its patterns and settings; see
    [AE2 Lightning Tech's guide](ae2lt:overloaded-network/overloaded-pattern-provider.md).

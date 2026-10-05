@@ -10,12 +10,12 @@ navigation:
 
 **目标**： 像[向装配工坊下单](remote-assembly.md)那样， 向另一个网络上的装配工坊下单， 并在自己的合成CPU里装上ExtendedAE-Plus的4x并行处理单元。 这一页出现， 是因为安装了ExtendedAE-Plus。
 
-**需要**： 带<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />的工坊网络（网络B）； 带合成终端、存储， 以及由<ItemLink id="ae2:1k_crafting_storage" />和<ItemLink id="extendedae_plus:4x_crafting_accelerator" />组成的合成CPU的主网络（网络A）； 每个网络一个<ItemLink id="ae2federation:router" />， 它们之间用<ItemLink id="ae2federation:cable" />相连。
+**需要**： 带<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />的工坊网络（网络B）； 带电源、合成终端、存储， 以及由<ItemLink id="ae2:1k_crafting_storage" />和<ItemLink id="extendedae_plus:4x_crafting_accelerator" />组成的合成CPU的主网络（网络A）； 每个网络一个<ItemLink id="ae2federation:router" />， 它们之间用<ItemLink id="ae2federation:cable" />相连。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/accelerated_cpu.snbt" />
   <BoxAnnotation color="#915dcd" min="7 0 0" max="9 3 1">
-    网络A： 合成终端、存储， 以及合成存储器上装着4x并行处理单元的合成CPU
+    网络A： 合成终端、存储、给两个网络供电的能源元件， 以及合成存储器上装着4x并行处理单元的合成CPU
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="7 1 1">
     每个网络一个路由器， 用联邦线缆相连
@@ -26,11 +26,21 @@ navigation:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
+联邦界面里会显示这两个网络和它们之间的规则：
+
+<FederationTopology>
+  <Network key="a" label="网络A" color="#915dcd" column="0" row="0" details="4x处理单元CPU|终端、存储、能源元件" />
+  <Network key="b" label="网络B" color="#5CA7CD" column="1" row="0" details="样板供应器|分子装配室" />
+  <Rule user="a" source="b" capability="crafting" />
+  <Rule user="a" source="b" capability="storage" />
+  <Energy first="a" second="b" />
+</FederationTopology>
+
 ## 搭建
 
 1. **搭建网络A的合成CPU**， 把这个处理单元当作其中一个方块。 它算作4个并行处理单元， 见[ExtendedAE-Plus自己的指南](extendedae_plus:introduction/devices/crafting_accelerator.md)。
 2. **用路由器和联邦线缆连接两个网络**。
-3. **在联邦界面里打开“A使用B的”合成规则**。
+3. **在联邦界面里打开“A使用B的”合成规则**， 再打开这对网络的ME能量， 让网络B靠网络A的电源运行。
 4. **从网络A下单**。 CPU运行任务时， 它的状态会显示4个并行处理单元。
 
 ## 处理单元该放在哪

@@ -238,3 +238,49 @@ and page ids did not change.
   temporary log, not committed): the 3-wide service channel in front of the controller, the Pattern Assembly's
   service position on the channel's front step (controller offset 2, 0, -4), coils and cores behind. OmniSequence ships
   no `.nbt` scenes; its blocks only carry `facing` (the assembly `push_direction`).
+
+## Topology diagrams in the guide (2026-10-05)
+
+- `<FederationTopology>` draws an example's networks in the topology screen's style: cards on the dark canvas, a link
+  per pair, a label per direction pointing at the user (chips in the rule state's colour), a quartz rail with beads
+  for shared energy, and teal dots moving from the providing network to the user. GuideME redraws the page every
+  frame, so the dots and beads move. Hovering a chip shows "A uses B's Crafting" and its state; the energy chip and the
+  cards have tooltips too.
+- **No public API adds a tag to someone else's guide.** GuideME 21.1.1 and 21.1.19 take tag compilers only through
+  `GuideBuilder.extension(TagCompiler.EXTENSION_POINT, ...)`; the built `MutableGuide.extensions` is final, and AE2
+  builds `ae2:guide` privately in `AppEngClient.createGuide()` with no hook. `mixin/client/GuideBuilderMixin` calls
+  `extension(...)` at the head of `GuideBuilder.build()` for `ae2:guide` only. `compileOnly guideme:21.1.1` (already in
+  the verification metadata); AE2 19.2.x accepts `guideme [21.1.1,)`.
+- Markup: `<Network key label color column row details="line|line" />`, `<Rule user source capability state />`
+  (`storage`/`crafting`; `active` default, `reexport`, `waiting`, `error`), `<Energy first second />`. `key`, not `id`:
+  the contract test rejects unqualified `id="..."`. Child tags only, self-closing; MdxAttrs rejects `{...}` values.
+- Code: `client/guide/TopologyDiagram` (parsing and validation, shared by the compiler and the contract test),
+  `TopologyDiagramLayout` (pure geometry, `TopologyDiagramLayoutTest`), `LytFederationTopology` (drawing; ends with
+  `guiGraphics().flush()` because 21.1.1 does not flush before changing the scissor), `FederationTopologyTagCompiler`
+  (no-op `index`, so search ignores the diagram). Chip and legend text reuse the topology screen's lang keys.
+- A page without the extension would show GuideME's red "Unhandled MDX element" paragraph; our pages always ship with
+  the mixin.
+- `GuidePagesContractTest.topologyDiagramsDrawAndChineseCopiesShowTheSameNetworks`: every diagram parses without
+  problems, and a Chinese copy differs only in labels and details (mutation checked: a flipped rule, an unknown key).
+
+## One power source per example (2026-10-05)
+
+- The examples power only the ordering (or warehouse) network; every other network runs on it through the ME power
+  rule, which pools energy transitively. Endpoint subnets were already powered by their Endpoint.
+- Backed by the compat scenes: `AddonCraftingScene` gives the provider network no energy cell
+  (`PolicyBridgeFixtures.installStorageCells(false)`) and enables the ME power rule once the Bridge is up, before it
+  waits for the provider's multiblock or pattern; `disconnectingAfterPush` gives it back a cell (`powerOuter()`), since
+  apart from the consumer it must still run. `AddonStorageScene` does the same for the consumer
+  (`RouterStorageMountFixture(helper, false)` and `energyKey()`).
+- Removing a block from a hand-written scene must also drop the neighbouring AE2 cables'
+  `connections` entry toward it and any palette entry no block uses.
+
+## Neo ECO district relayout (2026-10-05)
+
+The owner asked whether the old layout (A: computation only; B: storage and crafting) could work. It could in theory
+(the Crafting rule switches on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
+inputs in A's chest. The page now puts the storage and computation systems on A and only the crafting system on B,
+with no power and no storage on B. `ecoDistrictOrdering` builds exactly that
+(`AddonCraftingScene.consumerStorageStructure`: the consumer's chest and the provider's chest lose their cells, the
+inputs go into A's ECO storage through the drive's `IStorageProvider.mountInventories`, and everything made must end
+there), then breaks a crafting-system casing for the page's "Try it".
