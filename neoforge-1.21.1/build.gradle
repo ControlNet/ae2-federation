@@ -589,7 +589,7 @@ tasks.named('sourcesJar', Jar).configure {
 
 def targetJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
 def targetSourcesJar = tasks.named('sourcesJar', Jar).flatMap { it.archiveFile }
-def verifyReleaseArchive = { File archive, boolean sources ->
+def verifyReleaseArchive = { File archive, Boolean sources ->
     def entries = [:]
     new java.util.zip.ZipFile(archive).withCloseable { zip ->
         zip.entries().findAll { !it.directory }.each { entry -> entries[entry.name] = zip.getInputStream(entry).bytes }
