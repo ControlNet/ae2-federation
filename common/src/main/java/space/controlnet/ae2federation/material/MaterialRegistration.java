@@ -5,12 +5,15 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** Crafting materials: the Federation Logic Processor, pressed from AE2's Logic Processor, goes into the devices. */
+/**
+ * Crafting materials: Nexus Cores, crafted from redstone and Ender Dust, are pressed with Ender Dust and Printed Silicon
+ * into the Nexus Processor that goes into the devices.
+ */
 public final class MaterialRegistration {
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems("ae2federation");
 
-    public static final DeferredItem<Item> FEDERATION_LOGIC_PROCESSOR = ITEMS.registerSimpleItem(
-            "federation_logic_processor");
+    public static final DeferredItem<Item> NEXUS_CORE = ITEMS.registerSimpleItem("nexus_core");
+    public static final DeferredItem<Item> NEXUS_PROCESSOR = ITEMS.registerSimpleItem("nexus_processor");
 
     private MaterialRegistration() {
     }

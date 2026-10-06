@@ -18,6 +18,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -38,9 +39,26 @@ public final class SurvivalRecipeGameTests {
             required = true, timeoutTicks = 100)
     public static void survivalRecipes(GameTestHelper helper) {
         var level = helper.getLevel();
-        var processor = MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get().getDefaultInstance();
+        var processor = MaterialRegistration.NEXUS_PROCESSOR.get().getDefaultInstance();
+        var core = MaterialRegistration.NEXUS_CORE.get().getDefaultInstance();
         var cable = RouterRegistration.FEDERATION_CABLE_ITEM.get().getDefaultInstance();
         var assertions = 0;
+
+        // A row of redstone over a row of Ender Dust, in either two rows of the grid.
+        var redstone = new ItemStack(Items.REDSTONE);
+        var ender = AEItems.ENDER_DUST.stack();
+        assertions += crafts(helper, "nexus_core", core, 16, grid(redstone, redstone, redstone, ender, ender, ender,
+                null, null, null));
+        assertions += crafts(helper, "nexus_core", core, 16, grid(null, null, null, redstone, redstone, redstone,
+                ender, ender, ender));
+        // The rows the other way round, or one dust short, make no core.
+        for (var input : List.of(grid(ender, ender, ender, redstone, redstone, redstone, null, null, null),
+                grid(redstone, redstone, redstone, ender, ender, null, null, null, null))) {
+            helper.assertFalse(level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level)
+                    .map(holder -> holder.id().getPath().equals("nexus_core")).orElse(false),
+                    "Only three redstone over three Ender Dust make Nexus Cores");
+            assertions++;
+        }
 
         // Shapeless inputs in arbitrary cells.
         assertions += crafts(helper, "bridge", BridgeRegistration.BRIDGE.get().getDefaultInstance(), 1,
@@ -73,31 +91,33 @@ public final class SurvivalRecipeGameTests {
                 "A native Logic Processor must not make Federation Cables");
         assertions++;
 
-        // Inscriber: dust on top (or flipped to the bottom), the native processor in the middle, both spent.
-        var dust = AEItems.FLUIX_DUST.stack();
-        var logic = AEItems.LOGIC_PROCESSOR.stack();
-        for (var plates : List.of(List.of(dust, ItemStack.EMPTY), List.of(ItemStack.EMPTY, dust))) {
-            var recipe = InscriberRecipes.findRecipe(level, logic, plates.get(0), plates.get(1), false);
+        // Inscriber: the core on top and Printed Silicon at the bottom (or flipped), Ender Dust in the middle, all spent.
+        var silicon = AEItems.SILICON_PRINT.stack();
+        for (var plates : List.of(List.of(core, silicon), List.of(silicon, core))) {
+            var recipe = InscriberRecipes.findRecipe(level, ender, plates.get(0), plates.get(1), false);
             helper.assertTrue(recipe != null && ItemStack.isSameItem(recipe.getResultItem(), processor)
-                    && recipe.getResultItem().getCount() == 1, "The Inscriber must press a Federation Logic Processor");
-            helper.assertTrue(recipe.getProcessType() == InscriberProcessType.PRESS, "Pressing must spend the dust");
+                    && recipe.getResultItem().getCount() == 1, "The Inscriber must press a Nexus Processor");
+            helper.assertTrue(recipe.getProcessType() == InscriberProcessType.PRESS, "Pressing must spend the plates");
             assertions += 2;
         }
-        helper.assertTrue(InscriberRecipes.findRecipe(level, logic, ItemStack.EMPTY, ItemStack.EMPTY, false) == null,
-                "A Logic Processor alone must not be pressed into anything");
-        assertions++;
+        for (var plates : List.of(List.of(core, ItemStack.EMPTY), List.of(ItemStack.EMPTY, silicon))) {
+            var recipe = InscriberRecipes.findRecipe(level, ender, plates.get(0), plates.get(1), false);
+            helper.assertFalse(recipe != null && ItemStack.isSameItem(recipe.getResultItem(), processor),
+                    "A Nexus Processor needs the core, the dust and the silicon together");
+            assertions++;
+        }
 
-        for (var name : List.of("bridge", "pattern_provider", "processing_endpoint", "router", "cable")) {
+        for (var name : List.of("nexus_core", "bridge", "pattern_provider", "processing_endpoint", "router", "cable")) {
             var id = ResourceLocation.fromNamespaceAndPath("ae2federation", "recipes/misc/" + name);
             helper.assertTrue(level.getServer().getAdvancements().get(id) != null, "Missing recipe-book unlock " + id);
             assertions++;
         }
-        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "5", "inscriberRecipes", "1",
-                "routerBatch", "4", "cableBatch", "16", "recipeBookUnlocks", "5"));
+        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "6", "inscriberRecipes", "1",
+                "coreBatch", "16", "routerBatch", "4", "cableBatch", "16", "recipeBookUnlocks", "6"));
         helper.succeed();
     }
 
-    /** A real Inscriber, fed through its item handler as a pipe would, presses two processors and spends every input. */
+    /** A real Inscriber, fed through one side as a pipe would, presses two processors and spends every input. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 600)
     public static void survivalInscriber(GameTestHelper helper) {
@@ -115,14 +135,16 @@ public final class SurvivalRecipeGameTests {
             if (!fed[0]) {
                 var handler = level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.NORTH);
                 helper.assertTrue(handler != null, "Waiting for the Inscriber's item handler");
-                helper.assertTrue(insert(handler, AEItems.LOGIC_PROCESSOR.stack(2)).isEmpty(),
-                        "Automation must accept Logic Processors");
-                helper.assertTrue(insert(handler, AEItems.FLUIX_DUST.stack(2)).isEmpty(),
-                        "Automation must accept the Fluix Dust beside the processors");
+                helper.assertTrue(insert(handler, new ItemStack(MaterialRegistration.NEXUS_CORE.get(), 2)).isEmpty(),
+                        "Automation must accept Nexus Cores");
+                helper.assertTrue(insert(handler, AEItems.ENDER_DUST.stack(2)).isEmpty(),
+                        "Automation must accept the Ender Dust beside the cores");
+                helper.assertTrue(insert(handler, AEItems.SILICON_PRINT.stack(2)).isEmpty(),
+                        "Automation must accept the Printed Silicon beside the cores");
                 fed[0] = true;
             }
             var inventory = inscriber.getInternalInventory();
-            var processor = MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get();
+            var processor = MaterialRegistration.NEXUS_PROCESSOR.get();
             var made = 0;
             var leftovers = 0;
             for (var slot = 0; slot < inventory.size(); slot++) {
@@ -130,9 +152,9 @@ public final class SurvivalRecipeGameTests {
                 if (stack.is(processor)) made += stack.getCount();
                 else leftovers += stack.getCount();
             }
-            helper.assertValueEqual(made, 2, "Waiting for two Federation Logic Processors");
-            helper.assertValueEqual(leftovers, 0, "Both processors and both dusts must be spent");
-            PolicyEvidence.write("survivalinscriber", 4, Map.of("pressed", "2", "inputsLeft", "0",
+            helper.assertValueEqual(made, 2, "Waiting for two Nexus Processors");
+            helper.assertValueEqual(leftovers, 0, "Both cores, both dusts and both silicon prints must be spent");
+            PolicyEvidence.write("survivalinscriber", 5, Map.of("pressed", "2", "inputsLeft", "0",
                     "fedThrough", "itemHandler"));
         });
     }

@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_nexus_processor": {
+    "has_ender_dust": {
       "conditions": {
         "items": [
           {
-            "items": "ae2federation:nexus_processor"
+            "items": "#c:dusts/ender_pearl"
           }
         ]
       },
@@ -13,20 +13,20 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "ae2federation:processing_endpoint"
+        "recipe": "ae2federation:nexus_core"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
   },
   "requirements": [
     [
-      "has_nexus_processor",
+      "has_ender_dust",
       "has_the_recipe"
     ]
   ],
   "rewards": {
     "recipes": [
-      "ae2federation:processing_endpoint"
+      "ae2federation:nexus_core"
     ]
   }
 }

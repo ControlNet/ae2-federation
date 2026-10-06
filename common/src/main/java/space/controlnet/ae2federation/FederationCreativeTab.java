@@ -25,7 +25,8 @@ public final class FederationCreativeTab {
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
                         output.accept(BridgeRegistration.BRIDGE.get());
-                        output.accept(MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get());
+                        output.accept(MaterialRegistration.NEXUS_PROCESSOR.get());
+                        output.accept(MaterialRegistration.NEXUS_CORE.get());
                     })
                     .build());
 

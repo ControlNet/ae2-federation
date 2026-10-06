@@ -27,7 +27,8 @@ on, and each permission works in one direction.
 
 ## Items and blocks
 
-* <ItemLink id="ae2federation:federation_logic_processor" />: the ingredient every device needs.
+* <ItemLink id="ae2federation:nexus_processor" />: the ingredient every device needs, pressed from a
+  <ItemLink id="ae2federation:nexus_core" />.
 * <ItemLink id="ae2federation:bridge" />: joins two adjacent networks directly.
 * <ItemLink id="ae2federation:router" />: puts up to six networks into a Federation domain.
 * <ItemLink id="ae2federation:cable" />: links Routers, Pattern Providers and Endpoints over a distance.

@@ -48,8 +48,8 @@ Gradle dependency verification metadata in `gradle/verification-metadata.xml` is
 This repository's code is AGPL-3.0-only, and its art assets are CC BY-NC-SA 4.0. Task 1 links to published
 dependencies and copies no third-party source.
 
-One shipped asset is derived from AE2's art. The Federation Logic Processor item texture
-(`assets/ae2federation/textures/item/federation_logic_processor.png`) is AE2 19.2.17's Logic Processor texture
+One shipped asset is derived from AE2's art. The Nexus Processor item texture
+(`assets/ae2federation/textures/item/nexus_processor.png`) is AE2 19.2.17's Logic Processor texture
 (`assets/ae2/textures/item/logic_processor.png`) with twelve pixels recoloured in AE2's Fluix palette. It is a
 derivative of AE2's binary assets, credited to AE2, and is distributed like the other art assets under CC BY-NC-SA 4.0,
 which AE2's CC BY-NC-SA 3.0 allows for adaptations (section 4(b), a later version with the same licence elements).

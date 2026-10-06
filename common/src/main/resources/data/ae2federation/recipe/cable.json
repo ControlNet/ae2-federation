@@ -6,7 +6,7 @@
       "tag": "ae2:glass_cable"
     },
     "P": {
-      "item": "ae2federation:federation_logic_processor"
+      "item": "ae2federation:nexus_processor"
     }
   },
   "pattern": [

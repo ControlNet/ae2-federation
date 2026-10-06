@@ -1,0 +1,19 @@
+{
+  "type": "ae2:inscriber",
+  "ingredients": {
+    "bottom": {
+      "item": "ae2:printed_silicon"
+    },
+    "middle": {
+      "tag": "c:dusts/ender_pearl"
+    },
+    "top": {
+      "item": "ae2federation:nexus_core"
+    }
+  },
+  "mode": "press",
+  "result": {
+    "count": 1,
+    "id": "ae2federation:nexus_processor"
+  }
+}

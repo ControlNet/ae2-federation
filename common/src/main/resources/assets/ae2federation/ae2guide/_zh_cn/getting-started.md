@@ -2,7 +2,7 @@
 navigation:
   parent: index.md
   title: 入门
-  icon: ae2federation:federation_logic_processor
+  icon: ae2federation:nexus_processor
   position: 10
 ---
 
@@ -10,11 +10,15 @@ navigation:
 
 你需要两个独立的ME网络， 只要其中一个有电： 连起来以后， 另一个可以用它的电运行。 联邦不会取代AE2自己的线缆和控制器， 只是把网络连起来。
 
-## 1. 制作联邦逻辑处理器
+## 1. 制作联结处理器
 
-每个联邦设备都需要<ItemLink id="ae2federation:federation_logic_processor" />。 在<ItemLink id="ae2:inscriber" />中用一个<ItemLink id="ae2:logic_processor" />和一份<ItemLink id="ae2:fluix_dust" />压制， 两者都会被消耗。
+每个联邦设备都需要<ItemLink id="ae2federation:nexus_processor" />。 先在工作台里用三份红石粉和三份<ItemLink id="ae2:ender_dust" />合成十六个<ItemLink id="ae2federation:nexus_core" />。
 
-<RecipeFor id="ae2federation:federation_logic_processor" />
+<RecipeFor id="ae2federation:nexus_core" />
+
+再在<ItemLink id="ae2:inscriber" />中把每个核心和一份末影粉、一块<ItemLink id="ae2:printed_silicon" />一起压制， 三种原料都会被消耗。
+
+<RecipeFor id="ae2federation:nexus_processor" />
 
 ## 2. 连接两个网络
 

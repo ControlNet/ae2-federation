@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 final class SurvivalRecipeContractTest {
     private static final Path ROOT = Path.of("..").toAbsolutePath().normalize();
     private static final Path DATA = ROOT.resolve("common/src/main/resources/data/ae2federation");
-    private static final String PROCESSOR = "{\"item\":\"ae2federation:federation_logic_processor\"}";
+    private static final String PROCESSOR = "{\"item\":\"ae2federation:nexus_processor\"}";
     private static final Pattern RESULT = Pattern.compile("\"result\":\\{\"count\":(\\d+),\"id\":\"([^\"]+)\"}");
 
     @Test
@@ -33,19 +33,29 @@ final class SurvivalRecipeContractTest {
             assertTrue(result.find(), name);
             assertEquals(null, results.put(result.group(2), Integer.parseInt(result.group(1))), "Two recipes make " + name);
         });
-        assertEquals(Map.of("ae2federation:federation_logic_processor", 1, "ae2federation:bridge", 1,
+        assertEquals(Map.of("ae2federation:nexus_core", 16, "ae2federation:nexus_processor", 1, "ae2federation:bridge", 1,
                 "ae2federation:router", 4, "ae2federation:cable", 16, "ae2federation:pattern_provider", 1,
                 "ae2federation:processing_endpoint", 1), results);
     }
 
     @Test
-    void processorIsPressedFromALogicProcessorAndFluixDustConsumingBoth() throws IOException {
-        var recipe = recipes().get("federation_logic_processor");
+    void coreBatchIsARowOfRedstoneOverARowOfEnderDust() throws IOException {
+        var recipe = recipes().get("nexus_core");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"RRR\",\"EEE\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"E\":{\"tag\":\"c:dusts/ender_pearl\"},"
+                + "\"R\":{\"tag\":\"c:dusts/redstone\"}}"), recipe);
+    }
+
+    @Test
+    void processorIsPressedFromACoreEnderDustAndPrintedSiliconConsumingAll() throws IOException {
+        var recipe = recipes().get("nexus_processor");
         assertTrue(recipe.contains("\"type\":\"ae2:inscriber\""));
-        // "press" spends the top and bottom inputs; "inscribe" would keep the dust like a press plate.
+        // "press" spends the top and bottom inputs; "inscribe" would keep them like press plates.
         assertTrue(recipe.contains("\"mode\":\"press\""));
-        assertTrue(recipe.contains("\"ingredients\":{\"middle\":{\"item\":\"ae2:logic_processor\"},"
-                + "\"top\":{\"item\":\"ae2:fluix_dust\"}}"), "Dust on top, processor in the middle, bottom empty");
+        assertTrue(recipe.contains("\"ingredients\":{\"bottom\":{\"item\":\"ae2:printed_silicon\"},"
+                + "\"middle\":{\"tag\":\"c:dusts/ender_pearl\"},\"top\":{\"item\":\"ae2federation:nexus_core\"}}"),
+                "Core on top, Ender Dust in the middle, Printed Silicon at the bottom");
     }
 
     @Test
@@ -99,18 +109,22 @@ final class SurvivalRecipeContractTest {
     }
 
     @Test
-    void theProcessorIsRegisteredNamedAndDrawn() throws IOException {
+    void theCoreAndProcessorAreRegisteredNamedAndModelled() throws IOException {
         var registration = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/material/MaterialRegistration.java"));
-        assertTrue(registration.contains("\"federation_logic_processor\""));
         var assets = ROOT.resolve("common/src/main/resources/assets/ae2federation");
-        for (var language : Set.of("en_us", "zh_cn")) {
-            assertTrue(Files.readString(assets.resolve("lang/" + language + ".json"))
-                    .contains("\"item.ae2federation.federation_logic_processor\""), language);
+        for (var item : Set.of("nexus_core", "nexus_processor")) {
+            assertTrue(registration.contains("\"" + item + "\""), item);
+            for (var language : Set.of("en_us", "zh_cn")) {
+                assertTrue(Files.readString(assets.resolve("lang/" + language + ".json"))
+                        .contains("\"item.ae2federation." + item + "\""), language + ": " + item);
+            }
+            assertTrue(compact(assets.resolve("models/item/" + item + ".json"))
+                    .contains("\"layer0\":\"ae2federation:item/" + item + "\""), item);
         }
-        assertTrue(compact(assets.resolve("models/item/federation_logic_processor.json"))
-                .contains("\"layer0\":\"ae2federation:item/federation_logic_processor\""));
-        assertTrue(Files.isRegularFile(assets.resolve("textures/item/federation_logic_processor.png")));
+        // The Nexus Core's icon is still to come from the artist; until then the game draws its missing texture.
+        assertTrue(Files.isRegularFile(assets.resolve("textures/item/nexus_processor.png")));
+        assertFalse(registration.contains("federation_logic_processor"), "The old processor is replaced, not kept");
     }
 
     private static void assertShapeless(String recipe, String ingredients) {

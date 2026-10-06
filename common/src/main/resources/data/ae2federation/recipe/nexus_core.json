@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "tag": "c:dusts/ender_pearl"
+    },
+    "R": {
+      "tag": "c:dusts/redstone"
+    }
+  },
+  "pattern": [
+    "RRR",
+    "EEE"
+  ],
+  "result": {
+    "count": 16,
+    "id": "ae2federation:nexus_core"
+  }
+}
