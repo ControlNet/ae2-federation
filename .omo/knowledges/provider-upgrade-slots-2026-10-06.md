@@ -86,7 +86,12 @@ the first pack whose mods are all loaded is active, and every pack of a group mu
 
 Owner's order: Mekanism Crusher, then Create Crafts & Additions, then Ender IO, then Industrial Foregoing. Vetted from
 the ATM10 jars (not yet in game):
-- Create Crafts & Additions 1.7.1: no FE machine with an inventory. Electric Motor takes FE on all faces
+- Create Crafts & Additions (done, 1.7.2 pinned, profile `appflux-createaddition`, test
+  `inductionCardTurnsElectricMotor`): Electric Motor south of the Endpoint facing up, shaft, cogwheel meshing with a
+  Millstone above a Chute on the Endpoint; passed first time and fails with the card in from the start. The guide
+  scene puts the motor column behind the Endpoint row (a mirror of the test build) so it does not hide the Millstone.
+  `InductionCardExample.run(helper, machine)` is the shared test flow for every variant. Notes from vetting 1.7.1:
+  no FE machine with an inventory. Electric Motor takes FE on all faces
   (`max(480*|rpm|/256, 8)` FE/t, shaft only on `facing`); drive a Millstone (cobblestone -> gravel, no auto-output)
   with a Chute under it into the Endpoint; about five blocks.
 - Ender IO 8.2.12-beta SAG Mill: needs `enderio:basic_capacitor` (without it 0 FE capacity); faces default NONE, set
