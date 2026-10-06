@@ -113,7 +113,23 @@ final class GuidePagesContractTest {
             }
         }
         assertEquals(List.of(), GuideExamplePacks.active(mod -> false));
-        assertEquals(GuideExamplePacks.ALL, GuideExamplePacks.active(mod -> true));
+        var groups = new HashSet<String>();
+        assertEquals(GuideExamplePacks.ALL.stream().filter(pack -> pack.group().isEmpty() || groups.add(pack.group()))
+                .toList(), GuideExamplePacks.active(mod -> true));
+    }
+
+    /** The variants of one example show the same pages, so the guide lists the same example whichever is active. */
+    @Test
+    void packsOfOneGroupShowTheSamePages() throws IOException {
+        var pagesByGroup = new TreeMap<String, Set<String>>();
+        for (var pack : GuideExamplePacks.ALL) {
+            if (pack.group().isEmpty()) continue;
+            var root = RESOURCES.resolve(pack.path()).resolve("assets/ae2federation/ae2guide");
+            var pages = new TreeSet<>(pages(root));
+            pages(root.resolve("_zh_cn")).forEach(page -> pages.add("_zh_cn/" + page));
+            var first = pagesByGroup.putIfAbsent(pack.group(), pages);
+            assertEquals(first == null ? pages : first, pages, pack.id() + " must show its group's pages");
+        }
     }
 
     /**

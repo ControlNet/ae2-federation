@@ -68,9 +68,30 @@ The UI harness has no AF client. For a local look only (never commit), temporari
 
 ## Guide example (2026-10-06)
 
-`guide_appflux_mekanism` pack, `examples/induction-crusher.md` ("A Crusher on the Provider's FE", position 46), scene
-`induction_crusher.snbt`: main network (energy cell, crafting terminal, CPU, drive with item and FE cells), Provider,
+`guide_induction_mekanism` pack (group `induction`, see below), `examples/induction-card.md` ("A Crusher on the
+Provider's FE", position 46), scene `induction_crusher.snbt`: main network (energy cell, crafting terminal, CPU, drive with item and FE cells), Provider,
 one Federation Cable, Endpoint facing the cable, Crusher on the Endpoint's top, subnet cable with a Storage Bus on the
 Crusher's side. Its "Try it" (order before the card is in) is `inductionCardPowersEndpointMachine`.
 `guideSceneCables` in the appflux-mekanism profile confirmed the channel counts. `GuidePagesContractTest.MOD_ITEMS`
 allows `appflux:induction_card`.
+
+### Variants by installed mod (owner's order, 2026-10-06)
+
+AE2's own FE machines (Inscriber, Charger) cannot show the card: the Inscriber takes power and joins the grid on every
+face but its front, so on the Endpoint it either gets no FE (front) or joins the subnet, which the Endpoint already
+powers (`getGridConnectableSides` = complement of FRONT; the Charger likewise). Applied Flux has no FE machine of its
+own. So the example needs another mod's FE-only machine, and `GuideExamplePacks` groups variants: in one group only
+the first pack whose mods are all loaded is active, and every pack of a group must ship the same page ids
+(`GuidePagesContractTest.packsOfOneGroupShowTheSamePages`).
+
+Owner's order: Mekanism Crusher, then Create Crafts & Additions, then Ender IO, then Industrial Foregoing. Vetted from
+the ATM10 jars (not yet in game):
+- Create Crafts & Additions 1.7.1: no FE machine with an inventory. Electric Motor takes FE on all faces
+  (`max(480*|rpm|/256, 8)` FE/t, shaft only on `facing`); drive a Millstone (cobblestone -> gravel, no auto-output)
+  with a Chute under it into the Endpoint; about five blocks.
+- Ender IO 8.2.12-beta SAG Mill: needs `enderio:basic_capacitor` (without it 0 FE capacity); faces default NONE, set
+  the Endpoint face to PUSH (still takes FE, refuses items); `stone` -> cobblestone, 2400 FE.
+- Industrial Foregoing 3.6.39 Resourceful Furnace: vanilla smelting, FE on all faces, set the output inventory's face
+  toward the Endpoint to Push (`FacingModes`), 40 FE/t, 100 ticks.
+- Rejected: Oritech Pulverizer and Actually Additions Crusher (never push output), Powah (orb never pushes), XyCraft
+  (crusher unimplemented), Immersive Engineering (multiblocks), Just Dire Things (no item processor).
