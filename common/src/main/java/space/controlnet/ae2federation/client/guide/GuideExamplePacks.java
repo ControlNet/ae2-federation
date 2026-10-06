@@ -22,6 +22,7 @@ public final class GuideExamplePacks {
             new Pack("guide_appflux_mekanism", List.of("appflux", "mekanism")),
             new Pack("guide_induction_mekanism", List.of("appflux", "mekanism"), INDUCTION),
             new Pack("guide_induction_createaddition", List.of("appflux", "createaddition", "create"), INDUCTION),
+            new Pack("guide_induction_enderio", List.of("appflux", "enderio"), INDUCTION),
             new Pack("guide_advanced_ae", List.of("advanced_ae")),
             new Pack("guide_create", List.of("create")),
             new Pack("guide_extendedae", List.of("extendedae")),

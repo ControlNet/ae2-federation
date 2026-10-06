@@ -50,6 +50,7 @@ final class GuidePagesContractTest {
             Map.entry("advanced_ae", Set.of("quantum_core", "quantum_structure")),
             Map.entry("create", Set.of("crushing_wheel", "chute", "shaft", "cogwheel", "millstone")),
             Map.entry("createaddition", Set.of("electric_motor")),
+            Map.entry("enderio", Set.of("sag_mill", "basic_capacitor")),
             Map.entry("extendedae", Set.of("assembler_matrix_frame")),
             Map.entry("extendedae_plus", Set.of("super_assembler_matrix_frame")),
             Map.entry("ae2lt", Set.of("tianshu_supercomputer_controller", "tianshu_supercomputer_port",

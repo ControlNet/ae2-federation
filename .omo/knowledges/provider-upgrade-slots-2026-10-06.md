@@ -94,7 +94,10 @@ the ATM10 jars (not yet in game):
   no FE machine with an inventory. Electric Motor takes FE on all faces
   (`max(480*|rpm|/256, 8)` FE/t, shaft only on `facing`); drive a Millstone (cobblestone -> gravel, no auto-output)
   with a Chute under it into the Endpoint; about five blocks.
-- Ender IO 8.2.12-beta SAG Mill: needs `enderio:basic_capacitor` (without it 0 FE capacity); faces default NONE, set
+- Ender IO (done, v8.2.12-beta pinned, profile `appflux-enderio`, test `inductionCardPowersSagMill`): the test fits
+  the capacitor through `getInventory().setStackInSlot(getCapacitorSlotIndex(), ...)` and sets DOWN to PUSH with
+  `setIOMode` (reflection); without the capacitor the mill shows energy 0/0 and the job never finishes (mutation
+  checked). Chinese name 半自磨机. Vetting notes: SAG Mill needs `enderio:basic_capacitor` (without it 0 FE capacity); faces default NONE, set
   the Endpoint face to PUSH (still takes FE, refuses items); `stone` -> cobblestone, 2400 FE.
 - Industrial Foregoing 3.6.39 Resourceful Furnace: vanilla smelting, FE on all faces, set the output inventory's face
   toward the Endpoint to Push (`FacingModes`), 40 FE/t, 100 ticks.

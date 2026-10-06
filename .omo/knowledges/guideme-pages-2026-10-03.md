@@ -189,6 +189,7 @@ and page ids did not change.
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_induction_mekanism` (group `induction`) | appflux, mekanism | `examples/induction-card.md` | `inductionCardPowersEndpointMachine` |
 | `guide_induction_createaddition` (group `induction`, 2nd) | appflux, createaddition, create | `examples/induction-card.md` | `inductionCardTurnsElectricMotor` |
+| `guide_induction_enderio` (group `induction`, 3rd) | appflux, enderio | `examples/induction-card.md` | `inductionCardPowersSagMill` |
 | `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
 | `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
