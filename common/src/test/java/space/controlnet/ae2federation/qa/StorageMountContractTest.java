@@ -108,6 +108,6 @@ final class StorageMountContractTest {
     }
 
     private static String source(String relative) throws IOException {
-        return Files.readString(ROOT.resolve("common/src/main/java/space/controlnet/ae2federation/" + relative));
+        return Files.readString(ROOT.resolve("common/src/main/java/space/controlnet/ae2federation/" + relative)).replace("\r\n", "\n");
     }
 }
