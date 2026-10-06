@@ -28,6 +28,7 @@ final class CompatTestClasses {
         groups.put("appflux-mekanism", AppliedFluxMekanismCompatGameTests.class);
         groups.put("appflux-createaddition", AppliedFluxCreateAdditionCompatGameTests.class);
         groups.put("appflux-enderio", AppliedFluxEnderIOCompatGameTests.class);
+        groups.put("appflux-industrialforegoing", AppliedFluxIndustrialForegoingCompatGameTests.class);
         groups.put("omnisequence", OmniSequenceCompatGameTests.class);
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);

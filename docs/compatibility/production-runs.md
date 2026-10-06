@@ -125,6 +125,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-mekanism` | Applied Flux 2.1.5, Mekanism 10.7.19 | the Applied Flux group; a Flux Accessor running a Mekanism Crusher on FE shared from another network's FE cell, which stops drawing once the Storage rule is off; the Induction Card in a Federation Pattern Provider powering a Crusher touching it, and no FE sent before the card goes in; the guide's Induction Card example, a Crusher on the Provider's Endpoint with no power of its own, its job waiting until the card goes in; the card's FE reaching an energy cube beside an Endpoint across Federation Cables and a Router, and stopping once that Endpoint leaves the domain | 25/25 |
 | `appflux-createaddition` | Applied Flux 2.1.5, Create 6.0.10, Create Crafts & Additions 1.7.2 | the Applied Flux group; the guide's Induction Card example with an Electric Motor beside the Provider's Endpoint turning a Millstone, its job waiting until the card goes in | 22/22 |
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
+| `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
 | `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 70/70 |
 
 ## Modpack profiles
@@ -133,10 +134,10 @@ Each modpack profile runs on the pack's own server files and NeoForge version. O
 neither pack ships it. A pack's recipe scripts and configs stay as they are. Packs are downloaded from the CurseForge
 CDN and checked against their pinned SHA-512.
 
-| Profile | Pack | NeoForge, AE2 | Groups | Result (2026-10-05) |
+| Profile | Pack | NeoForge, AE2 | Groups | Result |
 |---|---|---|---|---|
-| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, appflux-mekanism, expandedae | 72/72 |
-| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 53/53 |
+| `atm10` | All the Mods 10 8.2, 464 mods | 21.1.251, 19.2.17 | core, extendedae, advanced-ae, megacells, appmek, create, mekanism, sophisticated-storage, functional-storage, appflux, appflux-mekanism, appflux-createaddition, appflux-enderio, appflux-industrialforegoing, expandedae | 79/79 (2026-10-06) |
+| `cus2` | Create Ultimate Selection 2 12.4.0, 360 mods | 21.1.243, 19.2.18 | core, extendedae, appmek, create, mekanism, sophisticated-storage | 53/53 (2026-10-05) |
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
 

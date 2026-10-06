@@ -153,6 +153,13 @@
     "url": "https://cdn.modrinth.com/data/Ck4E7v7R/versions/hFpGwC6q/guideme-21.1.19.jar",
     "sha512": "4dfa132e5cfd69a86c958867067f1c5ab39bb69ae35b2a62c24bb9924e9c688f1a4930ab75d335b22378d9f98cd7fceae8d030812b8f90c9aa282de8ea129f5a"
   },
+  "industrial-foregoing@1.21-3.6.39": {
+    "name": "industrial-foregoing",
+    "version": "1.21-3.6.39",
+    "file": "industrialforegoing-1.21-3.6.39.jar",
+    "url": "https://cdn.modrinth.com/data/lWxpUd04/versions/7otXKx1D/industrialforegoing-1.21-3.6.39.jar",
+    "sha512": "a8a52f0e79fe019d8b77cc50a8b04b36d5532c92f75dff51bc528e70fb23eb67f8a9bfd37551cf91636027086f0af4f3010cb07f1903b20fc31b4d11cb3e2a02"
+  },
   "ldlib2@2.2.34": {
     "name": "ldlib",
     "version": "mc1.21.1-2.2.34-neoforge",

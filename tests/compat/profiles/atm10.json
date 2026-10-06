@@ -26,6 +26,9 @@
     "functional-storage",
     "appflux",
     "appflux-mekanism",
+    "appflux-createaddition",
+    "appflux-enderio",
+    "appflux-industrialforegoing",
     "expandedae"
   ]
 }

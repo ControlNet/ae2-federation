@@ -99,7 +99,10 @@ the ATM10 jars (not yet in game):
   `setIOMode` (reflection); without the capacitor the mill shows energy 0/0 and the job never finishes (mutation
   checked). Chinese name 半自磨机. Vetting notes: SAG Mill needs `enderio:basic_capacitor` (without it 0 FE capacity); faces default NONE, set
   the Endpoint face to PUSH (still takes FE, refuses items); `stone` -> cobblestone, 2400 FE.
-- Industrial Foregoing 3.6.39 Resourceful Furnace: vanilla smelting, FE on all faces, set the output inventory's face
+- Industrial Foregoing (done, 1.21-3.6.39 pinned with Titanium 4.0.50, profile `appflux-industrialforegoing`, test
+  `inductionCardPowersResourcefulFurnace`): the test puts BOTTOM -> PUSH into the private `output` component's
+  `getFacingModes()` map (reflection); without it the stone stays in the furnace (mutation checked). Chinese name
+  高级熔炉. Vetting notes: Resourceful Furnace vanilla smelting, FE on all faces, set the output inventory's face
   toward the Endpoint to Push (`FacingModes`), 40 FE/t, 100 ticks.
 - Rejected: Oritech Pulverizer and Actually Additions Crusher (never push output), Powah (orb never pushes), XyCraft
   (crusher unimplemented), Immersive Engineering (multiblocks), Just Dire Things (no item processor).
