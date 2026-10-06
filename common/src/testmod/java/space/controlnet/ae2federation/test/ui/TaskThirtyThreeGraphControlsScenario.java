@@ -218,6 +218,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && preview.sceneView() != null && preview.sceneView().isDisplayed()
                             && preview.sceneView().renderedBlocks() > 0;
                 })
+                .check("the 3D preview draws the network's AE2 cables, which need their model data", context -> {
+                    var scene = context.el("#network_preview .map-preview-tile")
+                            .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sceneView();
+                    var cables = scene.rendered().stream().filter(position -> scene.sceneWorld().getBlockState(position)
+                            .getBlock() instanceof appeng.block.networking.CableBusBlock).toList();
+                    return !cables.isEmpty() && cables.stream().allMatch(position -> scene.sceneWorld()
+                            .getModelData(position).has(appeng.client.render.cablebus.CableBusRenderState.PROPERTY));
+                })
                 .check("the segmented switch marks 3D", context -> context.all("#network_view_3d.selected").size() == 1
                         && context.all("#network_view_map.selected").isEmpty())
                 .frames(10)
