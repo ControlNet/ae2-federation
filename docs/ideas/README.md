@@ -10,6 +10,7 @@ what the feature should do; it does not mean implementation has started or a rel
 | [Federation P2P](federation-p2p.md) | Direction and core behavior confirmed | Native AE2 P2P mode carrying Federation connectivity, including cross-dimensional support in its first release |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
+| [Nexus Processor and Nexus Core](nexus-processor.md) | Naming selected; recipe revision proposed for implementation | Rename the existing processor, add a batch-crafted core, and replace processor acquisition with core + Ender Dust + Printed Silicon |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
 Its name, appearance and detailed behavior remain undecided.
