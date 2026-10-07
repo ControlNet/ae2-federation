@@ -1,5 +1,6 @@
-"""Generate Minecraft 1.21.1 / NeoForge assets with approved Blockbench V07 art.
-Geometry adapters originate in the website v07 generator; approved art is frozen.
+"""Generate the Federation Cable's Minecraft 1.21.1 / NeoForge assets with approved Blockbench V07 art.
+Geometry adapters originate in the website v07 generator; approved art is frozen. The Router, Pattern Provider,
+Processing Endpoint and Bridge models and textures are drawn by hand in Blockbench; this script leaves them alone.
 """
 from pathlib import Path
 import json
@@ -20,14 +21,17 @@ TEX = BASE / 'textures/block'
 MODELS.mkdir(parents=True, exist_ok=True)
 TEX.mkdir(parents=True, exist_ok=True)
 write_texture(BASE / 'textures/entity/cable_flow.png')
-# The approved native Blockbench snapshot is the texture authority. Geometry
-# remains generated here to retain all masks, layer routing and AE2 Part axes.
+# The approved native Blockbench snapshot is the cable's texture authority. Geometry
+# remains generated here to retain all masks and layer routing.
+CABLE_TEXTURES = {'armor.png', 'cable_idle.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
+                  'stream_v.png', 'stream_v.png.mcmeta'}
 manifest = json.loads((APPROVED / 'manifest.json').read_text())
 for source in sorted((APPROVED / 'textures').iterdir()):
     name = source.relative_to(APPROVED).as_posix()
     if hashlib.sha256(source.read_bytes()).hexdigest() != manifest['files'][name]:
         raise ValueError(f'Approved texture changed: {name}; create a new version')
-    shutil.copyfile(source, TEX / source.name)
+    if source.name in CABLE_TEXTURES:
+        shutil.copyfile(source, TEX / source.name)
 DIRS=['east','west','up','down','south','north']
 NORMAL={'east':(1,0,0),'west':(-1,0,0),'up':(0,1,0),'down':(0,-1,0),'south':(0,0,1),'north':(0,0,-1)}
 def uv(a,b,f):
@@ -87,16 +91,6 @@ def write_model(name,es,layer='solid'):
  p=MODELS/(name+'.json');p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(obj,indent=2)+'\n')
  return NS+':block/'+name
 
-models={}
-for kind in ['router','processing_endpoint','pattern_provider']:
- faces={f:'router' for f in DIRS} if kind=='router' else {'east':'me_side_east','west':'me_side_west','up':'me_side_up','down':'me_side_down','south':kind,'north':'me_port'}
- es=[el([0,0,0],[16,16,16],faces)]
- models[kind]=write_model(kind,es)
-# South-mounted: rear contact starts at Z=10, outward ME contact ends exactly at Z=16.
-faces={f:'bridge_'+f if f in ['east','west','up','down'] else 'bridge_end' for f in DIRS}
-es=[el([4,4,11],[12,12,15],faces),el([6,6,10],[10,10,11],'me_context'),el([6,6,15],[10,10,16],'me_context')]
-es+=cage(5,11,2,(10,11))+cage(5,11,2,(15,16))
-models['bridge']=write_model('bridge_south',prune(es))
 # All 64 connection masks: bits east,west,up,down,south,north.
 def region(axis,lo,hi,crosslo,crosshi):
  a=[crosslo]*3;b=[crosshi]*3;a[axis]=lo;b[axis]=hi;return a,b
@@ -157,42 +151,11 @@ def cable(mask):
  obj={'parent':'minecraft:block/block','loader':'neoforge:composite','textures':{'particle':NS+':block/armor'},'children':{k:{'parent':r} for k,r in refs.items()}}
  (MODELS/'cable'/f'{mask:02d}.json').write_text(json.dumps(obj,indent=2)+'\n')
  return NS+f':block/cable/{mask:02d}'
-cm={str(m):cable(m) for m in range(64)};models['cable']=cm['3']
+for m in range(64):cable(m)
 
-# Production adapters. AE2 Part quads are NORTH-oriented; collision boxes are SOUTH-oriented.
-bridge=json.loads((MODELS/'bridge_south.json').read_text())
-for e in bridge['elements']:
- a,b=e['from'],e['to']
- e['from']=[16-b[0],a[1],16-b[2]];e['to']=[16-a[0],b[1],16-a[2]]
- e['faces']={dict(east='west',west='east',north='south',south='north',up='up',down='down')[f]:v for f,v in e['faces'].items()}
- for f in ['up','down']:
-  if f in e['faces']:e['faces'][f]['rotation']=180
-part=BASE/'models'/'part';part.mkdir(exist_ok=True)
-(part/'bridge.json').write_text(json.dumps(bridge,indent=2)+'\n')
-# The item is centered for inventory, hand and dropped rendering.
-bridge_item=json.loads(json.dumps(bridge))
-for e in bridge_item['elements']:
- e['from'][2]+=5;e['to'][2]+=5
 item=BASE/'models'/'item';item.mkdir(exist_ok=True)
-(item/'bridge.json').write_text(json.dumps(bridge_item,indent=2)+'\n')
-for name in ['router','processing_endpoint','pattern_provider','cable']:
- parent='block/cable/00' if name=='cable' else 'block/'+name
- obj={'parent':NS+':'+parent}
- if name in ['processing_endpoint','pattern_provider']:
-  obj=json.loads((MODELS/(name+'.json')).read_text())
-  # Default block item transforms show NORTH; keep the functional glyph visible in every item context.
-  for e in obj['elements']:
-   e['faces']={dict(east='west',west='east',north='south',south='north',up='up',down='down')[f]:v for f,v in e['faces'].items()}
-   for f in ['up','down']:e['faces'][f]['rotation']=180
- (item/(name+'.json')).write_text(json.dumps(obj,indent=2)+'\n')
+(item/'cable.json').write_text(json.dumps({'parent':NS+':block/cable/00'},indent=2)+'\n')
 (MODELS/'cable.json').write_text(json.dumps({'parent':NS+':block/cable/00'},indent=2)+'\n')
 states=BASE/'blockstates';states.mkdir(exist_ok=True)
-for name in ['router','cable','processing_endpoint']:
- variant={'model':NS+':block/'+name}
- if name=='processing_endpoint':variant['y']=270
- (states/(name+'.json')).write_text(json.dumps({'variants':{'':variant}},indent=2)+'\n')
-variants={}
-for face,rotation in [('south',{}),('west',{'y':90}),('north',{'y':180}),('east',{'y':270}),('up',{'x':90}),('down',{'x':270})]:
- variants['facing='+face]={'model':NS+':block/pattern_provider',**rotation}
-(states/'pattern_provider.json').write_text(json.dumps({'variants':variants},indent=2)+'\n')
-print('Generated production assets for ae2federation (64 cable masks).')
+(states/'cable.json').write_text(json.dumps({'variants':{'':{'model':NS+':block/cable'}}},indent=2)+'\n')
+print('Generated Federation Cable assets for ae2federation (64 cable masks).')

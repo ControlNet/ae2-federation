@@ -7,9 +7,12 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
 ## Source and output
 
 - `tools/blockbench/versions/v07-isolated-cable/textures/`: approved texture source (V06 full blocks, retained V02 Bridge/cable, V07 isolated geometry). Frozen PNGs and animation metadata are checked against their manifest before generation.
-- `tools/visual/build_assets.py`: copies that approved texture source and generates geometry, UVs, animation layer routing and production adapters. Pixel drawing now lives in the archived Blockbench design sources.
-- `common/src/main/resources/assets/ae2federation`: generated blockstates, block/part/item models and PNGs. Edit the
-  approved source/version selection or geometry generator, then regenerate; do not hand-edit these generated files. Language files are independently maintained.
+- `tools/visual/build_assets.py`: copies the cable's approved textures and generates its geometry, UVs and animation
+  layer routing. Pixel drawing now lives in the archived Blockbench design sources.
+- `common/src/main/resources/assets/ae2federation`: the cable's blockstate, models and PNGs are generated; edit the
+  approved source/version selection or geometry generator, then regenerate. The Router, Pattern Provider, Processing
+  Endpoint and Bridge models and textures are drawn by hand in Blockbench (artist update, 2026-10-07) and edited
+  directly; the generator no longer writes them. Language files are independently maintained.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow). The optional game inspection
   tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates. Cable and
@@ -37,14 +40,14 @@ prototype behavior.
 
 | ID | Geometry and materials | Orientation |
 | --- | --- | --- |
-| `router` | Full cube, one cold-white face texture with a cyan core and four short paths; six identical faces | Symmetric |
-| `pattern_provider` | Full cube, three cyan pattern strips with short distribution line; purple rear/periphery | South-authored model rotated for all six existing `facing` values, without UV lock |
-| `processing_endpoint` | Full cube, focused cyan execution window and paired marks; purple rear/periphery | South-authored model rotated 270 degrees about Y: actual fixed EAST front |
+| `router` | Hand-made: framed cube with raised cyan cores, one texture (`block/router/router`) on all six faces | Symmetric |
+| `pattern_provider` | Hand-made: framed cube, cyan front (`pattern_provider`), purple back and sides (`_back`, `_side`) | South front, rotated for all six `facing` values, without UV lock |
+| `processing_endpoint` | Hand-made: as the Provider, with its own front, back and side textures | South front, rotated for all six `facing` values, without UV lock |
 | `cable` | Isolated 6-unit glass envelope and 4-unit animated core; connected 6-unit glass envelope around one continuous 4-unit flow body; stationary collars | Real neighbor port projection, masks E/W/U/D/S/N = 1/2/4/8/16/32 |
-| `bridge` | Multipart 8x8x6 overall; 6x6 contact seats and a thicker 8x8 middle, purple ends/cyan middle | Source south geometry converted to AE2's north-facing quad convention; collision API uses south coordinates |
+| `bridge` | Hand-made multipart, 8x8x5 overall: 6x6 contact plates around an 8x8 middle (`part/bridge`, `part/bridge_sides`) | Model faces NORTH as AE2 part quads do; `getBoxes` takes the same boxes facing SOUTH, pinned by `MultipartBridgeContractTest` |
 
 Router, Cable and Endpoint explicitly return `RenderShape.MODEL`. Cable uses `noOcclusion` and cached connection
-shapes so it does not hide neighboring full faces. Provider and Endpoint item geometry is separately turned north so default inventory transforms show their distinct front glyphs. Existing registration IDs, old registry aliases and all network,
+shapes so it does not hide neighboring full faces. Provider and Endpoint items use their block model, whose `gui` rotation of `[30, 45, 0]` turns the front into view. Existing registration IDs, old registry aliases and all network,
 crafting, inventory, policy and permission behavior remain unchanged. Endpoint does not gain rotation or a Federation
 Cable port. Bridge does not gain a Federation Cable socket. Its existing native ME cable connection length is retained.
 
