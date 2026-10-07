@@ -27,6 +27,7 @@ __pycache__/
 
 # Local development environments
 .pixi/
+.idea/
 .env
 .env.local
 
