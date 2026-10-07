@@ -38,4 +38,4 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 
 ## License
 
-The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved, except the processor item texture: it is adapted from AE2's art, so it stays under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
+The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved.
