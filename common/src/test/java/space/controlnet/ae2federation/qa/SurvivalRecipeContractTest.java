@@ -122,8 +122,7 @@ final class SurvivalRecipeContractTest {
             assertTrue(compact(assets.resolve("models/item/" + item + ".json"))
                     .contains("\"layer0\":\"ae2federation:item/" + item + "\""), item);
         }
-        // The Nexus Core's icon is still to come from the artist; until then the game draws its missing texture.
-        assertTrue(Files.isRegularFile(assets.resolve("textures/item/nexus_processor.png")));
+        // Both icons are still to come from the artist; until then the game draws its missing texture.
         assertFalse(registration.contains("federation_logic_processor"), "The old processor is replaced, not kept");
     }
 

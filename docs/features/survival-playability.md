@@ -44,15 +44,9 @@ Federation dependency. See the [diagnostic record](../../.omo/knowledges/jei-ins
 
 ## Processor artwork
 
-![Nexus Processor](../art/assets/federation_logic_processor.png)
-
-The [selected source icon](../art/assets/federation_logic_processor.png) is retained with art assets; the
-[runtime texture](../../common/src/main/resources/assets/ae2federation/textures/item/nexus_processor.png)
-is in the mod resources. The 16x16 transparent icon derives from AE2 19.2.17's Logic Processor texture at commit
-`db95d25ccc79f7bd55b504cf71522b57d60bf4f7`, retaining its silhouette and gold base with twelve edited pixels using
-the native Fluix palette. It was edited directly without image generation.
-The source icon keeps its earlier file name, from before the processor was renamed. The Nexus Core's icon comes from
-the artist.
+The Nexus Processor's icon is being redrawn by the mod's artist. The earlier icon, adapted from AE2's Logic Processor
+texture, was removed so that all of the mod's art is All Rights Reserved; until the new icon arrives the game draws a
+missing texture.
 
 ## Verification boundary
 

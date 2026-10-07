@@ -17,8 +17,9 @@ Implements `docs/ideas/nexus-processor.md`. Decisions the owner made when it was
 - Recipes: `recipe/nexus_core.json` (shaped), `recipe/nexus_processor.json` (`ae2:inscriber`, `press`: top core,
   middle dust tag, bottom `ae2:printed_silicon`); every device recipe and recipe-book advancement points at
   `nexus_processor`; new advancement `recipes/misc/nexus_core.json` unlocks on any `#c:dusts/ender_pearl`.
-- The processor keeps its texture, renamed to `textures/item/nexus_processor.png`. `docs/art/assets/` keeps the old
-  file name because the archived survival discussion links to it.
+- The processor's old icon (recoloured from AE2 art, so CC BY-NC-SA) was deleted on 2026-10-07 together with its
+  source in `docs/art/assets/`, so all art is All Rights Reserved; the artist is redrawing it. When both icons
+  arrive, add `nexus_processor.png` and `nexus_core.png` and restore their texture check.
 - Guide: `items/nexus_processor.md` (en, zh) owns both item ids and shows both recipes; getting-started and index
   updated.
 
