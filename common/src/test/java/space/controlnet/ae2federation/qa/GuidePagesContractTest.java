@@ -224,7 +224,7 @@ final class GuidePagesContractTest {
         var cramped = Pattern.compile("[，。；：！？](?=[^\\s，。；：！？、）”*])");
         for (var page : guides().stream().map(guide -> guide.root().resolve("_zh_cn")).flatMap(GuidePagesContractTest::files)
                 .toList()) {
-            var text = Files.readString(page);
+            var text = Files.readString(page).replace("\r\n", "\n");
             var lines = text.substring(text.indexOf("\n---\n", 4) + 5).split("\n", -1);
             for (var i = 0; i < lines.length; i++) {
                 // Tags, tables, headings and blank lines are not wrapped paragraph text.
@@ -444,7 +444,7 @@ final class GuidePagesContractTest {
     }
 
     private static String frontmatter(Path page) throws IOException {
-        var text = Files.readString(page);
+        var text = Files.readString(page).replace("\r\n", "\n");
         assertTrue(text.startsWith("---\n"), page.toString());
         return text.substring(4, text.indexOf("\n---\n", 4) + 1);
     }

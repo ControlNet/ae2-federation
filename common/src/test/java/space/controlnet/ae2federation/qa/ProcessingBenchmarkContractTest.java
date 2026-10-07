@@ -221,7 +221,7 @@ final class ProcessingBenchmarkContractTest {
 
     @Test
     void nestedTaskTwentyBenchmarksHaveProfileDerivedOuterEnvelopes() throws IOException {
-        var qa = Files.readString(ROOT.resolve("gradle/federation-qa.gradle"));
+        var qa = Files.readString(ROOT.resolve("gradle/federation-qa.gradle")).replace("\r\n", "\n");
 
         assertTrue(qa.contains("benchmarkOrchestrationMarginSeconds = 60L"));
         assertTrue(qa.contains("executionTimeoutSeconds + lifecycle.shutdownGraceSeconds"
