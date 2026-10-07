@@ -146,6 +146,18 @@ final class AddonCraftingScene {
     }
 
     /**
+     * As {@link #structure(GameTestHelper, String, List, java.util.function.Consumer, BlockPos)}, for a provider that
+     * crafts by itself without being an AE2 multiblock: the consumer orders once {@code ready} agrees.
+     */
+    static AddonCraftingScene structure(GameTestHelper helper, String name, List<String> cpuIds,
+            java.util.function.Consumer<GameTestHelper> place, BlockPos patternContainer,
+            java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> ready) {
+        var scene = structure(helper, name, cpuIds, place, patternContainer);
+        scene.structureReady = ready;
+        return scene;
+    }
+
+    /**
      * A structure whose block at {@code patternContainer} takes a processing pattern for {@code machine}, the
      * structure itself, and crafts once {@code ready} says so; {@code place} may take several ticks, so {@code ready}
      * is asked every tick until it agrees.

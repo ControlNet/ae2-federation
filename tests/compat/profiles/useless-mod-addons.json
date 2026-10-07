@@ -1,0 +1,40 @@
+{
+  "name": "useless-mod-addons",
+  "group": "addons",
+  "description": "Useless Mod beside every addon in addons-all plus AdvancedAE, whose crafting CPUs and ExtendedAE's Assembler Matrix it mixes into",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "extendedae@2.2.39",
+    "ae2extras@0",
+    "ae2wtlib@19.5.1",
+    "ae2-pattern-disk@0.8.0",
+    "ae2-wcwt@1.3.10",
+    "thunderbolt-core@2.0.1",
+    "ae2-lightning-tech@2.1.1",
+    "neoecoae@21.2.0",
+    "data-energistics@3.3.3",
+    "extendedae-plus@1.6.3",
+    "appliedenhancements@1.1.0",
+    "omnisequence@2.0.7",
+    "geckolib@4.9.3",
+    "advancedae@1.6.12-1.21.1",
+    "useless-mod@2.4.5.10"
+  ],
+  "tests": [
+    "core",
+    "extendedae",
+    "extendedae-plus",
+    "data-energistics",
+    "ae2-lightning-tech",
+    "ae2-pattern-disk",
+    "ae2extras",
+    "omnisequence",
+    "neoecoae",
+    "advanced-ae",
+    "useless-mod"
+  ]
+}

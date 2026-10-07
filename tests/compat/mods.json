@@ -229,5 +229,12 @@
     "file": "titanium-1.21-4.0.50.jar",
     "url": "https://cdn.modrinth.com/data/1Ro7m06l/versions/zCzYA9mW/titanium-1.21-4.0.50.jar",
     "sha512": "8569e4d3331ba8a23f67bf46b0697d6a5a325deed696823cede68d8d4fef119669f1086767077af76013211617fef6c0cede310c5b7dfc1b3f9a7f37bf843908"
+  },
+  "useless-mod@2.4.5.10": {
+    "name": "useless-mod",
+    "version": "2.4.5.10",
+    "file": "useless_mod-1.21.1-2.4.5.10.jar",
+    "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.10/useless_mod-1.21.1-2.4.5.10.jar",
+    "sha512": "f0d87f0f5dcf01c97bb085b0c8462951fd698eb984879d19985aa21099696da0cf3a7f52d73a75c0eea1f48e06b9427c7e85fd55f8bffe3974893412e89cdf8e"
   }
 }

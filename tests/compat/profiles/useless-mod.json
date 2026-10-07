@@ -1,0 +1,16 @@
+{
+  "name": "useless-mod",
+  "group": "addons",
+  "description": "Useless Mod: mixins into AE2 crafting (Smart Doubling), pathing and grid nodes; pattern assembly and multiblock machines",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "useless-mod@2.4.5.10"
+  ],
+  "tests": [
+    "core",
+    "useless-mod"
+  ]
+}
