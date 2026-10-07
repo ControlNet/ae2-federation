@@ -48,8 +48,12 @@ for ref, model in generated.items():
             assert data['texture'][1:] in model['textures'], ref
             assert data.get('rotation', 0) in [0, 90, 180, 270]
 
+# Every shipped texture is drawn by a model, or is the cable flow renderer's own texture.
+used = {texture for model in models.values() for texture in model.get('textures', {}).values()}
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
+    ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
+    assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
     meta = path.with_suffix('.png.mcmeta')
     assert im.width == 16
     if meta.exists():
@@ -142,7 +146,7 @@ for path in (BASE / 'blockstates').glob('*.json'):
         assert variant['model'] in models
 # Check the cable's approved textures against the frozen snapshot.
 approved = REPO / 'tools/blockbench/versions/v07-isolated-cable'
-cable_textures = {'armor.png', 'cable_idle.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
+cable_textures = {'armor.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
                   'stream_v.png', 'stream_v.png.mcmeta'}
 for source in (approved / 'textures').iterdir():
     if source.name in cable_textures:

@@ -4,6 +4,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import appeng.api.networking.GridServices;
+import space.controlnet.ae2federation.test.art.ModLogoRenderer;
 import space.controlnet.ae2federation.test.energy.LargeEnergyCellRegistration;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbe;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbeService;
@@ -29,6 +30,9 @@ public final class FederationTestMod {
             } else {
                 MultiClientServerHarness.register();
             }
+        }
+        if (System.getProperty(ModLogoRenderer.OUTPUT) != null && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            ModLogoRenderer.register();
         }
         modBus.addListener(this::registerGameTests);
         modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);

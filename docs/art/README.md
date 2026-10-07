@@ -64,6 +64,19 @@ are 16 MODEL UNITS (one block), with a 1-unit half from each neighboring block, 
 AE2 19.2.17 `QuadRotator` assumes NORTH; `BusCollisionHelper` assumes local SOUTH. These conventions are deliberately
 handled separately. Glow is vertex light metadata only and introduces no world light emission.
 
+## Mod logo
+
+`neoforge-1.21.1/src/main/resources/ae2federation_logo.png` (declared as `logoFile` in `neoforge.mods.toml`, shown
+unblurred in the mod list) is the Router's inventory icon, rendered by the game at 512x512 on a transparent
+background. The same file is the project icon on the mod platforms. After the Router's art changes, render it again:
+
+```bash
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -s "-screen 0 1280x720x24" ./gradlew :neoforge-1.21.1:runLogoClient
+```
+
+The client (testmod `ModLogoRenderer`) writes the PNG once the title screen is up and quits; `-PlogoOut=<png>`
+writes elsewhere. `ModLogoContractTest` pins the declaration, size and transparency.
+
 ## Build and verification
 
 Run from the repository root:

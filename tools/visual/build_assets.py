@@ -23,7 +23,7 @@ TEX.mkdir(parents=True, exist_ok=True)
 write_texture(BASE / 'textures/entity/cable_flow.png')
 # The approved native Blockbench snapshot is the cable's texture authority. Geometry
 # remains generated here to retain all masks and layer routing.
-CABLE_TEXTURES = {'armor.png', 'cable_idle.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
+CABLE_TEXTURES = {'armor.png', 'collar.png', 'glass.png', 'stream_u.png', 'stream_u.png.mcmeta',
                   'stream_v.png', 'stream_v.png.mcmeta'}
 manifest = json.loads((APPROVED / 'manifest.json').read_text())
 for source in sorted((APPROVED / 'textures').iterdir()):
