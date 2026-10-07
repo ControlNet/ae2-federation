@@ -7,10 +7,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import space.controlnet.ae2federation.router.DeviceOcclusion;
 
 /**
  * ME Federation Processing Endpoint block. Its facing is the Federation face, as on the Federation Pattern Provider;
@@ -24,6 +27,17 @@ public final class EndpointBlock extends AEBaseEntityBlock<EndpointBlockEntity> 
     @Override
     public IOrientationStrategy getOrientationStrategy() {
         return OrientationStrategies.facing();
+    }
+
+    /** Only the back closes completely; the recessed front must not hide the block in front of it. */
+    @Override
+    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos position) {
+        return DeviceOcclusion.front(getOrientationStrategy().getFacing(state));
+    }
+
+    @Override
+    protected boolean useShapeForLightOcclusion(BlockState state) {
+        return true;
     }
 
     /** Places the Federation face against the block that was clicked, e.g. a Federation Cable. */

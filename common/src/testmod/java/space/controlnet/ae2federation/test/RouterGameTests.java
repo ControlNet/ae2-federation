@@ -258,6 +258,55 @@ public final class RouterGameTests {
         });
     }
 
+    /**
+     * The device models have gaps, so their neighbours must keep the faces seen through them: all six around the
+     * Router, the one in front of a Provider or Endpoint. Behind those two the model is closed and still hides it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 100, required = true, manualOnly = true)
+    public static void deviceOcclusion(GameTestHelper helper) {
+        var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+        helper.setBlock(CENTER, RouterRegistration.ROUTER.get());
+        for (var face : Direction.values()) {
+            helper.setBlock(CENTER.relative(face), stone);
+        }
+        var facing = net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING;
+        var provider = CENTER.north(3);
+        var endpoint = CENTER.south(3);
+        helper.setBlock(provider, space.controlnet.ae2federation.processing.ProcessingRegistration.PROVIDER.get()
+                .defaultBlockState().setValue(facing, Direction.EAST));
+        helper.setBlock(endpoint, space.controlnet.ae2federation.processing.ProcessingRegistration.ENDPOINT.get()
+                .defaultBlockState().setValue(facing, Direction.EAST));
+        for (var device : new BlockPos[] {provider, endpoint}) {
+            helper.setBlock(device.east(), stone);
+            helper.setBlock(device.west(), stone);
+        }
+        var assertions = 0;
+        for (var face : Direction.values()) {
+            helper.assertTrue(faceDrawn(helper, CENTER.relative(face), face.getOpposite()),
+                    "The Router's frame has gaps; the block on its " + face.getName() + " must keep its face");
+            assertions++;
+        }
+        for (var device : new BlockPos[] {provider, endpoint}) {
+            helper.assertTrue(faceDrawn(helper, device.east(), Direction.WEST),
+                    "The recessed front must not hide the block in front of it");
+            helper.assertTrue(!faceDrawn(helper, device.west(), Direction.EAST),
+                    "The closed back still hides the block behind it");
+            assertions += 2;
+        }
+        RouterEvidence.write("deviceocclusion", assertions, Map.of(
+                "routerFacesDrawn", "6", "frontFaceDrawn", "2", "backFaceHidden", "2"));
+        helper.succeed();
+    }
+
+    /** Whether the block at {@code position} draws its face toward {@code face}, as the chunk mesher decides. */
+    private static boolean faceDrawn(GameTestHelper helper, BlockPos position, Direction face) {
+        var absolute = helper.absolutePos(position);
+        var level = helper.getLevel();
+        return net.minecraft.world.level.block.Block.shouldRenderFace(level.getBlockState(absolute), level, absolute,
+                face, absolute.relative(face));
+    }
+
     private static space.controlnet.ae2federation.identity.NetworkId network(GameTestHelper helper,
             space.controlnet.ae2federation.router.RouterBlockEntity router, Direction face) {
         var binding = router.binding(face);

@@ -6465,7 +6465,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                     || testCase.id.startsWith('crafting.')
-                    || testCase.id.startsWith('survival.')
+                    || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                     || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                     || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
@@ -6479,7 +6479,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
                             || testCase.id.startsWith('crafting.')
-                            || testCase.id.startsWith('survival.')
+                            || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                             || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                             || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')])
             childArtifacts.add(nativeEvidence)
@@ -6852,6 +6852,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-mutual':
                 case 'survival.recipes':
                 case 'survival.inscriber':
+                case 'visual.device-occlusion':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,

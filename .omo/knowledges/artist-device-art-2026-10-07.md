@@ -20,6 +20,25 @@ was merged into `dev` with all its commits (merge 5062446). All art is All Right
   generator's output is byte-identical to the checked-in cable assets (268 files); the validator passes.
 - `models/block/bridge_south.json` (a generator intermediate referencing deleted textures) was removed.
 
+## See-through gaps (fixed after the merge)
+
+The new models are not full cubes, but the blocks kept the default full occlusion shape, so a neighbor dropped its
+face toward the device and the player saw the void through the gaps (sky showed through the Provider's front).
+`router/DeviceOcclusion` gives each block the shape its model actually closes: the Router (frame with gaps on all
+six sides, body inset to 1..15) closes none; the Provider and Endpoint close only their back, because the recessed
+front frame is notched 1 px into the four sides at y/x 5-6 and 10-11. Provider and Endpoint use the shape for light
+too (`useShapeForLightOcclusion`), so the back still blocks light. Not `noOcclusion()`: that would also drop culling
+and light blocking at the closed back.
+
+- `DeviceOcclusionContractTest` computes the closed sides from the model JSON and compares them with the shapes for
+  all six facings; it fails for a full block.
+- GameTest `visual.device-occlusion` (`deviceocclusion`, 10 assertions) asks `Block.shouldRenderFace` in a world:
+  six stones around a Router and the stone before a Provider/Endpoint keep their faces, the one behind is hidden.
+  It failed before the fix. `router.*` ids are pinned to the Task 12 six, hence the `visual.` prefix.
+- Production client, stone wall with the devices set in it: sky visible through the Provider/Endpoint front before,
+  stone faces after.
+- If the artist changes these models, the contract test says which sides they close; update `DeviceOcclusion`.
+
 ## Verification
 
 - JUnit green; `python3 tools/dev_gametests.py bridgevalid bridgeinvalid bridgesamegrid bridgerejectfederationcable

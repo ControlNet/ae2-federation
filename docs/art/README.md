@@ -47,7 +47,11 @@ prototype behavior.
 | `bridge` | Hand-made multipart, 8x8x5 overall: 6x6 contact plates around an 8x8 middle (`part/bridge`, `part/bridge_sides`) | Model faces NORTH as AE2 part quads do; `getBoxes` takes the same boxes facing SOUTH, pinned by `MultipartBridgeContractTest` |
 
 Router, Cable and Endpoint explicitly return `RenderShape.MODEL`. Cable uses `noOcclusion` and cached connection
-shapes so it does not hide neighboring full faces. Provider and Endpoint items use their block model, whose `gui` rotation of `[30, 45, 0]` turns the front into view. Existing registration IDs, old registry aliases and all network,
+shapes so it does not hide neighboring full faces. The hand-made device models have gaps, so their occlusion shapes
+(`DeviceOcclusion`) close only what the model closes: no side of the Router, only the back of the Provider and
+Endpoint (their front frame is recessed and notched into the four sides beside it). A full occlusion shape would let
+neighbors drop the faces seen through those gaps. `DeviceOcclusionContractTest` derives the closed sides from the
+model JSON; the GameTest `visual.device-occlusion` checks the faces neighbors draw in a world. Provider and Endpoint items use their block model, whose `gui` rotation of `[30, 45, 0]` turns the front into view. Existing registration IDs, old registry aliases and all network,
 crafting, inventory, policy and permission behavior remain unchanged. Endpoint does not gain rotation or a Federation
 Cable port. Bridge does not gain a Federation Cable socket. Its existing native ME cable connection length is retained.
 
