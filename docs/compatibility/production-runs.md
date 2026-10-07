@@ -127,8 +127,8 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
 | `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
 | `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 70/70 |
-| `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes (2026-10-08) | 20/20 |
-| `useless-mod-addons` | the `addons-all` mods plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply | their groups | 80/80 (2026-10-08) |
+| `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08) | 21/21 |
+| `useless-mod-addons` | the `addons-all` mods plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply | their groups | 81/81 (2026-10-08) |
 
 ## Modpack profiles
 

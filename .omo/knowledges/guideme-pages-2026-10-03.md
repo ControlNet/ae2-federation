@@ -199,6 +199,7 @@ and page ids did not change.
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
+| `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
   structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the

@@ -19,14 +19,26 @@ optional targets only log mixin `ClassNotFoundException` warnings.
 
 ## Results
 
-- `useless-mod`: core + `useless-mod` groups, 20/20.
-- `useless-mod-addons`: every `addons-all` group plus `advanced-ae` and `useless-mod`, 80/80 (79/79 before the
+- `useless-mod`: core + `useless-mod` groups, 21/21.
+- `useless-mod-addons`: every `addons-all` group plus `advanced-ae` and `useless-mod`, 81/81 (79/79 before the
   `useless-mod` group was added); UselessMod's Advanced AE and ExtendedAE mixins apply there.
 - `UselessModCompatGameTests.alloyFurnaceCrafting`: the Advanced Alloy Furnace (`ICraftingProvider` and
   `PatternContainer`, 108 pattern slots) holds the provider network's stick crafting pattern and runs it itself on a
   virtual crafting grid (`AdvancedAlloyFurnaceAeManager.pushCraftingPattern`), with no Molecular Assembler; the
   consumer's CPU orders through the projection and gets the exact output. `AddonCraftingScene.structure(..., ready)`
   serves providers that craft by themselves without being AE2 multiblocks.
+
+## Guide example (2026-10-08)
+
+The owner picked the Advanced Alloy Furnace. Pack `guide_useless_mod` (requires `useless_mod`), page
+`examples/alloy-furnace.md` (position 71, after the Assembler Matrix), scene `alloy_furnace.snbt`: network A (energy
+cell, drive, crafting terminal, 1k CPU) with a Bridge on its cable, network B the furnace alone on one cable, no
+storage, no power. Blockstate is `facing` (four horizontal) plus `active`; the scene needs no block entity NBT and
+renders at the title screen (unlike Mekanism machines). `alloyFurnaceWorkshop` builds it
+(`AddonCraftingScene.providerWithoutStorage()` empties B's ME Chest; results still reach A) and takes the pattern out
+of `getTerminalPatternInventory()` and back; a simulate-only extraction fails at "Waiting for the changed provider's
+recipe to leave the consumer" (mutation checked). `guideSceneCables` in the `useless-mod` profiles checks the scene
+(mutation checked with a wrong channel count).
 
 ## UselessMod's own defects seen (upstream; not filed by us)
 
@@ -37,7 +49,7 @@ optional targets only log mixin `ClassNotFoundException` warnings.
 
 No GuideME pages, Ponder scenes or structure files exist in UselessMod to copy from.
 
-- Advanced Alloy Furnace as a remote pattern provider (as the test above): one block; the test gives it no FE, only
+- Advanced Alloy Furnace as a remote pattern provider (built, see above): one block; the test gives it no FE, only
   the AE power the provider network shares. Its item/fluid/FE faces all default to DISABLED, so as an Endpoint
   machine a player must configure faces first.
 - Ore Generator: an AE node without power that inserts `c:ores`/`c:raw_materials` items into its grid every 20 ticks;

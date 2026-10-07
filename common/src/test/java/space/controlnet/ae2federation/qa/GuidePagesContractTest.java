@@ -61,7 +61,8 @@ final class GuidePagesContractTest {
                     "storage_interface", "crafting_system_l4", "crafting_pattern_bus", "crafting_interface",
                     "computation_system_l4", "computation_drive", "eco_computation_cell_l4", "computation_interface")),
             Map.entry("molecularmanipulator", Set.of("matter_fabrication_controller",
-                    "matter_fabrication_pattern_assembly")));
+                    "matter_fabrication_pattern_assembly")),
+            Map.entry("useless_mod", Set.of("advanced_alloy_furnace_block")));
     /** Other mods' guide pages the optional examples link to, by mod; only a pack that requires the mod may. */
     private static final Map<String, Set<String>> MOD_PAGES = Map.ofEntries(
             Map.entry("appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md")),
