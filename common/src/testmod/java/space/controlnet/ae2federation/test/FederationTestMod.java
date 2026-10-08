@@ -36,6 +36,9 @@ public final class FederationTestMod {
         }
         modBus.addListener(this::registerGameTests);
         modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
+        modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                space.controlnet.ae2federation.test.world.OtherDimensionSite::onServerStopped);
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
@@ -63,7 +66,8 @@ public final class FederationTestMod {
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
 							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class, PerformanceBenchmarkGameTests.class,
-							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class));
+							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class,
+							   CrossDimensionGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {
