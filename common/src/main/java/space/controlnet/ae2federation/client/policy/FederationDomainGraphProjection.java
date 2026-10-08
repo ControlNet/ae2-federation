@@ -70,17 +70,18 @@ public final class FederationDomainGraphProjection {
 
     static List<ProviderObservationRegistry.Entry> providerEntries(ServerLevel level,
             space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain) {
-        // A Provider belongs to the domain its Federation face joins, not to every domain its network is a member of.
-        return ProviderObservationRegistry.entries(level).stream()
+        // A Provider belongs to the domain its Federation face joins, not to every domain its network is a member of;
+        // the domain may span dimensions.
+        return ProviderObservationRegistry.entries(level.getServer()).stream()
                 .filter(entry -> federationDomain.nodes().contains(entry.runtime().federationFace()))
                 .sorted(Comparator.comparing(entry -> providerId(federationDomain.reference(), entry))).toList();
     }
 
     static List<EndpointTargetBinding> endpointEntries(ServerLevel level,
             space.controlnet.ae2federation.domain.FederationDomainSnapshot federationDomain) {
-        return EndpointTargetBinding.entries(level).stream()
+        return EndpointTargetBinding.entries(level.getServer()).stream()
                 .filter(binding -> federationDomain.nodes().contains(
-                        FederationDomainRegistryAccess.nodeId(level, binding.runtime().position())))
+                        FederationDomainRegistryAccess.nodeId(binding.level(), binding.runtime().position())))
                 .sorted(Comparator.comparing(binding -> endpointId(federationDomain.reference(), binding))).toList();
     }
 

@@ -111,7 +111,8 @@ public final class ProviderObservationRegistry {
             long accepted) {
         LaneEntry entry;
         synchronized (ProviderObservationRegistry.class) {
-            entry = LANES.values().stream().filter(candidate -> candidate.level() == level
+            // The Provider may be in another dimension than the Endpoint the return comes back through.
+            entry = LANES.values().stream().filter(candidate -> candidate.level().getServer() == level.getServer()
                     && candidate.identity().equals(lane.lane().provider())
                     && candidate.laneIndex() == lane.lane().laneIndex()).findFirst().orElse(null);
         }

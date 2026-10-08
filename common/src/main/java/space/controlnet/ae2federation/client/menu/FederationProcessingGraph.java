@@ -690,7 +690,7 @@ public final class FederationProcessingGraph {
             return;
         }
         int index = choice != null && choice.has("networkIndex") ? choice.get("networkIndex").getAsInt() : -1;
-        var dimension = playerDimension();
+        var dimension = dimension(choice);
         tile.show(dimension, networkBlocks.apply(index, dimension), choice == null ? FederationTheme.EDGE : accent(choice),
                 List.of(mark.get()), 0xffffffff);
     }
@@ -1082,7 +1082,7 @@ public final class FederationProcessingGraph {
 
     /**
      * The selected wire's two ends side by side, the Provider and the Endpoint, or the selected Endpoint alone; each
-     * drawn like its card's thumbnail. Devices of one Provider session are in the player's dimension.
+     * drawn like its card's thumbnail. The Provider is in the player's dimension; an Endpoint may be in another.
      */
     private void renderEnds(boolean wire, boolean endpointSelected) {
         var endpoint = wire || endpointSelected ? endpoint(selection.endpoint()) : null;
@@ -1104,7 +1104,10 @@ public final class FederationProcessingGraph {
     private List<BlockMarks.Mark> focusMarks() {
         var focus = new ArrayList<BlockMarks.Mark>();
         var endpoint = selection.kind() == Kind.NONE ? null : endpoint(selection.endpoint());
-        if (endpoint != null && endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(focus::add);
+        // The world outline is drawn only in the player's dimension, so an Endpoint elsewhere has no mark.
+        if (endpoint != null && endpoint.has("position") && dimension(endpoint).equals(playerDimension())) {
+            position(endpoint.get("position").getAsString()).ifPresent(focus::add);
+        }
         if (selection.kind() != Kind.ENDPOINT) position(providerPosition).ifPresent(focus::add);
         return focus;
     }
@@ -1125,6 +1128,11 @@ public final class FederationProcessingGraph {
 
     private static java.util.Optional<BlockMarks.Mark> position(String value) {
         return value.isEmpty() ? java.util.Optional.empty() : BlockMarks.parseShort(value);
+    }
+
+    /** The dimension a row's device is in; rows without one are the player's own Provider. */
+    private static String dimension(JsonObject choice) {
+        return choice != null && choice.has("dimension") ? choice.get("dimension").getAsString() : playerDimension();
     }
 
     private static String playerDimension() {

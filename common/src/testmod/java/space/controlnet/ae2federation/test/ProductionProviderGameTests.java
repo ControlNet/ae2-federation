@@ -277,6 +277,12 @@ public final class ProductionProviderGameTests {
                     // Emulated chunk unload and reload: real NBT round trip into a new block entity instance.
                     provider.onChunkUnloaded();
                     var tag = provider.saveWithFullMetadata(helper.getLevel().registryAccess());
+                    var laneTag = tag.getList("laneBindings", net.minecraft.nbt.Tag.TAG_COMPOUND).getCompound(0);
+                    helper.assertValueEqual(laneTag.getString("dimension"),
+                            helper.getLevel().dimension().location().toString(), "A bound Lane saves its Endpoint's dimension");
+                    // Load it as a save from before Endpoints could be in another dimension: the Lane's Endpoint is then
+                    // in the Provider's own level, and everything below must hold all the same.
+                    laneTag.remove("dimension");
                     provider.clearContent();
                     helper.setBlock(ProductionProviderScene.PROVIDER, Blocks.AIR);
                     helper.setBlock(ProductionProviderScene.PROVIDER, ProcessingRegistration.PROVIDER.get()
