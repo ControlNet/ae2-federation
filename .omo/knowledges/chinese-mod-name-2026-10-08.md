@@ -1,13 +1,16 @@
 # Chinese mod name and the places it shows (2026-10-08)
 
-The mod's Chinese name is 「AE2联邦」 (no space). On 2026-10-08 these still said "AE2 Federation" in Chinese:
+The mod's Chinese name is 「AE2 联邦」, with a space; the owner chose it after comparing AE2 addons, whose usage is
+split (ExtendedAE 「AE2扩展」, AE2 Lightning Tech 「AE2 闪电科技」, AE2WTLib 「AE2 无线终端」). AE2's own Chinese never
+puts a space between Latin letters and Chinese; the spaced name is a deliberate choice for the mod name only, and item
+names such as 「ME联邦线缆」 are unchanged. On 2026-10-08 these still said "AE2 Federation" in Chinese:
 
 | Where | Key / file | Now |
 |---|---|---|
-| Creative tab | `itemGroup.ae2federation.main` | AE2联邦 |
-| Mod name key | `mod.ae2federation.name` | AE2联邦 |
-| Guide sidebar and index heading | `ae2guide/_zh_cn/index.md` | `title: AE2联邦`, `# AE2联邦（AE2 Federation）` |
-| Guide example pack names | `ae2federation.pack.<id>` | AE2联邦指南：… |
+| Creative tab | `itemGroup.ae2federation.main` | AE2 联邦 |
+| Mod name key | `mod.ae2federation.name` | AE2 联邦 |
+| Guide sidebar and index heading | `ae2guide/_zh_cn/index.md` | `title: AE2 联邦`, `# AE2 联邦（AE2 Federation）` |
+| Guide example pack names | `ae2federation.pack.<id>` | AE2 联邦指南：… |
 | Guide example pack descriptions | `pack.mcmeta` was English only | `{"translate": "ae2federation.pack.<id>.description", "fallback": …}` with a key in both languages |
 | Mod list description | new `fml.menu.mods.info.description.ae2federation` | translated in both languages |
 
@@ -28,7 +31,8 @@ The mod's Chinese name is 「AE2联邦」 (no space). On 2026-10-08 these still 
 `LanguageContractTest` checks three things:
 
 - both languages have the same keys;
-- the Chinese name is AE2联邦, and no Chinese value contains "AE2 Federation";
+- the Chinese name is AE2 联邦, and no Chinese value or Chinese guide page contains "AE2 Federation" or the unspaced
+  「AE2联邦」;
 - the mod-list description key exists.
 
 `GuidePagesContractTest.optionalPacksMatchTheirFolders` checks each pack's translated description key.
