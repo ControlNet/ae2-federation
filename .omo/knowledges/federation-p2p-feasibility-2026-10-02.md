@@ -282,7 +282,14 @@ in another dimension would be looked up at the right coordinates in the wrong wo
 `FederationDomainNodeId` already carries the dimension string and the registry never filters on it, so the gating
 implementation decision is either one server-wide domain registry, or per-level registries with cross-level link
 resolution. Either way every per-level service above must learn about domains whose members live in other levels.
-This is left to the implementing agent, per the deferral boundary above.
+
+Owner's direction (2026-10-08): Federation records belong to the whole server, not to a dimension. No design
+document or commit gives a reason for the per-level split; it dates from the same-dimension prototype (the map came
+in with the 2026-09-25 rename). What is persisted is already server-wide (`PolicySavedData`,
+`ProviderPlacementRegistry`); the per-level maps are runtime state rebuilt from loaded blocks. So the domain registry
+and the services above should become server-scoped, with dimension carried in node ids (already) and in target
+requests. What stays per level is only what Minecraft itself scopes that way: chunk loading and unloading, and a
+level closing, which remove that level's nodes from the server-wide registry.
 
 ### Tests
 
