@@ -1136,7 +1136,7 @@ public final class FederationProcessingGraph {
         return choice != null && choice.has("dimension") ? choice.get("dimension").getAsString() : playerDimension();
     }
 
-    private static String playerDimension() {
+    static String playerDimension() {
         var level = net.minecraft.client.Minecraft.getInstance().level;
         return level == null ? "" : level.dimension().location().toString();
     }

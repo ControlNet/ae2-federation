@@ -399,6 +399,7 @@ final class FederationTopologyView {
             var json = value.getAsJsonObject();
             endpointNodes.add(new EndpointNode(json.get("id").getAsString(),
                     json.has("position") ? json.get("position").getAsString() : "",
+                    json.has("dimension") ? json.get("dimension").getAsString() : "",
                     json.has("ownerNetwork") ? json.get("ownerNetwork").getAsString() : "",
                     json.has("runtimeMode") ? json.get("runtimeMode").getAsString() : "UNBOUND",
                     json.has("nodeReady") && json.get("nodeReady").getAsBoolean(),
@@ -909,7 +910,8 @@ final class FederationTopologyView {
     }
 
     private static Component endpointLabel(EndpointNode endpoint) {
-        return FederationWorkspace.tr("endpoint_at", endpoint.position());
+        return FederationWorkspace.tr("endpoint_at", DevicePlace.of(endpoint.position(), endpoint.dimension(),
+                FederationProcessingGraph.playerDimension()));
     }
 
     private static float endpointWidth(EndpointNode endpoint, net.minecraft.client.gui.Font font) {
@@ -1326,7 +1328,8 @@ final class FederationTopologyView {
         var owner = network(endpoint.owner());
         var host = network(string(json, "nativeNetwork"));
         accent.style(style -> style.backgroundTexture(FederationTheme.solid(endpointColor(endpoint))));
-        title.setText(endpointLabel(endpoint));
+        // The line under the title names its dimension.
+        title.setText(FederationWorkspace.tr("endpoint_at", endpoint.position()));
         var uuid = string(json, "endpointIdentity");
         // The title already names its position.
         identity.setText(json.has("dimension") ? dimension(json.get("dimension").getAsString()) : Component.empty());
@@ -2308,7 +2311,7 @@ final class FederationTopologyView {
     }
 
     /** {@code owner} is the id of the network whose Provider maps the Endpoint, or empty. */
-    private record EndpointNode(String id, String position, String owner, String mode, boolean ready, boolean alone,
+    private record EndpointNode(String id, String position, String dimension, String owner, String mode, boolean ready, boolean alone,
             boolean energy) {
     }
 

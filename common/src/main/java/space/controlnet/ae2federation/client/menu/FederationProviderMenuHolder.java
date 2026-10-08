@@ -482,7 +482,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
                     : FederationTheme.networkAccent(index))));
             var where = new Label();
             where.addClass("provider-return-where");
-            where.setText(lane.has("position") ? FederationWorkspace.tr("endpoint_at", lane.get("position").getAsString())
+            where.setText(lane.has("position") ? FederationWorkspace.tr("endpoint_at", DevicePlace.of(
+                    lane.get("position").getAsString(), target == null || !target.has("dimension") ? ""
+                            : target.get("dimension").getAsString(), FederationProcessingGraph.playerDimension()))
                     : Component.literal(lane.get("endpoint").getAsString().substring(0, 8)));
             var state = new Label();
             state.addClass("provider-return-state");
