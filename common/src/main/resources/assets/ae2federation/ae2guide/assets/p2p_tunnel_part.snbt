@@ -1,0 +1,11 @@
+{
+    DataVersion: 3955,
+    size: [1, 1, 1],
+    data: [
+        {pos: [0, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:fluix_smart_cable", visual: {connections: [], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, up: {freq: 0s, id: "ae2federation:federation_p2p_tunnel", output: 0b, visual: {missingChannel: 0b, powered: 1b}}}}
+    ],
+    entities: [],
+    palette: [
+        "ae2:cable_bus{light_level:0,waterlogged:false}"
+    ]
+}

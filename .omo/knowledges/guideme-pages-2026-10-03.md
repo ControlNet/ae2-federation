@@ -82,6 +82,8 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | `remote_processing.snbt`, a Provider, an Endpoint and a furnace subnet | Remote Crafting |
 | `native_projection.snbt`, ordering from network B's AE2 pattern provider through a Crafting rule | Remote Crafting |
 | `bridge_part.snbt`, one Bridge on a cable | Bridge (header) |
+| `p2p_tunnel_part.snbt`, one Federation P2P tunnel on a cable | Federation P2P Tunnel (header) |
+| `federation_p2p_tunnel.snbt`, two Routers joined through tunnels on network A's cable | Federation P2P Tunnel |
 
 - Markup follows AE2's pages:
   `<GameScene zoom interactive={true} background="transparent">`, `<ImportStructure src>`, and `<BoxAnnotation>`
@@ -389,3 +391,15 @@ there), then breaks a crafting-system casing for the page's "Try it".
   `<Energy>` rails; Troubleshooting's "Not in effect yet" now says powered "by power of their own or through ME
   power". An unpowered network still gets its identity and joins a domain (the compat scenes rely on that); only its
   storage waits for power.
+
+## Federation P2P Tunnel page (2026-10-08)
+
+- `items/federation_p2p_tunnel.md` (position 135) covers how to get one (use Federation Cable on any P2P tunnel; there
+  is no recipe), how to pair tunnels with a memory card, and the power, channel and unload behaviour. It links AE2's
+  `ae2:items-blocks-machines/p2p_tunnels.md`, which `GuidePagesContractTest.AE2_PAGES` now allows; `AE2_ITEMS` gained
+  `me_p2p_tunnel` and `memory_card`.
+- The item-page check's id pattern now allows digits (`[a-z0-9_]+`). Before that, `federation_p2p_tunnel` was never
+  matched.
+- In the scene, network A carries the tunnels and is the only power source. Its smart cables carry 3 channels (the
+  drive and two tunnels) and network B's carry 1; these values were taken from `guidescenecables`.
+- Rendered under Xvfb in English and Chinese: both pages compiled with no `PageCompiler` warnings.

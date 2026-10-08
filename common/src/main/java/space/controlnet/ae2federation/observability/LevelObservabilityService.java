@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.observability;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.observability.meter.NativeTransportMeter;
@@ -16,12 +17,14 @@ import space.controlnet.ae2federation.observability.state.FederationDomainStateP
 import space.controlnet.ae2federation.observability.state.FederationDomainStateSnapshot;
 import space.controlnet.ae2federation.storage.mount.AcceptedStorageOperation;
 
+/** One service per server: a domain it observes may span dimensions. */
 public final class LevelObservabilityService implements AutoCloseable {
-    private static final Map<ServerLevel, LevelObservabilityService> SERVICES = new WeakHashMap<>();
+    private static final Map<MinecraftServer, LevelObservabilityService> SERVICES = new WeakHashMap<>();
 
     private final NativeTransportMeter transportMeter = new NativeTransportMeter(ObservationLimits.MAX_FLOWS);
     private final ObservationSubscriptionService subscriptions = new ObservationSubscriptionService(
             ObservationLimits.MAX_SUBSCRIPTIONS_PER_PLAYER, ObservationLimits.MAX_DELTA_EVENTS);
+    /** The overworld: it names the server and keeps the game time of every dimension. */
     private final ServerLevel level;
     /** Accepted deliveries per directional rule over the last five seconds, for flow indication in the workspace. */
     private final Map<space.controlnet.ae2federation.policy.PolicyKey,
@@ -43,8 +46,8 @@ public final class LevelObservabilityService implements AutoCloseable {
     private appeng.api.stacks.AEKeyType lastKeyType;
     private ResourceUnit lastKeyUnit;
 
-    private LevelObservabilityService(ServerLevel level) {
-        this.level = level;
+    private LevelObservabilityService(MinecraftServer server) {
+        this.level = server.overworld();
     }
 
     /**
@@ -53,24 +56,30 @@ public final class LevelObservabilityService implements AutoCloseable {
      */
     private static volatile LevelObservabilityService last;
 
+    /** The service of {@code level}'s server. */
     public static LevelObservabilityService get(ServerLevel level) {
+        var server = level.getServer();
         var cached = last;
-        return cached != null && cached.level == level ? cached : getLocked(level);
+        return cached != null && cached.level.getServer() == server ? cached : getLocked(server);
     }
 
-    private static synchronized LevelObservabilityService getLocked(ServerLevel level) {
-        var service = SERVICES.computeIfAbsent(level, LevelObservabilityService::new);
+    private static synchronized LevelObservabilityService getLocked(MinecraftServer server) {
+        var service = SERVICES.computeIfAbsent(server, LevelObservabilityService::new);
         last = service;
         return service;
     }
 
-    public static synchronized void closeLevel(ServerLevel level) {
+    /** Forgets the closed level's Providers; the server's subscriptions and meters stay. */
+    public static synchronized void levelClosed(ServerLevel level) {
+        ProviderObservationRegistry.closeLevel(level);
+    }
+
+    public static synchronized void closeServer(MinecraftServer server) {
         last = null;
-        var service = SERVICES.remove(level);
+        var service = SERVICES.remove(server);
         if (service != null) {
             service.close();
         }
-        ProviderObservationRegistry.closeLevel(level);
     }
 
     public static synchronized void closePlayer(UUID playerId) {

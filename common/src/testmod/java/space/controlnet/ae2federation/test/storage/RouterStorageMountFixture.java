@@ -52,11 +52,16 @@ public final class RouterStorageMountFixture implements AutoCloseable {
     }
 
     public void connectRouters() {
-        routers.placeRouter(LEFT);
-        routers.placeRouter(RIGHT);
+        placeRouters();
         for (var x = LEFT.getX() + 1; x < RIGHT.getX(); x++) {
             routers.placeFederationCable(new BlockPos(x, LEFT.getY(), LEFT.getZ()));
         }
+    }
+
+    /** The two Routers without the Federation cable between them, which runs along x from 4 to 8 at y 4 and z 6. */
+    public void placeRouters() {
+        routers.placeRouter(LEFT);
+        routers.placeRouter(RIGHT);
     }
 
     public boolean connected() {

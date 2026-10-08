@@ -327,7 +327,8 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
-        FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
+        FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource,
+                FederationDomainRegistryAccess.dimension(serverLevel), mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());

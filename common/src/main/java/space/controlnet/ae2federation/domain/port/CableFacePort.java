@@ -9,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
 public final class CableFacePort {
     private final BlockPos cablePosition;
     private final Direction face;
+    private final String part;
+    private final Runnable changed;
     private @Nullable BlockCapabilityCache<FederationPort, Direction> cache;
     private @Nullable ServerLevel level;
     private @Nullable FederationPort peer;
@@ -16,8 +18,19 @@ public final class CableFacePort {
     private boolean active;
 
     public CableFacePort(BlockPos cablePosition, Direction face) {
+        this(cablePosition, face, "", () -> {
+        });
+    }
+
+    /**
+     * A port of the {@code part} of the block at {@code cablePosition}; {@code changed} runs when the neighbour's port
+     * may have changed, for an owner without a tick of its own to resolve the port on.
+     */
+    public CableFacePort(BlockPos cablePosition, Direction face, String part, Runnable changed) {
         this.cablePosition = cablePosition.immutable();
         this.face = face;
+        this.part = part;
+        this.changed = changed;
     }
 
     public void initialize(ServerLevel serverLevel) {
@@ -66,6 +79,7 @@ public final class CableFacePort {
      */
     private void recheck() {
         dirty = true;
+        changed.run();
     }
 
     public void destroy() {
@@ -84,7 +98,7 @@ public final class CableFacePort {
             return null;
         }
         var candidate = cache.getCapability();
-        var local = new FederationPort(cablePosition, face);
+        var local = new FederationPort(cablePosition, face, part);
         return candidate != null && candidate.ownerPosition().equals(neighborPosition)
                 && candidate.outwardFace() == face.getOpposite() && local.connectsTo(candidate) ? candidate : null;
     }

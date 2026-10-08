@@ -34,12 +34,13 @@ final class GuidePagesContractTest {
     private static final Path GUIDE = RESOURCES.resolve("assets/ae2federation/ae2guide");
     private static final Set<String> BASE_NAMESPACES = Set.of("minecraft", "ae2", "ae2federation");
     private static final Set<String> FEDERATION_ITEMS = Set.of("nexus_processor", "nexus_core", "bridge", "router", "cable",
-            "pattern_provider", "processing_endpoint");
+            "pattern_provider", "processing_endpoint", "federation_p2p_tunnel");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
-    private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md");
+    private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md",
+            "items-blocks-machines/p2p_tunnels.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "ender_dust", "printed_silicon", "quartz_fiber",
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
-            "1k_crafting_storage", "energy_acceptor");
+            "1k_crafting_storage", "energy_acceptor", "me_p2p_tunnel", "memory_card");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
             Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
@@ -242,7 +243,7 @@ final class GuidePagesContractTest {
         var owners = new TreeMap<String, String>();
         for (var page : pages(GUIDE)) {
             var frontmatter = frontmatter(GUIDE.resolve(page));
-            var items = Pattern.compile("(?m)^- ae2federation:([a-z_]+)$").matcher(frontmatter);
+            var items = Pattern.compile("(?m)^- ae2federation:([a-z0-9_]+)$").matcher(frontmatter);
             while (items.find()) assertEquals(null, owners.put(items.group(1), page), items.group(1));
         }
         assertEquals(new TreeSet<>(FEDERATION_ITEMS), new TreeSet<>(owners.keySet()));

@@ -331,7 +331,8 @@ public final class FederationDomainPolicySession {
             root.add("localEndpoint", local);
         }
         if (context != null && deviceEndpoint != null) {
-            currentEndpoints().stream().filter(binding -> binding.runtime().position().equals(deviceEndpoint.getBlockPos()))
+            currentEndpoints().stream().filter(binding -> binding.level() == level
+                            && binding.runtime().position().equals(deviceEndpoint.getBlockPos()))
                     .findFirst().ifPresent(binding -> root.addProperty("initialEndpoint",
                             FederationDomainGraphProjection.endpointId(context, binding)));
         }
@@ -415,6 +416,7 @@ public final class FederationDomainPolicySession {
             var choice = addChoice(root, "mapping_provider", id, shortId(id));
             if (provider.controller().orElse(null) instanceof net.minecraft.world.level.block.entity.BlockEntity entity) {
                 choice.addProperty("position", entity.getBlockPos().toShortString());
+                choice.addProperty("dimension", provider.runtime().federationFace().dimension());
             }
         }
         root.add("processingProviders", processingProvidersJson());
@@ -476,7 +478,7 @@ public final class FederationDomainPolicySession {
         choice.addProperty("x", runtime.position().getX());
         choice.addProperty("y", runtime.position().getY());
         choice.addProperty("z", runtime.position().getZ());
-        choice.addProperty("dimension", level.dimension().location().toString());
+        choice.addProperty("dimension", FederationDomainRegistryAccess.dimension(endpoint.level()));
         choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
         choice.addProperty("subnetAlone", endpoint.subnetAlone());
         choice.addProperty("configuredMode", runtime.configuredMode().name());
@@ -509,7 +511,7 @@ public final class FederationDomainPolicySession {
             reason = "unclaimed";
         } else {
             var owner = endpoint.claimState().owner().orElseThrow().provider();
-            var grid = ProviderObservationRegistry.entries(level).stream().filter(entry -> entry.identity().equals(owner))
+            var grid = ProviderObservationRegistry.entries(level.getServer()).stream().filter(entry -> entry.identity().equals(owner))
                     .map(entry -> entry.provider().getGrid()).filter(java.util.Objects::nonNull).findFirst().orElse(null);
             reason = grid == null ? "owner_offline" : grid == endpoint.subnetNode().getGrid() ? "same_network" : "waiting";
         }
@@ -555,6 +557,7 @@ public final class FederationDomainPolicySession {
                 .filter(owner -> owner.provider().equals(entry.identity())).isPresent());
         if (binding != null) {
             choice.addProperty("position", binding.runtime().position().toShortString());
+            choice.addProperty("dimension", FederationDomainRegistryAccess.dimension(binding.level()));
             choice.addProperty("nodeReady", binding.subnetNode().isActive() && binding.subnetNode().hasGridBooted());
             choice.addProperty("subnetAlone", binding.subnetAlone());
             choice.addProperty("claimEpoch", binding.claimState().epoch().value());
@@ -1245,7 +1248,7 @@ public final class FederationDomainPolicySession {
         var binding = currentEndpoints().stream()
                 .filter(candidate -> endpointChoiceId(candidate.endpointIdentity()).equals(target.endpoint()))
                 .findFirst().orElse(null);
-        if (binding == null || !(level.getBlockEntity(binding.runtime().position())
+        if (binding == null || !(binding.level().getBlockEntity(binding.runtime().position())
                 instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity endpoint)) {
             return false;
         }

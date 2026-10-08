@@ -57,6 +57,17 @@ public final class ProviderObservationRegistry {
         return List.copyOf(ENTRIES.getOrDefault(level, Map.of()).values());
     }
 
+    /** The Providers of every dimension of {@code server}. */
+    public static synchronized List<Entry> entries(net.minecraft.server.MinecraftServer server) {
+        var result = new java.util.ArrayList<Entry>();
+        ENTRIES.forEach((level, entries) -> {
+            if (level.getServer() == server) {
+                result.addAll(entries.values());
+            }
+        });
+        return List.copyOf(result);
+    }
+
     public static synchronized void closeLevel(ServerLevel level) {
         ENTRIES.remove(level);
         LANES.entrySet().removeIf(entry -> entry.getValue().level() == level);
@@ -100,7 +111,8 @@ public final class ProviderObservationRegistry {
             long accepted) {
         LaneEntry entry;
         synchronized (ProviderObservationRegistry.class) {
-            entry = LANES.values().stream().filter(candidate -> candidate.level() == level
+            // The Provider may be in another dimension than the Endpoint the return comes back through.
+            entry = LANES.values().stream().filter(candidate -> candidate.level().getServer() == level.getServer()
                     && candidate.identity().equals(lane.lane().provider())
                     && candidate.laneIndex() == lane.lane().laneIndex()).findFirst().orElse(null);
         }

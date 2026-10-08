@@ -87,7 +87,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         ports.forEach((face, port) -> {
             var peer = port.peer();
             if (peer != null) {
-                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer);
                 evidence.put(face.getSerializedName(), new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
             }
