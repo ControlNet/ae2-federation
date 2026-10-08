@@ -57,6 +57,8 @@ public final class FederationDomainRegistry {
     /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
 
+    private long recomputes;
+    private long recomputeNanos;
     /** Runs after every change of node or bridge evidence, before the domains are recomputed from it. */
     private Runnable mutationListener = () -> {
     };
@@ -251,7 +253,20 @@ public final class FederationDomainRegistry {
         var seeds = new TreeSet<>(pendingSeeds);
         pendingSeeds.clear();
         pendingRemovals.clear();
+        long started = System.nanoTime();
         recompute(seeds);
+        recomputes++;
+        recomputeNanos += System.nanoTime() - started;
+    }
+
+    /** How many times changed components were recomputed, for diagnostics and benchmarks. */
+    public long recomputes() {
+        return recomputes;
+    }
+
+    /** The time spent recomputing changed components, in nanoseconds, for diagnostics and benchmarks. */
+    public long recomputeNanos() {
+        return recomputeNanos;
     }
 
     private Set<FederationDomainNodeId> affectedBy(FederationDomainNodeId nodeId, FederationDomainNodeEvidence previous,

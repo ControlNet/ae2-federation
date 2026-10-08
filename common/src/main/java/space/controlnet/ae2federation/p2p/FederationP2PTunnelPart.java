@@ -78,6 +78,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             front = null;
         }
         if (getLevel() instanceof ServerLevel serverLevel && nodeId != null) {
+            P2PRefreshDiagnostics.removed(nodeId);
             FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, nodeId);
             FederationBindingRefresh.request(serverLevel);
         }
@@ -134,7 +135,11 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
      * server stops.
      */
     private void scheduleRefresh() {
-        if (refreshScheduled || !(getLevel() instanceof ServerLevel serverLevel)) {
+        if (!(getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        P2PRefreshDiagnostics.requested();
+        if (refreshScheduled) {
             return;
         }
         var server = serverLevel.getServer();
@@ -144,9 +149,11 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         refreshScheduled = true;
         server.tell(new TickTask(server.getTickCount() + 1, () -> {
             refreshScheduled = false;
+            long started = System.nanoTime();
             if (nodeId != null && server.isRunning()) {
                 group().forEach(FederationP2PTunnelPart::publish);
             }
+            P2PRefreshDiagnostics.ran(System.nanoTime() - started);
         }));
     }
 
@@ -183,15 +190,19 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
                     new FederationDomainPortId(FederationDomainRegistryAccess.nodeId(serverLevel, peer),
                             peer.outwardFace().getSerializedName())));
         }
+        int links = 0;
         for (var other : TunnelLinks.linked(this, isOutput() ? getInput() : this, group(),
                 FederationP2PTunnelPart::isActive)) {
             if (other.nodeId != null) {
                 evidence.put(TUNNEL_PORT + other.nodeId, new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(other.nodeId, TUNNEL_PORT + nodeId)));
+                links++;
             }
         }
-        if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(nodeId, evidence))) {
+        boolean changed = FederationDomainRegistryAccess.get(serverLevel).upsertNode(
+                new FederationDomainNodeEvidence(nodeId, evidence));
+        P2PRefreshDiagnostics.published(nodeId, links, changed);
+        if (changed) {
             FederationBindingRefresh.request(serverLevel);
         }
     }
