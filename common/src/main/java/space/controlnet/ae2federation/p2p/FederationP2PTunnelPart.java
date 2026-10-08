@@ -38,10 +38,14 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             ResourceLocation.fromNamespaceAndPath("ae2federation", "part/p2p_tunnel_federation");
     private static final P2PModels MODELS = new P2PModels(FRONT_MODEL);
     private static final String TUNNEL_PORT = "tunnel:";
+    /** Refresh requests of every tunnel so far, on the server thread. */
+    private static long refreshRequests;
 
     private @Nullable CableFacePort front;
     private @Nullable FederationDomainNodeId nodeId;
     private boolean refreshScheduled;
+    /** {@link #refreshRequests} when this tunnel last published. */
+    private long publishedAt = -1;
 
     public FederationP2PTunnelPart(IPartItem<?> partItem) {
         super(partItem);
@@ -133,11 +137,16 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
      * about a change (a channel change reaches only the tunnel itself), so each tunnel's links are rebuilt together.
      * Like the Bridge, never during a node event itself, when a neighbouring chunk may be unloading, and never while the
      * server stops.
+     *
+     * <p>When AE2 tells every tunnel of a frequency at once (pairing, power, a channel reshuffle), each one's refresh
+     * would republish the whole frequency. A tunnel already published since the last refresh request anywhere has
+     * nothing new to publish, so each is published once per such burst.
      */
     private void scheduleRefresh() {
         if (!(getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
+        refreshRequests++;
         P2PRefreshDiagnostics.requested();
         if (refreshScheduled) {
             return;
@@ -151,7 +160,9 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             refreshScheduled = false;
             long started = System.nanoTime();
             if (nodeId != null && server.isRunning()) {
-                group().forEach(FederationP2PTunnelPart::publish);
+                for (var tunnel : group()) {
+                    if (tunnel.publishedAt != refreshRequests) tunnel.publish();
+                }
             }
             P2PRefreshDiagnostics.ran(System.nanoTime() - started);
         }));
@@ -182,6 +193,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         if (nodeId == null || front == null || !(getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
+        publishedAt = refreshRequests;
         var evidence = new TreeMap<String, FederationDomainPortEvidence>();
         front.revalidate();
         var peer = front.peer();
