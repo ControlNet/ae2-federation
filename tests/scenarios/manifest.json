@@ -91,6 +91,7 @@
     {"id":"crafting.projection-cpu-out-of-sight","backend":"gametest","testId":"projectioncpuoutofsight","structure":"ae2federation_test:harness_native_smoke","assertions":14},
     {"id":"crafting.projection-cpu-out-of-sight-other-job","backend":"gametest","testId":"projectioncpuoutofsightotherjob","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"crafting.projection-cpu-late-after-restart","backend":"gametest","testId":"projectioncpulateafterrestart","structure":"ae2federation_test:harness_native_smoke","assertions":14},
+    {"id":"crafting.projection-hand-back-faults","backend":"gametest","testId":"projectionhandbackfaults","structure":"ae2federation_test:harness_native_smoke","assertions":36},
     {"id":"survival.recipes","backend":"gametest","testId":"survivalrecipes","structure":"ae2federation_test:harness_native_smoke","assertions":51},
     {"id":"survival.inscriber","backend":"gametest","testId":"survivalinscriber","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"automation.interface-stock","backend":"gametest","testId":"automationinterfacestock","structure":"ae2federation_test:harness_native_smoke","assertions":14},

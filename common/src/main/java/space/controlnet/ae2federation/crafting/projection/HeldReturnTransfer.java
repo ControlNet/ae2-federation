@@ -24,6 +24,9 @@ import space.controlnet.ae2federation.storage.provenance.FederationManagedStorag
  * the sources and the target both promise is taken out; what the target then refuses goes back into the executing
  * network's own inventories, and what they refuse too stays in the ledger's transit stock, real stock that the
  * executing network lists and that the next transfer tries first. The debt goes down only by what the target took.
+ *
+ * <p>Transit stock is saved with the ledger. After a restart the executing network lists it again, and stores it back
+ * where it fits, once Federation sees that network in a Federation Domain again; until then it stays in the ledger.
  */
 public final class HeldReturnTransfer {
     private HeldReturnTransfer() {

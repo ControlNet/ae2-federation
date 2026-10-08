@@ -13,6 +13,7 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.MEStorage;
 import appeng.api.util.AEColor;
 import appeng.blockentity.crafting.CraftingBlockEntity;
@@ -347,6 +348,30 @@ public final class PatternProjectionFixture implements AutoCloseable {
     /** What the provider's own ME chest holds. */
     public MEStorage providerChest() {
         return Objects.requireNonNull(bridge.providerChest().getOriginalCellInventory(0));
+    }
+
+    /**
+     * Mounts {@code storage} on the provider network as an own inventory at {@code priority}, as a storage bus would.
+     *
+     * @return what unmounts it again
+     */
+    public Runnable mountOnProvider(MEStorage storage, int priority) {
+        var service = providerGrid().getStorageService();
+        IStorageProvider provider = mounts -> mounts.mount(storage, priority);
+        service.addGlobalStorageProvider(provider);
+        return () -> service.removeGlobalStorageProvider(provider);
+    }
+
+    /** Takes the cell out of the provider's ME chest, which then stores nothing; the cell is returned. */
+    public ItemStack takeProviderCell() {
+        var chest = bridge.providerChest();
+        var cell = chest.getCell().copy();
+        chest.setCell(ItemStack.EMPTY);
+        return cell;
+    }
+
+    public void restoreProviderCell(ItemStack cell) {
+        bridge.providerChest().setCell(cell);
     }
 
     public long held(MEStorage storage, AEKey what) {

@@ -6863,6 +6863,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-cpu-out-of-sight':
                 case 'crafting.projection-cpu-out-of-sight-other-job':
                 case 'crafting.projection-cpu-late-after-restart':
+                case 'crafting.projection-hand-back-faults':
                 case 'survival.recipes':
                 case 'survival.inscriber':
                 case 'visual.device-occlusion':

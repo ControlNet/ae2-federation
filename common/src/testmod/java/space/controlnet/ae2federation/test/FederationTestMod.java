@@ -68,7 +68,8 @@ public final class FederationTestMod {
 							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class, PerformanceBenchmarkGameTests.class,
 							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class,
 							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
-							   ProjectionCpuSightGameTests.class));
+							   ProjectionCpuSightGameTests.class,
+							   ProjectionHandBackGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {
