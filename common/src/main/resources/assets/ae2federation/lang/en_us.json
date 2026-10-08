@@ -19,6 +19,7 @@
   "ae2federation.pack.guide_useless_mod": "AE2 Federation guide: UselessMod examples",
   "item.ae2federation.bridge": "ME Federation Bridge",
   "item.ae2federation.nexus_processor": "Nexus Processor",
+  "item.ae2federation.printed_nexus_processor": "Nexus Circuit",
   "item.ae2federation.nexus_core": "Nexus Core",
   "block.ae2federation.router": "ME Federation Router",
   "block.ae2federation.cable": "ME Federation Cable",
