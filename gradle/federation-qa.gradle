@@ -3182,8 +3182,7 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
     }
     def cleanupFields = ['cleanupConsumerBefore', 'cleanupConsumerAfter', 'cleanupServicePresentBefore',
             'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServiceRemoved',
-            'cleanupRegistryPresentBefore', 'cleanupRegistryRemoved', 'cleanupRegistryAbsentAfter',
-            'cleanupNativeProviderRemoved']
+            'cleanupDimensionNodesRemoved', 'cleanupDimensionNodesLeft', 'cleanupNativeProviderRemoved']
     if (cleanupFields.any { access.getProperty(it) == null }
             || access.getProperty('cleanupConsumerBefore') != '5'
             || access.getProperty('cleanupConsumerAfter') != '0'
@@ -3191,9 +3190,8 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
             || access.getProperty('cleanupMountedProvidersBefore') != '1'
             || access.getProperty('cleanupMountedProvidersRemoved') != '1'
             || access.getProperty('cleanupServiceRemoved') != 'true'
-            || access.getProperty('cleanupRegistryPresentBefore') != 'true'
-            || access.getProperty('cleanupRegistryRemoved') != 'true'
-            || access.getProperty('cleanupRegistryAbsentAfter') != 'true'
+            || access.getProperty('cleanupDimensionNodesRemoved') != 'true'
+            || access.getProperty('cleanupDimensionNodesLeft') != '0'
             || access.getProperty('cleanupNativeProviderRemoved') != 'true') {
         throw new GradleException('Task 21 level cleanup semantics are incomplete')
     }
@@ -9038,8 +9036,8 @@ tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
                         cleanupConsumerAfter: '5',
                         cleanupServicePresentBefore: 'false', cleanupMountedProvidersBefore: '0',
                         cleanupMountedProvidersRemoved: '0', cleanupServiceRemoved: 'false',
-                        cleanupRegistryPresentBefore: 'false', cleanupRegistryRemoved: 'false',
-                        cleanupRegistryAbsentAfter: 'false', cleanupNativeProviderRemoved: 'false'],
+                        cleanupDimensionNodesRemoved: 'false', cleanupDimensionNodesLeft: '1',
+                        cleanupNativeProviderRemoved: 'false'],
                         'Task 21 level cleanup semantics are incomplete'),
                 viewExtract: mutateFact('storageviewonly', 'extractAccepted', '2',
                         'Task 21 VIEW-only authorization semantics are incomplete'),

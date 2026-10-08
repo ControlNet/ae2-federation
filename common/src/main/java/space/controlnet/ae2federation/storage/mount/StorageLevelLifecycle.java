@@ -11,12 +11,12 @@ public final class StorageLevelLifecycle {
         var mounts = StorageMountService.closeLevel(level);
         var federationDomains = FederationDomainRegistryAccess.closeLevel(level);
         return new CloseReceipt(mounts.servicePresentBefore(), mounts.mountedProvidersBefore(),
-                mounts.mountedProvidersRemoved(), mounts.serviceRemoved(), federationDomains.registryPresentBefore(),
-                federationDomains.removedRegisteredInstance(), federationDomains.registryAbsentAfter());
+                mounts.mountedProvidersRemoved(), mounts.serviceRemoved(), federationDomains.nodesRemoved(),
+                federationDomains.bridgesRemoved(), federationDomains.nodesLeft());
     }
 
+    /** The level's mounts, and what its dimension took out of the server-wide domain registry. */
     public record CloseReceipt(boolean servicePresentBefore, int mountedProvidersBefore, int mountedProvidersRemoved,
-            boolean serviceRemoved, boolean registryPresentBefore, boolean registryRemoved,
-            boolean registryAbsentAfter) {
+            boolean serviceRemoved, int dimensionNodesRemoved, int dimensionBridgesRemoved, int dimensionNodesLeft) {
     }
 }

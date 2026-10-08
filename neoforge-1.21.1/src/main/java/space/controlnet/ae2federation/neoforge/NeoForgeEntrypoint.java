@@ -6,6 +6,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
@@ -54,6 +56,7 @@ public final class NeoForgeEntrypoint {
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
+        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelTick);
@@ -93,11 +96,17 @@ public final class NeoForgeEntrypoint {
             var receipt = StorageLevelLifecycle.close(level);
             space.controlnet.ae2federation.policy.PolicyService.closeLevel(level);
             LOGGER.info("AE2F_STORAGE_LEVEL_CLOSED dimension={} servicePresentBefore={} mountedProvidersBefore={} "
-                            + "mountedProvidersRemoved={} serviceRemoved={} registryPresentBefore={} registryRemoved={} "
-                            + "registryAbsentAfter={}", level.dimension().location(), receipt.servicePresentBefore(),
-                    receipt.mountedProvidersBefore(), receipt.mountedProvidersRemoved(), receipt.serviceRemoved(),
-                    receipt.registryPresentBefore(), receipt.registryRemoved(), receipt.registryAbsentAfter());
+                            + "mountedProvidersRemoved={} serviceRemoved={} dimensionNodesRemoved={} "
+                            + "dimensionBridgesRemoved={} dimensionNodesLeft={}", level.dimension().location(),
+                    receipt.servicePresentBefore(), receipt.mountedProvidersBefore(), receipt.mountedProvidersRemoved(),
+                    receipt.serviceRemoved(), receipt.dimensionNodesRemoved(), receipt.dimensionBridgesRemoved(),
+                    receipt.dimensionNodesLeft());
         }
+    }
+
+    /** Server-wide state outlives each level's unload, so it goes once the whole server has stopped. */
+    private static void onServerStopped(ServerStoppedEvent event) {
+        FederationDomainRegistryAccess.closeServer(event.getServer());
     }
 
     private static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {

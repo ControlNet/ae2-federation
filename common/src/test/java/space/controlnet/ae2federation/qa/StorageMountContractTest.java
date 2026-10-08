@@ -82,7 +82,7 @@ final class StorageMountContractTest {
         assertTrue(entrypoint.contains("FederationBindingRefresh.closeLevel(level)"));
         assertTrue(mounts.contains("SERVICES.remove(level)"));
         assertTrue(mounts.contains("mountedProvidersRemoved"));
-        assertTrue(registries.contains("removedRegisteredInstance"));
+        assertTrue(registries.contains("removeDimension(dimension(level))"));
         assertTrue(lifecycle.contains("StorageMountService.closeLevel(level)"));
         assertTrue(lifecycle.contains("FederationDomainRegistryAccess.closeLevel(level)"));
         assertTrue(entrypoint.contains("LevelEvent.Unload"));

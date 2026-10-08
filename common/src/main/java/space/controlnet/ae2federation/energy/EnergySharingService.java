@@ -119,13 +119,12 @@ public final class EnergySharingService implements AutoCloseable {
     }
 
     /**
-     * Dissolves every shared pool of {@code level} after a domain topology change, without reading the registry (this
-     * runs inside its mutation). AE2 forms each pool again on its next energy operation, and asking for
-     * {@link #peers} then reconciles against the new topology first.
+     * Dissolves every shared pool after a domain topology change, without reading the registry (this runs inside its
+     * mutation). AE2 forms each pool again on its next energy operation, and asking for {@link #peers} then reconciles
+     * against the new topology first.
      */
-    public static synchronized void topologyChanged(ServerLevel level) {
-        var service = SERVICES.get(level);
-        if (service != null) {
+    public static synchronized void topologyChangedAll() {
+        for (var service : SERVICES.values()) {
             service.dissolutions++;
             reform(service.peers, Map.of());
         }

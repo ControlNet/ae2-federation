@@ -80,9 +80,8 @@ public final class StorageMountGameTests {
             helper.assertTrue(cleanup.servicePresentBefore() && cleanup.mountedProvidersBefore() == 1
                             && cleanup.mountedProvidersRemoved() == 1 && cleanup.serviceRemoved(),
                     "Level teardown must remove the exact mounted service entry and provider");
-            helper.assertTrue(cleanup.registryPresentBefore() && cleanup.registryRemoved()
-                            && cleanup.registryAbsentAfter(),
-                    "Level teardown must remove the exact Federation Domain registry entry");
+            helper.assertTrue(cleanup.dimensionNodesRemoved() > 0 && cleanup.dimensionNodesLeft() == 0,
+                    "Level teardown must take the level's nodes out of the server-wide Federation Domain registry");
             PolicyEvidence.write("storagenativeaccess", 20, Map.ofEntries(
                     Map.entry("mountedRelationships", "1"), Map.entry("insertAccepted", "9"),
                     Map.entry("consumerExtracted", "4"), Map.entry("providerRemaining", "5"),
@@ -95,9 +94,8 @@ public final class StorageMountGameTests {
                     Map.entry("cleanupMountedProvidersBefore", Integer.toString(cleanup.mountedProvidersBefore())),
                     Map.entry("cleanupMountedProvidersRemoved", Integer.toString(cleanup.mountedProvidersRemoved())),
                     Map.entry("cleanupServiceRemoved", Boolean.toString(cleanup.serviceRemoved())),
-                    Map.entry("cleanupRegistryPresentBefore", Boolean.toString(cleanup.registryPresentBefore())),
-                    Map.entry("cleanupRegistryRemoved", Boolean.toString(cleanup.registryRemoved())),
-                    Map.entry("cleanupRegistryAbsentAfter", Boolean.toString(cleanup.registryAbsentAfter())),
+                    Map.entry("cleanupDimensionNodesRemoved", Boolean.toString(cleanup.dimensionNodesRemoved() > 0)),
+                    Map.entry("cleanupDimensionNodesLeft", Integer.toString(cleanup.dimensionNodesLeft())),
                     Map.entry("cleanupNativeProviderRemoved", Boolean.toString(cleanupConsumerAfter == 0
                             && provider.getAvailableStacks().get(IRON) == 5))));
             fixtures.close();
