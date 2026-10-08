@@ -244,8 +244,8 @@ Bridge part work landed. Nothing was implemented. Java paths are relative to
 
 - `domain/FederationDomainNodeId` is still `(dimension, blockPosition)` with no part or face discriminator, and the
   registry joins every port of one node. Two Federation P2P parts on one cable bus would share a node and be joined.
-  Only three places construct node ids (`FederationDomainRegistryAccess.nodeId` and two in
-  `client/policy/FederationDomainPolicySession`), so adding a discriminator is narrow at construction; the wider cost
+  Only `FederationDomainRegistryAccess.nodeId` constructs node ids (`client/policy/FederationDomainPolicySession`
+  reads `blockPosition()` back), so adding a discriminator is narrow at construction; the wider cost
   is `FederationPort` (still `ownerPosition` + `outwardFace`) and the cable's peer resolution
   (`router/FederationCableBlockEntity.publishFederationDomainTopology` derives the peer node from
   `peer.ownerPosition()`), UI graph ids and saved references.
@@ -275,7 +275,8 @@ tunnels across them. What is per level is Federation's own runtime:
 | `observability/LevelObservabilityService`, `domain/FederationBindingRefresh` | per level |
 
 One concrete correctness gap: `processing/provider/ProviderTargetAuthorization.resolve` resolves the Endpoint's
-`BlockPos` in `ProviderAuthorizationContext.level()`, the Provider's own level. An Endpoint reached through a tunnel
+`BlockPos` in `ProviderAuthorizationContext.level()`, the Provider's own level (`ProviderRuntime` gets it from
+`FederationPatternProviderBlockEntity`). An Endpoint reached through a tunnel
 in another dimension would be looked up at the right coordinates in the wrong world. Target requests need a dimension.
 
 `FederationDomainNodeId` already carries the dimension string and the registry never filters on it, so the gating
