@@ -71,7 +71,8 @@ public final class FederationTestMod {
 							   ProjectionCpuSightGameTests.class,
 							   ProjectionHandBackGameTests.class,
 							   P2PRefreshBenchmarkGameTests.class,
-							   P2PTopologyGameTests.class));
+							   P2PTopologyGameTests.class,
+							   CrossDimensionCraftingGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {

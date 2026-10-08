@@ -1,10 +1,12 @@
 package space.controlnet.ae2federation.test.p2p;
 
+import appeng.blockentity.qnb.QuantumBridgeBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
 import space.controlnet.ae2federation.test.world.OtherDimensionSite;
@@ -76,6 +78,26 @@ public final class QuantumP2PCarrier {
     public void pair() {
         helper.assertTrue(tunnels.pair(overworldTunnel(), List.of(netherTunnel())),
                 "The memory card must pair the tunnels across the bridge");
+    }
+
+    /**
+     * Takes the singularity out of the overworld link chamber, as a player does, which breaks the Quantum link and
+     * splits the carrier; returns it.
+     */
+    public ItemStack breakLink() {
+        var singularity = overworldLink().getInternalInventory().extractItem(0, 1, false);
+        helper.assertFalse(singularity.isEmpty(), "The overworld link chamber must hold its singularity");
+        return singularity;
+    }
+
+    /** Puts {@code singularity} back into the overworld link chamber, which links the bridge again. */
+    public void restoreLink(ItemStack singularity) {
+        helper.assertTrue(overworldLink().getInternalInventory().insertItem(0, singularity, false).isEmpty(),
+                "The overworld link chamber must take its singularity back");
+    }
+
+    private QuantumBridgeBlockEntity overworldLink() {
+        return (QuantumBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(OVERWORLD_CHAMBER));
     }
 
     public FederationP2PTunnelPart overworldTunnel() {

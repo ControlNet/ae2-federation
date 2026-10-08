@@ -23,6 +23,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
@@ -33,6 +35,7 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointTargetBinding;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.world.BlockEntityReload;
 import space.controlnet.ae2federation.test.world.OtherDimensionSite;
 import space.controlnet.ae2federation.test.world.QuantumBridges;
 
@@ -68,6 +71,7 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
     private final NetworkId targetNetwork = NetworkId.create();
     private Future<ICraftingPlan> plan;
     private long returned;
+    private boolean machineRuns = true;
     private int step;
 
     public QuantumP2PProviderScene(GameTestHelper helper) {
@@ -164,6 +168,8 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
 
     /** The stand-in machine: takes the input delivered to the subnet and returns a diamond for each. */
     public void runMachine() {
+        // Looking at an unloaded chunk's block entity would load it.
+        if (!machineRuns || !site.ticking()) return;
         var subnet = node(site.getBlockEntity(TARGET_CHEST));
         if (subnet == null || subnet.getGrid() == null) return;
         var storage = subnet.getGrid().getStorageService().getInventory();
@@ -177,6 +183,60 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
         }
         helper.assertTrue(remainder.isEmpty(), "The Endpoint must take the machine's products");
         returned += taken;
+    }
+
+    /** Stops or restarts the stand-in machine. */
+    public void machineRuns(boolean runs) {
+        machineRuns = runs;
+    }
+
+    /** What the Endpoint's subnet holds of {@code key}: inputs delivered and not yet taken by the machine. */
+    public long subnetAmount(AEItemKey key) {
+        if (!site.ticking()) return 0;
+        var subnet = node(site.getBlockEntity(TARGET_CHEST));
+        if (subnet == null || subnet.getGrid() == null) return 0;
+        return subnet.getGrid().getStorageService().getInventory().extract(key, Long.MAX_VALUE, Actionable.SIMULATE,
+                IActionSource.empty());
+    }
+
+    /** Whether the nether Endpoint is in a Federation Domain with the source network. */
+    public boolean endpointLinked() {
+        var endpointNode = FederationDomainRegistryAccess.nodeId(site.level(), site.absolute(ENDPOINT));
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        return registry.federationdomainsFor(sourceNetwork).stream().map(registry::federationDomain)
+                .anyMatch(domain -> domain.isPresent() && domain.get().nodes().contains(endpointNode));
+    }
+
+    /** Breaks the nether Endpoint and places a fresh one where it stood, as a player replacing it does. */
+    public void replaceEndpoint() {
+        site.setBlock(ENDPOINT, Blocks.AIR.defaultBlockState());
+        placeTarget(ENDPOINT, ProcessingRegistration.ENDPOINT.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH));
+    }
+
+    /** Offers {@code amount} diamonds to the nether Endpoint from the machine's side; how many it took. */
+    public long offerEndpoint(int amount) {
+        var handler = site.level().getCapability(Capabilities.ItemHandler.BLOCK, site.absolute(ENDPOINT), RETURN_SIDE);
+        if (handler == null) return 0;
+        var remainder = new ItemStack(Items.DIAMOND, amount);
+        for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
+            remainder = handler.insertItem(slot, remainder, false);
+        }
+        return amount - remainder.getCount();
+    }
+
+    /** Cancels the source network's crafting jobs. */
+    public void cancelJobs() {
+        sourceGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy())
+                .forEach(cpu -> ((appeng.me.cluster.implementations.CraftingCPUCluster) cpu).cancelJob());
+    }
+
+    public OtherDimensionSite site() {
+        return site;
+    }
+
+    public QuantumP2PCarrier carrier() {
+        return carrier;
     }
 
     public long returned() {
@@ -218,6 +278,47 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
         return EndpointTargetBinding.findEndpoint(site.level(), site.absolute(ENDPOINT));
     }
 
+    /**
+     * Places a twin: an Endpoint in the overworld at the nether Endpoint's very coordinates, with nothing in front of
+     * it and no subnet, so no Provider may take it for the nether one.
+     */
+    public void placeTwin() {
+        helper.getLevel().setBlock(site.absolute(ENDPOINT), ProcessingRegistration.ENDPOINT.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH), Block.UPDATE_ALL);
+    }
+
+    public EndpointBlockEntity twin() {
+        return (EndpointBlockEntity) helper.getLevel().getBlockEntity(site.absolute(ENDPOINT));
+    }
+
+    /** Offers {@code amount} diamonds to the twin from the side a machine returns through; how many it took. */
+    public long offerTwin(int amount) {
+        var handler = helper.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, site.absolute(ENDPOINT),
+                RETURN_SIDE);
+        if (handler == null) return 0;
+        var remainder = new ItemStack(Items.DIAMOND, amount);
+        for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
+            remainder = handler.insertItem(slot, remainder, false);
+        }
+        return amount - remainder.getCount();
+    }
+
+    /**
+     * A simulated restart of both sides: every block entity of the overworld half and of the nether site is saved and
+     * loaded again in one tick, as a chunk reload does. The server and its services keep running.
+     */
+    public void reloadBoth() {
+        BlockEntityReload.reload(helper, new BlockPos(0, 1, 1), new BlockPos(9, 3, 5));
+        site.reloadBlockEntities();
+    }
+
+    /** Whether the source network stands, with its chest, Provider and crafting CPU online, after a reload too. */
+    public boolean sourceReady() {
+        var chest = node(helper.getLevel().getBlockEntity(helper.absolutePos(SOURCE_CHEST)));
+        return active(chest) && active(node(helper.getLevel().getBlockEntity(helper.absolutePos(PROVIDER))))
+                && !chest.getGrid().getCraftingService().getCpus().isEmpty();
+    }
+
     private IGrid sourceGrid() {
         return node(helper.getLevel().getBlockEntity(helper.absolutePos(SOURCE_CHEST))).getGrid();
     }
@@ -242,6 +343,9 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
 
     @Override
     public void close() {
+        if (twin() != null) {
+            helper.getLevel().setBlock(site.absolute(ENDPOINT), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+        }
         site.close();
     }
 }

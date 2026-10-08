@@ -6751,6 +6751,13 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'cross-dimension.two-domains':
                 case 'cross-dimension.unload-keeps-overworld':
                 case 'cross-dimension.quantum-bridge-projection':
+                case 'cross-dimension.nether-provider-projection':
+                case 'cross-dimension.endpoint-keeps-identity':
+                case 'cross-dimension.endpoint-link-breaks':
+                case 'cross-dimension.endpoint-replaced':
+                case 'cross-dimension.endpoint-unloaded':
+                case 'cross-dimension.nether-provider-unloaded':
+                case 'cross-dimension.level-close-keeps-overworld':
                 case 'p2p.tunnel-shares-storage':
                 case 'p2p.outputs-link-through-input':
                 case 'p2p.tunnels-stay-apart':
