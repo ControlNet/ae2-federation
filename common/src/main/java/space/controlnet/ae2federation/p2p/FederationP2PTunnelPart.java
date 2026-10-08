@@ -27,11 +27,11 @@ import space.controlnet.ae2federation.domain.port.CableFacePort;
 import space.controlnet.ae2federation.domain.port.FederationPort;
 
 /**
- * A P2P tunnel that carries Federation cable: its front is a Federation port, and every tunnel of one frequency is
- * joined to every other, as if a Federation cable ran between their fronts. Each tunnel is its own Federation Domain
- * node (its host block and side); the ME network carrying the tunnel is never a member, as the tunnel publishes no
- * native evidence. Like AE2's own tunnels it needs power and a channel, and the link holds only while the input is
- * active: outputs reach one another through the input.
+ * A P2P tunnel that carries Federation cable: its front is a Federation port, and the input of a frequency is joined to
+ * each of its outputs, as if a Federation cable ran between their fronts. Each tunnel is its own Federation Domain node
+ * (its host block and side); the ME network carrying the tunnel is never a member, as the tunnel publishes no native
+ * evidence. Like AE2's own tunnels it needs power and a channel, and the link holds only while the input is active:
+ * outputs reach one another through the input.
  */
 public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTunnelPart> {
     public static final ResourceLocation FRONT_MODEL =

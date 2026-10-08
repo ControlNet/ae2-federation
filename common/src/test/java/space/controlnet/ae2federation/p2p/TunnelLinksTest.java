@@ -16,9 +16,14 @@ class TunnelLinksTest {
     }
 
     @Test
-    void anOutputLinksToTheInputAndTheOtherOutputs() {
-        assertEquals(List.of("input", "second"),
+    void anOutputLinksOnlyToTheInput() {
+        assertEquals(List.of("input"),
                 TunnelLinks.linked("first", "input", GROUP, Set.of("input", "first", "second")::contains));
+    }
+
+    @Test
+    void theInputLeavesOutAnInactiveOutput() {
+        assertEquals(List.of("second"), TunnelLinks.linked("input", "input", GROUP, Set.of("input", "second")::contains));
     }
 
     @Test
