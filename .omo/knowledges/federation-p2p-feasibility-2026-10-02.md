@@ -302,3 +302,30 @@ cleanup of what it placed there. This is a real line item, not a reuse.
 Roughly: the same-dimension tunnel (part, attunement, node discriminator, cable arms, lifecycle, tests) is one
 feature; the cross-dimension requirement adds about as much again, dominated by the registry scope decision, the
 level-bound services, target addressing and the new test harness.
+
+### How AE2 scopes its Grids (AE2 19.2.17 sources, read 2026-10-08)
+
+The owner asked whether AE2's Grid is a model for a server-wide Federation registry. It is:
+
+- **One server-wide set of Grids.** `appeng.hooks.ticking.TickHandler` is a singleton holding `ServerGridRepo`, a
+  plain set of every `Grid`, with queued add/remove applied at tick start. A Grid is the connected component of its
+  nodes; each node knows its level, and nothing about a Grid is per level. `shutdown()` clears the set, since one JVM
+  can host several worlds in turn.
+- **Grid-wide work runs per server tick, block work per level tick.** `Grid` has four hooks (server start/end, level
+  start/end). `PathingService`, `StorageService`, `EnergyService` and `CraftingService` use only the server hooks.
+  Only `TickManagerService`, which ticks the machines themselves, uses `onLevelEndTick(level)`, so each machine ticks
+  inside its own level. Federation's storage mounting, crafting projection and energy sharing correspond to the
+  server-hook services; Provider/Endpoint device work stays in its block entity's level.
+- **Level unload removes nodes, not the Grid set.** `TickHandler.onUnloadLevel` (lowest priority) walks every Grid
+  and destroys the nodes whose `getLevel()` is the unloading level; the Grids reform from what remains. Chunk unload
+  destroys nodes through the block entities. The Federation equivalent of `FederationDomainRegistryAccess.closeLevel`
+  is removing the nodes whose id has that dimension.
+- **A cross-dimension link is an ordinary connection.** `QuantumCluster` creates
+  `GridHelper.createConnection(sideA.getNode(), sideB.getNode())` between nodes in different levels; there is no
+  special link kind. Federation's equivalent is ordinary `FederationDomainPortEvidence.Federation` pointing at a node
+  of another dimension, so no separate cross-level link layer is needed once the registry is server-wide.
+- **Finding the far end.** `appeng.api.features.Locatables` is a server-wide `key -> object` map (the level argument
+  only refuses client-side calls). `QuantumCluster.canUseNode` checks the far end's chunk is loaded and its block
+  entity is the current one; nothing is chunk-loaded, so an unloaded far end simply drops the connection. P2P needs
+  no such map (its `P2PService` belongs to the carrier Grid, which is already level-free); a future wireless
+  Federation connection would.
