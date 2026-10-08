@@ -1,14 +1,11 @@
 package space.controlnet.ae2federation.test.crafting;
 
 import appeng.api.crafting.PatternDetailsHelper;
-import appeng.api.ids.AEComponents;
 import appeng.api.networking.IGrid;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
-import appeng.blockentity.qnb.QuantumBridgeBlockEntity;
 import appeng.core.definitions.AEBlocks;
-import appeng.core.definitions.AEItems;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
@@ -16,8 +13,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
-import space.controlnet.ae2federation.identity.NetworkId;
-import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyKey;
@@ -27,6 +22,7 @@ import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.world.OtherDimensionSite;
+import space.controlnet.ae2federation.test.world.QuantumBridges;
 
 /**
  * TEST-ONLY: a provider network that spans two dimensions over a real AE2 Quantum Network Bridge. In the overworld,
@@ -52,7 +48,7 @@ public final class QuantumBridgeProjectionScene implements AutoCloseable {
 
     public QuantumBridgeProjectionScene(GameTestHelper helper) {
         this.helper = helper;
-        frequency = 1 + (helper.getLevel().getRandom().nextLong() & (Long.MAX_VALUE >> 1));
+        frequency = QuantumBridges.randomFrequency(helper);
         bridge = new PolicyBridgeFixtures(helper, BASE);
         bridge.installStorageCells();
         site = OtherDimensionSite.nether(helper, SITE_SIZE);
@@ -69,18 +65,18 @@ public final class QuantumBridgeProjectionScene implements AutoCloseable {
                     appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(cable), null, null,
                             appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.BLUE));
                 }
-                quantumBridge(outer, OVERWORLD_CHAMBER, (position, state) -> {
+                QuantumBridges.build(OVERWORLD_CHAMBER, frequency, outer, (position, state) -> {
                     helper.setBlock(position, state);
                     return helper.getLevel().getBlockEntity(helper.absolutePos(position));
                 });
-                quantumBridge(outer, NETHER_CHAMBER, (position, state) -> {
+                QuantumBridges.build(NETHER_CHAMBER, frequency, outer, (position, state) -> {
                     site.setBlock(position, state);
                     return site.getBlockEntity(position);
                 });
                 site.setBlock(NETHER_CELL, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
-                seed(site.getBlockEntity(NETHER_CELL), outer);
+                QuantumBridges.seed(site.getBlockEntity(NETHER_CELL), outer);
                 site.setBlock(NETHER_PROVIDER, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState());
-                seed(site.getBlockEntity(NETHER_PROVIDER), outer);
+                QuantumBridges.seed(site.getBlockEntity(NETHER_PROVIDER), outer);
                 step = 1;
                 return false;
             }
@@ -144,28 +140,6 @@ public final class QuantumBridgeProjectionScene implements AutoCloseable {
 
     private PatternProviderBlockEntity netherProvider() {
         return site.getBlockEntity(NETHER_PROVIDER);
-    }
-
-    /** A 3x3 flat Quantum Bridge around {@code chamber}, holding a singularity of this scene's frequency. */
-    private void quantumBridge(NetworkId network, BlockPos chamber,
-            java.util.function.BiFunction<BlockPos, net.minecraft.world.level.block.state.BlockState,
-                    net.minecraft.world.level.block.entity.BlockEntity> place) {
-        QuantumBridgeBlockEntity link = null;
-        for (int x = -1; x <= 1; x++) {
-            for (int z = -1; z <= 1; z++) {
-                var block = x == 0 && z == 0 ? AEBlocks.QUANTUM_LINK : AEBlocks.QUANTUM_RING;
-                var entity = place.apply(chamber.offset(x, 0, z), block.block().defaultBlockState());
-                seed(entity, network);
-                if (x == 0 && z == 0) link = (QuantumBridgeBlockEntity) entity;
-            }
-        }
-        var singularity = new ItemStack(AEItems.QUANTUM_ENTANGLED_SINGULARITY.asItem());
-        singularity.set(AEComponents.ENTANGLED_SINGULARITY_ID, frequency);
-        link.getInternalInventory().setItemDirect(0, singularity);
-    }
-
-    private static void seed(net.minecraft.world.level.block.entity.BlockEntity entity, NetworkId network) {
-        ((appeng.me.helpers.IGridConnectedBlockEntity) entity).getMainNode().loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", network));
     }
 
     private static ItemStack stonePattern() {

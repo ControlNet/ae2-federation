@@ -82,6 +82,30 @@ public final class OtherDimensionSite implements AutoCloseable {
         return true;
     }
 
+    /**
+     * Releases the region's tickets but keeps the site open: its chunks then unload like any chunk nobody keeps loaded,
+     * and are saved. {@link #forceAgain()} loads them from the save.
+     */
+    public void releaseTickets() {
+        for (var chunk : chunks) CONTROLLER.forceChunk(level, origin, chunk.x, chunk.z, false, true);
+    }
+
+    /** Forces and loads the region's chunks again after {@link #releaseTickets()}. */
+    public void forceAgain() {
+        chunks.clear();
+        load();
+    }
+
+    /** Whether any of the region's chunks is loaded. */
+    public boolean loaded() {
+        return chunks.stream().anyMatch(chunk -> level.hasChunk(chunk.x, chunk.z));
+    }
+
+    /** Whether every chunk of the region ticks its block entities. */
+    public boolean ticking() {
+        return chunks.stream().allMatch(this::ticking);
+    }
+
     /** How many of the region's chunks tick their block entities, for a test's waiting message. */
     public String tickDiagnostics() {
         return chunks.stream().filter(this::ticking).count() + "/" + chunks.size() + " chunks ticking";

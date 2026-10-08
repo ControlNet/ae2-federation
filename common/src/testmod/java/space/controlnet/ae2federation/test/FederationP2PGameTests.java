@@ -15,16 +15,19 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
+import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.p2p.FederationP2PScene;
+import space.controlnet.ae2federation.test.p2p.QuantumP2PProviderScene;
+import space.controlnet.ae2federation.test.p2p.QuantumP2PRouterScene;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 import space.controlnet.ae2federation.test.world.BlockEntityReload;
 
 /**
  * A Federation P2P tunnel is Federation cable over an ME network: two networks whose Routers reach each other only
  * through tunnels share storage, the network carrying the tunnels never joins their domain, and the link follows the
- * tunnels' power, channel and input like AE2's own tunnels.
+ * tunnels' power, channel and input like AE2's own tunnels. Over a Quantum Bridge the same holds across dimensions.
  */
 @PrefixGameTestTemplate(false)
 public final class FederationP2PGameTests {
@@ -202,6 +205,110 @@ public final class FederationP2PGameTests {
             helper.assertValueEqual(scene.consumerIron(), 9L, "Waiting for the loaded tunnels to link again");
             PolicyEvidence.write("p2plinkfollowspowerandreload", 8, Map.of("unpowered", "0", "repowered", "9",
                     "reloaded", "9"));
+            scene.close();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Over a real Quantum Bridge, tunnels join an overworld consumer and a nether provider: the consumer sees the
+     * provider's storage, runs on its power and gets its pattern. When the nether side unloads its nodes leave at once,
+     * and when it loads again the link returns.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void p2pAcrossDimensionsSharesNetworks(GameTestHelper helper) {
+        var scene = new QuantumP2PRouterScene(helper);
+        var reloaded = new boolean[1];
+        var staleAfterReload = new boolean[1];
+        helper.succeedWhen(() -> {
+            scene.advance();
+            helper.assertTrue(scene.domainReachesNether(), "Waiting for the tunnels to reach the nether");
+            helper.assertValueEqual(scene.consumerIron(), 9L, "Waiting for the consumer to see the nether iron");
+            helper.assertTrue(scene.consumerPowered(), "Waiting for the consumer to run on the provider's power");
+            helper.assertTrue(scene.consumerCraftsStone(), "Waiting for the nether pattern on the consumer");
+            if (!reloaded[0]) {
+                // The nether side unloads and loads again in one tick, as a chunk does.
+                scene.site().reloadBlockEntities();
+                staleAfterReload[0] = scene.domainReachesNether();
+                reloaded[0] = true;
+                helper.fail("Reloaded the nether side");
+            }
+            helper.assertFalse(staleAfterReload[0], "The unloaded nether nodes must have left the domain at once");
+            PolicyEvidence.write("p2pacrossdimensionssharesnetworks", 9, Map.of("consumerIron", "9",
+                    "consumerPowered", "true", "projectedPattern", "stone", "reloaded", "true"));
+            scene.close();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * Over a real Quantum Bridge, a Provider in the overworld maps, claims and drives an Endpoint in the nether: the
+     * products come back, and FE sent into the Provider's front reaches the machine beside the Endpoint.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 800, required = true, manualOnly = true)
+    public static void p2pAcrossDimensionsDrivesEndpoint(GameTestHelper helper) {
+        var scene = new QuantumP2PProviderScene(helper);
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            scene.runMachine();
+            scene.advance();
+            if (phase[0] == 0) {
+                helper.assertValueEqual(scene.provider().laneCount(), 1, "Waiting for the nether Endpoint's Lane");
+                helper.assertTrue(scene.endpoint().claimState() instanceof ClaimState.Owned owned
+                        && owned.ownerIdentity().provider().equals(scene.provider().providerIdentity()),
+                        "Waiting for the Provider to claim the nether Endpoint");
+                scene.beginCraft(2);
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(scene.submitWhenPlanned(), "Waiting for the crafting plan");
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(scene.sourceAmount(QuantumP2PProviderScene.OUTPUT), 2L,
+                    "Waiting for both products to come back from the nether");
+            helper.assertFalse(scene.cpuBusy(), "Waiting for the crafting CPU to finish");
+            helper.assertValueEqual(scene.returned(), 2L, "The nether machine made exactly two products");
+            var relay = scene.relay();
+            helper.assertTrue(relay != null, "The cable in front of the Provider must offer its FE relay");
+            var before = scene.machinePower();
+            helper.assertValueEqual(relay.receiveEnergy(1000, false), 1000,
+                    "The relay must pass the FE to the machine beside the nether Endpoint");
+            helper.assertValueEqual(scene.machinePower() - before, 500.0, "The nether machine must hold the 1000 FE");
+            PolicyEvidence.write("p2pacrossdimensionsdrivesendpoint", 8, Map.of("returned", "2",
+                    "relayedFe", "1000"));
+            scene.close();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * The nether side's chunks really unload when nothing keeps them loaded, which takes the link with them, and the
+     * link returns when they load again. Not required: how long the server takes to unload chunks is up to it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = false, manualOnly = true)
+    public static void p2pAcrossDimensionsChunkUnload(GameTestHelper helper) {
+        var scene = new QuantumP2PRouterScene(helper);
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            scene.advance();
+            if (phase[0] == 0) {
+                helper.assertValueEqual(scene.consumerIron(), 9L, "Waiting for the consumer to see the nether iron");
+                scene.site().releaseTickets();
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                helper.assertFalse(scene.site().loaded(), "Waiting for the nether chunks to unload");
+                helper.assertFalse(scene.domainReachesNether(), "The unloaded nether nodes must have left the domain");
+                helper.assertValueEqual(scene.consumerIron(), 0L, "Waiting for the consumer to lose the nether iron");
+                scene.site().forceAgain();
+                phase[0] = 2;
+            }
+            helper.assertTrue(scene.site().ticking(), "Waiting for the nether chunks to tick again");
+            helper.assertTrue(scene.domainReachesNether(), "Waiting for the tunnels to reach the nether again");
+            helper.assertValueEqual(scene.consumerIron(), 9L, "Waiting for the consumer to see the nether iron again");
             scene.close();
             helper.succeed();
         });

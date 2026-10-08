@@ -48,3 +48,35 @@ the Federation cable's. The registry's reciprocity check keeps a port that is no
 - Making only the input inactive inside one AE2 Grid needs channel starvation on one branch, which is fragile, so the
   GameTest cuts the input's cable instead.
 - Panel art: `tools/visual/p2p_panel_texture.py` draws the teal panel from scratch. It is not derived from AE2 pixels.
+
+## Across dimensions (`p2p.across-dimensions-*`)
+
+`test/p2p/QuantumP2PCarrier` (test-only) builds one carrier network over a real Quantum Network Bridge:
+
+- The overworld half has its bus and tunnel at (4, 2, 3), facing west.
+- The nether half has its bus at (1, 0, 3) in the site, with the tunnel facing south.
+- Each half has its own creative energy cell, and the frequency is random.
+- Pairing waits until the bridge has joined both halves into one Grid.
+
+The tests:
+
+- `shares-networks`: an overworld consumer with no energy of its own and a nether provider.
+  - The consumer sees the provider's storage, runs on its power under an ME power rule, and gets its pattern.
+  - `site.reloadBlockEntities()` then unloads and reloads the nether side; the nether nodes must leave the domain in
+    that same tick, and the link must return.
+  - Mutation checked: a tunnel that keeps its node on unload fails it.
+- `drives-endpoint`: an overworld Federation Pattern Provider maps, claims and drives a nether Endpoint, and the
+  products come back.
+  - FE sent into the relay (the cable in front of the Provider, asked from the Provider's side) lands in the machine
+    beside the nether Endpoint.
+  - Mutation checked: resolving the Endpoint in the Provider's level fails it.
+- `chunk-unload` (not required): the site's tickets are released so its chunks unload for real, then it is forced
+  again.
+
+Pitfalls:
+
+- An ME chest is a powered AE2 block with an internal buffer and takes FE itself. FE relayed to an Endpoint whose
+  neighbour is an ME chest lands in the chest's buffer, not in the Grid's stored power, so the test measures the
+  machine's own buffer (1000 FE = 500 AE).
+- A `succeedWhen` step that mutates the world and then asserts repeats the mutation every tick while the assertion
+  fails. Record the result when the step runs, and assert it later.

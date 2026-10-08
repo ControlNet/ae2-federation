@@ -30,8 +30,13 @@ stone and emptied when it opens and closes.
 - Not covered yet: a *Federation* Pattern Provider in another dimension on a spanning network
   (`RealCraftingProviders` reading every dimension). Its lanes register only once mapped to an Endpoint; a nether
   Provider scene is needed. Replacing that fix with a per-level read passes all three tests.
-- Before P2P there is no real block that links a Federation Domain across dimensions, so Provider (overworld) to
-  Endpoint (nether) is tested with the P2P carrier instead.
+- Provider (overworld) to Endpoint (nether) is tested with Federation P2P tunnels over a Quantum Bridge, the first
+  real block that links a domain across dimensions: `p2p.across-dimensions-drives-endpoint` in
+  `FederationP2PGameTests` (see `federation-p2p-part-2026-10-08.md`).
+- `OtherDimensionSite.releaseTickets()` / `forceAgain()` let a test unload the site's chunks for real and load them
+  from the save; `loaded()` and `ticking()` report their state. A real unload takes the server's own time, so tests
+  that use it are not required.
+- `test/world/QuantumBridges` builds a Quantum Bridge (and seeds identities) for any level.
 
 ## QA registration
 
