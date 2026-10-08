@@ -6857,6 +6857,9 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-chain':
                 case 'crafting.projection-chain-blocked':
                 case 'crafting.projection-mutual':
+                case 'crafting.projection-container-return':
+                case 'crafting.projection-container-reuse':
+                case 'crafting.projection-container-push':
                 case 'survival.recipes':
                 case 'survival.inscriber':
                 case 'visual.device-occlusion':

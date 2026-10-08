@@ -1,10 +1,12 @@
 package space.controlnet.ae2federation.test.crafting;
 
 import appeng.api.config.Actionable;
+import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.CalculationStrategy;
 import appeng.api.networking.crafting.ICraftingPlan;
+import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
@@ -12,19 +14,25 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.MEStorage;
+import appeng.api.util.AEColor;
 import appeng.blockentity.crafting.CraftingBlockEntity;
 import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.core.definitions.AEBlocks;
+import appeng.core.definitions.AEParts;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
+import appeng.me.service.CraftingService;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.NonNullList;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
@@ -178,6 +186,14 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), key);
     }
 
+    /** What the ledger says of {@code key}: owed, held, transit stock, and the consumer's watched jobs. */
+    public String returns(AEKey key) {
+        var ledger = CraftingReturnLedger.get(helper.getLevel());
+        return "owed " + owed(key) + ", held " + heldForConsumer(key) + ", transit "
+                + ledger.transit(bridge.outerNetwork(), key) + ", jobs " + ledger.jobs(bridge.mainNetwork())
+                + ", on the provider network " + onProviderNetwork(key);
+    }
+
     public long heldForConsumer(AEKey key) {
         return CraftingReturnLedger.get(helper.getLevel()).held(bridge.outerNetwork(), bridge.mainNetwork(), key);
     }
@@ -324,6 +340,111 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     private PatternProviderBlockEntity processingProvider() {
         return helper.getBlockEntity(processingProviderPos);
+    }
+
+    /**
+     * Puts the container-item patterns on the provider network: sugar from a honey bottle (which leaves its glass
+     * bottle) and fluix glass cable from a white one and {@code #ae2:can_remove_color} (a water bucket, which leaves
+     * its bucket, its water as a fluid, or a snowball) on the assembler's provider, and filling a glass bottle with
+     * honey on the hand-run machine.
+     */
+    public void installContainerPatterns() {
+        var crafting = assembler.provider().getLogic();
+        crafting.getPatternInv().addItems(sugarPattern());
+        crafting.getPatternInv().addItems(cleanCablePattern());
+        crafting.updatePatterns();
+        var processing = processingProvider().getLogic();
+        processing.getPatternInv().addItems(PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new GenericStack(glassBottle(), 1)), List.of(new GenericStack(honeyBottle(), 1))));
+        processing.updatePatterns();
+    }
+
+    public ItemStack sugarPattern() {
+        return craftingPattern(false, false, new ItemStack(Items.HONEY_BOTTLE));
+    }
+
+    public ItemStack cleanCablePattern() {
+        return craftingPattern(true, true, AEParts.GLASS_CABLE.stack(AEColor.WHITE), new ItemStack(Items.WATER_BUCKET));
+    }
+
+    private ItemStack craftingPattern(boolean substitutes, boolean fluidSubstitutes, ItemStack... grid) {
+        var items = NonNullList.withSize(9, ItemStack.EMPTY);
+        for (int slot = 0; slot < grid.length; slot++) items.set(slot, grid[slot]);
+        var input = CraftingInput.of(3, 3, items);
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input,
+                helper.getLevel()).orElseThrow();
+        return PatternDetailsHelper.encodeCraftingPattern(recipe, items.toArray(ItemStack[]::new),
+                recipe.value().assemble(input, helper.getLevel().registryAccess()), substitutes, fluidSubstitutes);
+    }
+
+    /** The crafting service's providers for {@code details} on the consumer: its own and the projected ones. */
+    public List<ICraftingProvider> consumerProviders(IPatternDetails details) {
+        var providers = new java.util.ArrayList<ICraftingProvider>();
+        ((CraftingService) consumerService()).getProviders(details).forEach(providers::add);
+        return providers;
+    }
+
+    /** Runs the bottling machine: every glass bottle in it comes back to the provider network as a honey bottle. */
+    public long runBottleMachine() {
+        var chest = helper.<ChestBlockEntity>getBlockEntity(machinePos);
+        long bottles = 0;
+        for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+            if (chest.getItem(slot).is(Items.GLASS_BOTTLE)) {
+                bottles += chest.getItem(slot).getCount();
+                chest.setItem(slot, ItemStack.EMPTY);
+            }
+        }
+        if (bottles == 0) return 0;
+        return providerGrid().getStorageService().getInventory().insert(honeyBottle(), bottles, Actionable.MODULATE,
+                IActionSource.empty());
+    }
+
+    /** The consumer's only CPU. */
+    public CraftingCPUCluster consumerCpu() {
+        return consumerService().getCpus().stream().map(CraftingCPUCluster.class::cast).findFirst().orElseThrow();
+    }
+
+    /** Whether the consumer's CPU has no job and holds nothing. */
+    public boolean consumerCpuEmpty() {
+        var cpu = consumerCpu();
+        return !cpu.isBusy() && cpu.craftingLogic.getInventory().list.isEmpty();
+    }
+
+    /** What the provider network's storage holds of {@code what}, its own and what it sees. */
+    public long onProviderNetwork(AEKey what) {
+        return held(providerGrid().getStorageService().getInventory(), what);
+    }
+
+    public static AEItemKey honeyBottle() {
+        return AEItemKey.of(Items.HONEY_BOTTLE);
+    }
+
+    public static AEItemKey glassBottle() {
+        return AEItemKey.of(Items.GLASS_BOTTLE);
+    }
+
+    public static AEItemKey sugar() {
+        return AEItemKey.of(Items.SUGAR);
+    }
+
+    public static AEItemKey bucket() {
+        return AEItemKey.of(Items.BUCKET);
+    }
+
+    public static AEItemKey waterBucket() {
+        return AEItemKey.of(Items.WATER_BUCKET);
+    }
+
+    public static AEItemKey snowball() {
+        return AEItemKey.of(Items.SNOWBALL);
+    }
+
+    public static AEItemKey whiteGlassCable() {
+        return AEItemKey.of(AEParts.GLASS_CABLE.stack(AEColor.WHITE));
+    }
+
+    public static AEItemKey fluixGlassCable() {
+        return AEItemKey.of(AEParts.GLASS_CABLE.stack(AEColor.TRANSPARENT));
     }
 
     private static ItemStack stonePattern() {

@@ -1,9 +1,13 @@
 package space.controlnet.ae2federation.crafting.projection;
 
+import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.KeyCounter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -19,9 +23,16 @@ import space.controlnet.ae2federation.identity.NetworkId;
  * executing network's return router hands that much back to the consumer as it arrives. Saved with the world, so
  * outputs that arrive after a reload still reach the job waiting for them.
  *
- * <p>An output that arrives while its consumer cannot take it, because the networks are not linked or the consumer is
- * not loaded, stays in the executing network's storage and is counted as held for that consumer, at most what is owed.
- * Once the consumer can take it again, that much is handed back from the executing network's own storage.
+ * <p>An output that arrives while its consumer cannot take it, because the networks are not linked, the consumer is
+ * not loaded or its CPU is out of sight, stays in the executing network's storage and is counted as held for that
+ * consumer, at most what is owed. Once the consumer can take it again, that much is handed back from the executing
+ * network's own storage.
+ *
+ * <p>Two more things are kept with the debts. The consumer's jobs seen at each push ({@link Job}): AE2's own record of
+ * where their CPU is and whether the job finished or was cancelled, so a CPU that is merely unloaded is never taken for
+ * a cancelled job. And the executing network's transit stock: what was taken out of its storage to hand back but was
+ * accepted neither by the consumer nor by the storage it came from. It is real stock, not a number, and stays with that
+ * network until its storage or the consumer takes it.
  */
 public final class CraftingReturnLedger extends SavedData {
     private static final String DATA_NAME = "ae2federation_crafting_returns";
@@ -37,8 +48,24 @@ public final class CraftingReturnLedger extends SavedData {
         private long held;
     }
 
+    /** How a watched job stands: still running (or not seen ending), or ended as AE2 recorded it. */
+    public enum JobEnd {
+        RUNNING, DONE, CANCELLED
+    }
+
+    /**
+     * A job a consumer's CPU ran when one of its pushes went through a projection: AE2's crafting id of the job, and the
+     * CPU's dimension and lowest corner, where it is looked for while the consumer is owed anything.
+     */
+    public record Job(UUID craftingId, String dimension, BlockPos cpu, JobEnd end) {
+    }
+
     /** Executing network, then key, then consumer, in insertion order so returns are handed out deterministically. */
     private final Map<NetworkId, Map<AEKey, Map<NetworkId, Debt>>> owed = new LinkedHashMap<>();
+    /** By consumer, its jobs seen at a push, by crafting id. */
+    private final Map<NetworkId, Map<UUID, Job>> jobs = new LinkedHashMap<>();
+    /** By executing network, the stock taken out to hand back that nothing took yet. */
+    private final Map<NetworkId, KeyCounter> transit = new LinkedHashMap<>();
 
     public static CraftingReturnLedger get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
@@ -134,6 +161,86 @@ public final class CraftingReturnLedger extends SavedData {
         setDirty();
     }
 
+    /** Watches a consumer job seen at a push, unless it is watched already. */
+    void watch(NetworkId consumer, UUID craftingId, String dimension, BlockPos cpu) {
+        var watched = jobs.computeIfAbsent(consumer, ignored -> new LinkedHashMap<>());
+        var current = watched.get(craftingId);
+        if (current != null && current.dimension().equals(dimension) && current.cpu().equals(cpu)) return;
+        watched.put(craftingId, new Job(craftingId, dimension, cpu.immutable(),
+                current == null ? JobEnd.RUNNING : current.end()));
+        setDirty();
+    }
+
+    /** The jobs watched for {@code consumer}, in the order they were first seen. */
+    public List<Job> jobs(NetworkId consumer) {
+        var watched = jobs.get(consumer);
+        return watched == null ? List.of() : List.copyOf(watched.values());
+    }
+
+    /** Records how a watched job ended. */
+    void end(NetworkId consumer, UUID craftingId, JobEnd end) {
+        var watched = jobs.get(consumer);
+        var job = watched == null ? null : watched.get(craftingId);
+        if (job == null || job.end() == end) return;
+        watched.put(craftingId, new Job(craftingId, job.dimension(), job.cpu(), end));
+        setDirty();
+    }
+
+    /** Forgets the jobs of every consumer that is owed nothing any more; returns their crafting ids. */
+    List<UUID> forgetJobsOfSettledConsumers() {
+        var owedConsumers = new java.util.HashSet<NetworkId>();
+        owed.values().forEach(keys -> keys.values().forEach(consumers -> owedConsumers.addAll(consumers.keySet())));
+        var forgotten = new java.util.ArrayList<UUID>();
+        var iterator = jobs.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            if (owedConsumers.contains(entry.getKey())) continue;
+            forgotten.addAll(entry.getValue().keySet());
+            iterator.remove();
+        }
+        if (!forgotten.isEmpty()) setDirty();
+        return forgotten;
+    }
+
+    /** Adds stock taken out of {@code executing}'s storage that nothing took back. */
+    void addTransit(NetworkId executing, AEKey key, long amount) {
+        if (amount <= 0) return;
+        transit.computeIfAbsent(executing, ignored -> new KeyCounter()).add(key, amount);
+        setDirty();
+    }
+
+    /** Takes up to {@code amount} of {@code key} out of {@code executing}'s transit stock; returns how much. */
+    long takeTransit(NetworkId executing, AEKey key, long amount, Actionable mode) {
+        var stock = transit.get(executing);
+        if (stock == null || amount <= 0) return 0;
+        long taken = Math.min(amount, stock.get(key));
+        if (taken <= 0 || mode == Actionable.SIMULATE) return Math.max(0, taken);
+        stock.remove(key, taken);
+        stock.removeZeros();
+        if (stock.isEmpty()) transit.remove(executing);
+        setDirty();
+        return taken;
+    }
+
+    /** What {@code executing}'s transit stock holds of {@code key}. */
+    public long transit(NetworkId executing, AEKey key) {
+        var stock = transit.get(executing);
+        return stock == null ? 0 : stock.get(key);
+    }
+
+    /** {@code executing}'s whole transit stock, a copy. */
+    KeyCounter transit(NetworkId executing) {
+        var copy = new KeyCounter();
+        var stock = transit.get(executing);
+        if (stock != null) copy.addAll(stock);
+        return copy;
+    }
+
+    /** The networks with transit stock. */
+    java.util.Set<NetworkId> transitNetworks() {
+        return java.util.Set.copyOf(transit.keySet());
+    }
+
     List<Owed> entries() {
         var entries = new java.util.ArrayList<Owed>();
         owed.forEach((executing, keys) -> keys.forEach((key, consumers) -> consumers.forEach((consumer, debt) ->
@@ -154,10 +261,33 @@ public final class CraftingReturnLedger extends SavedData {
             list.add(row);
         }
         tag.put("owed", list);
+        var jobList = new ListTag();
+        jobs.forEach((consumer, watched) -> watched.values().forEach(job -> {
+            var row = new CompoundTag();
+            row.put("consumer", NbtUtils.createUUID(consumer.value()));
+            row.put("craftingId", NbtUtils.createUUID(job.craftingId()));
+            row.putString("dimension", job.dimension());
+            row.putLong("cpu", job.cpu().asLong());
+            row.putString("end", job.end().name());
+            jobList.add(row);
+        }));
+        tag.put("jobs", jobList);
+        var transitList = new ListTag();
+        transit.forEach((executing, stock) -> {
+            for (var entry : stock) {
+                var row = new CompoundTag();
+                row.put("executing", NbtUtils.createUUID(executing.value()));
+                row.put("key", entry.getKey().toTagGeneric(registries));
+                row.putLong("amount", entry.getLongValue());
+                transitList.add(row);
+            }
+        });
+        tag.put("transit", transitList);
         return tag;
     }
 
-    private static CraftingReturnLedger load(CompoundTag tag, HolderLookup.Provider registries) {
+    /** Reads a ledger saved by {@link #save}, as the world does when it loads. */
+    public static CraftingReturnLedger load(CompoundTag tag, HolderLookup.Provider registries) {
         var ledger = new CraftingReturnLedger();
         for (var element : tag.getList("owed", Tag.TAG_COMPOUND)) {
             var row = (CompoundTag) element;
@@ -168,6 +298,20 @@ public final class CraftingReturnLedger extends SavedData {
             var consumer = new NetworkId(NbtUtils.loadUUID(row.get("consumer")));
             ledger.add(executing, consumer, key, row.getLong("amount"));
             ledger.hold(executing, consumer, key, row.getLong("held"));
+        }
+        for (var element : tag.getList("jobs", Tag.TAG_COMPOUND)) {
+            var row = (CompoundTag) element;
+            var consumer = new NetworkId(NbtUtils.loadUUID(row.get("consumer")));
+            var craftingId = NbtUtils.loadUUID(row.get("craftingId"));
+            ledger.watch(consumer, craftingId, row.getString("dimension"), BlockPos.of(row.getLong("cpu")));
+            ledger.end(consumer, craftingId, JobEnd.valueOf(row.getString("end")));
+        }
+        for (var element : tag.getList("transit", Tag.TAG_COMPOUND)) {
+            var row = (CompoundTag) element;
+            var key = AEKey.fromTagGeneric(registries, row.getCompound("key"));
+            // Stock of an item or fluid that no longer exists (a removed mod) is gone, as it is from a drive.
+            if (key == null) continue;
+            ledger.addTransit(new NetworkId(NbtUtils.loadUUID(row.get("executing"))), key, row.getLong("amount"));
         }
         ledger.setDirty(false);
         return ledger;
