@@ -848,7 +848,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         var peer = federationPeer(serverLevel);
         var grid = getMainNode().getGrid();
         if (peer != null && grid != null) {
-            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer);
             // Port ids are face names so the Cable's reciprocal evidence (which names this face) matches.
             evidence.put(federationFace().getSerializedName(), new FederationDomainPortEvidence.Federation(
                     new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));

@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -451,6 +452,36 @@ final class FederationDomainRegistryTest {
         var domain = registry.federationDomainOf(here).orElseThrow();
         assertEquals(Set.of(here, there), domain.nodes(), "Equal positions in two dimensions are two nodes");
         assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_B));
+    }
+
+    @Test
+    void partsOfOneBlockAreSeparateNodes() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var host = node(1);
+        var north = new FederationDomainNodeId(host.dimension(), host.blockPosition(), "north");
+        var south = new FederationDomainNodeId(host.dimension(), host.blockPosition(), "south");
+        registry.upsertNode(evidence(north, Map.of(), NETWORK_A));
+        registry.upsertNode(evidence(south, Map.of(), NETWORK_B));
+
+        assertFalse(registry.shareFederationDomain(NETWORK_A, NETWORK_B), "Two parts of one block are not joined");
+        assertEquals(Set.of(north), registry.federationDomainOf(north).orElseThrow().nodes());
+        assertTrue(registry.federationDomainOf(host).isEmpty(), "The block itself is a third node");
+
+        registry.upsertNode(evidence(north, Map.of("tunnel", federation(south, "tunnel")), NETWORK_A));
+        registry.upsertNode(evidence(south, Map.of("tunnel", federation(north, "tunnel")), NETWORK_B));
+        assertEquals(Set.of(north, south), registry.federationDomainOf(north).orElseThrow().nodes());
+    }
+
+    @Test
+    void aNodeWithoutAPartIsTheBlock() {
+        var host = node(1);
+        var part = new FederationDomainNodeId(host.dimension(), host.blockPosition(), "up");
+
+        assertEquals(new FederationDomainNodeId(host.dimension(), host.blockPosition(), ""), host);
+        assertEquals(host.dimension() + "@1", host.toString(), "A block's node keeps its name");
+        assertNotEquals(host.toString(), part.toString());
+        assertNotEquals(0, host.compareTo(part));
+        assertEquals(-Integer.signum(host.compareTo(part)), Integer.signum(part.compareTo(host)));
     }
 
     @Test

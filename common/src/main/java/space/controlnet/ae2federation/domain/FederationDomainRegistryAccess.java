@@ -7,6 +7,7 @@ import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import space.controlnet.ae2federation.domain.port.FederationPort;
 import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.identity.NetworkIdentityService;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
@@ -88,6 +89,11 @@ public final class FederationDomainRegistryAccess {
 
     public static FederationDomainNodeId nodeId(ServerLevel level, BlockPos position) {
         return new FederationDomainNodeId(dimension(level), position.asLong());
+    }
+
+    /** The node that owns {@code port}: its block's, or that block's part's when the port names one. */
+    public static FederationDomainNodeId nodeId(ServerLevel level, FederationPort port) {
+        return new FederationDomainNodeId(dimension(level), port.ownerPosition().asLong(), port.part());
     }
 
     /** The dimension string of the level's node ids; one shared string per dimension, compared on every lookup. */

@@ -181,7 +181,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
             if (binding instanceof RouterPortBinding.Native nativeBinding) {
                 evidence.put(portId.port(), FederationDomainRegistryAccess.nativeEvidence(nativeBinding.attachment().grid(), portId));
             } else if (binding instanceof RouterPortBinding.Federation federationBinding) {
-                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, federationBinding.port().ownerPosition());
+                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, federationBinding.port());
                 evidence.put(portId.port(), new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
