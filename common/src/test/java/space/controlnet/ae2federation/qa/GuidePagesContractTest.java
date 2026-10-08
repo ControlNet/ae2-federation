@@ -111,11 +111,15 @@ final class GuidePagesContractTest {
                 assertTrue(!GuideExamplePacks.active(mod -> !mod.equals(missing)).contains(pack),
                         pack.id() + " must stay off without " + missing);
             }
-            assertTrue(Files.readString(RESOURCES.resolve(pack.path()).resolve("pack.mcmeta")).contains("\"pack_format\": 34"),
-                    pack.id());
+            var meta = Files.readString(RESOURCES.resolve(pack.path()).resolve("pack.mcmeta"));
+            assertTrue(meta.contains("\"pack_format\": 34"), pack.id());
+            // The pack screen shows the description under the translated name, so it is translated too; vanilla's
+            // own bundle data pack writes its description the same way.
+            assertTrue(meta.contains("\"translate\": \"" + pack.nameKey() + ".description\""), pack.id());
             for (var language : List.of("en_us", "zh_cn")) {
-                assertTrue(Files.readString(RESOURCES.resolve("assets/ae2federation/lang/" + language + ".json"))
-                        .contains("\"" + pack.nameKey() + "\": "), language + ": " + pack.nameKey());
+                var lang = Files.readString(RESOURCES.resolve("assets/ae2federation/lang/" + language + ".json"));
+                assertTrue(lang.contains("\"" + pack.nameKey() + "\": "), language + ": " + pack.nameKey());
+                assertTrue(lang.contains("\"" + pack.nameKey() + ".description\": "), language + ": " + pack.id());
             }
         }
         assertEquals(List.of(), GuideExamplePacks.active(mod -> false));

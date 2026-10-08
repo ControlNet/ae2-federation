@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with Create",
+    "description": {
+      "translate": "ae2federation.pack.guide_create.description",
+      "fallback": "AE2 Federation guide examples with Create"
+    },
     "pack_format": 34
   }
 }

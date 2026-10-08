@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with ExtendedAE-Plus",
+    "description": {
+      "translate": "ae2federation.pack.guide_extendedae_plus.description",
+      "fallback": "AE2 Federation guide examples with ExtendedAE-Plus"
+    },
     "pack_format": 34
   }
 }

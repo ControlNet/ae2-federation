@@ -1,11 +1,11 @@
 ---
 navigation:
-  title: AE2 联邦
+  title: AE2联邦
   icon: ae2federation:router
   position: 900
 ---
 
-# AE2 联邦（AE2 Federation）
+# AE2联邦（AE2 Federation）
 
 <Row>
   <ItemImage id="ae2federation:router" scale="3" />
