@@ -172,7 +172,7 @@
     {"id":"cross-dimension.endpoint-keeps-identity","backend":"gametest","testId":"endpointacrossdimensionskeepsidentity","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"cross-dimension.endpoint-link-breaks","backend":"gametest","testId":"endpointacrossdimensionslinkbreaks","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"cross-dimension.endpoint-replaced","backend":"gametest","testId":"endpointacrossdimensionsreplaced","structure":"ae2federation_test:harness_native_smoke","assertions":8},
-    {"id":"cross-dimension.endpoint-unloaded","backend":"gametest","testId":"endpointacrossdimensionsunloaded","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"cross-dimension.endpoint-unloaded","backend":"gametest","testId":"endpointacrossdimensionsunloaded","structure":"ae2federation_test:harness_native_smoke","assertions":11},
     {"id":"cross-dimension.nether-provider-unloaded","backend":"gametest","testId":"projectionnetherproviderunloaded","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"cross-dimension.level-close-keeps-overworld","backend":"gametest","testId":"levelclosekeepsoverworldprojection","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"p2p.tunnel-shares-storage","backend":"gametest","testId":"p2ptunnelsharesstorage","structure":"ae2federation_test:harness_native_smoke","assertions":8},

@@ -5,25 +5,28 @@ import static space.controlnet.ae2federation.test.crafting.NetherProviderProject
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.cobblestone;
 import static space.controlnet.ae2federation.test.crafting.PatternProjectionFixture.stone;
 
+import com.google.gson.JsonParser;
 import java.util.Map;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.client.policy.FederationDomainPolicySession;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
-import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
-import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
-import space.controlnet.ae2federation.test.storage.OtherDimensionRouterPair;
-import space.controlnet.ae2federation.test.world.OtherDimensionSite;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
+import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.test.crafting.NetherProviderProjectionScene;
+import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
 import space.controlnet.ae2federation.test.p2p.QuantumP2PProviderScene;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
+import space.controlnet.ae2federation.test.storage.OtherDimensionRouterPair;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
+import space.controlnet.ae2federation.test.world.OtherDimensionSite;
 
 /**
  * Crafting across dimensions with Federation's own blocks: a Federation Provider and its Endpoint in another dimension
@@ -334,6 +337,13 @@ public final class CrossDimensionCraftingGameTests {
                 helper.assertFalse(scene.site().loaded(), "The nether chunks stay unloaded throughout");
                 helper.assertTrue(scene.cpuBusy(), "The job keeps waiting for the unloaded Endpoint");
                 helper.assertValueEqual(scene.sourceAmount(QuantumP2PProviderScene.OUTPUT), 0L, "Nothing came back");
+                var lanes = JsonParser.parseString(FederationDomainPolicySession.forDevice(MockServerPlayers.inLevel(helper),
+                        scene.provider().getBlockPos()).providerChoices()).getAsJsonObject().getAsJsonArray("lanes");
+                var lane = lanes.size() == 1 ? lanes.get(0).getAsJsonObject() : null;
+                helper.assertTrue(lane != null && lane.has("position") && lane.has("dimension")
+                        && lane.get("position").getAsString().equals(scene.endpointPosition().toShortString())
+                        && lane.get("dimension").getAsString().equals("minecraft:the_nether"),
+                        "The Provider's screen still shows where its unloaded nether Endpoint is: " + lanes);
                 scene.site().forceAgain();
                 scene.machineRuns(true);
                 stage[0] = 5;
@@ -344,7 +354,7 @@ public final class CrossDimensionCraftingGameTests {
             helper.assertFalse(scene.cpuBusy(), "Waiting for the job to finish");
             helper.assertValueEqual(scene.returned(), 2L, "The machine made exactly two diamonds");
             helper.assertTrue(owned(scene), "The Provider still owns the reloaded Endpoint");
-            PolicyEvidence.write("endpointacrossdimensionsunloaded", 10, Map.of("unloadedTicks", "80",
+            PolicyEvidence.write("endpointacrossdimensionsunloaded", 11, Map.of("unloadedTicks", "80",
                     "returnedWhileUnloaded", "0", "returned", "2"));
             scene.close();
         });

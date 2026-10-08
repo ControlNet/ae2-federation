@@ -287,6 +287,11 @@ public final class QuantumP2PProviderScene implements AutoCloseable {
                 .setValue(BlockStateProperties.FACING, Direction.NORTH), Block.UPDATE_ALL);
     }
 
+    /** The nether Endpoint's position in the nether. */
+    public BlockPos endpointPosition() {
+        return site.absolute(ENDPOINT);
+    }
+
     public EndpointBlockEntity twin() {
         return (EndpointBlockEntity) helper.getLevel().getBlockEntity(site.absolute(ENDPOINT));
     }

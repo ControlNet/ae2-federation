@@ -546,6 +546,19 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
                 : Optional.ofNullable(lanes.get(laneIndex).endpoint);
     }
 
+    /**
+     * Where Lane {@code laneIndex}'s Endpoint was bound, as the Lane saved it, loaded or not; empty for an unbound Lane.
+     * A binding saved before Endpoints could be in another dimension is in this Provider's.
+     */
+    public Optional<net.minecraft.core.GlobalPos> laneEndpointPlace(int laneIndex) {
+        if (laneIndex < 0 || laneIndex >= lanes.size() || lanes.get(laneIndex).endpoint == null || level == null) {
+            return Optional.empty();
+        }
+        var binding = lanes.get(laneIndex);
+        return Optional.of(net.minecraft.core.GlobalPos.of(binding.dimension != null ? binding.dimension
+                : level.dimension(), binding.position));
+    }
+
     @Override
     public boolean retained(EndpointIdentity endpoint) {
         return laneFor(endpoint).filter(index -> lanes.get(index).releasePending).isPresent();

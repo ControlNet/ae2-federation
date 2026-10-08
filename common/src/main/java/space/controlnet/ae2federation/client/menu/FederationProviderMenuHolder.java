@@ -486,8 +486,8 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
             var where = new Label();
             where.addClass("provider-return-where");
             where.setText(lane.has("position") ? FederationWorkspace.tr("endpoint_at", DevicePlace.of(
-                    lane.get("position").getAsString(), target == null || !target.has("dimension") ? ""
-                            : target.get("dimension").getAsString(), FederationProcessingGraph.playerDimension()))
+                    lane.get("position").getAsString(), lane.has("dimension") ? lane.get("dimension").getAsString() : "",
+                    FederationProcessingGraph.playerDimension()))
                     : Component.literal(lane.get("endpoint").getAsString().substring(0, 8)));
             // Wider than the column when it names another dimension, so the name is not cut off.
             int whereWidth = net.minecraft.client.Minecraft.getInstance().font.width(where.getText()) + 4;

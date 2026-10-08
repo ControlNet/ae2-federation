@@ -708,8 +708,14 @@ public final class FederationDomainPolicySession {
             var json = new com.google.gson.JsonObject();
             json.addProperty("lane", index);
             json.addProperty("endpoint", endpointChoiceId(endpoint));
+            // An Endpoint that is not loaded is shown where its Lane last bound it.
+            int laneIndex = index;
             endpoints.stream().filter(binding -> binding.endpointIdentity().equals(endpoint)).findFirst()
-                    .ifPresent(binding -> json.addProperty("position", binding.runtime().position().toShortString()));
+                    .map(binding -> net.minecraft.core.GlobalPos.of(binding.level().dimension(), binding.runtime().position()))
+                    .or(() -> provider.laneEndpointPlace(laneIndex)).ifPresent(place -> {
+                        json.addProperty("position", place.pos().toShortString());
+                        json.addProperty("dimension", place.dimension().location().toString());
+                    });
             json.add("returns", appeng.api.stacks.GenericStack.CODEC.listOf().encodeStart(ops, returns).getOrThrow());
             json.addProperty("pendingSend", lane.hasPendingSend());
             root.getAsJsonArray("lanes").add(json);
