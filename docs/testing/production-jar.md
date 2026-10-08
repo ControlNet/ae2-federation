@@ -131,3 +131,94 @@ the loaded-but-absent old binding was explicitly cleared through the menu, then 
 broke a source cable during setup; only that cable was restored from the fixture, preserving the chest contents.
 LAN discovery attempted unsupported IPv6 on reconnect; Direct Connect to `127.0.0.1` succeeded. None of these failures
 is substituted for the completed terminal/furnace/unload sequence above.
+
+## Cross-dimension production run
+
+Run on 2026-10-08 (timestamps UTC). It covers a Federation Pattern Provider in the overworld driving an Endpoint in the
+nether over Federation P2P tunnels joined by a Quantum Network Bridge, with an overworld Endpoint at the same
+coordinates. It does not claim a soak, multiplayer authorization or third-party compatibility.
+
+| Input | Value |
+|---|---|
+| Source | `a2a20deb248d4af4fd9c004de4e453d54836ad17`, clean tree |
+| Mod JAR | `ae2federation-0.0.5.jar` built from that commit by `:neoforge-1.21.1:build` (the `dev` version string, not the published 0.0.5), SHA-256 `96a6d26e1381c65e7309e4d47e7852adee91e567562652ff836f730b23932ad7` |
+| Dependencies | AE2 19.2.17, GuideME 21.1.1, LDLib2 2.2.34 with the hashes in the inputs table; NeoForge 21.1.250; Java 21.0.12.1 |
+
+Server and client load the same four JARs and no testmod. The client is the portablemc client described above, under
+`Xvfb`, driven by XTEST. Every menu action (mapping, highlight, orders) is real client input; console commands only
+position the player, add and remove `forceload` tickets, read block data and save or stop.
+
+### Fixture
+
+The manual GameTest `crossdimensionproductionexport` (`CrossDimensionProductionExportGameTests`) builds the scene and
+writes `crossdim_overworld.nbt`, `crossdim_nether.nbt` and `crossdim.properties` next to the evidence file:
+
+```bash
+./gradlew :neoforge-1.21.1:runGameTestServer -PfederationGameTestId=crossdimensionproductionexport \
+  -PfederationNativeEvidenceFile=$PWD/.omo/evidence/round82-production/export/evidence.properties
+```
+
+- Overworld: a creative cell, an ME chest with 16 cobblestone, a 1k CPU, a Federation Pattern Provider with a
+  cobblestone → stone processing pattern, an ME Terminal, a Router and an Endpoint at `203, 70, 205` (the twin), and the
+  P2P carrier with its Quantum Network Bridge half.
+- Nether: an Endpoint at `203, 70, 205`, its subnet with an Export Bus into a real furnace (64 coal) and a hopper back
+  into the Endpoint, a Router, and the carrier's other half.
+
+Copy both templates to `world/generated/ae2f_verify/structures/`, then from the server console:
+
+```text
+forceload add 192 192 223 223
+fill 196 68 196 212 76 212 minecraft:air
+fill 196 68 196 212 68 212 minecraft:glass
+place template ae2f_verify:crossdim_overworld 200 69 201
+fill 196 69 196 212 76 212 minecraft:air replace minecraft:barrier
+execute in minecraft:the_nether run forceload add 192 192 223 223
+execute in minecraft:the_nether run fill 196 69 196 212 78 212 minecraft:air
+execute in minecraft:the_nether run fill 196 69 196 212 69 212 minecraft:obsidian
+execute in minecraft:the_nether run place template ae2f_verify:crossdim_nether 202 70 200
+execute in minecraft:the_nether run fill 196 70 196 212 78 212 minecraft:air replace minecraft:barrier
+```
+
+The GameTest structure fills empty space with barrier blocks, hence the `replace minecraft:barrier` fills. The
+templates keep the Endpoints' identities, so place them once per world. Player poses used: Provider
+`tp verifier 202.5 69 200.2 0 3`, terminal `tp verifier 198.5 69 203.5 -90 3`, Router
+`tp verifier 198.5 69 203.5 -90 -18`; the nether chunk is unloaded with
+`execute in minecraft:the_nether run forceload remove 192 192 223 223`.
+
+### Result
+
+1. The Provider screen lists both Endpoints; the nether one reads `203, 70, 205 · Nether`. Pattern #0 is mapped to it
+   with **Map #0 here**, and the return row names the Nether.
+2. Highlight on the overworld twin outlines only the overworld block; for the nether Endpoint Highlight is disabled
+   while the player is in the overworld.
+3. A terminal order for 8 stone. After 2 smelts the nether ticket is removed and
+   `execute in minecraft:the_nether unless loaded 203 70 205` confirms the unload. The CPU keeps waiting for 6, and the
+   Provider screen still shows the Lane's `203, 70, 205 · Nether` return row. About 74 seconds later the ticket is added
+   again and the job finishes with exactly 8 stone: furnace `RecipesUsed` stone 8, subnet chest empty.
+4. The Router's Domain graph shows the overworld and nether networks through two Routers, with the nether Endpoint
+   labelled `203, 70, 205 · Nether`.
+5. `save-all flush`, `stop`: exit 0. After a restart on the same world the source holds 8 cobblestone and 8 stone, the
+   Lane binding keeps dimension `minecraft:the_nether`, the claim keeps epoch 1 and the twin stays unclaimed.
+6. A second terminal order after the restart: 16 stone and 0 cobblestone in the source, 16 furnace smelts in total.
+   The final `stop` exits 0.
+7. Logs: one ERROR line, from vanilla (flat generator settings), in the first server log; none after the restart or in
+   the client log. The client was closed with SIGTERM on the disconnect screen after each server stop.
+
+Missteps, kept and not counted: in the final run a scripted left click on stocked stone took 8 stone into the player's
+inventory instead of opening the order screen; they were put back through the terminal and the order was placed with
+a middle click. The Endpoint cards' order can differ between worlds, so read the screen before clicking a card.
+
+Four earlier attempts each found a defect, fixed before the next run:
+
+| Attempt | Found | Fix |
+|---|---|---|
+| 1 | Endpoint cards showed coordinates without the dimension; the fixture had no Routers, so an Endpoint's Domain workspace showed no domain (by design) | `0456867`, fixture `5e63946` |
+| 2 | Full flow passed, but return rows and Domain-graph labels lacked the dimension | `b75467d` |
+| 3 | The return row clipped the dimension name; a scripted click first mapped the twin and was undone through the menu | `cc6df41` |
+| 4 | Full flow with a 9 minute unload; the unloaded Lane's return row showed an id fragment | `a2a20de` |
+
+Known limits: the Provider screen hides the card of a mapped Endpoint whose chunk is unloaded (its `→1` count and
+return row remain); the fixture is loaded with vanilla `forceload`, an operator command, and the mod loads no chunks.
+
+Evidence (Git-ignored): `.omo/evidence/round82-production/` holds the README, timeline, 16 screenshots, server and
+client logs, JAR, dependency and client hashes, source HEAD and status, the exported fixture and each attempt's notes.
