@@ -26,6 +26,8 @@ Implements `docs/ideas/nexus-processor.md`. Decisions the owner made when it was
 ## Verification
 
 - JUnit: all green (the core's texture is not checked until it exists).
+- Both icons arrived in the artist's PR #2 (2026-10-08) and the texture check is restored; see
+  `artist-device-art-2026-10-07.md`.
 - `python3 tools/dev_gametests.py survivalrecipes survivalinscriber`: 2/2. federationVerify for `survival.recipes`
   (44 assertions) and `survival.inscriber` (5) passed. Mutation `mode: inscribe` fails both tests.
 - The Inscriber fed through one side sorts core, dust and silicon into place (`survivalInscriber`).

@@ -56,7 +56,11 @@ for path in (BASE / 'textures').rglob('*.png'):
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
     meta = path.with_suffix('.png.mcmeta')
     assert im.width == 16
-    if meta.exists():
+    if meta.exists() and ref.startswith(NS + 'item/'):
+        # The artist's animated item icons: every listed frame must exist in the strip.
+        frames = [f if isinstance(f, int) else f['index'] for f in json.loads(meta.read_text())['animation']['frames']]
+        assert im.height % 16 == 0 and max(frames) < im.height // 16, ref
+    elif meta.exists():
         anim = json.loads(meta.read_text())['animation']
         assert im.height == 256 and anim == {'width': 16, 'height': 16, 'frametime': 2, 'interpolate': False}
         # Continuous low flow never disappears; a moving bright band distinguishes frames.

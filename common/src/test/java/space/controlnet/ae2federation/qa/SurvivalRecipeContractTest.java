@@ -113,7 +113,8 @@ final class SurvivalRecipeContractTest {
         var registration = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/material/MaterialRegistration.java"));
         var assets = ROOT.resolve("common/src/main/resources/assets/ae2federation");
-        for (var item : Set.of("nexus_core", "nexus_processor")) {
+        // The Printed Nexus Processor has no recipe yet; its crafting chain is still to be designed.
+        for (var item : Set.of("nexus_core", "nexus_processor", "printed_nexus_processor")) {
             assertTrue(registration.contains("\"" + item + "\""), item);
             for (var language : Set.of("en_us", "zh_cn")) {
                 assertTrue(Files.readString(assets.resolve("lang/" + language + ".json"))
@@ -121,9 +122,11 @@ final class SurvivalRecipeContractTest {
             }
             assertTrue(compact(assets.resolve("models/item/" + item + ".json"))
                     .contains("\"layer0\":\"ae2federation:item/" + item + "\""), item);
+            assertTrue(Files.isRegularFile(assets.resolve("textures/item/" + item + ".png")), item + " icon");
         }
-        // Both icons are still to come from the artist; until then the game draws its missing texture.
         assertFalse(registration.contains("federation_logic_processor"), "The old processor is replaced, not kept");
+        assertFalse(Files.exists(assets.resolve("models/item/federation_logic_processor.json")),
+                "The old processor's model goes with it");
     }
 
     private static void assertShapeless(String recipe, String ingredients) {

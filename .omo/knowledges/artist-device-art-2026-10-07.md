@@ -45,3 +45,25 @@ and light blocking at the closed back.
   bridgereloadreplace`: 5/5.
 - `pixi run --manifest-path tools/visual/pixi.toml python tools/visual/validate_assets.py`: passed, reproducible.
 - Guide client screenshots of the four device pages render the new art.
+
+## PR #2: Nexus item icons (merged into dev 2026-10-08)
+
+The artist's PR #2 added animated icons for the Nexus Core (5 frames), the Nexus Processor (16 frames) and a new
+item, `printed_nexus_processor` ("Nexus Circuit" / "联结电路板"). The owner accepted the new item and will design its
+crafting chain later. Until then it has no recipe and no guide page, which goes against the "no Printed Nexus Circuit"
+boundary in `docs/ideas/nexus-processor.md`.
+
+Like PR #1, it carried stale files from the artist's local asset folder. They were removed in the fix-up after the
+merge:
+
+- the old `models/item/federation_logic_processor.json`, whose item and texture no longer exist;
+- `models/block/bridge_south.json`, which referenced deleted textures;
+- the orphaned `textures/block/cable_idle.png`, `core.png` and `stream_{u,v}_reverse.png` (deleted in `e1bcfd5`).
+
+The cable `00_glass/00_solid/00_stream` models came back as Blockbench re-exports. They had no change in geometry
+but no longer matched the generator, so they were restored. Check an artist PR with
+`tools/visual/validate_assets.py`, which catches all of these; JUnit does not.
+
+The validator's strict animation rule is for the cable flow textures. Animated item icons only need each listed
+frame to exist in the strip. `SurvivalRecipeContractTest.theCoreAndProcessorAreRegisteredNamedAndModelled` now
+checks all three icons and that the old processor model stays gone.

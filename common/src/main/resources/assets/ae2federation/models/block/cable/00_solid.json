@@ -1,9 +1,9 @@
 {
-	"format_version": "26.3",
-	"credit": "Made with Blockbench",
-	"parent": "minecraft:block/block",
-	"render_type": "minecraft:solid",
-	"textures": {
-		"particle": "ae2federation:block/armor"
-	}
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "render_type": "minecraft:solid",
+  "textures": {
+    "particle": "ae2federation:block/armor"
+  },
+  "elements": []
 }
