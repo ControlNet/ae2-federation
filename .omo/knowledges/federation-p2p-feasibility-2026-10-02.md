@@ -2,11 +2,10 @@
 
 ## Product discussion location
 
-Following the user's approval to separate ideas from research notes, maintain future product decisions in
-[the Federation P2P idea](../../docs/ideas/federation-p2p.md), listed in the
-[idea library](../../docs/ideas/README.md). This note retains investigation evidence and discussion history;
-its historical proposals do not override the current idea page. Following the user's renewed remote-connection
-discussion, the related wireless context is maintained in its own
+Federation P2P is implemented; [its feature page](../../docs/features/federation-p2p.md) describes current behavior
+and [the archived idea](../../docs/archive/ideas/federation-p2p.md) keeps the product discussion. This note retains
+investigation evidence and discussion history; its historical proposals do not override the feature page.
+Following the user's renewed remote-connection discussion, the related wireless context is maintained in its own
 [remote connections idea](../../docs/ideas/remote-federation-connections.md). The user has since proposed a
 quantum-bridge-style jump as a first candidate and requested research into other forms; naming, appearance and
 detailed form remain undecided. See also [the wireless mod survey](wireless-tech-mod-survey-2026-10-02.md).
@@ -231,7 +230,7 @@ precedents, carrier/endpoint distinctions, management UX and explicitly bounded 
 Applied Mekanistics and Applied Botanics provide actual native P2P resource-mode examples; they do not prove the
 Federation payload's bidirectional topology or required cross-dimensional lifecycle behavior.
 
-Product-level suggestions are maintained in [the P2P idea](../../docs/ideas/federation-p2p.md). No architecture,
+Product-level suggestions are kept in [the archived P2P idea](../../docs/archive/ideas/federation-p2p.md). No architecture,
 operating cost, visual design or implementation schedule is selected by the comparative research.
 
 ## Re-check against the code (2026-10-08)

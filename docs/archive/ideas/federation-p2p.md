@@ -1,8 +1,14 @@
-# Federation P2P
+# Federation P2P — archived discussion
+
+Archived: 2026-10-08, after the owner confirmed the idea was implemented.
+
+See [implemented Federation P2P](../../features/federation-p2p.md) for current behavior. The discussion below is
+historical: its status lines, open questions and future-tense statements reflect the stage before implementation.
+The player-experience candidates in the survey table remain proposals; they were not implemented.
 
 Status: product direction and core behavior confirmed; implementation deferred.
 
-Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. [Idea index](README.md).
+Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. [Idea index](../../ideas/README.md).
 
 ## Intent
 
@@ -35,7 +41,7 @@ The user confirmed this idea before moving on to custom policies. This is not an
 
 ## Player experience ideas from the comparative survey
 
-The [100-project P2P survey](../../.omo/knowledges/federation-p2p-mod-survey-2026-10-03.md) examines native
+The [100-project P2P survey](../../../.omo/knowledges/federation-p2p-mod-survey-2026-10-03.md) examines native
 P2P extensions, network links, multiplexed transport, endpoint proxies and configuration tools separately.
 The following are proposals for discussion, not new requirements or implementation selections.
 
@@ -61,15 +67,15 @@ policy discussion, and the tunnel's ME carrier does not gain access merely by ca
 ## Related idea: wireless Federation connection
 
 The earlier wireless / cross-dimensional connection discussion now has a separate
-[remote Federation connections page](remote-federation-connections.md). It retains the provisional naming and
+[remote Federation connections page](../../ideas/remote-federation-connections.md). It retains the provisional naming and
 open product questions. First-release cross-dimensional P2P does not require this separate idea to ship alongside it.
 
 ## Research
 
-- [100-project P2P comparison](../../.omo/knowledges/federation-p2p-mod-survey-2026-10-03.md): per-project
+- [100-project P2P comparison](../../../.omo/knowledges/federation-p2p-mod-survey-2026-10-03.md): per-project
   mechanisms, relevance, popularity evidence, version boundaries and primary sources. This is a surveyed sample,
   not a claim that 100 mods implement native AE2 P2P modes.
-- [P2P feasibility investigation](../../.omo/knowledges/federation-p2p-feasibility-2026-10-02.md): pinned AE2 API
+- [P2P feasibility investigation](../../../.omo/knowledges/federation-p2p-feasibility-2026-10-02.md): pinned AE2 API
   inspection, current project integration issues, lifecycle concerns and possible validation scenarios.
 - [AE2 P2P guide](https://guide.appliedenergistics.org/1.21/items-blocks-machines/p2p_tunnels).
 

@@ -9,7 +9,7 @@ and cross-dimensional support in the feature's first release. Concrete implement
 
 This survey broadens interaction and mechanism references without reopening those decisions. A source's one-way
 resource flow, public resource pool, operating cost or loading policy is not a newly approved Federation rule.
-Product suggestions are in [the P2P idea](../../docs/ideas/federation-p2p.md); the earlier
+Product suggestions are in [the archived P2P idea](../../docs/archive/ideas/federation-p2p.md); the earlier
 [AE2 feasibility investigation](federation-p2p-feasibility-2026-10-02.md) remains the technical starting point.
 
 ## Most useful findings

@@ -17,8 +17,8 @@ Earlier discussion considered a wireless / cross-dimensional Federation connecti
 "Federation quantum bridge". This page collects that related context alongside the new exploration rather than
 assuming a final device. The final name, appearance, visual theme and physical structure remain undecided.
 
-[Federation P2P](federation-p2p.md) already has its own confirmed requirements, including first-release
-cross-dimensional support. That requirement does not set a delivery date or first-release scope for this idea.
+[Federation P2P](../features/federation-p2p.md) is implemented separately, including cross-dimensional support.
+It does not set a delivery date or first-release scope for this idea.
 Whether this becomes one wireless bridge feature or a broader family of remote connections remains open.
 
 ## First candidate: a jump within the Federation connection
