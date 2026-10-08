@@ -2,7 +2,7 @@
 navigation:
   parent: index.md
   title: Getting Started
-  icon: ae2federation:nexus_processor
+  icon: ae2federation:nexus_core
   position: 10
 ---
 
@@ -11,17 +11,20 @@ navigation:
 You need two separate ME networks, and only one of them needs power: once they are connected, the other can run on
 it. Federation does not replace AE2's own cables or controllers; it only connects networks.
 
-## 1. Make Nexus Processors
+## 1. Make Nexus Cores
 
-Every Federation device needs a <ItemLink id="ae2federation:nexus_processor" />. First craft three Redstone Dust
-over three <ItemLink id="ae2:ender_dust" /> into <ItemLink id="ae2federation:nexus_core" />, sixteen at a time.
+Every Federation device needs a <ItemLink id="ae2federation:nexus_core" />. First print an Ender Pearl under a
+<ItemLink id="ae2:logic_processor_press" /> in an <ItemLink id="ae2:inscriber" />, then press the circuit with
+Redstone Dust and a <ItemLink id="ae2:printed_silicon" /> into a <ItemLink id="ae2federation:nexus_processor" />.
 
-<RecipeFor id="ae2federation:nexus_core" />
-
-Then press each core in an <ItemLink id="ae2:inscriber" /> with one Ender Dust and one
-<ItemLink id="ae2:printed_silicon" />. All three are used up.
+<RecipeFor id="ae2federation:printed_nexus_circuit" />
 
 <RecipeFor id="ae2federation:nexus_processor" />
+
+A <ItemLink id="ae2:fluix_crystal" />, an <ItemLink id="ae2:ender_dust" /> and the processor in a row make sixteen
+cores.
+
+<RecipeFor id="ae2federation:nexus_core" />
 
 ## 2. Connect the two networks
 

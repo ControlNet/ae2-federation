@@ -14,7 +14,7 @@ public final class MaterialRegistration {
 
     public static final DeferredItem<Item> NEXUS_CORE = ITEMS.registerSimpleItem("nexus_core");
     public static final DeferredItem<Item> NEXUS_PROCESSOR = ITEMS.registerSimpleItem("nexus_processor");
-    public static final DeferredItem<Item> PRINTED_NEXUS_PROCESSOR = ITEMS.registerSimpleItem("printed_nexus_processor");
+    public static final DeferredItem<Item> PRINTED_NEXUS_CIRCUIT = ITEMS.registerSimpleItem("printed_nexus_circuit");
 
     private MaterialRegistration() {
     }

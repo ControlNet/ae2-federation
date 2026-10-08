@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_nexus_processor": {
+    "has_nexus_core": {
       "conditions": {
         "items": [
           {
-            "items": "ae2federation:nexus_processor"
+            "items": "ae2federation:nexus_core"
           }
         ]
       },
@@ -20,7 +20,7 @@
   },
   "requirements": [
     [
-      "has_nexus_processor",
+      "has_nexus_core",
       "has_the_recipe"
     ]
   ],

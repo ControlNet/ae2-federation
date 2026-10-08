@@ -5,13 +5,15 @@
     "E": {
       "tag": "c:dusts/ender_pearl"
     },
-    "R": {
-      "tag": "c:dusts/redstone"
+    "F": {
+      "tag": "c:gems/fluix"
+    },
+    "P": {
+      "item": "ae2federation:nexus_processor"
     }
   },
   "pattern": [
-    "RRR",
-    "EEE"
+    "FEP"
   ],
   "result": {
     "count": 16,

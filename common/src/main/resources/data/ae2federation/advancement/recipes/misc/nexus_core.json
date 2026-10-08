@@ -1,11 +1,11 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_ender_dust": {
+    "has_nexus_processor": {
       "conditions": {
         "items": [
           {
-            "items": "#c:dusts/ender_pearl"
+            "items": "ae2federation:nexus_processor"
           }
         ]
       },
@@ -20,7 +20,7 @@
   },
   "requirements": [
     [
-      "has_ender_dust",
+      "has_nexus_processor",
       "has_the_recipe"
     ]
   ],

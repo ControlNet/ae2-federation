@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ae2federation:item/printed_nexus_processor"
+    "layer0": "ae2federation:item/printed_nexus_circuit"
   }
 }

@@ -1,6 +1,7 @@
 # Survival playability
 
-Status: implemented. Recipe and guide resources inspected on 2026-10-03; the processor recipe was revised on 2026-10-06.
+Status: implemented. Recipe and guide resources inspected on 2026-10-03; the processor recipe was revised on 2026-10-06,
+and the Nexus chain was rebuilt after AE2's processors and cores on 2026-10-08.
 
 Basic Federation equipment is obtainable using native AE2 materials and machines. The in-game GuideME pages
 teach acquisition, connection, configuration and remote processing. The former idea is preserved as an
@@ -12,21 +13,22 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 
 | Output | Inputs | Method |
 |---|---|---|
-| 16 Nexus Cores | 3 Redstone Dust (`c:dusts/redstone`) + 3 Ender Dust (`c:dusts/ender_pearl`) | Shaped: a row of redstone over a row of Ender Dust |
-| 1 Nexus Processor | 1 Nexus Core + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Printed Silicon | Inscriber: core on top, dust in middle, silicon at bottom (top and bottom may swap); press mode consumes all inputs |
-| 16 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Processor | Shaped: processor in center, cables around it |
-| 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Nexus Processor | Shapeless |
-| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Processor | Shaped: cables in corners, import top, export bottom, storage left, interface right, Federation processor center |
-| 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Nexus Processor | Shapeless |
-| 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Processor | Shapeless |
+| 1 Printed Nexus Circuit | 1 Ender Pearl (`c:ender_pearls`) under the Inscriber Logic Press | Inscriber, inscribe mode: the press stays, like AE2's Printed Logic Circuit |
+| 1 Nexus Processor | 1 Printed Nexus Circuit + 1 Redstone Dust (`c:dusts/redstone`) + 1 Printed Silicon | Inscriber: circuit on top, redstone in middle, silicon at bottom (top and bottom may swap); press mode consumes all inputs, like AE2's Logic Processor |
+| 16 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
+| 16 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
+| 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Nexus Core | Shapeless |
+| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, import top, export bottom, storage left, interface right, core center |
+| 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Nexus Core | Shapeless |
+| 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Core | Shapeless |
 
-Every functional device recipe uses the Nexus Processor; the Router also takes four Federation Cables.
+Every functional device recipe uses the Nexus Core; the Router also takes four Federation Cables.
 Bridge and Router are alternative connection forms rather than a mandatory upgrade sequence.
 
 For a first setup with two Routers and sixteen placed Federation Cables, starting with none of these components:
-craft one core batch, press three processors, then craft two cable batches and one Router batch. This costs sixteen
-native ME Glass Cables, three Redstone Dust, six Ender Dust, three Printed Silicon, and one each of the native Import Bus,
-Export Bus, Storage Bus and ME Interface. Four Federation Cables are consumed in the Router craft. After placing the
+print one circuit, press one processor, craft one core batch, then two cable batches and one Router batch. This costs
+sixteen native ME Glass Cables, one each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix Crystal and Ender Dust,
+and one each of the native Import Bus, Export Bus, Storage Bus and ME Interface; the Inscriber Logic Press is kept. Four Federation Cables are consumed in the Router craft. After placing the
 setup, two Routers, twelve Federation Cables and thirteen Nexus Cores remain.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 
@@ -44,9 +46,8 @@ Federation dependency. See the [diagnostic record](../../.omo/knowledges/jei-ins
 
 ## Processor artwork
 
-The Nexus Processor's icon is being redrawn by the mod's artist. The earlier icon, adapted from AE2's Logic Processor
-texture, was removed so that all of the mod's art is All Rights Reserved; until the new icon arrives the game draws a
-missing texture.
+The Printed Nexus Circuit, Nexus Processor and Nexus Core icons are the mod's artist's work (2026-10-08), All Rights
+Reserved like the rest of the mod's art.
 
 ## Verification boundary
 

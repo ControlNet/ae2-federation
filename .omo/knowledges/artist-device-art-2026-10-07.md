@@ -49,9 +49,9 @@ and light blocking at the closed back.
 ## PR #2: Nexus item icons (merged into dev 2026-10-08)
 
 The artist's PR #2 added animated icons for the Nexus Core (5 frames), the Nexus Processor (16 frames) and a new
-item, `printed_nexus_processor` ("Nexus Circuit" / "联结电路板"). The owner accepted the new item and will design its
-crafting chain later. Until then it has no recipe and no guide page, which goes against the "no Printed Nexus Circuit"
-boundary in `docs/ideas/nexus-processor.md`.
+item, `printed_nexus_processor` ("Nexus Circuit" / "联结电路板"). The owner accepted the new item, renamed it
+Printed Nexus Circuit / `printed_nexus_circuit` after AE2's printed circuits, and made it the first step of the chain
+(see `nexus-chain-ae2-style-2026-10-08.md`).
 
 Like PR #1, it carried stale files from the artist's local asset folder. They were removed in the fix-up after the
 merge:

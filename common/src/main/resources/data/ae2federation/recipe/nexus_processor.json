@@ -5,10 +5,10 @@
       "item": "ae2:printed_silicon"
     },
     "middle": {
-      "tag": "c:dusts/ender_pearl"
+      "tag": "c:dusts/redstone"
     },
     "top": {
-      "item": "ae2federation:nexus_core"
+      "item": "ae2federation:printed_nexus_circuit"
     }
   },
   "mode": "press",

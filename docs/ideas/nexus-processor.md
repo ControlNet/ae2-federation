@@ -1,7 +1,22 @@
 # Nexus Processor and Nexus Core
 
 Discussion date: 2026-10-06.
-Status: requested naming and recipe revision, documented for future implementation. Not implemented.
+Status: implemented on 2026-10-06, then revised on 2026-10-08 (below).
+
+## Revision 2026-10-08: AE2-style chain
+
+The owner asked for the chain and names to follow AE2's own processors and cores. This supersedes the recipe
+sections and the "short chain" boundary further down:
+
+| Item | AE2 counterpart | Recipe |
+|---|---|---|
+| Printed Nexus Circuit / 联结电路板 (`ae2federation:printed_nexus_circuit`) | Printed Logic Circuit / 逻辑电路板 | Inscriber, inscribe mode: Inscriber Logic Press (kept) + Ender Pearl |
+| Nexus Processor / 联结处理器 | Logic Processor / 逻辑处理器 | Inscriber, press mode: circuit + Redstone Dust + Printed Silicon |
+| Nexus Core / 联结核心 | Formation Core / 成型核心 | Shaped row: Fluix Crystal + Ender Dust + Nexus Processor -> 16 |
+
+Every Federation device now takes a Nexus Core where it took the processor. The circuit was the artist's new item;
+the owner accepted it and set its English name and ID after AE2's printed circuits. Current behavior is described in
+the [survival feature document](../features/survival-playability.md).
 
 ## Purpose
 

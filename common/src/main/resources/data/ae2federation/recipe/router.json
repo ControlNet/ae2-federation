@@ -12,7 +12,7 @@
       "item": "ae2:import_bus"
     },
     "L": {
-      "item": "ae2federation:nexus_processor"
+      "item": "ae2federation:nexus_core"
     },
     "N": {
       "item": "ae2:interface"
