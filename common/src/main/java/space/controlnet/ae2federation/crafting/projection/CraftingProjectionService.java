@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
@@ -45,7 +46,8 @@ import space.controlnet.ae2federation.policy.RuleMode;
  * compared again, since AE2 has no event for a provider's patterns changing.
  */
 public final class CraftingProjectionService implements AutoCloseable {
-    private static final Map<ServerLevel, CraftingProjectionService> SERVICES = new WeakHashMap<>();
+    /** One service per server, like AE2's Grid services: consumers and providers may be in any dimensions. */
+    private static final Map<MinecraftServer, CraftingProjectionService> SERVICES = new WeakHashMap<>();
     /** Ticks between looks at each provider's patterns and at what consumers still wait for. */
     static final int REFRESH_TICKS = 20;
     /**
@@ -54,6 +56,7 @@ public final class CraftingProjectionService implements AutoCloseable {
      */
     static final int STARTUP_TICKS = 100;
 
+    /** The overworld: it names the server for registry, rule and ledger lookups; nothing here is limited to it. */
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
     /** By (consumer, network whose providers are projected): a rule's own provider, or one reached through re-export. */
@@ -90,33 +93,45 @@ public final class CraftingProjectionService implements AutoCloseable {
     private record Projected(IGrid consumer, IGrid provider, Map<ICraftingProvider, PatternProjection> projections) {
     }
 
-    private CraftingProjectionService(ServerLevel level) {
-        this.level = level;
+    private CraftingProjectionService(MinecraftServer server) {
+        this.level = server.overworld();
         federationDomains = new CraftingFederationDomainObserver(level);
     }
 
+    /** The service of {@code level}'s server. */
     public static synchronized CraftingProjectionService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, CraftingProjectionService::new);
+        return SERVICES.computeIfAbsent(level.getServer(), CraftingProjectionService::new);
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service != null) service.reconcileAll();
     }
 
-    public static synchronized void tick(ServerLevel level) {
-        var service = SERVICES.get(level);
+    public static synchronized void tick(MinecraftServer server) {
+        var service = SERVICES.get(server);
         if (service != null) service.tick();
     }
 
-    public static synchronized void closeLevel(ServerLevel level) {
-        var service = SERVICES.remove(level);
+    /**
+     * After a level's nodes left the registry: reconciles at once while the server runs. During shutdown the first
+     * level to close withdraws every projection while AE2 still has every Grid, and nothing is rebuilt.
+     */
+    public static synchronized void levelClosed(ServerLevel level) {
+        var service = SERVICES.get(level.getServer());
+        if (service == null) return;
+        if (level.getServer().isRunning()) service.reconcileAll();
+        else service.close();
+    }
+
+    public static synchronized void closeServer(MinecraftServer server) {
+        var service = SERVICES.remove(server);
         if (service != null) service.close();
     }
 
-    /** The rule's projection state as last reconciled; empty when this level has not looked at the rule. */
+    /** The rule's projection state as last reconciled; empty when the server has not looked at the rule. */
     public static synchronized Optional<Status> status(ServerLevel level, PolicyKey key) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         return service == null ? Optional.empty() : Optional.ofNullable(service.statuses.get(key));
     }
 

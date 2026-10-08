@@ -57,6 +57,17 @@ public final class ProviderObservationRegistry {
         return List.copyOf(ENTRIES.getOrDefault(level, Map.of()).values());
     }
 
+    /** The Providers of every dimension of {@code server}. */
+    public static synchronized List<Entry> entries(net.minecraft.server.MinecraftServer server) {
+        var result = new java.util.ArrayList<Entry>();
+        ENTRIES.forEach((level, entries) -> {
+            if (level.getServer() == server) {
+                result.addAll(entries.values());
+            }
+        });
+        return List.copyOf(result);
+    }
+
     public static synchronized void closeLevel(ServerLevel level) {
         ENTRIES.remove(level);
         LANES.entrySet().removeIf(entry -> entry.getValue().level() == level);

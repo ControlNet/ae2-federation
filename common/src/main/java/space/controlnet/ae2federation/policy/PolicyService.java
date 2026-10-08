@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.policy;
 
 import java.util.Optional;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
@@ -12,39 +13,47 @@ import space.controlnet.ae2federation.energy.EnergySharingService;
 
 public final class PolicyService {
     /**
-     * One service per level, dropped by {@link #closeLevel}: {@link #get} is on every storage, crafting and energy
+     * One service per server, dropped by {@link #closeServer}: {@link #get} is on every storage, crafting and energy
      * operation's validation path, and the policy store is the overworld's saved data, which lives as long as the
      * server.
      */
-    private static final java.util.Map<ServerLevel, PolicyService> SERVICES = new java.util.WeakHashMap<>();
+    private static final java.util.Map<MinecraftServer, PolicyService> SERVICES = new java.util.WeakHashMap<>();
 
+    /** The overworld: it names the server, whose rules this service applies in every dimension. */
     private final ServerLevel level;
     private final PolicySavedData data;
 
-    private PolicyService(ServerLevel level) {
-        this.level = level;
+    private PolicyService(MinecraftServer server) {
+        this.level = server.overworld();
         data = PolicySavedData.get(level);
         AuthorityEpoch.advance();
     }
 
-    /** The service {@link #get} returned last, checked before the map: nearly every call is for the ticked level. */
+    /** The service {@link #get} returned last, checked before the map: nearly every call is for the same server. */
     private static volatile PolicyService last;
 
+    /** The service of {@code level}'s server. */
     public static PolicyService get(ServerLevel level) {
+        var server = level.getServer();
         var cached = last;
-        if (cached != null && cached.level == level) {
+        if (cached != null && cached.level.getServer() == server) {
             return cached;
         }
-        var service = SERVICES.computeIfAbsent(level, PolicyService::new);
+        PolicyService service;
+        synchronized (SERVICES) {
+            service = SERVICES.computeIfAbsent(server, PolicyService::new);
+        }
         last = service;
         return service;
     }
 
-    /** Drops the level's service when the level unloads; the service holds the level, so it cannot be weakly held. */
-    public static void closeLevel(ServerLevel level) {
+    /** Drops the server's service once it has stopped; the service holds a level, so it cannot be weakly held. */
+    public static void closeServer(MinecraftServer server) {
         last = null;
         AuthorityEpoch.advance();
-        SERVICES.remove(level);
+        synchronized (SERVICES) {
+            SERVICES.remove(server);
+        }
     }
 
     public PolicyMutationResult edit(PolicyEdit edit) {

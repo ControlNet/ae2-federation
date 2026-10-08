@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -48,12 +49,14 @@ import space.controlnet.ae2federation.processing.provider.ProviderObservationReg
  * Endpoint's claim, switch or Grids changed.
  */
 public final class EnergySharingService implements AutoCloseable {
-    private static final Map<ServerLevel, EnergySharingService> SERVICES = new WeakHashMap<>();
+    /** One service per server, like AE2's Grid services: networks of any dimensions share pools. */
+    private static final Map<MinecraftServer, EnergySharingService> SERVICES = new WeakHashMap<>();
     /** Network-id order; an Endpoint subnet has no confirmed id, so identity keeps its place stable between runs. */
     private static final Comparator<IGrid> BY_NETWORK = Comparator.<IGrid, String>comparing(grid ->
             FederationDomainRegistryAccess.confirmedNetworkId(grid).map(NetworkId::toString).orElse(""))
             .thenComparingInt(System::identityHashCode);
 
+    /** The overworld: it names the server for registry and rule lookups; nothing here is limited to it. */
     private final ServerLevel level;
     private final EnergyFederationDomainObserver federationDomains;
     /** Each Grid's sharing peers, as their energy services, in network-id order. */
@@ -73,44 +76,59 @@ public final class EnergySharingService implements AutoCloseable {
     private int reconciliations;
     private int dissolutions;
 
-    private EnergySharingService(ServerLevel level) {
-        this.level = level;
+    private EnergySharingService(MinecraftServer server) {
+        this.level = server.overworld();
         federationDomains = new EnergyFederationDomainObserver(level);
     }
 
+    /** The service of {@code level}'s server. */
     public static synchronized EnergySharingService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, EnergySharingService::new);
+        return SERVICES.computeIfAbsent(level.getServer(), EnergySharingService::new);
     }
 
     @Nullable
     static synchronized EnergySharingService find(ServerLevel level) {
-        return SERVICES.get(level);
+        return SERVICES.get(level.getServer());
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service != null) {
             service.reconcileAll();
         }
     }
 
-    /** Reconciles every level whose domain topology, rules or Grid identities changed since its last reconciliation. */
+    /** Reconciles each server whose domain topology, rules or Grid identities changed since its last reconciliation. */
     public static synchronized void tickAll() {
         SERVICES.values().forEach(EnergySharingService::reconcileIfChanged);
     }
 
-    public static synchronized CloseReceipt closeLevel(ServerLevel level) {
-        var service = SERVICES.remove(level);
-        var pairs = service == null ? 0 : service.sharedPairs.size();
+    /**
+     * After a level's nodes left the registry: reconciles at once while the server runs. During shutdown the first
+     * level to close dissolves every pool while AE2 still has every Grid, and nothing is formed again.
+     */
+    public static synchronized void levelClosed(ServerLevel level) {
+        var service = SERVICES.get(level.getServer());
+        if (service == null) {
+            return;
+        }
+        if (level.getServer().isRunning()) {
+            service.reconcileAll();
+        } else {
+            service.close();
+        }
+    }
+
+    public static synchronized void closeServer(MinecraftServer server) {
+        var service = SERVICES.remove(server);
         if (service != null) {
             service.close();
         }
-        return new CloseReceipt(service != null, pairs);
     }
 
     /** Whether the two networks of {@code key} share energy, reconciling first if an input changed. */
     public static synchronized boolean shares(ServerLevel level, PolicyKey key) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service == null) {
             return false;
         }
@@ -132,7 +150,7 @@ public final class EnergySharingService implements AutoCloseable {
 
     /** Whether the subnet behind {@code subnetNode} shares energy with its owner, reconciling first if an input changed. */
     public static synchronized boolean sharesEndpoint(ServerLevel level, IGridNode subnetNode) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service == null) {
             return false;
         }
@@ -142,7 +160,7 @@ public final class EnergySharingService implements AutoCloseable {
 
     /** Read-only historical reason, discarded when policy or topology revisions no longer match. */
     public static synchronized Optional<BindingDiagnostic> lastDiagnostic(ServerLevel level, PolicyKey key) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service == null) return Optional.empty();
         var diagnostic = service.diagnostics.get(key);
         return diagnostic != null && diagnostic.matches(PolicyService.get(level).revision(key),
@@ -195,7 +213,7 @@ public final class EnergySharingService implements AutoCloseable {
         return reconciliations;
     }
 
-    /** How often a domain topology change dissolved this level's pools. */
+    /** How often a domain topology change dissolved this server's pools. */
     public int dissolutionCount() {
         return dissolutions;
     }
@@ -301,12 +319,13 @@ public final class EnergySharingService implements AutoCloseable {
      * equal.
      */
     private List<EndpointEdge> endpointEdges() {
-        var bindings = EndpointTargetBinding.entries(level);
+        // A Provider and the Endpoints it claims may be in different dimensions.
+        var bindings = EndpointTargetBinding.entries(level.getServer());
         if (bindings.isEmpty()) {
             return List.of();
         }
         var owners = new HashMap<ProviderIdentity, IGrid>();
-        for (var entry : ProviderObservationRegistry.entries(level)) {
+        for (var entry : ProviderObservationRegistry.entries(level.getServer())) {
             var grid = entry.provider().getGrid();
             if (grid != null) {
                 owners.put(entry.identity(), grid);
@@ -370,8 +389,5 @@ public final class EnergySharingService implements AutoCloseable {
     }
 
     private record EndpointEdge(IGridNode node, IGrid subnet, IGrid owner) {
-    }
-
-    public record CloseReceipt(boolean servicePresent, int sharedPairs) {
     }
 }

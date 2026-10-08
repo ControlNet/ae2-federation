@@ -25,7 +25,8 @@ final class RealCraftingProviders {
                 providers.add(provider);
             }
         }
-        for (var entry : ProviderObservationRegistry.entries(level)) {
+        // A provider network can span dimensions (a Quantum Bridge), so its Federation Providers may be in any of them.
+        for (var entry : ProviderObservationRegistry.entries(level.getServer())) {
             var provider = entry.provider();
             if (!provider.registered()) continue;
             for (var lane : provider.nativeLanes()) {

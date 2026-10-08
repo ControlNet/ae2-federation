@@ -78,8 +78,8 @@ public final class StorageMountGameTests {
             helper.assertValueEqual(provider.getAvailableStacks().get(IRON), 5L,
                     "Level teardown must not mutate the provider native source");
             helper.assertTrue(cleanup.servicePresentBefore() && cleanup.mountedProvidersBefore() == 1
-                            && cleanup.mountedProvidersRemoved() == 1 && cleanup.serviceRemoved(),
-                    "Level teardown must remove the exact mounted service entry and provider");
+                            && cleanup.mountedProvidersRemoved() == 1 && cleanup.servicePersists(),
+                    "Level teardown must remove the exact mounted provider and keep the server's service");
             helper.assertTrue(cleanup.dimensionNodesRemoved() > 0 && cleanup.dimensionNodesLeft() == 0,
                     "Level teardown must take the level's nodes out of the server-wide Federation Domain registry");
             PolicyEvidence.write("storagenativeaccess", 20, Map.ofEntries(
@@ -93,7 +93,7 @@ public final class StorageMountGameTests {
                     Map.entry("cleanupServicePresentBefore", Boolean.toString(cleanup.servicePresentBefore())),
                     Map.entry("cleanupMountedProvidersBefore", Integer.toString(cleanup.mountedProvidersBefore())),
                     Map.entry("cleanupMountedProvidersRemoved", Integer.toString(cleanup.mountedProvidersRemoved())),
-                    Map.entry("cleanupServiceRemoved", Boolean.toString(cleanup.serviceRemoved())),
+                    Map.entry("cleanupServicePersists", Boolean.toString(cleanup.servicePersists())),
                     Map.entry("cleanupDimensionNodesRemoved", Boolean.toString(cleanup.dimensionNodesRemoved() > 0)),
                     Map.entry("cleanupDimensionNodesLeft", Integer.toString(cleanup.dimensionNodesLeft())),
                     Map.entry("cleanupNativeProviderRemoved", Boolean.toString(cleanupConsumerAfter == 0

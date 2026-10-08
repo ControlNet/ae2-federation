@@ -3181,7 +3181,7 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 21 native relationship access semantics are incomplete')
     }
     def cleanupFields = ['cleanupConsumerBefore', 'cleanupConsumerAfter', 'cleanupServicePresentBefore',
-            'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServiceRemoved',
+            'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServicePersists',
             'cleanupDimensionNodesRemoved', 'cleanupDimensionNodesLeft', 'cleanupNativeProviderRemoved']
     if (cleanupFields.any { access.getProperty(it) == null }
             || access.getProperty('cleanupConsumerBefore') != '5'
@@ -3189,7 +3189,7 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
             || access.getProperty('cleanupServicePresentBefore') != 'true'
             || access.getProperty('cleanupMountedProvidersBefore') != '1'
             || access.getProperty('cleanupMountedProvidersRemoved') != '1'
-            || access.getProperty('cleanupServiceRemoved') != 'true'
+            || access.getProperty('cleanupServicePersists') != 'true'
             || access.getProperty('cleanupDimensionNodesRemoved') != 'true'
             || access.getProperty('cleanupDimensionNodesLeft') != '0'
             || access.getProperty('cleanupNativeProviderRemoved') != 'true') {
@@ -9035,7 +9035,7 @@ tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
                 falseCleanupReceipt: mutateFacts('storagenativeaccess', [cleanupConsumerBefore: '0',
                         cleanupConsumerAfter: '5',
                         cleanupServicePresentBefore: 'false', cleanupMountedProvidersBefore: '0',
-                        cleanupMountedProvidersRemoved: '0', cleanupServiceRemoved: 'false',
+                        cleanupMountedProvidersRemoved: '0', cleanupServicePersists: 'false',
                         cleanupDimensionNodesRemoved: 'false', cleanupDimensionNodesLeft: '1',
                         cleanupNativeProviderRemoved: 'false'],
                         'Task 21 level cleanup semantics are incomplete'),

@@ -71,10 +71,8 @@ public final class NeoForgeEntrypoint {
     /** Binding requests from the level ticks and from player actions or GameTests, then each service's tick. */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
-        for (var level : event.getServer().getAllLevels()) {
-            StorageMountService.tick(level);
-            CraftingProjectionService.tick(level);
-        }
+        StorageMountService.tick(event.getServer());
+        CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
     }
 
@@ -84,24 +82,31 @@ public final class NeoForgeEntrypoint {
 
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+            // The services serve the whole server: the level's nodes leave the registry, then the relationships that
+            // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
-            CraftingProjectionService.closeLevel(level);
-            EnergySharingService.closeLevel(level);
-            LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
-            space.controlnet.ae2federation.policy.PolicyService.closeLevel(level);
+            CraftingProjectionService.levelClosed(level);
+            EnergySharingService.levelClosed(level);
+            LevelObservabilityService.levelClosed(level);
             LOGGER.info("AE2F_STORAGE_LEVEL_CLOSED dimension={} servicePresentBefore={} mountedProvidersBefore={} "
-                            + "mountedProvidersRemoved={} serviceRemoved={} dimensionNodesRemoved={} "
+                            + "mountedProvidersRemoved={} servicePersists={} dimensionNodesRemoved={} "
                             + "dimensionBridgesRemoved={} dimensionNodesLeft={}", level.dimension().location(),
                     receipt.servicePresentBefore(), receipt.mountedProvidersBefore(), receipt.mountedProvidersRemoved(),
-                    receipt.serviceRemoved(), receipt.dimensionNodesRemoved(), receipt.dimensionBridgesRemoved(),
+                    receipt.servicePersists(), receipt.dimensionNodesRemoved(), receipt.dimensionBridgesRemoved(),
                     receipt.dimensionNodesLeft());
         }
     }
 
     /** Server-wide state outlives each level's unload, so it goes once the whole server has stopped. */
     private static void onServerStopped(ServerStoppedEvent event) {
-        FederationDomainRegistryAccess.closeServer(event.getServer());
+        var server = event.getServer();
+        StorageMountService.closeServer(server);
+        CraftingProjectionService.closeServer(server);
+        EnergySharingService.closeServer(server);
+        LevelObservabilityService.closeServer(server);
+        space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
+        FederationDomainRegistryAccess.closeServer(server);
     }
 
     private static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {

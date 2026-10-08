@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
@@ -26,8 +27,9 @@ import space.controlnet.ae2federation.storage.subscription.StorageSubscriptionSe
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.identity.IdentityEpoch;
 
+/** One service per server, like AE2's Grid services: it mounts storage between networks of any dimensions. */
 public final class StorageMountService implements AutoCloseable {
-    private static final Map<ServerLevel, StorageMountService> SERVICES = new WeakHashMap<>();
+    private static final Map<MinecraftServer, StorageMountService> SERVICES = new WeakHashMap<>();
     private final Map<PolicyKey, MountedStorageRelationship> mounts = new HashMap<>();
     private final Map<PolicyKey, MountGeneration> mountGenerations = new HashMap<>();
     /** Advances before every change to {@link #mounts} or {@link #mountGenerations}. */
@@ -45,7 +47,9 @@ public final class StorageMountService implements AutoCloseable {
     /** The {@link IdentityEpoch} the last reconciliation saw. */
     private long reconciledEpoch = Long.MIN_VALUE;
 
-    private StorageMountService(ServerLevel level) {
+    private StorageMountService(MinecraftServer server) {
+        // The overworld names the server for registry and rule lookups, and keeps the game time of every dimension.
+        var level = server.overworld();
         subscriptions = new StorageSubscriptionService(level::getGameTime);
         federationDomains = new StorageFederationDomainObserver(level);
         dependencies = new StorageDependencyIndex(level, federationDomains, provenance);
@@ -53,8 +57,9 @@ public final class StorageMountService implements AutoCloseable {
         observability = LevelObservabilityService.get(level);
     }
 
+    /** The service of {@code level}'s server. */
     public static synchronized StorageMountService get(ServerLevel level) {
-        return SERVICES.computeIfAbsent(level, StorageMountService::new);
+        return SERVICES.computeIfAbsent(level.getServer(), StorageMountService::new);
     }
 
     /**
@@ -66,11 +71,11 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     /**
-     * {@code key}'s enabled rule as of the last reconciliation; empty while this level has none. Does not create a
-     * service, reconcile, or authorize an operation.
+     * {@code key}'s enabled rule as of the last reconciliation; empty while the server has no service. Does not create
+     * a service, reconcile, or authorize an operation.
      */
     public static synchronized Optional<Status> status(ServerLevel level, PolicyKey key) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         return service == null ? Optional.empty() : Optional.of(service.status(key));
     }
 
@@ -82,16 +87,16 @@ public final class StorageMountService implements AutoCloseable {
     }
 
     /**
-     * Reconciles the level's service when a network's identity changed since its last reconciliation: a split stops the
-     * network's relationships, and a heal starts them again, without a Federation block reporting either.
+     * Reconciles the server's service when a network's identity changed since its last reconciliation: a split stops
+     * the network's relationships, and a heal starts them again, without a Federation block reporting either.
      */
-    public static synchronized void tick(ServerLevel level) {
-        var service = SERVICES.get(level);
+    public static synchronized void tick(MinecraftServer server) {
+        var service = SERVICES.get(server);
         if (service != null && service.reconciledEpoch != IdentityEpoch.current()) service.reconcileAll();
     }
 
     public static synchronized void reconcileIfPresent(ServerLevel level) {
-        var service = SERVICES.get(level);
+        var service = SERVICES.get(level.getServer());
         if (service != null) service.reconcileAll();
     }
 
@@ -141,13 +146,34 @@ public final class StorageMountService implements AutoCloseable {
         return sourceValidations;
     }
 
-    static synchronized StorageMountLevelCloseResult closeLevel(ServerLevel level) {
-        var registered = SERVICES.get(level);
-        var removed = SERVICES.remove(level);
-        var mountedProvidersBefore = removed == null ? 0 : removed.mounts.size();
-        var mountedProvidersRemoved = removed == null ? 0 : removed.closeState();
-        return new StorageMountLevelCloseResult(registered != null, mountedProvidersBefore, mountedProvidersRemoved,
-                registered != null && removed == registered && !SERVICES.containsKey(level));
+    /**
+     * After a level's nodes left the registry: while the server runs, reconciles at once, so the relationships that
+     * needed that level end now. During shutdown nothing must be rebuilt: the first level to close ends every
+     * relationship while AE2 still has every Grid (it destroys the level's nodes after this event).
+     */
+    static synchronized StorageMountLevelCloseResult levelClosed(ServerLevel level) {
+        var server = level.getServer();
+        var service = SERVICES.get(server);
+        if (service == null) {
+            return new StorageMountLevelCloseResult(false, 0, 0, false);
+        }
+        var mountedProvidersBefore = service.mounts.size();
+        var removedBefore = service.removedProviderCount;
+        if (server.isRunning()) {
+            service.reconcileAll();
+        } else {
+            service.closeState();
+        }
+        return new StorageMountLevelCloseResult(true, mountedProvidersBefore,
+                service.removedProviderCount - removedBefore, SERVICES.get(server) == service);
+    }
+
+    /** Ends every relationship once the server has stopped and drops its service. */
+    public static synchronized void closeServer(MinecraftServer server) {
+        var service = SERVICES.remove(server);
+        if (service != null) {
+            service.closeState();
+        }
     }
 
     public void observeConnectedGrids(IGrid first, IGrid second) {
