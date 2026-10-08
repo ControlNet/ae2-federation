@@ -41,7 +41,7 @@ final class PolicyActivationTest {
         assertEquals(PolicyActivationState.DISCONNECTED, PolicyActivation.classify(
                 request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY)));
 
-        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
+        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), "test:dimension", CONSUMER, PROVIDER);
         var unsettled = request(store, registry,
                 new IdentitySettlement(IdentityStatus.AMBIGUOUS_SPLIT, Optional.of(CONSUMER)),
                 settled(PROVIDER), BackendStatus.READY);
@@ -61,7 +61,7 @@ final class PolicyActivationTest {
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
-        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), CONSUMER, PROVIDER);
+        registry.upsertDirectBridge(new FederationDomainSourceId("confirmed-bridge"), "test:dimension", CONSUMER, PROVIDER);
 
         // When
         var state = PolicyActivation.classify(request(store, registry, settled(PROVIDER), settled(CONSUMER),

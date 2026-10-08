@@ -15,6 +15,7 @@ final class FederationDomainRegistryTest {
     private static final NetworkId NETWORK_A = network(1);
     private static final NetworkId NETWORK_B = network(2);
     private static final NetworkId NETWORK_C = network(3);
+    private static final String OTHER_DIMENSION = "test:other";
 
     @Test
     void directBridgesRemainSeparateWhenTheyShareNativeNetworks() {
@@ -23,7 +24,7 @@ final class FederationDomainRegistryTest {
                 .mapToObj(index -> new FederationDomainSourceId("bridge-" + index))
                 .toList();
 
-        sources.forEach(source -> registry.upsertDirectBridge(source, NETWORK_A, NETWORK_B));
+        sources.forEach(source -> registry.upsertDirectBridge(source, "test:dimension", NETWORK_A, NETWORK_B));
 
         assertEquals(4, registry.snapshot().federationDomains().size());
         assertEquals(4, registry.federationdomainsFor(NETWORK_A).size());
@@ -33,8 +34,8 @@ final class FederationDomainRegistryTest {
     @Test
     void sharedDomainAnswersForSingleAndSeveralMemberships() {
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
-        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab"), NETWORK_A, NETWORK_B);
-        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-bc"), NETWORK_B, NETWORK_C);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ab"), "test:dimension", NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-bc"), "test:dimension", NETWORK_B, NETWORK_C);
 
         // A and C are each in one domain, B in both.
         assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_B));
@@ -43,7 +44,7 @@ final class FederationDomainRegistryTest {
         assertFalse(registry.shareFederationDomain(NETWORK_A, NETWORK_C));
         assertFalse(registry.shareFederationDomain(NETWORK_A, network(9)));
 
-        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ac"), NETWORK_A, NETWORK_C);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-ac"), "test:dimension", NETWORK_A, NETWORK_C);
         assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_C));
         for (var first : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C)) {
             for (var second : java.util.List.of(NETWORK_A, NETWORK_B, NETWORK_C)) {
@@ -267,15 +268,15 @@ final class FederationDomainRegistryTest {
     void anUnchangedDirectBridgeKeepsItsReference() {
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
         var source = new FederationDomainSourceId("bridge");
-        registry.upsertDirectBridge(source, NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(source, "test:dimension", NETWORK_A, NETWORK_B);
         var reference = registry.federationDomain(FederationDomainId.direct(source)).orElseThrow().reference();
         var revision = registry.snapshot().topologyRevision();
 
-        registry.upsertDirectBridge(source, NETWORK_A, NETWORK_B);
+        registry.upsertDirectBridge(source, "test:dimension", NETWORK_A, NETWORK_B);
         assertTrue(registry.isCurrent(reference));
         assertEquals(revision, registry.snapshot().topologyRevision());
 
-        registry.upsertDirectBridge(source, NETWORK_A, NETWORK_C);
+        registry.upsertDirectBridge(source, "test:dimension", NETWORK_A, NETWORK_C);
         assertFalse(registry.isCurrent(reference));
     }
 
@@ -439,6 +440,81 @@ final class FederationDomainRegistryTest {
         }
     }
 
+    @Test
+    void federationLinksJoinNodesOfDifferentDimensions() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var here = node(1);
+        var there = node(OTHER_DIMENSION, 1);
+        registry.upsertNode(evidence(here, Map.of("tunnel", federation(there, "tunnel")), NETWORK_A));
+        registry.upsertNode(evidence(there, Map.of("tunnel", federation(here, "tunnel")), NETWORK_B));
+
+        var domain = registry.federationDomainOf(here).orElseThrow();
+        assertEquals(Set.of(here, there), domain.nodes(), "Equal positions in two dimensions are two nodes");
+        assertTrue(registry.shareFederationDomain(NETWORK_A, NETWORK_B));
+    }
+
+    @Test
+    void removingADimensionKeepsTheOthers() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var left = node(1);
+        var right = node(2);
+        var there = node(OTHER_DIMENSION, 1);
+        registry.upsertNode(evidence(left, Map.of("east", federation(right, "west")), NETWORK_A));
+        registry.upsertNode(evidence(right, Map.of("west", federation(left, "east")), NETWORK_B));
+        registry.upsertNode(evidence(there, Map.of(), NETWORK_C));
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-here"), "test:dimension", NETWORK_A, NETWORK_C);
+        registry.upsertDirectBridge(new FederationDomainSourceId("bridge-there"), OTHER_DIMENSION, NETWORK_B, NETWORK_C);
+        var kept = registry.federationDomainOf(left).orElseThrow().reference();
+        var keptBridge = registry.federationDomain(FederationDomainId.direct(new FederationDomainSourceId("bridge-here")))
+                .orElseThrow().reference();
+        var revision = registry.topologyRevision();
+
+        var removal = registry.removeDimension(OTHER_DIMENSION);
+
+        assertEquals(new FederationDomainRegistry.DimensionRemoval(OTHER_DIMENSION, 1, 1, 0), removal);
+        assertTrue(registry.isCurrent(kept), "A domain with no node in the removed dimension is unchanged");
+        assertTrue(registry.isCurrent(keptBridge), "A Bridge of another dimension stays");
+        assertTrue(registry.federationDomainOf(there).isEmpty());
+        assertFalse(registry.shareFederationDomain(NETWORK_B, NETWORK_C), "The removed dimension's Bridge is gone");
+        assertTrue(registry.topologyRevision() > revision);
+    }
+
+    @Test
+    void removingADimensionSplitsTheDomainsItJoined() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var here = node(1);
+        var there = node(OTHER_DIMENSION, 1);
+        registry.upsertNode(evidence(here, Map.of("tunnel", federation(there, "tunnel")), NETWORK_A));
+        registry.upsertNode(evidence(there, Map.of("tunnel", federation(here, "tunnel")), NETWORK_B));
+        var joined = registry.federationDomainOf(here).orElseThrow().reference();
+
+        registry.removeDimension(OTHER_DIMENSION);
+
+        assertFalse(registry.isCurrent(joined));
+        assertEquals(Set.of(here), registry.federationDomainOf(here).orElseThrow().nodes());
+        assertFalse(registry.shareFederationDomain(NETWORK_A, NETWORK_B));
+    }
+
+    @Test
+    void removingADimensionDropsItsDiagnostics() {
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        var here = node(1);
+        var waiting = node(OTHER_DIMENSION, 1);
+        var unloaded = node(OTHER_DIMENSION, 2);
+        registry.upsertNode(evidence(here, Map.of(), NETWORK_A));
+        registry.upsertNode(evidence(waiting, Map.of("east", federation(node(OTHER_DIMENSION, 3), "west")), NETWORK_B));
+        registry.upsertNode(evidence(unloaded, Map.of(), NETWORK_C));
+        registry.removeNode(unloaded);
+        registry.removeNode(here);
+        var invalidations = registry.snapshot().invalidations();
+        assertEquals(FederationDomainInvalidationReason.NON_RECIPROCAL_EDGE, invalidations.get(waiting));
+        assertEquals(FederationDomainInvalidationReason.SOURCE_UNLOADED, invalidations.get(unloaded));
+
+        registry.removeDimension(OTHER_DIMENSION);
+
+        assertEquals(Map.of(here, FederationDomainInvalidationReason.SOURCE_UNLOADED), registry.snapshot().invalidations());
+    }
+
     private static Set<FederationDomainId> shared(FederationDomainRegistry registry, NetworkId first, NetworkId second) {
         var shared = new java.util.HashSet<>(registry.federationdomainsFor(first));
         shared.retainAll(registry.federationdomainsFor(second));
@@ -463,6 +539,10 @@ final class FederationDomainRegistryTest {
 
     private static FederationDomainNodeId node(long position) {
         return new FederationDomainNodeId("test:dimension", position);
+    }
+
+    private static FederationDomainNodeId node(String dimension, long position) {
+        return new FederationDomainNodeId(dimension, position);
     }
 
     private static NetworkId network(long value) {

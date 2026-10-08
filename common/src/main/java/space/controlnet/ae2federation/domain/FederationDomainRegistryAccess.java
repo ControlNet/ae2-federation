@@ -74,9 +74,12 @@ public final class FederationDomainRegistryAccess {
     }
 
     public static FederationDomainNodeId nodeId(ServerLevel level, BlockPos position) {
-        // One shared string per dimension: node ids compare it on every registry lookup.
-        var dimension = DIMENSION_NAMES.computeIfAbsent(level.dimension(), key -> key.location().toString());
-        return new FederationDomainNodeId(dimension, position.asLong());
+        return new FederationDomainNodeId(dimension(level), position.asLong());
+    }
+
+    /** The dimension string of the level's node ids; one shared string per dimension, compared on every lookup. */
+    public static String dimension(ServerLevel level) {
+        return DIMENSION_NAMES.computeIfAbsent(level.dimension(), key -> key.location().toString());
     }
 
     private static final java.util.Map<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>, String>
