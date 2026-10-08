@@ -455,6 +455,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
                 objects(choices, "processingProviders"), names);
     }
 
+    /** The return rows' Endpoint column, as {@code provider.lss} sets it. */
+    private static final int RETURN_WHERE_WIDTH = 124;
+
     /** One line per bound Lane: its Endpoint, then whether results wait in its buffer or a send is still going. */
     private void renderReturns(UI ui, List<JsonObject> targets) {
         var list = element(ui, "provider_return_list", ScrollerView.class);
@@ -486,6 +489,9 @@ final class FederationProviderMenuHolder implements PlayerUIMenuType.PlayerUIHol
                     lane.get("position").getAsString(), target == null || !target.has("dimension") ? ""
                             : target.get("dimension").getAsString(), FederationProcessingGraph.playerDimension()))
                     : Component.literal(lane.get("endpoint").getAsString().substring(0, 8)));
+            // Wider than the column when it names another dimension, so the name is not cut off.
+            int whereWidth = net.minecraft.client.Minecraft.getInstance().font.width(where.getText()) + 4;
+            if (whereWidth > RETURN_WHERE_WIDTH) where.layout(style -> style.width(whereWidth));
             var state = new Label();
             state.addClass("provider-return-state");
             state.setId("provider_return_state_" + lane.get("lane").getAsInt());
