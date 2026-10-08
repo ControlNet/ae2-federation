@@ -1,9 +1,11 @@
 package space.controlnet.ae2federation.router;
 
+import appeng.api.parts.IPartHost;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 
 /** Read-only projection of the stateless Federation port registrations onto a chunk snapshot. */
@@ -25,7 +27,11 @@ public final class CableVisualConnections {
             if (block instanceof FederationCableBlock || block instanceof RouterBlock
                     || (block instanceof FederationPatternProviderBlock
                             || block instanceof space.controlnet.ae2federation.processing.endpoint.EndpointBlock)
-                    && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
+                    && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()
+                    // A Federation P2P tunnel's front is its port.
+                    || neighbor.hasBlockEntity()
+                            && level.getBlockEntity(position.relative(direction)) instanceof IPartHost host
+                            && host.getPart(direction.getOpposite()) instanceof FederationP2PTunnelPart) {
                 mask |= 1 << bit;
             }
         }

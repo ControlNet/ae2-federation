@@ -6462,7 +6462,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.')
+                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.') || testCase.id.startsWith('p2p.')
                     || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                     || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                     || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')) ? 1 : 2,
@@ -6476,7 +6476,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.')
+                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.') || testCase.id.startsWith('p2p.')
                             || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                             || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                             || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')])
@@ -6751,6 +6751,10 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'cross-dimension.two-domains':
                 case 'cross-dimension.unload-keeps-overworld':
                 case 'cross-dimension.quantum-bridge-projection':
+                case 'p2p.tunnel-shares-storage':
+                case 'p2p.outputs-link-through-input':
+                case 'p2p.tunnels-stay-apart':
+                case 'p2p.link-follows-power-and-reload':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeProperties = new Properties()

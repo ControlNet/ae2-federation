@@ -18,6 +18,7 @@
   "ae2federation.pack.guide_omnisequence": "AE2 Federation guide: OmniSequence: Transfinite examples",
   "ae2federation.pack.guide_useless_mod": "AE2 Federation guide: UselessMod examples",
   "item.ae2federation.bridge": "ME Federation Bridge",
+  "item.ae2federation.federation_p2p_tunnel": "Federation P2P Tunnel",
   "item.ae2federation.nexus_processor": "Nexus Processor",
   "item.ae2federation.nexus_core": "Nexus Core",
   "block.ae2federation.router": "ME Federation Router",
