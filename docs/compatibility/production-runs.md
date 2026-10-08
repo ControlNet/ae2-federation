@@ -143,6 +143,11 @@ CDN and checked against their pinned SHA-512.
 
 ATM10 needs about two minutes to load and 8 GB of heap. A test run takes about six minutes.
 
+On 2026-10-08 every profile, addon and modpack, ran again with the JAR built from `a2a20de` (SHA-256
+`96a6d26e1381c65e7309e4d47e7852adee91e567562652ff836f730b23932ad7`, the same JAR as the
+[cross-dimension production run](../testing/production-jar.md#cross-dimension-production-run)): 28 of 28 profiles and
+876 of 876 tests passed, with the per-profile counts in the tables above.
+
 ## Findings
 
 The first modpack runs found two bugs in AE2 Federation 0.0.4, both fixed on dev:
