@@ -233,3 +233,64 @@ Federation payload's bidirectional topology or required cross-dimensional lifecy
 
 Product-level suggestions are maintained in [the P2P idea](../../docs/ideas/federation-p2p.md). No architecture,
 operating cost, visual design or implementation schedule is selected by the comparative research.
+
+## Re-check against the code (2026-10-08)
+
+The owner asked for a feasibility read of the idea again after the crafting projection, storage provenance and
+Bridge part work landed. Nothing was implemented. Java paths are relative to
+`common/src/main/java/space/controlnet/ae2federation/`.
+
+### Same dimension: the 10-02 conclusion still holds
+
+- `domain/FederationDomainNodeId` is still `(dimension, blockPosition)` with no part or face discriminator, and the
+  registry joins every port of one node. Two Federation P2P parts on one cable bus would share a node and be joined.
+  Only three places construct node ids (`FederationDomainRegistryAccess.nodeId` and two in
+  `client/policy/FederationDomainPolicySession`), so adding a discriminator is narrow at construction; the wider cost
+  is `FederationPort` (still `ownerPosition` + `outwardFace`) and the cable's peer resolution
+  (`router/FederationCableBlockEntity.publishFederationDomainTopology` derives the peer node from
+  `peer.ownerPosition()`), UI graph ids and saved references.
+- Port evidence already names the face (`FederationDomainPortId(node, face)`) and `FederationDomainPortEvidence.Federation`
+  links any two ports by reciprocal evidence, not distance, so a tunnel's virtual edges fit the existing model.
+- `router/CableVisualConnections` is still a closed `instanceof` list (cable, Router, Provider, Endpoint); a part on a
+  cable bus gets no cable arm without a change there.
+- `bridge/MultipartBridgePart` is the only AE2 part and extends `AEBasePart`, not `P2PTunnelPart`; it joins two native
+  networks through `FederationDomainRegistry.upsertDirectBridge` (a network-level two-member domain), which is a
+  different shape from a cable-equivalent tunnel. Its part registration and lifecycle listeners are reusable.
+- `P2PTunnelPart` lives in `appeng.parts.p2p` (implementation, not API). The project builds against 19.2.17 with
+  range `[19.2.9,)`; a subclass must be compile-checked at the lower bound when implemented.
+
+### Cross dimension: AE2 is ready, Federation's runtime is not
+
+AE2 pairs P2P by Grid, not dimension, so a carrier Grid that spans dimensions (Quantum Network Bridge) already pairs
+tunnels across them. What is per level is Federation's own runtime:
+
+| Per-level state | Scope today |
+|---|---|
+| `persistence/PolicySavedData` | server-wide already (overworld data storage) |
+| `processing/provider/ProviderPlacementRegistry` | server-wide, stores `GlobalPos` |
+| `domain/FederationDomainRegistryAccess.REGISTRIES` | one domain registry per `ServerLevel` |
+| `storage/mount/StorageMountService`, `crafting/projection/CraftingProjectionService`, `energy/EnergySharingService` | one service per level; their `ObservedGrids` work on `IGrid` identity, but grids are reported only by Federation blocks of that level |
+| `policy/PolicyService` | per-level service over the shared saved data |
+| `processing/endpoint/EndpointTargetBinding`, `processing/provider/ProviderObservationRegistry` | per level |
+| `observability/LevelObservabilityService`, `domain/FederationBindingRefresh` | per level |
+
+One concrete correctness gap: `processing/provider/ProviderTargetAuthorization.resolve` resolves the Endpoint's
+`BlockPos` in `ProviderAuthorizationContext.level()`, the Provider's own level. An Endpoint reached through a tunnel
+in another dimension would be looked up at the right coordinates in the wrong world. Target requests need a dimension.
+
+`FederationDomainNodeId` already carries the dimension string and the registry never filters on it, so the gating
+implementation decision is either one server-wide domain registry, or per-level registries with cross-level link
+resolution. Either way every per-level service above must learn about domains whose members live in other levels.
+This is left to the implementing agent, per the deferral boundary above.
+
+### Tests
+
+No GameTest places anything in a second dimension (the `NETHER` hits in testmod are item names). A cross-dimension
+fixture needs its own placement helper on `server.getLevel(...)`, outside `GameTestHelper`'s relative positions, and
+cleanup of what it placed there. This is a real line item, not a reuse.
+
+### Size
+
+Roughly: the same-dimension tunnel (part, attunement, node discriminator, cable arms, lifecycle, tests) is one
+feature; the cross-dimension requirement adds about as much again, dominated by the registry scope decision, the
+level-bound services, target addressing and the new test harness.
