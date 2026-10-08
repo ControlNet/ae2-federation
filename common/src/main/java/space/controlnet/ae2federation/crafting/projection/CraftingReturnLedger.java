@@ -35,7 +35,7 @@ import space.controlnet.ae2federation.identity.NetworkId;
  * network until its storage or the consumer takes it.
  */
 public final class CraftingReturnLedger extends SavedData {
-    private static final String DATA_NAME = "ae2federation_crafting_returns";
+    public static final String DATA_NAME = "ae2federation_crafting_returns";
     private static final Factory<CraftingReturnLedger> FACTORY =
             new Factory<>(CraftingReturnLedger::new, CraftingReturnLedger::load);
 

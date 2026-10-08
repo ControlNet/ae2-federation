@@ -35,9 +35,11 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.identity.NetworkId;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.policy.PolicyCapability;
 import space.controlnet.ae2federation.policy.PolicyEdit;
@@ -49,6 +51,8 @@ import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.test.policy.PolicyBridgeFixtures;
 import space.controlnet.ae2federation.test.world.BlockEntityReload;
+import space.controlnet.ae2federation.test.world.OtherDimensionSite;
+import space.controlnet.ae2federation.test.world.QuantumBridges;
 
 /**
  * Two networks joined by a Bridge: the consumer (the Bridge's main side) has a CPU and an ME chest; the provider (its
@@ -63,7 +67,19 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private final GameTestHelper helper;
     private final PolicyBridgeFixtures bridge;
     private final CraftingNativeSourceFixture assembler;
-    private final BlockPos consumerCpuPos = BASE.west();
+    /** The consumer's overworld CPU: beside the Bridge, or beside the cable to the Quantum Bridge when there is one. */
+    private final BlockPos consumerCpuPos;
+    /** The overworld Quantum Bridge's link chamber; its ring's east edge touches the consumer's cable. */
+    private static final BlockPos OVERWORLD_CHAMBER = BASE.offset(-4, 0, 2);
+    private static final BlockPos NETHER_CHAMBER = new BlockPos(1, 0, 1);
+    private static final BlockPos NETHER_CELL = NETHER_CHAMBER.east(2);
+    private static final BlockPos NETHER_CPU = NETHER_CHAMBER.south(2);
+    public static final BlockPos SITE_SIZE = new BlockPos(5, 2, 5);
+    private final ConsumerCpus cpus;
+    private final @Nullable OtherDimensionSite site;
+    private final long frequency;
+    private @Nullable NetworkId consumerId;
+    private @Nullable NetworkId providerId;
     private final BlockPos processingProviderPos = BASE.east().north(2);
     private final BlockPos machinePos = BASE.east().north(3);
     private boolean bridgePlaced;
@@ -73,8 +89,25 @@ public final class PatternProjectionFixture implements AutoCloseable {
     private Future<ICraftingPlan> planFuture;
     private ICraftingPlan plan;
 
+    /**
+     * Where the consumer's CPUs are. {@code NETHER}: its only CPU is in a nether site, on the consumer network over a
+     * real Quantum Network Bridge, so its chunk can unload while the rest of the consumer network stays loaded.
+     * {@code BOTH}: one in the overworld and one in the nether.
+     */
+    public enum ConsumerCpus {
+        HERE, NETHER, BOTH
+    }
+
     public PatternProjectionFixture(GameTestHelper helper) {
+        this(helper, ConsumerCpus.HERE);
+    }
+
+    public PatternProjectionFixture(GameTestHelper helper, ConsumerCpus cpus) {
         this.helper = helper;
+        this.cpus = cpus;
+        consumerCpuPos = cpus == ConsumerCpus.HERE ? BASE.west() : BASE.offset(-2, 0, -1);
+        site = cpus == ConsumerCpus.HERE ? null : OtherDimensionSite.nether(helper, SITE_SIZE);
+        frequency = QuantumBridges.randomFrequency(helper);
         assembler = new CraftingNativeSourceFixture(helper, BASE, false, false);
         bridge = new PolicyBridgeFixtures(helper, BASE);
         bridge.installStorageCells();
@@ -82,21 +115,25 @@ public final class PatternProjectionFixture implements AutoCloseable {
 
     /** Advances the placement one step at a time; true once both networks and every provider are ready. */
     public boolean ready() {
-        if (!bridge.networksSettled() || !assembler.advanceInitialPlacement(bridge.outerNetwork())) return false;
+        if (!bridge.networksSettled() || !assembler.advanceInitialPlacement(providerNetwork())) return false;
         if (!processingPlaced) {
             // It pushes only north, into the machine, and joins the provider network through its other sides.
             helper.setBlock(processingProviderPos, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState().setValue(
                     appeng.block.crafting.PatternProviderBlock.PUSH_DIRECTION, appeng.block.crafting.PushDirection.NORTH));
             helper.setBlock(machinePos, Blocks.CHEST);
             processingProvider().getMainNode().loadFromNBT(
-                    NetworkIdentityNodeSeed.managedNode("proxy", bridge.outerNetwork()));
+                    NetworkIdentityNodeSeed.managedNode("proxy", providerNetwork()));
             processingPlaced = true;
             return false;
         }
         if (!consumerCpuPlaced) {
-            helper.setBlock(consumerCpuPos, AEBlocks.CRAFTING_STORAGE_1K.block());
-            helper.<CraftingBlockEntity>getBlockEntity(consumerCpuPos).getMainNode()
-                    .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", bridge.mainNetwork()));
+            if (site != null && !site.ready()) return false;
+            if (cpus != ConsumerCpus.NETHER) {
+                helper.setBlock(consumerCpuPos, AEBlocks.CRAFTING_STORAGE_1K.block());
+                helper.<CraftingBlockEntity>getBlockEntity(consumerCpuPos).getMainNode()
+                        .loadFromNBT(NetworkIdentityNodeSeed.managedNode("proxy", consumerNetwork()));
+            }
+            if (site != null) placeNetherCpu();
             consumerCpuPlaced = true;
             return false;
         }
@@ -116,22 +153,36 @@ public final class PatternProjectionFixture implements AutoCloseable {
             processingPatternInstalled = true;
         }
         return assembler.initialReady(providerGrid()) && providerGrid().getCraftingService().isCraftable(stone())
-                && !consumerService().getCpus().isEmpty()
+                && consumerService().getCpus().size() == (cpus == ConsumerCpus.BOTH ? 2 : 1)
                 && FederationDomainRegistryAccess.confirmedNetworkId(consumerGrid()).isPresent()
                 && FederationDomainRegistryAccess.confirmedNetworkId(providerGrid()).isPresent();
     }
 
+    /**
+     * The consumer network's id, read once it is confirmed and kept: while part of a Grid is unloaded its identity
+     * may not be confirmed, but the network is the same.
+     */
+    public NetworkId consumerNetwork() {
+        if (consumerId == null) consumerId = bridge.mainNetwork();
+        return consumerId;
+    }
+
+    public NetworkId providerNetwork() {
+        if (providerId == null) providerId = bridge.outerNetwork();
+        return providerId;
+    }
+
     public PolicyKey crafting() {
-        return new PolicyKey(bridge.mainNetwork(), bridge.outerNetwork(), PolicyCapability.CRAFTING);
+        return new PolicyKey(consumerNetwork(), providerNetwork(), PolicyCapability.CRAFTING);
     }
 
     public PolicyKey storage() {
-        return new PolicyKey(bridge.mainNetwork(), bridge.outerNetwork(), PolicyCapability.STORAGE);
+        return new PolicyKey(consumerNetwork(), providerNetwork(), PolicyCapability.STORAGE);
     }
 
     /** The provider network using the consumer's storage, the reverse of {@link #storage()}. */
     public PolicyKey reverseStorage() {
-        return new PolicyKey(bridge.outerNetwork(), bridge.mainNetwork(), PolicyCapability.STORAGE);
+        return new PolicyKey(providerNetwork(), consumerNetwork(), PolicyCapability.STORAGE);
     }
 
     /** The consumer uses the provider's crafting, with the storage rule crafting needs, in one edit. */
@@ -183,19 +234,31 @@ public final class PatternProjectionFixture implements AutoCloseable {
     }
 
     public long owed(AEKey key) {
-        return CraftingReturnLedger.get(helper.getLevel()).owed(bridge.outerNetwork(), bridge.mainNetwork(), key);
+        return CraftingReturnLedger.get(helper.getLevel()).owed(providerNetwork(), consumerNetwork(), key);
     }
 
     /** What the ledger says of {@code key}: owed, held, transit stock, and the consumer's watched jobs. */
     public String returns(AEKey key) {
         var ledger = CraftingReturnLedger.get(helper.getLevel());
         return "owed " + owed(key) + ", held " + heldForConsumer(key) + ", transit "
-                + ledger.transit(bridge.outerNetwork(), key) + ", jobs " + ledger.jobs(bridge.mainNetwork())
-                + ", on the provider network " + onProviderNetwork(key);
+                + ledger.transit(providerNetwork(), key) + ", jobs " + ledger.jobs(consumerNetwork())
+                + ", on the provider network " + onProviderNetwork(key) + " (its chest " + held(providerChest(), key)
+                + "), in the consumer's chest " + held(consumerChest(), key) + ", consumer CPUs " + visibleConsumerCpus()
+                + " (busy " + busyConsumerCpus() + ")";
+    }
+
+    /** The consumer's jobs the ledger watches. */
+    public int watchedJobs() {
+        return CraftingReturnLedger.get(helper.getLevel()).jobs(consumerNetwork()).size();
+    }
+
+    /** What the provider network's transit stock holds of {@code key}. */
+    public long transit(AEKey key) {
+        return CraftingReturnLedger.get(helper.getLevel()).transit(providerNetwork(), key);
     }
 
     public long heldForConsumer(AEKey key) {
-        return CraftingReturnLedger.get(helper.getLevel()).held(bridge.outerNetwork(), bridge.mainNetwork(), key);
+        return CraftingReturnLedger.get(helper.getLevel()).held(providerNetwork(), consumerNetwork(), key);
     }
 
     /** Plans {@code amount} of {@code what} on the consumer's own crafting service, as its ME Terminal does. */
@@ -307,8 +370,21 @@ public final class PatternProjectionFixture implements AutoCloseable {
      * anew from the saved data, the consumer's running job included.
      */
     public void reloadAll() {
-        BlockEntityReload.reload(helper, BASE.offset(-1, -1, -3), BASE.offset(3, 1, 2));
+        BlockEntityReload.reload(helper, BASE.offset(site == null ? -1 : -5, -1, -3), BASE.offset(3, 1, 3));
         bridge.refreshFirstBridgePart();
+    }
+
+    /**
+     * True once both networks stand again after {@link #reloadAll} and the Bridge links them, whether or not the
+     * consumer's CPU is loaded.
+     */
+    public boolean reloadedWithoutConsumerCpu() {
+        if (!bridge.networksSettled()) return false;
+        if (!bridge.firstBridgeReady()) {
+            bridge.refreshFirstBridge();
+            return false;
+        }
+        return processingProvider().getMainNode().getGrid() == providerGrid();
     }
 
     /** True once both networks stand again after {@link #reloadAll} and the Bridge links them. */
@@ -458,8 +534,62 @@ public final class PatternProjectionFixture implements AutoCloseable {
         }
     }
 
+    /**
+     * Runs the consumer network's red cable west and south from the Bridge to a Quantum Bridge, whose twin in the
+     * nether site has its own energy cell and the consumer's CPU. Every node carries the consumer's identity, so the
+     * link merges no second one
+     * (cables join as AE2 places them, within their own cable bus).
+     */
+    private void placeNetherCpu() {
+        var main = consumerNetwork();
+        for (var cable : new BlockPos[] {BASE.west(), BASE.west(2), BASE.offset(-2, 0, 1), BASE.offset(-2, 0, 2)}) {
+            appeng.api.parts.PartHelper.setPart(helper.getLevel(), helper.absolutePos(cable), null, null,
+                    AEParts.GLASS_CABLE.item(AEColor.RED));
+        }
+        QuantumBridges.build(OVERWORLD_CHAMBER, frequency, main, (position, state) -> {
+            helper.setBlock(position, state);
+            return helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        });
+        QuantumBridges.build(NETHER_CHAMBER, frequency, main, (position, state) -> {
+            site.setBlock(position, state);
+            return site.getBlockEntity(position);
+        });
+        site.setBlock(NETHER_CELL, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+        QuantumBridges.seed(site.getBlockEntity(NETHER_CELL), main);
+        site.setBlock(NETHER_CPU, AEBlocks.CRAFTING_STORAGE_1K.block().defaultBlockState());
+        QuantumBridges.seed(site.getBlockEntity(NETHER_CPU), main);
+    }
+
+    public OtherDimensionSite site() {
+        return Objects.requireNonNull(site, "This fixture has no nether site");
+    }
+
+    /** The CPU in the nether site, while its chunk is loaded and it has formed; null otherwise. */
+    public @Nullable CraftingCPUCluster netherCpu() {
+        var level = site().level();
+        var position = site().absolute(NETHER_CPU);
+        if (!level.isLoaded(position) || !(level.getBlockEntity(position) instanceof CraftingBlockEntity cpu)) return null;
+        return cpu.getCluster();
+    }
+
+    /** The consumer's CPU in the overworld. */
+    public CraftingCPUCluster overworldCpu() {
+        return Objects.requireNonNull(helper.<CraftingBlockEntity>getBlockEntity(consumerCpuPos).getCluster());
+    }
+
+    /** Submits the plan to {@code cpu} of the consumer, as a player choosing it in the terminal does. */
+    public boolean submitOn(appeng.api.networking.crafting.ICraftingCPU cpu) {
+        return consumerService().submitJob(plan, null, cpu, true, IActionSource.empty()).successful();
+    }
+
+    /** The CPUs the consumer's crafting service lists now. */
+    public int visibleConsumerCpus() {
+        return consumerService().getCpus().size();
+    }
+
     @Override
     public void close() {
+        if (site != null) site.close();
         bridge.close();
     }
 }

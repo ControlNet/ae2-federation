@@ -6,6 +6,7 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.IStorageMounts;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
 import java.util.function.Function;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -47,14 +48,28 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
     }
 
     /**
-     * How much of {@code what} the consumer's CPUs still wait for, at most {@code owed}. AE2 counts only its own CPU
-     * clusters in the requested amount; an addon's CPU that it lists as requesting the key, such as Neo ECO's
+     * How much of {@code what} the consumer's CPUs still wait for, at most {@code owed}, counted over the CPUs AE2
+     * lists as active. In the tick a CPU leaves the Grid (its chunk unloads), AE2's requested amount and requested keys
+     * still count it until the end of the tick, although its crafting storage no longer feeds it: what was handed to
+     * the consumer then would land in its plain storage, where the job never finds it.
+     *
+     * <p>AE2 counts only its own CPU clusters; an addon's CPU that AE2 lists as requesting the key, such as Neo ECO's
      * computation system, waits for an amount AE2 cannot tell, so it is taken to wait for all it is owed.
      */
     static long waiting(IGrid consumer, AEKey what, long owed) {
         var crafting = consumer.getCraftingService();
-        long requested = crafting.getRequestedAmount(what);
-        return requested > 0 || !crafting.isRequesting(what) ? Math.min(requested, owed) : owed;
+        if (crafting.getRequestedAmount(what) <= 0 && !crafting.isRequesting(what)) return 0;
+        long requested = 0;
+        boolean addonBusy = false;
+        for (var cpu : crafting.getCpus()) {
+            if (cpu instanceof CraftingCPUCluster cluster) {
+                requested += cluster.craftingLogic.getWaitingFor(what);
+            } else if (cpu.isBusy()) {
+                addonBusy = true;
+            }
+        }
+        if (requested > 0 || !addonBusy || !crafting.isRequesting(what)) return Math.min(requested, owed);
+        return owed;
     }
 
     @Override
