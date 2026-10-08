@@ -1894,8 +1894,7 @@ final class FederationTopologyView {
     }
 
     private static Component dimension(String id) {
-        var path = id.substring(id.indexOf(':') + 1);
-        return Component.translatableWithFallback("ae2federation.ui.topology.dimension." + path, path);
+        return DevicePlace.dimensionName(id);
     }
 
     private void renderPair(Network a, Network b) {

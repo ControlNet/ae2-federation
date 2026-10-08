@@ -752,7 +752,7 @@ public final class FederationProcessingGraph {
                     .tooltips(tr("returns_badge_help", returned)));
             name.addChild(badge);
         }
-        var where = text(endpoint.has("position") ? Component.literal(endpoint.get("position").getAsString())
+        var where = text(endpoint.has("position") ? place(endpoint)
                 : Component.literal(endpoint.get("label").getAsString()), FederationTheme.DARK_MUTED);
         var state = new Label();
         state.addClass("processing-endpoint-state");
@@ -842,7 +842,7 @@ public final class FederationProcessingGraph {
             var card = endpointCards.get(endpoint.get("id").getAsString());
             if (card == null) continue;
             boolean match = matches(tr("endpoint_title", networkName(endpoint)).getString() + " "
-                    + (endpoint.has("position") ? endpoint.get("position").getAsString() : endpoint.get("label").getAsString()));
+                    + (endpoint.has("position") ? place(endpoint).getString() : endpoint.get("label").getAsString()));
             card.setDisplay(match);
             any |= match;
         }
@@ -924,7 +924,8 @@ public final class FederationProcessingGraph {
                 title.setText(Component.empty()
                         .append(Component.literal("■ ").withStyle(Style.EMPTY.withColor(accent(endpoint) & 0xffffff)))
                         .append(tr("endpoint_title", networkName(endpoint)))
-                        .append(endpoint.has("position") ? " @ " + endpoint.get("position").getAsString() : ""));
+                        .append(endpoint.has("position") ? Component.literal(" @ ").append(place(endpoint))
+                                : Component.empty()));
                 fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
@@ -1095,7 +1096,7 @@ public final class FederationProcessingGraph {
         if (endpoint != null && endpoint.has("position")) {
             var where = endpoint.get("position").getAsString();
             showDevice(toPreview, endpoint, where);
-            toLabel.setText(tr("end_endpoint", where));
+            toLabel.setText(tr("end_endpoint", place(endpoint)));
         }
         highlight.setActive(!focusMarks().isEmpty());
     }
@@ -1224,8 +1225,13 @@ public final class FederationProcessingGraph {
     }
 
     private static Component endpointName(JsonObject endpoint) {
-        return endpoint.has("position") ? FederationWorkspace.tr("endpoint_at", endpoint.get("position").getAsString())
+        return endpoint.has("position") ? FederationWorkspace.tr("endpoint_at", place(endpoint))
                 : Component.literal(endpoint.get("label").getAsString());
+    }
+
+    /** A device's coordinates, with its dimension when it is not in the player's. */
+    private static Component place(JsonObject device) {
+        return DevicePlace.of(device.get("position").getAsString(), dimension(device), playerDimension());
     }
 
     /** Where the Endpoint's owner is, "@ x, y, z", or its short identity when it is not a loaded block. */
