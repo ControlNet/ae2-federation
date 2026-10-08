@@ -6757,6 +6757,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'p2p.link-follows-power-and-reload':
                 case 'p2p.across-dimensions-shares-networks':
                 case 'p2p.across-dimensions-drives-endpoint':
+                case 'p2p.frequency-and-input-changes':
+                case 'p2p.channel-shortage':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeProperties = new Properties()
