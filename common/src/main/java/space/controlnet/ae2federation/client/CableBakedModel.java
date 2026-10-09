@@ -57,12 +57,16 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static FederationCableBuilder builder() {
         var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
         // TEMPORARY: the old cable's textures, until the artist's dense cable textures replace them.
-        return new FederationCableBuilder(atlas.apply(texture("glass")), atlas.apply(texture("collar")),
-                atlas.apply(texture("stream_u")), atlas.apply(texture("stream_v")));
+        return new FederationCableBuilder(
+                atlas.apply(texture("dense/core")),
+                atlas.apply(texture("dense/line")),
+                atlas.apply(texture("dense/connector")),
+                atlas.apply(texture("dense/stream_u")),
+                atlas.apply(texture("dense/stream_v")));
     }
 
     private static ResourceLocation texture(String name) {
-        return ResourceLocation.fromNamespaceAndPath("ae2federation", "block/" + name);
+        return ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/" + name);
     }
 
     private FederationCableBuilder.Quads quads(ModelData data) {

@@ -29,18 +29,18 @@ public final class CableShapes {
         if (CableVisualConnections.straight(connections)) {
             int first = Integer.numberOfTrailingZeros(CableVisualConnections.maskOf(connections));
             return switch (CableVisualConnections.DIRECTIONS[first].getAxis()) {
-                case X -> Block.box(0, 3, 3, 16, 13, 13);
-                case Y -> Block.box(3, 0, 3, 13, 16, 13);
-                case Z -> Block.box(3, 3, 0, 13, 13, 16);
+                case X -> Block.box(0, 2, 2, 16, 14, 14);
+                case Y -> Block.box(2, 0, 2, 14, 16, 14);
+                case Z -> Block.box(2, 2, 0, 14, 14, 16);
             };
         }
-        var shape = Block.box(3, 3, 3, 13, 13, 13);
+        var shape = Block.box(2, 2, 2, 14, 14, 14);
         for (var side : CableVisualConnections.DIRECTIONS) {
             switch (CableVisualConnections.kind(connections, side)) {
-                case CableVisualConnections.DENSE -> shape = Shapes.or(shape, arm(side, 13, 4, 12));
-                case CableVisualConnections.COVERED_CAP -> shape = Shapes.or(shape, arm(side, 13, 6, 10),
+                case CableVisualConnections.DENSE -> shape = Shapes.or(shape, arm(side, 13, 3, 13));
+                case CableVisualConnections.COVERED_CAP -> shape = Shapes.or(shape, arm(side, 12, 4, 12),
                         arm(side, 12, 5, 11));
-                case CableVisualConnections.COVERED -> shape = Shapes.or(shape, arm(side, 13, 6, 10));
+                case CableVisualConnections.COVERED -> shape = Shapes.or(shape, arm(side, 6, 6, 6));
                 default -> {
                 }
             }
