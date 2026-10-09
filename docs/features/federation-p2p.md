@@ -34,8 +34,8 @@ display and so on) are not current requirements.
     returns and the FE relay.
   - Nothing forces chunks to load. As with AE2's Quantum Bridge, an unloaded end drops the link, and the link returns
     when the end loads again.
-- **Appearance:** AE2's P2P base model with a teal type panel. The panel is drawn from scratch by
-  `tools/visual/p2p_panel_texture.py`. Federation Cable draws an arm toward a tunnel's front.
+- **Appearance:** AE2's P2P base model with a teal type panel drawn by the artist. Federation Cable draws a thin
+  covered arm toward a tunnel's front.
 
 ## Runtime groundwork
 

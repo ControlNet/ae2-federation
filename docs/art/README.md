@@ -17,9 +17,8 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow). The optional game inspection
   tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates, as one of
-  three connection kinds per side. Cable and Router accept all sides (dense); Provider and Endpoint only their facing
-  (covered, with a cap); a Federation P2P tunnel only its front (covered, no cap); vanilla AE2 blocks and Bridge are
-  excluded.
+  two connection kinds per side. Cable and Router accept all sides (dense); Provider and Endpoint only their facing
+  (dense); a Federation P2P tunnel only its front (covered); vanilla AE2 blocks and Bridge are excluded.
   This matches `RouterRegistration`, `ProcessingRegistration`, `FederationPort.connectsTo` and `CableFacePort.resolve`.
   If port registrations change in future, update this projection and its in-game placement checks together.
 - `CableBakedModel` and `FederationCableBuilder`: AE2's dense cable geometry, built in code with AE2's `CubeBuilder` the
@@ -34,9 +33,8 @@ as-is. `validate_assets.py` regenerates into a temporary directory and compares 
 placeholder overwrite cannot silently pass validation. It also checks all local parents/textures and blockstate refs.
 
 Current development builds use the [standard-shader cable flow renderer](cable-flow-prototype/README.md)
-automatically. It retains the V07 enclosure and substitutes a BER interior in
-world rendering only; no command or JVM option is required. The generator also
-creates its separate `textures/entity/cable_flow.png`; item models retain V07.
+automatically. It draws a BER interior inside the cable in world rendering only; no command or JVM option is
+required. Its `textures/entity/cable_flow.png` is the artist's.
 The implementation descriptions and V07 evidence below document the original
 baked rendering baseline. Published version 0.0.1 still uses the earlier opt-in
 prototype behavior.
@@ -46,20 +44,28 @@ prototype behavior.
 Since 2026-10-09 the Federation Cable copies the model of AE2's dense cable. `FederationCableBuilder` is adapted from
 AE2 19.2.17's `CableBuilder` and from AE2 Lightning Tech Reborn's `OverloadedCableRenderHelper` (both LGPL-3.0; the
 file keeps their notice) and draws with AE2's own `appeng.client.render.cablebus.CubeBuilder`, an AE2 class outside
-its API package. Each side connects as AE2's `CableBusContainer` connects a dense cable: the smaller of the cable's
-type and the neighbour's. A Federation Cable or Router is dense (as AE2's Controller is), a Provider or Endpoint front
-is smart (as AE2's Pattern Provider and Interface are), so that arm shrinks to a covered one with a cap against the
-machine, and a Federation P2P tunnel, a part on another cable bus, gets a covered arm without a cap. Two opposite
-dense connections and nothing else make one straight tube.
+its API package. A Federation Cable, a Router, and a Provider or Endpoint front get a dense arm; AE2 would shrink the
+arm to a smart machine to a covered one with a cap, but at the artist's request a Federation machine's port joins the
+cable as a Router does. A Federation P2P tunnel, a part on another cable bus, gets AE2's thin covered arm. Two opposite
+dense connections and nothing else make one straight tube, so a cable between a Router and a Provider front is one.
 
-The shell is translucent so the BER flow shows through it. Faces only an opaque shell would hide are therefore not
-drawn: arms start at the core's surface and have no inner end, and a straight tube has no end caps and stays inside
-its block. From outside an opaque shell this looks the same as AE2.
+| Piece | Size (voxels) | Texture |
+| --- | --- | --- |
+| Core | 12 (2 to 14) | `part/cable/dense/core` |
+| Dense arm | 10 across (3 to 13), from the core to the face | `part/cable/dense/line` |
+| Straight tube | 12 across, the whole block | `part/cable/dense/line` |
+| Covered arm (P2P) | 4 across (6 to 10), from the core to the face | `part/cable/dense/core` |
 
-**Temporary textures.** Until the artist's dense cable textures arrive, the shell uses the V07 `glass` (almost fully
-transparent, so in the world mostly the flow and the caps show), the caps use `collar`, and the item's core uses
-`stream_u` and `stream_v`. Replace them in `CableBakedModel.builder()`; the generator and validator list them as
-code-drawn textures.
+`CableShapes` uses the same boxes for the outline.
+
+The shell is translucent so the BER flow shows through it: arms start at the core's surface, and a straight tube has
+no end caps and stays inside its block. The item is a closed north-south tube.
+
+**Textures.** The artist's interim dense textures are wired in `CableBakedModel.builder()` and listed as code-drawn in
+`validate_assets.py`. `part/cable/dense/{connector,collar,stream_u,stream_v}` and the old
+`block/{glass,collar,stream_u,stream_v}` ship but are not drawn; the validator lists them as not drawn yet. The
+`connector` was the machine cap, which went when machine fronts became dense. The artist's models and notes are in
+`tools/blockbench/projects/` and `tools/blockbench/docs/cable_design.md`.
 
 ## Device decisions
 

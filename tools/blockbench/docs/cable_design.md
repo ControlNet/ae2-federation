@@ -18,9 +18,9 @@
 线缆建模的核心类为`FederationCableBuilder`，`CableBakedModel`类用于烘焙模型与指定纹理，`CableShapes`用于创建模型碰撞箱。
 
 - `cable_core`由`addDenseCore`方法实现
-- `cable_connection_straight`的模型由`addDenseCableSizedCube`创建，由`addStraightDenseConnection`实现
-- `cable_connector`的模型由`addBigCoveredCableSizedCube`创建，由`addCoveredConnection`实现
-- `cable_connector_small`的模型由`addCoveredCableSizedCube`创建，由`addDenseConnection`实现
+- `cable_connector_straight`的模型由`addDenseCableSizedCube`创建，由`addDenseConnection`实现；`cable_straight`由`addStraightDenseCableSizedCube`创建，由`addStraightDenseConnection`实现
+- `cable_connector`（机器端盖）目前不再绘制：按下方建议，线缆与联邦样板供应器/联邦处理端点的连接已改为与联邦路由器相同的 dense 连接（使用`cable_connector_straight`），`addBigCoveredCableSizedCube`已移除
+- `cable_connector_small`的模型由`addCoveredCableSizedCube`创建，由`addCoveredConnection`实现
 
-为优化视觉效果，建议线缆 与联邦样板供应器/联邦处理端点的连接 和 与联邦路由器的连接 逻辑相同。
+为优化视觉效果，建议线缆 与联邦样板供应器/联邦处理端点的连接 和 与联邦路由器的连接 逻辑相同。（已于 2026-10-09 实现。）
 

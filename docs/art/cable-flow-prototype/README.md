@@ -71,8 +71,9 @@ image is used as gameplay evidence.
   The top 16x16 tile preserves the original straight-flow pixels; the lower
   tile supplies a shared dim junction patch. Every patch edge matches the
   incoming base texture profile. Both tiles use the same standard render type.
-  Its source is `tools/visual/cable_flow_texture.py`; the normal generator also
-  reproduces this additional texture. Frozen V01–V07 archives are untouched.
+  Its source was `tools/visual/cable_flow_texture.py`; since 2026-10-09 the
+  shipped texture is the artist's and that generator is retired. Frozen V01–V07
+  archives are untouched.
 - UVs move using game time plus partial tick. The repeat is four world blocks,
   with one texture cycle per 64 ticks. Adjacent straight segments share phase,
   including negative and large coordinates; clock wrapping preserves periodicity.
@@ -87,11 +88,10 @@ image is used as gameplay evidence.
 pixi run --manifest-path tools/visual/pixi.toml generate
 pixi run --manifest-path tools/visual/pixi.toml validate
 ./gradlew :neoforge-1.21.1:build :neoforge-1.21.1:verifySharedJarContent --dependency-verification=strict --no-configuration-cache --no-daemon
-python3 tools/blockbench/verify_art_versions.py
 git diff --check
 ```
 
-Latest results: `BUILD SUCCESSFUL`; 253 tests, zero failures/errors/skips. Five
+(`verify_art_versions.py` was removed on 2026-10-09.) Latest results: `BUILD SUCCESSFUL`; 253 tests, zero failures/errors/skips. Five
 geometry tests cover all mask boundaries, containment inside the connected glass
 union, spatial phase continuity, clock-wrap continuity, all twelve perpendicular
 elbows and unique shared center planes for branching nodes. Asset validation passed with 267 models,
