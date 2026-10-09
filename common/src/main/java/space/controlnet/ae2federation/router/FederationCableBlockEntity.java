@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -23,8 +24,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
-    /** Client only: the flow renderer's neighbour mask and the game tick it was read in. */
+    /** Client only: the flow renderer's neighbour mask, whether the cable is one straight tube, and their game tick. */
     private int flowMask;
+    private boolean straight;
     private long flowMaskTick = Long.MIN_VALUE;
 
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
@@ -112,11 +114,21 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /**
      * The neighbour mask the flow renderer draws, read from the level at most once per game tick: the renderer asks
      * every frame, and six block lookups per cable per frame add up across a base.
+     *
+     * <p>A straight tube beside this cable draws its end face only while this cable is no straight tube too
+     * ({@link CableVisualConnections#model}), but the client redraws only within one block of a block change. So when
+     * this cable turns straight or stops being straight, it redraws the blocks around it.
      */
     public int flowMask() {
         var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
         if (level != null && flowMaskTick != gameTime) {
-            flowMask = CableVisualConnections.mask(level, worldPosition);
+            int connections = CableVisualConnections.connections(level, worldPosition);
+            boolean nowStraight = CableVisualConnections.straight(connections);
+            if (flowMaskTick != Long.MIN_VALUE && nowStraight != straight) {
+                level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+            }
+            straight = nowStraight;
+            flowMask = CableVisualConnections.maskOf(connections);
             flowMaskTick = gameTime;
         }
         return flowMask;

@@ -25,8 +25,9 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * to Federation P2P tunnels, and one 12-voxel tube for a straight dense line.
  *
  * <p>The layout is AE2's. Unlike AE2's opaque cable, the shell is translucent so the flow renderer shows through
- * it, so an arm starts at the core's surface instead of inside the core, and a straight tube has no end caps and does
- * not reach past the block (AE2 lets it, against facades, which a Federation Cable has none of).
+ * it, so an arm starts at the core's surface instead of inside the core, and a straight tube does not reach past the
+ * block (AE2 lets it, against facades, which a Federation Cable has none of). As in the artist's display model, a
+ * straight tube's end face is left out where the next cable is a straight tube too.
  */
 final class FederationCableBuilder {
     private final TextureAtlasSprite core;
@@ -37,13 +38,16 @@ final class FederationCableBuilder {
         this.line = line;
     }
 
-    /** The world quads for {@code connections}, as {@link CableVisualConnections#connections} encodes them. */
+    /** The world quads for {@code connections}, as {@link CableVisualConnections#model} encodes them. */
     List<BakedQuad> build(int connections) {
         var quads = new ArrayList<BakedQuad>();
         if (CableVisualConnections.straight(connections)) {
             var facing = CableVisualConnections.DIRECTIONS[
                     Integer.numberOfTrailingZeros(CableVisualConnections.maskOf(connections))];
-            addStraightDenseConnection(facing, EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())), quads);
+            // An end face covers the step down to a neighbour's narrower dense arm; between two tubes it is left out.
+            var faces = EnumSet.allOf(Direction.class);
+            faces.removeIf(side -> CableVisualConnections.joins(connections, side));
+            addStraightDenseConnection(facing, faces, quads);
             return List.copyOf(quads);
         }
         addDenseCore(quads);

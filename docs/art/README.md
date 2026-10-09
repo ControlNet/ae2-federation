@@ -58,8 +58,12 @@ dense connections and nothing else make one straight tube, so a cable between a 
 
 `CableShapes` uses the same boxes for the outline.
 
-The shell is translucent so the BER flow shows through it: arms start at the core's surface, and a straight tube has
-no end caps and stays inside its block. The item is a closed north-south tube.
+The shell is translucent so the BER flow shows through it: arms start at the core's surface, and a straight tube stays
+inside its block. As in the artist's `cable_display` model, a straight tube draws its end face, which covers the step
+down to a neighbour's narrower dense arm, except where the next cable is a straight tube too, so a run has no seams.
+That reads two blocks along the tube, and the client redraws only within one block of a change, so a cable whose
+straightness changes redraws the blocks around it (`FederationCableBlockEntity.flowMask`). The item is a closed
+north-south tube.
 
 **Textures.** The artist's interim dense textures are wired in `CableBakedModel.builder()` and listed as code-drawn in
 `validate_assets.py`. `part/cable/dense/{connector,collar,stream_u,stream_v}` and the old

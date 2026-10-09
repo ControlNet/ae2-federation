@@ -52,6 +52,35 @@ final class CableConnectionsTest {
     }
 
     @Test
+    void aStraightTubeLeavesOutOnlyTheEndsThatJoinAnotherStraightTube() {
+        int eastWest = with(with(0, Direction.EAST, CableVisualConnections.DENSE),
+                Direction.WEST, CableVisualConnections.DENSE);
+        assertFalse(CableVisualConnections.joins(eastWest, Direction.EAST));
+        assertFalse(CableVisualConnections.joins(eastWest, Direction.WEST));
+
+        // East is the first side of the east-west axis, west the second.
+        int eastJoins = eastWest | CableVisualConnections.JOINS_FIRST;
+        assertTrue(CableVisualConnections.joins(eastJoins, Direction.EAST));
+        assertFalse(CableVisualConnections.joins(eastJoins, Direction.WEST));
+        int bothJoin = eastJoins | CableVisualConnections.JOINS_SECOND;
+        assertTrue(CableVisualConnections.joins(bothJoin, Direction.WEST));
+        assertFalse(CableVisualConnections.joins(bothJoin, Direction.UP));
+        int northJoins = with(with(0, Direction.SOUTH, CableVisualConnections.DENSE),
+                Direction.NORTH, CableVisualConnections.DENSE) | CableVisualConnections.JOINS_SECOND;
+        assertTrue(CableVisualConnections.joins(northJoins, Direction.NORTH));
+        assertFalse(CableVisualConnections.joins(northJoins, Direction.SOUTH));
+
+        // The end bits leave the connections alone and mean nothing on a cable that is not one straight tube.
+        assertTrue(CableVisualConnections.straight(bothJoin));
+        assertEquals(CableVisualConnections.maskOf(eastWest), CableVisualConnections.maskOf(bothJoin));
+        assertEquals(CableVisualConnections.DENSE, CableVisualConnections.kind(bothJoin, Direction.WEST));
+        int corner = with(with(0, Direction.EAST, CableVisualConnections.DENSE), Direction.UP,
+                CableVisualConnections.DENSE) | CableVisualConnections.JOINS_FIRST | CableVisualConnections.JOINS_SECOND;
+        assertFalse(CableVisualConnections.joins(corner, Direction.EAST));
+        assertTrue(bothJoin < CableVisualConnections.MODEL_COUNT);
+    }
+
+    @Test
     void shapesFollowAe2DenseCableGeometry() {
         assertBounds(CableShapes.shape(0), 2, 2, 2, 14, 14, 14);
 

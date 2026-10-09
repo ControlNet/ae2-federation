@@ -29,6 +29,12 @@ public final class CableVisualConnections {
     public static final int COVERED = 2;
     /** How many distinct connection sets there are: two bits per side. */
     public static final int COUNT = 1 << (2 * 6);
+    /** Model bit: a straight tube's end toward its first side (east, up or south) runs on into another straight tube. */
+    public static final int JOINS_FIRST = COUNT;
+    /** Model bit: a straight tube's end toward its second side (west, down or north) runs on into another straight tube. */
+    public static final int JOINS_SECOND = COUNT << 1;
+    /** How many distinct model keys there are: a connection set and the two tube-end bits. */
+    public static final int MODEL_COUNT = COUNT << 2;
 
     private CableVisualConnections() {
     }
@@ -40,6 +46,30 @@ public final class CableVisualConnections {
             connections = with(connections, direction, kind(level, position, direction));
         }
         return connections;
+    }
+
+    /**
+     * The connections plus, for one straight tube, which ends run on into another straight tube. A tube draws its end
+     * face, which covers the step down to a neighbour's narrower dense arm, only where the neighbour is no straight
+     * tube; between two tubes the face would be a seam. This reads the neighbours' neighbours, so a cable whose
+     * straightness changes redraws the cables beside it ({@code FederationCableBlockEntity#flowMask}).
+     */
+    public static int model(BlockGetter level, BlockPos position) {
+        int connections = connections(level, position);
+        if (!straight(connections)) return connections;
+        var first = DIRECTIONS[Integer.numberOfTrailingZeros(maskOf(connections))];
+        if (straightCable(level, position.relative(first))) connections |= JOINS_FIRST;
+        if (straightCable(level, position.relative(first.getOpposite()))) connections |= JOINS_SECOND;
+        return connections;
+    }
+
+    /** Whether a straight tube's end toward {@code side} runs on into another straight tube, so it has no end face. */
+    public static boolean joins(int model, Direction side) {
+        if (!straight(model)) return false;
+        int first = Integer.numberOfTrailingZeros(maskOf(model));
+        if (side == DIRECTIONS[first]) return (model & JOINS_FIRST) != 0;
+        if (side == DIRECTIONS[first + 1]) return (model & JOINS_SECOND) != 0;
+        return false;
     }
 
     /** Which sides connect, one bit per side in {@link #DIRECTIONS} order. */
@@ -74,6 +104,11 @@ public final class CableVisualConnections {
         int first = Integer.numberOfTrailingZeros(mask);
         if ((first & 1) != 0 || (mask & (2 << first)) == 0) return false;
         return kind(connections, DIRECTIONS[first]) == DENSE && kind(connections, DIRECTIONS[first + 1]) == DENSE;
+    }
+
+    private static boolean straightCable(BlockGetter level, BlockPos position) {
+        return level.getBlockState(position).getBlock() instanceof FederationCableBlock
+                && straight(connections(level, position));
     }
 
     private static int bit(Direction side) {

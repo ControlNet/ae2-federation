@@ -30,6 +30,11 @@ cable bus sets `cableBusAdjacent` (no big cap). A dense cable with a SMART/COVER
 - NeoForge `BakedModelWrapper.applyTransform` returns the ORIGINAL model; the item renderer then draws the empty
   placeholder. Override it to apply the transform and return `this`.
 - Item path calls the 3-argument `getQuads(null, side, random)`; override it too.
+- Straight tube end faces follow the artist's `cable_display.bbmodel`: drawn toward a non-tube neighbour (covers the
+  12-to-10 voxel step), left out between two straight tubes (else a seam ring shows through the glass). The model key
+  `CableVisualConnections.model` adds JOINS_FIRST/SECOND bits read two blocks away; vanilla re-meshes only sections
+  within one block of a change, so `FederationCableBlockEntity.flowMask` (client, once per tick) calls
+  `level.sendBlockUpdated` on itself when its straightness changes. Verified live across a section boundary.
 - A translucent shell shows faces AE2's opaque shell hides: arms start at the core surface (14), and a straight tube has no end caps and no ±0.01 overhang (that is for facades).
 - `tools/blockbench/create_projects.py` already failed before this change (`KeyError: 'missing'` on the hand-made
   device models); the cable entries were removed from it.
