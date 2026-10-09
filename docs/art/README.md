@@ -7,20 +7,25 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
 ## Source and output
 
 - `tools/blockbench/versions/v07-isolated-cable/textures/`: approved texture source (V06 full blocks, retained V02 Bridge/cable, V07 isolated geometry). Frozen PNGs and animation metadata are checked against their manifest before generation.
-- `tools/visual/build_assets.py`: copies the cable's approved textures and generates its geometry, UVs and animation
-  layer routing. Pixel drawing now lives in the archived Blockbench design sources.
-- `common/src/main/resources/assets/ae2federation`: the cable's blockstate, models and PNGs are generated; edit the
-  approved source/version selection or geometry generator, then regenerate. The Router, Pattern Provider, Processing
+- `tools/visual/build_assets.py`: copies the cable's approved textures, writes its flow texture and its placeholder
+  block and item models (display transforms and particle only). Pixel drawing now lives in the archived Blockbench
+  design sources.
+- `common/src/main/resources/assets/ae2federation`: the cable's blockstate, placeholder models and PNGs are generated;
+  edit the approved source/version selection or the generator, then regenerate. The Router, Pattern Provider, Processing
   Endpoint and Bridge models and textures are drawn by hand in Blockbench (artist update, 2026-10-07) and edited
   directly; the generator no longer writes them. Language files are independently maintained.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow). The optional game inspection
   tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
-- `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates. Cable and
-  Router accept all sides; Provider accepts only its facing; Endpoint, vanilla AE2 blocks and Bridge are excluded.
+- `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates, as one of
+  three connection kinds per side. Cable and Router accept all sides (dense); Provider and Endpoint only their facing
+  (covered, with a cap); a Federation P2P tunnel only its front (covered, no cap); vanilla AE2 blocks and Bridge are
+  excluded.
   This matches `RouterRegistration`, `ProcessingRegistration`, `FederationPort.connectsTo` and `CableFacePort.resolve`.
   If port registrations change in future, update this projection and its in-game placement checks together.
-- `CableBakedModel`: loads 64 models once per resource reload, chooses one during chunk rebuilding, reuses 64 immutable
-  model-data values. No block entity renderer, per-frame geometry, particles, added blockstate properties or packets.
+- `CableBakedModel` and `FederationCableBuilder`: AE2's dense cable geometry, built in code with AE2's `CubeBuilder` the
+  first time a chunk needs a set of connections and kept until the next resource reload. The connections are read
+  when the chunk is rebuilt; no per-frame geometry, added blockstate properties or packets. `CableShapes` gives the
+  same boxes as the outline. See [Dense cable geometry](#dense-cable-geometry).
 - `NeoForgeClientEntrypoint`: client-only model event registration; the dedicated server never loads the model wrapper.
 - `MultipartBridgePart.getBoxes`: three boxes matching the contact / middle / contact geometry, rotated by AE2.
 
@@ -36,6 +41,26 @@ The implementation descriptions and V07 evidence below document the original
 baked rendering baseline. Published version 0.0.1 still uses the earlier opt-in
 prototype behavior.
 
+## Dense cable geometry
+
+Since 2026-10-09 the Federation Cable copies the model of AE2's dense cable. `FederationCableBuilder` is adapted from
+AE2 19.2.17's `CableBuilder` and from AE2 Lightning Tech Reborn's `OverloadedCableRenderHelper` (both LGPL-3.0; the
+file keeps their notice) and draws with AE2's own `appeng.client.render.cablebus.CubeBuilder`, an AE2 class outside
+its API package. Each side connects as AE2's `CableBusContainer` connects a dense cable: the smaller of the cable's
+type and the neighbour's. A Federation Cable or Router is dense (as AE2's Controller is), a Provider or Endpoint front
+is smart (as AE2's Pattern Provider and Interface are), so that arm shrinks to a covered one with a cap against the
+machine, and a Federation P2P tunnel, a part on another cable bus, gets a covered arm without a cap. Two opposite
+dense connections and nothing else make one straight tube.
+
+The shell is translucent so the BER flow shows through it. Faces only an opaque shell would hide are therefore not
+drawn: arms start at the core's surface and have no inner end, and a straight tube has no end caps and stays inside
+its block. From outside an opaque shell this looks the same as AE2.
+
+**Temporary textures.** Until the artist's dense cable textures arrive, the shell uses the V07 `glass` (almost fully
+transparent, so in the world mostly the flow and the caps show), the caps use `collar`, and the item's core uses
+`stream_u` and `stream_v`. Replace them in `CableBakedModel.builder()`; the generator and validator list them as
+code-drawn textures.
+
 ## Device decisions
 
 | ID | Geometry and materials | Orientation |
@@ -43,7 +68,7 @@ prototype behavior.
 | `router` | Hand-made: framed cube with raised cyan cores, one texture (`block/router/router`) on all six faces | Symmetric |
 | `pattern_provider` | Hand-made: framed cube, cyan front (`pattern_provider`), purple back and sides (`_back`, `_side`) | South front, rotated for all six `facing` values, without UV lock |
 | `processing_endpoint` | Hand-made: as the Provider, with its own front, back and side textures | South front, rotated for all six `facing` values, without UV lock |
-| `cable` | Isolated 6-unit glass envelope and 4-unit animated core; connected 6-unit glass envelope around one continuous 4-unit flow body; stationary collars | Real neighbor port projection, masks E/W/U/D/S/N = 1/2/4/8/16/32 |
+| `cable` | AE2's dense cable, built in code: 10-unit core, 8-unit dense arms, 4-unit covered arms with a 6-unit cap against a machine, one 10-unit tube for a straight dense line; the BER flow inside. Temporary textures (see below) | Real neighbor port projection, two bits per side in E/W/U/D/S/N order |
 | `bridge` | Hand-made multipart, 8x8x5 overall: 6x6 contact plates around an 8x8 middle (`part/bridge`, `part/bridge_sides`) | Model faces NORTH as AE2 part quads do; `getBoxes` takes the same boxes facing SOUTH, pinned by `MultipartBridgeContractTest` |
 
 Router, Cable and Endpoint explicitly return `RenderShape.MODEL`. Cable uses `noOcclusion` and cached connection
@@ -93,11 +118,12 @@ pixi run --manifest-path tools/visual/pixi.toml validate
 git diff --check
 ```
 
-Expected: validator `passed: true`, 64 masks, reproducible generated bytes; Gradle `BUILD SUCCESSFUL`. These commands
-alone do not constitute visual acceptance. The validator checks integer bounds, texel density, no overlapping volumes
-within each layer, exact glass/flow union surfaces (including junction seam removal), local reference closure, animation metadata, retained low flow in every frame, connected-end cap
-removal, collar spacing, flow continuity, actual device orientations and at least one face per exported element.
-A six-way hub's entirely enclosed interior is omitted from rendering; its six arms still bound one continuous volume.
+Expected: validator `passed: true`, `cable_geometry: code`, reproducible generated bytes; Gradle `BUILD SUCCESSFUL`.
+These commands alone do not constitute visual acceptance. The validator checks the placeholder cable models, local
+reference closure, texel density, animation metadata, retained low flow in every frame and the frozen V07 textures.
+The cable's geometry is checked by `CableConnectionsTest` (connection kinds, straight lines, outline boxes) and by an
+in-game render. The per-mask JSON checks described in the V07 evidence below applied to the earlier generated
+models.
 The old assertion demanding exactly two straight-stream elements is replaced by connectivity, 4x4 cross-section and
 boundary checks across all 64 states, not simply removed.
 

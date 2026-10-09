@@ -4,6 +4,9 @@ Date: 2026-09-27. Current development builds enable this world renderer by defau
 It uses Minecraft's existing `entityTranslucentEmissive` shader, with no custom
 GLSL, post-processing, dynamic world lighting, or new runtime dependencies.
 
+Since 2026-10-09 the enclosure around the flow is AE2's dense cable, built in code, not the V07 glass and collars
+described below; the flow renderer itself is unchanged. See [Dense cable geometry](../README.md#dense-cable-geometry).
+
 ## Current behavior
 
 Place a Federation Cable to see the animated interior, including curved elbows
