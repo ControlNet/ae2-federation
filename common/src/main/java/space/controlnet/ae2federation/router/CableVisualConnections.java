@@ -12,11 +12,10 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
 /**
  * Read-only projection of the stateless Federation port registrations onto a chunk snapshot.
  *
- * <p>A Federation Cable renders as AE2's dense cable, and each side connects as AE2's {@code CableBusContainer} picks
- * a dense cable's connection: the smaller of the cable's type and the neighbour's. Federation Cable and Router are
- * dense, as AE2's Controller is; a Provider or Endpoint front is smart, as AE2's Pattern Provider and Interface are,
- * so the connection shrinks to a covered one with a cap against the machine; a Federation P2P tunnel's front is a
- * part on another cable bus, which AE2 joins with a covered connection and no cap.
+ * <p>A Federation Cable renders as AE2's dense cable. Another Federation Cable, a Router, and a Provider or Endpoint
+ * front all get a dense connection. AE2 would shrink the connection to a smart machine such as its Pattern Provider
+ * to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a Router does.
+ * A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered connection.
  */
 public final class CableVisualConnections {
     public static final Direction[] DIRECTIONS = {
@@ -24,12 +23,10 @@ public final class CableVisualConnections {
     };
     /** Not connected on that side. */
     public static final int NONE = 0;
-    /** A dense connection: another Federation Cable or a Router. */
+    /** A dense connection: another Federation Cable, a Router, or a Provider or Endpoint front. */
     public static final int DENSE = 1;
-    /** A covered connection ending in a cap against a machine: a Provider or Endpoint front. */
-    public static final int COVERED_CAP = 2;
     /** A covered connection to a part on another cable bus: a Federation P2P tunnel's front. */
-    public static final int COVERED = 3;
+    public static final int COVERED = 2;
     /** How many distinct connection sets there are: two bits per side. */
     public static final int COUNT = 1 << (2 * 6);
 
@@ -97,7 +94,7 @@ public final class CableVisualConnections {
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
-            return COVERED_CAP;
+            return DENSE;
         }
         // A Federation P2P tunnel's front is its port.
         if (neighbor.hasBlockEntity()

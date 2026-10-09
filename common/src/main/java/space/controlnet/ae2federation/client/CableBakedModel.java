@@ -1,7 +1,6 @@
 package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,10 +35,10 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
 public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<Integer> CONNECTIONS = new ModelProperty<>();
     private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
-    private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.solid(), RenderType.translucent());
+    private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
     private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
 
-    private final Map<Integer, FederationCableBuilder.Quads> shapes = new ConcurrentHashMap<>();
+    private final Map<Integer, List<BakedQuad>> shapes = new ConcurrentHashMap<>();
     private volatile List<BakedQuad> item;
 
     private CableBakedModel(BakedModel base) {
@@ -56,20 +55,14 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     private static FederationCableBuilder builder() {
         var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
-        // TEMPORARY: the old cable's textures, until the artist's dense cable textures replace them.
-        return new FederationCableBuilder(
-                atlas.apply(texture("dense/core")),
-                atlas.apply(texture("dense/line")),
-                atlas.apply(texture("dense/connector")),
-                atlas.apply(texture("dense/stream_u")),
-                atlas.apply(texture("dense/stream_v")));
+        return new FederationCableBuilder(atlas.apply(texture("dense/core")), atlas.apply(texture("dense/line")));
     }
 
     private static ResourceLocation texture(String name) {
         return ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/" + name);
     }
 
-    private FederationCableBuilder.Quads quads(ModelData data) {
+    private List<BakedQuad> quads(ModelData data) {
         var connections = data.get(CONNECTIONS);
         return shapes.computeIfAbsent(connections == null ? 0 : connections, key -> builder().build(key));
     }
@@ -77,7 +70,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private List<BakedQuad> itemQuads() {
         var quads = item;
         if (quads == null) {
-            quads = builder().item().all();
+            quads = builder().item();
             item = quads;
         }
         return quads;
@@ -105,13 +98,8 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         // Like AE2's cable bus, every quad is unculled: a cable never fills a block face.
         if (side != null) return List.of();
         if (state == null) return itemQuads();
-        var quads = quads(data);
-        if (renderType == RenderType.solid()) return quads.solid();
-        if (renderType == RenderType.translucent()) return quads.translucent();
-        if (renderType != null) return List.of();
-        var all = new ArrayList<BakedQuad>(quads.solid());
-        all.addAll(quads.translucent());
-        return all;
+        if (renderType != null && renderType != RenderType.translucent()) return List.of();
+        return quads(data);
     }
 
     @Override

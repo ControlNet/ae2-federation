@@ -6,8 +6,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * A Federation Cable's outline, with the boxes AE2 draws a dense cable with: a 10-voxel core, 8-voxel dense arms,
- * 4-voxel covered arms with a 6-voxel cap against a machine, and one 10-voxel tube for a straight dense line.
+ * A Federation Cable's outline, with the boxes {@code FederationCableBuilder} draws: a 12-voxel core, 10-voxel dense
+ * arms, 4-voxel covered arms, and one 12-voxel tube for a straight dense line.
  */
 public final class CableShapes {
     private static final VoxelShape[] SHAPES = new VoxelShape[CableVisualConnections.COUNT];
@@ -37,10 +37,8 @@ public final class CableShapes {
         var shape = Block.box(2, 2, 2, 14, 14, 14);
         for (var side : CableVisualConnections.DIRECTIONS) {
             switch (CableVisualConnections.kind(connections, side)) {
-                case CableVisualConnections.DENSE -> shape = Shapes.or(shape, arm(side, 13, 3, 13));
-                case CableVisualConnections.COVERED_CAP -> shape = Shapes.or(shape, arm(side, 12, 4, 12),
-                        arm(side, 12, 5, 11));
-                case CableVisualConnections.COVERED -> shape = Shapes.or(shape, arm(side, 6, 6, 6));
+                case CableVisualConnections.DENSE -> shape = Shapes.or(shape, arm(side, 14, 3, 13));
+                case CableVisualConnections.COVERED -> shape = Shapes.or(shape, arm(side, 14, 6, 10));
                 default -> {
                 }
             }
