@@ -16,8 +16,6 @@ import uuid
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / 'common/src/main/resources/assets/ae2federation'
 DIRECTIONS = ('north', 'east', 'south', 'west', 'up', 'down')
-CABLES = {'isolated': 0, 'end': 1, 'straight_x': 3, 'straight_y': 12,
-          'straight_z': 48, 'corner': 17, 'tee': 19, 'cross': 51, 'six_way': 63}
 
 
 def uid(value: str) -> str:
@@ -114,7 +112,7 @@ def main():
     entries = [(name, 'block/' + name, (0,0,0)) for name in
                ('router', 'pattern_provider', 'processing_endpoint')]
     entries.append(('bridge', 'part/bridge', (0,0,0)))
-    entries += [('cable_' + name, f'block/cable/{mask:02d}', (0,0,0)) for name,mask in CABLES.items()]
+    # The Federation Cable has no JSON geometry to snapshot: it is AE2's dense cable, built in code.
     projects = {name: make_project(name, [(name,ref,offset)]) for name,ref,offset in entries}
     gallery = [(name,ref,((i%4)*24,0,(i//4)*24)) for i,(name,ref,_) in enumerate(entries)]
     projects['ae2_federation_overview'] = make_project('ae2_federation_overview', gallery, True)

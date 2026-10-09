@@ -14,7 +14,6 @@ public final class NeoForgeClientEntrypoint {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public NeoForgeClientEntrypoint(net.neoforged.bus.api.IEventBus modBus) {
-        modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::register);
         modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
