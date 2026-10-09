@@ -115,6 +115,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 19/19 |
 | `aeallpattern` | AE All Pattern 0.2.6 | core only | 19/19 |
 | `neoecoae` | Neo ECO AE Extension 21.2.0 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 24/24 |
+| `neoecoprototype` | Neo ECO Prototype 1.3.2, Neo ECO AE Extension 21.2.1, MEGA Cells 4.11.0 | the Neo ECO group on 21.2.1; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, the craft going into the L1 Processor Assembler; an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off | 34/34 (2026-10-09) |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group; a Transfinite Compute Nexus as the only CPU, including a cancelled job and the Bridge removed after the push; crafting inside a Molecular Sequence Rewrite Array; a Matter Fabrication Well's Pattern Assembly serving a remote order, whose recipe leaves and returns when a casing is broken and put back | 37/37 |
 | `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting and processing through the Advanced Pattern Provider; an Endpoint in Local mode under it, as a block and as a part; a lone Quantum Computer Core as the only CPU, including a cancelled job and the Bridge removed after the push; a formed 7x7x7 Quantum Computer on a Router running two orders at once from two other networks, one needing both in turn | 28/28 |
 | `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; an Endpoint in Local mode under it; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 25/25 |
@@ -189,6 +190,10 @@ The interaction tests found four more, all fixed on dev:
 
 Other findings, all upstream behaviour:
 
+- **Neo ECO Prototype 1.3.2** does not start without MEGA Cells, which it lists as optional, with or without AE2
+  Federation: `SimplifySingularityCellItem` reads `ae2:singularity` while items register, and its `ae2` dependency has
+  no load order, so its items can register before AE2's (`Trying to access unbound value: ResourceKey[minecraft:item /
+  ae2:singularity]`). MEGA Cells, which it loads after, puts AE2 first, so the profile includes it.
 - **AE2 Extras** (version `0`) crashes on its own with AE2: `Adding duplicate value MenuType` in AE2's menu
   registration. It also crashes without AE2 Federation, with AE2WTLib or ExtendedAE added, and on AE2 19.2.17. It boots
   inside `addons-all`, so it is tested only there. This is an upstream load-order problem.

@@ -32,6 +32,7 @@ final class CompatTestClasses {
         groups.put("omnisequence", OmniSequenceCompatGameTests.class);
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
+        groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
         groups.put("useless-mod", UselessModCompatGameTests.class);
         return groups;
     }

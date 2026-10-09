@@ -195,6 +195,20 @@
     "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/cyNfBT7v/neoecoae-21.2.0.jar",
     "sha512": "420c4442cffa4a96d76efac21490bb17b8ce2cdb4477b3d87f5b0bb0d55cdb011d1ab1da59daea5c7ee7e4f559db5e7a3515fa64045b7e57ee126054abae83cb"
   },
+  "neoecoae@21.2.1": {
+    "name": "neoecoae",
+    "version": "21.2.1",
+    "file": "neoecoae-21.2.1.jar",
+    "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/p9oqETs4/neoecoae-21.2.1.jar",
+    "sha512": "1dc456f640878e88782b86d2deb21d074449e2b5a10c7c2ed1402aa3fa20913ef05b86d0d388b59e19b6b67d60f3e1dc323db3e562b3d95e8c56d79a0bf11323"
+  },
+  "neoecoprototype@1.3.2": {
+    "name": "neoecoprototype",
+    "version": "1.3.2",
+    "file": "neoecoprototype-1.3.2.jar",
+    "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.3.2/neoecoprototype-1.3.2.jar",
+    "sha512": "596fc74e2e498f6fc93e8f397db772be284b3fde2b9e44b77eaf38c90638d8f2a383313cf981c4ed7e703217363198e9269f2c43b9cd76476064e19187b1fc5a"
+  },
   "omnisequence@2.0.7": {
     "name": "omnisequence",
     "file": "omnisequence-transfinite-2.0.7.jar",
