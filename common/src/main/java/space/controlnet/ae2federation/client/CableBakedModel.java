@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +10,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
@@ -25,6 +27,7 @@ import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
@@ -55,7 +58,11 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     private static FederationCableBuilder builder() {
         var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
-        return new FederationCableBuilder(atlas.apply(texture("dense/core")), atlas.apply(texture("dense/line")));
+        var cores = new EnumMap<CableCoreFaces.Variant, TextureAtlasSprite>(CableCoreFaces.Variant.class);
+        for (var variant : CableCoreFaces.Variant.values()) {
+            cores.put(variant, atlas.apply(texture("dense/" + variant.texture())));
+        }
+        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")));
     }
 
     private static ResourceLocation texture(String name) {

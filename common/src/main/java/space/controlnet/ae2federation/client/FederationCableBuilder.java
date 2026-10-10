@@ -14,9 +14,11 @@ import appeng.client.render.cablebus.CubeBuilder;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
+import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
@@ -31,11 +33,14 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  * the glass as a seam.
  */
 final class FederationCableBuilder {
+    private final Map<CableCoreFaces.Variant, TextureAtlasSprite> cores;
     private final TextureAtlasSprite core;
     private final TextureAtlasSprite line;
 
-    FederationCableBuilder(TextureAtlasSprite core, TextureAtlasSprite line) {
-        this.core = core;
+    /** {@code cores} holds every connected core texture; the closed one also draws the covered arms. */
+    FederationCableBuilder(Map<CableCoreFaces.Variant, TextureAtlasSprite> cores, TextureAtlasSprite line) {
+        this.cores = cores;
+        this.core = cores.get(CableCoreFaces.Variant.CLOSED);
         this.line = line;
     }
 
@@ -51,7 +56,7 @@ final class FederationCableBuilder {
         }
         var coreFaces = EnumSet.allOf(Direction.class);
         coreFaces.removeIf(side -> CableVisualConnections.kind(connections, side) == CableVisualConnections.CABLE);
-        addDenseCore(coreFaces, quads);
+        addDenseCore(connections, coreFaces, quads);
         for (var facing : CableVisualConnections.DIRECTIONS) {
             switch (CableVisualConnections.kind(connections, facing)) {
                 case CableVisualConnections.CABLE -> addCableConnection(facing, quads);
@@ -71,10 +76,15 @@ final class FederationCableBuilder {
         return List.copyOf(quads);
     }
 
-    private void addDenseCore(EnumSet<Direction> faces, List<BakedQuad> quadsOut) {
+    private void addDenseCore(int connections, EnumSet<Direction> faces, List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
         cubeBuilder.setDrawFaces(faces);
-        cubeBuilder.setTexture(core);
+        // Each face opens the frame's edges toward cables, so its rails run on into their arms
+        for (var face : faces) {
+            var texture = CableCoreFaces.face(connections, face);
+            cubeBuilder.setTexture(face, cores.get(texture.variant()));
+            cubeBuilder.setUvRotation(face, texture.quarterTurns());
+        }
         cubeBuilder.addCube(2, 2, 2, 14, 14, 14);
     }
 
