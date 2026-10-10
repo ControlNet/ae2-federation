@@ -172,6 +172,51 @@ public final class AppliedMekanisticsCompatGameTests {
     }
 
     /**
+     * The guide's chemical tank farm as its player builds and tries it: the provider network keeps hydrogen in a
+     * Mekanism Dynamic Tank, the smallest one (3x3x3 casing round one block of air), read by AE2's Storage Bus on a
+     * Dynamic Valve in the middle of one face. The consumer, powered through ME power, sees, takes and stores back
+     * hydrogen through a Storage rule; with the rule switched off the hydrogen leaves its view, and it returns when the
+     * rule is on again.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void dynamicTankFarm(GameTestHelper helper) {
+        var hydrogen = AddonStorageScene.key(helper, "appmek:chemical", "mekanism:hydrogen");
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:dynamic_tank",
+                AppliedMekanisticsCompatGameTests::placeDynamicTank,
+                () -> formed(helper, AddonStorageScene.BUS_TARGET), hydrogen, 8000, 2000, bus -> {
+                }).switchingOffAfterwards();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The smallest Dynamic Tank beyond the Storage Bus: casing on its frame and faces, one block of air inside, and a
+     * Dynamic Valve in the middle of the face towards the bus.
+     */
+    private static void placeDynamicTank(GameTestHelper helper) {
+        var valve = AddonStorageScene.BUS_TARGET;
+        for (int x = 0; x < 3; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (x == 1 && y == 0 && z == 0) continue;
+                    helper.setBlock(valve.offset(x, y, z), AddonCraftingScene.block("mekanism:dynamic_tank"));
+                }
+            }
+        }
+        helper.setBlock(valve, AddonCraftingScene.block("mekanism:dynamic_valve"));
+    }
+
+    /** Whether the Mekanism multiblock that the block at {@code position} belongs to has formed. */
+    private static boolean formed(GameTestHelper helper, BlockPos position) {
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        try {
+            var multiblock = entity.getClass().getMethod("getMultiblock").invoke(entity);
+            return (boolean) multiblock.getClass().getMethod("isFormed").invoke(multiblock);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(entity + " is no Mekanism multiblock", exception);
+        }
+    }
+
+    /**
      * The provider network shares hydrogen in a Basic Chemical Tank through AE2's Storage Bus, its side towards the bus
      * set to input and output as a player sets it with the Configurator.
      */
