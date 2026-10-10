@@ -80,9 +80,9 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
-     * The guide's former district and its exercise: the consumer keeps its items in an ECO storage system and runs its
-     * jobs on an ECO computation system, and orders from the provider network's ECO crafting system, which has no power
-     * of its own. Breaking a casing of the crafting system then takes its recipes away from the consumer, and putting it back
+     * The guide's district and its exercise: the consumer keeps its items in an ECO storage system and runs its jobs on
+     * an ECO computation system, and orders from the provider network's ECO crafting system, which has no power of its
+     * own. Breaking a casing of the crafting system then takes its recipes away from the consumer, and putting it back
      * returns them.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
@@ -125,10 +125,10 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
-     * The guide's regional warehouse and its exercise: an ECO storage system on the warehouse network, with the only
-     * energy cell; a hub network that uses the warehouse's storage with re-export; and two districts, each with no
-     * storage and no power of its own and a Bridge of its own to the hub. A district is two Bridges from the warehouse,
-     * shares no domain and has no rule with it, yet sees, takes and stores into it. Stepping the hub's rule back to
+     * A regional warehouse, once a guide example: an ECO storage system on the warehouse network, with the only energy
+     * cell; a hub network that uses the warehouse's storage with re-export; and two districts, each with no storage and
+     * no power of its own and a Bridge of its own to the hub. A district is two Bridges from the warehouse, shares no
+     * domain and has no rule with it, yet sees, takes and stores into it. Stepping the hub's rule back to
      * plain Enabled takes the warehouse away from both districts but not from the hub; re-export brings it back.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)

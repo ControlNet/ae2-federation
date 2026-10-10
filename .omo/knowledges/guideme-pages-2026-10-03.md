@@ -199,7 +199,7 @@ and page ids did not change.
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
-| `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `ecoWarehouseChain` |
+| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `ecoDistrictOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
 | `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceTradingPost` |
 
@@ -416,7 +416,10 @@ there), then breaks a crafting-system casing for the page's "Try it".
   by network pair, so domains do not stop the chain. Backed by testmod `acrossdomainsstorage` /
   `acrossdomainscrafting` (shared `test/crafting/BridgeChainFixture`).
 - **Examples reworked so they are not all remote-crafting variants**:
-  - Neo ECO: `eco-warehouse.md`, an ECO warehouse re-exported across two Bridges (replaces `eco-district.md`).
+  - Neo ECO: tried `eco-warehouse.md` (an ECO warehouse re-exported to districts through a cable-only hub), then
+    reverted to `eco-district.md` at the owner's review: a middle network with nothing on it, shown with one district,
+    teaches nothing the Across Domains page does not, and the district shows all three Neo ECO systems.
+    `ecoWarehouseChain` stays as compat coverage. Lesson: a chain example needs a middle network with a job of its own.
   - Useless Mod: the alloy furnace now sits two Bridges away (cross-domain crafting chain).
   - Mekanism + AppMek: `chemical-tank-farm.md`, a Dynamic Tank read by a chemical storage bus and shared through a
     Storage rule (replaces `mekanism-chemical.md`). The Dynamic Tank forms from plain placement and the storage bus
@@ -430,5 +433,6 @@ there), then breaks a crafting-system casing for the page's "Try it".
     page says so. `AE2_PAGES` allows `quantum_bridge.md`; `AE2_ITEMS` gained the quantum ring, link, entangled
     singularity and spatial anchor.
   - Kept as they were: Create crushing wheels and the four induction-card variants.
-- The Neo ECO page was screenshotted with Neo ECO 21.2.0 (the ldlib pin).
+- Across Domains scene: network B's drive sat above the cable that carries the B-C Bridge, so B's box (which must
+  start after the Bridge) cut through it. The drive now sits above B's other cable.
 
