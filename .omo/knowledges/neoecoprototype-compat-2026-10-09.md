@@ -16,6 +16,11 @@ Verified by putting that toml into a copy of the 1.3.2 jar on a bare server (AE2
 crashes 3/3, patched boots 4/4 without MEGA Cells and also with it. Once a release carries it, MEGA Cells can leave the
 `neoecoprototype` profile.
 
+1.3.3 (2026-10-10) carries it (`ae2` and `neoecoae` ordering `AFTER`, the singularity read lazily). Pinned that day;
+MEGA Cells left the profile: bare boot 3/3, `neoecoprototype` 36/36, `addons-all` 90/90 (still with MEGA Cells, as a
+player pack would have). Its release notes say an `ae2:inscriber` stack in the same report comes from Neo ECO's own
+init reading AE2's press tag; it did not show in these runs.
+
 ## How the tests reuse Neo ECO's scenes
 
 - The L1 definitions mirror eco's L4 layout (interface on the other hand), and the `Simplify*ClusterCalculator`s

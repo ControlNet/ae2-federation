@@ -115,7 +115,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `ae2-wcwt` | AE2 WCWT 1.3.10, AE2WTLib 19.5.1 | core only | 19/19 |
 | `aeallpattern` | AE All Pattern 0.2.6 | core only | 19/19 |
 | `neoecoae` | Neo ECO AE Extension 21.2.1 | crafting with a crafting system, with an AE2 CPU and with a computation system as the consumer's only CPU; the guide's district, with the storage and computation systems on the consumer and the crafting system on a provider with no storage, whose recipes leave and return when a casing is broken and put back; sharing a storage system's ECO cell, which also leaves and returns when a casing is broken and put back | 24/24 (2026-10-10) |
-| `neoecoprototype` | Neo ECO Prototype 1.3.2, Neo ECO AE Extension 21.2.1, MEGA Cells 4.11.0 | the Neo ECO group on 21.2.1; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, the craft going into the L1 Processor Assembler; an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off | 34/34 (2026-10-09) |
+| `neoecoprototype` | Neo ECO Prototype 1.3.3, Neo ECO AE Extension 21.2.1 | the Neo ECO group on 21.2.1; the same scenes with the addon's L1 storage, F1 crafting and C1 computation systems and L1 cells, the C1 system as the consumer's only CPU; crafting and processing through the L1 Pattern Provider, the craft going into the L1 Processor Assembler; an Endpoint in Local mode under the L1 Pattern Provider, as a block and as a part; an Energized Superconductive Interface as the only power source, powering two other networks over ME power until one network's power rule is switched off | 36/36 (2026-10-10) |
 | `omnisequence` | OmniSequence: Transfinite 2.0.7, ExtendedAE, Applied Enhancements 1.1.0 | the ExtendedAE group; a Transfinite Compute Nexus as the only CPU, including a cancelled job and the Bridge removed after the push; crafting inside a Molecular Sequence Rewrite Array; a Matter Fabrication Well's Pattern Assembly serving a remote order, whose recipe leaves and returns when a casing is broken and put back | 37/37 |
 | `advanced-ae` | AdvancedAE 1.6.12, GeckoLib 4.9.3 | crafting and processing through the Advanced Pattern Provider; an Endpoint in Local mode under it, as a block and as a part; a lone Quantum Computer Core as the only CPU, including a cancelled job and the Bridge removed after the push; a formed 7x7x7 Quantum Computer on a Router running two orders at once from two other networks, one needing both in turn; the Nexus Press and the Quantum Press both made from the Engineering and Logic Presses, told apart by the middle input | 29/29 |
 | `megacells` | MEGA Cells 4.11.0 | processing through the MEGA Pattern Provider; an Endpoint in Local mode under it; crafting with a MEGA 1M Crafting Storage CPU; sharing MEGA item, bulk and fluid cells | 25/25 |
@@ -127,7 +127,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `appflux-createaddition` | Applied Flux 2.1.5, Create 6.0.10, Create Crafts & Additions 1.7.2 | the Applied Flux group; the guide's Induction Card example with an Electric Motor beside the Provider's Endpoint turning a Millstone, its job waiting until the card goes in | 22/22 |
 | `appflux-enderio` | Applied Flux 2.1.5, Ender IO 8.2.12-beta | the Applied Flux group; the guide's Induction Card example with a SAG Mill on the Provider's Endpoint, fitted with a Basic Capacitor and pushing from its bottom, its job waiting until the card goes in | 22/22 |
 | `appflux-industrialforegoing` | Applied Flux 2.1.5, Industrial Foregoing 3.6.39, Titanium 4.0.50 | the Applied Flux group; the guide's Induction Card example with a Resourceful Furnace on the Provider's Endpoint, its output pushing from the bottom, its job waiting until the card goes in | 22/22 |
-| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 86/86 (2026-10-10) |
+| `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 90/90 (2026-10-10) |
 | `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08) | 21/21 |
 | `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 81/81 (2026-10-08) |
 
@@ -190,12 +190,14 @@ The interaction tests found four more, all fixed on dev:
 
 Other findings, all upstream behaviour:
 
-- **Neo ECO Prototype 1.3.2** does not start without MEGA Cells, which it lists as optional, with or without AE2
+- **Neo ECO Prototype 1.3.2** did not start without MEGA Cells, which it lists as optional, with or without AE2
   Federation: `SimplifySingularityCellItem` reads `ae2:singularity` while items register, and its `ae2` dependency has
   no load order, so its items can register before AE2's (`Trying to access unbound value: ResourceKey[minecraft:item /
   ae2:singularity]`). MEGA Cells, which it loads after, puts AE2 first, so the profile includes it. Reported as
   [reliqwq/NeoECOPrototype#6](https://github.com/reliqwq/NeoECOPrototype/issues/6), with a fix in
-  [reliqwq/NeoECOPrototype#7](https://github.com/reliqwq/NeoECOPrototype/pull/7).
+  [reliqwq/NeoECOPrototype#7](https://github.com/reliqwq/NeoECOPrototype/pull/7). Fixed in 1.3.3: its `ae2` and
+  `neoecoae` dependencies load after them and the singularity is read on first use. The profile runs 1.3.3 without MEGA
+  Cells, which boots bare (3/3) and passes.
 - **AE2 Extras** (version `0`) crashes on its own with AE2: `Adding duplicate value MenuType` in AE2's menu
   registration. It also crashes without AE2 Federation, with AE2WTLib or ExtendedAE added, and on AE2 19.2.17. It boots
   inside `addons-all`, so it is tested only there. This is an upstream load-order problem.

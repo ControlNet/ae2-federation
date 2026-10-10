@@ -1,15 +1,14 @@
 {
   "name": "neoecoprototype",
   "group": "addons",
-  "description": "Neo ECO Prototype: L1 storage, crafting and computation systems on Neo ECO AE Extension, a 27-slot pattern provider, a processor assembler and power-generating interfaces; mixins into Neo ECO. MEGA Cells is in the profile because 1.3.2 crashes at item registration without it",
+  "description": "Neo ECO Prototype: L1 storage, crafting and computation systems on Neo ECO AE Extension, a 27-slot pattern provider, a processor assembler and power-generating interfaces; mixins into Neo ECO. Runs without MEGA Cells: 1.3.3 fixed the item-registration crash 1.3.2 had without it",
   "neoforge": "21.1.250",
   "mods": [
     "ae2@19.2.18",
     "guideme@21.1.19",
     "ldlib2@2.2.41",
-    "megacells@4.11.0",
     "neoecoae@21.2.1",
-    "neoecoprototype@1.3.2"
+    "neoecoprototype@1.3.3"
   ],
   "tests": [
     "core",
