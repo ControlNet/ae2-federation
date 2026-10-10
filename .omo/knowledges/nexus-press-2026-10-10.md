@@ -31,12 +31,13 @@ rather than the English name; AE2's press IDs never follow their English names.
 
 ## Art
 
-Temporary: the item model points at `ae2:item/logic_processor_press` (no copied PNG) until the artist delivers.
-`SurvivalRecipeContractTest` pins that reference; `validate_assets.py` only checks the cable's models.
+First shipped with the model pointing at `ae2:item/logic_processor_press` (no copied PNG); the artist's 16x16 texture
+`textures/item/nexus_processor_press.png` replaced it the same day (committed with the artist as co-author).
+`SurvivalRecipeContractTest` now checks the press like the other chain items: own model, own texture.
 
 ## Tests
 
-- `SurvivalRecipeContractTest`: both press recipes, the circuit's new press, names, the temporary model, no press tag.
+- `SurvivalRecipeContractTest`: both press recipes, the circuit's new press, names, the model and texture, no press tag.
 - `survivalrecipes` GameTest: press either way round (PRESS), iron copy (INSCRIBE), circuit under the Nexus Press, the
   Logic Press no longer prints it. Mutation: `mode: inscribe` on the press recipe fails it.
 - Compat `advanced-ae` (29/29): `nexusAndQuantumPressesShareTheirPresses`.

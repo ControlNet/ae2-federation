@@ -96,10 +96,6 @@ a flat tee.
 | `cable` | AE2's dense cable, built in code: 10-unit core, 8-unit dense arms, 4-unit covered arms with a 6-unit cap against a machine, one 10-unit tube for a straight dense line; the BER flow inside. Temporary textures (see below) | Real neighbor port projection, two bits per side in E/W/U/D/S/N order |
 | `bridge` | Hand-made multipart, 8x8x5 overall: 6x6 contact plates around an 8x8 middle (`part/bridge`, `part/bridge_sides`) | Model faces NORTH as AE2 part quads do; `getBoxes` takes the same boxes facing SOUTH, pinned by `MultipartBridgeContractTest` |
 
-Item art still to come: `nexus_processor_press` (Inscriber Nexus Press) temporarily shows AE2's Logic Press texture
-(`ae2:item/logic_processor_press`, referenced by its model, not copied) until the artist draws its own.
-`SurvivalRecipeContractTest` pins the temporary reference, so replacing it updates that test.
-
 Router, Cable and Endpoint explicitly return `RenderShape.MODEL`. Cable uses `noOcclusion` and cached connection
 shapes so it does not hide neighboring full faces. The hand-made device models have gaps, so their occlusion shapes
 (`DeviceOcclusion`) close only what the model closes: no side of the Router, only the back of the Provider and

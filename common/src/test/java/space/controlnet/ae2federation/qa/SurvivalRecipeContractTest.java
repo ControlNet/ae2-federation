@@ -166,11 +166,11 @@ final class SurvivalRecipeContractTest {
     }
 
     @Test
-    void theCoreAndProcessorAreRegisteredNamedAndModelled() throws IOException {
+    void theChainItemsAreRegisteredNamedAndModelled() throws IOException {
         var registration = Files.readString(ROOT.resolve(
                 "common/src/main/java/space/controlnet/ae2federation/material/MaterialRegistration.java"));
         var assets = ROOT.resolve("common/src/main/resources/assets/ae2federation");
-        for (var item : Set.of("nexus_core", "nexus_processor", "printed_nexus_circuit")) {
+        for (var item : Set.of("nexus_core", "nexus_processor", "printed_nexus_circuit", "nexus_processor_press")) {
             assertTrue(registration.contains("\"" + item + "\""), item);
             for (var language : Set.of("en_us", "zh_cn")) {
                 assertTrue(Files.readString(assets.resolve("lang/" + language + ".json"))
@@ -180,14 +180,6 @@ final class SurvivalRecipeContractTest {
                     .contains("\"layer0\":\"ae2federation:item/" + item + "\""), item);
             assertTrue(Files.isRegularFile(assets.resolve("textures/item/" + item + ".png")), item + " icon");
         }
-        assertTrue(registration.contains("\"nexus_processor_press\""));
-        for (var language : Set.of("en_us", "zh_cn")) {
-            assertTrue(Files.readString(assets.resolve("lang/" + language + ".json"))
-                    .contains("\"item.ae2federation.nexus_processor_press\""), language);
-        }
-        // Temporary: the press shows AE2's Logic Press texture until the artist draws its own.
-        assertTrue(compact(assets.resolve("models/item/nexus_processor_press.json"))
-                .contains("\"layer0\":\"ae2:item/logic_processor_press\""));
         assertFalse(registration.contains("federation_logic_processor"), "The old processor is replaced, not kept");
         assertFalse(Files.exists(assets.resolve("models/item/federation_logic_processor.json")),
                 "The old processor's model goes with it");
