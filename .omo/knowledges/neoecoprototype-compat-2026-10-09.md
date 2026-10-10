@@ -10,7 +10,7 @@ neoecoae 21.2.1 (the `neoecoae` profile stays on 21.2.0). Result: 34/34 (core 19
 `SimplifySingularityCellItem.<clinit>` calls `AEItemKey.of(AEItems.SINGULARITY)` (and later `ae2:inscriber`) inside
 its item supplier, and its `ae2` dependency has `ordering = "NONE"`, so its RegisterEvent handler can run before AE2's.
 Its optional `megacells` entry has `ordering = "AFTER"`, and MEGA Cells loads after AE2, so with MEGA Cells present it
-boots. The profile includes MEGA Cells. Not reported upstream (the owner reports issues, not the agent).
+boots. The profile includes MEGA Cells. Reported upstream as reliqwq/NeoECOPrototype#6 (2026-10-10).
 
 ## How the tests reuse Neo ECO's scenes
 
