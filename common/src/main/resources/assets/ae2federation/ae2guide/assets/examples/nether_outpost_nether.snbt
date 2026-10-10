@@ -14,7 +14,8 @@
         {pos: [2, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:green_smart_cable", visual: {channelsEast: 1, connections: ["east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, west: {freq: 4660s, id: "ae2federation:federation_p2p_tunnel", output: 1b, visual: {missingChannel: 0b, powered: 1b}}}},
         {pos: [1, 1, 0], state: "ae2federation:cable"},
         {pos: [0, 1, 0], state: "ae2federation:switch"},
-        {pos: [0, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsUp: 1, connections: ["up"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:terminal", visual: {missingChannel: 0b, powered: 1b}}}}
+        {pos: [1, 0, 0], state: "ae2:1k_crafting_storage{formed:true,powered:true}", nbt: {core: 1b, id: "ae2:crafting_storage", visual: {}}},
+        {pos: [0, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:light_blue_smart_cable", visual: {channelsUp: 2, channelsEast: 2, connections: ["up", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}}
     ],
     entities: [],
     palette: [
@@ -22,6 +23,7 @@
         "ae2:quantum_link{formed:true,waterlogged:false}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
         "ae2federation:cable",
-        "ae2federation:switch"
+        "ae2federation:switch",
+        "ae2:1k_crafting_storage{formed:true,powered:true}"
     ]
 }

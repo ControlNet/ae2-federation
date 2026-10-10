@@ -1,8 +1,12 @@
 {
     DataVersion: 3955,
-    size: [7, 3, 1],
+    size: [10, 3, 1],
     data: [
         {pos: [6, 1, 0], state: "ae2:energy_cell{fullness:4}", nbt: {id: "ae2:energy_cell", internalCurrentPower: 200000.0d}},
+        {pos: [7, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsWest: 1, connections: ["west"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, east: {id: "ae2federation:bridge", visual: {missingChannel: 0b, powered: 1b}}}},
+        {pos: [8, 1, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:yellow_smart_cable", visual: {channelsWest: 1, channelsEast: 1, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
+        {pos: [9, 1, 0], state: "ae2:pattern_provider{push_direction:all}", nbt: {id: "ae2:pattern_provider", priority: 0, visual: {}}},
+        {pos: [9, 2, 0], state: "ae2:molecular_assembler{powered:true}", nbt: {id: "ae2:molecular_assembler", visual: {}}},
         {pos: [5, 1, 0], state: "ae2:drive{facing:north,spin:0}", nbt: {id: "ae2:drive", priority: 0, visual: {cell0: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell1: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell2: {id: "ae2:item_storage_cell_4k", state: "not_empty"}, cell3: {id: "ae2:item_storage_cell_4k", state: "not_empty"}}}},
         {pos: [5, 2, 0], state: "ae2federation:switch"},
         {pos: [4, 2, 0], state: "ae2federation:cable"},
@@ -26,6 +30,8 @@
         "ae2federation:cable",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
         "ae2:quantum_ring{formed:true,waterlogged:false}",
-        "ae2:quantum_link{formed:true,waterlogged:false}"
+        "ae2:quantum_link{formed:true,waterlogged:false}",
+        "ae2:pattern_provider{push_direction:all}",
+        "ae2:molecular_assembler{powered:true}"
     ]
 }

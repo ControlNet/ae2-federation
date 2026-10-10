@@ -8,16 +8,22 @@ navigation:
 
 # 下界前哨
 
-**目标**： 下界里的前哨网络使用你在主世界基地的存储， 并靠基地的电源运行。 量子网络桥在两个维度之间承载一对联邦P2P通道， 前哨仍是独立的网络， 保留自己的频道。
+**目标**： 下界里的前哨网络使用你在主世界基地的存储， 并靠基地的电源运行。 量子网络桥在两个维度之间承载一对联邦P2P通道， 前哨仍是独立的网络， 保留自己的频道。 之后前哨还能订购一个用桥接器连到基地的工厂所做的东西， 自己和工厂之间不需要任何规则、线缆或桥接器。
 
-**需要**： 一个带存储和电源的基地网络； 一个带终端的前哨网络； 每个网络一个<ItemLink id="ae2federation:switch" />； 一座量子网络桥， 即每端八个<ItemLink id="ae2:quantum_ring" />和一个<ItemLink id="ae2:quantum_link" />， 外加一对<ItemLink id="ae2:quantum_entangled_singularity" />； 两个<ItemLink id="ae2:me_p2p_tunnel" />； 一张<ItemLink id="ae2:memory_card" />； 一个<ItemLink id="ae2:quartz_fiber" />； ME线缆和<ItemLink id="ae2federation:cable" />。
+**需要**： 一个带存储和电源的基地网络； 一个带合成终端和合成CPU的前哨网络； 每个网络一个<ItemLink id="ae2federation:switch" />； 一座量子网络桥， 即每端八个<ItemLink id="ae2:quantum_ring" />和一个<ItemLink id="ae2:quantum_link" />， 外加一对<ItemLink id="ae2:quantum_entangled_singularity" />； 两个<ItemLink id="ae2:me_p2p_tunnel" />； 一张<ItemLink id="ae2:memory_card" />； 一个<ItemLink id="ae2:quartz_fiber" />； ME线缆和<ItemLink id="ae2federation:cable" />。 工厂部分还需要： 一个用<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板的网络， 以及一个<ItemLink id="ae2federation:bridge" />。
 
 主世界这一端：
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/nether_outpost_overworld.snbt" />
-  <BoxAnnotation color="#915dcd" min="5 1 0" max="7 2 1">
-    基地： 驱动器， 以及给这里所有网络供电的能源元件
+  <BoxAnnotation color="#915dcd" min="5 1 0" max="7.625 2 1">
+    基地： 驱动器、给这里所有网络供电的能源元件， 以及装桥接器的一段线缆
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="7.625 1.25 0.25" max="8 1.75 0.75">
+    基地和工厂之间的桥接器： 第二个联邦域， 由这两个网络组成
+  </BoxAnnotation>
+  <BoxAnnotation color="#cdc35c" min="8 1 0" max="10 3 1">
+    工厂： 一个样板供应器和一台分子装配室， 用自己的线缆， 靠基地的电运行
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 2 0" max="6 3 1">
     基地的交换机， 放在驱动器上面
@@ -47,8 +53,8 @@ navigation:
   <BoxAnnotation color="#dddddd" min="0 1 0" max="1 2 1">
     前哨的交换机
   </BoxAnnotation>
-  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="1 1 1">
-    前哨： 一个终端， 没有自己的电源
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
+    前哨： 一个合成终端和一个合成CPU， 没有自己的电源
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -57,7 +63,7 @@ navigation:
 
 <FederationTopology>
   <Network key="base" label="基地" color="#915dcd" column="0" row="0" details="驱动器|能源元件" />
-  <Network key="outpost" label="前哨" color="#5CA7CD" column="1" row="0" details="终端" />
+  <Network key="outpost" label="前哨" color="#5CA7CD" column="1" row="0" details="合成终端|合成CPU" />
   <Rule user="outpost" source="base" capability="storage" />
   <Energy first="base" second="outpost" />
 </FederationTopology>
@@ -78,3 +84,43 @@ navigation:
 ## 试一试
 
 从主世界的链接仓里取出奇点。 前哨的终端变暗、 变空： 通道断开了， 基地的存储和电力也随之断开。 基地自己照常工作。 把奇点放回去， 前哨又拥有了这两样。
+
+## 向基地的工厂下单
+
+基地还可以是前哨通往工厂的路。 这里的工厂是基地旁边一个独立的网络： 一个样板供应器和一台分子装配室， 把原木做成木板， 用桥接器连到基地。 桥接器形成第二个联邦域， 由基地和工厂组成。 前哨不在这个域里， 哪个界面里都没有“前哨使用工厂的”规则。 基地的规则开启转发后， 工厂的配方照样会转给前哨， 和[跨域联动](../across-domains.md)里一样。
+
+在交换机的联邦界面里显示相连的域时：
+
+<FederationTopology>
+  <Network key="outpost" label="前哨" color="#5CA7CD" column="0" row="0" details="合成终端|合成CPU" />
+  <Network key="base" label="基地" color="#915dcd" column="1" row="0" details="驱动器|能源元件" />
+  <Network key="factory" label="工厂" color="#cdc35c" column="2" row="0" details="样板供应器|分子装配室" />
+  <Domain key="here" label="本域" networks="outpost,base" opened="true" />
+  <Domain key="bridge" label="域 3F1C" networks="base,factory" />
+  <Rule user="outpost" source="base" capability="crafting" />
+  <Rule user="outpost" source="base" capability="storage" />
+  <Rule user="base" source="factory" capability="crafting" state="reexport" />
+  <Rule user="base" source="factory" capability="storage" state="reexport" />
+  <Energy first="outpost" second="base" />
+  <Energy first="base" second="factory" />
+</FederationTopology>
+
+### 搭建
+
+1. **用桥接器把工厂连到基地**： 把桥接器装在基地的一段线缆上， 让它的外侧接触工厂的线缆， 如场景所示。 工厂的线缆用自己的颜色， 这样两个网络的线缆永远不会连到一起。
+2. **右键桥接器**， 打开“基地使用工厂的”合成规则， 再往前切一次， 切到开启并转发。 它的存储规则会随之打开； 把存储规则也切到开启并转发。 这里的工厂不存放东西， 但它一旦有了存储， 前哨也能看到它的库存和任务的剩余物品。
+3. **在同一个界面里打开基地和工厂之间的ME能量**。 工厂从此和前哨一样靠基地的能源元件运行： 能量跨两个联邦域汇到一起， 不需要转发。
+4. **右键任意一个交换机**， 打开“前哨使用基地的”合成规则。 它的存储规则已经打开； 这里开启就够了。
+5. **在前哨的合成终端下单木板**。 工厂的配方列在前哨的可合成物品里。
+
+### 订单怎样运行
+
+前哨自己的合成CPU执行任务。 前哨没有自己的存储， 所以CPU从基地的驱动器取出原木， 直接发给工厂的样板供应器。 木板直接回到CPU， CPU把它们存进基地的驱动器， 前哨的终端就会列出它们。 基地不需要CPU： 它的规则只决定谁能用到谁。
+
+### 联邦界面里
+
+交换机的界面打开时是**当前域**： 基地和前哨， 以及它们之间的规则。 点击另一个范围按钮， 说明文字变成**含所有相连的域（只读）**： 桥接器的联邦域放在自己的底板上加进来， 带着工厂和“基地使用工厂的”规则， 用转发的颜色显示。 它们在这里不能修改， 要到桥接器上编辑。
+
+### 试一试
+
+在桥接器的界面里把“基地使用工厂的”合成规则切回开启。 木板从前哨的可合成物品里消失， 而基地仍保留着工厂的配方。 再切到转发， 它们就回来了。
