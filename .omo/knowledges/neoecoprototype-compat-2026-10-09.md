@@ -2,7 +2,7 @@
 
 Neo ECO Prototype (github.com/reliqwq/NeoECOPrototype, GPL-3.0, GitHub releases only) is an L1 tier for Neo ECO AE
 Extension. 1.3.2 needs neoecoae `[21.2.1-beta2,)` and LDLib2 `[2.2.40,)`, so profile `neoecoprototype` pins
-neoecoae 21.2.1 (the `neoecoae` profile stays on 21.2.0). Result: 34/34 (core 19, neoecoae 5, neoecoprototype 10).
+neoecoae 21.2.1 (since 2026-10-10 the `neoecoae` and `addons-all` profiles run 21.2.1 too, and `addons-all` includes MEGA Cells and the prototype, 86/86; only `useless-mod-addons` stays on 21.2.0, keeping the requested-amount fallback tested). Result: 34/34 (core 19, neoecoae 5, neoecoprototype 10).
 
 ## Upstream bug found
 

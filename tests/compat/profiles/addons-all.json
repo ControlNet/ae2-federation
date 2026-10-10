@@ -15,7 +15,9 @@
     "ae2-wcwt@1.3.10",
     "thunderbolt-core@2.0.1",
     "ae2-lightning-tech@2.1.1",
-    "neoecoae@21.2.0",
+    "neoecoae@21.2.1",
+    "megacells@4.11.0",
+    "neoecoprototype@1.3.2",
     "data-energistics@3.3.3",
     "extendedae-plus@1.6.3",
     "appliedenhancements@1.1.0",
@@ -30,6 +32,8 @@
     "ae2-pattern-disk",
     "ae2extras",
     "omnisequence",
-    "neoecoae"
+    "neoecoae",
+    "megacells",
+    "neoecoprototype"
   ]
 }
