@@ -34,7 +34,7 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  */
 public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<Integer> CONNECTIONS = new ModelProperty<>();
-    private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
+    private static final ModelData[] DATA = new ModelData[CableVisualConnections.MODEL_COUNT];
     private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
     private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
 
@@ -78,7 +78,7 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos position, BlockState state, ModelData data) {
-        int connections = CableVisualConnections.connections(level, position);
+        int connections = CableVisualConnections.model(level, position);
         var modelData = DATA[connections];
         if (modelData == null) {
             modelData = ModelData.builder().with(CONNECTIONS, connections).build();

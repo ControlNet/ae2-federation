@@ -6,17 +6,12 @@ dense textures (`textures/part/cable/dense/`), resized the cable to a 12-voxel c
 `entity/cable_flow.png` and the P2P panel; the artist is the authority for all three, and the old generators
 (`cable_flow_texture.py`, `p2p_panel_texture.py`) and V07 texture copying are retired. At the artist's suggestion a
 Provider or Endpoint front now joins the cable densely, as a Router does (no AE2 covered arm with a cap), so a
-Router-cable-Provider line was one straight tube and `dense/connector` (the old cap) ships undrawn.
-
-Since 2026-10-10 (user decision) cables join each other at full width (`CABLE` kind, 12-voxel arm, core face toward
-a cable left out); the 10-voxel dense "neck" appears only toward a Router or Provider/Endpoint front, so a cable
-beside a machine is a core, not a tube. With no step between cables, tube end faces, the JOINS_FIRST/SECOND model
-bits and the flowMask redraw are gone. Before/after shots: `build/neck-shots/`.
+Router-cable-Provider line is one straight tube and `dense/connector` (the old cap) ships undrawn.
 
 ## Where things are
 
-- `router/CableVisualConnections`: two bits per side, E/W/U/D/S/N. `CABLE` (another cable, 12-voxel arm), `DENSE`
-  (Router, Provider or Endpoint front, 10-voxel arm), `COVERED` (Federation P2P tunnel front, a 4-voxel arm). `mask()` is derived and still feeds the BER and GameTests.
+- `router/CableVisualConnections`: two bits per side, E/W/U/D/S/N. `DENSE` (cable, Router, Provider or Endpoint
+  front), `COVERED` (Federation P2P tunnel front, a 4-voxel arm). `mask()` is derived and still feeds the BER and GameTests.
 - `router/CableShapes`: outline boxes per connection set, cached lazily (4096 sets).
 - `client/FederationCableBuilder`: AE2 `CableBuilder` / AE2LT helper logic (LGPL notice kept), drawing with AE2's
   `appeng.client.render.cablebus.CubeBuilder` (public class, not API package; AE2LT does the same).
@@ -35,9 +30,11 @@ cable bus sets `cableBusAdjacent` (no big cap). A dense cable with a SMART/COVER
 - NeoForge `BakedModelWrapper.applyTransform` returns the ORIGINAL model; the item renderer then draws the empty
   placeholder. Override it to apply the transform and return `this`.
 - Item path calls the 3-argument `getQuads(null, side, random)`; override it too.
-- Until 2026-10-10 straight tube end faces followed the artist's `cable_display.bbmodel` (drawn toward a non-tube
-  neighbour to cover the 12-to-10 step), which needed model bits read two blocks away plus a client redraw, since
-  vanilla re-meshes only within one block of a change. Full-width cable joins made all of that unnecessary.
+- Straight tube end faces follow the artist's `cable_display.bbmodel`: drawn toward a non-tube neighbour (covers the
+  12-to-10 voxel step), left out between two straight tubes (else a seam ring shows through the glass). The model key
+  `CableVisualConnections.model` adds JOINS_FIRST/SECOND bits read two blocks away; vanilla re-meshes only sections
+  within one block of a change, so `FederationCableBlockEntity.flowMask` (client, once per tick) calls
+  `level.sendBlockUpdated` on itself when its straightness changes. Verified live across a section boundary.
 - A translucent shell shows faces AE2's opaque shell hides: arms start at the core surface (14), and a straight tube has no end caps and no ±0.01 overhang (that is for facades).
 - `tools/blockbench/create_projects.py` already failed before this change (`KeyError: 'missing'` on the hand-made
   device models); the cable entries were removed from it.

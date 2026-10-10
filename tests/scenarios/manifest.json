@@ -175,7 +175,7 @@
     {"id":"cross-dimension.endpoint-unloaded","backend":"gametest","testId":"endpointacrossdimensionsunloaded","structure":"ae2federation_test:harness_native_smoke","assertions":11},
     {"id":"cross-dimension.nether-provider-unloaded","backend":"gametest","testId":"projectionnetherproviderunloaded","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"cross-dimension.level-close-keeps-overworld","backend":"gametest","testId":"levelclosekeepsoverworldprojection","structure":"ae2federation_test:harness_native_smoke","assertions":12},
-    {"id":"cable.necks-only-at-devices","backend":"gametest","testId":"cablenecksonlyatdevices","structure":"ae2federation_test:harness_native_smoke","assertions":4},
+    {"id":"cable.tube-ends-join-only-straight-tubes","backend":"gametest","testId":"cabletubeendsjoinonlystraighttubes","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"p2p.tunnel-shares-storage","backend":"gametest","testId":"p2ptunnelsharesstorage","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"p2p.outputs-link-through-input","backend":"gametest","testId":"p2poutputslinkthroughinput","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"p2p.tunnels-stay-apart","backend":"gametest","testId":"p2ptunnelsstayapart","structure":"ae2federation_test:harness_native_smoke","assertions":9},
