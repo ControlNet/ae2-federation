@@ -201,7 +201,7 @@ and page ids did not change.
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
 | `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `ecoDistrictOrdering` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
-| `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceTradingPost` |
+| `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
   structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
@@ -419,8 +419,12 @@ there), then breaks a crafting-system casing for the page's "Try it".
   - Neo ECO: tried `eco-warehouse.md` (an ECO warehouse re-exported to districts through a cable-only hub), then
     reverted to `eco-district.md` at the owner's review: a middle network with nothing on it, shown with one district,
     teaches nothing the Across Domains page does not, and the district shows all three Neo ECO systems.
-    `ecoWarehouseChain` stays as compat coverage. Lesson: a chain example needs a middle network with a job of its own.
-  - Useless Mod: the alloy furnace now sits two Bridges away (cross-domain crafting chain).
+    `ecoWarehouseChain` stays as compat coverage.
+  - **Lesson:** an example that chains domains needs a middle network with a job of its own. Cross-domain reach is
+    taught once, on the Across Domains page; mod examples do not repeat it with an empty hub.
+  - Useless Mod: tried the alloy furnace two Bridges away through a cable-only trading post, then reverted to the
+    one-Bridge page at the owner's review, for the same reason as Neo ECO; the post's plain Storage rule also hid the
+    workshop's drive from the base. `alloyFurnaceTradingPost` stays as compat coverage.
   - Mekanism + AppMek: `chemical-tank-farm.md`, a Dynamic Tank read by a chemical storage bus and shared through a
     Storage rule (replaces `mekanism-chemical.md`). The Dynamic Tank forms from plain placement and the storage bus
     reads it. Extract-only is not a rule option, so "Try it" switches the rule off.

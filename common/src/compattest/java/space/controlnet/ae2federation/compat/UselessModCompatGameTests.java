@@ -60,8 +60,8 @@ public final class UselessModCompatGameTests {
     }
 
     /**
-     * The guide's former example: network B is the furnace alone, with no storage and no power of its own, and network
-     * A orders from it. Taking the pattern out of the furnace takes the recipe away from A; putting it back brings it
+     * The guide's example: network B is the furnace alone, with no storage and no power of its own, and network A
+     * orders from it. Taking the pattern out of the furnace takes the recipe away from A; putting it back brings it
      * back, and A orders again.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
@@ -89,8 +89,8 @@ public final class UselessModCompatGameTests {
     }
 
     /**
-     * The guide's cross-domain chain and its exercise: the furnace on a workshop network, which also keeps a chest of
-     * its own stock; a trading post with nothing but cable, which uses the workshop's Crafting with re-export and its
+     * A cross-domain chain, once a guide example: the furnace on a workshop network, which also keeps a chest of its
+     * own stock; a trading post with nothing but cable, which uses the workshop's Crafting with re-export and its
      * Storage without; and an orderer two Bridges from the workshop, with the CPU, the storage and the only energy
      * cell. The orderer shares no domain and has no rule with the workshop, yet its own CPU orders the furnace's
      * sticks, which come back to its storage; the workshop's stock stays out of its sight. Stepping the post's
