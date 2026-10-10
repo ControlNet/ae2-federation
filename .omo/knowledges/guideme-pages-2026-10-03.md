@@ -344,7 +344,7 @@ and page ids did not change.
 ## Neo ECO district relayout (2026-10-05)
 
 The owner asked whether the old layout (A: computation only; B: storage and crafting) could work. It could in theory
-(the Crafting rule switches on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
+(at the time a Crafting rule also switched on A's Storage view of B), but no test covered it: `computationSystemOrdering` kept the
 inputs in A's chest. The page now puts the storage and computation systems on A and only the crafting system on B,
 with no power and no storage on B. `ecoDistrictOrdering` builds exactly that
 (`AddonCraftingScene.consumerStorageStructure`: the consumer's chest and the provider's chest lose their cells, the
@@ -415,33 +415,10 @@ there), then breaks a crafting-system casing for the page's "Try it".
   Bridge-C; B's rule on C with re-export lets A reach C's storage and crafting with no rule of its own. Rules are keyed
   by network pair, so domains do not stop the chain. Backed by testmod `acrossdomainsstorage` /
   `acrossdomainscrafting` (shared `test/crafting/BridgeChainFixture`).
+- **Scene boxes**: a network's box starts after the Bridge part on its cable (cable x + 0.375) and must cover every
+  block of the network without cutting through one. Across Domains had B's drive above the cable carrying the B-C
+  Bridge (moved above B's other cable) and A's box starting at x 6, missing A's Bridge cable (now 5.375).
 - **Examples reworked so they are not all remote-crafting variants**:
-  - Neo ECO: tried `eco-warehouse.md` (an ECO warehouse re-exported to districts through a cable-only hub), then
-    reverted to `eco-district.md` at the owner's review: a middle network with nothing on it, shown with one district,
-    teaches nothing the Across Domains page does not, and the district shows all three Neo ECO systems.
-    `ecoWarehouseChain` stays as compat coverage.
-  - **Lesson:** an example that chains domains needs a middle network with a job of its own. Cross-domain reach is
-    taught once, on the Across Domains page; mod examples do not repeat it with an empty hub.
-- **Two chain examples that pass that bar** (AE2 only, the owner asked for them; no "when to use" section):
-  - `examples/nether-outpost.md` gained "Order from the base's factory": the outpost (physical Switch + Federation
-    P2P domain with the base) orders from a factory joined to the base by a Bridge, through the base's Crafting
-    re-export. The base is the real hub (storage, power); the outpost has its own crafting CPU. Testmod
-    `p2pNetherOutpostOrdersFactory` (`p2p.nether-outpost-orders-factory`): a physical domain chains to a Bridge
-    domain exactly like two Bridges. It proves the Crafting re-export only; the factory stores nothing, so the
-    Storage re-export the page sets is not exercised.
-  - `examples/order-desk.md` (position 27), "A Factory That Takes Orders": customer -Bridge- counter -Bridge-
-    factory. Crafting needs Storage in the same direction, so a direct rule always exposes the factory's stock; with
-    "Counter uses Factory's" Crafting re-exported and its Storage plain, the customer orders the factory's recipes
-    without seeing its private drive. The counter's drive is fully open to the customer (its Crafting rule forces
-    Storage), so the page warns to keep recipe ingredients off it. The two Bridges matter because the customer's
-    Bridge screen never offers a "Customer uses Factory's" rule; the page claims no permission system. Testmod
-    `orderDesk` (`crafting.order-desk`), mutation checked both ways; its fixture keeps the energy cell on the
-    customer, the page on the factory (ME power pools both ways).
-- Across Domains: network A's box started at x 6 and missed A's cable that carries the A-B Bridge; it now starts
-  after the Bridge (5.375), like the other networks' boxes.
-  - Useless Mod: tried the alloy furnace two Bridges away through a cable-only trading post, then reverted to the
-    one-Bridge page at the owner's review, for the same reason as Neo ECO; the post's plain Storage rule also hid the
-    workshop's drive from the base. `alloyFurnaceTradingPost` stays as compat coverage.
   - Mekanism + AppMek: `chemical-tank-farm.md`, a Dynamic Tank read by a chemical storage bus and shared through a
     Storage rule (replaces `mekanism-chemical.md`). The Dynamic Tank forms from plain placement and the storage bus
     reads it. Extract-only is not a rule option, so "Try it" switches the rule off.
@@ -454,6 +431,25 @@ there), then breaks a crafting-system casing for the page's "Try it".
     page says so. `AE2_PAGES` allows `quantum_bridge.md`; `AE2_ITEMS` gained the quantum ring, link, entangled
     singularity and spatial anchor.
   - Kept as they were: Create crushing wheels and the four induction-card variants.
-- Across Domains scene: network B's drive sat above the cable that carries the B-C Bridge, so B's box (which must
-  start after the Bridge) cut through it. The drive now sits above B's other cable.
-
+  - Tried and reverted at the owner's review: Neo ECO `eco-warehouse.md` (an ECO warehouse re-exported to districts
+    through a cable-only hub; back to `eco-district.md`, which shows all three ECO systems) and the alloy furnace two
+    Bridges away through a cable-only trading post (back to the one-Bridge page). `ecoWarehouseChain` and
+    `alloyFurnaceTradingPost` stay as compat coverage.
+  - **Lesson:** an example that chains domains needs a middle network with a job of its own. Cross-domain reach is
+    taught once, on the Across Domains page; mod examples do not repeat it with an empty hub.
+- **Chain example that passes that bar**: `examples/nether-outpost.md` gained "Order from the base's factory": the
+  outpost (physical Switch + Federation P2P domain with the base) orders from a factory joined to the base by a
+  Bridge, through the base's Crafting re-export. The base is the real hub (storage, power); the outpost has its own
+  crafting CPU and pays with the base's logs through its Storage rule on the base. Base -> factory is Crafting only.
+  Testmod `p2pNetherOutpostOrdersFactory` (`p2p.nether-outpost-orders-factory`) builds exactly that: a physical
+  domain chains to a Bridge domain like two Bridges.
+- **Order desk** (`examples/order-desk.md`, position 27, "A Factory That Takes Orders"): first built as customer -
+  counter - factory, because Crafting then forced Storage on and only a chain could hide the factory's stock. After
+  the owner made Crafting and Storage independent (fae6d19), it became one Bridge with "Customer uses Factory's"
+  Crafting only: the customer pays with its own items, results come back, the factory's drive stays private, and
+  leftovers stay in the factory. Its test is `projectionwithoutstorage`; the 3-network `orderDesk` test was removed.
+- **Crafting without Storage in the guide** (2026-10-10, after fae6d19): every page now treats Storage as optional
+  for crafting. A page keeps a Storage step and the Storage `<Rule>` only when the consumer must use the provider's
+  materials or reach leftovers (market-hub district->market, nether-outpost outpost->base); elsewhere both were
+  removed. Compat scenes (`RouterCraftingScene`, `AddonCraftingScene`) still switch Storage on for their tests; the
+  pages' claims stay true because their consumers pay from their own storage.

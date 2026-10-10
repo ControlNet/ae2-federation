@@ -204,8 +204,8 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
     /**
      * Once {@link #advance()} has joined the outpost to the base, builds the factory one step per call: the outpost's
      * crafting CPU and the factory's network, then the Bridge between the base and the factory, then the rules (the
-     * factory runs on the base's power; the base uses the factory's Storage and Crafting with re-export; the outpost
-     * uses the base's Crafting), then the planks pattern. Fails until the base can order the factory's planks.
+     * factory runs on the base's power; the base uses the factory's Crafting with re-export and no Storage, as the
+     * guide builds it; the outpost uses the base's Crafting), then the planks pattern. Fails until the base can order the factory's planks.
      */
     public void advanceFactory() {
         if (factoryStep == 0) {
@@ -237,8 +237,6 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
             helper.assertTrue(twoDomainsMeetAtBase(), "Waiting for two domains that meet only at the base");
             rule(new PolicyKey(factoryNetwork, network(baseGrid()), PolicyCapability.ME_POWER),
                     PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
-            rule(new PolicyKey(network(baseGrid()), factoryNetwork, PolicyCapability.STORAGE),
-                    PolicyRule.storageDefaults().withMode(RuleMode.REEXPORT));
             factoryCrafting(RuleMode.REEXPORT);
             rule(key(PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
             nextFactory();
