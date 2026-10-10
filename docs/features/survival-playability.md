@@ -15,21 +15,25 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 |---|---|---|
 | 1 Printed Nexus Circuit | 1 Ender Pearl (`c:ender_pearls`) under the Inscriber Logic Press | Inscriber, inscribe mode: the press stays, like AE2's Printed Logic Circuit |
 | 1 Nexus Processor | 1 Printed Nexus Circuit + 1 Redstone Dust (`c:dusts/redstone`) + 1 Printed Silicon | Inscriber: circuit on top, redstone in middle, silicon at bottom (top and bottom may swap); press mode consumes all inputs, like AE2's Logic Processor |
-| 16 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
-| 16 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
+| 2 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
+| 8 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
 | 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Nexus Core | Shapeless |
-| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, import top, export bottom, storage left, interface right, core center |
+| 1 Federation Switch | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, import top, export bottom, storage left, interface right, core center |
+| 1 Federation Router | 4 Federation Cables + 4 Fluix Crystals (`c:gems/fluix`) + 1 Nexus Core | Shaped: cables in corners, crystals on the sides, core center |
 | 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Nexus Core | Shapeless |
 | 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Core | Shapeless |
 
-Every functional device recipe uses the Nexus Core; the Router also takes four Federation Cables.
-Bridge and Router are alternative connection forms rather than a mandatory upgrade sequence.
+Every functional device recipe uses the Nexus Core; the Switch and the Router also take four Federation Cables.
+Bridge and Switch are alternative ways to attach networks rather than a mandatory upgrade sequence; the Router only
+links and branches Federation Cable. Yields follow AE2: two cores per batch, like the Formation Core, and eight cables
+from eight ME Glass Cables.
 
-For a first setup with two Routers and sixteen placed Federation Cables, starting with none of these components:
-print one circuit, press one processor, craft one core batch, then two cable batches and one Router batch. This costs
-sixteen native ME Glass Cables, one each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix Crystal and Ender Dust,
-and one each of the native Import Bus, Export Bus, Storage Bus and ME Interface; the Inscriber Logic Press is kept. Four Federation Cables are consumed in the Router craft. After placing the
-setup, two Routers, twelve Federation Cables and thirteen Nexus Cores remain.
+For a first setup with two Switches and sixteen placed Federation Cables, starting with none of these components:
+the setup needs 24 Federation Cables (sixteen placed, eight in the two Switches), so three cable batches, and five
+Nexus Cores (three for the cables, two for the Switches), so three core batches from three circuits and three
+processors. This costs 24 native ME Glass Cables, three each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix
+Crystal and Ender Dust, and two each of the native Import Bus, Export Bus, Storage Bus and ME Interface; the
+Inscriber Logic Press is kept. After placing the setup, one Nexus Core remains.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 
 ## In-game guide

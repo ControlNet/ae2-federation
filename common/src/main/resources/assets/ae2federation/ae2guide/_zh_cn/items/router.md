@@ -29,5 +29,3 @@ item_ids:
 右键路由器打开它所在联邦域的联邦界面。
 
 <RecipeFor id="ae2federation:router" />
-
-一次合成产出四个路由器。

@@ -18,7 +18,7 @@ navigation:
 
 <RecipeFor id="ae2federation:nexus_processor" />
 
-在工作台的一排里放<ItemLink id="ae2:fluix_crystal" />、<ItemLink id="ae2:ender_dust" />和处理器， 得到十六个核心。
+在工作台的一排里放<ItemLink id="ae2:fluix_crystal" />、<ItemLink id="ae2:ender_dust" />和处理器， 得到两个核心。
 
 <RecipeFor id="ae2federation:nexus_core" />
 

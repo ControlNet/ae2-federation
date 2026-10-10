@@ -19,8 +19,8 @@ ME Federation Router (`ae2federation:router`) now links Federation ports only. T
 - **Unchanged paths:** a Federation Pattern Provider still brings its own network in, and a Bridge still forms its
   two-network domain.
 - **Recipes:** the Switch takes the Router's former recipe (four Federation Cables in the corners, Import Bus, Storage
-  Bus, ME Interface and Export Bus on the sides, a Nexus Core in the centre, four Switches). The Router is four
-  Federation Cables in the corners, four Fluix Crystals on the sides and a Nexus Core in the centre, four Routers.
+  Bus, ME Interface and Export Bus on the sides, a Nexus Core in the centre, one Switch). The Router is four
+  Federation Cables in the corners, four Fluix Crystals on the sides and a Nexus Core in the centre, one Router.
 - **Appearance:** none yet, on purpose; the Switch shows the missing-texture cube until the artist draws it. It joins
   Federation Cable densely, as the Router does.
 - **Saves:** pre-alpha; Routers in older saves are not converted, and the pre-rename ids no longer load.

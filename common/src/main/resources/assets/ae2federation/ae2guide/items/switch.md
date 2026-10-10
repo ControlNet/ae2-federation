@@ -58,5 +58,3 @@ Right-click the Switch to open the Federation screen for its domain, where you s
 [Getting Started](../getting-started.md).
 
 <RecipeFor id="ae2federation:switch" />
-
-One craft makes four Switches.

@@ -53,5 +53,3 @@ item_ids:
 右键交换机打开它所在联邦域的联邦界面， 在那里打开共享。 参见[入门](../getting-started.md)。
 
 <RecipeFor id="ae2federation:switch" />
-
-一次合成产出四个交换机。

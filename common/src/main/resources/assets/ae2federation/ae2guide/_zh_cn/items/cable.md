@@ -32,4 +32,4 @@ item_ids:
 
 <RecipeFor id="ae2federation:cable" />
 
-任意颜色的<ItemLink id="ae2:fluix_glass_cable" />（可以混用）都能做出16根。
+任意颜色的<ItemLink id="ae2:fluix_glass_cable" />（可以混用）都能做出8根。

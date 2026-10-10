@@ -34,7 +34,7 @@ item_ids:
 
 ## 联结核心
 
-在工作台的一排里放<ItemLink id="ae2:fluix_crystal" />、<ItemLink id="ae2:ender_dust" />和<ItemLink id="ae2federation:nexus_processor" />， 得到十六个联结核心， 和AE2的成型核心一样。 其他模组的末影珍珠粉也一样能用。
+在工作台的一排里放<ItemLink id="ae2:fluix_crystal" />、<ItemLink id="ae2:ender_dust" />和<ItemLink id="ae2federation:nexus_processor" />， 得到两个联结核心， 和AE2的成型核心一样。 其他模组的末影珍珠粉也一样能用。
 
 <RecipeFor id="ae2federation:nexus_core" />
 

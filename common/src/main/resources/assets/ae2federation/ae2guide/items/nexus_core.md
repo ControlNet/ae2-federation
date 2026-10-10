@@ -40,7 +40,7 @@ itself.
 ## Nexus Core
 
 A <ItemLink id="ae2:fluix_crystal" />, an <ItemLink id="ae2:ender_dust" /> and a
-<ItemLink id="ae2federation:nexus_processor" /> in a row of a crafting table make sixteen cores, like AE2's
+<ItemLink id="ae2federation:nexus_processor" /> in a row of a crafting table make two cores, like AE2's
 Formation Core. Another mod's Ender Pearl dust works as well.
 
 <RecipeFor id="ae2federation:nexus_core" />

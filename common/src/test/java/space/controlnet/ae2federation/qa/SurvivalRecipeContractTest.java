@@ -36,8 +36,8 @@ final class SurvivalRecipeContractTest {
             assertEquals(null, results.put(result.group(2), Integer.parseInt(result.group(1))), "Two recipes make " + name);
         });
         assertEquals(Map.of("ae2federation:printed_nexus_circuit", 1, "ae2federation:nexus_processor", 1,
-                "ae2federation:nexus_core", 16, "ae2federation:bridge", 1, "ae2federation:router", 4,
-                "ae2federation:switch", 4, "ae2federation:cable", 16, "ae2federation:pattern_provider", 1, "ae2federation:processing_endpoint", 1),
+                "ae2federation:nexus_core", 2, "ae2federation:bridge", 1, "ae2federation:router", 1,
+                "ae2federation:switch", 1, "ae2federation:cable", 8, "ae2federation:pattern_provider", 1, "ae2federation:processing_endpoint", 1),
                 results);
     }
 

@@ -49,12 +49,12 @@ public final class SurvivalRecipeGameTests {
         var redstone = new ItemStack(Items.REDSTONE);
         var ender = AEItems.ENDER_DUST.stack();
         var crystal = AEItems.FLUIX_CRYSTAL.stack();
-        assertions += crafts(helper, "nexus_core", core, 16, grid(crystal, ender, processor, null, null, null,
+        assertions += crafts(helper, "nexus_core", core, 2, grid(crystal, ender, processor, null, null, null,
                 null, null, null));
-        assertions += crafts(helper, "nexus_core", core, 16, grid(null, null, null, null, null, null,
+        assertions += crafts(helper, "nexus_core", core, 2, grid(null, null, null, null, null, null,
                 crystal, ender, processor));
         // Shaped recipes also match mirrored, as AE2's Formation Core does.
-        assertions += crafts(helper, "nexus_core", core, 16, grid(processor, ender, crystal, null, null, null,
+        assertions += crafts(helper, "nexus_core", core, 2, grid(processor, ender, crystal, null, null, null,
                 null, null, null));
         // A native Logic Processor in place of the Nexus one, or a missing input, make no core.
         for (var input : List.of(grid(crystal, ender, AEItems.LOGIC_PROCESSOR.stack(), null, null, null, null, null, null),
@@ -72,7 +72,7 @@ public final class SurvivalRecipeGameTests {
                 grid(null, core, null, null, null, null, AEBlocks.PATTERN_PROVIDER.stack(), null, null));
         assertions += crafts(helper, "processing_endpoint", ProcessingRegistration.ENDPOINT_ITEM.get().getDefaultInstance(), 1,
                 grid(AEBlocks.INTERFACE.stack(), core, null, null, null, null, null, null, null));
-        assertions += crafts(helper, "switch", RouterRegistration.SWITCH_ITEM.get().getDefaultInstance(), 4,
+        assertions += crafts(helper, "switch", RouterRegistration.SWITCH_ITEM.get().getDefaultInstance(), 1,
                 grid(cable, AEParts.IMPORT_BUS.stack(), cable,
                         AEParts.STORAGE_BUS.stack(), core, AEBlocks.INTERFACE.stack(),
                         cable, AEParts.EXPORT_BUS.stack(), cable));
@@ -84,13 +84,13 @@ public final class SurvivalRecipeGameTests {
         helper.assertFalse(nativeSwitch.isPresent(), "A Formation Core must not make Switches");
         assertions++;
         var fluixCrystal = AEItems.FLUIX_CRYSTAL.stack();
-        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 4,
+        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 1,
                 grid(cable, fluixCrystal, cable, fluixCrystal, core, fluixCrystal, cable, fluixCrystal, cable));
         // Any glass cable colour, mixed within one craft.
         var white = AEParts.GLASS_CABLE.stack(AEColor.WHITE);
         var fluix = AEParts.GLASS_CABLE.stack(AEColor.TRANSPARENT);
         var red = AEParts.GLASS_CABLE.stack(AEColor.RED);
-        assertions += crafts(helper, "cable", cable, 16, grid(fluix, fluix, white, fluix, core, red, fluix, fluix, fluix));
+        assertions += crafts(helper, "cable", cable, 8, grid(fluix, fluix, white, fluix, core, red, fluix, fluix, fluix));
 
         // AE2's Formation Core in the cable ring's centre is not the Nexus one.
         var plain = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
@@ -135,7 +135,7 @@ public final class SurvivalRecipeGameTests {
             assertions++;
         }
         PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "7", "inscriberRecipes", "2",
-                "coreBatch", "16", "routerBatch", "4", "switchBatch", "4", "cableBatch", "16",
+                "coreBatch", "2", "routerBatch", "1", "switchBatch", "1", "cableBatch", "8",
                 "recipeBookUnlocks", "7"));
         helper.succeed();
     }

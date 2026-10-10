@@ -36,4 +36,4 @@ no length limit. The pulses inside it are decoration; use **Live flow** in the F
 
 <RecipeFor id="ae2federation:cable" />
 
-Any colour of <ItemLink id="ae2:fluix_glass_cable" />, mixed if you like, makes 16 cables.
+Any colour of <ItemLink id="ae2:fluix_glass_cable" />, mixed if you like, makes 8 cables.

@@ -18,8 +18,9 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
   `instanceof RouterBlock`, so the Switch joins cables densely with no change.
 - The pre-rename registry aliases (`hub`, `federation_cable`, `multipart_bridge`) and the legacy-save GameTest with its
   sample were removed afterwards at the user's request (pre-alpha, no old-save support).
-- Recipes: Switch takes the old Router recipe (cables in corners, import/storage/interface/export buses, nexus core,
-  x4); Router is cables in corners, fluix crystals on the sides, nexus core, x4.
+- Recipes: Switch takes the old Router recipe (cables in corners, import/storage/interface/export buses, nexus core);
+  Router is cables in corners, fluix crystals on the sides, nexus core. Since the same day every yield follows AE2:
+  Switch x1, Router x1, Cable x8 (eight glass cables in), Nexus Core x2 (as the Formation Core).
 - Art: none on purpose; `models/block/switch.json` names `block/switch/switch`, which is not shipped, so the block
   shows the missing-texture cube (also in guide scenes) until the artist draws it.
 
@@ -29,7 +30,7 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
   `RouterTopologyContractTest` pins exactly six `router.*` entries (old Task 12 gate in `gradle/federation-qa.gradle`).
 - Test scenes with an ME neighbour on a Router face moved to `RouterFixtures.placeSwitch` / `SWITCH`; Router-only
   placements (cable model, occlusion, "Router beside the path") stay Routers.
-- `survivalrecipes` asserts both recipes (56 assertions); `SurvivalRecipeContractTest` and `GuidePagesContractTest`
+- `survivalrecipes` asserts both recipes; `SurvivalRecipeContractTest` and `GuidePagesContractTest`
   list the Switch. Lesson: a recipe change also needs the `survivalrecipes` GameTest, not only the JUnit contract.
 
 ## Guide

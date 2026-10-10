@@ -32,5 +32,3 @@ Switch.
 Right-click the Router to open the Federation screen for its domain.
 
 <RecipeFor id="ae2federation:router" />
-
-One craft makes four Routers.

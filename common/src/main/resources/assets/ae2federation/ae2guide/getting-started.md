@@ -21,7 +21,7 @@ Redstone Dust and a <ItemLink id="ae2:printed_silicon" /> into a <ItemLink id="a
 
 <RecipeFor id="ae2federation:nexus_processor" />
 
-A <ItemLink id="ae2:fluix_crystal" />, an <ItemLink id="ae2:ender_dust" /> and the processor in a row make sixteen
+A <ItemLink id="ae2:fluix_crystal" />, an <ItemLink id="ae2:ender_dust" /> and the processor in a row make two
 cores.
 
 <RecipeFor id="ae2federation:nexus_core" />
