@@ -49,3 +49,10 @@ A/B check of a new texture (2026-10-10, the artist's core revision): put it in a
 `options.txt` `resourcePacks`, shoot, then copy the old texture into the pack, reload with
 `game_input.py reload` (F3+T; wait for a new "Reloading ResourceManager" line) and shoot the same `tp` spots. Restore
 `options.txt` afterwards. Shots and side-by-sides in `build/core-revision-shots/`.
+
+## Undecided alternative: full-width cable joins
+
+Branch `cable-full-width-joins` (fdeaa7b, pushed 2026-10-10; reverted on dev in ba4e96c at the user's request) joins
+cables to each other at the core's full width (a `CABLE` kind, 12-voxel arm, the core face toward a cable left out),
+keeps the 10-voxel neck only toward a Router or Provider/Endpoint front, and drops the tube end faces, JOINS bits and
+the flowMask redraw. Shots: `build/neck-shots/`, and with the artist's third core revision `build/core-rev3/`.
