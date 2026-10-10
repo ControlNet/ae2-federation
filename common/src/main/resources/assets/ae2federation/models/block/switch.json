@@ -1,6 +1,7 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "ae2federation:block/router",
   "textures": {
-    "all": "ae2federation:block/switch/switch"
+    "0": "ae2federation:block/switch/switch",
+    "particle": "ae2federation:block/switch/switch"
   }
 }

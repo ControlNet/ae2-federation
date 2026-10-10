@@ -23,8 +23,10 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
   name what a face exchanges, as the Bridge's storage bus + quartz fiber + core do;
   Router is cables in corners, fluix crystals on the sides, nexus core. Since the same day every yield follows AE2:
   Switch x1, Router x1, Cable x8 (eight glass cables in), Nexus Core x2 (as the Formation Core).
-- Art: none on purpose; `models/block/switch.json` names `block/switch/switch`, which is not shipped, so the block
-  shows the missing-texture cube (also in guide scenes) until the artist draws it.
+- Art: temporary (user request, 2026-10-10, while the artist is busy). `models/block/switch.json` takes the Router's
+  model and swaps in `block/switch/switch`, the Router texture with its cyan cores turned fluix purple (hue 275,
+  saturation x1.25; the blue-grey frame stays). `tools/visual/switch_placeholder.py` regenerates it. Replace both
+  with the artist's work when it arrives.
 
 ## Tests
 
