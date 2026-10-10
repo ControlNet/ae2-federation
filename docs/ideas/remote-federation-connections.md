@@ -1,8 +1,24 @@
 # Remote Federation connections
 
-Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate.
+Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate,
+with a line-of-sight beam-link proposal added on 2026-10-09.
 
 Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](README.md).
+
+## Follow-up 2026-10-09: operating power and beam links
+
+The user proposed two additional ideas, maintained on separate pages:
+
+- [Optional Federation operating power](federation-operating-power.md): an input device tentatively called
+  光束充能器 sustains Federation operation, with different block costs and especially high wireless costs.
+  The requirement can be disabled in configuration; its default and numerical costs remain open.
+- [Line-of-sight beam links](line-of-sight-beam-links.md): devices described as 光束收发器 connect distant points
+  along an unobstructed straight line without cable along the span, at increased operating energy cost.
+
+The latter is now a user-proposed connection form, beyond the earlier survey's generic directional-link suggestion.
+Neither idea finalizes the quantum-bridge-style device, its name, or its appearance. Earlier statements below
+that operating costs were unselected should now be read alongside the new qualitative cost direction;
+exact rates and charging behavior are still undecided.
 
 ## Intent and confirmed context
 

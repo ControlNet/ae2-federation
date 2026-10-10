@@ -7,15 +7,22 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
+| [Lightweight Jade cable capacity display](jade-cable-capacity.md) | Preliminary; depends on future capacity rules | A concise cable network-count/limit line; no broad diagnostic HUD |
+| [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
-| [Nexus Processor and Nexus Core](nexus-processor.md) | Implemented; chain revised after AE2 on 2026-10-08 | Printed Nexus Circuit -> Nexus Processor -> Nexus Core, with devices taking the core |
+| [Optional Federation operating power](federation-operating-power.md) | User-proposed direction; details open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
+| [Line-of-sight beam links](line-of-sight-beam-links.md) | User-proposed connection form; details open | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
+| [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Region-counting candidate; concentrated layouts accepted; balancing open | Free-form connection structures, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
 Its name, appearance and detailed behavior remain undecided.
 
 ## Implemented ideas
 
+- [Nexus Processor and Nexus Core](../features/survival-playability.md): implemented the Printed Nexus Circuit ->
+  Nexus Processor -> Nexus Core chain; Federation devices consume cores. The
+  [original discussion](../archive/ideas/nexus-processor.md) is archived for historical context.
 - [GuideME use-case tutorials](../features/guideme-use-cases.md): implemented bilingual examples and optional-mod tutorial packs.
   The [original discussion](../archive/ideas/guideme-use-cases.md) is archived for historical context.
 - [Survival playability](../features/survival-playability.md): implemented recipes, processor icon and GuideME guide.

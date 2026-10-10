@@ -6,6 +6,8 @@ and the Nexus chain was rebuilt after AE2's processors and cores on 2026-10-08.
 Basic Federation equipment is obtainable using native AE2 materials and machines. The in-game GuideME pages
 teach acquisition, connection, configuration and remote processing. The former idea is preserved as an
 [archived discussion](../archive/ideas/survival-playability.md); its superseded proposals are not current requirements.
+The processor rename and subsequent Nexus recipe revisions are preserved in the
+[archived Nexus discussion](../archive/ideas/nexus-processor.md). The recipes below describe the implemented chain.
 
 ## Recipes
 
@@ -24,8 +26,8 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 | 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Core | Shapeless |
 
 Every functional device recipe uses the Nexus Core; the Switch and the Router also take four Federation Cables.
-Bridge and Switch are alternative ways to attach networks rather than a mandatory upgrade sequence; the Router only
-links and branches Federation Cable. Yields follow AE2: two cores per batch, like the Formation Core, and eight cables
+Bridge and Switch are alternative ways to attach networks rather than a mandatory upgrade sequence; the Router is not
+fully implemented yet and has no use for now. Yields follow AE2: two cores per batch, like the Formation Core, and eight cables
 from eight ME Glass Cables.
 
 For a first setup with two Switches and sixteen placed Federation Cables, starting with none of these components:

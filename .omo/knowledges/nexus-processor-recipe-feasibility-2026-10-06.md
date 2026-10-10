@@ -3,7 +3,9 @@
 Date: 2026-10-06. Research and design record only; no production recipe, item, texture, or registry was changed.
 
 The requested item rename, new core, recipe replacement, scope, artwork/documentation follow-up, and acceptance
-expectations are recorded together in the [Nexus Processor idea](../../docs/ideas/nexus-processor.md).
+expectations were recorded together in the [archived Nexus Processor idea](../../docs/archive/ideas/nexus-processor.md).
+That historical proposal was superseded by the 2026-10-08 chain; see the
+[current survival feature](../../docs/features/survival-playability.md) for implemented recipes.
 This knowledge file supplies the investigation evidence; it is not a substitute for that change specification.
 
 Follow-up: the user requested explicit planned item IDs. The idea now specifies `ae2federation:nexus_processor`
