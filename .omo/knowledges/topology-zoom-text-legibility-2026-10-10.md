@@ -199,3 +199,7 @@ The user picked "vector CJK font, Latin stays the pixel font" from the compariso
     font; the test skips them.
 - `ui.graph-controls` drifts between runs: the left link sometimes shows Storage + Energy chips, sometimes Energy
   only. That was already true of the comparison runs and is unrelated to fonts.
+- Bold gotcha (found in the user's playtest): bold redraws a glyph `boldOffset` to the right. LDLib2 and vanilla use 1
+  unit for TTF glyphs (0.5 for Unifont, 1 for the bitmap font). The Droid strokes at size 9 are thinner than one
+  unit, so bold "网络" in card names showed doubled strokes. `CanvasFont.boldExceptChinese` keeps Latin and digits
+  bold and draws Chinese plain. Card names are the only bold text on the canvas; aside headings use the default font.

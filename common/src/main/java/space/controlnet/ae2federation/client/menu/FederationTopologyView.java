@@ -608,12 +608,8 @@ final class FederationTopologyView {
         applyCanvasFont(graph.contentRoot);
     }
 
-    /**
-     * The font every text on the canvas uses: Chinese from a vector font, which stays legible when the canvas is
-     * zoomed out where Unifont's pixel glyphs blur, and everything else from the default font (font/canvas.json).
-     */
-    private static final net.minecraft.resources.ResourceLocation CANVAS_FONT =
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation", "canvas");
+    /** The font every text on the canvas uses; see {@link CanvasFont}. */
+    private static final net.minecraft.resources.ResourceLocation CANVAS_FONT = CanvasFont.ID;
 
     /** {@code text} in the canvas font, so measuring it matches how the canvas draws it. */
     private static Component canvasFont(Component text) {
@@ -906,7 +902,7 @@ final class FederationTopologyView {
         swatch.layout(style -> style.width(6).height(6).flexShrink(0));
         swatch.style(style -> style.backgroundTexture(FederationTheme.solid(network.accent())));
         // The name in bold, "Network 0A1F" by its identity tag while it has none.
-        var heading = text(name(network).copy().withStyle(net.minecraft.ChatFormatting.BOLD), FederationTheme.DARK_TITLE);
+        var heading = text(CanvasFont.boldExceptChinese(name(network)), FederationTheme.DARK_TITLE);
         heading.addClass("card-name");
         heading.setId("graph_node_name_" + sanitize(network.member()));
         heading.layout(style -> style.flex(1).minWidth(0).widthAuto());
