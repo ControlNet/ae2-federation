@@ -47,3 +47,11 @@ page must not prescribe their integration, power/configuration behavior, or othe
 Switch registry planning: the idea now specifies `ae2federation:switch` for both block and block item,
 following `router` and `cable` in `RouterRegistration.java`. No matching switch registration was found
 in current production sources; this is documentation of a future ID, not an implemented entry.
+
+Shape revision: the user superseded arbitrary free-form router/switch multiblocks with complete solid
+cuboids, referencing AE2 crafting CPU construction. Current direction is recorded in the multiblock idea;
+earlier free-form statements above are historical. AE2 1.21.1 guide reference:
+https://guide.appliedenergistics.org/1.21.1/items-blocks-machines/crafting_cpu_multiblock
+Adopt the shape principle only; no crafting CPU mechanics, size limits, or detection algorithm is selected.
+This change stays out of the separate switch-role idea. Cable routes still need bends; long solid cuboid
+routers remain consistent with the accepted layout tradeoff. Documentation only, no runtime changes.

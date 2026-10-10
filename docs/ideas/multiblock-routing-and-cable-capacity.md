@@ -2,7 +2,7 @@
 
 Discussion dates: 2026-10-09 through 2026-10-10.
 Status: gameplay idea with accepted layout tradeoffs and a candidate region-counting model. Cable multipliers,
-shape rules, and failure behavior still need evaluation. Router capacity limits are out of scope for now;
+connection details and failure behavior still need evaluation. Router and switch multiblocks must be solid cuboids. Router capacity limits are out of scope for now;
 do not treat the original charger-rooted model as a requirement.
 
 ## Player experience
@@ -14,7 +14,8 @@ energy flow, while larger infrastructure can support greater connectivity.
 ## User-proposed forms
 
 - Adjacent router blocks visually connect and act as a larger multiblock router. The desired construction is
-  free-form adjacency, not a prescribed shell or fixed multiblock shape.
+  a complete solid cuboid, following the shape principle of AE2 crafting CPU multiblocks. This supersedes
+  the earlier arbitrary-shape adjacency proposal.
 - Cable sections can become visibly larger structures with different textures and a thicker rendered beam.
   The current candidate sizes are 1x1, 1x2, 2x2, 2x3, and 3x3. A possible 9x9 visual scale appeared
   earlier in the discussion; it is not a selected capacity tier.
@@ -22,13 +23,26 @@ energy flow, while larger infrastructure can support greater connectivity.
 - Different cable sizes should not directly convert into each other. Splitting a 2x2 trunk into four 1x1 lines
   should require a router rather than a direct cable junction.
 - Cable capacity should grow substantially with size; the current proposed multipliers are recorded below.
-- Both routers and switches should support free-form multiblock expansion to accommodate bundled cable
+- Both routers and switches should support solid-cuboid multiblock expansion to accommodate bundled cable
   connections. This expansion proposal belongs to this idea, not the separate preliminary switch design.
   Switch traversal and counting boundaries remain open.
 - Connected textures and visible energy flow are central to the reward, not merely incidental implementation polish.
 
 The user mentioned a Create construction analogy without identifying the block. No specific Create mechanism
 has been verified or selected as the implementation reference.
+
+## Confirmed shape direction: solid cuboids
+
+The user revised the earlier free-form proposal: router and switch multiblocks must form complete,
+axis-aligned solid rectangular prisms. Length, width, and height need not be equal; the rule does not
+prescribe a single fixed-size blueprint. Hollow shells, missing internal blocks, and L-shaped or branched
+structures do not form one valid multiblock. Exact supported dimensions and limits remain undecided.
+
+Reference: [AE2 1.21.1 crafting CPU guide](https://guide.appliedenergistics.org/1.21.1/items-blocks-machines/crafting_cpu_multiblock).
+Only its solid-cuboid shape principle is adopted. This does not import crafting storage requirements,
+coprocessors, channel costs, component recipes, or AE2's implementation. How incomplete structures behave
+and how adjacent structures merge or remain separate still need design. Cable bends remain a separate
+requirement; the cuboid restriction applies to router/switch bodies, not an entire cable route.
 
 ## Clarified direction: attachment-based capacity
 
@@ -107,7 +121,7 @@ Do not infer automatic capacity addition for spatially separate routes. The fini
 1.5C per constituent block; 3x3 deliberately ends capacity progression if retained. Larger visual sizes
 would need a purpose other than additional capacity. These are consequences to evaluate, not new requirements.
 
-Routers and switches can expand as multiblocks to provide physical space for large cable connections.
+Routers and switches can expand as solid cuboid multiblocks to provide physical space for large cable connections.
 A complete matching attachment face is an assistant suggestion, not a selected geometry requirement.
 Turns, orientation, partial cross-sections, size transitions, and multiblock separation need later design.
 Bundled cable textures and thicker, coherent beam rendering are future visual work; no assets or final
@@ -124,7 +138,7 @@ Following the 2026-10-10 discussion, the user accepted recording this direction:
   capacity-five cable in this layout. This is legitimate construction, not an exploit to prohibit.
 - Allow large star layouts that concentrate local regions on one router. Cable capacity constrains
   connection regions; it is not intended to independently cap the whole domain's size.
-- Do not prohibit elongated router multiblocks merely because they could substitute for a cable trunk.
+- Do not prohibit elongated solid-cuboid router multiblocks merely because they could substitute for a cable trunk.
   Evaluate their construction cost, space, and optional operating cost against bundled cables.
 - Make bundled cables an attractive way to connect distant facilities efficiently and visibly. They
   need not be a compulsory upgrade for every small, compact layout.
@@ -163,8 +177,9 @@ proposal proceeds. No changes to their existing contracts are selected by this b
 3. **Power versus capacity:** specify outage behavior without making a charger the allocation/pathfinding origin.
 4. **Router and switch behavior:** distinguish their roles and counting-boundary behavior. Keep router
    capacity limits out of the current scope and preserve the accepted concentrated layouts.
-5. **Shape recognition:** face versus edge/corner adjacency, free-form router growth, separation of neighboring
-   routers, cable axis/cross-section, incomplete sections, turns, and forks. No detection algorithm is selected.
+5. **Shape recognition:** solid cuboids are required for routers and switches. Size limits, separation of
+   neighboring structures, incomplete-structure behavior, cable axis/cross-section, turns, and forks remain
+   open. No detection algorithm is selected.
 6. **Usability:** saturated spans, power loss, obstructed remote links, and inactive policy rules should have
    distinguishable feedback. Rebuilding one segment should not silently change unrelated connection priorities.
 7. **Progression:** does an unlimited 3x3 trunk leave useful roles for smaller sizes and potential larger sizes?
