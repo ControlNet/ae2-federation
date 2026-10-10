@@ -17,7 +17,7 @@ once, in the domain where B and C meet, and A reaches C because B passes its acc
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/across_domains.snbt" />
-  <BoxAnnotation color="#915dcd" min="6 0 0" max="8 1 1">
+  <BoxAnnotation color="#915dcd" min="5.375 0 0" max="8 1 1">
     Network A: a terminal, and the energy cell that powers all three networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0.25 0.25" max="5.375 0.75 0.75">

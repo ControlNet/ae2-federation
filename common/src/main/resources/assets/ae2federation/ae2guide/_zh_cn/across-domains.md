@@ -14,7 +14,7 @@ navigation:
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/across_domains.snbt" />
-  <BoxAnnotation color="#915dcd" min="6 0 0" max="8 1 1">
+  <BoxAnnotation color="#915dcd" min="5.375 0 0" max="8 1 1">
     网络A： 一个终端， 以及给三个网络供电的能源元件
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0.25 0.25" max="5.375 0.75 0.75">
