@@ -114,7 +114,7 @@ final class BridgeChainFixture implements AutoCloseable {
         return networks.keySet().stream().allMatch(name -> grid(name).getEnergyService().isNetworkPowered());
     }
 
-    /** What how far each Bridge has got, for a test that waits too long. */
+    /** How far each Bridge has got, for a test that waits too long. */
     String readiness() {
         var states = new ArrayList<String>();
         for (int index = 0; index < placed.size(); index++) {

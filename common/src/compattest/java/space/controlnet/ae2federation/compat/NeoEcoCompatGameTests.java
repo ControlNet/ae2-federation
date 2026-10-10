@@ -80,9 +80,9 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
-     * The guide's district and its exercise: the consumer keeps its items in an ECO storage system and runs its jobs on
-     * an ECO computation system, and orders from the provider network's ECO crafting system, which has no power of its
-     * own. Breaking a casing of the crafting system then takes its recipes away from the consumer, and putting it back
+     * The guide's former district and its exercise: the consumer keeps its items in an ECO storage system and runs its
+     * jobs on an ECO computation system, and orders from the provider network's ECO crafting system, which has no power
+     * of its own. Breaking a casing of the crafting system then takes its recipes away from the consumer, and putting it back
      * returns them.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
@@ -112,8 +112,8 @@ public final class NeoEcoCompatGameTests {
     }
 
     /**
-     * The guide's storage-system example and its exercise: after the round trip, breaking the tail casing takes the
-     * shared items away from the consumer, and putting it back returns them.
+     * The guide's former storage-system example and its exercise: after the round trip, breaking the tail casing takes
+     * the shared items away from the consumer, and putting it back returns them.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void storageSystemDismantled(GameTestHelper helper) {

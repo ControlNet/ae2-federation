@@ -28,17 +28,28 @@ optional targets only log mixin `ClassNotFoundException` warnings.
   consumer's CPU orders through the projection and gets the exact output. `AddonCraftingScene.structure(..., ready)`
   serves providers that craft by themselves without being AE2 multiblocks.
 
-## Guide example (2026-10-08)
+## Guide example (2026-10-08, redone 2026-10-10)
 
 The owner picked the Advanced Alloy Furnace. Pack `guide_useless_mod` (requires `useless_mod`), page
-`examples/alloy-furnace.md` (position 71, after the Assembler Matrix), scene `alloy_furnace.snbt`: network A (energy
-cell, drive, crafting terminal, 1k CPU) with a Bridge on its cable, network B the furnace alone on one cable, no
-storage, no power. Blockstate is `facing` (four horizontal) plus `active`; the scene needs no block entity NBT and
-renders at the title screen (unlike Mekanism machines). `alloyFurnaceWorkshop` builds it
-(`AddonCraftingScene.providerWithoutStorage()` empties B's ME Chest; results still reach A) and takes the pattern out
-of `getTerminalPatternInventory()` and back; a simulate-only extraction fails at "Waiting for the changed provider's
-recipe to leave the consumer" (mutation checked). `guideSceneCables` in the `useless-mod` profiles checks the scene
-(mutation checked with a wrong channel count).
+`examples/alloy-furnace.md` (position 71), scene `alloy_furnace.snbt`. Blockstate is `facing` (four horizontal) plus
+`active`; the scene needs no block entity NBT and renders at the title screen (unlike Mekanism machines).
+
+- First version: network A ordered from network B, the furnace alone behind one Bridge. Its test
+  `alloyFurnaceWorkshop` (pattern taken out and put back) stays as a plain compat test.
+- Since 2026-10-10 the page is a cross-domain crafting chain, "An Alloy Furnace Two Bridges Away": the workshop (furnace
+  and a drive of its own stock), a trading post (cable only) that uses the workshop's Crafting with re-export and its
+  Storage plain Enabled, and the base (CPU, terminal, storage, the only energy cell) with its own Bridge to the post.
+  `alloyFurnaceTradingPost` backs it: the base's CPU orders 4 sticks, they return to the base's chest and nothing
+  stays owed; the post sees the workshop's chest, the base does not (no Storage re-export); stepping the post's
+  Crafting back to Enabled takes the recipe from the base but not the post, re-export brings it back and the base
+  orders again. Mutation checked: a no-op step-back stalls at "Waiting for the recipe to leave the orderer"; plain
+  Enabled at setup stalls at "Waiting for the furnace's recipe on the orderer".
+- `BridgeChainFixture` (compattest) builds such chains: each network a line of coloured glass cable along z at y 4
+  (different colours keep neighbouring lines apart), each Bridge on one line facing the parallel line beside it; it
+  places one Bridge per tick, each once the one before has joined its domain (`joined()` pokes `onUpdateShape`), then
+  switches ME power on per Bridge pair. Devices touching two lines would merge the networks, so place them on the
+  outer side of a line. Neo ECO's `ecoWarehouseChain` uses it too.
+- `guideSceneCables` in the `useless-mod` profiles checks the scene (mutation checked with a wrong channel count).
 
 ## UselessMod's own defects seen (upstream; not filed by us)
 

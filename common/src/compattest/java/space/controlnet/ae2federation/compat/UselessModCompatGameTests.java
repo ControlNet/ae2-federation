@@ -60,8 +60,8 @@ public final class UselessModCompatGameTests {
     }
 
     /**
-     * The guide's example: network B is the furnace alone, with no storage and no power of its own, and network A
-     * orders from it. Taking the pattern out of the furnace takes the recipe away from A; putting it back brings it
+     * The guide's former example: network B is the furnace alone, with no storage and no power of its own, and network
+     * A orders from it. Taking the pattern out of the furnace takes the recipe away from A; putting it back brings it
      * back, and A orders again.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
