@@ -43,3 +43,9 @@ cable bus sets `cableBusAdjacent` (no big cap). A dense cable with a SMART/COVER
 
 Side-by-side scene (Federation row z=0, AE2 dense row z=6) on a fresh flat server copied from the round-82 production
 server, client `build/ae2f-work/prod-client/start-client.sh <tag>`. Screenshots in `build/dense-visual-shots/`.
+
+A/B check of a new texture (2026-10-10, the artist's core revision): put it in a folder pack under
+`prod-client/resourcepacks/<name>/` (pack_format 34), list `"file/<name>"` after `mod_resources` in the client's
+`options.txt` `resourcePacks`, shoot, then copy the old texture into the pack, reload with
+`game_input.py reload` (F3+T; wait for a new "Reloading ResourceManager" line) and shoot the same `tp` spots. Restore
+`options.txt` afterwards. Shots and side-by-sides in `build/core-revision-shots/`.
