@@ -38,4 +38,4 @@ Link separate Applied Energistics 2 networks so they can share items, crafting, 
 
 ## License
 
-The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved. The Federation Cable's renderer is adapted from Applied Energistics 2 and AE2 Lightning Tech Reborn code under LGPL-3.0.
+The code is licensed under [AGPL-3.0](LICENSE). The art assets are All Rights Reserved.
