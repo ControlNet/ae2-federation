@@ -605,6 +605,27 @@ final class FederationTopologyView {
         for (var endpoint : endpointNodes) {
             if (endpointPlaces.containsKey(endpoint.id())) graph.addContentChild(endpointNode(endpoint));
         }
+        applyCanvasFont(graph.contentRoot);
+    }
+
+    /**
+     * The font every text on the canvas uses: Chinese from a vector font, which stays legible when the canvas is
+     * zoomed out where Unifont's pixel glyphs blur, and everything else from the default font (font/canvas.json).
+     */
+    private static final net.minecraft.resources.ResourceLocation CANVAS_FONT =
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation", "canvas");
+
+    /** {@code text} in the canvas font, so measuring it matches how the canvas draws it. */
+    private static Component canvasFont(Component text) {
+        return text.copy().withStyle(style -> style.withFont(CANVAS_FONT));
+    }
+
+    /** Sets the canvas font on every text element under {@code element}: card rows, chips and Endpoint labels. */
+    private static void applyCanvasFont(UIElement element) {
+        if (element instanceof com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement text) {
+            text.textStyle(style -> style.font(CANVAS_FONT));
+        }
+        for (var child : element.getChildren()) applyCanvasFont(child);
     }
 
     /** Whether {@code element} is drawn on the graph's canvas, as cards, link labels and Endpoint nodes are. */
@@ -961,7 +982,7 @@ final class FederationTopologyView {
     }
 
     private static float endpointWidth(EndpointNode endpoint, net.minecraft.client.gui.Font font) {
-        return font.width(endpointLabel(endpoint)) + 4 + 5 + 3 + 4 + 2;
+        return font.width(canvasFont(endpointLabel(endpoint))) + 4 + 5 + 3 + 4 + 2;
     }
 
     private space.controlnet.ae2federation.client.policy.EndpointHealth endpointHealth(EndpointNode endpoint) {
@@ -1151,7 +1172,7 @@ final class FederationTopologyView {
             var label = text(chip.text(), chip.color());
             label.addClass("pill-chip");
             if (chip.reexport()) label.addClass("reexport");
-            float chipWidth = stacked ? widest : font.width(chip.text()) + 5;
+            float chipWidth = stacked ? widest : font.width(canvasFont(chip.text())) + 5;
             label.layout(style -> style.width(chipWidth).height(11).paddingLeft(2).paddingRight(3).paddingTop(1).flexShrink(0));
             if (stacked) label.textStyle(style -> style.textAlignHorizontal(com.lowdragmc.lowdraglib2.gui.ui.data.Horizontal.CENTER));
             label.style(style -> style.backgroundTexture(new com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture(1, chip.color())));
@@ -1242,13 +1263,13 @@ final class FederationTopologyView {
 
     private static float widestChip(List<Chip> chips, net.minecraft.client.gui.Font font) {
         float widest = 0;
-        for (var chip : chips) widest = Math.max(widest, font.width(chip.text()) + 5);
+        for (var chip : chips) widest = Math.max(widest, font.width(canvasFont(chip.text())) + 5);
         return widest;
     }
 
     private static float labelBodyWidth(List<Chip> chips, boolean related, net.minecraft.client.gui.Font font) {
         float width = 2 * LABEL_PADDING + (related ? LABEL_LOCK : 0) + 3 * (chips.size() - 1);
-        for (var chip : chips) width += font.width(chip.text()) + 5;
+        for (var chip : chips) width += font.width(canvasFont(chip.text())) + 5;
         return width;
     }
 
@@ -2495,8 +2516,10 @@ final class FederationTopologyView {
                 int y = Math.round(top - PLATE_NAME_HEIGHT);
                 long spot = (long) x << 32 | (y & 0xffffffffL);
                 x = spots.getOrDefault(spot, x);
-                context.graphics.drawString(font, name, x, y, opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
-                spots.put(spot, x + font.width(name) + 6);
+                // LDLib2's renderer, as the canvas text draws it: vanilla drawString breaks glyphs up at a fractional zoom.
+                com.lowdragmc.lowdraglib2.gui.LDLibFonts.drawText(context.graphics, com.lowdragmc.lowdraglib2.gui.LDLibFonts.font(), canvasFont(name),
+                        x, y, opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
+                spots.put(spot, x + font.width(canvasFont(name)) + 6);
             }
         }
 

@@ -6,6 +6,7 @@ platforms = ["linux-64"]
 [dependencies]
 python = "3.12.*"
 pillow = "11.*"
+fonttools = "4.*"
 
 [tasks]
 generate = "python build_assets.py"
