@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.qa;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -28,6 +29,12 @@ final class DeviceOcclusionContractTest {
     void theRouterHidesNoNeighbourFace() throws IOException {
         assertEquals(closedFaces("router"), fullFaces(DeviceOcclusion.ROUTER));
         assertEquals(Set.of(), fullFaces(DeviceOcclusion.ROUTER));
+    }
+
+    @Test
+    void theSwitchSharesTheRoutersShapeAndHidesNoNeighbourFace() throws IOException {
+        // The Switch is a RouterBlock with a model of its own; the Router's shape hides nothing its model leaves open.
+        assertTrue(closedFaces("switch").containsAll(fullFaces(DeviceOcclusion.ROUTER)));
     }
 
     @Test

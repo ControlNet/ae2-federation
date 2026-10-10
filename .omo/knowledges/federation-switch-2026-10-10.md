@@ -23,10 +23,11 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
   name what a face exchanges, as the Bridge's storage bus + quartz fiber + core do;
   Router is cables in corners, fluix crystals on the sides, nexus core. Since the same day every yield follows AE2:
   Switch x1, Router x1, Cable x8 (eight glass cables in), Nexus Core x2 (as the Formation Core).
-- Art: temporary (user request, 2026-10-10, while the artist is busy). `models/block/switch.json` takes the Router's
-  model and swaps in `block/switch/switch`, the Router texture with its cyan cores turned fluix purple (hue 275,
-  saturation x1.25; the blue-grey frame stays). `tools/visual/switch_placeholder.py` regenerates it. Replace both
-  with the artist's work when it arrives.
+- Art: the artist's model and 16x16 texture arrived the same day and replaced the temporary recolour (the Router's
+  model with its cores turned fluix purple; `tools/visual/switch_placeholder.py` was removed). The artist's file
+  pointed at `block/router/switch`; it was installed as `block/switch/switch`, the model otherwise unchanged. The
+  model is a full 16-unit cube, unlike the Router's 1-unit inset, but the Switch keeps `DeviceOcclusion.ROUTER`,
+  which hides no neighbour face (`DeviceOcclusionContractTest`). Art commits credit the artist as co-author.
 
 ## Tests
 

@@ -86,7 +86,7 @@ a flat tee.
 | ID | Geometry and materials | Orientation |
 | --- | --- | --- |
 | `router` | Hand-made: framed cube with raised cyan cores, one texture (`block/router/router`) on all six faces | Symmetric |
-| `switch` | Temporary until the artist draws it: the Router's model with `block/switch/switch`, the Router texture with its cyan cores turned fluix purple by `tools/visual/switch_placeholder.py`. Shares the Router's block code, occlusion and dense cable joins | Symmetric |
+| `switch` | Hand-made: a full cube with a frame, corner caps and a raised panel on each face, one texture (`block/switch/switch`) on all six faces. Shares the Router's block code, occlusion (it hides no neighbour face) and dense cable joins | Symmetric |
 | `pattern_provider` | Hand-made: framed cube, cyan front (`pattern_provider`), purple back and sides (`_back`, `_side`) | South front, rotated for all six `facing` values, without UV lock |
 | `processing_endpoint` | Hand-made: as the Provider, with its own front, back and side textures | South front, rotated for all six `facing` values, without UV lock |
 | `cable` | AE2's dense cable, built in code: 10-unit core, 8-unit dense arms, 4-unit covered arms with a 6-unit cap against a machine, one 10-unit tube for a straight dense line; the BER flow inside. Temporary textures (see below) | Real neighbor port projection, two bits per side in E/W/U/D/S/N order |
