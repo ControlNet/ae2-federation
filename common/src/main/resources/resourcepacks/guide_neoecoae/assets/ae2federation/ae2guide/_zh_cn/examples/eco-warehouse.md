@@ -17,7 +17,7 @@ navigation:
 * 每个城区网络： 线缆上一个终端， 没有自己的存储和电源。
 * 枢纽和仓库之间一个<ItemLink id="ae2federation:bridge" />， 每个城区和枢纽之间各一个。
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_warehouse.snbt" />
   <BoxAnnotation color="#5ccd78" min="0 0 0" max="6 3 3">
     仓库： 最小的ECO存储系统， 背面的通讯接口接在仓库的线缆上， 还有给三个网络供电的能源元件

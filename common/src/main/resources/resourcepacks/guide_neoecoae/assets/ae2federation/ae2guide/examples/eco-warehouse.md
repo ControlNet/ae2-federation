@@ -24,7 +24,7 @@ Extension is installed.
 * a <ItemLink id="ae2federation:bridge" /> between the hub and the warehouse, and one between each district and the
   hub.
 
-<GameScene zoom="2" interactive={true} background="transparent">
+<GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_warehouse.snbt" />
   <BoxAnnotation color="#5ccd78" min="0 0 0" max="6 3 3">
     The warehouse: the smallest ECO storage system, its interface at the back on the warehouse's cable, and the energy
