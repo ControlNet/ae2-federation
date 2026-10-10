@@ -13,12 +13,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.p2p.FederationP2PScene;
+import space.controlnet.ae2federation.test.p2p.QuantumP2POutpostScene;
 import space.controlnet.ae2federation.test.p2p.QuantumP2PProviderScene;
 import space.controlnet.ae2federation.test.p2p.QuantumP2PRouterScene;
 import space.controlnet.ae2federation.test.policy.PolicyEvidence;
@@ -278,6 +281,45 @@ public final class FederationP2PGameTests {
             helper.assertValueEqual(scene.machinePower() - before, 500.0, "The nether machine must hold the 1000 FE");
             PolicyEvidence.write("p2pacrossdimensionsdrivesendpoint", 8, Map.of("returned", "2",
                     "relayedFe", "1000"));
+            scene.close();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * The guide's "An Outpost in the Nether", built in a player's order: a carrier powered by the base through a quartz
+     * fiber takes the tunnels over a Quantum Bridge whose nether half is built later, and the outpost there, with no
+     * power of its own, uses the base's storage and runs on its power. Taking the singularity out of the base's link
+     * chamber cuts the outpost off; put back, it shares again, and the base's identity stays settled throughout.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 800, required = true, manualOnly = true)
+    public static void p2pNetherOutpost(GameTestHelper helper) {
+        var scene = new QuantumP2POutpostScene(helper);
+        var phase = new int[1];
+        var singularity = new ItemStack[1];
+        helper.succeedWhen(() -> {
+            scene.advance();
+            if (phase[0] == 0) {
+                helper.assertValueEqual(scene.outpostIron(), 9L, "Waiting for the outpost to see the base's iron");
+                helper.assertTrue(scene.outpostPowered(), "Waiting for the outpost to run on the base's power");
+                helper.assertValueEqual(scene.baseIdentity(), IdentityStatus.SETTLED,
+                        "The Quantum link must leave the base's identity settled");
+                singularity[0] = scene.breakLink();
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(scene.outpostIron(), 0L, "Waiting for the outpost to lose the base's iron");
+                helper.assertFalse(scene.outpostPowered(), "Waiting for the outpost to lose the base's power");
+                scene.restoreLink(singularity[0]);
+                phase[0] = 2;
+            }
+            helper.assertValueEqual(scene.outpostIron(), 9L, "Waiting for the outpost to see the base's iron again");
+            helper.assertTrue(scene.outpostPowered(), "Waiting for the outpost to run on the base's power again");
+            helper.assertValueEqual(scene.baseIdentity(), IdentityStatus.SETTLED,
+                    "The base's identity must be settled again");
+            PolicyEvidence.write("p2pnetheroutpost", 8, Map.of("outpostIron", "9", "outpostPowered", "true",
+                    "linkBroken", "0", "restored", "9"));
             scene.close();
             helper.succeed();
         });

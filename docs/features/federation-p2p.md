@@ -60,6 +60,8 @@ The following checks cover this feature:
 - `FederationP2PGameTests`, the `p2p.*` manifest cases: attunement and sharing, outputs linking through their input,
   isolation, power loss and reload, across dimensions over a real Quantum Network Bridge, a moved output, an input
   taken off and replaced, and a channel shortage.
+  `p2p.nether-outpost` builds the guide's Nether outpost in a player's order, with a separate carrier powered through a
+  quartz fiber, and breaks and restores the Quantum link.
 - The `cross-dimension.*` manifest cases: a nether Federation Pattern Provider projected to an overworld consumer, a
   Provider and an Endpoint in different dimensions at the same coordinates (restart, broken link, replaced Endpoint,
   real chunk unload of either side) and a nether level close. See the

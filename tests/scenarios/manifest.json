@@ -185,6 +185,7 @@
     {"id":"p2p.link-follows-power-and-reload","backend":"gametest","testId":"p2plinkfollowspowerandreload","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"p2p.across-dimensions-shares-networks","backend":"gametest","testId":"p2pacrossdimensionssharesnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"p2p.across-dimensions-drives-endpoint","backend":"gametest","testId":"p2pacrossdimensionsdrivesendpoint","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"p2p.nether-outpost","backend":"gametest","testId":"p2pnetheroutpost","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"p2p.frequency-and-input-changes","backend":"gametest","testId":"p2pfrequencyandinputchanges","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"p2p.channel-shortage","backend":"gametest","testId":"p2pchannelshortage","structure":"ae2federation_test:harness_native_smoke","assertions":5},
 {"id":"storage.held-native-state","backend":"gametest","testId":"storageheldnativestate","structure":"ae2federation_test:harness_native_smoke","assertions":31},
