@@ -32,7 +32,6 @@ navigation:
   <Network key="a" label="网络A" color="#915dcd" column="0" row="0" details="合成CPU、终端|存储、能源元件" />
   <Network key="b" label="网络B" color="#5CA7CD" column="1" row="0" details="样板供应器|分子装配室" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
@@ -40,7 +39,7 @@ navigation:
 
 1. **工坊保持原样**。 样板供应器里的样板不动， 装配室还在它们旁边。
 2. **用交换机和联邦线缆连接两个网络**。
-3. **在联邦界面里打开“A使用B的”合成规则**。 它会同时打开同方向的存储规则， 因为A的CPU要从A能看到的存储里取原料， 而现在A能看到B的存储。
+3. **在联邦界面里打开“A使用B的”合成规则**。 A的CPU用A自己存储里的原料付账， 所以不需要存储规则。
 4. **打开这对网络的ME能量**。 两个网络从此共用一个能量池， 网络B靠网络A的电源运行。
 5. **在网络A下单**。 B的配方和A自己的可合成物品列在一起， 照常请求即可。
 

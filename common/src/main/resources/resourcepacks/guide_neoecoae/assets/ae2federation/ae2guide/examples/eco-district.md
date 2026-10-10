@@ -53,7 +53,6 @@ The Federation screen then shows the two networks and the rules between them:
   <Network key="a" label="Network A" color="#915dcd" column="1" row="0" details="ECO computation system|ECO storage system" />
   <Network key="b" label="Network B" color="#5CA7CD" column="0" row="0" details="ECO crafting system" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
@@ -68,8 +67,8 @@ The Federation screen then shows the two networks and the rules between them:
    and patterns into the crafting system's pattern buses. Put a flash crystal matrix into one of the computation
    system's drives: without one, it has no room for a job.
 3. **Connect networks A and B** to their own faces of a Switch.
-4. **Switch on Crafting under "A uses B's"** in the Federation screen, which switches the same direction's Storage on
-   too, and switch on **ME power** for the pair: the crafting system then runs on network A's power.
+4. **Switch on Crafting under "A uses B's"** in the Federation screen (no Storage rule is needed), and switch on
+   **ME power** for the pair: the crafting system then runs on network A's power.
 5. **Order from network A.** B's recipes are listed among A's craftables. The computation system plans the job and
    takes the ingredients from the storage system, the crafting system crafts on network B, and the results go back to
    A's computation system, which stores them in the storage system.

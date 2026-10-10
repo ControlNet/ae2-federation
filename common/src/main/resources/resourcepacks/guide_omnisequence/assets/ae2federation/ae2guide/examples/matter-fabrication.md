@@ -43,7 +43,6 @@ The Federation screen then shows the two networks and the rules between them:
   <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
   <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Matter Fabrication Well|Pattern Assembly" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 

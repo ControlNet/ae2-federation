@@ -41,9 +41,7 @@ The Federation screen then shows the three networks and the rules between them:
   <Network key="factory" label="Factory" color="#5CA7CD" column="1" row="0" details="Super Assembler Matrix|Energy cell" />
   <Network key="second" label="Second district" color="#5ccd78" column="2" row="0" details="Crafting CPU|Terminal, storage" />
   <Rule user="first" source="factory" capability="crafting" />
-  <Rule user="first" source="factory" capability="storage" />
   <Rule user="second" source="factory" capability="crafting" />
-  <Rule user="second" source="factory" capability="storage" />
   <Energy first="first" second="factory" />
   <Energy first="factory" second="second" />
 </FederationTopology>
@@ -53,7 +51,7 @@ The Federation screen then shows the three networks and the rules between them:
 1. **Join the three networks** on the faces of one Switch, as in the scene. The matrix joins the factory's network
    through any of its outer blocks.
 2. **Switch on Crafting under "First district uses Factory's" and under "Second district uses Factory's"**. Each
-   switches its own Storage on.
+   district pays with its own storage, so no Storage rule is needed.
 3. **Switch on ME power** between the factory and each district, so both districts run on the factory's energy cell.
 4. **Order from both districts.** The matrix's recipes are listed among each district's craftables.
 

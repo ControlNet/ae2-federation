@@ -38,7 +38,6 @@ navigation:
   <Rule user="district" source="market" capability="crafting" />
   <Rule user="district" source="market" capability="storage" />
   <Rule user="market" source="sawmill" capability="crafting" state="reexport" />
-  <Rule user="market" source="sawmill" capability="storage" />
   <Energy first="district" second="market" />
   <Energy first="market" second="sawmill" />
 </FederationTopology>
@@ -46,7 +45,7 @@ navigation:
 ## 搭建
 
 1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。
-2. **打开“基地使用市场的”合成规则**。 存储规则会随之打开。
+2. **打开“基地使用市场的”合成规则和存储规则**。 下单只需要合成规则； 存储规则让基地能使用市场的驱动器， 通过它们交易。
 3. **打开“市场使用锯木厂的”合成规则**， 再往前切一次， 切到开启并转发。 市场从此把锯木厂的配方转发给每个使用市场合成的网络。
 4. **打开基地和市场之间、 市场和锯木厂之间的ME能量**。 能量沿着这条链汇到一起， 三个网络都靠基地的能源元件运行。
 5. **在基地下单木板**。 锯木厂的配方列在基地的可合成物品里。

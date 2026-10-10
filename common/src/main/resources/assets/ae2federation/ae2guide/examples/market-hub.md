@@ -43,7 +43,6 @@ The Federation screen then shows the three networks and the rules between them:
   <Rule user="district" source="market" capability="crafting" />
   <Rule user="district" source="market" capability="storage" />
   <Rule user="market" source="sawmill" capability="crafting" state="reexport" />
-  <Rule user="market" source="sawmill" capability="storage" />
   <Energy first="district" second="market" />
   <Energy first="market" second="sawmill" />
 </FederationTopology>
@@ -51,7 +50,8 @@ The Federation screen then shows the three networks and the rules between them:
 ## Build it
 
 1. **Join the three networks** on the faces of one Switch, as in the scene.
-2. **Switch on Crafting under "District uses Market's"**. Its Storage comes on with it.
+2. **Switch on Crafting and Storage under "District uses Market's"**. Ordering needs only Crafting; Storage opens
+   the market's drives to the district, so it can trade through them.
 3. **Switch on Crafting under "Market uses Sawmill's"** and step it on once more, to Enabled with re-export. The
    market now passes the sawmill's recipes on to every network that uses the market's Crafting.
 4. **Switch on ME power** for the district and the market, and for the market and the sawmill. Power pools along the

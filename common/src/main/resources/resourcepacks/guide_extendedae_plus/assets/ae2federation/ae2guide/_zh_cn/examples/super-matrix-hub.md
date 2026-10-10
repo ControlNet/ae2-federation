@@ -36,9 +36,7 @@ navigation:
   <Network key="factory" label="工厂" color="#5CA7CD" column="1" row="0" details="超级装配矩阵|能源元件" />
   <Network key="second" label="第二个基地" color="#5ccd78" column="2" row="0" details="合成CPU|终端、存储" />
   <Rule user="first" source="factory" capability="crafting" />
-  <Rule user="first" source="factory" capability="storage" />
   <Rule user="second" source="factory" capability="crafting" />
-  <Rule user="second" source="factory" capability="storage" />
   <Energy first="first" second="factory" />
   <Energy first="factory" second="second" />
 </FederationTopology>
@@ -46,7 +44,7 @@ navigation:
 ## 搭建
 
 1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。 矩阵通过它任何一个外层方块加入工厂的网络。
-2. **打开“第一个基地使用工厂的”和“第二个基地使用工厂的”合成规则**。 每条都会打开同方向的存储规则。
+2. **打开“第一个基地使用工厂的”和“第二个基地使用工厂的”合成规则**。 每个基地都用自己的存储付账， 所以不需要存储规则。
 3. **打开工厂和每个基地之间的ME能量**， 两个基地都靠工厂的能源元件运行。
 4. **在两个基地同时下单**。 矩阵的配方列在每个基地的可合成物品里。
 

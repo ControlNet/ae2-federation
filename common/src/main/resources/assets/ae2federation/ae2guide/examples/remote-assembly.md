@@ -37,7 +37,6 @@ The Federation screen then shows the two networks and the rules between them:
   <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
   <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Pattern providers|Molecular Assemblers" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
@@ -45,8 +44,8 @@ The Federation screen then shows the two networks and the rules between them:
 
 1. **Leave the workshop as it is.** Its pattern providers keep their patterns, and its assemblers stay beside them.
 2. **Connect the two networks** with Switches and Federation Cable.
-3. **Switch on Crafting under "A uses B's"** in the Federation screen. This switches the same direction's Storage on
-   too, because A's CPU takes the ingredients from what A can see, which now includes B's storage.
+3. **Switch on Crafting under "A uses B's"** in the Federation screen. A's CPU pays with the ingredients in A's own
+   storage, so no Storage rule is needed.
 4. **Switch on ME power** for the pair. The two networks then share one energy pool, so network B runs on network A's
    power.
 5. **Order from network A.** B's recipes are listed among A's craftables. Request one as usual.

@@ -36,7 +36,6 @@ navigation:
   <Network key="plant" label="发电厂" color="#5CA7CD" column="1" row="0" details="感应矩阵|能源接收器" />
   <Network key="workshop" label="工坊" color="#5ccd78" column="2" row="1" details="木棍样板" />
   <Rule user="district" source="workshop" capability="crafting" />
-  <Rule user="district" source="workshop" capability="storage" />
   <Energy first="plant" second="district" />
   <Energy first="plant" second="workshop" />
 </FederationTopology>
@@ -47,7 +46,7 @@ navigation:
 2. **搭发电厂**： 在交换机的面上接一根ME线缆， 上面放能源接收器， 再往外是感应矩阵， 它的端口贴着能源接收器。 拿着<ItemLink id="mekanism:configurator" />潜行右键端口， 把它设为输出： 端口就会把矩阵里的电推进能源接收器， 由接收器转成AE。
 3. **给矩阵充电**： 用另一个设为输入的感应端口接上你的发电机。
 4. **打开ME能量**： 发电厂和城区之间， 以及发电厂和工坊之间。 两个网络都靠感应矩阵运行。
-5. **打开“城区使用工坊的”合成规则**， 同方向的存储规则会一起打开。 在城区的合成终端里下单木棍， 城区的存储里放好木板。
+5. **打开“城区使用工坊的”合成规则**， 不需要存储规则。 在城区的合成终端里下单木棍， 城区的存储里放好木板。
 
 ## 怎样运行
 

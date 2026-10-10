@@ -38,7 +38,6 @@ navigation:
   <Network key="a" label="网络A" color="#915dcd" column="0" row="0" details="合成CPU、终端|存储、能源元件" />
   <Network key="b" label="网络B" color="#5CA7CD" column="1" row="0" details="物质构筑井|样板总成" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 

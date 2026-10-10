@@ -39,7 +39,6 @@ The Federation screen then shows the two networks and the rules between them:
   <Network key="district" label="District" color="#915dcd" column="0" row="0" details="Tianshu Supercomputer|Energy cell" />
   <Network key="foundry" label="Foundry" color="#5CA7CD" column="1" row="0" details="Matter Warping Matrix" />
   <Rule user="district" source="foundry" capability="crafting" />
-  <Rule user="district" source="foundry" capability="storage" />
   <Energy first="district" second="foundry" />
 </FederationTopology>
 
@@ -50,7 +49,8 @@ The Federation screen then shows the two networks and the rules between them:
    to the <ItemLink id="ae2lt:matter_warping_matrix_port" /> opposite the Matrix's controller. Each Port takes cables only
    once its structure has formed.
 2. **Put the sticks pattern in the Matrix**, through its Port's pattern screen.
-3. **Switch on Crafting under "District uses Foundry's"**. Its Storage comes on with it.
+3. **Switch on Crafting under "District uses Foundry's"**. The district pays with its own storage, so no Storage
+   rule is needed.
 4. **Switch on ME power** for the two networks, so the Matrix runs on the district's energy cell: 8 AE/t while idle, and
    1 AE for each craft it takes.
 5. **Order sticks** in the district's crafting terminal, with planks in the district's storage.

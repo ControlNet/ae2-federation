@@ -34,8 +34,6 @@ reason.
   networks are loaded and powered, by power of their own or through ME power.
 * **"One of the two networks is not loaded, or its identity is not settled yet."** Load the other network's chunks,
   or wait until it has finished starting.
-* **"This direction's Storage rule is off."** Crafting takes the other network's materials through storage; switch
-  that direction's Storage on.
 * **"The other network has no storage it can share."** Add storage to the other network.
 * **"No Federation node on one of the two networks can join the shared energy pool."** Shared ME power needs a
   Switch face or a Bridge on each network.

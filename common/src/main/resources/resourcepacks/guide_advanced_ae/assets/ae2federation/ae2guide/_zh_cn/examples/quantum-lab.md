@@ -36,9 +36,7 @@ navigation:
   <Network key="lab" label="实验室" color="#915dcd" column="1" row="0" details="量子计算机|能源元件" />
   <Network key="joinery" label="细木坊" color="#5ccd78" column="2" row="0" details="木棍样板" />
   <Rule user="lab" source="sawmill" capability="crafting" />
-  <Rule user="lab" source="sawmill" capability="storage" />
   <Rule user="lab" source="joinery" capability="crafting" />
-  <Rule user="lab" source="joinery" capability="storage" />
   <Energy first="sawmill" second="lab" />
   <Energy first="lab" second="joinery" />
 </FederationTopology>
@@ -47,7 +45,7 @@ navigation:
 
 1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。 量子计算机通过它任何一个外层方块加入实验室的网络。
 2. **给每个工坊放样板**： 锯木厂放从一块原木到四块木板的合成样板， 细木坊放从两块木板到四根木棍的合成样板， 各放在一台分子装配室旁边的样板供应器里。
-3. **打开“实验室使用锯木厂的”和“实验室使用细木坊的”合成规则**。 每条都会打开同方向的存储规则。
+3. **打开“实验室使用锯木厂的”和“实验室使用细木坊的”合成规则**。 实验室用自己的存储付账， 所以不需要存储规则。
 4. **打开实验室和每个工坊之间的ME能量**， 两个工坊都靠实验室的能源元件运行。
 5. **先下单木棍， 再下单木板**： 在实验室的合成终端里下单， 实验室的存储里放两块原木。
 

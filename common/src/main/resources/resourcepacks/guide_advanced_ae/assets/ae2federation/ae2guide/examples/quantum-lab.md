@@ -42,9 +42,7 @@ The Federation screen then shows the three networks and the rules between them:
   <Network key="lab" label="Lab" color="#915dcd" column="1" row="0" details="Quantum Computer|Energy cell" />
   <Network key="joinery" label="Joinery" color="#5ccd78" column="2" row="0" details="Sticks pattern" />
   <Rule user="lab" source="sawmill" capability="crafting" />
-  <Rule user="lab" source="sawmill" capability="storage" />
   <Rule user="lab" source="joinery" capability="crafting" />
-  <Rule user="lab" source="joinery" capability="storage" />
   <Energy first="sawmill" second="lab" />
   <Energy first="lab" second="joinery" />
 </FederationTopology>
@@ -55,7 +53,7 @@ The Federation screen then shows the three networks and the rules between them:
    network through any of its outer blocks.
 2. **Give each workshop its pattern**: the sawmill a crafting pattern from one log to four planks, the joinery one from
    two planks to four sticks, each in a pattern provider beside a molecular assembler.
-3. **Switch on Crafting under "Lab uses Sawmill's" and under "Lab uses Joinery's"**. Each switches its own Storage on.
+3. **Switch on Crafting under "Lab uses Sawmill's" and under "Lab uses Joinery's"**. The lab pays with its own storage, so no Storage rule is needed.
 4. **Switch on ME power** between the lab and each workshop, so both workshops run on the lab's energy cell.
 5. **Order sticks, then planks** in the lab's crafting terminal, with two logs in the lab's storage.
 

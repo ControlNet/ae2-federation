@@ -33,10 +33,10 @@ you switch a rule on.
 | Crafting | Use the other network's pattern providers from your own terminals and automation | Disabled, Enabled, Enabled with re-export |
 | ME power | Join both networks' energy into one pool | Disabled, Enabled |
 
-* **Crafting needs Storage.** Your own crafting CPU runs the job with the materials it can see, which include the
-  other network's storage. Switching Crafting on also switches the same direction's Storage on, and switching that
-  Storage off also switches the Crafting off. The other network needs no CPU, and the result arrives in yours; see
-  [Remote Crafting](remote-processing.md).
+* **Crafting and Storage are separate switches.** Your own crafting CPU runs the job and pays with the materials your
+  network can see; the other network needs no CPU, and the result arrives in yours. Crafting alone is enough. Switch
+  on the same direction's Storage as well only if the CPU should also use the other network's materials, or you want
+  to reach the leftovers of jobs that stay there. See [Remote Crafting](remote-processing.md).
 * **Re-export** (the third state) passes access along a chain: if A uses B's storage and B uses C's storage with Re-export, A can reach
   C's storage through B. Crafting works the same way, and two networks may each craft with the other's providers.
   The chain may cross from one domain to the next, for example over two Bridges; see [Across Domains](across-domains.md).

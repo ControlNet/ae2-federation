@@ -42,7 +42,6 @@ The Federation screen then shows the three networks and the rules between them:
   <Network key="plant" label="Plant" color="#5CA7CD" column="1" row="0" details="Induction Matrix|Energy Acceptor" />
   <Network key="workshop" label="Workshop" color="#5ccd78" column="2" row="1" details="Sticks pattern" />
   <Rule user="district" source="workshop" capability="crafting" />
-  <Rule user="district" source="workshop" capability="storage" />
   <Energy first="plant" second="district" />
   <Energy first="plant" second="workshop" />
 </FederationTopology>
@@ -56,7 +55,7 @@ The Federation screen then shows the three networks and the rules between them:
    which turns it into AE.
 3. **Charge the matrix** from your generators through another Induction Port set to input.
 4. **Switch on ME power** for the plant and the district, and for the plant and the workshop. Both run on the matrix.
-5. **Switch on Crafting under "District uses Workshop's"**; its Storage comes on with it. Order sticks in the
+5. **Switch on Crafting under "District uses Workshop's"**; no Storage rule is needed. Order sticks in the
    district's crafting terminal, with planks in the district's storage.
 
 ## How it runs

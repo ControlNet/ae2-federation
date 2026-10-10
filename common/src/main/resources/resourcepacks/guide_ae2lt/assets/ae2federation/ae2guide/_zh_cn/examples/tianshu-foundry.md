@@ -32,7 +32,6 @@ navigation:
   <Network key="district" label="城区" color="#915dcd" column="0" row="0" details="天枢超算|能源元件" />
   <Network key="foundry" label="铸造厂" color="#5CA7CD" column="1" row="0" details="物质扭曲矩阵" />
   <Rule user="district" source="foundry" capability="crafting" />
-  <Rule user="district" source="foundry" capability="storage" />
   <Energy first="district" second="foundry" />
 </FederationTopology>
 
@@ -40,7 +39,7 @@ navigation:
 
 1. **把两个网络接到同一个交换机的两个面上**， 如场景所示： 一个面用ME线缆接到天枢超算底面中央的<ItemLink id="ae2lt:tianshu_supercomputer_port" />， 另一个面接到矩阵控制器对面的<ItemLink id="ae2lt:matter_warping_matrix_port" />。 每个端口都要等结构成型后才能接线缆。
 2. **把木棍样板放进矩阵**： 用矩阵端口的样板管理界面放入。
-3. **打开“城区使用铸造厂的”合成规则**。 同方向的存储规则会一起打开。
+3. **打开“城区使用铸造厂的”合成规则**。 城区用自己的存储付账， 所以不需要存储规则。
 4. **打开两个网络之间的ME能量**， 矩阵就靠城区的能源元件运行： 空闲时8 AE/t， 每接受一次合成再消耗1 AE。
 5. **下单木棍**： 在城区的合成终端里下单， 城区的存储里放好木板。
 

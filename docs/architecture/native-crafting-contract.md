@@ -25,12 +25,12 @@ job, with what C's storage shows, and pushes each pattern to P's provider. P nee
 A crafting rule "C uses P" projects P's providers onto C while all of these hold:
 
 - the rule is enabled and has the `REQUEST` operation;
-- the same direction's storage rule is enabled, since the CPU takes P's materials through it (otherwise the rule
-  reports `crafting_storage_required`);
 - the rule is active for the pair, and C and P share a Federation Domain.
 
-The Policy screen switches the storage rule on with the crafting rule, and switches crafting off with storage, in one
-edit. A save holding a crafting rule without its storage rule gets the storage rule on load.
+The same direction's storage rule is independent of it. Pushes go through the projection and results come back
+through the return router, so neither needs storage. The storage rule only adds P's items to what C's CPU can plan
+and pay with; without it, C pays with its own storage and P's leftovers stay out of C's sight. The Policy screen
+switches the two rules separately, and loading a save adds no rule.
 
 - **Projection.** `RealCraftingProviders` lists P's own providers: the `ICraftingProvider` node services on P's Grid,
   plus the Federation Provider lanes registered on it. Each one gets a `PatternProjection` on C's crafting service
@@ -59,7 +59,7 @@ edit. A save holding a crafting rule without its storage rule gets the storage r
   - How the jobs ended is read from AE2's link of each job. AE2 finishes a job on its final output, so the containers of
     its last push often arrive after it; once a job finished, what P holds for it is handed to C's storage, as it would
     land in one network. After a cancelled job (including a broken CPU, or a job that ended before its reloaded link
-    was read) late outputs stay on P, where C still sees them through its storage rule.
+    was read) late outputs stay on P, where C sees them only through a storage rule of its own on P.
   - A return crosses only a live Federation link: P and C share a Federation Domain, or are joined through networks
     the domains share, as a chained push is (`FederationLinks`). Switching the rule off keeps returns going, because C
     paid the inputs. An output that arrives while the link is broken, or while C is not loaded, stays in P's storage
@@ -88,7 +88,7 @@ Saves from the earlier delegated model, where P planned and ran its own job for 
 are abandoned on load.
 
 The GameTests are `crafting.projection-*`: request, remote materials, manual return, cancel, revoked, disconnected,
-reload, storage required, chain, chain blocked, mutual, container return (three glass bottles back from a three-push
+reload, without storage, chain, chain blocked, mutual, container return (three glass bottles back from a three-push
 sugar job), container reuse (one bottle filled and reused for six sugar), container push (water as a fluid, a water
 bucket and a snowball substitute match AE2's own container expectation; a refused push owes nothing), CPU out of sight
 (a CPU in another dimension unloaded mid-job), CPU out of sight beside another job (a second job next to a cancelled

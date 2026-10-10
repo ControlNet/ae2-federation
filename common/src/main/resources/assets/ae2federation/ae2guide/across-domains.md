@@ -73,10 +73,10 @@ store into C's drives, as into its own storage.
 
 If "B uses C's" Crafting is Enabled with re-export and "A uses B's" Crafting is on, A's terminals list the patterns of
 C's <ItemLink id="ae2:pattern_provider" />s. A's crafting CPU pushes the ingredients straight to C's pattern
-providers, and the results come back to A; B needs no CPU. Each Crafting rule switches its own Storage on, but that
-Storage need not re-export. If it does not, A cannot see C's storage: A's CPU must find the ingredients on A or B, and
-leftovers, such as byproducts and the results of cancelled jobs, stay on C, out of A's reach. See
-[Remote Crafting](remote-processing.md).
+providers, and the results come back to A; B needs no CPU. Neither Crafting rule needs a Storage rule. Unless "B uses
+C's" Storage is on with re-export, A cannot see C's storage: A's CPU must find the ingredients on A, or on B through
+"A uses B's" Storage, and leftovers, such as byproducts and the results of cancelled jobs, stay on C, out of A's reach.
+See [Remote Crafting](remote-processing.md).
 
 ## Energy pools without re-export
 

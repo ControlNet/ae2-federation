@@ -22,8 +22,8 @@ Say network B has the machines: ordinary AE2 <ItemLink id="ae2:pattern_provider"
 from them.
 
 1. **Connect the two networks** with a Bridge or Switches; see [Getting Started](getting-started.md).
-2. **Switch on "A uses B's" Crafting** in the Federation screen. It switches the same direction's Storage on too,
-   because A's crafting CPU takes the ingredients from what A can see.
+2. **Switch on "A uses B's" Crafting** in the Federation screen. Storage is not needed: A's crafting CPU pays with
+   what A can see, here A's own storage.
 3. **Switch on ME power** for the pair. Network B then runs on network A's power and needs no energy cell of its own.
 4. **Order from network A.** A's terminals list B's patterns among A's own craftables. Request one as usual.
 
@@ -56,13 +56,12 @@ In the Federation screen:
   <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
   <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Pattern provider|Molecular Assembler" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
-Network A's crafting CPU plans and runs the job, with the materials network A can see, which include network B's
-storage. It pushes each step's ingredients to B's pattern provider, the machine works as usual, and the results go
-back to A's CPU as soon as they enter network B. Network B needs no crafting CPU.
+Network A's crafting CPU plans and runs the job, with the materials network A can see. It pushes each step's
+ingredients straight to B's pattern provider, the machine works as usual, and the results go back to A's CPU as soon
+as they enter network B. Network B needs no crafting CPU.
 
 * **Network A needs a crafting CPU.** Without one, AE2 reports that no CPU is available, as usual.
 * **Chains work with re-export.** If A uses B's Crafting, and B uses C's Crafting with re-export, A can also order
@@ -70,8 +69,9 @@ back to A's CPU as soon as they enter network B. Network B needs no crafting CPU
 * **Priority, blocking mode and busy providers** work as on one network: A's CPU chooses among the pattern providers
   by AE2's own rules.
 * **Level emitters with a Crafting Card** on network B are not offered to network A.
+* **Storage is optional.** Switch on Storage under "A uses B's" too, and A's CPU can also pay with B's materials.
 * **Leftovers stay on network B:** byproducts the pattern does not list, and the results of a job cancelled on
-  network A. Network A still sees them through the Storage rule.
+  network A. Network A sees and takes them only while "A uses B's" Storage is on.
 * **If the networks are disconnected** while a job runs, or network A is not loaded, results that arrive in the
   meantime wait in network B's storage and A's CPU keeps waiting. Once the networks are linked again, network B hands
   them to the job. If someone on network B uses them up first, the job waits until network B stores that much again.

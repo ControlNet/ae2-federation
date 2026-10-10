@@ -127,7 +127,6 @@ In a Switch's Federation screen, with connected domains shown:
   <Rule user="outpost" source="base" capability="crafting" />
   <Rule user="outpost" source="base" capability="storage" />
   <Rule user="base" source="factory" capability="crafting" state="reexport" />
-  <Rule user="base" source="factory" capability="storage" state="reexport" />
   <Energy first="outpost" second="base" />
   <Energy first="base" second="factory" />
 </FederationTopology>
@@ -138,12 +137,13 @@ In a Switch's Federation screen, with connected domains shown:
    touches the factory's cable, as in the scene. Give the factory's cable a colour of its own, so that the two
    networks' cables never join.
 2. **Right-click the Bridge** and switch on **Crafting under "Base uses Factory's"**, then step it on once more, to
-   Enabled with re-export. Its Storage comes on with it; step that to Enabled with re-export as well. The factory here
-   stores nothing, but once it has storage, the outpost sees its stock and the leftovers of its jobs too.
+   Enabled with re-export. The factory here stores nothing, so it needs no Storage rule. Should it get storage later,
+   switch on Storage under "Base uses Factory's" with re-export too, and the outpost sees its stock and the leftovers
+   of its jobs.
 3. **Switch on ME power** for the base and the factory in the same screen. The factory then runs on the base's energy
    cell, like the outpost: power pools across both domains, and needs no re-export.
-4. **Right-click either Switch** and switch on **Crafting under "Outpost uses Base's"**. Its Storage is already on;
-   Enabled is enough here.
+4. **Right-click either Switch** and switch on **Crafting under "Outpost uses Base's"**. Enabled is enough. Leave
+   that direction's Storage on from the first part: the outpost pays with the base's logs through it.
 5. **Order planks from the outpost's crafting terminal.** The factory's recipe is listed among the outpost's
    craftables.
 
@@ -158,8 +158,8 @@ may reach whom.
 
 A Switch's screen opens on **this domain**: the base and the outpost, and the rules between them. Click the other scope
 button, and the caption changes to **with connected domains (read-only)**: the Bridge's domain joins on a plate of its
-own, with the factory and the "Base uses Factory's" rules, coloured as re-export. They cannot be changed there; edit
-them from the Bridge.
+own, with the factory and the "Base uses Factory's" Crafting rule, coloured as re-export. It cannot be changed there;
+edit it from the Bridge.
 
 ### Try it
 

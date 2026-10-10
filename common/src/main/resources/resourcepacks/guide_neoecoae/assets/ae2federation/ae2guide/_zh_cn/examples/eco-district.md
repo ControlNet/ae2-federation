@@ -42,7 +42,6 @@ navigation:
   <Network key="a" label="网络A" color="#915dcd" column="1" row="0" details="ECO计算系统|ECO存储系统" />
   <Network key="b" label="网络B" color="#5CA7CD" column="0" row="0" details="ECO合成系统" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
@@ -51,7 +50,7 @@ navigation:
 1. **搭好三个系统**， 方法见Neo ECO自己的指南： [存储系统](neoecoae:neoecoae_intro/storage_system.md)、 [合成系统](neoecoae:neoecoae_intro/crafting_system.md)和[计算系统](neoecoae:neoecoae_intro/computation_system.md)。 每种最小的都长5格、高3格、深2格。 把存储系统和计算系统的通讯接口接到网络A的线缆上， 把合成系统的通讯接口接到网络B的线缆上。
 2. **装满它们**。 在存储系统的驱动器里放入ECO存储矩阵， 并存好订单要用的原料； 在合成系统的样板总线里放入样板。 在计算系统的一个驱动器里放入闪存晶阵： 没有它， 计算系统就没有空间运行任务。
 3. **把网络A和网络B分别接到交换机的不同面上**。
-4. **在联邦界面里， 在“A使用B的”下打开合成规则**， 同一方向的存储规则也会一起打开； 再打开这对网络的**ME能量**： 合成系统从此靠网络A的电源运行。
+4. **在联邦界面里， 在“A使用B的”下打开合成规则**（不需要存储规则）， 再打开这对网络的**ME能量**： 合成系统从此靠网络A的电源运行。
 5. **从网络A下单**。 B的配方会出现在A可合成的物品里。 计算系统规划任务， 从存储系统里取原料， 合成系统在网络B上合成， 产物回到A的计算系统， 再由它存进存储系统。
 
 每个系统各司其职。 存储系统和计算系统是A自己的存储和CPU， 所以A只需要B的样板。 合成系统是B的一个样板供应器， 合成规则把它的样板提供给A。 网络B不需要自己的CPU， 也不需要自己的存储。
