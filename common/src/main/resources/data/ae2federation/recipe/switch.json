@@ -5,26 +5,23 @@
     "C": {
       "item": "ae2federation:cable"
     },
-    "E": {
-      "item": "ae2:export_bus"
-    },
-    "I": {
-      "item": "ae2:import_bus"
-    },
     "L": {
       "item": "ae2federation:nexus_core"
     },
     "N": {
       "item": "ae2:interface"
     },
+    "Q": {
+      "item": "ae2:quartz_fiber"
+    },
     "S": {
       "item": "ae2:storage_bus"
     }
   },
   "pattern": [
-    "CIC",
+    "CQC",
     "SLN",
-    "CEC"
+    "CQC"
   ],
   "result": {
     "count": 1,

@@ -18,7 +18,9 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
   `instanceof RouterBlock`, so the Switch joins cables densely with no change.
 - The pre-rename registry aliases (`hub`, `federation_cable`, `multipart_bridge`) and the legacy-save GameTest with its
   sample were removed afterwards at the user's request (pre-alpha, no old-save support).
-- Recipes: Switch takes the old Router recipe (cables in corners, import/storage/interface/export buses, nexus core);
+- Recipes: the Switch first took the old Router recipe; the same day (user-approved) its Import/Export Buses became
+  Quartz Fibers (cables in corners, fibers top/bottom, Storage Bus left, Interface right, nexus core), so its inputs
+  name what a face exchanges, as the Bridge's storage bus + quartz fiber + core do;
   Router is cables in corners, fluix crystals on the sides, nexus core. Since the same day every yield follows AE2:
   Switch x1, Router x1, Cable x8 (eight glass cables in), Nexus Core x2 (as the Formation Core).
 - Art: none on purpose; `models/block/switch.json` names `block/switch/switch`, which is not shipped, so the block

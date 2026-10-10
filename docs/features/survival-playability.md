@@ -18,7 +18,7 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 | 2 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
 | 8 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
 | 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Nexus Core | Shapeless |
-| 1 Federation Switch | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, import top, export bottom, storage left, interface right, core center |
+| 1 Federation Switch | 4 Federation Cables + 2 Quartz Fibers + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, quartz fibers top and bottom, storage bus left, interface right, core center: what a Switch face exchanges, as on the Bridge |
 | 1 Federation Router | 4 Federation Cables + 4 Fluix Crystals (`c:gems/fluix`) + 1 Nexus Core | Shaped: cables in corners, crystals on the sides, core center |
 | 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Nexus Core | Shapeless |
 | 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Core | Shapeless |
@@ -32,7 +32,7 @@ For a first setup with two Switches and sixteen placed Federation Cables, starti
 the setup needs 24 Federation Cables (sixteen placed, eight in the two Switches), so three cable batches, and five
 Nexus Cores (three for the cables, two for the Switches), so three core batches from three circuits and three
 processors. This costs 24 native ME Glass Cables, three each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix
-Crystal and Ender Dust, and two each of the native Import Bus, Export Bus, Storage Bus and ME Interface; the
+Crystal and Ender Dust, four Quartz Fibers, and two each of the native Storage Bus and ME Interface; the
 Inscriber Logic Press is kept. After placing the setup, one Nexus Core remains.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 

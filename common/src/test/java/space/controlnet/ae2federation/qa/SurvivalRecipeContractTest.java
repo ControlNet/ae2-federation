@@ -82,15 +82,16 @@ final class SurvivalRecipeContractTest {
         assertShapeless(recipes.get("processing_endpoint"), "{\"item\":\"ae2:interface\"}," + CORE);
     }
 
+    // What a Switch face exchanges, as on the Bridge: storage (Storage Bus), crafting and processing (ME Interface)
+    // and energy without channels (Quartz Fiber).
     @Test
-    void switchBatchHasCablesInTheCornersAndTheFourBusesAroundANexusCore() throws IOException {
+    void switchHasCablesInTheCornersQuartzFibersStorageBusAndInterfaceAroundANexusCore() throws IOException {
         var recipe = recipes().get("switch");
         assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
-        assertTrue(recipe.contains("\"pattern\":[\"CIC\",\"SLN\",\"CEC\"]"));
+        assertTrue(recipe.contains("\"pattern\":[\"CQC\",\"SLN\",\"CQC\"]"), recipe);
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
-                + "\"E\":{\"item\":\"ae2:export_bus\"},\"I\":{\"item\":\"ae2:import_bus\"},"
                 + "\"L\":" + CORE + ",\"N\":{\"item\":\"ae2:interface\"},"
-                + "\"S\":{\"item\":\"ae2:storage_bus\"}}"));
+                + "\"Q\":{\"item\":\"ae2:quartz_fiber\"},\"S\":{\"item\":\"ae2:storage_bus\"}}"), recipe);
     }
 
     @Test

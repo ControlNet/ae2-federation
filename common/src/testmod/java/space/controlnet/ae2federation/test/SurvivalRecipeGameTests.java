@@ -73,14 +73,14 @@ public final class SurvivalRecipeGameTests {
         assertions += crafts(helper, "processing_endpoint", ProcessingRegistration.ENDPOINT_ITEM.get().getDefaultInstance(), 1,
                 grid(AEBlocks.INTERFACE.stack(), core, null, null, null, null, null, null, null));
         assertions += crafts(helper, "switch", RouterRegistration.SWITCH_ITEM.get().getDefaultInstance(), 1,
-                grid(cable, AEParts.IMPORT_BUS.stack(), cable,
+                grid(cable, AEParts.QUARTZ_FIBER.stack(), cable,
                         AEParts.STORAGE_BUS.stack(), core, AEBlocks.INTERFACE.stack(),
-                        cable, AEParts.EXPORT_BUS.stack(), cable));
+                        cable, AEParts.QUARTZ_FIBER.stack(), cable));
         // The Switch's centre takes the Nexus Core, not AE2's Formation Core.
         var nativeSwitch = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
-                grid(cable, AEParts.IMPORT_BUS.stack(), cable,
+                grid(cable, AEParts.QUARTZ_FIBER.stack(), cable,
                         AEParts.STORAGE_BUS.stack(), AEItems.FORMATION_CORE.stack(), AEBlocks.INTERFACE.stack(),
-                        cable, AEParts.EXPORT_BUS.stack(), cable), level);
+                        cable, AEParts.QUARTZ_FIBER.stack(), cable), level);
         helper.assertFalse(nativeSwitch.isPresent(), "A Formation Core must not make Switches");
         assertions++;
         var fluixCrystal = AEItems.FLUIX_CRYSTAL.stack();
