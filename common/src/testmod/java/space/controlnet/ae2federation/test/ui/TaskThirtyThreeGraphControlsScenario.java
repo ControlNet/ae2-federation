@@ -432,12 +432,28 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                                     && card.x() + card.width() <= viewport.x() + viewport.width()
                                     && card.y() + card.height() <= viewport.y() + viewport.height());
                 })
+                .check("domains stand left to right by hops: this domain, then the Bridge domain, then the one beyond",
+                        context -> {
+                            // The near chest's network is in both related domains, so it sits between them; the far
+                            // chest's network is the far domain's own, beyond it. This domain's cards stay left.
+                            float near = TaskThirtyThreeScenarioSupport.networkCard(context, context.get("related.id")).bounds().centerX();
+                            float far = TaskThirtyThreeScenarioSupport.networkCard(context, context.get("related.far.id")).bounds().centerX();
+                            return near < far && context.all(".graph-node-member").stream()
+                                    .filter(card -> !card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("related-network"))
+                                    .allMatch(card -> card.bounds().centerX() < near);
+                        })
+                .check("the Bridge holding only this domain's networks sits inside this domain, so the chain stays in one row",
+                        context -> {
+                            var rows = context.all(".graph-node-member").stream().mapToDouble(card -> card.bounds().centerY())
+                                    .summaryStatistics();
+                            return rows.getMax() - rows.getMin() < 2;
+                        })
                 .step("select the related network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("related.id")))
                 .waitForTextContains("#graph_selection", ", a related domain")
                 .check("the related domain has a readable name, not its internal identity", context -> {
                     var text = context.el("#graph_selection").text();
-                    return text.matches("(?s)Member of Bridge domain [0-9A-F]{4}, a related domain\\..*") && !text.contains("direct:");
+                    return text.matches("(?s)Member of Domain [0-9A-F]{4}, a related domain\\..*") && !text.contains("direct:");
                 })
                 .check("a related network cannot be renamed here", context -> !context.el("#network_rename").isActive())
                 .step("open the related pair", context -> {
@@ -448,7 +464,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_note", "Read-only: belongs to Bridge domain ")
+                .waitForTextContains("#pair_note", "Read-only: belongs to Domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
                         .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
                 .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)

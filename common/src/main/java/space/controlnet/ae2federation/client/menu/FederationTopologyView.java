@@ -32,6 +32,7 @@ import space.controlnet.ae2federation.client.domain.FederationDomainGraphLayer;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphNodeKind;
 import space.controlnet.ae2federation.client.domain.FederationDomainGraphSnapshot;
 import space.controlnet.ae2federation.client.policy.DirectionLabelPose;
+import space.controlnet.ae2federation.client.policy.DomainClusterLayout;
 import space.controlnet.ae2federation.client.policy.EndpointNodeLayout;
 import space.controlnet.ae2federation.client.policy.TopologyLink;
 import space.controlnet.ae2federation.client.policy.NetworkIdentityState;
@@ -55,6 +56,13 @@ final class FederationTopologyView {
     private static final float THUMBNAIL_WIDTH = 44;
     private static final float THUMBNAIL_HEIGHT = 30;
     private static final float ENDPOINT_HEIGHT = 16;
+    /** The opened domain among a card's domains for {@link DomainClusterLayout}; related domains go by their ids. */
+    private static final String OPENED_DOMAIN = "";
+    /** Room above a plate for its domain's name. */
+    private static final float PLATE_NAME_HEIGHT = 12;
+    /** Plate fills, faint enough that links and cards read over them: the opened domain pale, related ones blue. */
+    private static final int PLATE_OPENED = 0x1ad8d3e4;
+    private static final int PLATE_RELATED = 0x149cd3ff;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
     /** One run of a quartz bead along a shared-energy link, from end to end. */
@@ -135,6 +143,8 @@ final class FederationTopologyView {
     /** The related domains each shown network is in; networks that share no domain do not discover each other. */
     private final Map<String, java.util.Set<String>> networkDomains = new HashMap<>();
     private final Map<String, Vector2f> positions = new LinkedHashMap<>();
+    /** Each shown domain's plate behind its cards, only while other domains are shown. */
+    private final List<Plate> plates = new ArrayList<>();
     private final Map<String, Button> cards = new HashMap<>();
     private final Map<String, Label[]> cardLines = new HashMap<>();
     /** Stored energy as a fraction of capacity per card, read by its bar every frame; negative when unknown. */
@@ -669,6 +679,12 @@ final class FederationTopologyView {
             width = Math.max(width, place.x() + place.width());
             height = Math.max(height, place.y() + ENDPOINT_HEIGHT);
         }
+        for (var plate : plates) {
+            for (var point : plate.outline()) {
+                width = Math.max(width, point[0]);
+                height = Math.max(height, point[1]);
+            }
+        }
         return new Vector2f(width, height);
     }
 
@@ -709,34 +725,54 @@ final class FederationTopologyView {
         return TopologyLink.between(a.x, a.y, b.x, b.y, CARD_WIDTH, CARD_HEIGHT);
     }
 
-    /** Networks on an ellipse, the entrance network first on the left; two networks sit side by side. */
+    /**
+     * Networks on an ellipse, the entrance network first on the left; two networks sit side by side. With other domains
+     * shown, each domain gets its own ellipse on a plate instead ({@link DomainClusterLayout}).
+     */
     private void layout() {
         positions.clear();
+        plates.clear();
         var ordered = new ArrayList<>(shown());
         ordered.stream().filter(network -> network.member().equals(focus)).findFirst().ifPresent(first -> {
             ordered.remove(first);
             ordered.addFirst(first);
         });
         int count = ordered.size();
-        float radius = count <= 2 ? 140 : (float) Math.max(150, 100 / Math.sin(Math.PI / count));
-        var raw = new ArrayList<Vector2f>();
-        for (int i = 0; i < count; i++) {
-            double angle = Math.PI + 2 * Math.PI * i / Math.max(1, count);
-            raw.add(new Vector2f((float) (Math.cos(angle) * radius * 1.35f), (float) (Math.sin(angle) * radius * 0.8f)));
-        }
-        // Spread the ellipse until every link label clears the cards, as the design keeps its labels in open canvas.
-        var corners = new float[count][];
         var index = new HashMap<String, Integer>();
-        for (int i = 0; i < count; i++) {
-            corners[i] = new float[] {raw.get(i).x, raw.get(i).y};
-            index.put(ordered.get(i).id(), i);
-        }
-        var labels = new ArrayList<space.controlnet.ae2federation.client.policy.TopologySpacing.Label>();
-        var labelled = new ArrayList<String>();
+        for (int i = 0; i < count; i++) index.put(ordered.get(i).id(), i);
         var font = net.minecraft.client.Minecraft.getInstance().font;
+        var linked = new ArrayList<String>();
         for (var pair : pairsWithRules()) {
             var ends = pair.split("\\|");
-            if (!index.containsKey(ends[0]) || !index.containsKey(ends[1])) continue;
+            if (index.containsKey(ends[0]) && index.containsKey(ends[1])) linked.add(pair);
+        }
+        boolean clustered = showRelated && !related.isEmpty();
+        var clusterCards = ordered.stream().map(network -> new DomainClusterLayout.Card(network.id(), shownDomains(network))).toList();
+        var raw = new ArrayList<Vector2f>();
+        if (clustered) {
+            var links = linked.stream().map(pair -> pair.split("\\|"))
+                    .map(ends -> new DomainClusterLayout.Link(ends[0], ends[1])).toList();
+            var placed = DomainClusterLayout.place(clusterCards, OPENED_DOMAIN, links, (a, b, link) -> {
+                var half = labelExtent(network(a), network(b), link, font);
+                return new float[] {half.x, half.y};
+            }, CARD_WIDTH, CARD_HEIGHT);
+            for (var network : ordered) {
+                var corner = placed.corners().get(network.id());
+                raw.add(new Vector2f(corner[0], corner[1]));
+            }
+        } else {
+            float radius = count <= 2 ? 140 : (float) Math.max(150, 100 / Math.sin(Math.PI / count));
+            for (int i = 0; i < count; i++) {
+                double angle = Math.PI + 2 * Math.PI * i / Math.max(1, count);
+                raw.add(new Vector2f((float) (Math.cos(angle) * radius * 1.35f), (float) (Math.sin(angle) * radius * 0.8f)));
+            }
+        }
+        var corners = new float[count][];
+        for (int i = 0; i < count; i++) corners[i] = new float[] {raw.get(i).x, raw.get(i).y};
+        var labels = new ArrayList<space.controlnet.ae2federation.client.policy.TopologySpacing.Label>();
+        var labelled = new ArrayList<String>();
+        for (var pair : linked) {
+            var ends = pair.split("\\|");
             var a = corners[index.get(ends[0])];
             var b = corners[index.get(ends[1])];
             var half = labelExtent(network(ends[0]), network(ends[1]),
@@ -745,8 +781,11 @@ final class FederationTopologyView {
                     index.get(ends[1]), half.x, half.y));
             labelled.add(pair);
         }
-        float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
-        raw.forEach(point -> point.mul(spread));
+        if (!clustered) {
+            // Spread the ellipse until every link label clears the cards, as the design keeps its labels in open canvas.
+            float spread = space.controlnet.ae2federation.client.policy.TopologySpacing.factor(corners, labels, CARD_WIDTH, CARD_HEIGHT, 8);
+            raw.forEach(point -> point.mul(spread));
+        }
         // Endpoints beside the network that maps them, on its outer side; the others wait below. Spread the cards
         // further while one network's Endpoints would cover another card or its Endpoints.
         var nodes = endpointNodes.stream().map(endpoint -> new EndpointNodeLayout.Node(endpoint.id(),
@@ -767,11 +806,21 @@ final class FederationTopologyView {
             minX = Math.min(minX, place.x());
             minY = Math.min(minY, place.y());
         }
+        // Room above and left of the cards for the plates and their names.
+        float margin = clustered ? 8 + DomainClusterLayout.PLATE_PADDING + PLATE_NAME_HEIGHT : 8;
         for (int i = 0; i < count; i++) {
-            positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + 8, raw.get(i).y - minY + 8));
+            positions.put(ordered.get(i).id(), new Vector2f(raw.get(i).x - minX + margin, raw.get(i).y - minY + margin));
         }
         endpointPlaces.clear();
-        for (var place : endpointsPlaced) endpointPlaces.put(place.id(), place.moved(-minX + 8, -minY + 8));
+        for (var place : endpointsPlaced) endpointPlaces.put(place.id(), place.moved(-minX + margin, -minY + margin));
+        if (clustered) {
+            var placedCorners = new HashMap<String, float[]>();
+            positions.forEach((id, point) -> placedCorners.put(id, new float[] {point.x, point.y}));
+            var hosts = DomainClusterLayout.hosts(clusterCards, OPENED_DOMAIN);
+            DomainClusterLayout.plates(clusterCards, OPENED_DOMAIN, placedCorners, CARD_WIDTH, CARD_HEIGHT).forEach((domain, plate) ->
+                    plates.add(new Plate(domain, plate, DomainClusterLayout.rows(plate),
+                            hosts.containsKey(domain) ? DomainClusterLayout.NESTED_PADDING : DomainClusterLayout.PLATE_PADDING)));
+        }
         // Links that cross, such as a diamond's diagonals, would stack their labels in the middle; move one along.
         var placed = new float[count][];
         for (int i = 0; i < count; i++) placed[i] = new float[] {raw.get(i).x, raw.get(i).y};
@@ -2041,10 +2090,20 @@ final class FederationTopologyView {
         return row;
     }
 
-    /** The readable name of another domain; its raw identity is internal. */
+    /** The shown domains a network is in, the opened domain as {@link #OPENED_DOMAIN}. */
+    private java.util.Set<String> shownDomains(Network network) {
+        var domains = new java.util.HashSet<>(networkDomains.getOrDefault(network.id(), java.util.Set.of()));
+        if (!network.foreign()) domains.add(OPENED_DOMAIN);
+        else if (domains.isEmpty()) domains.add(network.domain());
+        return domains;
+    }
+
+    /**
+     * The readable name of another domain, "Domain 3C91": its tag alone, whether a Bridge or cable formed it; its raw
+     * identity is internal.
+     */
     private static Component domainName(String domain) {
-        var label = RelatedDomainLabel.of(domain);
-        return tr("domain_label." + label.kind(), label.tag());
+        return tr("domain_label", RelatedDomainLabel.of(domain).tag());
     }
 
     /** "Via the Bridge at x, y, z" or "Via 5 Routers · first at x, y, z · this domain"; every position is in the tooltip. */
@@ -2296,6 +2355,10 @@ final class FederationTopologyView {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
+    /** A domain's plate: its outline, its fill as one-pixel rows {@code [y, left, right]}, and its margin. */
+    record Plate(String domain, List<float[]> outline, List<float[]> rows, float padding) {
+    }
+
     /** {@code domain} is empty for members of this domain and names the related domain otherwise. */
     record Network(String id, String member, int index, String name, String domain) {
         boolean foreign() {
@@ -2356,6 +2419,7 @@ final class FederationTopologyView {
             pose.pushPose();
             pose.translate(getPositionX(), getPositionY(), 0);
             beads = 0;
+            plates(context);
             var configured = pairsWithRules();
             for (var pair : configured) {
                 var ends = pair.split("\\|");
@@ -2398,6 +2462,30 @@ final class FederationTopologyView {
             }
             pose.popPose();
             FederationFlowPulses.beadsDrawn(beads);
+        }
+
+        /** Each domain's plate under its links and cards, its name above its top-left corner. */
+        private void plates(GUIContext context) {
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            // Where the next name goes on each spot: nested domains with the same networks share one, side by side.
+            var spots = new HashMap<Long, Integer>();
+            for (var plate : FederationTopologyView.this.plates) {
+                boolean opened = plate.domain().equals(OPENED_DOMAIN);
+                int fill = opened ? PLATE_OPENED : PLATE_RELATED;
+                for (var row : plate.rows()) {
+                    context.graphics.fill(Math.round(row[1]), (int) row[0], Math.round(row[2]), (int) row[0] + 1, fill);
+                }
+                float top = (float) plate.outline().stream().mapToDouble(point -> point[1]).min().orElse(0);
+                float left = (float) plate.outline().stream().filter(point -> point[1] <= top + 1)
+                        .mapToDouble(point -> point[0]).min().orElse(0);
+                var name = opened ? tr("plate_opened") : domainName(plate.domain());
+                int x = Math.round(left - plate.padding() + 8);
+                int y = Math.round(top - PLATE_NAME_HEIGHT);
+                long spot = (long) x << 32 | (y & 0xffffffffL);
+                x = spots.getOrDefault(spot, x);
+                context.graphics.drawString(font, name, x, y, opened ? 0xffd8d3e4 : FederationTheme.SELECT, false);
+                spots.put(spot, x + font.width(name) + 6);
+            }
         }
 
         private void line(GUIContext context, TopologyLink link, int color, float width, boolean dashed) {
