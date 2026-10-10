@@ -1,7 +1,7 @@
 # Topology canvas: text legibility when zoomed out (research, 2026-10-10)
 
 Problem: zooming out in the topology view (`FederationTopologyView`) shrinks every card row, rule chip, Endpoint label
-and domain plate name until the pixel font can no longer be read. Research plus a prototype; the LOD prototype is not merged. A Chinese pixel sheet is (see the last section).
+and domain plate name until the pixel font can no longer be read. Research plus a prototype; the LOD prototype is not merged. The Chinese vector font is (see the last section).
 
 ## How zoom scales text today
 
@@ -49,7 +49,7 @@ and domain plate name until the pixel font can no longer be read. Research plus 
 |---|---|
 | Better filtering / AA (linear, mipmaps, supersampling, MSAA) | Already done for Labels (SDF in AUTO). Supersampling a 5x8 font below one pixel per texel gives grey blobs. Does not make text readable. |
 | Integer / snapped text scale | AUTO already rasterises at exact whole sizes. Useful only together with counter-scaling: draw at exactly 1 (or n) screen pixels per font pixel. |
-| Vector / TTF font for the canvas | Feasible (TextStyle.font, LDLib2 SDF TTF support) but does not solve physical size and clashes with the AE2 look. Rejected for Latin. For Chinese a vector subset shipped first, then a 10-pixel sheet replaced it (last section). |
+| Vector / TTF font for the canvas | Feasible (TextStyle.font, LDLib2 SDF TTF support) but does not solve physical size and clashes with the AE2 look. Rejected for Latin; adopted for Chinese only (last section). |
 | Zoom floor only | Keeping text legible needs zoom >= 0.5 at GUI scale 2, which breaks Fit for the related scope. Only useful as a floor under LOD. |
 | Semantic zoom (LOD) | Works. It hides what cannot be read. |
 | Counter-scaled labels | Works. Names stay readable at any zoom down to about 0.18 on the test window. |
@@ -167,45 +167,50 @@ The user ruled out LOD and counter-scaled labels for now and asked for a side-by
 - Layout widths come from vanilla's `TrueTypeGlyphProvider`, while drawing goes through LDLib2's
   `TrueTypeSdfSource`. No mismatch was visible, but matching advances are only promised for the default font.
 
-## Shipped: a pixel sheet for Chinese only (2026-10-10, on dev)
+## Shipped: a vector font for Chinese only (2026-10-10, on dev)
 
-The user picked "Chinese from another font, Latin stays the pixel font". A vector subset (Droid Sans Fallback,
-e0a55ff) shipped first; the user then asked for something smaller, and a pixel sheet replaced it.
+The user picked "vector CJK font, Latin stays the pixel font" from the comparison.
 
-- `font/canvas.json` (`ae2federation:canvas`, `CanvasFont.ID`) has two providers: a `bitmap` provider for
-  `textures/font/canvas_cjk.png` (10x10 cells, `height` 10, `ascent` 9, `filter: {uniform: false}` so Force Unicode
-  Font still means Unifont), then `reference minecraft:default`.
-  - The sheet has no glyph below U+2E80. Latin, digits and `·` fall through to the player's default font, resource
-    packs included. Any glyph in the sheet would win over the default font.
-  - Characters outside the sheet fall through to Unifont, as elsewhere in the game.
-- Why a 10-pixel sheet works: one texel per canvas unit is the Latin pixel font's ratio, so Chinese blurs no earlier
-  than Latin. Unifont's hanzi are 16-pixel designs drawn 8 units tall (two texels per unit), so they blur first.
-  - Hanzi ink is rows 1-9 of the cell with the baseline under row 8: one unit above Latin capitals and one below the
-    baseline. Glyphs advance 10 units.
-- `tools/visual/build_canvas_font.py` draws the sheet and writes `canvas.json` from Fusion Pixel Font 10px
-  proportional zh_hans (OFL-1.1, release 2026.09.25; not in the repo). It holds the GB2312 hanzi the font has, every
-  CJK character in `zh_cn.json`, U+3000-303F and U+FF00-FFEF: 6149 characters. GB2312 level 1 is complete (3755);
-  level 2 has 2157 of 3008 (rare characters fall to Unifont).
-  - The sheet is a 1-bit palette PNG, 61 KiB; `canvas.json` is 20 KiB (13 KiB in the jar). The build is reproducible.
-  - `font/canvas_cjk_license.txt` holds the change notice and the four licences of the release archive (Fusion Pixel,
-    Ark Pixel, Boutique Bitmap 9x9, Galmuri). None declares a Reserved Font Name.
-- Measured against the vector subset, zoom 1.0 / 0.6 / 0.45: equally clear at 1.0 and in the same pixel style as
-  Latin; clearer at 0.6; at 0.45 能量 / 存储 / 共享供电 are readable where the vector glyphs were marginal.
-- Rejected on the way:
-  - LDLib2's RASTER mode: `UnihexSdfSource.rasterGlyph` returns the 16-pixel Unifont mask at any size, sampled
-    nearest, which drops rows. The mode is a global client option anyway.
-  - A subset of only the lang file's characters (41 KiB as a TTF): player-given network names would mix fonts. The
-    user ruled out subsets of that kind.
-  - Reading a system CJK font at runtime, or a separate resource pack: per-OS fragility, or an extra install.
-- Bold: bold redraws a glyph `boldOffset` to the right, 1 unit for bitmap and TTF glyphs (0.5 for Unifont). A hanzi
-  at one texel per unit has strokes one texel apart, so bold merges them into a block; vector glyphs showed doubled
-  strokes instead. `CanvasFont.boldExceptChinese` keeps Latin and digits bold and draws Chinese plain. Card names
-  are the only bold text on the canvas; aside headings use the default font.
-- Plate names go through `LDLibFonts.drawText`. Vanilla `drawString` turned "067B" into "0673" at zoom 0.45; LDLib2's
-  renderer does not. This also fixes English plate names at fractional zooms.
-- Resource names: Minecraft rejects upper case in resource paths and logs "Invalid path in pack" on every reload.
-  The vector font's `canvas_cjk.LICENSE.txt` did that; `CanvasFontContractTest` now checks every file name under
-  `font/` and `textures/font/`.
-- `validate_assets.py` skips sheets named by a font JSON's bitmap provider in its unused-texture and 16-pixel checks.
+- `font/canvas.json` (`ae2federation:canvas`) has two providers: the TTF `canvas_cjk.ttf` (size 9, oversample 8,
+  `filter: {uniform: false}` so Force Unicode Font still means Unifont), then `reference minecraft:default`.
+  - The TTF has no glyph below U+2E80 (its cmap starts at U+3000). Latin, digits and `·` fall through to the
+    player's default font, resource packs included. Any glyph in the TTF would win over the pixel font.
+  - Characters outside the subset fall through to Unifont, as elsewhere in the game. Names from other mods may mix
+    the two.
+- `canvas_cjk.ttf` is Droid Sans Fallback (Apache-2.0) cut by `tools/visual/build_canvas_font.py` (fontTools, added
+  to the `tools/visual` pixi environment): the GB2312 hanzi (6763), every CJK character in `zh_cn.json`, U+3000-303F
+  and U+FF00-FFEF. Layout, vertical metrics and hinting are dropped. 955 KiB on disk, about 530 KiB in the jar
+  (jar 2.0 MiB). Level 1 only (3755) would be 566 KiB on disk. `canvas_cjk_license.txt` carries the attribution,
+  the change notice and the Apache licence.
+  - Droid was chosen over Noto Sans SC: it was the one measured readable, it is static TrueType, and Noto's
+    google/fonts build is a variable font that would need instancing first.
+- `FederationTopologyView.CANVAS_FONT` is applied as in the comparison (`applyCanvasFont`, `canvasFont` on every
+  width measurement) and plate names go through `LDLibFonts.drawText`. Vanilla `drawString` turned "067B" into
+  "0673" at zoom 0.45; LDLib2's renderer does not. This also fixes English plate names at fractional zooms.
+- Checked:
+  - English: a canvas font that only references `minecraft:default` renders pixel-identically to the default font
+    in LDLib2, at zoom 1.0 and 0.45. With the TTF in front, English is unchanged.
+  - Chinese: 能量 / 存储 / 共享供电 / 主世界 are crisp at 0.6 and readable at 0.45 (Unifont was a blur at 0.6).
+    Size 9 matches the pixel font's height better than 8.
+  - Rule chips and Endpoint labels in Chinese fit their boxes (measured width = drawn width). This was checked with
+    a temporary related-domain step in the Chinese scenario, not committed.
+  - `CanvasFontContractTest` pins the provider order, the no-Latin rule, coverage of `zh_cn.json` and the licence.
+    Java's `Font.canDisplay` reports format characters (U+200C-200F, 2028-202E, 206A-206F) as displayable in any
+    font; the test skips them.
 - `ui.graph-controls` drifts between runs: the left link sometimes shows Storage + Energy chips, sometimes Energy
   only. That was already true of the comparison runs and is unrelated to fonts.
+- Bold gotcha (found in the user's playtest): bold redraws a glyph `boldOffset` to the right. LDLib2 and vanilla use 1
+  unit for TTF glyphs (0.5 for Unifont, 1 for the bitmap font). The Droid strokes at size 9 are thinner than one
+  unit, so bold "网络" in card names showed doubled strokes. `CanvasFont.boldExceptChinese` keeps Latin and digits
+  bold and draws Chinese plain. Card names are the only bold text on the canvas; aside headings use the default font.
+- Tried and rolled back the same day: a bitmap sheet drawn from Fusion Pixel Font 10px (23141bd, +79 KiB in the
+  jar instead of 524 KiB). Screenshots looked clearer at 0.6 and 0.45, but in the user's own playtest it read far
+  worse than the vector font, so the vector subset came back. Screenshots at the scenario's window size are not
+  enough to judge a font; ask the user to try it in game before shipping a font change.
+  - Also ruled out by the user: a subset of only the lang file's characters (41 KiB), because player-given network
+    names would mix fonts.
+  - Not viable: LDLib2's RASTER mode. `UnihexSdfSource.rasterGlyph` returns the 16-pixel Unifont mask at any size,
+    sampled nearest, which drops rows; the mode is a global client option anyway.
+- Resource names: Minecraft rejects upper case in resource paths and logs "Invalid path in pack" on every reload.
+  The licence first shipped as `canvas_cjk.LICENSE.txt` and did that; it is `canvas_cjk_license.txt` now, and
+  `CanvasFontContractTest` checks every file name under `font/`.

@@ -59,14 +59,9 @@ NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'col
                  | {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')})
 used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
     | NOT_DRAWN_YET
-# Font sheets are drawn by the font JSON files that name them, not by models, and are not 16 pixels wide.
-font_sheets = {provider['file'][:-4] for font in (BASE / 'font').glob('*.json')
-               for provider in json.loads(font.read_text(encoding='utf-8'))['providers'] if provider['type'] == 'bitmap'}
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
-    if ref in font_sheets:
-        continue
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
     meta = path.with_suffix('.png.mcmeta')
     assert im.width == 16
