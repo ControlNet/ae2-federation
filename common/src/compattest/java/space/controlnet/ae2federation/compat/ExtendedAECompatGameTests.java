@@ -39,8 +39,8 @@ public final class ExtendedAECompatGameTests {
     }
 
     /**
-     * The guide's Assembler Matrix example and its exercise: after the remote job, breaking a wall of the matrix takes
-     * its recipes away from the consumer, and putting the wall back returns them.
+     * The former guide example's Assembler Matrix build and exercise: after the remote job, breaking a wall of the
+     * matrix takes its recipes away from the consumer, and putting the wall back returns them.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void assemblerMatrixDismantled(GameTestHelper helper) {

@@ -45,8 +45,8 @@ public final class AppliedMekanisticsCompatGameTests {
     }
 
     /**
-     * The guide's chemical example as its player builds and tries it: the Endpoint powers the oxidizer's subnet, and
-     * a job waits while the oxidizer's auto-eject for chemicals is off, then finishes once it is on again. The
+     * The former guide chemical example as its player built and tried it: the Endpoint powers the oxidizer's subnet,
+     * and a job waits while the oxidizer's auto-eject for chemicals is off, then finishes once it is on again. The
      * oxidizer takes 100 ticks a batch, so 300 ticks without carbon show that none came back.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
@@ -151,7 +151,7 @@ public final class AppliedMekanisticsCompatGameTests {
 
         /**
          * Items in on the Storage Bus side, carbon ejected down into the Endpoint, energy from a charged Basic Energy
-         * Cube on top, as the guide's example builds it.
+         * Cube on top, as the former guide example built it.
          */
         @Override
         public void prepare(GameTestHelper helper, BlockPos position) {
