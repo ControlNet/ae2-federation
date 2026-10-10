@@ -27,7 +27,16 @@ types working.
   uses 3" and "1 uses 2", network 1 reaches network 3 only if "2 uses 3" is enabled (re-export). Along a longer path,
   every rule except the final consumer's own must be re-export (this is what `StorageDependencyCompiler` already does
   for storage). Crafting and storage re-export are independent: "you may use my machines but not see my items" is valid.
-- **A crafting rule requires the storage rule of the same pair and direction.** Turning crafting on also turns storage
+- **Reversed 2026-10-10 (user decision): crafting and storage rules are independent, with no default link.** The
+  inputs go through the projection's `pushPattern` and the results come back through the return router; neither uses
+  the storage rule, which only adds the provider's items to what the consumer's CPU can plan and pay with (and lets the
+  consumer see byproducts and cancelled-job results left on the provider). Without it the consumer pays with its own
+  items and such leftovers stay on the provider. Removed in fae6d19: the `RuleLinks` crafting/storage links, the pair
+  editor holding the storage switch on, the `CRAFTING_STORAGE_REQUIRED` projection gate and reason, and the load-time
+  `requireStorageForCrafting`. Evidence: testmod `projectionwithoutstorage` (Storage never on) and
+  `rulescraftingandstorageapart` (packet path and loading); `orderdesk` had already returned results to a consumer
+  with no storage view of the provider. The original 2026-10-02 rule follows for history.
+- *(Superseded)* **A crafting rule requires the storage rule of the same pair and direction.** Turning crafting on also turns storage
   on (to at least enabled). While crafting is on, storage cannot be disabled; disabling storage disables crafting in
   the same edit. Old saves with crafting on and storage off get storage turned on when loaded. AE2's planner reads
   `getStorageService().getCachedInventory()` and the CPU extracts from `getStorageService().getInventory()`; there is
