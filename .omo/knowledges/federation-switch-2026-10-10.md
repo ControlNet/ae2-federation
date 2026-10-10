@@ -16,8 +16,8 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
 - Places that list the Router block also list the Switch: FE capability block list (`ProcessingRegistration`),
   `FederationPatternProviderBlockEntity.federationBlock()`, creative tab, pickaxe tag. `CableVisualConnections` uses
   `instanceof RouterBlock`, so the Switch joins cables densely with no change.
-- Legacy id `ae2federation:hub` now aliases to `switch` (the Hub attached ME networks), so the legacy-save GameTest
-  still checks native face restore.
+- The pre-rename registry aliases (`hub`, `federation_cable`, `multipart_bridge`) and the legacy-save GameTest with its
+  sample were removed afterwards at the user's request (pre-alpha, no old-save support).
 - Recipes: Switch takes the old Router recipe (cables in corners, import/storage/interface/export buses, nexus core,
   x4); Router is cables in corners, fluix crystals on the sides, nexus core, x4.
 - Art: none on purpose; `models/block/switch.json` names `block/switch/switch`, which is not shipped, so the block

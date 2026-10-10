@@ -46,22 +46,7 @@ public final class RouterRegistration {
     private RouterRegistration() {
     }
 
-    /**
-     * Registry ids used before the Router/Cable rename. Registry aliases let chunk palettes, block entity ids and item
-     * stacks saved under the old ids load as the new entries; new data is written with the new ids. The Hub attached
-     * ME networks, so it loads as the Switch.
-     */
-    static final java.util.Map<String, String> LEGACY_IDS = java.util.Map.of("hub", "switch",
-            "federation_cable", "cable");
-
     public static void register(IEventBus modBus) {
-        LEGACY_IDS.forEach((legacy, current) -> {
-            var from = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, legacy);
-            var to = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, current);
-            BLOCKS.addAlias(from, to);
-            ITEMS.addAlias(from, to);
-            BLOCK_ENTITY_TYPES.addAlias(from, to);
-        });
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);

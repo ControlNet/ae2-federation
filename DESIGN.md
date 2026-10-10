@@ -22,16 +22,16 @@
 
 **ME Network** 指原生 AE2 网络。**ME Federation Domain（ME联邦域）** 指由 Bridge 或 Switch / Router / Cable 形成的 Federation 连通与管理范围；它不是额外方块，也不是管理全部联邦域的全局 Matrix。一个 ME Network 可以同时属于多个 Domain，Domain 之间不因此合并。代码中该概念统一称 `FederationDomain*`，与存储来源域 `NativeSourceDomain`、Processing 目标域 `NativeTargetDomain*` 区分。
 
-| 注册 ID | 英文名称 | 简体中文名称 | 旧 ID（仅兼容读取） |
-|---|---|---|---|
-| `ae2federation:switch` | ME Federation Switch | ME联邦交换机 | `ae2federation:hub` |
-| `ae2federation:router` | ME Federation Router | ME联邦路由器 | — |
-| `ae2federation:bridge` | ME Federation Bridge | ME联邦桥 | `ae2federation:multipart_bridge` |
-| `ae2federation:cable` | ME Federation Cable | ME联邦线缆 | `ae2federation:federation_cable` |
-| `ae2federation:pattern_provider` | ME Federation Pattern Provider | ME联邦样板供应器 | — |
-| `ae2federation:processing_endpoint` | ME Federation Processing Endpoint | ME联邦处理端点 | 未改名 |
+| 注册 ID | 英文名称 | 简体中文名称 |
+|---|---|---|
+| `ae2federation:switch` | ME Federation Switch | ME联邦交换机 |
+| `ae2federation:router` | ME Federation Router | ME联邦路由器 |
+| `ae2federation:bridge` | ME Federation Bridge | ME联邦桥 |
+| `ae2federation:cable` | ME Federation Cable | ME联邦线缆 |
+| `ae2federation:pattern_provider` | ME Federation Pattern Provider | ME联邦样板供应器 |
+| `ae2federation:processing_endpoint` | ME Federation Processing Endpoint | ME联邦处理端点 |
 
-旧 ID 通过 NeoForge 注册表别名（`DeferredRegister#addAlias`）映射到新条目，覆盖方块、物品和方块实体类型；Bridge 作为 AE2 multipart 部件按物品 ID 保存在线缆总线中，同样由物品别名解析。新数据只写新 ID。SavedData 名称与 NBT 键不含旧术语，未作改动。旧 Hub 接入 ME 网络，所以 `ae2federation:hub` 映射到 Switch；Router 只连接联邦，旧存档中的 `ae2federation:router` 不做迁移（pre-alpha）。Bridge 的内部实现类仍名为 `MultipartBridgePart`，因为它描述的是 AE2 multipart 技术实现，而不是玩家可见名称。
+模组处于 pre-alpha，不保留改名前的旧 ID（`hub`、`federation_cable`、`multipart_bridge`），也不迁移旧存档。Bridge 的内部实现类仍名为 `MultipartBridgePart`，因为它描述的是 AE2 multipart 技术实现，而不是玩家可见名称。
 
 ## 文档状态与阅读方式
 

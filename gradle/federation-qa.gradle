@@ -6740,7 +6740,6 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.part-policy-activation':
                 case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
-                case 'migration.legacy-save-import':
                 case 'rules.crafting-needs-storage':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
