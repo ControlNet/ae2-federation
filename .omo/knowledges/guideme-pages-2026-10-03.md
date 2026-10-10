@@ -164,8 +164,14 @@ and page ids did not change.
   registers, in `AddPackFindersEvent`, only the packs whose mods are all loaded, through
   `addPackFinders(..., PackSource.BUILT_IN, alwaysActive=true, TOP)`. Without the mod the pack does not exist: its
   pages, search entries, scenes and the examples-page list entry are all absent.
-- The pack shows in the Resource Packs screen as a required pack named by `ae2federation.pack.<id>`. Hiding it would
-  need building the `Pack` by hand with `.hidden()` and `addRepositorySource`; not done.
+- Since 2026-10-10 the packs are hidden: the entrypoint builds each `Pack` as `addPackFinders` does (same id
+  `mod/ae2federation:resourcepacks/<id>`, `PackSelectionConfig(required=true, TOP)`), then registers `.hidden()` through
+  `addRepositorySource`. NeoForge's `PackSelectionModel` filters hidden packs out of both lists, and
+  `PackRepository.rebuildSelected` re-adds required packs after the screen commits, so the pack stays active although
+  options.txt never lists it. Checked in the guide client with ExtendedAE: the Local Endpoint page opens, the Resource
+  Packs screen shows only Mod Resources and Default, and the reload after Done still loads `guide_extendedae`.
+  GuideME (21.1.1 to 21.1.19) has no mod condition of its own (no ModList use; frontmatter is navigation only), which
+  is why packs are used at all. The `ae2federation.pack.<id>` names now only label the pack internally.
 - `GuidePagesContractTest` checks each pack like the base guide, plus: pack folders == `GuideExamplePacks.ALL`; a pack
   page may link to or hang under base pages or its own pack, never another pack, and base pages never reach a pack;
   a pack's scenes stay in its pack; item ids and scene palette namespaces are limited to minecraft, ae2,

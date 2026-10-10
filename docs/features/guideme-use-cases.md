@@ -27,7 +27,8 @@ power setup remain the responsibility of each machine mod's own documentation wh
 
 [GuideExamplePacks](../../common/src/main/java/space/controlnet/ae2federation/client/guide/GuideExamplePacks.java)
 defines the required mod IDs for each built-in tutorial resource pack. A pack is selected only when every required
-mod is loaded, including combined requirements such as Mekanism plus Applied Mekanistics or Applied Flux.
+mod is loaded, including combined requirements such as Mekanism plus Applied Mekanistics or Applied Flux. The packs are
+hidden, the way NeoForge hides each mod's own resources: always active, and not listed in the Resource Packs screen.
 
 The pages and scene resources live under
 [resourcepacks/](../../common/src/main/resources/resourcepacks/). This keeps unavailable tutorials out of the guide's

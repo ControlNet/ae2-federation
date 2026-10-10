@@ -39,14 +39,34 @@ public final class NeoForgeClientEntrypoint {
         }
     }
 
+    /**
+     * Registers the guide example packs as AddPackFindersEvent#addPackFinders would, but hidden, the way NeoForge hides
+     * each mod's own resources: they are required, so they stay active, and the Resource Packs screen does not list them.
+     */
     private static void onAddPackFinders(net.neoforged.neoforge.event.AddPackFindersEvent event) {
+        if (event.getPackType() != net.minecraft.server.packs.PackType.CLIENT_RESOURCES) {
+            return;
+        }
+        var mod = net.neoforged.fml.ModList.get().getModContainerById("ae2federation").orElseThrow().getModInfo();
         for (var pack : space.controlnet.ae2federation.client.guide.GuideExamplePacks.active(
                 net.neoforged.fml.ModList.get()::isLoaded)) {
-            event.addPackFinders(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2federation", pack.path()),
+            var root = mod.getOwningFile().getFile().findResource(pack.path());
+            var id = "mod/ae2federation:" + pack.path();
+            var created = net.minecraft.server.packs.repository.Pack.readMetaAndCreate(
+                    new net.minecraft.server.packs.PackLocationInfo(id,
+                            net.minecraft.network.chat.Component.translatable(pack.nameKey()),
+                            net.minecraft.server.packs.repository.PackSource.BUILT_IN,
+                            java.util.Optional.of(new net.minecraft.server.packs.repository.KnownPack("neoforge", id,
+                                    mod.getVersion().toString()))),
+                    net.minecraft.server.packs.repository.BuiltInPackSource.fromName(
+                            path -> new net.minecraft.server.packs.PathPackResources(path, root)),
                     net.minecraft.server.packs.PackType.CLIENT_RESOURCES,
-                    net.minecraft.network.chat.Component.translatable(pack.nameKey()),
-                    net.minecraft.server.packs.repository.PackSource.BUILT_IN, true,
-                    net.minecraft.server.packs.repository.Pack.Position.TOP);
+                    new net.minecraft.server.packs.PackSelectionConfig(true,
+                            net.minecraft.server.packs.repository.Pack.Position.TOP, false));
+            if (created != null) {
+                var hidden = created.hidden();
+                event.addRepositorySource(packs -> packs.accept(hidden));
+            }
         }
     }
 
