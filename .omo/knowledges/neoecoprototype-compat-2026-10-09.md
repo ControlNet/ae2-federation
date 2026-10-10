@@ -11,6 +11,10 @@ neoecoae 21.2.1 (since 2026-10-10 the `neoecoae` and `addons-all` profiles run 2
 its item supplier, and its `ae2` dependency has `ordering = "NONE"`, so its RegisterEvent handler can run before AE2's.
 Its optional `megacells` entry has `ordering = "AFTER"`, and MEGA Cells loads after AE2, so with MEGA Cells present it
 boots. The profile includes MEGA Cells. Reported upstream as reliqwq/NeoECOPrototype#6 (2026-10-10).
+Fix PR reliqwq/NeoECOPrototype#7 (2026-10-10): only `ae2` ordering `NONE` -> `AFTER` in `neoforge.mods.toml`.
+Verified by putting that toml into a copy of the 1.3.2 jar on a bare server (AE2, LDLib2, GuideME, eco 21.2.1): original
+crashes 3/3, patched boots 4/4 without MEGA Cells and also with it. Once a release carries it, MEGA Cells can leave the
+`neoecoprototype` profile.
 
 ## How the tests reuse Neo ECO's scenes
 

@@ -194,7 +194,8 @@ Other findings, all upstream behaviour:
   Federation: `SimplifySingularityCellItem` reads `ae2:singularity` while items register, and its `ae2` dependency has
   no load order, so its items can register before AE2's (`Trying to access unbound value: ResourceKey[minecraft:item /
   ae2:singularity]`). MEGA Cells, which it loads after, puts AE2 first, so the profile includes it. Reported as
-  [reliqwq/NeoECOPrototype#6](https://github.com/reliqwq/NeoECOPrototype/issues/6).
+  [reliqwq/NeoECOPrototype#6](https://github.com/reliqwq/NeoECOPrototype/issues/6), with a fix in
+  [reliqwq/NeoECOPrototype#7](https://github.com/reliqwq/NeoECOPrototype/pull/7).
 - **AE2 Extras** (version `0`) crashes on its own with AE2: `Adding duplicate value MenuType` in AE2's menu
   registration. It also crashes without AE2 Federation, with AE2WTLib or ExtendedAE added, and on AE2 19.2.17. It boots
   inside `addons-all`, so it is tested only there. This is an upstream load-order problem.
