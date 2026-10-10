@@ -52,3 +52,12 @@ A/B check of a new texture (2026-10-10, the artist's core revision): put it in a
 `options.txt` `resourcePacks`, shoot, then copy the old texture into the pack, reload with
 `game_input.py reload` (F3+T; wait for a new "Reloading ResourceManager" line) and shoot the same `tp` spots. Restore
 `options.txt` afterwards. Shots and side-by-sides in `build/core-revision-shots/`.
+
+Connected core faces (2026-10-10, this branch): the artist's `core_connected_1..4` plus a stand-in
+`core_connected_opposite` (composed from `core_connected_1`, not the artist's; needs a real one). `CableCoreFaces`
+maps each face's texture-space edges (top, right, bottom, left) to world sides as AE2 `CubeBuilder`'s standard UVs lay
+them (south: up, east, down, west; north: up, west, down, east; west: up, south, down, north; east: up, north, down,
+south; up and down: north, east, south, west) and `setUvRotation(face, k)` turns the texture k quarter turns
+clockwise; both confirmed in-game on the first render. Only `CABLE` opens an edge. New `part/cable/dense/*` textures
+need no atlas entry: AE2's blocks atlas lists the whole `part/` directory for every namespace. Shots:
+`build/core-connected-shots/` (diagnostics in `connected-shapes.png`).

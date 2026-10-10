@@ -53,7 +53,7 @@ core with a dense arm toward it.
 
 | Piece | Size (voxels) | Texture |
 | --- | --- | --- |
-| Core | 12 (2 to 14) | `part/cable/dense/core` |
+| Core | 12 (2 to 14) | `part/cable/dense/core` and its connected variants, per face |
 | Cable arm | 12 across (2 to 14), from the core to the face | `part/cable/dense/line` |
 | Dense arm (Router, Provider, Endpoint) | 10 across (3 to 13), from the core to the face | `part/cable/dense/line` |
 | Straight tube | 12 across, the whole block | `part/cable/dense/line` |
@@ -66,6 +66,15 @@ inside its block. Where two cables meet nothing is drawn across the tube, neithe
 side toward a cable, so a run shows no seam ring through the glass. (The artist's `cable_display` rule, an end face
 toward a non-tube neighbour, covered the old 12-to-10 voxel step between cables; with no step left it never applies.)
 The item is a closed north-south tube.
+
+**Connected cores.** Each core face shows one of the artist's connected textures (`CableCoreFaces`): the frame
+opens on an edge whose side joins another Federation Cable, so the rails run on into its full-width arm and a run of
+cables reads as one outlined glass shape. Router, Provider, Endpoint and P2P arms leave the edge closed. By open
+edges: none `core`, one `core_connected_1`, two adjacent `core_connected_2`, two opposite `core_connected_opposite`,
+three `core_connected_3`, four `core_connected_4`, each turned in quarter turns onto the face.
+`core_connected_opposite` is **not the artist's**: it is `core_connected_1`'s top half over its 180-degree turn, a
+stand-in for testing until the artist draws one. It shows on the bottom face of a T-junction with a branch up or
+down, and on the back face of a flat tee.
 
 **Textures.** The artist's interim dense textures are wired in `CableBakedModel.builder()` and listed as code-drawn in
 `validate_assets.py`. `part/cable/dense/{connector,collar,stream_u,stream_v}` and the old
