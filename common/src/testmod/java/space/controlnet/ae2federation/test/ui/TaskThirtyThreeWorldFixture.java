@@ -471,7 +471,7 @@ final class TaskThirtyThreeWorldFixture {
                 space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of())));
     }
 
-    /** The provider host's network uses the Endpoint network's crafting, with the storage rule crafting needs. */
+    /** The provider host's network uses the Endpoint network's crafting and its storage. */
     static void enableCraftingRule(ServerContext context) {
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
         var crafting = craftingKey(context);
@@ -482,7 +482,7 @@ final class TaskThirtyThreeWorldFixture {
         require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
                 "Crafting policy edit must be accepted");
         require(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(context.level(), crafting)
-                .map(status -> status.active()).orElse(false), "An enabled crafting rule with its storage rule must be active");
+                .map(status -> status.active()).orElse(false), "An enabled crafting rule must be active");
     }
 
     /** Sets the crafting direction's storage rule through the policy service, which links no other rule. */

@@ -937,8 +937,7 @@ public final class FederationDomainPolicySession {
     }
 
     /**
-     * Sets {@code key} to {@code mode} with the rules linked to it, in one edit: a crafting rule brings its storage
-     * rule, and energy is one pool per pair. False when the edit was refused because a rule changed meanwhile.
+     * Sets {@code key} to {@code mode} with the rules linked to it, in one edit: energy is one pool per pair. False when the edit was refused because a rule changed meanwhile.
      */
     private boolean applyLinked(PolicyService service, PolicyKey key, RuleMode mode) {
         var edits = RuleLinks.of(key, mode, other -> mode(service, other)).stream()
@@ -1454,7 +1453,9 @@ public final class FederationDomainPolicySession {
                     .map(diagnostic -> diagnostic.name().toLowerCase(java.util.Locale.ROOT)).orElse("");
             if (key.capability() == PolicyCapability.CRAFTING) {
                 var pairStorage = new PolicyKey(key.consumerNetworkId(), key.providerNetworkId(), PolicyCapability.STORAGE);
-                return new RuntimeObservation("published", "", "", "", 0, RuntimeNotes.crafting(
+                boolean pairStorageOn = PolicyService.get(level).configured(pairStorage)
+                        .map(record -> record.rule().enabled()).orElse(false);
+                return new RuntimeObservation("published", "", "", "", 0, RuntimeNotes.crafting(pairStorageOn,
                         space.controlnet.ae2federation.storage.mount.StorageMountService.status(level, pairStorage)
                                 .map(space.controlnet.ae2federation.storage.mount.StorageMountService.Status::inEffect)));
             }

@@ -178,7 +178,7 @@ public final class NetherProviderProjectionScene implements AutoCloseable {
         }
     }
 
-    /** The consumer uses the provider's crafting, with the storage rule crafting needs, in one edit. */
+    /** The consumer uses the provider's crafting and its storage, in one edit. */
     public void enableRules() {
         var policies = PolicyService.get(helper.getLevel());
         var crafting = new PolicyKey(consumerNetwork(), providerNetwork(), PolicyCapability.CRAFTING);

@@ -2021,10 +2021,6 @@ final class FederationTopologyView {
         head.addChildren(name, stateLabel);
         var mode = mode(rule);
         boolean on = mode.enabled();
-        // Crafting takes the other network's materials through the same direction's storage rule, which therefore
-        // stays on while crafting is: it steps only between its two on states.
-        boolean heldByCrafting = capability == PolicyCapability.STORAGE
-                && mode(rule(key(consumer.id(), provider.id(), PolicyCapability.CRAFTING.name()))).enabled();
         var toggle = new Button();
         toggle.noText();
         toggle.addClass("policy-switch");
@@ -2057,16 +2053,14 @@ final class FederationTopologyView {
         boolean threeState = RuleMode.REEXPORT.allowedFor(capability);
         toggle.setOnClick(event -> {
             if (!editable) return;
-            var next = !threeState ? on ? RuleMode.DISABLED : RuleMode.ENABLED
-                    : heldByCrafting ? held(mode) : mode.next();
+            var next = !threeState ? on ? RuleMode.DISABLED : RuleMode.ENABLED : mode.next();
             setPolicy.accept(new PolicySwitchTarget(policyKey, next, new PolicyRevision(observed)).encode());
         });
         if (threeState) {
             toggle.addEventListener(com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents.MOUSE_DOWN, event -> {
                 if (event.button != 1 || !editable || !toggle.isActive()) return;
                 com.lowdragmc.lowdraglib2.gui.util.UISoundUtils.playButtonClickSound();
-                setPolicy.accept(new PolicySwitchTarget(policyKey,
-                        heldByCrafting ? held(mode) : mode.previous(), new PolicyRevision(observed)).encode());
+                setPolicy.accept(new PolicySwitchTarget(policyKey, mode.previous(), new PolicyRevision(observed)).encode());
             });
         }
         head.addChild(toggle);
@@ -2133,11 +2127,6 @@ final class FederationTopologyView {
             if (flows.containsKey(key(consumer, provider, capability.name()))) return true;
         }
         return false;
-    }
-
-    /** A storage rule crafting depends on steps between enabled and re-export, either way. */
-    private static RuleMode held(RuleMode mode) {
-        return mode == RuleMode.ENABLED ? RuleMode.REEXPORT : RuleMode.ENABLED;
     }
 
     private static RuleMode mode(JsonObject rule) {

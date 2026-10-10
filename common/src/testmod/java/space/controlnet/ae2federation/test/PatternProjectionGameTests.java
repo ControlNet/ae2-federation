@@ -10,12 +10,13 @@ import static space.controlnet.ae2federation.test.crafting.ProjectionChainFixtur
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
+import appeng.api.stacks.AEItemKey;
 import java.util.Map;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
-import space.controlnet.ae2federation.policy.BindingDiagnostic;
+import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.test.crafting.PatternProjectionFixture;
 import space.controlnet.ae2federation.test.crafting.ProjectionChainFixture;
@@ -340,28 +341,73 @@ public final class PatternProjectionGameTests {
         });
     }
 
-    /** A crafting rule without its storage rule, set through the API: nothing is projected, and the rule says why. */
+    /**
+     * A crafting rule with no storage rule at all: the provider's patterns are projected, the consumer orders with its
+     * own planks and gets its sticks, and never sees the provider's own stock. Switching the storage rule on shows that
+     * stock; switching it off again hides it and leaves crafting on.
+     */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
-            required = true, timeoutTicks = 400)
-    public static void projectionStorageRequired(GameTestHelper helper) {
+            required = true, timeoutTicks = 800)
+    public static void projectionWithoutStorage(GameTestHelper helper) {
         var fixture = new PatternProjectionFixture(helper);
         var stage = new int[1];
+        var iron = AEItemKey.of(Items.IRON_INGOT);
         helper.succeedWhen(() -> {
             helper.assertTrue(stage[0] > 0 || fixture.ready(), "Waiting for both networks and their providers");
             if (stage[0] == 0) {
+                fixture.putInProvider(iron, 5);
                 fixture.setRule(fixture.crafting(), RuleMode.ENABLED);
                 stage[0] = 1;
             }
-            helper.assertTrue(fixture.status().flatMap(status -> status.reason())
-                    .filter(BindingDiagnostic.Reason.CRAFTING_STORAGE_REQUIRED::equals).isPresent(),
-                    "Waiting for the rule to report the missing storage rule");
-            helper.assertValueEqual(fixture.projections(), 0, "Nothing is projected without the storage rule");
-            helper.assertFalse(fixture.consumerService().isCraftable(sticks()),
-                    "The consumer must not see the provider's patterns");
-            PolicyEvidence.write("projectionstoragerequired", 3, Map.of("reason", "CRAFTING_STORAGE_REQUIRED",
-                    "projections", "0"));
+            if (stage[0] == 1) {
+                helper.assertTrue(fixture.consumerService().isCraftable(sticks()),
+                        "Waiting for the provider's patterns on the consumer without a storage rule");
+                helper.assertValueEqual(fixture.projections(), 2, "Both of the provider's pattern providers are projected");
+                helper.assertTrue(fixture.status().map(status -> status.active()).orElse(false),
+                        "The crafting rule must be active without a storage rule");
+                helper.assertFalse(PolicyService.get(helper.getLevel()).configured(fixture.storage())
+                        .map(record -> record.rule().enabled()).orElse(false), "The storage rule must stay off");
+                helper.assertValueEqual(visible(fixture, iron), 0L, "The consumer must not see the provider's stock");
+                fixture.putInConsumer(planks(), 2);
+                fixture.begin(sticks(), 4);
+                stage[0] = 2;
+            }
+            if (stage[0] == 2) {
+                helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                helper.assertFalse(fixture.plan().simulation(), "The consumer's own planks must be enough");
+                helper.assertTrue(fixture.submit(), "The consumer's own CPU must take the job");
+                stage[0] = 3;
+            }
+            if (stage[0] == 3) {
+                helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "Waiting for the consumer's job to finish");
+                helper.assertValueEqual(fixture.held(fixture.consumerChest(), sticks()), 4L,
+                        "The four sticks come back to the consumer's own storage");
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), sticks()), 0L,
+                        "No sticks stay on the provider network");
+                helper.assertValueEqual(fixture.held(fixture.consumerChest(), planks()), 0L, "The consumer's planks were used");
+                helper.assertValueEqual(fixture.held(fixture.providerChest(), iron), 5L, "The provider's stock is untouched");
+                helper.assertValueEqual(fixture.owed(sticks()), 0L, "Every returned stick was handed back");
+                fixture.setRule(fixture.storage(), RuleMode.ENABLED);
+                stage[0] = 4;
+            }
+            if (stage[0] == 4) {
+                helper.assertValueEqual(visible(fixture, iron), 5L, "Waiting for the provider's stock through the storage rule");
+                fixture.setRule(fixture.storage(), RuleMode.DISABLED);
+                stage[0] = 5;
+            }
+            helper.assertValueEqual(visible(fixture, iron), 0L, "Waiting for the provider's stock to leave the consumer");
+            helper.assertTrue(fixture.consumerService().isCraftable(sticks()),
+                    "Switching the storage rule off leaves the provider's patterns on the consumer");
+            helper.assertTrue(fixture.status().map(status -> status.active()).orElse(false),
+                    "Switching the storage rule off leaves the crafting rule active");
+            PolicyEvidence.write("projectionwithoutstorage", 15, Map.of("projections", "2", "sticks", "4",
+                    "providerStockSeen", "0", "providerStockSeenWithStorage", "5", "providerStockSeenAfterStorageOff", "0"));
             fixture.close();
         });
+    }
+
+    private static long visible(PatternProjectionFixture fixture, AEItemKey key) {
+        return fixture.consumerGrid().getStorageService().getInventory().getAvailableStacks().get(key);
     }
 
     /**

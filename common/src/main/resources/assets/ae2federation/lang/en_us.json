@@ -176,7 +176,6 @@
   "ae2federation.ui.workspace.scope_summary.ambiguous": "Multiple matching domains",
   "ae2federation.ui.domain.runtime.backend_reason": "Last backend check: %s",
   "ae2federation.ui.domain.runtime.backend.identity_unconfirmed": "One of the two networks is not loaded, or its identity is not settled yet.",
-  "ae2federation.ui.domain.runtime.backend.crafting_storage_required": "This direction's Storage rule is off: crafting takes the other network's materials through it.",
   "ae2federation.ui.domain.runtime.backend.crafting_request_missing": "The crafting rule does not allow crafting requests.",
   "ae2federation.ui.domain.runtime.backend.policy_unconfigured": "Rule was not configured.",
   "ae2federation.ui.domain.runtime.backend.policy_disabled": "Rule was disabled.",

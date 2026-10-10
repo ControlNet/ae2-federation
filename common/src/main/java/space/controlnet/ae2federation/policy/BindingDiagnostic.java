@@ -6,8 +6,6 @@ public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, lo
         IDENTITY_UNCONFIRMED,
         /** A crafting rule without the REQUEST operation. */
         CRAFTING_REQUEST_MISSING,
-        /** A crafting rule whose direction's storage rule is off: the CPU could not take the materials. */
-        CRAFTING_STORAGE_REQUIRED,
         POLICY_UNCONFIGURED,
         POLICY_DISABLED,
         NETWORK_PAIR_DISCONNECTED,

@@ -186,7 +186,7 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return new PolicyKey(providerNetwork(), consumerNetwork(), PolicyCapability.STORAGE);
     }
 
-    /** The consumer uses the provider's crafting, with the storage rule crafting needs, in one edit. */
+    /** The consumer uses the provider's crafting and its storage, in one edit. */
     public void enableRules() {
         var policies = PolicyService.get(helper.getLevel());
         accepted(policies.editAll(List.of(

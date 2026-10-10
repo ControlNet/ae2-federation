@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 final class BindingDiagnosticTest {
     @Test
     void aPolicyEditInvalidatesTheOldBackendReason() {
-        var diagnostic = new BindingDiagnostic(BindingDiagnostic.Reason.CRAFTING_STORAGE_REQUIRED, new PolicyRevision(4), 9);
+        var diagnostic = new BindingDiagnostic(BindingDiagnostic.Reason.CRAFTING_REQUEST_MISSING, new PolicyRevision(4), 9);
         assertTrue(diagnostic.matches(new PolicyRevision(4), 9));
         assertFalse(diagnostic.matches(new PolicyRevision(5), 9));
     }

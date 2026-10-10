@@ -370,15 +370,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(2).screenshot("ui-policy-runtime-crafting-active")
                 .server("switch the storage rule off through the API", context ->
                         TaskThirtyThreeWorldFixture.setCraftingStorage(context, false))
-                .waitUntil("missing storage is explained", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                .waitUntil("crafting stays active without the storage rule", context -> TaskThirtyThreeScenarioSupport
+                        .ruleActive(context, "crafting") && TaskThirtyThreeScenarioSupport.ruleState(context, "storage").equals("Off"))
+                .check("crafting gives no storage reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
                         TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
-                        .stream().anyMatch(line -> line.contains("This direction's Storage rule is off")))
-                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
-                        .ruleState(context, "crafting").contains("Storage rule is off"))
+                        .stream().noneMatch(line -> line.contains("Storage rule")))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
-                .frames(2).screenshot("ui-policy-runtime-storage-required")
+                .frames(2).screenshot("ui-policy-runtime-crafting-without-storage")
                 .server("switch the storage rule back on", context -> TaskThirtyThreeWorldFixture.setCraftingStorage(context, true))
-                .waitUntil("crafting is active again", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
+                .waitUntil("crafting is still active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
                 .server("disable the observed rule and reject its old diagnostic", TaskThirtyThreeWorldFixture::disableObservedCraftingRule)
                 .waitUntil("the disabled rule reads off, with no leftover reason", context -> TaskThirtyThreeScenarioSupport
                         .ruleState(context, "crafting").equals("Off"))

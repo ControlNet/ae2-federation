@@ -6740,7 +6740,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.part-policy-activation':
                 case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
-                case 'rules.crafting-needs-storage':
+                case 'rules.crafting-and-storage-apart':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
                 case 'storage.alias-wrapper-semantics':
@@ -6866,7 +6866,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-revoked':
                 case 'crafting.projection-disconnected':
                 case 'crafting.projection-reload':
-                case 'crafting.projection-storage-required':
+                case 'crafting.projection-without-storage':
                 case 'crafting.projection-chain':
                 case 'crafting.projection-chain-blocked':
                 case 'crafting.projection-mutual':

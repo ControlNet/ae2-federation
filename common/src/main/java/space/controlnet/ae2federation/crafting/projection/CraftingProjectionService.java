@@ -250,12 +250,6 @@ public final class CraftingProjectionService implements AutoCloseable {
         if (!configured.rule().operations().contains(PolicyOperation.REQUEST)) {
             return Optional.of(BindingDiagnostic.Reason.CRAFTING_REQUEST_MISSING);
         }
-        // The consumer's CPU takes the provider's materials through this direction's storage rule.
-        var storage = policies.configured(new PolicyKey(key.consumerNetworkId(), key.providerNetworkId(),
-                PolicyCapability.STORAGE)).orElse(null);
-        if (storage == null || !storage.rule().enabled()) {
-            return Optional.of(BindingDiagnostic.Reason.CRAFTING_STORAGE_REQUIRED);
-        }
         var activation = policies.activation(key, new PolicyRuntimeEndpoints(relationship.consumerGrid(),
                 relationship.providerGrid(), BackendStatus.READY));
         if (activation != PolicyActivationState.ACTIVE) return Optional.of(BindingDiagnostic.inactiveReason(activation));

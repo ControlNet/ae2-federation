@@ -57,26 +57,6 @@ public final class PolicyStore {
         return first;
     }
 
-    /**
-     * Switches on the storage rule of every enabled crafting rule's direction, for worlds saved before crafting needed
-     * it: a disabled storage rule keeps its operations, a missing one gets the defaults. Returns how many changed.
-     */
-    public int requireStorageForCrafting() {
-        var missing = entries.values().stream()
-                .filter(record -> record instanceof PolicyRecord.Configured configured
-                        && configured.key().capability() == PolicyCapability.CRAFTING && configured.rule().enabled())
-                .map(record -> new PolicyKey(record.key().consumerNetworkId(), record.key().providerNetworkId(),
-                        PolicyCapability.STORAGE))
-                .filter(storage -> configured(storage).map(record -> !record.rule().enabled()).orElse(true))
-                .toList();
-        for (var storage : missing) {
-            var rule = configured(storage).map(record -> record.rule().withEnabled(true))
-                    .orElseGet(PolicyRule::storageDefaults);
-            edit(new PolicyEdit(storage, revision(storage), rule));
-        }
-        return missing.size();
-    }
-
     public PolicyMutationResult delete(PolicyDelete deletion) {
         var currentRecord = entries.get(deletion.key());
         var current = currentRecord == null ? PolicyRevision.NONE : currentRecord.revision();

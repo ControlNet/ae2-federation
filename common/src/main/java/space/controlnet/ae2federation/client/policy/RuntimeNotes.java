@@ -8,10 +8,12 @@ final class RuntimeNotes {
     }
 
     /**
-     * A crafting rule's requester crafts from the items it can see, so while the same direction's storage rule is known
-     * not to be in effect it cannot use the other network's materials.
+     * A crafting rule's requester crafts from the items it can see. Crafting does not need the same direction's storage
+     * rule, but while that rule is on and known not to be in effect, the other network's materials it promises are not
+     * there yet.
      */
-    static String crafting(Optional<Boolean> pairStorageInEffect) {
-        return pairStorageInEffect.filter(inEffect -> !inEffect).isPresent() ? "crafting_storage_not_in_effect" : "";
+    static String crafting(boolean pairStorageOn, Optional<Boolean> pairStorageInEffect) {
+        return pairStorageOn && pairStorageInEffect.filter(inEffect -> !inEffect).isPresent()
+                ? "crafting_storage_not_in_effect" : "";
     }
 }

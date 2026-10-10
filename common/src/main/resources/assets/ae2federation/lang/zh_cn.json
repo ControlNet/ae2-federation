@@ -176,7 +176,6 @@
   "ae2federation.ui.workspace.scope_summary.ambiguous": "存在多个候选域",
   "ae2federation.ui.domain.runtime.backend_reason": "最近后端检查：%s",
   "ae2federation.ui.domain.runtime.backend.identity_unconfirmed": "两个网络中有一方尚未加载，或其身份尚未稳定。",
-  "ae2federation.ui.domain.runtime.backend.crafting_storage_required": "这个方向的存储规则已关闭：合成要通过它使用对方网络的材料。",
   "ae2federation.ui.domain.runtime.backend.crafting_request_missing": "这条合成规则不允许发起合成请求。",
   "ae2federation.ui.domain.runtime.backend.policy_unconfigured": "规则尚未配置。",
   "ae2federation.ui.domain.runtime.backend.policy_disabled": "规则已禁用。",

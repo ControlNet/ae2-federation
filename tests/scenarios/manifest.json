@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "cases": [
     {"id":"identity.part-policy-activation","backend":"gametest","testId":"policypartpreservesactivation","structure":"ae2federation_test:harness_native_smoke","assertions":5},
-    {"id":"rules.crafting-needs-storage","backend":"gametest","testId":"rulescraftingneedsstorage","structure":"ae2federation_test:harness_native_smoke","assertions":14},
+    {"id":"rules.crafting-and-storage-apart","backend":"gametest","testId":"rulescraftingandstorageapart","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"identity.initialization-order","backend":"gametest","testId":"identityinitializationorder","structure":"ae2federation_test:harness_native_smoke","assertions":32},
     {"id":"provider.production-release-cas-failure","backend":"gametest","testId":"productionproviderreleasecasfailure","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"provider.production-cleanup-buffers","backend":"gametest","testId":"productionprovidercleanupbuffers","structure":"ae2federation_test:harness_native_smoke","assertions":5},
@@ -81,7 +81,7 @@
     {"id":"crafting.projection-revoked","backend":"gametest","testId":"projectionrevoked","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-disconnected","backend":"gametest","testId":"projectiondisconnected","structure":"ae2federation_test:harness_native_smoke","assertions":18},
     {"id":"crafting.projection-reload","backend":"gametest","testId":"projectionreload","structure":"ae2federation_test:harness_native_smoke","assertions":8},
-    {"id":"crafting.projection-storage-required","backend":"gametest","testId":"projectionstoragerequired","structure":"ae2federation_test:harness_native_smoke","assertions":3},
+    {"id":"crafting.projection-without-storage","backend":"gametest","testId":"projectionwithoutstorage","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"crafting.projection-chain","backend":"gametest","testId":"projectionchain","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"crafting.projection-chain-blocked","backend":"gametest","testId":"projectionchainblocked","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-mutual","backend":"gametest","testId":"projectionmutual","structure":"ae2federation_test:harness_native_smoke","assertions":13},
