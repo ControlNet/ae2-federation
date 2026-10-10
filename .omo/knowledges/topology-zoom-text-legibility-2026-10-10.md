@@ -49,7 +49,7 @@ and domain plate name until the pixel font can no longer be read. Research plus 
 |---|---|
 | Better filtering / AA (linear, mipmaps, supersampling, MSAA) | Already done for Labels (SDF in AUTO). Supersampling a 5x8 font below one pixel per texel gives grey blobs. Does not make text readable. |
 | Integer / snapped text scale | AUTO already rasterises at exact whole sizes. Useful only together with counter-scaling: draw at exactly 1 (or n) screen pixels per font pixel. |
-| Vector / TTF font for the canvas | Feasible (TextStyle.font, LDLib2 SDF TTF support) but does not solve physical size and clashes with the AE2 look. Rejected. |
+| Vector / TTF font for the canvas | Feasible (TextStyle.font, LDLib2 SDF TTF support) but does not solve physical size and clashes with the AE2 look. Rejected for Latin; adopted for Chinese only (last section). |
 | Zoom floor only | Keeping text legible needs zoom >= 0.5 at GUI scale 2, which breaks Fit for the related scope. Only useful as a floor under LOD. |
 | Semantic zoom (LOD) | Works. It hides what cannot be read. |
 | Counter-scaled labels | Works. Names stay readable at any zoom down to about 0.18 on the test window. |
