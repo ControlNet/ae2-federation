@@ -57,8 +57,9 @@ A/B check of a new texture (2026-10-10, the artist's core revision): put it in a
 
 Full-width cable joins were tried on `feature/cable-full-width-joins` (reverted on dev in ba4e96c while undecided)
 and merged with the connected cores once the user approved them; the branch is gone. The artist's
-`core_connected_1..4` plus a stand-in `core_connected_opposite` (composed from `core_connected_1`, not the artist's;
-needs a real one). `CableCoreFaces` maps each face's texture-space edges (top, right, bottom, left) to world sides as
+`core_connected_1..4` plus `core_connected_2_straight` (two opposite edges open). Until 2026-10-10 that slot held my
+stand-in `core_connected_opposite`, composed from `core_connected_1`; the artist then delivered
+`core_connected_2_straight`, pixel-identical to the stand-in, and it replaced it under the artist's name. `CableCoreFaces` maps each face's texture-space edges (top, right, bottom, left) to world sides as
 AE2 `CubeBuilder`'s standard UVs lay them (south: up, east, down, west; north: up, west, down, east; west: up, south,
 down, north; east: up, north, down, south; up and down: north, east, south, west) and `setUvRotation(face, k)` turns
 the texture k quarter turns clockwise; both confirmed in-game on the first render. Only `CABLE` opens an edge. New

@@ -20,7 +20,7 @@ public final class CableCoreFaces {
         CLOSED("core", 0),
         ONE("core_connected_1", TOP),
         ADJACENT("core_connected_2", TOP | RIGHT),
-        OPPOSITE("core_connected_opposite", TOP | BOTTOM),
+        OPPOSITE("core_connected_2_straight", TOP | BOTTOM),
         THREE("core_connected_3", TOP | RIGHT | LEFT),
         ALL("core_connected_4", TOP | RIGHT | BOTTOM | LEFT);
 
