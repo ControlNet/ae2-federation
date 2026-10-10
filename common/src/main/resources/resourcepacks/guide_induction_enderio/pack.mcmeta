@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "description": {
+      "translate": "ae2federation.pack.guide_induction_enderio.description",
+      "fallback": "AE2 Federation guide: the Induction Card example with Ender IO"
+    },
+    "pack_format": 34
+  }
+}

@@ -15,6 +15,27 @@ public final class AdvancedAECompatGameTests {
     private AdvancedAECompatGameTests() {
     }
 
+    /**
+     * The Nexus Press and Advanced AE's Quantum Press both press the Engineering and Logic Presses together; the middle
+     * input decides which one comes out.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 100)
+    public static void nexusAndQuantumPressesShareTheirPresses(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var engineering = appeng.core.definitions.AEItems.ENGINEERING_PROCESSOR_PRESS.stack();
+        var logic = appeng.core.definitions.AEItems.LOGIC_PROCESSOR_PRESS.stack();
+        var nexus = appeng.blockentity.misc.InscriberRecipes.findRecipe(level,
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ENDER_PEARL), engineering, logic, false);
+        helper.assertTrue(nexus != null && nexus.getResultItem().is(
+                space.controlnet.ae2federation.material.MaterialRegistration.NEXUS_PROCESSOR_PRESS.get()),
+                "An Ender Pearl between the two presses must make the Nexus Press, not " + nexus);
+        var quantum = appeng.blockentity.misc.InscriberRecipes.findRecipe(level,
+                AddonCraftingScene.item("advanced_ae:shattered_singularity").getDefaultInstance(), engineering, logic, false);
+        helper.assertTrue(quantum != null && quantum.getResultItem().is(AddonCraftingScene.item("advanced_ae:quantum_processor_press")),
+                "A Shattered Singularity between the two presses must still make the Quantum Press, not " + quantum);
+        helper.succeed();
+    }
+
     /** The provider network's pattern sits in an Advanced Pattern Provider. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void advPatternProviderCrafting(GameTestHelper helper) {

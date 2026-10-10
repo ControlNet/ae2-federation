@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with OmniSequence: Transfinite",
+    "description": {
+      "translate": "ae2federation.pack.guide_omnisequence.description",
+      "fallback": "AE2 Federation guide examples with OmniSequence: Transfinite"
+    },
     "pack_format": 34
   }
 }

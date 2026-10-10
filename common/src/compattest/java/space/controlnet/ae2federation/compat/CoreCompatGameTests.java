@@ -41,7 +41,8 @@ public final class CoreCompatGameTests {
         for (var holder : level.getRecipeManager().getRecipes()) {
             made.add(holder.value().getResultItem(level.registryAccess()).getItem());
         }
-        var missing = List.of(MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get(), BridgeRegistration.BRIDGE.get(),
+        var missing = List.of(MaterialRegistration.NEXUS_CORE.get(), MaterialRegistration.NEXUS_PROCESSOR.get(),
+                        BridgeRegistration.BRIDGE.get(),
                         RouterRegistration.ROUTER_ITEM.get(), RouterRegistration.FEDERATION_CABLE_ITEM.get(),
                         ProcessingRegistration.PROVIDER_ITEM.get(), ProcessingRegistration.ENDPOINT_ITEM.get())
                 .stream().filter(item -> !made.contains(item)).map(Item::toString).toList();

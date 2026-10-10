@@ -7,6 +7,8 @@ modId="ae2federation"
 version="${mod_version}"
 displayName="AE2 Federation"
 authors="ControlNet"
+logoFile="ae2federation_logo.png"
+logoBlur=false
 description='''
 Connect independent AE2 networks to share storage, autocrafting, processing, and ME power.
 '''

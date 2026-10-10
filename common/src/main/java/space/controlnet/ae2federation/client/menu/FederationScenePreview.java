@@ -47,7 +47,7 @@ public final class FederationScenePreview extends Scene {
     private List<BlockMarks.Mark> marks = List.of();
     private int markColor;
     private SceneWindow window;
-    private int renderedBlocks;
+    private List<BlockPos> rendered = List.of();
     private int frames;
     private net.minecraft.world.level.Level sceneLevel;
     /** The network's blocks and the devices, drawn undimmed. */
@@ -94,7 +94,17 @@ public final class FederationScenePreview extends Scene {
 
     /** Non-air blocks drawn at the last sample; zero when nothing around the location is loaded. */
     public int renderedBlocks() {
-        return renderedBlocks;
+        return rendered.size();
+    }
+
+    /** The non-air blocks drawn at the last sample. */
+    public List<BlockPos> rendered() {
+        return rendered;
+    }
+
+    /** The level the preview draws from, or null before the first sample. */
+    public Level sceneWorld() {
+        return dummyWorld;
     }
 
     @Override
@@ -109,7 +119,7 @@ public final class FederationScenePreview extends Scene {
         var level = Minecraft.getInstance().level;
         if (level == null) return;
         if (level != sceneLevel) {
-            createScene(level);
+            createScene(new SceneLevel(level));
             setCameraYawAndPitch(-135, 30);
             sceneLevel = level;
         }
@@ -123,7 +133,7 @@ public final class FederationScenePreview extends Scene {
                 }
             }
         }
-        renderedBlocks = blocks.size();
+        rendered = List.copyOf(blocks);
         var undimmed = own;
         setRenderedCore(blocks, new ISceneBlockRenderHook() {
             @Override

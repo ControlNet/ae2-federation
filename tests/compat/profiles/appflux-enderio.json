@@ -1,0 +1,19 @@
+{
+  "name": "appflux-enderio",
+  "group": "addons",
+  "description": "Applied Flux with Ender IO: the Provider's FE runs a SAG Mill on its Endpoint",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "appflux@1.21-2.1.5-neoforge",
+    "enderio@v8.2.12-beta"
+  ],
+  "tests": [
+    "core",
+    "appflux",
+    "appflux-enderio"
+  ]
+}

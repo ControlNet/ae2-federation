@@ -4,7 +4,7 @@
     data: [
         {pos: [5, 0, 0], state: "ae2:1k_crafting_storage{formed:true,powered:true}", nbt: {core: 1b, id: "ae2:crafting_storage", visual: {}}},
         {pos: [4, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:purple_smart_cable", visual: {channelsEast: 3, channelsUp: 3, channelsWest: 3, connections: ["up", "west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}, north: {id: "ae2:crafting_terminal", visual: {missingChannel: 0b, powered: 1b}}}},
-        {pos: [3, 0, 0], state: "ae2federation:router"},
+        {pos: [3, 0, 0], state: "ae2federation:switch"},
         {pos: [2, 0, 0], state: "ae2:cable_bus{light_level:0,waterlogged:false}", nbt: {cable: {id: "ae2:green_smart_cable", visual: {channelsEast: 1, channelsWest: 1, connections: ["west", "east"], missingChannel: 0b, powered: 1b}}, hasRedstone: 2, id: "ae2:cable_bus", visual: {}}},
         {pos: [1, 0, 0], state: "ae2:pattern_provider{push_direction:all}", nbt: {id: "ae2:pattern_provider", priority: 0, visual: {}}},
         {pos: [0, 0, 0], state: "ae2:molecular_assembler{powered:true}", nbt: {id: "ae2:molecular_assembler", visual: {}}},
@@ -52,7 +52,7 @@
     palette: [
         "ae2:1k_crafting_storage{formed:true,powered:true}",
         "ae2:cable_bus{light_level:0,waterlogged:false}",
-        "ae2federation:router",
+        "ae2federation:switch",
         "ae2:pattern_provider{push_direction:all}",
         "ae2:molecular_assembler{powered:true}",
         "mekanism:induction_casing",

@@ -15,7 +15,7 @@ Transfinite is installed.
 **You need:** network B with a formed Matter Fabrication Well, its controller
 (<ItemLink id="molecularmanipulator:matter_fabrication_controller" />) on B's cable, and a
 <ItemLink id="molecularmanipulator:matter_fabrication_pattern_assembly" /> in one of its service positions; your main
-network (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:router" />.
+network (network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" />.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/matter_fabrication_well.snbt" />
@@ -23,7 +23,7 @@ network (network A) with a crafting CPU, a crafting terminal, storage and power;
     Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 2 1" max="4 3 2">
-    Router: one face per network
+    Switch: one face per network
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="3 2 2" max="5 3 8">
     Network B's cable along the service channel into the front of the controller
@@ -43,7 +43,6 @@ The Federation screen then shows the two networks and the rules between them:
   <Network key="a" label="Network A" color="#915dcd" column="0" row="0" details="Crafting CPU, terminal|Storage, energy cell" />
   <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" details="Matter Fabrication Well|Pattern Assembly" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
@@ -57,7 +56,7 @@ The Federation screen then shows the two networks and the rules between them:
 3. **Put a processing pattern into the assembly** that matches a well recipe exactly, inputs, outputs and amounts; see
    [Fabrication Pattern Assembly](molecularmanipulator:items-blocks-machines/matter_fabrication_pattern_assembly.md).
    4 Nether Quartz and 4 Bone Meal into 8 Calcite needs no research.
-4. **Connect networks A and B** to their own faces of a Router.
+4. **Connect networks A and B** to their own faces of a Switch.
 5. **Switch on Crafting under "A uses B's"** in the Federation screen, and ME power for the pair: the well then runs
    on network A's power.
 6. **Order Calcite from network A.** A's crafting CPU sends the quartz and bone meal to the assembly, the well makes

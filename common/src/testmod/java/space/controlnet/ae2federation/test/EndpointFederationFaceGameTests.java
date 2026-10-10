@@ -61,7 +61,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceCable(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         scene.endpoint(FAR, Direction.WEST);
         helper.succeedWhen(() -> scene.assertEndpointJoins(HUB, FAR));
@@ -72,7 +72,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceRouter(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         scene.endpoint(NEAR, Direction.WEST);
         helper.succeedWhen(() -> scene.assertEndpointJoins(HUB, NEAR));
     }
@@ -93,7 +93,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceRotate(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         scene.endpoint(FAR, Direction.WEST);
         var rotated = new boolean[1];
@@ -125,7 +125,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceClaimKeepsDomain(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         scene.endpoint(FAR, Direction.WEST);
         assertClaimKeepsDomain(helper, scene, FAR);
@@ -137,7 +137,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceClaimKeepsRouterDomain(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         scene.endpoint(NEAR, Direction.WEST);
         assertClaimKeepsDomain(helper, scene, NEAR);
     }
@@ -192,7 +192,7 @@ public final class EndpointFederationFaceGameTests {
     public static void endpointFederationFaceSubnetMember(GameTestHelper helper) {
         var scene = new Scene(helper);
         scene.member();
-        helper.setBlock(HUB, RouterRegistration.ROUTER.get());
+        helper.setBlock(HUB, RouterRegistration.SWITCH.get());
         helper.setBlock(NEAR, RouterRegistration.FEDERATION_CABLE.get());
         var endpoint = NEAR.south();
         scene.place(endpoint, ProcessingRegistration.ENDPOINT.get().defaultBlockState()

@@ -81,7 +81,8 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
   stops any server 30 s after its report appears. A crash fires `ServerStoppedEvent` but not `ServerStoppingEvent`;
   the test mod writes a partial report from either.
 - Applied Flux mixes `initUpgrade` into the `PatternProviderLogic` constructor and adds an `IEnergyDistributor` node
-  service; anything wrapping `IManagedGridNode.addService` must tolerate unknown services.
+  service; anything wrapping `IManagedGridNode.addService` must tolerate unknown services. Lanes drop them; the
+  owner logic forwards them to the physical node (2026-10-06, see `provider-upgrade-slots-2026-10-06.md`).
 - MEGA Pattern Provider filters its slots to processing patterns. Advanced AE providers are not
   `PatternProviderLogicHost` but are AE2 `PatternContainer`s. AppMek keys: `#t=appmek:chemical`, `id=mekanism:hydrogen`.
 - Create in a GameTest: a `create:creative_motor` with `FACING=UP` under a `create:millstone`, speed set through its
@@ -110,8 +111,11 @@ false when `FMLLoader.isProduction()`, so tests are not registered and `Minecraf
   (revision 1 via `retire()`, since `ProviderLaneIdentity` rejects revision 0), unmaps Patterns from unbound Lanes and
   marks bound Lanes left with no Pattern as pending release, as an unmap does. A Lane the data does not name keeps its
   native state. GameTest `provider.reload-in-place`.
-- Not covered: a fresh load (structure placement, creative pick-block with block data) still copies the source
-  Provider's identity and Lane bindings.
+- A fresh load (structure placement, creative pick-block with block data) cannot be told from a chunk load by the
+  data, so `ProviderPlacementRegistry` (overworld SavedData, Provider id -> GlobalPos) decides at `onReady`: an id
+  already placed at another position is a copy, which takes a new identity, retires every Lane and unmaps its
+  Patterns. Removal from the world (not unload) frees the position, so a block mover keeps the identity. GameTest
+  `provider.copy-own-identity` (2026-10-06). The Endpoint has the same copy problem and is not handled yet.
 
 ## Interaction tests with addon machinery (2026-10-04)
 

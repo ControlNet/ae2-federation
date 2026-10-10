@@ -74,6 +74,7 @@ final class AddonCraftingScene {
     private java.util.function.BiConsumer<ICraftingPlan, ICraftingPlan> checkPlan = (plan, local) -> {
     };
     private boolean cpuOnCable;
+    private boolean providerWithoutStorage;
     private boolean cancelAfterPush;
     private boolean disconnectAfterPush;
     private long jobs = 2;
@@ -142,6 +143,18 @@ final class AddonCraftingScene {
         var scene = new AddonCraftingScene(helper, name, cpuIds, null, null);
         scene.placeStructure = place;
         scene.providerPos = patternContainer;
+        return scene;
+    }
+
+    /**
+     * As {@link #structure(GameTestHelper, String, List, java.util.function.Consumer, BlockPos)}, for a provider that
+     * crafts by itself without being an AE2 multiblock: the consumer orders once {@code ready} agrees.
+     */
+    static AddonCraftingScene structure(GameTestHelper helper, String name, List<String> cpuIds,
+            java.util.function.Consumer<GameTestHelper> place, BlockPos patternContainer,
+            java.util.function.Predicate<net.minecraft.world.level.block.entity.BlockEntity> ready) {
+        var scene = structure(helper, name, cpuIds, place, patternContainer);
+        scene.structureReady = ready;
         return scene;
     }
 
@@ -305,6 +318,15 @@ final class AddonCraftingScene {
         return this;
     }
 
+    /**
+     * The provider network's ME Chest holds no cell, so that network has no storage at all: whatever its provider makes
+     * must reach the consumer's waiting CPU.
+     */
+    AddonCraftingScene providerWithoutStorage() {
+        providerWithoutStorage = true;
+        return this;
+    }
+
     /** How many inputs the consumer stores and uses up, two unless set: two planks make four sticks. */
     AddonCraftingScene requesting(long jobs) {
         this.jobs = jobs;
@@ -360,6 +382,7 @@ final class AddonCraftingScene {
                     helper.<appeng.blockentity.storage.MEChestBlockEntity>getBlockEntity(outputChestPos)
                             .setCell(new ItemStack(item(machine.outputCell())));
                 }
+                if (providerWithoutStorage) bridge.providerChest().setCell(ItemStack.EMPTY);
                 if (placeConsumerStorage != null) {
                     // As the guide's district has it, the provider network has no storage at all.
                     bridge.consumerChest().setCell(ItemStack.EMPTY);

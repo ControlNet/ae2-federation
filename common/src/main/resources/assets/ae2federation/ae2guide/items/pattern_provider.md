@@ -18,11 +18,15 @@ Sends processing patterns to machines on other networks, through
 <ItemLink id="ae2federation:processing_endpoint" />s. See [Remote Crafting](../remote-processing.md).
 
 * **Front:** the Federation face. When you place the Provider, the front faces the block you clicked, so click
-  <ItemLink id="ae2federation:cable" /> or a Router. A wrench turns it; sneak and use a wrench to pick it up.
+  <ItemLink id="ae2federation:cable" />, a Switch or a Router. A wrench turns it; sneak and use a wrench to pick it up.
 * **Other five faces:** join the Provider's own ME network, where it uses one channel.
 
 Right-click it to insert up to nine encoded patterns and map each to Endpoints. It also has blocking mode, crafting
 lock, priority and visibility in the Pattern Access Terminal, like AE2's <ItemLink id="ae2:pattern_provider" />.
+If an addon gives AE2's Pattern Provider upgrade slots, this Provider has the same slots, under **Upgrades** in its
+screen, and takes the same cards. Applied Flux's Induction Card, for example, sends the network's FE into machines
+touching the Provider, and through the Federation face into machines touching the Endpoints it holds, for as long as
+it can send patterns to them.
 Breaking it drops its patterns and anything waiting to be sent or returned.
 
 <RecipeFor id="ae2federation:pattern_provider" />

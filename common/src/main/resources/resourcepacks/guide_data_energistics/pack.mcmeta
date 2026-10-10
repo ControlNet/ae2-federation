@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with Data Energistics",
+    "description": {
+      "translate": "ae2federation.pack.guide_data_energistics.description",
+      "fallback": "AE2 Federation guide examples with Data Energistics"
+    },
     "pack_format": 34
   }
 }

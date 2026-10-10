@@ -62,6 +62,21 @@ git diff --check
 
 Expected: `BUILD SUCCESSFUL`, passing Python tests, successful archive inspection, every selected GameTest passing, and no whitespace errors. Test the resulting mod in-game and complete the player-facing release notes before publishing.
 
+Then run the [cross-dimension production run](testing/production-jar.md#cross-dimension-production-run) on the JAR you
+are about to publish: a dedicated server and a real client with no testmod, a terminal order through a nether Endpoint
+across an unload, and a restart. Record the JAR's SHA-256, the source commit and the result there. A release whose
+JAR has no such record is not ready; the required manifest GameTests do not replace this run.
+
+## Upgrade notes
+
+Write these into the player-facing release notes of the release they first ship in:
+
+- **First release after 0.0.5:** the Federation Logic Processor (`ae2federation:federation_logic_processor`) is
+  removed and replaced by the Nexus Processor and Nexus Core. It is not migrated and has no alias: Federation Logic
+  Processors in inventories, chests or ME storage of an existing world may disappear or become invalid items when the
+  world is loaded with the new version. Players should use them up in device recipes before upgrading. Do not describe
+  this upgrade as lossless.
+
 ## Publish
 
 **Pushing the release merge to `master` publishes to GitHub, Modrinth, and CurseForge automatically once CI passes.** Run these commands when the release is ready:

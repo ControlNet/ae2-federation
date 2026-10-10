@@ -8,6 +8,6 @@ if [ ! -f "$visual_root/tools/blockbench/.local/mcp.js" ]; then
     exit 1
 fi
 if [ "$#" -eq 0 ]; then
-    set -- "$visual_root/tools/blockbench/projects/ae2_federation_overview.bbmodel"
+    set -- "$visual_root/tools/blockbench/projects/cable_display.bbmodel"
 fi
 exec "$visual_app" --userData "$visual_profile" "$@"

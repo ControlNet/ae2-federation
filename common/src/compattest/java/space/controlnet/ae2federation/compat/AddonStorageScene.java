@@ -47,6 +47,7 @@ final class AddonStorageScene {
     private java.util.function.BooleanSupplier ready = () -> true;
     private int step;
     private BlockPos dismantlePart;
+    private boolean switchOff;
     private net.minecraft.world.level.block.state.BlockState dismantledState;
 
     AddonStorageScene(GameTestHelper helper, String cellId) {
@@ -83,9 +84,23 @@ final class AddonStorageScene {
      */
     static AddonStorageScene storageBus(GameTestHelper helper, String busId, String containerId, AEKey what,
             long stored, long taken, java.util.function.Consumer<Object> prepare) {
-        var scene = new AddonStorageScene(busId + " on " + containerId, helper, what, stored, taken);
+        return storageBus(helper, busId, containerId,
+                test -> test.setBlock(BUS_TARGET, AddonCraftingScene.block(containerId)), () -> true, what, stored,
+                taken, prepare);
+    }
+
+    /**
+     * As {@link #storageBus(GameTestHelper, String, String, AEKey, long, long, java.util.function.Consumer)}, facing a
+     * multiblock ({@code name}) that {@code place} builds with a block at {@link #BUS_TARGET}; the Storage rule is set
+     * once {@code ready} holds.
+     */
+    static AddonStorageScene storageBus(GameTestHelper helper, String busId, String name,
+            java.util.function.Consumer<GameTestHelper> place, java.util.function.BooleanSupplier ready, AEKey what,
+            long stored, long taken, java.util.function.Consumer<Object> prepare) {
+        var scene = new AddonStorageScene(busId + " on " + name, helper, what, stored, taken);
         scene.fixtures.providerChest().setCell(ItemStack.EMPTY);
-        helper.setBlock(BUS_TARGET, AddonCraftingScene.block(containerId));
+        place.accept(helper);
+        scene.ready = ready;
         var level = helper.getLevel();
         helper.assertTrue(PartHelper.setPart(level, helper.absolutePos(BUS_CABLE), null, null,
                 AEParts.GLASS_CABLE.item(AEColor.TRANSPARENT)) != null, "A cable must go beside the ME Chest");
@@ -136,9 +151,32 @@ final class AddonStorageScene {
         return this;
     }
 
+    /**
+     * After the round trip, switches the Storage rule off: what the provider stores must leave the consumer's view and
+     * stay on the provider; switched back on, it must return, as the guide's exercise has its player do.
+     */
+    AddonStorageScene switchingOffAfterwards() {
+        switchOff = true;
+        return this;
+    }
+
     /** Each step runs once; {@code succeedWhen} retries the checks after it until they hold. */
     void tick() {
         helper.assertTrue(step > 0 || ready.getAsBoolean(), "Waiting for the provider's " + storage);
+        if (step >= 7) {
+            var seen = fixtures.consumerGrid().getStorageService().getInventory().getAvailableStacks().get(what);
+            if (step == 7) {
+                helper.assertValueEqual(seen, 0L, "Waiting for the switched-off rule to take the provider's " + what
+                        + " away from the consumer");
+                helper.assertValueEqual(fixtures.providerGrid().getStorageService().getInventory().getAvailableStacks()
+                        .get(what), stored, "The provider must keep its " + what + " while the rule is off");
+                switchRule(true);
+                step = 8;
+                helper.fail("Switched the Storage rule back on");
+            }
+            helper.assertValueEqual(seen, stored, "Waiting for the provider's " + what + " to return to the consumer");
+            return;
+        }
         // Right after a multiblock breaks, the provider's grid can have no confirmed identity for a while, so only
         // the consumer's view is read here.
         if (step >= 5) {
@@ -211,12 +249,27 @@ final class AddonStorageScene {
         }
         helper.assertValueEqual(provider.getAvailableStacks().get(what), stored,
                 "What the consumer stored must reach the provider's " + storage);
+        if (switchOff) {
+            switchRule(false);
+            step = 7;
+            helper.fail("Switched the Storage rule off");
+        }
         if (dismantlePart != null) {
             dismantledState = helper.getBlockState(dismantlePart);
             helper.setBlock(dismantlePart, net.minecraft.world.level.block.Blocks.AIR);
             step = 5;
             helper.fail("Broke the " + storage + " at " + dismantlePart);
         }
+    }
+
+    /** Switches the Storage rule on or off, as its switch in the Federation screen does. */
+    private void switchRule(boolean enabled) {
+        var key = fixtures.key();
+        var policies = PolicyService.get(helper.getLevel());
+        var record = policies.configured(key).orElseThrow();
+        helper.assertTrue(policies.edit(new PolicyEdit(key, policies.revision(key), record.rule().withEnabled(enabled)))
+                instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                "The Storage rule must switch " + (enabled ? "on" : "off"));
     }
 
     /**

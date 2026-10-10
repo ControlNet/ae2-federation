@@ -35,16 +35,14 @@ The Federation screen then shows the two workshops and the rules both ways:
   <Network key="a" label="Workshop A" color="#915dcd" column="0" row="0" details="Sticks pattern|Energy cell" />
   <Network key="b" label="Workshop B" color="#5CA7CD" column="1" row="0" details="Planks pattern" />
   <Rule user="a" source="b" capability="crafting" />
-  <Rule user="a" source="b" capability="storage" />
   <Rule user="b" source="a" capability="crafting" />
-  <Rule user="b" source="a" capability="storage" />
   <Energy first="a" second="b" />
 </FederationTopology>
 
 ## Build it
 
 1. **Place the Bridge** on one workshop's cable, with its outer side touching the other's.
-2. **Switch on Crafting under "A uses B's" and under "B uses A's"**. Each switches its own Storage on.
+2. **Switch on Crafting under "A uses B's" and under "B uses A's"**. Each workshop pays with its own storage, so no Storage rule is needed.
 3. **Switch on ME power** for the pair, so B runs on A's energy cell.
 4. **Order planks from A**, then **order sticks from B**. Each workshop lists the other's recipe among its own.
 

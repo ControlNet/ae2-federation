@@ -75,15 +75,15 @@ final class StorageMountContractTest {
         var entrypoint = Files.readString(ROOT.resolve(
                 "neoforge-1.21.1/src/main/java/space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint.java"));
         var refresh = source("domain/FederationBindingRefresh.java");
-        // A Cable's topology change reaches Storage through the coalesced binding refresh, which the level flushes.
+        // A Cable's topology change reaches Storage through the coalesced binding refresh, flushed each server tick.
         assertTrue(cable.contains("FederationBindingRefresh.request(serverLevel)"));
         assertTrue(refresh.contains("StorageMountService.reconcileIfPresent(level)"));
-        assertTrue(entrypoint.contains("FederationBindingRefresh.flush(level)"));
+        assertTrue(entrypoint.contains("FederationBindingRefresh.flushAll()"));
         assertTrue(entrypoint.contains("FederationBindingRefresh.closeLevel(level)"));
-        assertTrue(mounts.contains("SERVICES.remove(level)"));
-        assertTrue(mounts.contains("mountedProvidersRemoved"));
-        assertTrue(registries.contains("removedRegisteredInstance"));
-        assertTrue(lifecycle.contains("StorageMountService.closeLevel(level)"));
+        assertTrue(mounts.contains("SERVICES.remove(server)"));
+        assertTrue(mounts.contains("service.removedProviderCount - removedBefore"));
+        assertTrue(registries.contains("removeDimension(dimension(level))"));
+        assertTrue(lifecycle.contains("StorageMountService.levelClosed(level)"));
         assertTrue(lifecycle.contains("FederationDomainRegistryAccess.closeLevel(level)"));
         assertTrue(entrypoint.contains("LevelEvent.Unload"));
         assertTrue(entrypoint.contains("StorageLevelLifecycle.close(level)"));

@@ -151,6 +151,17 @@ def prepareUiTestClientOptions = tasks.register('prepareUiTestClientOptions') {
     }
 }
 
+def prepareLogoClientOptions = tasks.register('prepareLogoClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-logo/options.txt')
+    outputs.file(optionsFile)
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\n', StandardCharsets.UTF_8.name())
+    }
+}
+
 // GuideME preview: -PguideLanguage=zh_cn picks the language the pages open in.
 def prepareGuideClientOptions = tasks.register('prepareGuideClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-guide/options.txt')
@@ -272,6 +283,17 @@ neoForge {
                     'ae2:guide!' + providers.gradleProperty('guidePage').getOrElse('ae2federation:index.md'))
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareGuideClientOptions)
+        }
+        // Renders the Router's inventory icon into the mod list logo and quits (testmod ModLogoRenderer).
+        // -PlogoOut=<png> picks the output; it defaults to the logo the JAR ships.
+        logoClient {
+            client()
+            gameDirectory = project.file('run-logo')
+            sourceSet = testmod
+            systemProperty('ae2federation.logo.out', project.file(providers.gradleProperty('logoOut')
+                    .getOrElse('src/main/resources/ae2federation_logo.png')).absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareLogoClientOptions)
         }
         gameTestServer {
             type = 'gameTestServer'

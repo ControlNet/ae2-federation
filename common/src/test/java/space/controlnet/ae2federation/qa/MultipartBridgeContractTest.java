@@ -30,6 +30,43 @@ final class MultipartBridgeContractTest {
                 "bridge.reject-federation-cable", "bridge.reload-replace"), cases);
     }
 
+    /**
+     * The collision boxes are the part model's elements: AE2 draws part quads facing NORTH and takes collision boxes
+     * facing SOUTH, so each element is turned half a turn about the vertical axis.
+     */
+    @Test
+    void collisionBoxesMatchThePartModel() throws IOException {
+        var model = Files.readString(ROOT.resolve(
+                "common/src/main/resources/assets/ae2federation/models/part/bridge.json"));
+        var corners = Pattern.compile("\"(from|to)\"\\s*:\\s*\\[([^\\]]+)]").matcher(model);
+        var elements = new TreeSet<String>();
+        double[] from = null;
+        while (corners.find()) {
+            var values = java.util.Arrays.stream(corners.group(2).split(",")).mapToDouble(v -> Double.parseDouble(v.trim()))
+                    .toArray();
+            if (corners.group(1).equals("from")) {
+                from = values;
+            } else {
+                elements.add(box(16 - values[0], from[1], 16 - values[2], 16 - from[0], values[1], 16 - from[2]));
+            }
+        }
+        var part = Files.readString(ROOT.resolve(
+                "common/src/main/java/space/controlnet/ae2federation/bridge/MultipartBridgePart.java"));
+        var calls = Pattern.compile("helper\\.addBox\\(([^)]+)\\)").matcher(part);
+        var boxes = new TreeSet<String>();
+        while (calls.find()) {
+            var v = java.util.Arrays.stream(calls.group(1).split(",")).mapToDouble(x -> Double.parseDouble(x.trim()))
+                    .toArray();
+            boxes.add(box(v[0], v[1], v[2], v[3], v[4], v[5]));
+        }
+        assertFalse(elements.isEmpty());
+        assertEquals(elements, boxes);
+    }
+
+    private static String box(double... corners) {
+        return java.util.Arrays.toString(corners);
+    }
+
     @Test
     void productionPartUsesNativeAttachmentsWithoutJoiningDomains() throws IOException {
         var part = Files.readString(ROOT.resolve(

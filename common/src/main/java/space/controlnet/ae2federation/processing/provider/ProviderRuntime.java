@@ -97,7 +97,7 @@ public final class ProviderRuntime {
             } else {
                 var current = new ProviderTargetRequest(supplied.provider(), supplied.endpoint(), supplied.claimEpoch(),
                         supplied.endpointPosition(), supplied.endpointSide(),
-                        supplied.rotationSettled() && wiring.settled());
+                        supplied.rotationSettled() && wiring.settled(), supplied.endpointDimension());
                 lastResolution = ProviderTargetAuthorization.resolve(
                         new ProviderAuthorizationContext(level, nativeNode, federationFace, current, domains, provenance));
             }

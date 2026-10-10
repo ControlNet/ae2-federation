@@ -45,13 +45,7 @@ Gradle dependency verification metadata in `gradle/verification-metadata.xml` is
 | AE2 | `org.appliedenergistics:appliedenergistics2:19.2.17` from Maven Central | LGPLv3, MIT, and CC BY-NC-SA 3.0 components in its POM |
 | LDLib2 | `com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:2.2.34:all` from FirstDark snapshots Maven | LGPL-3.0 in upstream source |
 
-This repository's code is AGPL-3.0-only, and its art assets are CC BY-NC-SA 4.0. Task 1 links to published
+This repository's code is AGPL-3.0-only, and its art assets are All Rights Reserved. Task 1 links to published
 dependencies and copies no third-party source.
-
-One shipped asset is derived from AE2's art. The Federation Logic Processor item texture
-(`assets/ae2federation/textures/item/federation_logic_processor.png`) is AE2 19.2.17's Logic Processor texture
-(`assets/ae2/textures/item/logic_processor.png`) with twelve pixels recoloured in AE2's Fluix palette. It is a
-derivative of AE2's binary assets, credited to AE2, and is distributed like the other art assets under CC BY-NC-SA 4.0,
-which AE2's CC BY-NC-SA 3.0 allows for adaptations (section 4(b), a later version with the same licence elements).
 
 LDLib2 `2.2.34` is checksum-identifiable in its official Maven publication, but the inspected public repository does not expose a matching `2.2.34` source tag. This is recorded as a provenance limitation, not hidden as source-tag equivalence.

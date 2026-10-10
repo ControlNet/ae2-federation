@@ -6,6 +6,7 @@ build/
 **/run-uitest/
 **/run-manual-client/
 **/run-guide/
+**/run-logo/
 # Unit tests load NeoForge's logging setup, which writes logs/ in the project directory.
 neoforge-1.21.1/logs/
 .omo/evidence/
@@ -27,6 +28,7 @@ __pycache__/
 
 # Local development environments
 .pixi/
+.idea/
 .env
 .env.local
 

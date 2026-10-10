@@ -6,6 +6,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
@@ -13,6 +15,7 @@ import space.controlnet.ae2federation.CommonStartup;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
+import space.controlnet.ae2federation.p2p.FederationP2PRegistration;
 import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
@@ -23,7 +26,6 @@ import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.neoforge.network.ObservationPayloads;
 import space.controlnet.ae2federation.neoforge.network.FederationDomainPolicyActionPayloads;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.bus.api.EventPriority;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import java.nio.file.Files;
@@ -47,6 +49,7 @@ public final class NeoForgeEntrypoint {
         }
         CommonStartup.start(LOGGER);
         BridgeRegistration.register(modBus);
+        FederationP2PRegistration.register(modBus);
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
         MaterialRegistration.register(modBus);
@@ -54,10 +57,11 @@ public final class NeoForgeEntrypoint {
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
+        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onContainerClosed);
-        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelTick);
-        // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools.
+        // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools: like
+        // AE2's Grid services, Federation's work runs once per server tick, after every level has ticked.
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
     }
@@ -66,17 +70,11 @@ public final class NeoForgeEntrypoint {
         LOGGER.info("AE2F_ARTIFACT_SERVER_JOIN player={}", event.getEntity().getGameProfile().getName());
     }
 
-    private static void onLevelTick(LevelTickEvent.Post event) {
-        if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
-            FederationBindingRefresh.flush(level);
-            StorageMountService.tick(level);
-            CraftingProjectionService.tick(level);
-        }
-    }
-
-    /** Requests made after the level ticks, by player actions or GameTests. */
+    /** Binding requests from the level ticks and from player actions or GameTests, then each service's tick. */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
+        StorageMountService.tick(event.getServer());
+        CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
     }
 
@@ -86,18 +84,31 @@ public final class NeoForgeEntrypoint {
 
     private static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) {
+            // The services serve the whole server: the level's nodes leave the registry, then the relationships that
+            // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
-            CraftingProjectionService.closeLevel(level);
-            EnergySharingService.closeLevel(level);
-            LevelObservabilityService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
-            space.controlnet.ae2federation.policy.PolicyService.closeLevel(level);
+            CraftingProjectionService.levelClosed(level);
+            EnergySharingService.levelClosed(level);
+            LevelObservabilityService.levelClosed(level);
             LOGGER.info("AE2F_STORAGE_LEVEL_CLOSED dimension={} servicePresentBefore={} mountedProvidersBefore={} "
-                            + "mountedProvidersRemoved={} serviceRemoved={} registryPresentBefore={} registryRemoved={} "
-                            + "registryAbsentAfter={}", level.dimension().location(), receipt.servicePresentBefore(),
-                    receipt.mountedProvidersBefore(), receipt.mountedProvidersRemoved(), receipt.serviceRemoved(),
-                    receipt.registryPresentBefore(), receipt.registryRemoved(), receipt.registryAbsentAfter());
+                            + "mountedProvidersRemoved={} servicePersists={} dimensionNodesRemoved={} "
+                            + "dimensionBridgesRemoved={} dimensionNodesLeft={}", level.dimension().location(),
+                    receipt.servicePresentBefore(), receipt.mountedProvidersBefore(), receipt.mountedProvidersRemoved(),
+                    receipt.servicePersists(), receipt.dimensionNodesRemoved(), receipt.dimensionBridgesRemoved(),
+                    receipt.dimensionNodesLeft());
         }
+    }
+
+    /** Server-wide state outlives each level's unload, so it goes once the whole server has stopped. */
+    private static void onServerStopped(ServerStoppedEvent event) {
+        var server = event.getServer();
+        StorageMountService.closeServer(server);
+        CraftingProjectionService.closeServer(server);
+        EnergySharingService.closeServer(server);
+        LevelObservabilityService.closeServer(server);
+        space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
+        FederationDomainRegistryAccess.closeServer(server);
     }
 
     private static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {

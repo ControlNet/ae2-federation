@@ -277,6 +277,12 @@ public final class ProductionProviderGameTests {
                     // Emulated chunk unload and reload: real NBT round trip into a new block entity instance.
                     provider.onChunkUnloaded();
                     var tag = provider.saveWithFullMetadata(helper.getLevel().registryAccess());
+                    var laneTag = tag.getList("laneBindings", net.minecraft.nbt.Tag.TAG_COMPOUND).getCompound(0);
+                    helper.assertValueEqual(laneTag.getString("dimension"),
+                            helper.getLevel().dimension().location().toString(), "A bound Lane saves its Endpoint's dimension");
+                    // Load it as a save from before Endpoints could be in another dimension: the Lane's Endpoint is then
+                    // in the Provider's own level, and everything below must hold all the same.
+                    laneTag.remove("dimension");
                     provider.clearContent();
                     helper.setBlock(ProductionProviderScene.PROVIDER, Blocks.AIR);
                     helper.setBlock(ProductionProviderScene.PROVIDER, ProcessingRegistration.PROVIDER.get()
@@ -519,6 +525,70 @@ public final class ProductionProviderGameTests {
                             "Lanes mapped again by the Provider's own save no longer wait for release");
                     writeEvidence("providerreloadinplace", 16, Map.of("smallerSaveKeepsLanes", "true",
                             "foreignSaveKeepsIdentity", "true", "ownSaveRestoresMapping", "true"));
+                }
+                default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
+            }
+        });
+    }
+
+    /**
+     * Places a Provider whose block data is another running Provider's, as a structure or a creative pick-block with
+     * block data does: the data loads into the new block before it starts. The copy must start as a Provider of its
+     * own, with a new identity and no Endpoint, and the Claims must stay with the original.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void providerCopyOwnIdentity(GameTestHelper helper) {
+        var scene = new ProductionProviderScene(helper);
+        var phase = new int[] { 0 };
+        var original = new Object[1];
+        helper.succeedWhen(() -> {
+            switch (phase[0]) {
+                case 0 -> {
+                    requireReady(helper, scene);
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.setAccess(target, true), "Endpoint must connect to the domain");
+                    }
+                    scene.installPattern(0);
+                    for (var target : Target.values()) {
+                        var status = scene.map(0, target);
+                        helper.assertTrue(status.startsWith("accepted-"), "Mapping " + target + ": " + status);
+                    }
+                    var first = scene.provider();
+                    original[0] = first.providerIdentity();
+                    var copy = scene.placeSecondProvider();
+                    copy.loadWithComponents(first.saveWithFullMetadata(helper.getLevel().registryAccess()),
+                            helper.getLevel().registryAccess());
+                    helper.assertValueEqual(copy.providerIdentity(), original[0],
+                            "The copied data carries the original's identity until the copy starts");
+                    phase[0] = 1;
+                    helper.fail("Mapped one Pattern to three Endpoints and placed a copy of the Provider");
+                }
+                case 1 -> {
+                    var first = scene.provider();
+                    var copy = scene.secondProvider();
+                    helper.assertTrue(copy.runtime().isPresent(), "Waiting for the copy to start");
+                    helper.assertTrue(!copy.providerIdentity().id().equals(first.providerIdentity().id()),
+                            "The copy has an identity of its own");
+                    helper.assertValueEqual(first.providerIdentity(), original[0],
+                            "The original keeps its identity");
+                    helper.assertValueEqual(copy.laneCount(), 3, "The copy keeps the Lane count");
+                    for (int lane = 0; lane < 3; lane++) {
+                        helper.assertTrue(copy.laneEndpoint(lane).isEmpty()
+                                && copy.mappedProvider().slotsForLane(lane).isEmpty(),
+                                "The copy's Lane " + lane + " has no Endpoint and no Pattern");
+                        helper.assertTrue(first.laneEndpoint(lane).isPresent(),
+                                "The original's Lane " + lane + " keeps its Endpoint");
+                    }
+                    for (var target : Target.values()) {
+                        helper.assertTrue(scene.endpoint(target).claimState() instanceof ClaimState.Owned owned
+                                && owned.ownerIdentity().provider().equals(original[0]),
+                                "Endpoint " + target + " stays claimed by the original");
+                    }
+                    helper.assertValueEqual(first.mappedProvider().lanesForSlot(0), java.util.Set.of(0, 1, 2),
+                            "The original keeps its mapping");
+                    writeEvidence("providercopyownidentity", 18, Map.of("copyOwnIdentity", "true",
+                            "copyUnbound", "true", "originalKeepsClaims", "true"));
                 }
                 default -> throw new IllegalStateException("Unexpected phase " + phase[0]);
             }

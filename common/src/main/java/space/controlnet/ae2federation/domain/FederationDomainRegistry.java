@@ -48,6 +48,8 @@ public final class FederationDomainRegistry {
     /** Nodes recorded as {@code SOURCE_UNLOADED}, oldest first; may hold nodes whose record changed since. */
     private final java.util.LinkedHashSet<FederationDomainNodeId> unloaded = new java.util.LinkedHashSet<>();
     private final Map<FederationDomainSourceId, FederationDomainId> directBridges = new HashMap<>();
+    /** The dimension each Bridge's part lives in, so closing that level withdraws it. */
+    private final Map<FederationDomainSourceId, String> bridgeDimensions = new HashMap<>();
     private long topologyRevision;
     private long physicalSequence;
     /** Nodes whose components changed since the last recomputation; recomputed together before the next read. */
@@ -55,6 +57,8 @@ public final class FederationDomainRegistry {
     /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
 
+    private long recomputes;
+    private long recomputeNanos;
     /** Runs after every change of node or bridge evidence, before the domains are recomputed from it. */
     private Runnable mutationListener = () -> {
     };
@@ -71,7 +75,8 @@ public final class FederationDomainRegistry {
         mutationListener = java.util.Objects.requireNonNull(listener);
     }
 
-    public void upsertDirectBridge(FederationDomainSourceId source, NetworkId mainNetwork, NetworkId outerNetwork) {
+    public void upsertDirectBridge(FederationDomainSourceId source, String dimension, NetworkId mainNetwork,
+            NetworkId outerNetwork) {
         flush();
         if (mainNetwork.equals(outerNetwork)) {
             removeDirectBridge(source);
@@ -91,6 +96,7 @@ public final class FederationDomainRegistry {
         removeDirectBridge(source);
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
+        bridgeDimensions.put(source, dimension);
         mutationListener.run();
     }
 
@@ -141,6 +147,37 @@ public final class FederationDomainRegistry {
 
     public void removeNode(FederationDomainNodeId nodeId) {
         invalidateNode(nodeId, FederationDomainInvalidationReason.SOURCE_UNLOADED);
+    }
+
+    /** What {@link #removeDimension} took out: the dimension's nodes and Bridges, and how many of its nodes are left. */
+    public record DimensionRemoval(String dimension, int nodesRemoved, int bridgesRemoved, int nodesLeft) {
+    }
+
+    /**
+     * Removes everything one dimension published, as when its level closes: its nodes leave, its Bridges are withdrawn
+     * and its diagnostics are dropped. The other dimensions' domains are recomputed without them, like AE2 destroying
+     * only the closing level's nodes of each Grid.
+     */
+    public DimensionRemoval removeDimension(String dimension) {
+        flush();
+        var removedNodes = nodes.keySet().stream().filter(node -> node.dimension().equals(dimension)).toList();
+        var removedBridges = bridgeDimensions.entrySet().stream().filter(entry -> entry.getValue().equals(dimension))
+                .map(Map.Entry::getKey).toList();
+        AuthorityEpoch.advance();
+        for (var node : removedNodes) {
+            var previous = nodes.remove(node);
+            pendingSeeds.addAll(affectedBy(node, previous, null));
+            removeIncoming(previous);
+        }
+        removedBridges.forEach(this::removeDirectBridge);
+        flush();
+        invalidations.keySet().removeIf(node -> node.dimension().equals(dimension));
+        unloaded.removeIf(node -> node.dimension().equals(dimension));
+        if (!removedNodes.isEmpty() || !removedBridges.isEmpty()) {
+            mutationListener.run();
+        }
+        var left = (int) nodes.keySet().stream().filter(node -> node.dimension().equals(dimension)).count();
+        return new DimensionRemoval(dimension, removedNodes.size(), removedBridges.size(), left);
     }
 
     public Set<FederationDomainId> federationdomainsFor(NetworkId networkId) {
@@ -216,7 +253,20 @@ public final class FederationDomainRegistry {
         var seeds = new TreeSet<>(pendingSeeds);
         pendingSeeds.clear();
         pendingRemovals.clear();
+        long started = System.nanoTime();
         recompute(seeds);
+        recomputes++;
+        recomputeNanos += System.nanoTime() - started;
+    }
+
+    /** How many times changed components were recomputed, for diagnostics and benchmarks. */
+    public long recomputes() {
+        return recomputes;
+    }
+
+    /** The time spent recomputing changed components, in nanoseconds, for diagnostics and benchmarks. */
+    public long recomputeNanos() {
+        return recomputeNanos;
     }
 
     private Set<FederationDomainNodeId> affectedBy(FederationDomainNodeId nodeId, FederationDomainNodeEvidence previous,
@@ -432,6 +482,7 @@ public final class FederationDomainRegistry {
     }
 
     private void removeDirectBridge(FederationDomainSourceId source) {
+        bridgeDimensions.remove(source);
         var federationDomainId = directBridges.remove(source);
         if (federationDomainId != null) {
             AuthorityEpoch.advance();

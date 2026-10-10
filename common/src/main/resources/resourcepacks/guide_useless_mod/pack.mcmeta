@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "description": {
+      "translate": "ae2federation.pack.guide_useless_mod.description",
+      "fallback": "AE2 Federation guide examples with UselessMod"
+    },
+    "pack_format": 34
+  }
+}

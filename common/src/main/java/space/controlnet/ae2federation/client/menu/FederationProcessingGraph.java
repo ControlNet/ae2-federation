@@ -690,7 +690,7 @@ public final class FederationProcessingGraph {
             return;
         }
         int index = choice != null && choice.has("networkIndex") ? choice.get("networkIndex").getAsInt() : -1;
-        var dimension = playerDimension();
+        var dimension = dimension(choice);
         tile.show(dimension, networkBlocks.apply(index, dimension), choice == null ? FederationTheme.EDGE : accent(choice),
                 List.of(mark.get()), 0xffffffff);
     }
@@ -752,7 +752,7 @@ public final class FederationProcessingGraph {
                     .tooltips(tr("returns_badge_help", returned)));
             name.addChild(badge);
         }
-        var where = text(endpoint.has("position") ? Component.literal(endpoint.get("position").getAsString())
+        var where = text(endpoint.has("position") ? place(endpoint)
                 : Component.literal(endpoint.get("label").getAsString()), FederationTheme.DARK_MUTED);
         var state = new Label();
         state.addClass("processing-endpoint-state");
@@ -842,7 +842,7 @@ public final class FederationProcessingGraph {
             var card = endpointCards.get(endpoint.get("id").getAsString());
             if (card == null) continue;
             boolean match = matches(tr("endpoint_title", networkName(endpoint)).getString() + " "
-                    + (endpoint.has("position") ? endpoint.get("position").getAsString() : endpoint.get("label").getAsString()));
+                    + (endpoint.has("position") ? place(endpoint).getString() : endpoint.get("label").getAsString()));
             card.setDisplay(match);
             any |= match;
         }
@@ -924,7 +924,8 @@ public final class FederationProcessingGraph {
                 title.setText(Component.empty()
                         .append(Component.literal("■ ").withStyle(Style.EMPTY.withColor(accent(endpoint) & 0xffffff)))
                         .append(tr("endpoint_title", networkName(endpoint)))
-                        .append(endpoint.has("position") ? " @ " + endpoint.get("position").getAsString() : ""));
+                        .append(endpoint.has("position") ? Component.literal(" @ ").append(place(endpoint))
+                                : Component.empty()));
                 fact("network", networkName(endpoint).copy().append(" · ").append(subnet(endpoint)));
                 fact("owner", claim == Claim.OCCUPIED ? tr("owner", owner(endpoint))
                         : claim == Claim.IN_USE || claim == Claim.RETAINED ? tr("owner_here") : Component.literal("-"));
@@ -1082,7 +1083,7 @@ public final class FederationProcessingGraph {
 
     /**
      * The selected wire's two ends side by side, the Provider and the Endpoint, or the selected Endpoint alone; each
-     * drawn like its card's thumbnail. Devices of one Provider session are in the player's dimension.
+     * drawn like its card's thumbnail. The Provider is in the player's dimension; an Endpoint may be in another.
      */
     private void renderEnds(boolean wire, boolean endpointSelected) {
         var endpoint = wire || endpointSelected ? endpoint(selection.endpoint()) : null;
@@ -1095,7 +1096,7 @@ public final class FederationProcessingGraph {
         if (endpoint != null && endpoint.has("position")) {
             var where = endpoint.get("position").getAsString();
             showDevice(toPreview, endpoint, where);
-            toLabel.setText(tr("end_endpoint", where));
+            toLabel.setText(tr("end_endpoint", place(endpoint)));
         }
         highlight.setActive(!focusMarks().isEmpty());
     }
@@ -1104,7 +1105,10 @@ public final class FederationProcessingGraph {
     private List<BlockMarks.Mark> focusMarks() {
         var focus = new ArrayList<BlockMarks.Mark>();
         var endpoint = selection.kind() == Kind.NONE ? null : endpoint(selection.endpoint());
-        if (endpoint != null && endpoint.has("position")) position(endpoint.get("position").getAsString()).ifPresent(focus::add);
+        // The world outline is drawn only in the player's dimension, so an Endpoint elsewhere has no mark.
+        if (endpoint != null && endpoint.has("position") && dimension(endpoint).equals(playerDimension())) {
+            position(endpoint.get("position").getAsString()).ifPresent(focus::add);
+        }
         if (selection.kind() != Kind.ENDPOINT) position(providerPosition).ifPresent(focus::add);
         return focus;
     }
@@ -1127,7 +1131,12 @@ public final class FederationProcessingGraph {
         return value.isEmpty() ? java.util.Optional.empty() : BlockMarks.parseShort(value);
     }
 
-    private static String playerDimension() {
+    /** The dimension a row's device is in; rows without one are the player's own Provider. */
+    private static String dimension(JsonObject choice) {
+        return choice != null && choice.has("dimension") ? choice.get("dimension").getAsString() : playerDimension();
+    }
+
+    static String playerDimension() {
         var level = net.minecraft.client.Minecraft.getInstance().level;
         return level == null ? "" : level.dimension().location().toString();
     }
@@ -1216,8 +1225,13 @@ public final class FederationProcessingGraph {
     }
 
     private static Component endpointName(JsonObject endpoint) {
-        return endpoint.has("position") ? FederationWorkspace.tr("endpoint_at", endpoint.get("position").getAsString())
+        return endpoint.has("position") ? FederationWorkspace.tr("endpoint_at", place(endpoint))
                 : Component.literal(endpoint.get("label").getAsString());
+    }
+
+    /** A device's coordinates, with its dimension when it is not in the player's. */
+    private static Component place(JsonObject device) {
+        return DevicePlace.of(device.get("position").getAsString(), dimension(device), playerDimension());
     }
 
     /** Where the Endpoint's owner is, "@ x, y, z", or its short identity when it is not a loaded block. */

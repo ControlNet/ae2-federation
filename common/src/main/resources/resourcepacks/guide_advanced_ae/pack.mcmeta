@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with Advanced AE",
+    "description": {
+      "translate": "ae2federation.pack.guide_advanced_ae.description",
+      "fallback": "AE2 Federation guide examples with Advanced AE"
+    },
     "pack_format": 34
   }
 }

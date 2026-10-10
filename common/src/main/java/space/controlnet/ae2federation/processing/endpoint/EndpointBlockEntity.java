@@ -213,7 +213,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
         var evidence = new java.util.TreeMap<String, FederationDomainPortEvidence>();
         var peer = federationPort == null ? null : federationPort.peer();
         if (peer != null) {
-            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+            var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer);
             evidence.put(federationFace().getSerializedName(), new FederationDomainPortEvidence.Federation(
                     new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
         }

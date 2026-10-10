@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -13,9 +14,14 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 
+/**
+ * The Router and the Switch: both are this block, each with its own block entity type, and share all their code. A
+ * Switch's faces attach ME networks and Federation ports; a Router's faces attach Federation ports only.
+ */
 public final class RouterBlock extends BaseEntityBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
 
@@ -33,6 +39,12 @@ public final class RouterBlock extends BaseEntityBlock {
         return net.minecraft.world.level.block.RenderShape.MODEL;
     }
 
+    /** The frame has gaps on every side, so the Router hides no neighbour's face. */
+    @Override
+    protected VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos position) {
+        return DeviceOcclusion.ROUTER;
+    }
+
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos position, BlockState state) {
@@ -44,7 +56,18 @@ public final class RouterBlock extends BaseEntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
             BlockEntityType<T> type) {
         return level.isClientSide() ? null
-                : createTickerHelper(type, RouterRegistration.ROUTER_BLOCK_ENTITY.get(), RouterBlockEntity::serverTick);
+                : createTickerHelper(type, blockEntityType(state), RouterBlockEntity::serverTick);
+    }
+
+    /** The Router's or the Switch's block entity type, whichever block {@code state} is. */
+    static BlockEntityType<RouterBlockEntity> blockEntityType(BlockState state) {
+        return attachesNetworks(state) ? RouterRegistration.SWITCH_BLOCK_ENTITY.get()
+                : RouterRegistration.ROUTER_BLOCK_ENTITY.get();
+    }
+
+    /** Whether {@code state} is a Switch, whose faces attach ME networks; a Router's do not. */
+    static boolean attachesNetworks(BlockState state) {
+        return state.is(RouterRegistration.SWITCH.get());
     }
 
     @Override

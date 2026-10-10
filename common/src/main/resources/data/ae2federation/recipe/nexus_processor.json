@@ -1,0 +1,19 @@
+{
+  "type": "ae2:inscriber",
+  "ingredients": {
+    "bottom": {
+      "item": "ae2:printed_silicon"
+    },
+    "middle": {
+      "tag": "c:dusts/redstone"
+    },
+    "top": {
+      "item": "ae2federation:printed_nexus_circuit"
+    }
+  },
+  "mode": "press",
+  "result": {
+    "count": 1,
+    "id": "ae2federation:nexus_processor"
+  }
+}

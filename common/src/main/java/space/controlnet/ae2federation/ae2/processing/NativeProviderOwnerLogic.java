@@ -12,7 +12,8 @@ import java.util.function.IntConsumer;
  * Blocking, Lock Crafting mode, priority and terminal visibility use the native UI and persistence unchanged.
  *
  * <p>It never executes: its ticker and crafting-provider services go to a discarded facade instead of the physical node,
- * so AE2 cannot select it as a pattern medium. Execution belongs to the per-Endpoint {@link NativeProviderLane}s, which
+ * so AE2 cannot select it as a pattern medium. Services of other kinds that addons add, such as Applied Flux's energy
+ * distributor, reach the physical node as they would from AE2's own Pattern Provider. Execution belongs to the per-Endpoint {@link NativeProviderLane}s, which
  * read Patterns from this logic's inventory and hold their own native send, return and lock state.
  */
 public final class NativeProviderOwnerLogic extends PatternProviderLogic {
@@ -20,7 +21,7 @@ public final class NativeProviderOwnerLogic extends PatternProviderLogic {
     };
 
     public NativeProviderOwnerLogic(IManagedGridNode physicalNode, PatternProviderLogicHost host, int patternSlots) {
-        super(new CapturedManagedGridNode(physicalNode, new NativeProviderLaneServices()), host, patternSlots);
+        super(CapturedManagedGridNode.owner(physicalNode, new NativeProviderLaneServices()), host, patternSlots);
     }
 
     public void onPatternSlotChanged(IntConsumer listener) {

@@ -75,7 +75,7 @@ final class TaskThirtyThreeShowcaseFixture {
         }
         state.cables = List.copyOf(cables);
         require(context.level().isEmptyBlock(remote), "Showcase second Router position must be empty");
-        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get()
                 .defaultBlockState());
         for (var network : state.remoteNetworks) placeChestNetwork(context, network[0], network[1]);
     }
@@ -135,7 +135,7 @@ final class TaskThirtyThreeShowcaseFixture {
         names.rename(lab, "Sky Lab");
         rule(context, new PolicyKey(main, farm, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(smeltery, mine, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
-        // Crafting takes the Smeltery's materials through the same direction's storage rule.
+        // The storage rule lets crafting also take the Smeltery's materials.
         rule(context, new PolicyKey(main, smeltery, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
         rule(context, new PolicyKey(main, smeltery, PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
         rule(context, new PolicyKey(lab, main, PolicyCapability.ME_POWER), PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));

@@ -87,6 +87,24 @@ public final class EndpointTargetBinding implements EndpointTargetAccess, AutoCl
         }
     }
 
+    /** The Endpoints of every dimension of {@code server}. */
+    public static List<EndpointTargetBinding> entries(net.minecraft.server.MinecraftServer server) {
+        synchronized (BINDINGS) {
+            var result = new java.util.ArrayList<EndpointTargetBinding>();
+            BINDINGS.forEach((level, bindings) -> {
+                if (level.getServer() == server) {
+                    result.addAll(bindings.values());
+                }
+            });
+            return List.copyOf(result);
+        }
+    }
+
+    /** The level the Endpoint is in. */
+    public ServerLevel level() {
+        return level;
+    }
+
     public static boolean captureFederatedReturn(AuthorizedNativeTarget target) {
         var binding = findEndpoint(target.level(), target.position());
         return binding != null && binding.runtime.bindFederatedReturn(target);

@@ -1,10 +1,13 @@
 # Survival playability
 
-Status: implemented. Recipe and guide resources inspected on 2026-10-03.
+Status: implemented. Recipe and guide resources inspected on 2026-10-03; the processor recipe was revised on 2026-10-06,
+and the Nexus chain was rebuilt after AE2's processors and cores on 2026-10-08.
 
 Basic Federation equipment is obtainable using native AE2 materials and machines. The in-game GuideME pages
 teach acquisition, connection, configuration and remote processing. The former idea is preserved as an
 [archived discussion](../archive/ideas/survival-playability.md); its superseded proposals are not current requirements.
+The processor rename and subsequent Nexus recipe revisions are preserved in the
+[archived Nexus discussion](../archive/ideas/nexus-processor.md). The recipes below describe the implemented chain.
 
 ## Recipes
 
@@ -12,20 +15,30 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 
 | Output | Inputs | Method |
 |---|---|---|
-| 1 Federation Logic Processor | 1 native Logic Processor + 1 Fluix Dust | Inscriber: processor in middle, dust on top, bottom empty; press mode consumes inputs |
-| 16 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Federation Logic Processor | Shaped: processor in center, cables around it |
-| 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Federation Logic Processor | Shapeless |
-| 4 Federation Routers | 4 Federation Cables + 1 ME Import Bus + 1 ME Export Bus + 1 ME Storage Bus + 1 ME Interface + 1 Federation Logic Processor | Shaped: cables in corners, import top, export bottom, storage left, interface right, Federation processor center |
-| 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Federation Logic Processor | Shapeless |
-| 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Federation Logic Processor | Shapeless |
+| 1 Inscriber Nexus Press | 1 Inscriber Engineering Press (top) + 1 Ender Pearl (`c:ender_pearls`, middle) + 1 Inscriber Logic Press (bottom); top and bottom may swap | Inscriber, press mode: both presses are spent, like Advanced AE's Quantum Press. Not in `ae2:inscriber_presses`, so meteorites do not drop it |
+| 1 Inscriber Nexus Press | 1 Block of Iron under the Inscriber Nexus Press | Inscriber, inscribe mode: the press stays, the copy every AE2 press has |
+| 1 Printed Nexus Circuit | 1 Ender Pearl (`c:ender_pearls`) under the Inscriber Nexus Press | Inscriber, inscribe mode: the press stays, like AE2's Printed Logic Circuit |
+| 1 Nexus Processor | 1 Printed Nexus Circuit + 1 Redstone Dust (`c:dusts/redstone`) + 1 Printed Silicon | Inscriber: circuit on top, redstone in middle, silicon at bottom (top and bottom may swap); press mode consumes all inputs, like AE2's Logic Processor |
+| 2 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
+| 8 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
+| 1 Federation Bridge | 1 ME Storage Bus + 1 Quartz Fiber + 1 Nexus Core | Shapeless |
+| 1 Federation Switch | 4 Federation Cables + 2 Quartz Fibers + 1 ME Storage Bus + 1 ME Interface + 1 Nexus Core | Shaped: cables in corners, quartz fibers top and bottom, storage bus left, interface right, core center: what a Switch face exchanges, as on the Bridge |
+| 1 Federation Router | 4 Federation Cables + 4 Fluix Crystals (`c:gems/fluix`) + 1 Nexus Core | Shaped: cables in corners, crystals on the sides, core center |
+| 1 Federation Pattern Provider | 1 native Pattern Provider block + 1 Nexus Core | Shapeless |
+| 1 Federation Processing Endpoint | 1 native ME Interface block + 1 Nexus Core | Shapeless |
 
-Every functional device recipe uses the Federation Logic Processor; the Router also takes four Federation Cables.
-Bridge and Router are alternative connection forms rather than a mandatory upgrade sequence.
+Every functional device recipe uses the Nexus Core; the Switch and the Router also take four Federation Cables.
+Bridge and Switch are alternative ways to attach networks rather than a mandatory upgrade sequence; the Router is not
+fully implemented yet and has no use for now. Yields follow AE2: two cores per batch, like the Formation Core, and eight cables
+from eight ME Glass Cables.
 
-For a first setup with two Routers and sixteen placed Federation Cables, starting with none of these components:
-craft two cable batches and one Router batch. This costs sixteen native ME Glass Cables, three native Logic Processors,
-three Fluix Dust, and one each of the native Import Bus, Export Bus, Storage Bus and ME Interface. Four Federation Cables
-are consumed in the Router craft. After placing the setup, two Routers and twelve Federation Cables remain.
+For a first setup with two Switches and sixteen placed Federation Cables, starting with none of these components:
+the setup needs 24 Federation Cables (sixteen placed, eight in the two Switches), so three cable batches, and five
+Nexus Cores (three for the cables, two for the Switches), so three core batches from three circuits and three
+processors. This costs 24 native ME Glass Cables, three each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix
+Crystal and Ender Dust, four Quartz Fibers, and two each of the native Storage Bus and ME Interface, plus once an
+Inscriber Engineering Press, an Inscriber Logic Press and a fourth Ender Pearl for the Inscriber Nexus Press, which is
+kept. After placing the setup, one Nexus Core remains.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 
 ## In-game guide
@@ -42,13 +55,8 @@ Federation dependency. See the [diagnostic record](../../.omo/knowledges/jei-ins
 
 ## Processor artwork
 
-![Federation Logic Processor](../art/assets/federation_logic_processor.png)
-
-The [selected source icon](../art/assets/federation_logic_processor.png) is retained with art assets; the
-[runtime texture](../../common/src/main/resources/assets/ae2federation/textures/item/federation_logic_processor.png)
-is in the mod resources. The 16x16 transparent icon derives from AE2 19.2.17's Logic Processor texture at commit
-`db95d25ccc79f7bd55b504cf71522b57d60bf4f7`, retaining its silhouette and gold base with twelve edited pixels using
-the native Fluix palette. It was edited directly without image generation.
+The Printed Nexus Circuit, Nexus Processor and Nexus Core icons are the mod's artist's work (2026-10-08), All Rights
+Reserved like the rest of the mod's art.
 
 ## Verification boundary
 

@@ -294,12 +294,22 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     /**
-     * The chest network uses the shared network's storage: a rule of the related domain only. The far chest uses the
-     * near chest's storage: a rule of the far domain, shown only because related domains are followed however far.
+     * The chest network uses the shared network's storage and runs on its energy: rules of the related domain only.
+     * The far chest uses the near chest's storage: a rule of the far domain, shown only because related domains are
+     * followed however far.
      */
     static void installRelatedRule(ServerContext context) {
         context.put("related.rule", storageRule(context, context.get("related.network"), context.get("related.shared"),
                 "Related domain rule must be accepted"));
+        var energy = new space.controlnet.ae2federation.policy.PolicyKey(context.get("related.network"),
+                context.get("related.shared"), space.controlnet.ae2federation.policy.PolicyCapability.ME_POWER);
+        var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
+        require(policies.edit(new space.controlnet.ae2federation.policy.PolicyEdit(energy, policies.revision(energy),
+                space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of(
+                        space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY))))
+                instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
+                "Related domain energy rule must be accepted");
+        context.put("related.energy.rule", energy);
         context.put("related.far.rule", storageRule(context, context.get("related.far.network"), context.get("related.network"),
                 "Far related domain rule must be accepted"));
     }
@@ -325,7 +335,7 @@ final class TaskThirtyThreeWorldFixture {
     }
 
     static void removeRelatedDomain(ServerContext context) {
-        for (var name : List.of("related.rule", "related.far.rule")) {
+        for (var name : List.of("related.rule", "related.energy.rule", "related.far.rule")) {
             space.controlnet.ae2federation.policy.PolicyKey rule = context.get(name);
             if (rule == null) continue;
             // The rules belong to the related domains only; later cases must not see them.
@@ -461,7 +471,7 @@ final class TaskThirtyThreeWorldFixture {
                 space.controlnet.ae2federation.policy.PolicyRule.enabled(Set.of())));
     }
 
-    /** The provider host's network uses the Endpoint network's crafting, with the storage rule crafting needs. */
+    /** The provider host's network uses the Endpoint network's crafting and its storage. */
     static void enableCraftingRule(ServerContext context) {
         var policies = space.controlnet.ae2federation.policy.PolicyService.get(context.level());
         var crafting = craftingKey(context);
@@ -472,7 +482,7 @@ final class TaskThirtyThreeWorldFixture {
         require(result instanceof space.controlnet.ae2federation.policy.PolicyMutationResult.Accepted,
                 "Crafting policy edit must be accepted");
         require(space.controlnet.ae2federation.crafting.projection.CraftingProjectionService.status(context.level(), crafting)
-                .map(status -> status.active()).orElse(false), "An enabled crafting rule with its storage rule must be active");
+                .map(status -> status.active()).orElse(false), "An enabled crafting rule must be active");
     }
 
     /** Sets the crafting direction's storage rule through the policy service, which links no other rule. */

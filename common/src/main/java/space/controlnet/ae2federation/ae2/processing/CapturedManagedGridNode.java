@@ -4,6 +4,8 @@ import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeService;
 import appeng.api.networking.IManagedGridNode;
+import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.util.AEColor;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
@@ -24,15 +26,36 @@ import org.jetbrains.annotations.Nullable;
 final class CapturedManagedGridNode implements IManagedGridNode {
     private final IManagedGridNode physicalNode;
     private final NativeProviderLaneServices services;
+    private final boolean forwardsAddonServices;
 
     CapturedManagedGridNode(IManagedGridNode physicalNode, NativeProviderLaneServices services) {
+        this(physicalNode, services, false);
+    }
+
+    private CapturedManagedGridNode(IManagedGridNode physicalNode, NativeProviderLaneServices services,
+            boolean forwardsAddonServices) {
         this.physicalNode = physicalNode;
         this.services = services;
+        this.forwardsAddonServices = forwardsAddonServices;
+    }
+
+    /**
+     * The owner logic's node. The owner is the Provider's native face, so a service of another kind that an addon adds
+     * to it, such as Applied Flux's energy distributor, goes to the physical node once, as on AE2's own Pattern
+     * Provider. A Lane's node leaves such services out: every Lane shares the physical node.
+     */
+    static CapturedManagedGridNode owner(IManagedGridNode physicalNode, NativeProviderLaneServices services) {
+        return new CapturedManagedGridNode(physicalNode, services, true);
     }
 
     @Override
     public <T extends IGridNodeService> IManagedGridNode addService(Class<T> serviceClass, T service) {
         services.capture(serviceClass, service);
+        if (forwardsAddonServices && serviceClass != IGridTickable.class && serviceClass != ICraftingProvider.class
+                && physicalNode.getNode() == null) {
+            // AE2 accepts services only before the node exists; the owner logic is built before that.
+            physicalNode.addService(serviceClass, service);
+        }
         return this;
     }
 

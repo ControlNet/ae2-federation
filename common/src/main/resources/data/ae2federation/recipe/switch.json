@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "ae2federation:cable"
+    },
+    "L": {
+      "item": "ae2federation:nexus_core"
+    },
+    "N": {
+      "item": "ae2:interface"
+    },
+    "Q": {
+      "item": "ae2:quartz_fiber"
+    },
+    "S": {
+      "item": "ae2:storage_bus"
+    }
+  },
+  "pattern": [
+    "CQC",
+    "SLN",
+    "CQC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ae2federation:switch"
+  }
+}

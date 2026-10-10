@@ -1,3 +1,6 @@
 {
-  "parent": "ae2federation:block/cable/00"
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "ae2federation:block/armor"
+  }
 }

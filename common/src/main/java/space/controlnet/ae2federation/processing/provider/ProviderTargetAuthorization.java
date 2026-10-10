@@ -19,9 +19,11 @@ public final class ProviderTargetAuthorization {
         if (!context.provenance().lane().provider().equals(request.provider())) {
             return paused(ProviderTargetState.CLAIM_MISMATCH);
         }
-        var level = context.level();
+        // The Endpoint's own level: a domain can span dimensions. A level that is not loaded has no Endpoint now.
+        var level = request.endpointDimension() == null ? context.level()
+                : context.level().getServer().getLevel(request.endpointDimension());
         var position = request.endpointPosition();
-        if (!level.isLoaded(position) || !level.isLoaded(position.relative(request.endpointSide()))) {
+        if (level == null || !level.isLoaded(position) || !level.isLoaded(position.relative(request.endpointSide()))) {
             return paused(ProviderTargetState.ENDPOINT_OFFLINE);
         }
         var endpoint = level.getCapability(EndpointTargetCapability.BLOCK, position, request.endpointSide());

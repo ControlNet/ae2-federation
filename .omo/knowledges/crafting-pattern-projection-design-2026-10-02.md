@@ -27,7 +27,16 @@ types working.
   uses 3" and "1 uses 2", network 1 reaches network 3 only if "2 uses 3" is enabled (re-export). Along a longer path,
   every rule except the final consumer's own must be re-export (this is what `StorageDependencyCompiler` already does
   for storage). Crafting and storage re-export are independent: "you may use my machines but not see my items" is valid.
-- **A crafting rule requires the storage rule of the same pair and direction.** Turning crafting on also turns storage
+- **Reversed 2026-10-10 (user decision): crafting and storage rules are independent, with no default link.** The
+  inputs go through the projection's `pushPattern` and the results come back through the return router; neither uses
+  the storage rule, which only adds the provider's items to what the consumer's CPU can plan and pay with (and lets the
+  consumer see byproducts and cancelled-job results left on the provider). Without it the consumer pays with its own
+  items and such leftovers stay on the provider. Removed in fae6d19: the `RuleLinks` crafting/storage links, the pair
+  editor holding the storage switch on, the `CRAFTING_STORAGE_REQUIRED` projection gate and reason, and the load-time
+  `requireStorageForCrafting`. Evidence: testmod `projectionwithoutstorage` (Storage never on) and
+  `rulescraftingandstorageapart` (packet path and loading); `orderdesk` had already returned results to a consumer
+  with no storage view of the provider. The original 2026-10-02 rule follows for history.
+- *(Superseded)* **A crafting rule requires the storage rule of the same pair and direction.** Turning crafting on also turns storage
   on (to at least enabled). While crafting is on, storage cannot be disabled; disabling storage disables crafting in
   the same edit. Old saves with crafting on and storage off get storage turned on when loaded. AE2's planner reads
   `getStorageService().getCachedInventory()` and the CPU extracts from `getStorageService().getInventory()`; there is
@@ -129,15 +138,21 @@ grid storage. That grid's `CraftingServiceStorage` only feeds that grid's CPUs. 
 - Rule disabled, storage forced off, or the common domain lost: withdraw the projections, so no new pushes happen.
   Already pushed work still returns through the ledger, because network 1 paid the inputs, but only across a live
   Federation link (`FederationLinks`, decided 2026-10-03). Outputs that arrive while the link is broken stay on the
-  executing network and are not delivered later; network 1's CPU waits until the player cancels. Deferred delivery
-  after reconnection (DESIGN 15.4) was judged not worth its complexity and bug risk.
+  executing network. Deferred delivery (DESIGN 15.4) was first judged not worth its risk; the owner asked for it on
+  2026-10-06. The router now counts what it could not hand to an unreachable consumer as `held` in the ledger row
+  (MODULATE only, capped at `owed`), and `sweepLedger` hands back `min(held, waiting)` from the executing network's
+  own mounts (NativeMountLedger snapshot without Federation-managed providers/storages and `CraftingServiceStorage`),
+  lowest priority first, into the consumer's inventory. Taking from the whole executing inventory would take the
+  consumer's own items through a reverse storage rule. A full-storage retry can count more than really landed; that
+  is bounded by `owed` and nets out when the output lands. GameTest `crafting.projection-disconnected` (player uses
+  the held stone up; the job waits without touching the consumer's own stone; refilled, the job finishes). Waiting
+  for sweeps needs `ledgerSweeps()`: the first sweep runs only after `STARTUP_TICKS`.
 - R powered off or rebooting: R's `isBusy`/`pushPattern` refuse, and network 1's CPU waits, as for an offline vanilla
   provider. R's grid or chunk unloads: its projections are withdrawn.
 - World reload: network 1's CPU restores its job natively. Projections are rebuilt when rules and grids settle, and
   the ledger reloads from `SavedData`.
-- Known limitation: if the consumer is not loaded when the output arrives, the router declines (it cannot read
-  `getRequestedAmount`). The output stays on the executing network and the consumer's CPU keeps waiting until the
-  player cancels.
+- Consumer not loaded when the output arrives: the router finds no consumer grid, as when unlinked, so the output is
+  held the same way and handed back once the consumer loads (not separately GameTested: same branch).
 
 ## Crafting cycles
 

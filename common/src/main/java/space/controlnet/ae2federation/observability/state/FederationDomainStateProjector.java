@@ -41,7 +41,8 @@ public final class FederationDomainStateProjector {
                 .map(record -> new PolicyState(scope, PolicyId.forKey(scope.federationDomainId(), record.key()),
                         record.rule().enabled() ? "enabled" : "disabled"))
                 .toList();
-        var providerEntries = ProviderObservationRegistry.entries(level).stream()
+        // A domain may span dimensions, so its Providers and Endpoints come from every level of the server.
+        var providerEntries = ProviderObservationRegistry.entries(level.getServer()).stream()
                 .filter(entry -> memberOf(federationDomain, entry.provider().getGrid()))
                 .toList();
         var providers = providerEntries.stream().map(entry -> new ProviderState(scope,
@@ -71,9 +72,9 @@ public final class FederationDomainStateProjector {
                             status);
                 })).toList();
         // An Endpoint belongs to the domain its Federation face joins; its subnet is not a member.
-        var endpoints = EndpointTargetBinding.entries(level).stream()
+        var endpoints = EndpointTargetBinding.entries(level.getServer()).stream()
                 .filter(binding -> federationDomain.nodes().contains(
-                        FederationDomainRegistryAccess.nodeId(level, binding.runtime().position())))
+                        FederationDomainRegistryAccess.nodeId(binding.level(), binding.runtime().position())))
                 .map(binding -> new EndpointState(scope,
                         EndpointId.of(scope.federationDomainId(), endpointKey(binding)),
                         binding.runtime().configuredMode().name().toLowerCase(java.util.Locale.ROOT)))

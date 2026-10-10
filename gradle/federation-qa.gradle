@@ -3181,19 +3181,17 @@ verifyTaskTwentyOneEvidence = { File attempt, List requested, List<String> decla
         throw new GradleException('Task 21 native relationship access semantics are incomplete')
     }
     def cleanupFields = ['cleanupConsumerBefore', 'cleanupConsumerAfter', 'cleanupServicePresentBefore',
-            'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServiceRemoved',
-            'cleanupRegistryPresentBefore', 'cleanupRegistryRemoved', 'cleanupRegistryAbsentAfter',
-            'cleanupNativeProviderRemoved']
+            'cleanupMountedProvidersBefore', 'cleanupMountedProvidersRemoved', 'cleanupServicePersists',
+            'cleanupDimensionNodesRemoved', 'cleanupDimensionNodesLeft', 'cleanupNativeProviderRemoved']
     if (cleanupFields.any { access.getProperty(it) == null }
             || access.getProperty('cleanupConsumerBefore') != '5'
             || access.getProperty('cleanupConsumerAfter') != '0'
             || access.getProperty('cleanupServicePresentBefore') != 'true'
             || access.getProperty('cleanupMountedProvidersBefore') != '1'
             || access.getProperty('cleanupMountedProvidersRemoved') != '1'
-            || access.getProperty('cleanupServiceRemoved') != 'true'
-            || access.getProperty('cleanupRegistryPresentBefore') != 'true'
-            || access.getProperty('cleanupRegistryRemoved') != 'true'
-            || access.getProperty('cleanupRegistryAbsentAfter') != 'true'
+            || access.getProperty('cleanupServicePersists') != 'true'
+            || access.getProperty('cleanupDimensionNodesRemoved') != 'true'
+            || access.getProperty('cleanupDimensionNodesLeft') != '0'
             || access.getProperty('cleanupNativeProviderRemoved') != 'true') {
         throw new GradleException('Task 21 level cleanup semantics are incomplete')
     }
@@ -6464,8 +6462,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                     || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                     || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                     || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                    || testCase.id.startsWith('crafting.')
-                    || testCase.id.startsWith('survival.')
+                    || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.') || testCase.id.startsWith('p2p.')
+                    || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                     || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                     || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')) ? 1 : 2,
                     allowZeroWork: testCase.id.startsWith('ports.') || testCase.id.startsWith('lane.')
@@ -6478,8 +6476,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                             || testCase.id.startsWith('processing.') || testCase.id.startsWith('storage.')
                             || testCase.id.startsWith('provenance.') || testCase.id.startsWith('chain.')
                             || testCase.id.startsWith('subscription.') || testCase.id.startsWith('resources.')
-                            || testCase.id.startsWith('crafting.')
-                            || testCase.id.startsWith('survival.')
+                            || testCase.id.startsWith('crafting.') || testCase.id.startsWith('cross-dimension.') || testCase.id.startsWith('p2p.')
+                            || testCase.id.startsWith('survival.') || testCase.id.startsWith('visual.')
                             || testCase.id.startsWith('automation.') || testCase.id.startsWith('observe.')
                             || testCase.id in ['identity.stable-query-cost', 'identity.initialization-order', 'identity.part-policy-activation'] || testCase.id.startsWith('migration.') || testCase.id.startsWith('rules.')])
             childArtifacts.add(nativeEvidence)
@@ -6727,6 +6725,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'provider.production-revocation':
                 case 'provider.production-lifecycle':
                 case 'provider.reload-in-place':
+                case 'provider.copy-own-identity':
                 case 'provider.native-pattern-refresh':
                 case 'endpoint.generic-return':
                 case 'provider.production-release-cas-failure':
@@ -6741,14 +6740,35 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'identity.part-policy-activation':
                 case 'identity.initialization-order':
                 case 'identity.stable-query-cost':
-                case 'migration.legacy-save-import':
-                case 'rules.crafting-needs-storage':
+                case 'rules.crafting-and-storage-apart':
                 case 'storage.source-index-scale':
                 case 'storage.source-index-lifecycle':
                 case 'storage.alias-wrapper-semantics':
                 case 'storage.status-reasons':
                 case 'storage.status-reexport':
                 case 'storage.identity-split-recovers':
+                case 'storage.across-domains':
+                case 'crafting.across-domains':
+                case 'cross-dimension.two-domains':
+                case 'cross-dimension.unload-keeps-overworld':
+                case 'cross-dimension.quantum-bridge-projection':
+                case 'cross-dimension.nether-provider-projection':
+                case 'cross-dimension.endpoint-keeps-identity':
+                case 'cross-dimension.endpoint-link-breaks':
+                case 'cross-dimension.endpoint-replaced':
+                case 'cross-dimension.endpoint-unloaded':
+                case 'cross-dimension.nether-provider-unloaded':
+                case 'cross-dimension.level-close-keeps-overworld':
+                case 'p2p.tunnel-shares-storage':
+                case 'p2p.outputs-link-through-input':
+                case 'p2p.tunnels-stay-apart':
+                case 'p2p.link-follows-power-and-reload':
+                case 'p2p.across-dimensions-shares-networks':
+                case 'p2p.across-dimensions-drives-endpoint':
+                case 'p2p.nether-outpost':
+                case 'p2p.nether-outpost-orders-factory':
+                case 'p2p.frequency-and-input-changes':
+                case 'p2p.channel-shortage':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeProperties = new Properties()
@@ -6845,12 +6865,20 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'crafting.projection-revoked':
                 case 'crafting.projection-disconnected':
                 case 'crafting.projection-reload':
-                case 'crafting.projection-storage-required':
+                case 'crafting.projection-without-storage':
                 case 'crafting.projection-chain':
                 case 'crafting.projection-chain-blocked':
                 case 'crafting.projection-mutual':
+                case 'crafting.projection-container-return':
+                case 'crafting.projection-container-reuse':
+                case 'crafting.projection-container-push':
+                case 'crafting.projection-cpu-out-of-sight':
+                case 'crafting.projection-cpu-out-of-sight-other-job':
+                case 'crafting.projection-cpu-late-after-restart':
+                case 'crafting.projection-hand-back-faults':
                 case 'survival.recipes':
                 case 'survival.inscriber':
+                case 'visual.device-occlusion':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
@@ -9035,9 +9063,9 @@ tasks.register('federationTaskTwentyOneEvidenceSelfTest') {
                 falseCleanupReceipt: mutateFacts('storagenativeaccess', [cleanupConsumerBefore: '0',
                         cleanupConsumerAfter: '5',
                         cleanupServicePresentBefore: 'false', cleanupMountedProvidersBefore: '0',
-                        cleanupMountedProvidersRemoved: '0', cleanupServiceRemoved: 'false',
-                        cleanupRegistryPresentBefore: 'false', cleanupRegistryRemoved: 'false',
-                        cleanupRegistryAbsentAfter: 'false', cleanupNativeProviderRemoved: 'false'],
+                        cleanupMountedProvidersRemoved: '0', cleanupServicePersists: 'false',
+                        cleanupDimensionNodesRemoved: 'false', cleanupDimensionNodesLeft: '1',
+                        cleanupNativeProviderRemoved: 'false'],
                         'Task 21 level cleanup semantics are incomplete'),
                 viewExtract: mutateFact('storageviewonly', 'extractAccepted', '2',
                         'Task 21 VIEW-only authorization semantics are incomplete'),

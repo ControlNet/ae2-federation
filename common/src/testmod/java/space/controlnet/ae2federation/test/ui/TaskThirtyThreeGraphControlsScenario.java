@@ -218,6 +218,14 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                             && preview.sceneView() != null && preview.sceneView().isDisplayed()
                             && preview.sceneView().renderedBlocks() > 0;
                 })
+                .check("the 3D preview draws the network's AE2 cables, which need their model data", context -> {
+                    var scene = context.el("#network_preview .map-preview-tile")
+                            .as(space.controlnet.ae2federation.client.menu.FederationMapPreview.class).sceneView();
+                    var cables = scene.rendered().stream().filter(position -> scene.sceneWorld().getBlockState(position)
+                            .getBlock() instanceof appeng.block.networking.CableBusBlock).toList();
+                    return !cables.isEmpty() && cables.stream().allMatch(position -> scene.sceneWorld()
+                            .getModelData(position).has(appeng.client.render.cablebus.CableBusRenderState.PROPERTY));
+                })
                 .check("the segmented switch marks 3D", context -> context.all("#network_view_3d.selected").size() == 1
                         && context.all("#network_view_map.selected").isEmpty())
                 .frames(10)
@@ -281,7 +289,7 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .check("the two sections are the two directions", context -> !context.el("#policy_section_title_0").text()
                         .equals(context.el("#policy_section_title_1").text()))
                 .check("the pair names the Routers that link it, with their positions", context -> context.el("#pair_title").text()
-                        .matches("(?s).*Via the Router at -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
+                        .matches("(?s).*Via the Switch or Router at -?\\d+, -?\\d+, -?\\d+ · this domain.*"))
                 .screenshot("ui-policy-direction")
                 .waitUntil("with nothing to report the footer takes no room", context -> !context.el("#domain_footer")
                         .as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).isDisplayed())
@@ -362,15 +370,15 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .frames(2).screenshot("ui-policy-runtime-crafting-active")
                 .server("switch the storage rule off through the API", context ->
                         TaskThirtyThreeWorldFixture.setCraftingStorage(context, false))
-                .waitUntil("missing storage is explained", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
+                .waitUntil("crafting stays active without the storage rule", context -> TaskThirtyThreeScenarioSupport
+                        .ruleActive(context, "crafting") && TaskThirtyThreeScenarioSupport.ruleState(context, "storage").equals("Off"))
+                .check("crafting gives no storage reason", context -> TaskThirtyThreeScenarioSupport.tooltipLines(context,
                         TaskThirtyThreeScenarioSupport.ruleControl(context, "state", context.get("net.providerHost"), "crafting"))
-                        .stream().anyMatch(line -> line.contains("This direction's Storage rule is off")))
-                .check("the state line does not repeat the reason", context -> !TaskThirtyThreeScenarioSupport
-                        .ruleState(context, "crafting").contains("Storage rule is off"))
+                        .stream().noneMatch(line -> line.contains("Storage rule")))
                 .step("reveal the crafting rule", context -> TaskThirtyThreeScenarioSupport.revealRule(context, "crafting"))
-                .frames(2).screenshot("ui-policy-runtime-storage-required")
+                .frames(2).screenshot("ui-policy-runtime-crafting-without-storage")
                 .server("switch the storage rule back on", context -> TaskThirtyThreeWorldFixture.setCraftingStorage(context, true))
-                .waitUntil("crafting is active again", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
+                .waitUntil("crafting is still active", context -> TaskThirtyThreeScenarioSupport.ruleActive(context, "crafting"))
                 .server("disable the observed rule and reject its old diagnostic", TaskThirtyThreeWorldFixture::disableObservedCraftingRule)
                 .waitUntil("the disabled rule reads off, with no leftover reason", context -> TaskThirtyThreeScenarioSupport
                         .ruleState(context, "crafting").equals("Off"))
@@ -417,19 +425,52 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .click("#graph_scope")
                 .waitUntil("all related shows both related networks read-only, however far", context ->
                         context.all(".related-network").size() == 2 && context.all(".graph-node-member").size() == 4)
-                .waitUntil("the graph refits so the related cards are in view", context -> {
+                .waitUntil("all related focuses this domain: its cards are in view, in the middle of the canvas", context -> {
+                    var viewport = context.el("#domain_graph").bounds();
+                    var own = context.all(".graph-node-member").stream()
+                            .filter(card -> !card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("related-network"))
+                            .map(card -> card.bounds()).toList();
+                    if (own.isEmpty()) return false;
+                    float left = (float) own.stream().mapToDouble(card -> card.x()).min().orElse(0);
+                    float top = (float) own.stream().mapToDouble(card -> card.y()).min().orElse(0);
+                    float right = (float) own.stream().mapToDouble(card -> card.x() + card.width()).max().orElse(0);
+                    float bottom = (float) own.stream().mapToDouble(card -> card.y() + card.height()).max().orElse(0);
+                    return left >= viewport.x() && top >= viewport.y() && right <= viewport.x() + viewport.width()
+                            && bottom <= viewport.y() + viewport.height()
+                            && Math.abs((left + right) / 2 - viewport.centerX()) < viewport.width() * 0.12f
+                            && Math.abs((top + bottom) / 2 - viewport.centerY()) < viewport.height() * 0.12f;
+                })
+                .screenshot("ui-scope-related-focus")
+                .click("#graph_fit")
+                .waitUntil("Fit brings the related cards into view", context -> {
                     var viewport = context.el("#domain_graph").bounds();
                     return context.all(".related-network").stream().map(element -> element.bounds()).allMatch(card ->
                             card.x() >= viewport.x() && card.y() >= viewport.y()
                                     && card.x() + card.width() <= viewport.x() + viewport.width()
                                     && card.y() + card.height() <= viewport.y() + viewport.height());
                 })
+                .check("domains stand left to right by hops: this domain, then the Bridge domain, then the one beyond",
+                        context -> {
+                            // The near chest's network is in both related domains, so it sits between them; the far
+                            // chest's network is the far domain's own, beyond it. This domain's cards stay left.
+                            float near = TaskThirtyThreeScenarioSupport.networkCard(context, context.get("related.id")).bounds().centerX();
+                            float far = TaskThirtyThreeScenarioSupport.networkCard(context, context.get("related.far.id")).bounds().centerX();
+                            return near < far && context.all(".graph-node-member").stream()
+                                    .filter(card -> !card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("related-network"))
+                                    .allMatch(card -> card.bounds().centerX() < near);
+                        })
+                .check("the Bridge holding only this domain's networks sits inside this domain, so the chain stays in one row",
+                        context -> {
+                            var rows = context.all(".graph-node-member").stream().mapToDouble(card -> card.bounds().centerY())
+                                    .summaryStatistics();
+                            return rows.getMax() - rows.getMin() < 2;
+                        })
                 .step("select the related network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("related.id")))
                 .waitForTextContains("#graph_selection", ", a related domain")
                 .check("the related domain has a readable name, not its internal identity", context -> {
                     var text = context.el("#graph_selection").text();
-                    return text.matches("(?s)Member of Bridge domain [0-9A-F]{4}, a related domain\\..*") && !text.contains("direct:");
+                    return text.matches("(?s)Member of Domain [0-9A-F]{4}, a related domain\\..*") && !text.contains("direct:");
                 })
                 .check("a related network cannot be renamed here", context -> !context.el("#network_rename").isActive())
                 .step("open the related pair", context -> {
@@ -440,14 +481,23 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                     context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
                     context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
                 })
-                .waitForTextContains("#pair_note", "Read-only: belongs to Bridge domain ")
+                .waitForTextContains("#pair_note", "Read-only: belongs to Domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
-                        .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
-                .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
+                        .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 2)
+                .check("only the related pair's configured rules are listed: storage and energy",
+                        context -> context.all(".policy-row").size() == 2)
+                // A related pair lists only the direction that has rules, so its storage row may sit in either section.
+                .waitUntil("related rules show their real state: the energy it shares and the storage it uses work", context -> {
+                    var states = context.all(".policy-state");
+                    return states.size() == 2 && states.stream().allMatch(state ->
+                            state.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active"));
+                })
                 .checkTextContains("#scope_caption", "with connected domains (read-only)")
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
+                // One label per direction with rules: the near pair's storage and its energy, which reads both ways,
+                // and the far pair's storage.
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
-                        context.all(".related-pair").size() == 2)
+                        context.all(".related-pair").size() == 3)
                 .check("a related domain's network shows its own status, read-only", context -> {
                     var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
                     return context.all(".related-network").size() > 0

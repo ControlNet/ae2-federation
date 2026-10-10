@@ -38,11 +38,12 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     private @Nullable FederationDomainNodeEvidence publishedEvidence;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
-        super(RouterRegistration.ROUTER_BLOCK_ENTITY.get(), position, state);
+        super(RouterBlock.blockEntityType(state), position, state);
+        var attachesNetworks = RouterBlock.attachesNetworks(state);
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks));
         }
     }
 
@@ -181,7 +182,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
             if (binding instanceof RouterPortBinding.Native nativeBinding) {
                 evidence.put(portId.port(), FederationDomainRegistryAccess.nativeEvidence(nativeBinding.attachment().grid(), portId));
             } else if (binding instanceof RouterPortBinding.Federation federationBinding) {
-                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, federationBinding.port().ownerPosition());
+                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, federationBinding.port());
                 evidence.put(portId.port(), new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }

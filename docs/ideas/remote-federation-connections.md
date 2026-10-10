@@ -1,8 +1,24 @@
 # Remote Federation connections
 
-Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate.
+Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate,
+with a line-of-sight beam-link proposal added on 2026-10-09.
 
 Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](README.md).
+
+## Follow-up 2026-10-09: operating power and beam links
+
+The user proposed two additional ideas, maintained on separate pages:
+
+- [Optional Federation operating power](federation-operating-power.md): an input device tentatively called
+  光束充能器 sustains Federation operation, with different block costs and especially high wireless costs.
+  The requirement can be disabled in configuration; its default and numerical costs remain open.
+- [Line-of-sight beam links](line-of-sight-beam-links.md): devices described as 光束收发器 connect distant points
+  along an unobstructed straight line without cable along the span, at increased operating energy cost.
+
+The latter is now a user-proposed connection form, beyond the earlier survey's generic directional-link suggestion.
+Neither idea finalizes the quantum-bridge-style device, its name, or its appearance. Earlier statements below
+that operating costs were unselected should now be read alongside the new qualitative cost direction;
+exact rates and charging behavior are still undecided.
 
 ## Intent and confirmed context
 
@@ -17,8 +33,8 @@ Earlier discussion considered a wireless / cross-dimensional Federation connecti
 "Federation quantum bridge". This page collects that related context alongside the new exploration rather than
 assuming a final device. The final name, appearance, visual theme and physical structure remain undecided.
 
-[Federation P2P](federation-p2p.md) already has its own confirmed requirements, including first-release
-cross-dimensional support. That requirement does not set a delivery date or first-release scope for this idea.
+[Federation P2P](../features/federation-p2p.md) is implemented separately, including cross-dimensional support.
+It does not set a delivery date or first-release scope for this idea.
 Whether this becomes one wireless bridge feature or a broader family of remote connections remains open.
 
 ## First candidate: a jump within the Federation connection

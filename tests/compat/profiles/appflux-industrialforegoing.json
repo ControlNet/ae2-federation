@@ -1,0 +1,20 @@
+{
+  "name": "appflux-industrialforegoing",
+  "group": "addons",
+  "description": "Applied Flux with Industrial Foregoing: the Provider's FE runs a Resourceful Furnace on its Endpoint",
+  "neoforge": "21.1.250",
+  "mods": [
+    "ae2@19.2.18",
+    "guideme@21.1.19",
+    "ldlib2@2.2.41",
+    "glodium@1.21-2.2",
+    "appflux@1.21-2.1.5-neoforge",
+    "titanium@1.21-4.0.50",
+    "industrial-foregoing@1.21-3.6.39"
+  ],
+  "tests": [
+    "core",
+    "appflux",
+    "appflux-industrialforegoing"
+  ]
+}

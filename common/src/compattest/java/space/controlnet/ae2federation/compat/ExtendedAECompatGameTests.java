@@ -39,8 +39,8 @@ public final class ExtendedAECompatGameTests {
     }
 
     /**
-     * The guide's Assembler Matrix example and its exercise: after the remote job, breaking a wall of the matrix takes
-     * its recipes away from the consumer, and putting the wall back returns them.
+     * The former guide example's Assembler Matrix build and exercise: after the remote job, breaking a wall of the
+     * matrix takes its recipes away from the consumer, and putting the wall back returns them.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void assemblerMatrixDismantled(GameTestHelper helper) {
@@ -146,6 +146,37 @@ public final class ExtendedAECompatGameTests {
     public static void endpointLocalExPatternProvider(GameTestHelper helper) {
         var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
                 .throughLocalProvider("extendedae:ex_pattern_provider");
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The guide's Local-mode example as its player builds and tries it: an Extended Pattern Provider against the
+     * Endpoint's front runs the furnace behind it with no Federation Pattern Provider, and an AE2 Quartz Fiber powers
+     * the subnet from the provider's network, since a Local Endpoint shares no power. Wrenched on its top, the provider
+     * pushes only downwards, into nothing, and the job waits; the furnace takes 200 ticks an item, so 300 ticks without
+     * stone show that none was smelted. Wrenched on its top twice more, it pushes into every side again, runs the
+     * Endpoint and the job finishes.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
+    public static void localEndpointProviderTurned(GameTestHelper helper) {
+        var wrenched = new boolean[1];
+        var scene = new EndpointMachineScene(helper, new CoreCompatGameTests.Furnace())
+                .throughLocalProvider("extendedae:ex_pattern_provider")
+                .poweredByQuartzFiber()
+                .interruptedBy(300, (test, furnace) -> {
+                    // The stage that turns it may run again; the player clicks once.
+                    if (!wrenched[0]) {
+                        EndpointMachineScene.wrenchLocalProvider(test, Direction.UP);
+                        wrenched[0] = true;
+                    }
+                    test.assertValueEqual(EndpointMachineScene.localProviderPush(test), Direction.DOWN,
+                            "Wrenched on its top, the provider must push downwards");
+                }, (test, furnace) -> {
+                    EndpointMachineScene.wrenchLocalProvider(test, Direction.UP);
+                    EndpointMachineScene.wrenchLocalProvider(test, Direction.UP);
+                    test.assertTrue(EndpointMachineScene.localProviderPush(test) == null,
+                            "Wrenched on its top twice more, the provider must push into every side");
+                });
         helper.succeedWhen(scene::tick);
     }
 

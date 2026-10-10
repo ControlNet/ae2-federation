@@ -16,7 +16,7 @@ item_ids:
   <ImportStructure src="../assets/bridge_part.snbt" />
 </GameScene>
 
-桥接器直接连接两个紧挨着的网络， 不需要路由器。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 桥接器不占用频道， 也没有待机耗电。
+桥接器直接连接两个紧挨着的网络， 不需要交换机。 把它装在一个网络的线缆上， 让它的外侧接触另一个网络的线缆或设备。 两侧仍是各自独立的网络； 桥接器不占用频道， 也没有待机耗电。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/bridge.snbt" />

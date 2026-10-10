@@ -16,7 +16,8 @@ final class NativeProviderLaneServices {
         // PatternProviderLogic's constructor registers AE2's own ticker and crafting provider before any addon code
         // runs. A Lane keeps those two. AE2 would let a later registration replace them; here it is left out, like
         // services of other kinds that addons add to every PatternProviderLogic, such as Applied Flux's energy
-        // distributor, rather than being added to the physical node once per Lane.
+        // distributor, rather than being added to the physical node once per Lane. The owner logic's node adds those
+        // to the physical node once (CapturedManagedGridNode.owner).
         if (serviceClass == IGridTickable.class && ticker == null) {
             ticker = (IGridTickable) service;
         } else if (serviceClass == ICraftingProvider.class && provider == null) {

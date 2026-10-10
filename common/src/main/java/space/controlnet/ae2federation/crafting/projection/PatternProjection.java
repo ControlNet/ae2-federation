@@ -1,7 +1,9 @@
 package space.controlnet.ae2federation.crafting.projection;
 
+import appeng.api.config.FuzzyMode;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +21,8 @@ import java.util.Objects;
 final class PatternProjection implements ICraftingProvider {
     /** Told of every accepted push, so the outputs the consumer waits for are routed back to it. */
     interface PushListener {
-        void pushed(PatternProjection projection, IPatternDetails details, KeyCounter[] inputs);
+        /** {@code containerItems}: what the pushed inputs leave behind, counted before the push. */
+        void pushed(PatternProjection projection, IPatternDetails details, KeyCounter containerItems);
     }
 
     private final ICraftingProvider real;
@@ -59,11 +62,51 @@ final class PatternProjection implements ICraftingProvider {
         return real.getPatternPriority();
     }
 
+    /**
+     * Pushes to the real provider. A machine may take the inputs out of the holder as it accepts them (AE2's Molecular
+     * Assembler empties every counter), so the container items they leave behind are counted first and owed only once
+     * the push is accepted. The holder itself goes to the provider untouched.
+     */
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
-        if (!live || !real.pushPattern(patternDetails, inputHolder)) return false;
-        listener.pushed(this, patternDetails, inputHolder);
+        if (!live) return false;
+        var containerItems = containerItems(patternDetails, inputHolder);
+        if (!real.pushPattern(patternDetails, inputHolder)) return false;
+        listener.pushed(this, patternDetails, containerItems);
         return true;
+    }
+
+    /**
+     * The container items a push of {@code inputs} leaves behind, such as the empty bucket of a water bucket, as AE2's
+     * {@code CraftingCpuHelper.extractPatternInputs} counts them for the CPU that waits for them: for each input slot,
+     * the remaining key of each key the CPU actually put there (a substitute, or water as a fluid, may leave nothing),
+     * once per template it took.
+     */
+    static KeyCounter containerItems(IPatternDetails details, KeyCounter[] inputs) {
+        var containerItems = new KeyCounter();
+        var patternInputs = details.getInputs();
+        for (int index = 0; index < inputs.length && index < patternInputs.length; index++) {
+            if (inputs[index] == null) continue;
+            var input = patternInputs[index];
+            for (var stack : inputs[index]) {
+                var remaining = input.getRemainingKey(stack.getKey());
+                if (remaining != null) {
+                    containerItems.add(remaining, stack.getLongValue() / templateAmount(input, stack.getKey()));
+                }
+            }
+        }
+        return containerItems;
+    }
+
+    /** The amount of the template AE2 took {@code key} for: an exact possible input first, then a fuzzy one. */
+    private static long templateAmount(IPatternDetails.IInput input, AEKey key) {
+        for (var template : input.getPossibleInputs()) {
+            if (template.what().equals(key)) return Math.max(1, template.amount());
+        }
+        for (var template : input.getPossibleInputs()) {
+            if (template.what().fuzzyEquals(key, FuzzyMode.IGNORE_ALL)) return Math.max(1, template.amount());
+        }
+        return 1;
     }
 
     @Override

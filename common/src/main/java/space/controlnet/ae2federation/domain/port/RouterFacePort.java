@@ -17,6 +17,10 @@ import space.controlnet.ae2federation.identity.IdentityNeutralNodeOwner;
 import space.controlnet.ae2federation.identity.NetworkIdentityNodeSeed;
 import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 
+/**
+ * One face of a Router or a Switch. A Switch's face attaches an ME network through a boundary node or links to a
+ * Federation port; a Router's face has no node and only links to a Federation port.
+ */
 public final class RouterFacePort implements IdentityNeutralNodeOwner {
     /**
      * A newly placed native neighbor (e.g. a cable bus) creates its node on a later tick than the block update that
@@ -45,20 +49,25 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final BlockPos routerPosition;
     private final Direction face;
     private final FederationPort routerFederationDomainPort;
-    private final IManagedGridNode boundaryNode;
-    private final FederationEnergyConnection energyConnection;
+    private final @Nullable IManagedGridNode boundaryNode;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
     private boolean dirty = true;
     private boolean nodeLoaded;
     private boolean facesFederationPort;
+    private boolean alive;
 
-    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort) {
+    public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
+            boolean attachesNetworks) {
         this.routerPosition = routerPosition.immutable();
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
-        energyConnection = new FederationEnergyConnection();
+        if (!attachesNetworks) {
+            boundaryNode = null;
+            return;
+        }
+        var energyConnection = new FederationEnergyConnection();
         this.boundaryNode = GridHelper.createManagedNode(this, NODE_LISTENER)
                 .setTagName("face_" + face.getSerializedName())
                 .setInWorldNode(true)
@@ -72,6 +81,14 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     public void initialize(ServerLevel serverLevel) {
         level = serverLevel;
         var neighborPosition = routerPosition.relative(face);
+        alive = true;
+        binding = RouterPortBinding.Disconnected.INSTANCE;
+        dirty = true;
+        if (boundaryNode == null) {
+            federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
+                    face.getOpposite(), () -> alive, this::recheck);
+            return;
+        }
         var loaded = serverLevel.isLoaded(neighborPosition);
         // Decided before the node exists, so two Routers placed face to face never join their faces for a tick.
         hideNodeIfFederation(loaded && reciprocal(
@@ -86,8 +103,6 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         boundaryNode.create(serverLevel, routerPosition);
         federationCache = BlockCapabilityCache.create(FederationPortCapability.BLOCK, serverLevel, neighborPosition,
                 face.getOpposite(), () -> boundaryNode.isReady(), this::recheck);
-        binding = RouterPortBinding.Disconnected.INSTANCE;
-        dirty = true;
     }
 
     public boolean tick() {
@@ -127,29 +142,33 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     public void destroy() {
         binding = RouterPortBinding.Disconnected.INSTANCE;
         dirty = false;
-        boundaryNode.destroy();
+        alive = false;
+        if (boundaryNode != null) {
+            boundaryNode.destroy();
+        }
     }
 
     public RouterPortBinding binding() {
         return binding;
     }
 
+    /** The face's boundary node; always null on a Router, which attaches no ME network. */
     @Nullable
     public IGridNode node() {
-        return boundaryNode.getNode();
-    }
-
-    public IManagedGridNode managedNode() {
-        return boundaryNode;
+        return boundaryNode == null ? null : boundaryNode.getNode();
     }
 
     public void loadFromNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
-        nodeLoaded = tag.contains("face_" + face.getSerializedName());
-        boundaryNode.loadFromNBT(tag);
+        if (boundaryNode != null) {
+            nodeLoaded = tag.contains("face_" + face.getSerializedName());
+            boundaryNode.loadFromNBT(tag);
+        }
     }
 
     public void saveToNBT(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
-        boundaryNode.saveToNBT(tag);
+        if (boundaryNode != null) {
+            boundaryNode.saveToNBT(tag);
+        }
     }
 
     private RouterPortBinding resolve() {
@@ -157,12 +176,16 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         if (level == null || !level.isLoaded(neighborPosition) || federationCache == null) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
+        var federationPort = federationCache.getCapability();
+        var validFederationPort = reciprocal(federationPort);
+        if (boundaryNode == null) {
+            return validFederationPort ? new RouterPortBinding.Federation(federationPort)
+                    : RouterPortBinding.Disconnected.INSTANCE;
+        }
         var node = boundaryNode.getNode();
         if (node == null) {
             return RouterPortBinding.Disconnected.INSTANCE;
         }
-        var federationPort = federationCache.getCapability();
-        var validFederationPort = reciprocal(federationPort);
         // Hiding or showing the node updates its connections at once, so the native check below sees the result.
         hideNodeIfFederation(validFederationPort);
         var nativeAttachment = NativeAttachmentResolver.resolve(level, routerPosition, face, node);
@@ -185,7 +208,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
      * the node is exposed again and connects to whatever native neighbour is there.
      */
     private void hideNodeIfFederation(boolean federation) {
-        if (federation == facesFederationPort) {
+        if (boundaryNode == null || federation == facesFederationPort) {
             return;
         }
         facesFederationPort = federation;

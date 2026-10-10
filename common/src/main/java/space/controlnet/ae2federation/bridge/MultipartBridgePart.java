@@ -174,8 +174,8 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
 
     @Override
     public void getBoxes(IPartCollisionHelper helper) {
-        helper.addBox(5, 5, 10, 11, 11, 11);
-        helper.addBox(4, 4, 11, 12, 12, 15);
+        helper.addBox(5, 5, 11, 11, 11, 12);
+        helper.addBox(4, 4, 12, 12, 12, 15);
         helper.addBox(5, 5, 15, 11, 11, 16);
     }
 
@@ -327,7 +327,8 @@ public final class MultipartBridgePart extends AEBasePart implements IdentityNeu
             EnergySharingService.reconcileIfPresent(serverLevel);
             return;
         }
-        FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource, mainId.get(), outerId.get());
+        FederationDomainRegistryAccess.get(serverLevel).upsertDirectBridge(federationDomainSource,
+                FederationDomainRegistryAccess.dimension(serverLevel), mainId.get(), outerId.get());
         StorageMountService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         CraftingProjectionService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());
         EnergySharingService.get(serverLevel).observeConnectedGrids(candidate.mainGrid(), candidate.outerGrid());

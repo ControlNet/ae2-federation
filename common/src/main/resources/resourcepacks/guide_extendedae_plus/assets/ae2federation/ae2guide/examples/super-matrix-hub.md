@@ -13,7 +13,7 @@ from it at the same time, each on its own crafting CPU. The factory also powers 
 because ExtendedAE-Plus is installed.
 
 **You need:** a formed Super Assembler Matrix on the factory network, with its patterns and an energy cell; two district
-networks, each with a crafting CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:router" /> all three
+networks, each with a crafting CPU, a crafting terminal and storage; a <ItemLink id="ae2federation:switch" /> all three
 touch. How to build the matrix is in
 [ExtendedAE-Plus' guide](extendedae_plus:introduction/devices/super_assembler_matrix.md).
 
@@ -29,7 +29,7 @@ touch. How to build the matrix is in
     Second district: crafting terminal, crafting CPU and storage
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -41,19 +41,17 @@ The Federation screen then shows the three networks and the rules between them:
   <Network key="factory" label="Factory" color="#5CA7CD" column="1" row="0" details="Super Assembler Matrix|Energy cell" />
   <Network key="second" label="Second district" color="#5ccd78" column="2" row="0" details="Crafting CPU|Terminal, storage" />
   <Rule user="first" source="factory" capability="crafting" />
-  <Rule user="first" source="factory" capability="storage" />
   <Rule user="second" source="factory" capability="crafting" />
-  <Rule user="second" source="factory" capability="storage" />
   <Energy first="first" second="factory" />
   <Energy first="factory" second="second" />
 </FederationTopology>
 
 ## Build it
 
-1. **Join the three networks** on the faces of one Router, as in the scene. The matrix joins the factory's network
+1. **Join the three networks** on the faces of one Switch, as in the scene. The matrix joins the factory's network
    through any of its outer blocks.
 2. **Switch on Crafting under "First district uses Factory's" and under "Second district uses Factory's"**. Each
-   switches its own Storage on.
+   district pays with its own storage, so no Storage rule is needed.
 3. **Switch on ME power** between the factory and each district, so both districts run on the factory's energy cell.
 4. **Order from both districts.** The matrix's recipes are listed among each district's craftables.
 

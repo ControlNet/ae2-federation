@@ -4,6 +4,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import appeng.api.networking.GridServices;
+import space.controlnet.ae2federation.test.art.ModLogoRenderer;
 import space.controlnet.ae2federation.test.energy.LargeEnergyCellRegistration;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbe;
 import space.controlnet.ae2federation.test.identity.NativeNodeDataProbeService;
@@ -30,8 +31,14 @@ public final class FederationTestMod {
                 MultiClientServerHarness.register();
             }
         }
+        if (System.getProperty(ModLogoRenderer.OUTPUT) != null && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            ModLogoRenderer.register();
+        }
         modBus.addListener(this::registerGameTests);
         modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
+        modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                space.controlnet.ae2federation.test.world.OtherDimensionSite::onServerStopped);
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
@@ -39,11 +46,10 @@ public final class FederationTestMod {
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
         var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
 					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class, StorageStatusGameTests.class,
-					 LegacySaveImportGameTests.class,
-					 PortGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
+					 PortGameTests.class, CableModelGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
-					 StorageProvenanceGameTests.class, StorageChainGameTests.class,
+					 StorageProvenanceGameTests.class, StorageChainGameTests.class, AcrossDomainsGameTests.class,
 					 StorageSubscriptionGameTests.class, StorageSubscriptionDiamondGameTest.class,
 					 StorageSubscriptionBoundaryGameTest.class, StorageSubscriptionMaskingGameTest.class,
 					 StorageSourceIndexGameTests.class,
@@ -59,7 +65,14 @@ public final class FederationTestMod {
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,
 							   ProcessingBenchmarkGameTests.class, UiGraphBenchmarkGameTests.class, PerformanceBenchmarkGameTests.class,
-							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class));
+							   MixedFactoryGameTests.class, ScaleFactoryGameTests.class, TaskThirtyFivePacketGameTests.class,
+							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
+							   ProjectionCpuSightGameTests.class,
+							   ProjectionHandBackGameTests.class,
+							   P2PRefreshBenchmarkGameTests.class,
+							   P2PTopologyGameTests.class,
+							   CrossDimensionCraftingGameTests.class,
+							   CrossDimensionProductionExportGameTests.class));
         try {
             testClasses.add(Class.forName("space.controlnet.ae2federation.test.AppliedFluxResourceGameTests"));
         } catch (ClassNotFoundException ignored) {

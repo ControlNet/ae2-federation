@@ -15,7 +15,7 @@ in opposite directions, each by its own rule. This page appears because Data Ene
 **You need:** an outpost network with six <ItemLink id="data_energistics:me_solar_panel" />s and an energy cell; an
 observatory network with an <ItemLink id="data_energistics:astronomical_observatory" /> and an
 <ItemLink id="ae2:drive" /> holding a <ItemLink id="data_energistics:digital_storage_cell_1k" />; your main network with
-a crafting terminal; a <ItemLink id="ae2federation:router" /> all three touch. Data Energistics' guide covers
+a crafting terminal; a <ItemLink id="ae2federation:switch" /> all three touch. Data Energistics' guide covers
 [the panels](data_energistics:items-blocks-machines/6.1_me_solar_panel.md) and
 [the Observatory](data_energistics:items-blocks-machines/6.12_astronomical_observatories.md).
 
@@ -31,7 +31,7 @@ a crafting terminal; a <ItemLink id="ae2federation:router" /> all three touch. D
     Observatory: the Astronomical Observatory and a drive with a Digital Storage Cell for its Stellar Flux
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 1" max="4 1 2">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -49,8 +49,8 @@ The Federation screen then shows the three networks and the rules between them:
 
 ## Build it
 
-1. **Join the three networks** on the faces of one Router, as in the scene.
-2. **Build the outpost:** an ME cable and the energy cell on the Router's face, and the panels on top of them in one
+1. **Join the three networks** on the faces of one Switch, as in the scene.
+2. **Build the outpost:** an ME cable and the energy cell on the Switch's face, and the panels on top of them in one
    array. A panel joins the network only through its bottom face, and panels side by side share their power, so the
    ones on the cable and the cell carry the whole array. Every panel needs open sky above it.
 3. **Give the Observatory open sky above it**, and put the Digital Storage Cell in the observatory's drive. Stellar Flux

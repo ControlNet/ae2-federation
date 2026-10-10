@@ -1,6 +1,9 @@
 {
   "pack": {
-    "description": "AE2 Federation guide examples with AE2 Lightning Tech",
+    "description": {
+      "translate": "ae2federation.pack.guide_ae2lt.description",
+      "fallback": "AE2 Federation guide examples with AE2 Lightning Tech"
+    },
     "pack_format": 34
   }
 }

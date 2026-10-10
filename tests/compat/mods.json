@@ -90,12 +90,26 @@
     "url": "https://cdn.modrinth.com/data/LNytGWDc/versions/UjX6dr61/create-1.21.1-6.0.10.jar",
     "sha512": "11cc8fc049d2f67f6548c7abfada6b82a3adb5c7ca410a742de04bbca76e03862c518721b88d806f6e6d768a4d68531fdb903a85859b25d1484d550cc7bafd4b"
   },
+  "createaddition@neoforge-1.21.1-1.7.2": {
+    "name": "createaddition",
+    "version": "neoforge-1.21.1-1.7.2",
+    "file": "createaddition-1.7.2.jar",
+    "url": "https://cdn.modrinth.com/data/kU1G12Nn/versions/hsjVajlP/createaddition-1.7.2.jar",
+    "sha512": "f3a3ddb5600189da818fc71ea659d17f0d1097c5ad664433eed400b3ecc67d0f9305b348e5b7c5fd872d7a6e51330c7158b3181e77192c576c205a74dd0298ff"
+  },
   "data-energistics@3.3.3": {
     "name": "data-energistics",
     "file": "data_energistics-1.21.1-3.3.3.jar",
     "url": "https://mediafilez.forgecdn.net/files/9046/322/data_energistics-1.21.1-3.3.3.jar",
     "sha512": "cd1a6dd8cb8e89b69d261aff8cc912482ada3bd477fe1e85491d61fb79fa00597ba6aca13a859f2f5e9ab7acb43f2d0879a9ddd2c040ebcf92c66c5049930638",
     "version": "3.3.3"
+  },
+  "enderio@v8.2.12-beta": {
+    "name": "enderio",
+    "version": "v8.2.12-beta",
+    "file": "enderio-8.2.12-beta.jar",
+    "url": "https://cdn.modrinth.com/data/49ZofO4f/versions/2bHl1dCW/enderio-8.2.12-beta.jar",
+    "sha512": "c4415c1e835fa7eaf7f4528fd685412151968b092e9be91528add11dd981943ba6243eee41ff73923df64d59d8f907901cb006edcb5c02783e73ab656524c995"
   },
   "extendedae-plus@1.6.3": {
     "name": "extendedae-plus",
@@ -139,6 +153,13 @@
     "url": "https://cdn.modrinth.com/data/Ck4E7v7R/versions/hFpGwC6q/guideme-21.1.19.jar",
     "sha512": "4dfa132e5cfd69a86c958867067f1c5ab39bb69ae35b2a62c24bb9924e9c688f1a4930ab75d335b22378d9f98cd7fceae8d030812b8f90c9aa282de8ea129f5a"
   },
+  "industrial-foregoing@1.21-3.6.39": {
+    "name": "industrial-foregoing",
+    "version": "1.21-3.6.39",
+    "file": "industrialforegoing-1.21-3.6.39.jar",
+    "url": "https://cdn.modrinth.com/data/lWxpUd04/versions/7otXKx1D/industrialforegoing-1.21-3.6.39.jar",
+    "sha512": "a8a52f0e79fe019d8b77cc50a8b04b36d5532c92f75dff51bc528e70fb23eb67f8a9bfd37551cf91636027086f0af4f3010cb07f1903b20fc31b4d11cb3e2a02"
+  },
   "ldlib2@2.2.34": {
     "name": "ldlib",
     "version": "mc1.21.1-2.2.34-neoforge",
@@ -174,6 +195,20 @@
     "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/cyNfBT7v/neoecoae-21.2.0.jar",
     "sha512": "420c4442cffa4a96d76efac21490bb17b8ce2cdb4477b3d87f5b0bb0d55cdb011d1ab1da59daea5c7ee7e4f559db5e7a3515fa64045b7e57ee126054abae83cb"
   },
+  "neoecoae@21.2.1": {
+    "name": "neoecoae",
+    "version": "21.2.1",
+    "file": "neoecoae-21.2.1.jar",
+    "url": "https://cdn.modrinth.com/data/udZtKfzP/versions/p9oqETs4/neoecoae-21.2.1.jar",
+    "sha512": "1dc456f640878e88782b86d2deb21d074449e2b5a10c7c2ed1402aa3fa20913ef05b86d0d388b59e19b6b67d60f3e1dc323db3e562b3d95e8c56d79a0bf11323"
+  },
+  "neoecoprototype@1.3.3": {
+    "name": "neoecoprototype",
+    "version": "1.3.3",
+    "file": "neoecoprototype-1.3.3.jar",
+    "url": "https://github.com/reliqwq/NeoECOPrototype/releases/download/v1.3.3/neoecoprototype-1.3.3.jar",
+    "sha512": "dde98193c2e0c87cd17d95fa7666a3022a2a935173184667a7d2acafa8dfc30225ef4874f47efc69bad3adee2cb6c0020222075817f8b692746e4473048f05ad"
+  },
   "omnisequence@2.0.7": {
     "name": "omnisequence",
     "file": "omnisequence-transfinite-2.0.7.jar",
@@ -208,5 +243,12 @@
     "file": "titanium-1.21-4.0.50.jar",
     "url": "https://cdn.modrinth.com/data/1Ro7m06l/versions/zCzYA9mW/titanium-1.21-4.0.50.jar",
     "sha512": "8569e4d3331ba8a23f67bf46b0697d6a5a325deed696823cede68d8d4fef119669f1086767077af76013211617fef6c0cede310c5b7dfc1b3f9a7f37bf843908"
+  },
+  "useless-mod@2.4.5.10": {
+    "name": "useless-mod",
+    "version": "2.4.5.10",
+    "file": "useless_mod-1.21.1-2.4.5.10.jar",
+    "url": "https://github.com/SorrowMist/UselessMod/releases/download/1.21.1-2.4.5.10/useless_mod-1.21.1-2.4.5.10.jar",
+    "sha512": "f0d87f0f5dcf01c97bb085b0c8462951fd698eb984879d19985aa21099696da0cf3a7f52d73a75c0eea1f48e06b9427c7e85fd55f8bffe3974893412e89cdf8e"
   }
 }

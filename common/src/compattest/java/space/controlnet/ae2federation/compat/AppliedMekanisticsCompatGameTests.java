@@ -45,8 +45,8 @@ public final class AppliedMekanisticsCompatGameTests {
     }
 
     /**
-     * The guide's chemical example as its player builds and tries it: the Endpoint powers the oxidizer's subnet, and
-     * a job waits while the oxidizer's auto-eject for chemicals is off, then finishes once it is on again. The
+     * The former guide chemical example as its player built and tried it: the Endpoint powers the oxidizer's subnet,
+     * and a job waits while the oxidizer's auto-eject for chemicals is off, then finishes once it is on again. The
      * oxidizer takes 100 ticks a batch, so 300 ticks without carbon show that none came back.
      */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1400)
@@ -151,7 +151,7 @@ public final class AppliedMekanisticsCompatGameTests {
 
         /**
          * Items in on the Storage Bus side, carbon ejected down into the Endpoint, energy from a charged Basic Energy
-         * Cube on top, as the guide's example builds it.
+         * Cube on top, as the former guide example built it.
          */
         @Override
         public void prepare(GameTestHelper helper, BlockPos position) {
@@ -168,6 +168,51 @@ public final class AppliedMekanisticsCompatGameTests {
         public String state(GameTestHelper helper, BlockPos position) {
             return MekanismSetup.describe(helper, position) + " endpointChemicalHandler="
                     + MekanismSetup.chemicalHandler(helper, position.below(), Direction.UP);
+        }
+    }
+
+    /**
+     * The guide's chemical tank farm as its player builds and tries it: the provider network keeps hydrogen in a
+     * Mekanism Dynamic Tank, the smallest one (3x3x3 casing round one block of air), read by AE2's Storage Bus on a
+     * Dynamic Valve in the middle of one face. The consumer, powered through ME power, sees, takes and stores back
+     * hydrogen through a Storage rule; with the rule switched off the hydrogen leaves its view, and it returns when the
+     * rule is on again.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void dynamicTankFarm(GameTestHelper helper) {
+        var hydrogen = AddonStorageScene.key(helper, "appmek:chemical", "mekanism:hydrogen");
+        var scene = AddonStorageScene.storageBus(helper, "ae2:storage_bus", "mekanism:dynamic_tank",
+                AppliedMekanisticsCompatGameTests::placeDynamicTank,
+                () -> formed(helper, AddonStorageScene.BUS_TARGET), hydrogen, 8000, 2000, bus -> {
+                }).switchingOffAfterwards();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /**
+     * The smallest Dynamic Tank beyond the Storage Bus: casing on its frame and faces, one block of air inside, and a
+     * Dynamic Valve in the middle of the face towards the bus.
+     */
+    private static void placeDynamicTank(GameTestHelper helper) {
+        var valve = AddonStorageScene.BUS_TARGET;
+        for (int x = 0; x < 3; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (x == 1 && y == 0 && z == 0) continue;
+                    helper.setBlock(valve.offset(x, y, z), AddonCraftingScene.block("mekanism:dynamic_tank"));
+                }
+            }
+        }
+        helper.setBlock(valve, AddonCraftingScene.block("mekanism:dynamic_valve"));
+    }
+
+    /** Whether the Mekanism multiblock that the block at {@code position} belongs to has formed. */
+    private static boolean formed(GameTestHelper helper, BlockPos position) {
+        var entity = helper.getLevel().getBlockEntity(helper.absolutePos(position));
+        try {
+            var multiblock = entity.getClass().getMethod("getMultiblock").invoke(entity);
+            return (boolean) multiblock.getClass().getMethod("isFormed").invoke(multiblock);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(entity + " is no Mekanism multiblock", exception);
         }
     }
 

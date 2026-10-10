@@ -26,9 +26,14 @@ final class CompatTestClasses {
         groups.put("functional-storage", FunctionalStorageCompatGameTests.class);
         groups.put("appflux", AppliedFluxCompatGameTests.class);
         groups.put("appflux-mekanism", AppliedFluxMekanismCompatGameTests.class);
+        groups.put("appflux-createaddition", AppliedFluxCreateAdditionCompatGameTests.class);
+        groups.put("appflux-enderio", AppliedFluxEnderIOCompatGameTests.class);
+        groups.put("appflux-industrialforegoing", AppliedFluxIndustrialForegoingCompatGameTests.class);
         groups.put("omnisequence", OmniSequenceCompatGameTests.class);
         groups.put("expandedae", ExpandedAECompatGameTests.class);
         groups.put("neoecoae", NeoEcoCompatGameTests.class);
+        groups.put("neoecoprototype", NeoEcoPrototypeCompatGameTests.class);
+        groups.put("useless-mod", UselessModCompatGameTests.class);
         return groups;
     }
 }

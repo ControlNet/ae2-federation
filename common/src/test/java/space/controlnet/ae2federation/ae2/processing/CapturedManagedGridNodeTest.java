@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.IGridNodeService;
 import appeng.api.networking.IManagedGridNode;
+import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.util.AEColor;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -63,5 +66,42 @@ class CapturedManagedGridNodeTest {
         var facade = new CapturedManagedGridNode(physical(false), new NativeProviderLaneServices());
         facade.setFlags(GridFlags.REQUIRE_CHANNEL);
         assertEquals(List.of("setFlags"), physicalCalls);
+    }
+
+    /** A service an addon adds to every PatternProviderLogic, as Applied Flux adds its energy distributor. */
+    private interface AddonService extends IGridNodeService {
+    }
+
+    /**
+     * The owner logic is the Provider's native face, so a service an addon adds to it reaches the physical node once,
+     * as it would on AE2's own Pattern Provider. AE2's ticker and crafting provider stay out: the owner never executes.
+     */
+    @Test
+    void theOwnerHandsAddonServicesToThePhysicalNode() {
+        var facade = CapturedManagedGridNode.owner(physical(false), new NativeProviderLaneServices());
+        facade.addService(IGridTickable.class, null);
+        facade.addService(ICraftingProvider.class, null);
+        assertEquals(List.of(), physicalCalls);
+        assertSame(facade, facade.addService(AddonService.class, new AddonService() {
+        }));
+        assertEquals(List.of("addService"), physicalCalls);
+    }
+
+    /** Every Lane shares the physical node, so the copy each Lane gets is left out rather than added once per Lane. */
+    @Test
+    void aLaneLeavesAddonServicesOut() {
+        var facade = new CapturedManagedGridNode(physical(false), new NativeProviderLaneServices());
+        facade.addService(AddonService.class, new AddonService() {
+        });
+        assertEquals(List.of(), physicalCalls);
+    }
+
+    /** AE2 accepts services only before the node exists; one added later is left out instead of failing. */
+    @Test
+    void theOwnerLeavesOutAServiceAddedAfterTheNodeExists() {
+        var facade = CapturedManagedGridNode.owner(physical(true), new NativeProviderLaneServices());
+        assertDoesNotThrow(() -> facade.addService(AddonService.class, new AddonService() {
+        }));
+        assertEquals(List.of(), physicalCalls);
     }
 }

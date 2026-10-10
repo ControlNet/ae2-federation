@@ -1,14 +1,24 @@
 package space.controlnet.ae2federation.client;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
@@ -17,74 +27,107 @@ import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
-/** Selects pre-baked geometry only when the chunk mesh is rebuilt. No per-frame geometry or network state. */
+/**
+ * A Federation Cable's model: AE2's dense cable geometry ({@link FederationCableBuilder}), built from code for each
+ * set of side connections the first time a chunk needs it, and kept until the next resource reload. The connections
+ * are read when the chunk mesh is rebuilt; there is no per-frame geometry or network state.
+ */
 public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
-    private static final ModelProperty<Integer> MASK = new ModelProperty<>();
-    private static final ModelData[] DATA = new ModelData[64];
-    static {
-        for (int mask = 0; mask < DATA.length; mask++) {
-            DATA[mask] = ModelData.builder().with(MASK, mask).build();
-        }
-    }
-    private final BakedModel[] variants;
+    private static final ModelProperty<Integer> CONNECTIONS = new ModelProperty<>();
+    private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
+    private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
+    private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
 
-    private CableBakedModel(BakedModel[] variants) {
-        super(variants[0]);
-        this.variants = variants;
+    private final Map<Integer, List<BakedQuad>> shapes = new ConcurrentHashMap<>();
+    private volatile List<BakedQuad> item;
+
+    private CableBakedModel(BakedModel base) {
+        super(base);
     }
 
-    private static ModelResourceLocation location(int mask) {
-        return ModelResourceLocation.standalone(ResourceLocation.fromNamespaceAndPath(
-                "ae2federation", "block/cable/%02d".formatted(mask)));
-    }
-
-    public static void register(ModelEvent.RegisterAdditional event) {
-        for (int mask = 0; mask < 64; mask++) {
-            event.register(location(mask));
-        }
-    }
-
+    /** Wraps the cable's placeholder block and item models once they are baked. */
     public static void bake(ModelEvent.ModifyBakingResult event) {
-        var variants = new BakedModel[64];
-        for (int mask = 0; mask < 64; mask++) {
-            variants[mask] = java.util.Objects.requireNonNull(event.getModels().get(location(mask)));
+        for (var location : List.of(new ModelResourceLocation(CABLE, ""), ModelResourceLocation.inventory(CABLE))) {
+            var base = java.util.Objects.requireNonNull(event.getModels().get(location), location.toString());
+            event.getModels().put(location, new CableBakedModel(base));
         }
-        event.getModels().put(new ModelResourceLocation(
-                ResourceLocation.fromNamespaceAndPath("ae2federation", "cable"), ""), new CableBakedModel(variants));
     }
 
-    private BakedModel select(ModelData data) {
-        var mask = data.get(MASK);
-        return variants[mask == null ? 0 : mask];
+    private static FederationCableBuilder builder() {
+        var atlas = Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
+        var cores = new EnumMap<CableCoreFaces.Variant, TextureAtlasSprite>(CableCoreFaces.Variant.class);
+        for (var variant : CableCoreFaces.Variant.values()) {
+            cores.put(variant, atlas.apply(texture("dense/" + variant.texture())));
+        }
+        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")));
+    }
+
+    private static ResourceLocation texture(String name) {
+        return ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/" + name);
+    }
+
+    private List<BakedQuad> quads(ModelData data) {
+        var connections = data.get(CONNECTIONS);
+        return shapes.computeIfAbsent(connections == null ? 0 : connections, key -> builder().build(key));
+    }
+
+    private List<BakedQuad> itemQuads() {
+        var quads = item;
+        if (quads == null) {
+            quads = builder().item();
+            item = quads;
+        }
+        return quads;
     }
 
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos position, BlockState state, ModelData data) {
-        return DATA[CableVisualConnections.mask(level, position)];
+        int connections = CableVisualConnections.connections(level, position);
+        var modelData = DATA[connections];
+        if (modelData == null) {
+            modelData = ModelData.builder().with(CONNECTIONS, connections).build();
+            DATA[connections] = modelData;
+        }
+        return modelData;
+    }
+
+    @Override
+    public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource random) {
+        return getQuads(state, side, random, ModelData.EMPTY, null);
     }
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource random,
             ModelData data, @Nullable RenderType renderType) {
-        if (state != null) {
-            if (renderType == RenderType.cutout()) return List.of();
-            if (renderType == null) {
-                var quads = new java.util.ArrayList<BakedQuad>();
-                for (var layer : select(data).getRenderTypes(state, random, ModelData.EMPTY)) {
-                    if (layer != RenderType.cutout()) {
-                        quads.addAll(select(data).getQuads(state, side, random, ModelData.EMPTY, layer));
-                    }
-                }
-                return quads;
-            }
-        }
-        return select(data).getQuads(state, side, random, ModelData.EMPTY, renderType);
+        // Like AE2's cable bus, every quad is unculled: a cable never fills a block face.
+        if (side != null) return List.of();
+        if (state == null) return itemQuads();
+        if (renderType != null && renderType != RenderType.translucent()) return List.of();
+        return quads(data);
     }
 
     @Override
     public ChunkRenderTypeSet getRenderTypes(BlockState state, RandomSource random, ModelData data) {
-        return select(data).getRenderTypes(state, random, ModelData.EMPTY);
+        return LAYERS;
+    }
+
+    @Override
+    public List<RenderType> getRenderTypes(ItemStack stack, boolean fabulous) {
+        return List.of(fabulous ? Sheets.translucentItemSheet() : Sheets.translucentCullBlockSheet());
+    }
+
+    @Override
+    public List<BakedModel> getRenderPasses(ItemStack stack, boolean fabulous) {
+        return List.of(this);
+    }
+
+    @Override
+    public BakedModel applyTransform(ItemDisplayContext context, PoseStack poseStack, boolean leftHand) {
+        // The wrapper's default hands back the placeholder model, which has no quads.
+        super.applyTransform(context, poseStack, leftHand);
+        return this;
     }
 }

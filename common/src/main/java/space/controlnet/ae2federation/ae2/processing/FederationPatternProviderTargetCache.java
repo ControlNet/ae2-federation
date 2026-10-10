@@ -67,6 +67,19 @@ public final class FederationPatternProviderTargetCache {
         return new Lookup(true, target);
     }
 
+    /**
+     * The Endpoint target {@code logic} may reach now, authorized exactly as for its pushes; empty for a logic that is
+     * not a bound Lane or whose target is paused.
+     */
+    public static synchronized java.util.Optional<AuthorizedNativeTarget> authorized(PatternProviderLogic logic) {
+        var binding = BINDINGS.get(logic);
+        if (binding == null || !(binding.resolver.get() instanceof ProviderTargetResolution.Authorized authorized)
+                || authorized.target().provenance() != binding.provenance) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(authorized.target());
+    }
+
     public record Lookup(boolean bound, @Nullable Object target) {
     }
 

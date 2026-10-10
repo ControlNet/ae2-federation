@@ -18,6 +18,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -38,66 +39,132 @@ public final class SurvivalRecipeGameTests {
             required = true, timeoutTicks = 100)
     public static void survivalRecipes(GameTestHelper helper) {
         var level = helper.getLevel();
-        var processor = MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get().getDefaultInstance();
+        var circuit = MaterialRegistration.PRINTED_NEXUS_CIRCUIT.get().getDefaultInstance();
+        var processor = MaterialRegistration.NEXUS_PROCESSOR.get().getDefaultInstance();
+        var core = MaterialRegistration.NEXUS_CORE.get().getDefaultInstance();
         var cable = RouterRegistration.FEDERATION_CABLE_ITEM.get().getDefaultInstance();
         var assertions = 0;
 
+        // Like AE2's Formation Core: Fluix Crystal, Ender Dust and the processor in a row, in any row of the grid.
+        var redstone = new ItemStack(Items.REDSTONE);
+        var ender = AEItems.ENDER_DUST.stack();
+        var crystal = AEItems.FLUIX_CRYSTAL.stack();
+        assertions += crafts(helper, "nexus_core", core, 2, grid(crystal, ender, processor, null, null, null,
+                null, null, null));
+        assertions += crafts(helper, "nexus_core", core, 2, grid(null, null, null, null, null, null,
+                crystal, ender, processor));
+        // Shaped recipes also match mirrored, as AE2's Formation Core does.
+        assertions += crafts(helper, "nexus_core", core, 2, grid(processor, ender, crystal, null, null, null,
+                null, null, null));
+        // A native Logic Processor in place of the Nexus one, or a missing input, make no core.
+        for (var input : List.of(grid(crystal, ender, AEItems.LOGIC_PROCESSOR.stack(), null, null, null, null, null, null),
+                grid(crystal, null, processor, null, null, null, null, null, null))) {
+            helper.assertFalse(level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level)
+                    .map(holder -> holder.id().getPath().equals("nexus_core")).orElse(false),
+                    "Only Fluix Crystal, Ender Dust and a Nexus Processor in a row make Nexus Cores");
+            assertions++;
+        }
+
         // Shapeless inputs in arbitrary cells.
         assertions += crafts(helper, "bridge", BridgeRegistration.BRIDGE.get().getDefaultInstance(), 1,
-                grid(AEParts.QUARTZ_FIBER.stack(), null, null, null, processor, null, null, null, AEParts.STORAGE_BUS.stack()));
+                grid(AEParts.QUARTZ_FIBER.stack(), null, null, null, core, null, null, null, AEParts.STORAGE_BUS.stack()));
         assertions += crafts(helper, "pattern_provider", ProcessingRegistration.PROVIDER_ITEM.get().getDefaultInstance(), 1,
-                grid(null, processor, null, null, null, null, AEBlocks.PATTERN_PROVIDER.stack(), null, null));
+                grid(null, core, null, null, null, null, AEBlocks.PATTERN_PROVIDER.stack(), null, null));
         assertions += crafts(helper, "processing_endpoint", ProcessingRegistration.ENDPOINT_ITEM.get().getDefaultInstance(), 1,
-                grid(AEBlocks.INTERFACE.stack(), processor, null, null, null, null, null, null, null));
-        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 4,
-                grid(cable, AEParts.IMPORT_BUS.stack(), cable,
-                        AEParts.STORAGE_BUS.stack(), processor, AEBlocks.INTERFACE.stack(),
-                        cable, AEParts.EXPORT_BUS.stack(), cable));
-        // The Router's centre takes the Federation processor too, not the native one.
-        var nativeRouter = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
-                grid(cable, AEParts.IMPORT_BUS.stack(), cable,
-                        AEParts.STORAGE_BUS.stack(), AEItems.LOGIC_PROCESSOR.stack(), AEBlocks.INTERFACE.stack(),
-                        cable, AEParts.EXPORT_BUS.stack(), cable), level);
-        helper.assertFalse(nativeRouter.isPresent(), "A native Logic Processor must not make Routers");
+                grid(AEBlocks.INTERFACE.stack(), core, null, null, null, null, null, null, null));
+        assertions += crafts(helper, "switch", RouterRegistration.SWITCH_ITEM.get().getDefaultInstance(), 1,
+                grid(cable, AEParts.QUARTZ_FIBER.stack(), cable,
+                        AEParts.STORAGE_BUS.stack(), core, AEBlocks.INTERFACE.stack(),
+                        cable, AEParts.QUARTZ_FIBER.stack(), cable));
+        // The Switch's centre takes the Nexus Core, not AE2's Formation Core.
+        var nativeSwitch = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
+                grid(cable, AEParts.QUARTZ_FIBER.stack(), cable,
+                        AEParts.STORAGE_BUS.stack(), AEItems.FORMATION_CORE.stack(), AEBlocks.INTERFACE.stack(),
+                        cable, AEParts.QUARTZ_FIBER.stack(), cable), level);
+        helper.assertFalse(nativeSwitch.isPresent(), "A Formation Core must not make Switches");
         assertions++;
+        var fluixCrystal = AEItems.FLUIX_CRYSTAL.stack();
+        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 1,
+                grid(cable, fluixCrystal, cable, fluixCrystal, core, fluixCrystal, cable, fluixCrystal, cable));
         // Any glass cable colour, mixed within one craft.
         var white = AEParts.GLASS_CABLE.stack(AEColor.WHITE);
         var fluix = AEParts.GLASS_CABLE.stack(AEColor.TRANSPARENT);
         var red = AEParts.GLASS_CABLE.stack(AEColor.RED);
-        assertions += crafts(helper, "cable", cable, 16, grid(fluix, fluix, white, fluix, processor, red, fluix, fluix, fluix));
+        assertions += crafts(helper, "cable", cable, 8, grid(fluix, fluix, white, fluix, core, red, fluix, fluix, fluix));
 
-        // The native processor in the cable ring's centre is not the Federation one.
+        // AE2's Formation Core in the cable ring's centre is not the Nexus one.
         var plain = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
-                grid(fluix, fluix, fluix, fluix, AEItems.LOGIC_PROCESSOR.stack(), fluix, fluix, fluix, fluix), level);
+                grid(fluix, fluix, fluix, fluix, AEItems.FORMATION_CORE.stack(), fluix, fluix, fluix, fluix), level);
         helper.assertFalse(plain.map(holder -> holder.id().getNamespace().equals("ae2federation")).orElse(false),
-                "A native Logic Processor must not make Federation Cables");
+                "A Formation Core must not make Federation Cables");
         assertions++;
 
-        // Inscriber: dust on top (or flipped to the bottom), the native processor in the middle, both spent.
-        var dust = AEItems.FLUIX_DUST.stack();
-        var logic = AEItems.LOGIC_PROCESSOR.stack();
-        for (var plates : List.of(List.of(dust, ItemStack.EMPTY), List.of(ItemStack.EMPTY, dust))) {
-            var recipe = InscriberRecipes.findRecipe(level, logic, plates.get(0), plates.get(1), false);
-            helper.assertTrue(recipe != null && ItemStack.isSameItem(recipe.getResultItem(), processor)
-                    && recipe.getResultItem().getCount() == 1, "The Inscriber must press a Federation Logic Processor");
-            helper.assertTrue(recipe.getProcessType() == InscriberProcessType.PRESS, "Pressing must spend the dust");
+        // Inscriber, like Advanced AE's Quantum Press: the Engineering and Logic Presses (either way round) around an
+        // Ender Pearl, all spent.
+        var pearl = new ItemStack(Items.ENDER_PEARL);
+        var press = MaterialRegistration.NEXUS_PROCESSOR_PRESS.get().getDefaultInstance();
+        var engineering = AEItems.ENGINEERING_PROCESSOR_PRESS.stack();
+        var logic = AEItems.LOGIC_PROCESSOR_PRESS.stack();
+        for (var plates : List.of(List.of(engineering, logic), List.of(logic, engineering))) {
+            var made = InscriberRecipes.findRecipe(level, pearl, plates.get(0), plates.get(1), false);
+            helper.assertTrue(made != null && ItemStack.isSameItem(made.getResultItem(), press)
+                    && made.getResultItem().getCount() == 1, "The Inscriber must press a Nexus Press");
+            helper.assertTrue(made.getProcessType() == InscriberProcessType.PRESS, "Making the press must spend both presses");
             assertions += 2;
         }
-        helper.assertTrue(InscriberRecipes.findRecipe(level, logic, ItemStack.EMPTY, ItemStack.EMPTY, false) == null,
-                "A Logic Processor alone must not be pressed into anything");
-        assertions++;
+        // Like every AE2 press, it copies itself onto a Block of Iron and stays.
+        var copy = InscriberRecipes.findRecipe(level, new ItemStack(Items.IRON_BLOCK), press, ItemStack.EMPTY, false);
+        helper.assertTrue(copy != null && ItemStack.isSameItem(copy.getResultItem(), press)
+                && copy.getResultItem().getCount() == 1, "A Block of Iron under the Nexus Press must copy it");
+        helper.assertTrue(copy.getProcessType() == InscriberProcessType.INSCRIBE, "Copying must keep the press");
+        assertions += 2;
 
-        for (var name : List.of("bridge", "pattern_provider", "processing_endpoint", "router", "cable")) {
+        // Inscriber, like AE2's printed circuits: an Ender Pearl under the Nexus Press, which is kept.
+        var printed = InscriberRecipes.findRecipe(level, pearl, press, ItemStack.EMPTY, false);
+        helper.assertTrue(printed != null && ItemStack.isSameItem(printed.getResultItem(), circuit)
+                && printed.getResultItem().getCount() == 1, "The Inscriber must print a Nexus circuit");
+        helper.assertTrue(printed.getProcessType() == InscriberProcessType.INSCRIBE, "Printing must keep the press");
+        // The Logic Press alone no longer prints it.
+        var underLogic = InscriberRecipes.findRecipe(level, pearl, logic, ItemStack.EMPTY, false);
+        helper.assertFalse(underLogic != null && ItemStack.isSameItem(underLogic.getResultItem(), circuit),
+                "The Logic Press must not print a Nexus circuit");
+        assertions++;
+        // Without the press the pearl still grinds into AE2's Ender Dust.
+        var ground = InscriberRecipes.findRecipe(level, pearl, ItemStack.EMPTY, ItemStack.EMPTY, false);
+        helper.assertTrue(ground != null && ItemStack.isSameItem(ground.getResultItem(), ender),
+                "An Ender Pearl alone must still grind into Ender Dust");
+        assertions += 3;
+
+        // Inscriber, like AE2's processors: the circuit on top and Printed Silicon at the bottom (or flipped),
+        // redstone in the middle, all spent.
+        var silicon = AEItems.SILICON_PRINT.stack();
+        for (var plates : List.of(List.of(circuit, silicon), List.of(silicon, circuit))) {
+            var recipe = InscriberRecipes.findRecipe(level, redstone, plates.get(0), plates.get(1), false);
+            helper.assertTrue(recipe != null && ItemStack.isSameItem(recipe.getResultItem(), processor)
+                    && recipe.getResultItem().getCount() == 1, "The Inscriber must press a Nexus Processor");
+            helper.assertTrue(recipe.getProcessType() == InscriberProcessType.PRESS, "Pressing must spend the plates");
+            assertions += 2;
+        }
+        for (var plates : List.of(List.of(circuit, ItemStack.EMPTY), List.of(ItemStack.EMPTY, silicon))) {
+            var recipe = InscriberRecipes.findRecipe(level, redstone, plates.get(0), plates.get(1), false);
+            helper.assertFalse(recipe != null && ItemStack.isSameItem(recipe.getResultItem(), processor),
+                    "A Nexus Processor needs the circuit, the redstone and the silicon together");
+            assertions++;
+        }
+
+        for (var name : List.of("nexus_core", "bridge", "pattern_provider", "processing_endpoint", "router", "switch",
+                "cable")) {
             var id = ResourceLocation.fromNamespaceAndPath("ae2federation", "recipes/misc/" + name);
             helper.assertTrue(level.getServer().getAdvancements().get(id) != null, "Missing recipe-book unlock " + id);
             assertions++;
         }
-        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "5", "inscriberRecipes", "1",
-                "routerBatch", "4", "cableBatch", "16", "recipeBookUnlocks", "5"));
+        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "7", "inscriberRecipes", "4",
+                "coreBatch", "2", "routerBatch", "1", "switchBatch", "1", "cableBatch", "8",
+                "recipeBookUnlocks", "7"));
         helper.succeed();
     }
 
-    /** A real Inscriber, fed through its item handler as a pipe would, presses two processors and spends every input. */
+    /** A real Inscriber, fed through one side as a pipe would, presses two processors and spends every input. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 600)
     public static void survivalInscriber(GameTestHelper helper) {
@@ -115,14 +182,16 @@ public final class SurvivalRecipeGameTests {
             if (!fed[0]) {
                 var handler = level.getCapability(Capabilities.ItemHandler.BLOCK, absolute, Direction.NORTH);
                 helper.assertTrue(handler != null, "Waiting for the Inscriber's item handler");
-                helper.assertTrue(insert(handler, AEItems.LOGIC_PROCESSOR.stack(2)).isEmpty(),
-                        "Automation must accept Logic Processors");
-                helper.assertTrue(insert(handler, AEItems.FLUIX_DUST.stack(2)).isEmpty(),
-                        "Automation must accept the Fluix Dust beside the processors");
+                helper.assertTrue(insert(handler, new ItemStack(MaterialRegistration.PRINTED_NEXUS_CIRCUIT.get(), 2)).isEmpty(),
+                        "Automation must accept Nexus circuits");
+                helper.assertTrue(insert(handler, new ItemStack(Items.REDSTONE, 2)).isEmpty(),
+                        "Automation must accept the redstone beside the circuits");
+                helper.assertTrue(insert(handler, AEItems.SILICON_PRINT.stack(2)).isEmpty(),
+                        "Automation must accept the Printed Silicon beside the circuits");
                 fed[0] = true;
             }
             var inventory = inscriber.getInternalInventory();
-            var processor = MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get();
+            var processor = MaterialRegistration.NEXUS_PROCESSOR.get();
             var made = 0;
             var leftovers = 0;
             for (var slot = 0; slot < inventory.size(); slot++) {
@@ -130,9 +199,9 @@ public final class SurvivalRecipeGameTests {
                 if (stack.is(processor)) made += stack.getCount();
                 else leftovers += stack.getCount();
             }
-            helper.assertValueEqual(made, 2, "Waiting for two Federation Logic Processors");
-            helper.assertValueEqual(leftovers, 0, "Both processors and both dusts must be spent");
-            PolicyEvidence.write("survivalinscriber", 4, Map.of("pressed", "2", "inputsLeft", "0",
+            helper.assertValueEqual(made, 2, "Waiting for two Nexus Processors");
+            helper.assertValueEqual(leftovers, 0, "Both circuits, both redstone and both silicon prints must be spent");
+            PolicyEvidence.write("survivalinscriber", 5, Map.of("pressed", "2", "inputsLeft", "0",
                     "fedThrough", "itemHandler"));
         });
     }

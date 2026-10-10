@@ -330,7 +330,7 @@ public final class PerformanceBenchmarkGameTests {
                         && FederationDomainRegistryAccess.confirmedNetworkId(
                                 routers.nativePorts().chestNode(router.west()).getGrid()).isPresent(),
                         "Waiting for the native network");
-                routers.placeRouter(router);
+                routers.placeSwitch(router);
                 for (var x = 0; x < PLANE; x++) {
                     for (var z = 0; z < PLANE; z++) {
                         routers.placeFederationCable(corner.offset(x, 0, z));

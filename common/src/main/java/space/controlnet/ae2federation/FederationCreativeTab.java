@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
+import space.controlnet.ae2federation.p2p.FederationP2PRegistration;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
 
@@ -21,11 +22,16 @@ public final class FederationCreativeTab {
                     .icon(() -> RouterRegistration.ROUTER_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         output.accept(RouterRegistration.ROUTER_ITEM.get());
+                        output.accept(RouterRegistration.SWITCH_ITEM.get());
                         output.accept(RouterRegistration.FEDERATION_CABLE_ITEM.get());
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
                         output.accept(BridgeRegistration.BRIDGE.get());
-                        output.accept(MaterialRegistration.FEDERATION_LOGIC_PROCESSOR.get());
+                        output.accept(MaterialRegistration.NEXUS_PROCESSOR_PRESS.get());
+                        output.accept(MaterialRegistration.PRINTED_NEXUS_CIRCUIT.get());
+                        output.accept(FederationP2PRegistration.TUNNEL.get());
+                        output.accept(MaterialRegistration.NEXUS_PROCESSOR.get());
+                        output.accept(MaterialRegistration.NEXUS_CORE.get());
                     })
                     .build());
 

@@ -90,7 +90,7 @@ public final class FederationDomainGameTests {
                         "Native devices must share the settled bypass Grid");
                 helper.assertTrue(FederationDomainRegistryAccess.confirmedNetworkId(northNode.getGrid()).isPresent(),
                         "Repeated native network identity must settle before Router placement");
-                fixtures.placeRouter(LEFT);
+                fixtures.placeSwitch(LEFT);
                 phase[0]++;
                 helper.assertTrue(false, "Waiting for Router boundary bindings");
             }
@@ -195,8 +195,8 @@ public final class FederationDomainGameTests {
             throw new net.minecraft.gametest.framework.GameTestAssertException(
                     "Native Router neighbors must settle before boundary nodes join");
         }
-        fixtures.placeRouter(LEFT);
-        fixtures.placeRouter(RIGHT);
+        fixtures.placeSwitch(LEFT);
+        fixtures.placeSwitch(RIGHT);
         for (var x = LEFT.getX() + 1; x < RIGHT.getX(); x++) {
             fixtures.placeFederationCable(new BlockPos(x, LEFT.getY(), LEFT.getZ()));
         }

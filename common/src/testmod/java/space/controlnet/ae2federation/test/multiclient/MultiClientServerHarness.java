@@ -137,7 +137,7 @@ public final class MultiClientServerHarness {
             }
             mainNetwork = extendedMain;
             outerNetwork = extendedOuter;
-            level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState());
+            level.setBlockAndUpdate(router, RouterRegistration.SWITCH.get().defaultBlockState());
             advance();
         }
 
@@ -222,7 +222,7 @@ public final class MultiClientServerHarness {
                     || !outerNetwork.equals(confirmed(level, router.north()))) {
                 return;
             }
-            level.setBlockAndUpdate(router, RouterRegistration.ROUTER.get().defaultBlockState());
+            level.setBlockAndUpdate(router, RouterRegistration.SWITCH.get().defaultBlockState());
             advance();
         }
 

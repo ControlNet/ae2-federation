@@ -1,0 +1,19 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "ae2federation:canvas_cjk.ttf",
+      "shift": [0, 0],
+      "size": 9,
+      "oversample": 8,
+      "skip": "",
+      "filter": {
+        "uniform": false
+      }
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:default"
+    }
+  ]
+}

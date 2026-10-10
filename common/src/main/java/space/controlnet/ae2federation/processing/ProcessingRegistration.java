@@ -10,6 +10,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -23,6 +24,8 @@ import space.controlnet.ae2federation.processing.endpoint.EndpointTargetCapabili
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlockEntity;
+import space.controlnet.ae2federation.processing.provider.ProviderEnergyRelay;
+import space.controlnet.ae2federation.processing.provider.ProviderUpgradeCards;
 
 public final class ProcessingRegistration {
     private static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks("ae2federation");
@@ -62,6 +65,9 @@ public final class ProcessingRegistration {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(ProcessingRegistration::registerCapabilities);
+        // Addons register their cards in their own setup, whose order among mods is not fixed; load complete is after all.
+        modBus.addListener(FMLLoadCompleteEvent.class,
+                event -> event.enqueueWork(() -> ProviderUpgradeCards.inherit(PROVIDER_ITEM.get())));
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
@@ -88,6 +94,12 @@ public final class ProcessingRegistration {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null
                         : endpointRuntime(endpoint, side).fluidReturn(side).orElse(null));
+        // FE a Provider sends out of its Federation face goes on to the machines at its Endpoints, whatever sends it.
+        event.registerBlock(Capabilities.EnergyStorage.BLOCK,
+                (level, position, state, blockEntity, side) -> ProviderEnergyRelay.facing(level, position, side),
+                ENDPOINT.get(), space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get(),
+                space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get(),
+                space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get());
         // As on AE2's own Pattern Provider; Applied Mekanistics and other addons wrap it for their resource types.
         event.registerBlockEntity(AECapabilities.GENERIC_INTERNAL_INV, ENDPOINT_BLOCK_ENTITY.get(),
                 (endpoint, side) -> endpointRuntime(endpoint, side) == null ? null

@@ -23,7 +23,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
-    /** Client only: the flow renderer's neighbour mask and the game tick it was read in. */
+    /** Client only: the flow renderer's neighbour mask and its game tick. */
     private int flowMask;
     private long flowMaskTick = Long.MIN_VALUE;
 
@@ -87,7 +87,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         ports.forEach((face, port) -> {
             var peer = port.peer();
             if (peer != null) {
-                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer.ownerPosition());
+                var remoteNode = FederationDomainRegistryAccess.nodeId(serverLevel, peer);
                 evidence.put(face.getSerializedName(), new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
             }
