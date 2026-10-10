@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.compat;
 
+import appeng.api.config.Actionable;
 import appeng.api.parts.PartHelper;
 import appeng.api.util.AEColor;
 import appeng.core.definitions.AEParts;
@@ -17,6 +18,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.policy.PolicyCapability;
+import space.controlnet.ae2federation.policy.PolicyRule;
+import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleMode;
+import space.controlnet.ae2federation.storage.mount.StorageMountService;
 
 /**
  * Federation with Neo ECO AE Extension's multiblocks, each the smallest its controller accepts: 5 long, 3 high and 2
@@ -116,6 +122,125 @@ public final class NeoEcoCompatGameTests {
 
     static AddonStorageScene storageDismantled(GameTestHelper helper, Tier tier) {
         return storage(helper, tier).dismantlingAfterwards(AddonStorageScene.BESIDE_CHEST.offset(4, 0, -1));
+    }
+
+    /**
+     * The guide's regional warehouse and its exercise: an ECO storage system on the warehouse network, with the only
+     * energy cell; a hub network that uses the warehouse's storage with re-export; and two districts, each with no
+     * storage and no power of its own and a Bridge of its own to the hub. A district is two Bridges from the warehouse,
+     * shares no domain and has no rule with it, yet sees, takes and stores into it. Stepping the hub's rule back to
+     * plain Enabled takes the warehouse away from both districts but not from the hub; re-export brings it back.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1200)
+    public static void ecoWarehouseChain(GameTestHelper helper) {
+        helper.succeedWhen(new Warehouse(helper, Tier.L4)::run);
+    }
+
+    /** The warehouse chain's stages; see {@link #ecoWarehouseChain}. */
+    static final class Warehouse {
+        private static final appeng.api.stacks.AEItemKey IRON =
+                appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.IRON_INGOT);
+        /** The storage system's bottom north-west corner; its interface touches the warehouse's cable at (9, 4, 3). */
+        private static final BlockPos STORAGE = new BlockPos(10, 3, 2);
+        private static final BlockPos DRIVE = STORAGE.offset(3, 1, 0);
+        private final GameTestHelper helper;
+        private final Tier tier;
+        private final BridgeChainFixture chain;
+        private final appeng.api.networking.security.IActionSource source =
+                appeng.api.networking.security.IActionSource.empty();
+        private int stage;
+
+        Warehouse(GameTestHelper helper, Tier tier) {
+            this.helper = helper;
+            this.tier = tier;
+            chain = new BridgeChainFixture(helper, List.of(
+                    new BridgeChainFixture.Network("district1", 7, 1, 3, AEColor.PURPLE),
+                    new BridgeChainFixture.Network("district2", 7, 7, 9, AEColor.YELLOW),
+                    new BridgeChainFixture.Network("hub", 8, 1, 9, AEColor.LIGHT_BLUE),
+                    new BridgeChainFixture.Network("warehouse", 9, 3, 7, AEColor.GREEN)),
+                    List.of(new BridgeChainFixture.Link("district1", "hub", 2),
+                            new BridgeChainFixture.Link("hub", "warehouse", 5),
+                            new BridgeChainFixture.Link("district2", "hub", 8)));
+            // The warehouse's energy cell is the only power source; it touches no other network's cable.
+            helper.setBlock(chain.cable("warehouse", 7).below(),
+                    appeng.core.definitions.AEBlocks.CREATIVE_ENERGY_CELL.block());
+            placeStorageSystem(helper, tier, STORAGE);
+        }
+
+        void run() {
+            switch (stage) {
+                case 0 -> {
+                    helper.assertTrue(chain.built(), "Waiting for the networks and Bridges: " + chain.readiness());
+                    helper.assertTrue(chain.powered(), "Waiting for the ME power rules to power every network");
+                    helper.assertTrue(fitCell(helper, tier, DRIVE) && mountedStorage(helper, DRIVE) != null,
+                            "Waiting for the ECO storage system to form and take its cell");
+                    helper.assertFalse(chain.shareDomain("district1", "warehouse"),
+                            "A district must share no domain with the warehouse");
+                    chain.rule("hub", "warehouse", PolicyCapability.STORAGE, reexport());
+                    chain.rule("district1", "hub", PolicyCapability.STORAGE, PolicyRule.storageDefaults());
+                    chain.rule("district2", "hub", PolicyCapability.STORAGE, PolicyRule.storageDefaults());
+                    helper.assertValueEqual(inventory("warehouse").insert(IRON, 9, Actionable.MODULATE, source), 9L,
+                            "The warehouse's storage system must store the iron");
+                    stage = 1;
+                    helper.fail("Set the rules and stocked the warehouse");
+                }
+                case 1 -> {
+                    helper.assertValueEqual(seen("district1"), 9L, "Waiting for district 1 to see the warehouse: "
+                            + mountStatus("district1"));
+                    helper.assertValueEqual(seen("district2"), 9L, "Waiting for district 2 to see the warehouse: "
+                            + mountStatus("district2"));
+                    helper.assertTrue(PolicyService.get(helper.getLevel())
+                            .configured(chain.key("district1", "warehouse", PolicyCapability.STORAGE)).isEmpty(),
+                            "No rule joins a district to the warehouse");
+                    helper.assertValueEqual(inventory("district1").extract(IRON, 4, Actionable.MODULATE, source), 4L,
+                            "District 1 must take iron out of the warehouse");
+                    helper.assertValueEqual(stored(), 5L, "What district 1 took must leave the storage system");
+                    helper.assertValueEqual(inventory("district2").insert(IRON, 4, Actionable.MODULATE, source), 4L,
+                            "District 2, with no storage of its own, must store into the warehouse");
+                    helper.assertValueEqual(stored(), 9L, "What district 2 stored must reach the storage system");
+                    // The exercise: the hub's rule steps back from re-export to plain Enabled.
+                    chain.rule("hub", "warehouse", PolicyCapability.STORAGE, PolicyRule.storageDefaults());
+                    stage = 2;
+                    helper.fail("Stepped the hub's rule back to Enabled");
+                }
+                case 2 -> {
+                    helper.assertValueEqual(seen("district1") + seen("district2"), 0L,
+                            "Waiting for the warehouse to leave both districts");
+                    helper.assertValueEqual(seen("hub"), 9L, "The hub keeps the warehouse under its own rule");
+                    chain.rule("hub", "warehouse", PolicyCapability.STORAGE, reexport());
+                    stage = 3;
+                    helper.fail("Stepped the hub's rule to re-export again");
+                }
+                default -> {
+                    helper.assertValueEqual(seen("district1"), 9L, "Waiting for the warehouse to return to district 1");
+                    helper.assertValueEqual(seen("district2"), 9L, "Waiting for the warehouse to return to district 2");
+                    chain.close();
+                }
+            }
+        }
+
+        private static PolicyRule reexport() {
+            return PolicyRule.storageDefaults().withMode(RuleMode.REEXPORT);
+        }
+
+        private MEStorage inventory(String network) {
+            return chain.grid(network).getStorageService().getInventory();
+        }
+
+        private long seen(String network) {
+            return inventory(network).getAvailableStacks().get(IRON);
+        }
+
+        /** What the ECO drive's own cell holds, so nothing is counted twice through a mount. */
+        private long stored() {
+            return mountedStorage(helper, DRIVE).extract(IRON, Long.MAX_VALUE, Actionable.SIMULATE, source);
+        }
+
+        private String mountStatus(String district) {
+            return "hub " + StorageMountService.status(helper.getLevel(),
+                    chain.key("hub", "warehouse", PolicyCapability.STORAGE)) + ", district "
+                    + StorageMountService.status(helper.getLevel(), chain.key(district, "hub", PolicyCapability.STORAGE));
+        }
     }
 
     /**
