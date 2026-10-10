@@ -20,6 +20,7 @@ on, and each permission works in one direction.
 
 * [Getting Started](getting-started.md): craft the parts and connect your first two networks.
 * [How Federation Works](mechanics.md): domains, rules, shared energy and the limits.
+* [Across Domains](across-domains.md): reach a network two Bridges away through re-export, with no rule of your own for it.
 * [Remote Crafting](remote-processing.md): order from another network's pattern providers, or send processing
   patterns to its machines.
 * [Examples](examples/index.md): complete builds for a shared warehouse, an assembly workshop and outsourced machines.
