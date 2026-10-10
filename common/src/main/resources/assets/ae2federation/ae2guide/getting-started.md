@@ -13,9 +13,13 @@ it. Federation does not replace AE2's own cables or controllers; it only connect
 
 ## 1. Make Nexus Cores
 
-Every Federation device needs a <ItemLink id="ae2federation:nexus_core" />. First print an Ender Pearl under a
-<ItemLink id="ae2:logic_processor_press" /> in an <ItemLink id="ae2:inscriber" />, then press the circuit with
-Redstone Dust and a <ItemLink id="ae2:printed_silicon" /> into a <ItemLink id="ae2federation:nexus_processor" />.
+Every Federation device needs a <ItemLink id="ae2federation:nexus_core" />. First press an
+<ItemLink id="ae2:engineering_processor_press" /> and a <ItemLink id="ae2:logic_processor_press" /> around an Ender
+Pearl in an <ItemLink id="ae2:inscriber" /> into an <ItemLink id="ae2federation:nexus_processor_press" />. Print an
+Ender Pearl under it, then press the circuit with Redstone Dust and a <ItemLink id="ae2:printed_silicon" /> into a
+<ItemLink id="ae2federation:nexus_processor" />.
+
+<Recipe id="ae2federation:nexus_processor_press" />
 
 <RecipeFor id="ae2federation:printed_nexus_circuit" />
 

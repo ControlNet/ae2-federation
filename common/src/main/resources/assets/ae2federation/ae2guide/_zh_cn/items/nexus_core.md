@@ -8,6 +8,7 @@ categories:
 - misc ingredients blocks
 item_ids:
 - ae2federation:nexus_core
+- ae2federation:nexus_processor_press
 - ae2federation:nexus_processor
 - ae2federation:printed_nexus_circuit
 ---
@@ -16,11 +17,21 @@ item_ids:
 
 <ItemImage id="ae2federation:nexus_core" scale="4" />
 
-所有联邦设备都要用到的材料。 做法和AE2的处理器与核心一样： 先压印电路板， 再压制成处理器， 最后用处理器合成一批核心。
+所有联邦设备都要用到的材料。 做法和AE2的处理器与核心一样： 先压印电路板， 再压制成处理器， 最后用处理器合成一批核心。 压印电路板之前， 要先做出专用的压印模板。
+
+## 联结压印模板
+
+在<ItemLink id="ae2:inscriber" />中： <ItemLink id="ae2:engineering_processor_press" />放顶槽， <ItemLink id="ae2:logic_processor_press" />放底槽， 末影珍珠放中槽。 三样都会被消耗， 得到一个<ItemLink id="ae2federation:nexus_processor_press" />。 两块压印模板上下对调也可以。
+
+<Recipe id="ae2federation:nexus_processor_press" />
+
+和AE2的压印模板一样， 它可以复制： 联结压印模板放顶槽， 铁块放中槽， 就能得到一块新的， 原来的压印模板会保留。
+
+<Recipe id="ae2federation:nexus_processor_press_from_iron" />
 
 ## 联结电路板
 
-在<ItemLink id="ae2:inscriber" />中： <ItemLink id="ae2:logic_processor_press" />放顶槽， 末影珍珠放中槽。 末影珍珠会变成<ItemLink id="ae2federation:printed_nexus_circuit" />， 压印模板会保留。
+在压印器中： 联结压印模板放顶槽， 末影珍珠放中槽。 末影珍珠会变成<ItemLink id="ae2federation:printed_nexus_circuit" />， 压印模板会保留。
 
 <RecipeFor id="ae2federation:printed_nexus_circuit" />
 

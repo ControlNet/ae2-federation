@@ -99,12 +99,36 @@ public final class SurvivalRecipeGameTests {
                 "A Formation Core must not make Federation Cables");
         assertions++;
 
-        // Inscriber, like AE2's printed circuits: an Ender Pearl under the Logic Press, which is kept.
+        // Inscriber, like Advanced AE's Quantum Press: the Engineering and Logic Presses (either way round) around an
+        // Ender Pearl, all spent.
         var pearl = new ItemStack(Items.ENDER_PEARL);
-        var printed = InscriberRecipes.findRecipe(level, pearl, AEItems.LOGIC_PROCESSOR_PRESS.stack(), ItemStack.EMPTY, false);
+        var press = MaterialRegistration.NEXUS_PROCESSOR_PRESS.get().getDefaultInstance();
+        var engineering = AEItems.ENGINEERING_PROCESSOR_PRESS.stack();
+        var logic = AEItems.LOGIC_PROCESSOR_PRESS.stack();
+        for (var plates : List.of(List.of(engineering, logic), List.of(logic, engineering))) {
+            var made = InscriberRecipes.findRecipe(level, pearl, plates.get(0), plates.get(1), false);
+            helper.assertTrue(made != null && ItemStack.isSameItem(made.getResultItem(), press)
+                    && made.getResultItem().getCount() == 1, "The Inscriber must press a Nexus Press");
+            helper.assertTrue(made.getProcessType() == InscriberProcessType.PRESS, "Making the press must spend both presses");
+            assertions += 2;
+        }
+        // Like every AE2 press, it copies itself onto a Block of Iron and stays.
+        var copy = InscriberRecipes.findRecipe(level, new ItemStack(Items.IRON_BLOCK), press, ItemStack.EMPTY, false);
+        helper.assertTrue(copy != null && ItemStack.isSameItem(copy.getResultItem(), press)
+                && copy.getResultItem().getCount() == 1, "A Block of Iron under the Nexus Press must copy it");
+        helper.assertTrue(copy.getProcessType() == InscriberProcessType.INSCRIBE, "Copying must keep the press");
+        assertions += 2;
+
+        // Inscriber, like AE2's printed circuits: an Ender Pearl under the Nexus Press, which is kept.
+        var printed = InscriberRecipes.findRecipe(level, pearl, press, ItemStack.EMPTY, false);
         helper.assertTrue(printed != null && ItemStack.isSameItem(printed.getResultItem(), circuit)
                 && printed.getResultItem().getCount() == 1, "The Inscriber must print a Nexus circuit");
         helper.assertTrue(printed.getProcessType() == InscriberProcessType.INSCRIBE, "Printing must keep the press");
+        // The Logic Press alone no longer prints it.
+        var underLogic = InscriberRecipes.findRecipe(level, pearl, logic, ItemStack.EMPTY, false);
+        helper.assertFalse(underLogic != null && ItemStack.isSameItem(underLogic.getResultItem(), circuit),
+                "The Logic Press must not print a Nexus circuit");
+        assertions++;
         // Without the press the pearl still grinds into AE2's Ender Dust.
         var ground = InscriberRecipes.findRecipe(level, pearl, ItemStack.EMPTY, ItemStack.EMPTY, false);
         helper.assertTrue(ground != null && ItemStack.isSameItem(ground.getResultItem(), ender),
@@ -134,7 +158,7 @@ public final class SurvivalRecipeGameTests {
             helper.assertTrue(level.getServer().getAdvancements().get(id) != null, "Missing recipe-book unlock " + id);
             assertions++;
         }
-        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "7", "inscriberRecipes", "2",
+        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "7", "inscriberRecipes", "4",
                 "coreBatch", "2", "routerBatch", "1", "switchBatch", "1", "cableBatch", "8",
                 "recipeBookUnlocks", "7"));
         helper.succeed();

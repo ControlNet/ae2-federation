@@ -37,6 +37,7 @@
   "item.ae2federation.bridge": "ME Federation Bridge",
   "item.ae2federation.federation_p2p_tunnel": "Federation P2P Tunnel",
   "item.ae2federation.nexus_processor": "Nexus Processor",
+  "item.ae2federation.nexus_processor_press": "Inscriber Nexus Press",
   "item.ae2federation.printed_nexus_circuit": "Printed Nexus Circuit",
   "item.ae2federation.nexus_core": "Nexus Core",
   "block.ae2federation.router": "ME Federation Router",

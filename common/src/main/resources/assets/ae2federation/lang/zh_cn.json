@@ -35,6 +35,7 @@
   "ae2federation.pack.guide_useless_mod": "AE2 联邦指南：UselessMod 示例",
   "ae2federation.pack.guide_useless_mod.description": "AE2 联邦指南中搭配 UselessMod 的示例",
   "item.ae2federation.bridge": "ME联邦桥",
+  "item.ae2federation.nexus_processor_press": "联结压印模板",
   "item.ae2federation.printed_nexus_circuit": "联结电路板",
   "item.ae2federation.federation_p2p_tunnel": "联邦P2P通道",
   "item.ae2federation.nexus_processor": "联结处理器",

@@ -215,7 +215,7 @@ Policy 不以显示名称、方块坐标或运行时 Grid 对象地址作为主�
 
 以下是游戏内方块与组件的工作命名，沿用 ME 前缀；模组本身的名称为 AE2 Federation。Provider 的一个 Federation 面与五个 ME 面已确定；其他方块的具体连面和槽位数量仍可细化。正式外形和贴图在原型跑通后制作。
 
-**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Nexus Core（联结核心）照 AE2 的处理器和核心分三步：压印器以刻印模式用逻辑压印模板（保留）把末影珍珠（`c:ender_pearls`）印成 Printed Nexus Circuit（联结电路板）；再以压制模式把联结电路板（顶槽）、红石粉（中槽）和硅板（底槽）压成 1 个 Nexus Processor（联结处理器）；工作台一排依次放福鲁伊克斯水晶（`c:gems/fluix`）、末影粉（`c:dusts/ender_pearl`）和联结处理器，合成 2 个联结核心（和 AE2 成型核心一样）。Bridge = Storage Bus + Quartz Fiber + 联结核心；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联结核心；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联结核心，出 8 根；Switch = 4 根 Cable 在四角，上下各 1 根 Quartz Fiber，左 Storage Bus、右 ME Interface，联结核心在中心，出 1 个（材料对应交换机面交换的能力：存储、合成/处理与不带频道的能量，和 Bridge 一致）；Router = 4 根 Cable 在四角，4 个福鲁伊克斯水晶（`c:gems/fluix`）在四边，联结核心在中心，出 1 个。由原生方块合成时不继承其中的样板或配置。
+**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Nexus Core（联结核心）照 AE2 的处理器和核心分三步，之前先做专用模板：压印器以压制模式把工程压印模板（顶槽）、末影珍珠（`c:ender_pearls`，中槽）和逻辑压印模板（底槽）压成 Inscriber Nexus Press（联结压印模板，两块原版模板都被消耗，照 Advanced AE 的量子压印模板），它和 AE2 的模板一样能以刻印模式用铁块复制，且不加入 `ae2:inscriber_presses`（陨石不掉落）；压印器以刻印模式用联结压印模板（保留）把末影珍珠印成 Printed Nexus Circuit（联结电路板）；再以压制模式把联结电路板（顶槽）、红石粉（中槽）和硅板（底槽）压成 1 个 Nexus Processor（联结处理器）；工作台一排依次放福鲁伊克斯水晶（`c:gems/fluix`）、末影粉（`c:dusts/ender_pearl`）和联结处理器，合成 2 个联结核心（和 AE2 成型核心一样）。Bridge = Storage Bus + Quartz Fiber + 联结核心；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联结核心；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联结核心，出 8 根；Switch = 4 根 Cable 在四角，上下各 1 根 Quartz Fiber，左 Storage Bus、右 ME Interface，联结核心在中心，出 1 个（材料对应交换机面交换的能力：存储、合成/处理与不带频道的能量，和 Bridge 一致）；Router = 4 根 Cable 在四角，4 个福鲁伊克斯水晶（`c:gems/fluix`）在四边，联结核心在中心，出 1 个。由原生方块合成时不继承其中的样板或配置。
 
 | 组件 | 主要职责 | 关键边界 |
 |---|---|---|

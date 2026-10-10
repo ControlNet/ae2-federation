@@ -2,7 +2,7 @@
   "type": "ae2:inscriber",
   "ingredients": {
     "middle": {
-      "tag": "c:ender_pearls"
+      "item": "minecraft:iron_block"
     },
     "top": {
       "item": "ae2federation:nexus_processor_press"
@@ -11,6 +11,6 @@
   "mode": "inscribe",
   "result": {
     "count": 1,
-    "id": "ae2federation:printed_nexus_circuit"
+    "id": "ae2federation:nexus_processor_press"
   }
 }

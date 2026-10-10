@@ -12,7 +12,9 @@ navigation:
 
 ## 1. 制作联结核心
 
-每个联邦设备都需要<ItemLink id="ae2federation:nexus_core" />。 先在<ItemLink id="ae2:inscriber" />中用<ItemLink id="ae2:logic_processor_press" />把末影珍珠压印成电路板， 再把电路板和红石粉、<ItemLink id="ae2:printed_silicon" />一起压制成<ItemLink id="ae2federation:nexus_processor" />。
+每个联邦设备都需要<ItemLink id="ae2federation:nexus_core" />。 先在<ItemLink id="ae2:inscriber" />中把<ItemLink id="ae2:engineering_processor_press" />、<ItemLink id="ae2:logic_processor_press" />和一颗末影珍珠压成<ItemLink id="ae2federation:nexus_processor_press" />， 再用它把末影珍珠压印成电路板， 然后把电路板和红石粉、<ItemLink id="ae2:printed_silicon" />一起压制成<ItemLink id="ae2federation:nexus_processor" />。
+
+<Recipe id="ae2federation:nexus_processor_press" />
 
 <RecipeFor id="ae2federation:printed_nexus_circuit" />
 

@@ -15,7 +15,9 @@ The [recipe resources](../../common/src/main/resources/data/ae2federation/recipe
 
 | Output | Inputs | Method |
 |---|---|---|
-| 1 Printed Nexus Circuit | 1 Ender Pearl (`c:ender_pearls`) under the Inscriber Logic Press | Inscriber, inscribe mode: the press stays, like AE2's Printed Logic Circuit |
+| 1 Inscriber Nexus Press | 1 Inscriber Engineering Press (top) + 1 Ender Pearl (`c:ender_pearls`, middle) + 1 Inscriber Logic Press (bottom); top and bottom may swap | Inscriber, press mode: both presses are spent, like Advanced AE's Quantum Press. Not in `ae2:inscriber_presses`, so meteorites do not drop it |
+| 1 Inscriber Nexus Press | 1 Block of Iron under the Inscriber Nexus Press | Inscriber, inscribe mode: the press stays, the copy every AE2 press has |
+| 1 Printed Nexus Circuit | 1 Ender Pearl (`c:ender_pearls`) under the Inscriber Nexus Press | Inscriber, inscribe mode: the press stays, like AE2's Printed Logic Circuit |
 | 1 Nexus Processor | 1 Printed Nexus Circuit + 1 Redstone Dust (`c:dusts/redstone`) + 1 Printed Silicon | Inscriber: circuit on top, redstone in middle, silicon at bottom (top and bottom may swap); press mode consumes all inputs, like AE2's Logic Processor |
 | 2 Nexus Cores | 1 Fluix Crystal (`c:gems/fluix`) + 1 Ender Dust (`c:dusts/ender_pearl`) + 1 Nexus Processor | Shaped: one row in that order, like AE2's Formation Core |
 | 8 Federation Cables | 8 ME Glass Cables matching `ae2:glass_cable` + 1 Nexus Core | Shaped: core in center, cables around it |
@@ -34,8 +36,9 @@ For a first setup with two Switches and sixteen placed Federation Cables, starti
 the setup needs 24 Federation Cables (sixteen placed, eight in the two Switches), so three cable batches, and five
 Nexus Cores (three for the cables, two for the Switches), so three core batches from three circuits and three
 processors. This costs 24 native ME Glass Cables, three each of Ender Pearl, Redstone Dust, Printed Silicon, Fluix
-Crystal and Ender Dust, four Quartz Fibers, and two each of the native Storage Bus and ME Interface; the
-Inscriber Logic Press is kept. After placing the setup, one Nexus Core remains.
+Crystal and Ender Dust, four Quartz Fibers, and two each of the native Storage Bus and ME Interface, plus once an
+Inscriber Engineering Press, an Inscriber Logic Press and a fourth Ender Pearl for the Inscriber Nexus Press, which is
+kept. After placing the setup, one Nexus Core remains.
 This bill excludes the existing ME networks and manufacturing equipment, and does not expand native device recipes.
 
 ## In-game guide
