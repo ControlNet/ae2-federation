@@ -19,12 +19,12 @@ public final class CableModelGameTests {
     }
 
     /**
-     * A straight Federation Cable tube draws its end face unless the cable on that end is a straight tube too: the
-     * face covers the step where the tube meets a narrower dense arm, and between two tubes it would be a seam.
+     * Federation Cables join each other at the core's full width, so a cable's arm narrows only toward a Router,
+     * Provider or Endpoint front; a straight tube needs a cable on both ends.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 100, required = true, manualOnly = true)
-    public static void cableTubeEndsJoinOnlyStraightTubes(GameTestHelper helper) {
+    public static void cableNecksOnlyAtDevices(GameTestHelper helper) {
         for (int x = 0; x <= 5; x++) {
             for (var around : new BlockPos[] {A.east(x), A.east(x).above(), A.east(x).below(), A.east(x).north(),
                     A.east(x).south()}) {
@@ -36,24 +36,26 @@ public final class CableModelGameTests {
         var b = A.east(1);
         var c = A.east(2);
         var d = A.east(3);
-        helper.assertTrue(!joins(helper, b, Direction.WEST) && joins(helper, b, Direction.EAST),
-                "B must close its end toward the row's end and stay open toward the tube C");
-        helper.assertTrue(joins(helper, c, Direction.WEST) && !joins(helper, c, Direction.EAST),
-                "C must stay open toward the tube B and close its end toward the row's end");
+        helper.assertTrue(kind(helper, A, Direction.EAST) == CableVisualConnections.CABLE,
+                "A must join the cable B at full width");
+        helper.assertTrue(straight(helper, b) && straight(helper, c), "B and C must be straight tubes");
 
-        helper.setBlock(c.above(), RouterRegistration.FEDERATION_CABLE.get());
-        helper.assertFalse(joins(helper, b, Direction.EAST), "B must close its end once C branches");
-
-        helper.setBlock(c.above(), Blocks.AIR);
         helper.setBlock(d, RouterRegistration.ROUTER.get());
-        helper.assertTrue(joins(helper, b, Direction.EAST) && !joins(helper, c, Direction.EAST),
-                "C must close its end against a Router, which is no tube");
-        PolicyEvidence.write("cabletubeendsjoinonlystraighttubes", 4, Map.of("tubeEnds", "artist-display"));
+        helper.assertTrue(kind(helper, c, Direction.EAST) == CableVisualConnections.DENSE,
+                "C must narrow toward the Router");
+        helper.assertTrue(straight(helper, b) && !straight(helper, c),
+                "B must stay a tube and C, beside the Router, must become a core");
+        PolicyEvidence.write("cablenecksonlyatdevices", 4, Map.of("necks", "devices-only"));
         helper.succeed();
     }
 
-    private static boolean joins(GameTestHelper helper, BlockPos cable, Direction side) {
-        return CableVisualConnections.joins(CableVisualConnections.model(helper.getLevel(), helper.absolutePos(cable)),
-                side);
+    private static int kind(GameTestHelper helper, BlockPos cable, Direction side) {
+        return CableVisualConnections.kind(CableVisualConnections.connections(helper.getLevel(),
+                helper.absolutePos(cable)), side);
+    }
+
+    private static boolean straight(GameTestHelper helper, BlockPos cable) {
+        return CableVisualConnections.straight(CableVisualConnections.connections(helper.getLevel(),
+                helper.absolutePos(cable)));
     }
 }

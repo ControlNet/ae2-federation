@@ -44,26 +44,28 @@ prototype behavior.
 Since 2026-10-09 the Federation Cable copies the model of AE2's dense cable. `FederationCableBuilder` is adapted from
 AE2 19.2.17's `CableBuilder` and from AE2 Lightning Tech Reborn's `OverloadedCableRenderHelper` (both LGPL-3.0; the
 file keeps their notice) and draws with AE2's own `appeng.client.render.cablebus.CubeBuilder`, an AE2 class outside
-its API package. A Federation Cable, a Router, and a Provider or Endpoint front get a dense arm; AE2 would shrink the
-arm to a smart machine to a covered one with a cap, but at the artist's request a Federation machine's port joins the
-cable as a Router does. A Federation P2P tunnel, a part on another cable bus, gets AE2's thin covered arm. Two opposite
-dense connections and nothing else make one straight tube, so a cable between a Router and a Provider front is one.
+its API package. Since 2026-10-10 (user decision) Federation Cables join each other at the core's full width, so a run
+has no step, and the narrower dense arm marks only where a cable meets a Router or a Provider or Endpoint front. AE2
+would shrink the arm to a smart machine to a covered one with a cap, but at the artist's request a Federation
+machine's port joins the cable as a Router does. A Federation P2P tunnel, a part on another cable bus, gets AE2's thin
+covered arm. Two opposite cable connections and nothing else make one straight tube; a cable beside a machine is a
+core with a dense arm toward it.
 
 | Piece | Size (voxels) | Texture |
 | --- | --- | --- |
 | Core | 12 (2 to 14) | `part/cable/dense/core` |
-| Dense arm | 10 across (3 to 13), from the core to the face | `part/cable/dense/line` |
+| Cable arm | 12 across (2 to 14), from the core to the face | `part/cable/dense/line` |
+| Dense arm (Router, Provider, Endpoint) | 10 across (3 to 13), from the core to the face | `part/cable/dense/line` |
 | Straight tube | 12 across, the whole block | `part/cable/dense/line` |
 | Covered arm (P2P) | 4 across (6 to 10), from the core to the face | `part/cable/dense/core` |
 
 `CableShapes` uses the same boxes for the outline.
 
 The shell is translucent so the BER flow shows through it: arms start at the core's surface, and a straight tube stays
-inside its block. As in the artist's `cable_display` model, a straight tube draws its end face, which covers the step
-down to a neighbour's narrower dense arm, except where the next cable is a straight tube too, so a run has no seams.
-That reads two blocks along the tube, and the client redraws only within one block of a change, so a cable whose
-straightness changes redraws the blocks around it (`FederationCableBlockEntity.flowMask`). The item is a closed
-north-south tube.
+inside its block. Where two cables meet nothing is drawn across the tube, neither a tube's end face nor the core's
+side toward a cable, so a run shows no seam ring through the glass. (The artist's `cable_display` rule, an end face
+toward a non-tube neighbour, covered the old 12-to-10 voxel step between cables; with no step left it never applies.)
+The item is a closed north-south tube.
 
 **Textures.** The artist's interim dense textures are wired in `CableBakedModel.builder()` and listed as code-drawn in
 `validate_assets.py`. `part/cable/dense/{connector,collar,stream_u,stream_v}` and the old
