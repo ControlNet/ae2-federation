@@ -39,6 +39,7 @@ you switch a rule on.
   [Remote Crafting](remote-processing.md).
 * **Re-export** (the third state) passes access along a chain: if A uses B's storage and B uses C's storage with Re-export, A can reach
   C's storage through B. Crafting works the same way, and two networks may each craft with the other's providers.
+  The chain may cross from one domain to the next, for example over two Bridges; see [Across Domains](across-domains.md).
 * **ME power** has one switch for the pair, and energy flows both ways, as with a <ItemLink id="ae2:quartz_fiber" />.
   Pools join up: if A shares with B and B with C, all three share one pool. Each network needs a Switch face or a
   Bridge for this; a network that reaches the domain only through a Pattern Provider front cannot join the pool.
