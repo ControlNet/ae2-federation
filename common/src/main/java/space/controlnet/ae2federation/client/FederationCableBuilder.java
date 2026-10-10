@@ -21,13 +21,14 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
  * Builds a Federation Cable's translucent quads as AE2 builds a dense cable's, at the artist's sizes: a 12-voxel
- * core, 10-voxel dense arms to other Federation Cables, Routers and Provider or Endpoint fronts, 4-voxel covered arms
- * to Federation P2P tunnels, and one 12-voxel tube for a straight dense line.
+ * core, 12-voxel arms to other Federation Cables, 10-voxel dense arms to Routers and Provider or Endpoint fronts,
+ * 4-voxel covered arms to Federation P2P tunnels, and one 12-voxel tube for a straight line of cables.
  *
  * <p>The layout is AE2's. Unlike AE2's opaque cable, the shell is translucent so the flow renderer shows through
  * it, so an arm starts at the core's surface instead of inside the core, and a straight tube does not reach past the
- * block (AE2 lets it, against facades, which a Federation Cable has none of). As in the artist's display model, a
- * straight tube's end face is left out where the next cable is a straight tube too.
+ * block (AE2 lets it, against facades, which a Federation Cable has none of). Cables meet at full width, so no face
+ * is drawn where two cables meet: neither a tube's end nor the core's side toward a cable, which would show through
+ * the glass as a seam.
  */
 final class FederationCableBuilder {
     private final TextureAtlasSprite core;
@@ -38,21 +39,22 @@ final class FederationCableBuilder {
         this.line = line;
     }
 
-    /** The world quads for {@code connections}, as {@link CableVisualConnections#model} encodes them. */
+    /** The world quads for {@code connections}, as {@link CableVisualConnections#connections} encodes them. */
     List<BakedQuad> build(int connections) {
         var quads = new ArrayList<BakedQuad>();
         if (CableVisualConnections.straight(connections)) {
             var facing = CableVisualConnections.DIRECTIONS[
                     Integer.numberOfTrailingZeros(CableVisualConnections.maskOf(connections))];
-            // An end face covers the step down to a neighbour's narrower dense arm; between two tubes it is left out.
-            var faces = EnumSet.allOf(Direction.class);
-            faces.removeIf(side -> CableVisualConnections.joins(connections, side));
-            addStraightDenseConnection(facing, faces, quads);
+            // Both ends run on into another cable at full width, so neither end face is drawn.
+            addStraightDenseConnection(facing, EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())), quads);
             return List.copyOf(quads);
         }
-        addDenseCore(quads);
+        var coreFaces = EnumSet.allOf(Direction.class);
+        coreFaces.removeIf(side -> CableVisualConnections.kind(connections, side) == CableVisualConnections.CABLE);
+        addDenseCore(coreFaces, quads);
         for (var facing : CableVisualConnections.DIRECTIONS) {
             switch (CableVisualConnections.kind(connections, facing)) {
+                case CableVisualConnections.CABLE -> addCableConnection(facing, quads);
                 case CableVisualConnections.DENSE -> addDenseConnection(facing, quads);
                 case CableVisualConnections.COVERED -> addCoveredConnection(facing, quads);
                 default -> {
@@ -69,10 +71,19 @@ final class FederationCableBuilder {
         return List.copyOf(quads);
     }
 
-    private void addDenseCore(List<BakedQuad> quadsOut) {
+    private void addDenseCore(EnumSet<Direction> faces, List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
+        cubeBuilder.setDrawFaces(faces);
         cubeBuilder.setTexture(core);
         cubeBuilder.addCube(2, 2, 2, 14, 14, 14);
+    }
+
+    private void addCableConnection(Direction facing, List<BakedQuad> quadsOut) {
+        var cubeBuilder = new CubeBuilder(quadsOut);
+        // Only the sides: the inner end meets the core and the outer end meets the next cable, both at full width
+        cubeBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing, facing.getOpposite())));
+        cubeBuilder.setTexture(line);
+        addCableSizedCube(facing, cubeBuilder);
     }
 
     private void addDenseConnection(Direction facing, List<BakedQuad> quadsOut) {
@@ -181,6 +192,18 @@ final class FederationCableBuilder {
             case SOUTH -> cubeBuilder.addCube(3, 3, 14, 13, 13, 16);
             case UP -> cubeBuilder.addCube(3, 14, 3, 13, 16, 13);
             case WEST -> cubeBuilder.addCube(0, 3, 3, 2, 13, 13);
+        }
+    }
+
+    // Adds a cube to the given cube builder that is as wide as the core, from the core of the cable to the given face
+    private static void addCableSizedCube(Direction facing, CubeBuilder cubeBuilder) {
+        switch (facing) {
+            case DOWN -> cubeBuilder.addCube(2, 0, 2, 14, 2, 14);
+            case EAST -> cubeBuilder.addCube(14, 2, 2, 16, 14, 14);
+            case NORTH -> cubeBuilder.addCube(2, 2, 0, 14, 14, 2);
+            case SOUTH -> cubeBuilder.addCube(2, 2, 14, 14, 14, 16);
+            case UP -> cubeBuilder.addCube(2, 14, 2, 14, 16, 14);
+            case WEST -> cubeBuilder.addCube(0, 2, 2, 2, 14, 14);
         }
     }
 

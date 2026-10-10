@@ -12,10 +12,12 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
 /**
  * Read-only projection of the stateless Federation port registrations onto a chunk snapshot.
  *
- * <p>A Federation Cable renders as AE2's dense cable. Another Federation Cable, a Router, and a Provider or Endpoint
- * front all get a dense connection. AE2 would shrink the connection to a smart machine such as its Pattern Provider
- * to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a Router does.
- * A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered connection.
+ * <p>A Federation Cable renders as AE2's dense cable. Another Federation Cable joins it at the core's full width, so
+ * cables run on without a step. A Router, and a Provider or Endpoint front, get a dense connection, a narrower arm
+ * that marks where the cable meets a machine. AE2 would shrink the connection to a smart machine such as its Pattern
+ * Provider to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a
+ * Router does. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
+ * connection.
  */
 public final class CableVisualConnections {
     public static final Direction[] DIRECTIONS = {
@@ -23,18 +25,14 @@ public final class CableVisualConnections {
     };
     /** Not connected on that side. */
     public static final int NONE = 0;
-    /** A dense connection: another Federation Cable, a Router, or a Provider or Endpoint front. */
+    /** A dense connection: a Router, or a Provider or Endpoint front. */
     public static final int DENSE = 1;
     /** A covered connection to a part on another cable bus: a Federation P2P tunnel's front. */
     public static final int COVERED = 2;
+    /** A connection to another Federation Cable, as wide as the core. */
+    public static final int CABLE = 3;
     /** How many distinct connection sets there are: two bits per side. */
     public static final int COUNT = 1 << (2 * 6);
-    /** Model bit: a straight tube's end toward its first side (east, up or south) runs on into another straight tube. */
-    public static final int JOINS_FIRST = COUNT;
-    /** Model bit: a straight tube's end toward its second side (west, down or north) runs on into another straight tube. */
-    public static final int JOINS_SECOND = COUNT << 1;
-    /** How many distinct model keys there are: a connection set and the two tube-end bits. */
-    public static final int MODEL_COUNT = COUNT << 2;
 
     private CableVisualConnections() {
     }
@@ -46,30 +44,6 @@ public final class CableVisualConnections {
             connections = with(connections, direction, kind(level, position, direction));
         }
         return connections;
-    }
-
-    /**
-     * The connections plus, for one straight tube, which ends run on into another straight tube. A tube draws its end
-     * face, which covers the step down to a neighbour's narrower dense arm, only where the neighbour is no straight
-     * tube; between two tubes the face would be a seam. This reads the neighbours' neighbours, so a cable whose
-     * straightness changes redraws the cables beside it ({@code FederationCableBlockEntity#flowMask}).
-     */
-    public static int model(BlockGetter level, BlockPos position) {
-        int connections = connections(level, position);
-        if (!straight(connections)) return connections;
-        var first = DIRECTIONS[Integer.numberOfTrailingZeros(maskOf(connections))];
-        if (straightCable(level, position.relative(first))) connections |= JOINS_FIRST;
-        if (straightCable(level, position.relative(first.getOpposite()))) connections |= JOINS_SECOND;
-        return connections;
-    }
-
-    /** Whether a straight tube's end toward {@code side} runs on into another straight tube, so it has no end face. */
-    public static boolean joins(int model, Direction side) {
-        if (!straight(model)) return false;
-        int first = Integer.numberOfTrailingZeros(maskOf(model));
-        if (side == DIRECTIONS[first]) return (model & JOINS_FIRST) != 0;
-        if (side == DIRECTIONS[first + 1]) return (model & JOINS_SECOND) != 0;
-        return false;
     }
 
     /** Which sides connect, one bit per side in {@link #DIRECTIONS} order. */
@@ -95,20 +69,16 @@ public final class CableVisualConnections {
     }
 
     /**
-     * Whether the cable is one straight dense tube: exactly two opposite dense connections, as AE2's
-     * {@code CableBusBakedModel.isStraightLine} asks of a cable with no attachments.
+     * Whether the cable is one straight tube: exactly two opposite connections, both to other cables, as AE2's
+     * {@code CableBusBakedModel.isStraightLine} asks of a cable with no attachments. A cable beside a machine is a
+     * core with a narrower arm toward it instead.
      */
     public static boolean straight(int connections) {
         int mask = maskOf(connections);
         if (Integer.bitCount(mask) != 2) return false;
         int first = Integer.numberOfTrailingZeros(mask);
         if ((first & 1) != 0 || (mask & (2 << first)) == 0) return false;
-        return kind(connections, DIRECTIONS[first]) == DENSE && kind(connections, DIRECTIONS[first + 1]) == DENSE;
-    }
-
-    private static boolean straightCable(BlockGetter level, BlockPos position) {
-        return level.getBlockState(position).getBlock() instanceof FederationCableBlock
-                && straight(connections(level, position));
+        return kind(connections, DIRECTIONS[first]) == CABLE && kind(connections, DIRECTIONS[first + 1]) == CABLE;
     }
 
     private static int bit(Direction side) {
@@ -125,7 +95,8 @@ public final class CableVisualConnections {
     private static int kind(BlockGetter level, BlockPos position, Direction direction) {
         var neighbor = level.getBlockState(position.relative(direction));
         var block = neighbor.getBlock();
-        if (block instanceof FederationCableBlock || block instanceof RouterBlock) return DENSE;
+        if (block instanceof FederationCableBlock) return CABLE;
+        if (block instanceof RouterBlock) return DENSE;
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
