@@ -4,16 +4,24 @@ import appeng.api.config.Actionable;
 import appeng.api.ids.AEComponents;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.crafting.CalculationStrategy;
+import appeng.api.networking.crafting.ICraftingPlan;
+import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.parts.PartHelper;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.util.AEColor;
+import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.qnb.QuantumBridgeBlockEntity;
 import appeng.blockentity.storage.DriveBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.core.definitions.AEParts;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,8 +29,12 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import space.controlnet.ae2federation.bridge.BridgeRegistration;
+import space.controlnet.ae2federation.bridge.MultipartBridgePart;
+import space.controlnet.ae2federation.crafting.projection.CraftingProjectionService;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.identity.NetworkId;
@@ -35,7 +47,9 @@ import space.controlnet.ae2federation.policy.PolicyMutationResult;
 import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
+import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.crafting.BridgeChainFixture;
 import space.controlnet.ae2federation.test.world.OtherDimensionSite;
 import space.controlnet.ae2federation.test.world.QuantumBridges;
 
@@ -53,6 +67,10 @@ import space.controlnet.ae2federation.test.world.QuantumBridges;
  * origin (0, 0, 1): the outpost's terminal on a cable at x 0 under its Switch, the front cable at x 1, the tunnel's bus
  * at x 2 with the tunnel on its west side, and the bridge at x 3-5. The nether half is built after the base has settled
  * and gets its singularity later still, so the Quantum link joins two halves that already exist.
+ * <p>
+ * {@link #advanceFactory()} then adds the page's factory east of the base: a cable of the base's at x 7 carries a
+ * Bridge whose outer side meets the factory's cable at x 8, and the factory's pattern provider at x 9 has a Molecular
+ * Assembler on top. The outpost gets a crafting CPU at nether x 1, beside its terminal's cable.
  */
 public final class QuantumP2POutpostScene implements AutoCloseable {
     public static final BlockPos SITE_SIZE = new BlockPos(7, 4, 3);
@@ -71,6 +89,14 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
     private static final BlockPos OUTPOST_FRONT = NETHER.offset(1, 1, 0);
     private static final BlockPos OUTPOST_BUS = NETHER.offset(2, 1, 0);
     private static final BlockPos OUTPOST_LINK = NETHER.offset(4, 1, 0);
+    // The factory of "Order from the base's factory": a cable of the base's east of its energy cell carries the Bridge,
+    // whose outer side meets the factory's own cable; the factory is a pattern provider with a Molecular Assembler.
+    private static final BlockPos BASE_BRIDGE_CABLE = OVERWORLD.offset(7, 1, 0);
+    private static final BlockPos FACTORY_CABLE = OVERWORLD.offset(8, 1, 0);
+    private static final BlockPos FACTORY_PROVIDER = OVERWORLD.offset(9, 1, 0);
+    private static final BlockPos FACTORY_ASSEMBLER = FACTORY_PROVIDER.above();
+    /** The outpost's crafting CPU, beside its terminal's cable and under the Nether Federation cable. */
+    private static final BlockPos OUTPOST_CPU = NETHER.offset(1, 0, 0);
     /** Ticks a half waits before the next step, so that its nodes are established when the link joins them. */
     private static final int SETTLE = 20;
 
@@ -80,6 +106,13 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
     private final long frequency;
     private int step;
     private long steppedAt;
+    private int factoryStep;
+    private long factorySteppedAt;
+    private MultipartBridgePart factoryBridge;
+    private NetworkId factoryNetwork;
+    private final Set<PolicyKey> configured = new LinkedHashSet<>();
+    private Future<ICraftingPlan> planFuture;
+    private ICraftingPlan plan;
 
     public QuantumP2POutpostScene(GameTestHelper helper) {
         this.helper = helper;
@@ -166,6 +199,180 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
                     .insert(IRON, 9, Actionable.MODULATE, IActionSource.empty()), 9L, "The base takes the iron");
             next();
         }
+    }
+
+    /**
+     * Once {@link #advance()} has joined the outpost to the base, builds the factory one step per call: the outpost's
+     * crafting CPU and the factory's network, then the Bridge between the base and the factory, then the rules (the
+     * factory runs on the base's power; the base uses the factory's Storage and Crafting with re-export; the outpost
+     * uses the base's Crafting), then the planks pattern. Fails until the base can order the factory's planks.
+     */
+    public void advanceFactory() {
+        if (factoryStep == 0) {
+            helper.assertTrue(step == 5, "The outpost must share the base's domain before the factory is built");
+            site.setBlock(OUTPOST_CPU, AEBlocks.CRAFTING_STORAGE_1K.block().defaultBlockState());
+            QuantumBridges.seed(site.getBlockEntity(OUTPOST_CPU), network(outpostGrid()));
+            helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(BASE_BRIDGE_CABLE), null, null,
+                    AEParts.GLASS_CABLE.item(AEColor.PURPLE)) != null, "The base's cable must be placed");
+            helper.assertTrue(PartHelper.setPart(helper.getLevel(), helper.absolutePos(FACTORY_CABLE), null, null,
+                    AEParts.GLASS_CABLE.item(AEColor.YELLOW)) != null, "The factory's cable must be placed");
+            helper.setBlock(FACTORY_PROVIDER, AEBlocks.PATTERN_PROVIDER.block());
+            helper.setBlock(FACTORY_ASSEMBLER, AEBlocks.MOLECULAR_ASSEMBLER.block());
+            nextFactory();
+        }
+        if (factoryStep == 1) {
+            helper.assertTrue(factorySettled() && network(factoryGrid()) != null,
+                    "Waiting for the factory to settle as a network of its own");
+            helper.assertTrue(factoryGrid() != baseGrid(), "The factory must not join the base");
+            factoryNetwork = network(factoryGrid());
+            factoryBridge = PartHelper.setPart(helper.getLevel(), helper.absolutePos(BASE_BRIDGE_CABLE), Direction.EAST,
+                    null, BridgeRegistration.BRIDGE.get());
+            helper.assertTrue(factoryBridge != null, "The Bridge must be placed on the base's cable, facing the factory");
+            nextFactory();
+        }
+        if (factoryStep == 2) {
+            factoryBridge.onUpdateShape(factoryBridge.getSide());
+            helper.assertTrue(factoryBridge.membershipCandidate().isPresent(),
+                    "Waiting for the Bridge to join the base and the factory: " + factoryBridge.operationalReason());
+            helper.assertTrue(twoDomainsMeetAtBase(), "Waiting for two domains that meet only at the base");
+            rule(new PolicyKey(factoryNetwork, network(baseGrid()), PolicyCapability.ME_POWER),
+                    PolicyRule.enabled(Set.of(PolicyOperation.SUPPLY)));
+            rule(new PolicyKey(network(baseGrid()), factoryNetwork, PolicyCapability.STORAGE),
+                    PolicyRule.storageDefaults().withMode(RuleMode.REEXPORT));
+            factoryCrafting(RuleMode.REEXPORT);
+            rule(key(PolicyCapability.CRAFTING), PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)));
+            nextFactory();
+        }
+        if (factoryStep == 3) {
+            helper.assertTrue(factoryGrid() != null && factoryGrid().getEnergyService().isNetworkPowered(),
+                    "Waiting for the factory to run on the base's power");
+            helper.assertValueEqual(outpostCpus(), 1, "Waiting for the outpost's crafting CPU");
+            var provider = helper.<PatternProviderBlockEntity>getBlockEntity(FACTORY_PROVIDER);
+            provider.getLogic().getPatternInv().addItems(BridgeChainFixture.planksPattern(helper.getLevel()));
+            provider.getLogic().updatePatterns();
+            nextFactory();
+        }
+        if (factoryStep == 4) {
+            helper.assertTrue(baseCanCraft(BridgeChainFixture.planks()), "Waiting for the factory's planks on the base");
+        }
+    }
+
+    /** Steps "Base uses Factory's" Crafting to {@code mode}; its Storage stays as it is. */
+    public void factoryCrafting(RuleMode mode) {
+        rule(new PolicyKey(network(baseGrid()), factoryNetwork, PolicyCapability.CRAFTING),
+                PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withMode(mode));
+    }
+
+    public boolean outpostCanCraft(AEItemKey key) {
+        return outpostGrid().getCraftingService().isCraftable(key);
+    }
+
+    public boolean baseCanCraft(AEItemKey key) {
+        return baseGrid().getCraftingService().isCraftable(key);
+    }
+
+    /** The factory's pattern providers projected onto the outpost's Grid, through the base's re-export. */
+    public int outpostProjections() {
+        return CraftingProjectionService.get(helper.getLevel()).projectionCount(network(outpostGrid()), factoryNetwork);
+    }
+
+    public int outpostCpus() {
+        return outpostGrid().getCraftingService().getCpus().size();
+    }
+
+    public int baseCpus() {
+        return baseGrid().getCraftingService().getCpus().size();
+    }
+
+    public long busyOutpostCpus() {
+        return outpostGrid().getCraftingService().getCpus().stream().filter(cpu -> cpu.isBusy()).count();
+    }
+
+    /** What the outpost's terminal lists of {@code key}. */
+    public long outpostSees(AEItemKey key) {
+        return outpostGrid().getStorageService().getInventory().getAvailableStacks().get(key);
+    }
+
+    /** What the base's terminal would list of {@code key}: its drive, as the factory stores nothing. */
+    public long baseSees(AEItemKey key) {
+        return baseGrid().getStorageService().getInventory().getAvailableStacks().get(key);
+    }
+
+    /** Puts {@code amount} of {@code key} into the base's storage. */
+    public void stockBase(AEItemKey key, long amount) {
+        helper.assertValueEqual(baseGrid().getStorageService().getInventory().insert(key, amount, Actionable.MODULATE,
+                IActionSource.empty()), amount, "The base takes the items");
+    }
+
+    /** Starts a calculation on the outpost's own crafting service, as its crafting terminal does. */
+    public void beginOnOutpost(AEItemKey what, long amount) {
+        plan = null;
+        var node = outpostNode();
+        ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
+            @Override
+            public IActionSource getActionSource() {
+                return IActionSource.empty();
+            }
+
+            @Override
+            public IGridNode getGridNode() {
+                return node;
+            }
+        };
+        planFuture = outpostGrid().getCraftingService().beginCraftingCalculation(helper.getLevel(), requester, what,
+                amount, CalculationStrategy.REPORT_MISSING_ITEMS);
+    }
+
+    /** The outpost's plan once calculated, or null while it is still being worked out. */
+    public ICraftingPlan plan() {
+        if (plan == null && planFuture != null && planFuture.isDone()) {
+            try {
+                plan = planFuture.get();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Calculation interrupted", exception);
+            } catch (ExecutionException exception) {
+                throw new IllegalStateException("Calculation failed", exception);
+            }
+        }
+        return plan;
+    }
+
+    /** Submits the outpost's plan, which the outpost's own CPU then runs. */
+    public boolean submitOnOutpost() {
+        return outpostGrid().getCraftingService().submitJob(plan, null, null, true, IActionSource.empty()).successful();
+    }
+
+    /** The outpost and the base in one domain, the base and the factory in another, the outpost not with the factory. */
+    private boolean twoDomainsMeetAtBase() {
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        var outpost = registry.federationdomainsFor(network(outpostGrid()));
+        var base = registry.federationdomainsFor(network(baseGrid()));
+        var factory = registry.federationdomainsFor(factoryNetwork);
+        return outpost.size() == 1 && base.size() == 2 && factory.size() == 1 && base.containsAll(outpost)
+                && base.containsAll(factory) && outpost.stream().noneMatch(factory::contains);
+    }
+
+    private void rule(PolicyKey key, PolicyRule rule) {
+        var policies = PolicyService.get(helper.getLevel());
+        var result = policies.edit(new PolicyEdit(key, policies.revision(key), rule));
+        helper.assertTrue(result instanceof PolicyMutationResult.Accepted, "The rule must be accepted: " + key + " "
+                + result);
+        configured.add(key);
+    }
+
+    private void nextFactory() {
+        factoryStep++;
+        factorySteppedAt = helper.getTick();
+    }
+
+    private boolean factorySettled() {
+        return helper.getTick() - factorySteppedAt >= SETTLE;
+    }
+
+    private IGrid factoryGrid() {
+        var node = helper.<PatternProviderBlockEntity>getBlockEntity(FACTORY_PROVIDER).getMainNode().getNode();
+        return node == null ? null : node.getGrid();
     }
 
     private void next() {
@@ -278,8 +485,25 @@ public final class QuantumP2POutpostScene implements AutoCloseable {
         return terminal == null ? null : terminal.getGridNode();
     }
 
+    /**
+     * Switches off the rules the factory steps set and takes the factory away again: these networks reach past the
+     * test structure, and live rules and a Bridge would keep their mounts and projections for later tests.
+     */
     @Override
     public void close() {
-        site.close();
+        try {
+            var policies = PolicyService.get(helper.getLevel());
+            for (var key : configured) {
+                policies.configured(key).filter(record -> record.rule().enabled()).ifPresent(record -> policies.edit(
+                        new PolicyEdit(key, record.revision(), record.rule().withEnabled(false))));
+            }
+            if (factoryStep > 0) {
+                for (var position : List.of(FACTORY_ASSEMBLER, FACTORY_PROVIDER, FACTORY_CABLE, BASE_BRIDGE_CABLE)) {
+                    helper.setBlock(position, Blocks.AIR);
+                }
+            }
+        } finally {
+            site.close();
+        }
     }
 }

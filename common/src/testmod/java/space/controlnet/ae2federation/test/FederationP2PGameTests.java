@@ -17,9 +17,11 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.identity.IdentityStatus;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
+import space.controlnet.ae2federation.policy.RuleMode;
 import space.controlnet.ae2federation.processing.claim.ClaimState;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.RouterRegistration;
+import space.controlnet.ae2federation.test.crafting.BridgeChainFixture;
 import space.controlnet.ae2federation.test.p2p.FederationP2PScene;
 import space.controlnet.ae2federation.test.p2p.QuantumP2POutpostScene;
 import space.controlnet.ae2federation.test.p2p.QuantumP2PProviderScene;
@@ -320,6 +322,67 @@ public final class FederationP2PGameTests {
                     "The base's identity must be settled again");
             PolicyEvidence.write("p2pnetheroutpost", 8, Map.of("outpostIron", "9", "outpostPowered", "true",
                     "linkBroken", "0", "restored", "9"));
+            scene.close();
+            helper.succeed();
+        });
+    }
+
+    /**
+     * The guide's "Order from the base's factory": the outpost's domain with the base, which the tunnels form, meets a
+     * second domain at the base, where a Bridge joins the base to a factory with a pattern provider and a Molecular
+     * Assembler. The base uses the factory's Crafting with re-export and the outpost uses the base's, so the outpost's
+     * own crafting CPU orders the factory's planks from the base's logs and the planks reach the outpost's terminal,
+     * with no rule, cable or Bridge between the outpost and the factory. Stepping the base's rule back to Enabled takes
+     * the recipe off the outpost while the base keeps it; re-export brings it back.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1600, required = true, manualOnly = true)
+    public static void p2pNetherOutpostOrdersFactory(GameTestHelper helper) {
+        var scene = new QuantumP2POutpostScene(helper);
+        var planks = BridgeChainFixture.planks();
+        var log = BridgeChainFixture.log();
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            scene.advance();
+            scene.advanceFactory();
+            if (phase[0] == 0) {
+                helper.assertValueEqual(scene.outpostProjections(), 1,
+                        "Waiting for the factory's pattern provider on the outpost through the base's re-export");
+                helper.assertTrue(scene.outpostCanCraft(planks), "The outpost can order the factory's planks");
+                helper.assertValueEqual(scene.outpostCpus(), 1, "The outpost has its own crafting CPU");
+                helper.assertValueEqual(scene.baseCpus(), 0, "The base has no crafting CPU");
+                scene.stockBase(log, 1);
+                scene.beginOnOutpost(planks, 4);
+                phase[0] = 1;
+            }
+            if (phase[0] == 1) {
+                helper.assertTrue(scene.plan() != null, "Waiting for the outpost's plan");
+                helper.assertFalse(scene.plan().simulation(), "The base's log must be enough for the outpost's plan");
+                helper.assertTrue(scene.submitOnOutpost(), "The outpost's own CPU must take the job");
+                phase[0] = 2;
+            }
+            if (phase[0] == 2) {
+                helper.assertValueEqual(scene.busyOutpostCpus(), 0L, "Waiting for the outpost's job to finish");
+                helper.assertValueEqual(scene.outpostSees(planks), 4L, "The planks must reach the outpost's terminal");
+                helper.assertValueEqual(scene.baseSees(planks), 4L, "The planks are stored in the base's drive");
+                helper.assertValueEqual(scene.outpostSees(log), 0L, "The base's log was used");
+                scene.factoryCrafting(RuleMode.ENABLED);
+                phase[0] = 3;
+            }
+            if (phase[0] == 3) {
+                helper.assertValueEqual(scene.outpostProjections(), 0,
+                        "Waiting for the factory's pattern provider to leave the outpost without re-export");
+                helper.assertFalse(scene.outpostCanCraft(planks), "Without re-export the outpost cannot order planks");
+                helper.assertTrue(scene.baseCanCraft(planks), "The base still orders the factory's planks");
+                scene.factoryCrafting(RuleMode.REEXPORT);
+                phase[0] = 4;
+            }
+            helper.assertValueEqual(scene.outpostProjections(), 1,
+                    "Waiting for the factory's pattern provider on the outpost again");
+            helper.assertTrue(scene.outpostCanCraft(planks), "The outpost orders the factory's planks again");
+            PolicyEvidence.write("p2pnetheroutpostordersfactory", 16, Map.of("domains", "2", "outpostCpus", "1",
+                    "baseCpus", "0", "planksAtOutpost", "4", "reachedWithoutReexport", "false",
+                    "baseKeepsRecipe", "true", "reachedAgain", "true", "factoryRulesFromOutpost", "0"));
             scene.close();
             helper.succeed();
         });

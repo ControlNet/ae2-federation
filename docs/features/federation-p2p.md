@@ -61,7 +61,10 @@ The following checks cover this feature:
   isolation, power loss and reload, across dimensions over a real Quantum Network Bridge, a moved output, an input
   taken off and replaced, and a channel shortage.
   `p2p.nether-outpost` builds the guide's Nether outpost in a player's order, with a separate carrier powered through a
-  quartz fiber, and breaks and restores the Quantum link.
+  quartz fiber, and breaks and restores the Quantum link. `p2p.nether-outpost-orders-factory` adds the page's factory:
+  a Bridge joins the base to a pattern provider network, so the outpost's domain meets a second one at the base, and
+  the outpost's own crafting CPU orders the factory's planks through the base's re-export; stepping it back to Enabled
+  takes the recipe off the outpost but not the base.
 - The `cross-dimension.*` manifest cases: a nether Federation Pattern Provider projected to an overworld consumer, a
   Provider and an Endpoint in different dimensions at the same coordinates (restart, broken link, replaced Endpoint,
   real chunk unload of either side) and a nether level close. See the

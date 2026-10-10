@@ -25,6 +25,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -331,13 +332,17 @@ public final class BridgeChainFixture implements AutoCloseable {
     }
 
     private ItemStack planksPattern() {
+        return planksPattern(helper.getLevel());
+    }
+
+    /** An AE2 crafting pattern that turns one oak log into four oak planks. */
+    public static ItemStack planksPattern(ServerLevel level) {
         var items = NonNullList.withSize(9, ItemStack.EMPTY);
         items.set(0, new ItemStack(Items.OAK_LOG));
         var input = CraftingInput.of(3, 3, items);
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, helper.getLevel())
-                .orElseThrow();
+        var recipe = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level).orElseThrow();
         return PatternDetailsHelper.encodeCraftingPattern(recipe, items.toArray(ItemStack[]::new),
-                recipe.value().assemble(input, helper.getLevel().registryAccess()), false, false);
+                recipe.value().assemble(input, level.registryAccess()), false, false);
     }
 
     /**

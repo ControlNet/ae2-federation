@@ -6767,6 +6767,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'p2p.across-dimensions-shares-networks':
                 case 'p2p.across-dimensions-drives-endpoint':
                 case 'p2p.nether-outpost':
+                case 'p2p.nether-outpost-orders-factory':
                 case 'p2p.frequency-and-input-changes':
                 case 'p2p.channel-shortage':
                     // Evidence was verified with the generic GameTest accounting when the child ran.
