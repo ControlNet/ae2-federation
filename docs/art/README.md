@@ -16,10 +16,11 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   directly; the generator no longer writes them. Language files are independently maintained.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow/fontTools). The optional game
   inspection tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
-- `tools/visual/build_canvas_font.py`: cuts the topology canvas's Chinese font, `font/canvas_cjk.ttf`, from Droid Sans
-  Fallback (Apache-2.0; `canvas_cjk.LICENSE.txt` next to it). `font/canvas.json` draws Chinese from it and everything
-  else from the default font. Rerun it when `zh_cn.json` gains a character outside GB2312; `CanvasFontContractTest`
-  fails until then.
+- `tools/visual/build_canvas_font.py`: draws the topology canvas's Chinese font, the bitmap sheet
+  `textures/font/canvas_cjk.png` and `font/canvas.json`, from Fusion Pixel Font 10px (OFL-1.1; licences in
+  `font/canvas_cjk_license.txt`). The canvas draws Chinese from it and everything else from the default font. The
+  source font is not in the repository; the script names its release. Rerun it when `zh_cn.json` gains a character
+  outside the sheet; `CanvasFontContractTest` fails until then.
 - `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates, as one of
   two connection kinds per side. Cable and Router accept all sides (dense); Provider and Endpoint only their facing
   (dense); a Federation P2P tunnel only its front (covered); vanilla AE2 blocks and Bridge are excluded.

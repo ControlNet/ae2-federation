@@ -6,20 +6,21 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * The topology canvas's font (font/canvas.json): Chinese from a vector font, which stays legible when the canvas is
- * zoomed out where Unifont's pixel glyphs blur, and everything else from the default font.
+ * The topology canvas's font (font/canvas.json): Chinese from a 10-pixel sheet at one texel per unit, which stays
+ * legible as far out as the Latin pixel font does where Unifont's 16-pixel glyphs blur, and everything else from the
+ * default font.
  */
 final class CanvasFont {
     static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("ae2federation", "canvas");
-    /** The vector font has no glyph below this; it is where CJK radicals, punctuation and ideographs begin. */
+    /** The sheet has no glyph below this; it is where CJK radicals, punctuation and ideographs begin. */
     private static final int CJK_START = 0x2E80;
 
     private CanvasFont() {
     }
 
     /**
-     * {@code text} in bold except its Chinese. Bold redraws a glyph one unit to the right: a pixel glyph gets thicker,
-     * but the vector font's strokes are thinner than that, so they show twice.
+     * {@code text} in bold except its Chinese. Bold redraws a glyph one unit to the right: a Latin glyph gets thicker,
+     * but a 10-pixel hanzi's strokes are one texel apart, so they merge into a block.
      */
     static MutableComponent boldExceptChinese(Component text) {
         var plain = text.getString();

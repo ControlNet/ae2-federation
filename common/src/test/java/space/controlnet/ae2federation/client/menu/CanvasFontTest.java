@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class CanvasFontTest {
     @Test
     void chineseInABoldNameIsNotBolded() {
-        // Bold redraws a glyph one unit to the right: a pixel glyph gets thicker, a vector glyph's thin strokes double.
+        // Bold redraws a glyph one unit to the right: a Latin glyph gets thicker, a hanzi's strokes one texel apart merge.
         assertEquals(List.of("网络:plain", " 0A1F:bold"), runs(CanvasFont.boldExceptChinese(Component.literal("网络 0A1F"))));
     }
 
