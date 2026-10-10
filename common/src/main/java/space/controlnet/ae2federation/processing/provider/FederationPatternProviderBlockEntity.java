@@ -406,6 +406,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         var block = level.getBlockState(position).getBlock();
         return block == ProcessingRegistration.ENDPOINT.get() || block == ProcessingRegistration.PROVIDER.get()
                 || block == space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+                || block == space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get()
                 || block == space.controlnet.ae2federation.router.RouterRegistration.FEDERATION_CABLE.get();
     }
 

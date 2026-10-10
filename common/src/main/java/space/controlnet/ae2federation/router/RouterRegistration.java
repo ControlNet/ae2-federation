@@ -25,14 +25,20 @@ public final class RouterRegistration {
 
     public static final DeferredBlock<RouterBlock> ROUTER = BLOCKS.registerBlock("router", RouterBlock::new,
             BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
+    /** Shares the Router's block and block entity code; see {@link RouterBlock}. */
+    public static final DeferredBlock<RouterBlock> SWITCH = BLOCKS.registerBlock("switch", RouterBlock::new,
+            BlockBehaviour.Properties.of().strength(4.0F).sound(SoundType.METAL));
     public static final DeferredBlock<FederationCableBlock> FEDERATION_CABLE = BLOCKS.registerBlock(
             "cable", FederationCableBlock::new,
             BlockBehaviour.Properties.of().strength(1.5F).sound(SoundType.GLASS).noOcclusion());
     public static final DeferredItem<BlockItem> ROUTER_ITEM = ITEMS.registerSimpleBlockItem(ROUTER, new Item.Properties());
+    public static final DeferredItem<BlockItem> SWITCH_ITEM = ITEMS.registerSimpleBlockItem(SWITCH, new Item.Properties());
     public static final DeferredItem<BlockItem> FEDERATION_CABLE_ITEM = ITEMS.registerSimpleBlockItem(
             FEDERATION_CABLE, new Item.Properties());
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RouterBlockEntity>> ROUTER_BLOCK_ENTITY =
             BLOCK_ENTITY_TYPES.register("router", () -> BlockEntityType.Builder.of(RouterBlockEntity::new, ROUTER.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RouterBlockEntity>> SWITCH_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("switch", () -> BlockEntityType.Builder.of(RouterBlockEntity::new, SWITCH.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FederationCableBlockEntity>>
             FEDERATION_CABLE_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register("cable",
                     () -> BlockEntityType.Builder.of(FederationCableBlockEntity::new, FEDERATION_CABLE.get()).build(null));
@@ -62,9 +68,10 @@ public final class RouterRegistration {
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(AECapabilities.IN_WORLD_GRID_NODE_HOST, ROUTER_BLOCK_ENTITY.get(),
-                (router, context) -> router);
-        event.registerBlockEntity(FederationPortCapability.BLOCK, ROUTER_BLOCK_ENTITY.get(), RouterBlockEntity::federationDomainPort);
+        for (var type : java.util.List.of(ROUTER_BLOCK_ENTITY.get(), SWITCH_BLOCK_ENTITY.get())) {
+            event.registerBlockEntity(AECapabilities.IN_WORLD_GRID_NODE_HOST, type, (router, context) -> router);
+            event.registerBlockEntity(FederationPortCapability.BLOCK, type, RouterBlockEntity::federationDomainPort);
+        }
         event.registerBlock(FederationPortCapability.BLOCK,
                 (level, position, state, blockEntity, face) -> face == null
                         ? null

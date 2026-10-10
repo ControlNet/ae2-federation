@@ -5,20 +5,29 @@
     "C": {
       "item": "ae2federation:cable"
     },
-    "F": {
-      "tag": "c:gems/fluix"
+    "E": {
+      "item": "ae2:export_bus"
+    },
+    "I": {
+      "item": "ae2:import_bus"
     },
     "L": {
       "item": "ae2federation:nexus_core"
+    },
+    "N": {
+      "item": "ae2:interface"
+    },
+    "S": {
+      "item": "ae2:storage_bus"
     }
   },
   "pattern": [
-    "CFC",
-    "FLF",
-    "CFC"
+    "CIC",
+    "SLN",
+    "CEC"
   ],
   "result": {
     "count": 4,
-    "id": "ae2federation:router"
+    "id": "ae2federation:switch"
   }
 }

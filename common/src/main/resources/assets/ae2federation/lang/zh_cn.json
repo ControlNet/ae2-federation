@@ -40,6 +40,7 @@
   "item.ae2federation.nexus_processor": "联结处理器",
   "item.ae2federation.nexus_core": "联结核心",
   "block.ae2federation.router": "ME联邦路由器",
+  "block.ae2federation.switch": "ME联邦交换机",
   "block.ae2federation.cable": "ME联邦线缆",
   "block.ae2federation.processing_endpoint": "ME联邦处理端点",
   "ae2federation.domain_policy": "ME联邦域",

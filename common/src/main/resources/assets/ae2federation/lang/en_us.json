@@ -40,6 +40,7 @@
   "item.ae2federation.printed_nexus_circuit": "Printed Nexus Circuit",
   "item.ae2federation.nexus_core": "Nexus Core",
   "block.ae2federation.router": "ME Federation Router",
+  "block.ae2federation.switch": "ME Federation Switch",
   "block.ae2federation.cable": "ME Federation Cable",
   "ae2federation.domain_policy": "ME Federation Domain",
   "ae2federation.pattern_provider": "ME Federation Pattern Provider",

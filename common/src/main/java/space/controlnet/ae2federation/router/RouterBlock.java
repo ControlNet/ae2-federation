@@ -18,6 +18,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 
+/**
+ * The Router and the Switch: both are this block, each with its own block entity type, and share all their code.
+ */
 public final class RouterBlock extends BaseEntityBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
 
@@ -52,7 +55,13 @@ public final class RouterBlock extends BaseEntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
             BlockEntityType<T> type) {
         return level.isClientSide() ? null
-                : createTickerHelper(type, RouterRegistration.ROUTER_BLOCK_ENTITY.get(), RouterBlockEntity::serverTick);
+                : createTickerHelper(type, blockEntityType(state), RouterBlockEntity::serverTick);
+    }
+
+    /** The Router's or the Switch's block entity type, whichever block {@code state} is. */
+    static BlockEntityType<RouterBlockEntity> blockEntityType(BlockState state) {
+        return state.is(RouterRegistration.SWITCH.get()) ? RouterRegistration.SWITCH_BLOCK_ENTITY.get()
+                : RouterRegistration.ROUTER_BLOCK_ENTITY.get();
     }
 
     @Override

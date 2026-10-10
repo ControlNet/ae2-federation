@@ -37,7 +37,7 @@ final class SurvivalRecipeContractTest {
         });
         assertEquals(Map.of("ae2federation:printed_nexus_circuit", 1, "ae2federation:nexus_processor", 1,
                 "ae2federation:nexus_core", 16, "ae2federation:bridge", 1, "ae2federation:router", 4,
-                "ae2federation:cable", 16, "ae2federation:pattern_provider", 1, "ae2federation:processing_endpoint", 1),
+                "ae2federation:switch", 4, "ae2federation:cable", 16, "ae2federation:pattern_provider", 1, "ae2federation:processing_endpoint", 1),
                 results);
     }
 
@@ -83,14 +83,23 @@ final class SurvivalRecipeContractTest {
     }
 
     @Test
-    void routerBatchHasCablesInTheCornersAndTheFourBusesAroundANexusCore() throws IOException {
-        var recipe = recipes().get("router");
+    void switchBatchHasCablesInTheCornersAndTheFourBusesAroundANexusCore() throws IOException {
+        var recipe = recipes().get("switch");
         assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
         assertTrue(recipe.contains("\"pattern\":[\"CIC\",\"SLN\",\"CEC\"]"));
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
                 + "\"E\":{\"item\":\"ae2:export_bus\"},\"I\":{\"item\":\"ae2:import_bus\"},"
                 + "\"L\":" + CORE + ",\"N\":{\"item\":\"ae2:interface\"},"
                 + "\"S\":{\"item\":\"ae2:storage_bus\"}}"));
+    }
+
+    @Test
+    void routerBatchHasCablesInTheCornersAndFluixAroundANexusCore() throws IOException {
+        var recipe = recipes().get("router");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"CFC\",\"FLF\",\"CFC\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
+                + "\"F\":{\"tag\":\"c:gems/fluix\"},\"L\":" + CORE + "}"), recipe);
     }
 
     @Test

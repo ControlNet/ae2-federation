@@ -38,7 +38,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     private @Nullable FederationDomainNodeEvidence publishedEvidence;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
-        super(RouterRegistration.ROUTER_BLOCK_ENTITY.get(), position, state);
+        super(RouterBlock.blockEntityType(state), position, state);
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);

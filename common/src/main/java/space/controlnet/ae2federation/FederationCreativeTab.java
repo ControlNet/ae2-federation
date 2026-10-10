@@ -22,6 +22,7 @@ public final class FederationCreativeTab {
                     .icon(() -> RouterRegistration.ROUTER_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
                         output.accept(RouterRegistration.ROUTER_ITEM.get());
+                        output.accept(RouterRegistration.SWITCH_ITEM.get());
                         output.accept(RouterRegistration.FEDERATION_CABLE_ITEM.get());
                         output.accept(ProcessingRegistration.PROVIDER_ITEM.get());
                         output.accept(ProcessingRegistration.ENDPOINT_ITEM.get());
