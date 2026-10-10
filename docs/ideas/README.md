@@ -23,6 +23,9 @@ Its name, appearance and detailed behavior remain undecided.
 - [Federation P2P](../features/federation-p2p.md): implemented a native AE2 P2P mode that carries Federation
   connectivity, including across dimensions. The [original discussion](../archive/ideas/federation-p2p.md) is
   archived for historical context.
+- [Federation Switch](../features/federation-switch.md): implemented the Switch, which attaches ME networks, and made
+  the Router Federation-only. The [original discussion](../archive/ideas/federation-switch.md) is archived for
+  historical context.
 
 ## Comparative research
 
