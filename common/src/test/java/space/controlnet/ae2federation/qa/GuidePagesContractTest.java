@@ -37,11 +37,12 @@ final class GuidePagesContractTest {
             "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md",
-            "items-blocks-machines/p2p_tunnels.md");
+            "items-blocks-machines/p2p_tunnels.md", "items-blocks-machines/quantum_bridge.md");
     private static final Set<String> AE2_ITEMS = Set.of("inscriber", "ender_dust", "printed_silicon", "quartz_fiber",
             "logic_processor_press", "fluix_crystal",
             "pattern_provider", "fluix_glass_cable", "network_tool", "molecular_assembler", "drive", "storage_bus",
-            "1k_crafting_storage", "energy_acceptor", "me_p2p_tunnel", "memory_card");
+            "1k_crafting_storage", "energy_acceptor", "me_p2p_tunnel", "memory_card", "quantum_ring",
+            "quantum_link", "quantum_entangled_singularity", "spatial_anchor");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
             Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",

@@ -19,7 +19,8 @@ item_ids:
 A Federation P2P tunnel carries <ItemLink id="ae2federation:cable" /> over an ME network. Tunnels on one frequency act as
 if Federation Cable ran between their fronts, so the Switches, Routers, Pattern Providers and Endpoints in front of them share
 one [Federation domain](../mechanics.md). It is a [P2P tunnel](ae2:items-blocks-machines/p2p_tunnels.md) like AE2's
-own: it crosses a base without a cable run, and goes into another dimension through a Quantum Network Bridge.
+own: it crosses a base without a cable run, and goes into another dimension through a Quantum Network Bridge, as in
+[An Outpost in the Nether](../examples/nether-outpost.md).
 
 ## Getting one
 
@@ -47,7 +48,7 @@ other too, as long as the input works.
     Tunnel output: its front on the Federation Cable to network B's Switch
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="5 0.3 0.3" max="7 0.7 0.7">
-    Network A's cable carries the tunnel; it could run across the base, or through a Quantum Network Bridge
+    Network A's cable carries the tunnel across the base; to go through a Quantum Network Bridge, give the tunnels a network of their own
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>

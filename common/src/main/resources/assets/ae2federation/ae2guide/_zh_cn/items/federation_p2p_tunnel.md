@@ -16,7 +16,7 @@ item_ids:
   <ImportStructure src="../assets/p2p_tunnel_part.snbt" />
 </GameScene>
 
-联邦P2P通道借助ME网络传送<ItemLink id="ae2federation:cable" />。 同一频率的通道就像正面之间连着联邦线缆， 它们正面的交换机、 路由器、 样板供应器和处理端点同属一个[联邦域](../mechanics.md)。 它和AE2自己的[P2P通道](ae2:items-blocks-machines/p2p_tunnels.md)一样： 不用拉线就能跨越基地， 也能通过量子网络桥进入另一个维度。
+联邦P2P通道借助ME网络传送<ItemLink id="ae2federation:cable" />。 同一频率的通道就像正面之间连着联邦线缆， 它们正面的交换机、 路由器、 样板供应器和处理端点同属一个[联邦域](../mechanics.md)。 它和AE2自己的[P2P通道](ae2:items-blocks-machines/p2p_tunnels.md)一样： 不用拉线就能跨越基地， 也能通过量子网络桥进入另一个维度， 见[下界前哨](../examples/nether-outpost.md)。
 
 ## 获得方法
 
@@ -41,7 +41,7 @@ item_ids:
     通道输出端： 正面接着通往网络B交换机的联邦线缆
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="5 0.3 0.3" max="7 0.7 0.7">
-    网络A的线缆承载这条通道； 它可以横跨整个基地， 也可以经过量子网络桥
+    网络A的线缆承载这条通道横跨基地； 要经过量子网络桥， 请给通道单独一个网络
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
