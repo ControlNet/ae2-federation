@@ -49,7 +49,7 @@ public final class FederationTestMod {
 					 PortGameTests.class, CableModelGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
-					 StorageProvenanceGameTests.class, StorageChainGameTests.class,
+					 StorageProvenanceGameTests.class, StorageChainGameTests.class, AcrossDomainsGameTests.class,
 					 StorageSubscriptionGameTests.class, StorageSubscriptionDiamondGameTest.class,
 					 StorageSubscriptionBoundaryGameTest.class, StorageSubscriptionMaskingGameTest.class,
 					 StorageSourceIndexGameTests.class,

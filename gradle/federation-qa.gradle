@@ -6747,6 +6747,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'storage.status-reasons':
                 case 'storage.status-reexport':
                 case 'storage.identity-split-recovers':
+                case 'storage.across-domains':
+                case 'crafting.across-domains':
                 case 'cross-dimension.two-domains':
                 case 'cross-dimension.unload-keeps-overworld':
                 case 'cross-dimension.quantum-bridge-projection':
