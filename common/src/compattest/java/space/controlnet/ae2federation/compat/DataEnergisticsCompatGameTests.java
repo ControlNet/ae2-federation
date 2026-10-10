@@ -23,6 +23,25 @@ public final class DataEnergisticsCompatGameTests {
     private DataEnergisticsCompatGameTests() {
     }
 
+    /**
+     * Data Energistics turns any tunnel of its {@code ae2:p2p} tag back into an ME P2P tunnel by hand. The Federation P2P
+     * tunnel joins that tag, as AE2's own tunnels and Applied Mekanistics' chemical tunnel do.
+     */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 100)
+    public static void federationTunnelTurnsBackIntoAnMeTunnel(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var tunnel = space.controlnet.ae2federation.p2p.FederationP2PRegistration.TUNNEL.get().getDefaultInstance();
+        var p2p = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("ae2", "p2p"));
+        helper.assertTrue(tunnel.is(p2p), "The Federation P2P tunnel must be in Data Energistics' ae2:p2p tag");
+        var input = net.minecraft.world.item.crafting.CraftingInput.of(1, 1, List.of(tunnel));
+        var made = level.getRecipeManager().getRecipeFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING, input, level)
+                .map(holder -> holder.value().assemble(input, level.registryAccess()));
+        helper.assertTrue(made.isPresent() && made.get().is(AddonCraftingScene.item("ae2:me_p2p_tunnel")),
+                "A Federation P2P tunnel alone in the grid must make an ME P2P tunnel, not " + made);
+        helper.succeed();
+    }
+
     /** The guide's Data Energistics example; see {@link SolarObservatoryScene}. It sets the time of day to night. */
     @RunsAlone
     @GameTest(templateNamespace = "ae2federation_test", template = "scale_36_empty", timeoutTicks = 1200)
