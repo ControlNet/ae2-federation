@@ -9,15 +9,22 @@ import java.util.Optional;
 
 /**
  * A topology diagram as a guide page writes it in a {@code <FederationTopology>} tag: network cards on a grid, the rules
- * between them, the pairs that share energy and the Processing Endpoints each network's Providers map. It describes an
- * example build, not a live domain.
+ * between them, the pairs that share energy, the Processing Endpoints each network's Providers map and, where the build
+ * spans more than one domain, the domains each drawn on a plate as the topology screen's related scope does. It
+ * describes an example build, not a live domain.
  */
-public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy, List<Endpoint> endpoints) {
+public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy, List<Endpoint> endpoints,
+        List<Domain> domains) {
     public TopologyDiagram {
         networks = List.copyOf(networks);
         rules = List.copyOf(rules);
         energy = List.copyOf(energy);
         endpoints = List.copyOf(endpoints);
+        domains = List.copyOf(domains);
+    }
+
+    public TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy, List<Endpoint> endpoints) {
+        this(networks, rules, energy, endpoints, List.of());
     }
 
     public TopologyDiagram(List<Network> networks, List<Rule> rules, List<Energy> energy) {
@@ -46,6 +53,16 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
     public record Endpoint(String key, String label, String owner, boolean energy, List<String> details) {
         public Endpoint {
             details = List.copyOf(details);
+        }
+    }
+
+    /**
+     * A Federation domain and its networks, drawn on a plate named {@code label}: pale for the {@code opened} domain,
+     * whose screen the diagram shows, light blue for the others.
+     */
+    public record Domain(String key, String label, List<String> networks, boolean opened) {
+        public Domain {
+            networks = List.copyOf(networks);
         }
     }
 
@@ -79,14 +96,16 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
 
     /**
      * Reads {@code <Network key label color column row details>}, {@code <Rule user source capability state>},
-     * {@code <Energy first second>} and {@code <Endpoint key label owner energy details>}; {@code details} separates its
-     * lines with "|".
+     * {@code <Energy first second>}, {@code <Endpoint key label owner energy details>} and
+     * {@code <Domain key label networks opened>}; {@code details} separates its lines with "|", {@code networks} its
+     * keys with ",".
      */
     public static Parsed parse(List<Element> elements) {
         var networks = new ArrayList<Network>();
         var rules = new ArrayList<Rule>();
         var energy = new ArrayList<Energy>();
         var endpoints = new ArrayList<Endpoint>();
+        var domains = new ArrayList<Domain>();
         var problems = new ArrayList<String>();
         for (var element : elements) {
             switch (element.name()) {
@@ -124,10 +143,21 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
                     endpoints.add(new Endpoint(key, element.attribute("label", key), element.attribute("owner", ""),
                             powered.equals("true"), details(element)));
                 }
+                case "Domain" -> {
+                    var key = element.attribute("key", "");
+                    var opened = element.attribute("opened", "false");
+                    var members = element.attribute("networks", "");
+                    if (key.isEmpty() || members.isBlank() || !opened.equals("true") && !opened.equals("false")) {
+                        problems.add("A Domain needs a key, its networks, and opened true or false");
+                        continue;
+                    }
+                    domains.add(new Domain(key, element.attribute("label", key),
+                            java.util.Arrays.stream(members.split(",")).map(String::trim).toList(), opened.equals("true")));
+                }
                 default -> problems.add("Unknown FederationTopology element " + element.name());
             }
         }
-        var diagram = new TopologyDiagram(networks, rules, energy, endpoints);
+        var diagram = new TopologyDiagram(networks, rules, energy, endpoints, domains);
         problems.addAll(diagram.problems());
         return new Parsed(diagram, List.copyOf(problems));
     }
@@ -173,6 +203,15 @@ public record TopologyDiagram(List<Network> networks, List<Rule> rules, List<Ene
             if (!keys.add(endpoint.key())) problems.add("Endpoint key \"" + endpoint.key() + "\" is used twice");
             if (network(endpoint.owner()).isEmpty()) {
                 problems.add("Endpoint \"" + endpoint.key() + "\" names the unknown network \"" + endpoint.owner() + "\"");
+            }
+        }
+        var domainKeys = new HashSet<String>();
+        for (var domain : domains) {
+            if (!domainKeys.add(domain.key())) problems.add("Domain key \"" + domain.key() + "\" is used twice");
+            for (var key : domain.networks()) {
+                if (network(key).isEmpty()) {
+                    problems.add("Domain \"" + domain.key() + "\" names the unknown network \"" + key + "\"");
+                }
             }
         }
         var pools = new HashSet<List<String>>();

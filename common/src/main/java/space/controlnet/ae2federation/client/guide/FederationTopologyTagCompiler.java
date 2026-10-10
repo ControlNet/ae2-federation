@@ -20,6 +20,7 @@ import java.util.Set;
  *   <Network key="b" label="Network B" color="#5CA7CD" column="1" row="0" />
  *   <Rule user="a" source="b" capability="crafting" />
  *   <Energy first="a" second="b" />
+ *   <Domain key="d" label="This domain" networks="a,b" opened="true" />
  * </FederationTopology>
  * }</pre>
  *
@@ -29,7 +30,7 @@ import java.util.Set;
 public final class FederationTopologyTagCompiler extends BlockTagCompiler {
     public static final String TAG_NAME = "FederationTopology";
     private static final List<String> ATTRIBUTES = List.of("key", "label", "color", "column", "row", "details", "user",
-            "source", "capability", "state", "first", "second", "owner", "energy");
+            "source", "capability", "state", "first", "second", "owner", "energy", "networks", "opened");
 
     @Override
     public Set<String> getTagNames() {

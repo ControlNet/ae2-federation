@@ -40,6 +40,11 @@ public final class FederationTheme {
     public static final int QUARTZ_CORE = 0xff7f93ab;
     public static final int QUARTZ_BEAD = 0xffe8f4ff;
     public static final int QUARTZ_BEAD_EDGE = 0xff3b4a5c;
+    /** Domain plates, faint enough that links and cards read over them: the opened domain pale, related ones blue. */
+    public static final int PLATE_OPENED = 0x1ad8d3e4;
+    public static final int PLATE_RELATED = 0x149cd3ff;
+    /** The opened domain's plate name; a related domain's name is {@link #SELECT}. */
+    public static final int PLATE_OPENED_NAME = 0xffd8d3e4;
     /** A rule in effect that passes its access on: apart from active green, selection blue and the switch's green. */
     public static final int REEXPORT = 0xff4fd8e8;
     /** Distinct network accents; a network keeps its colour for the lifetime of the open workspace. */

@@ -60,9 +60,6 @@ final class FederationTopologyView {
     private static final String OPENED_DOMAIN = "";
     /** Room above a plate for its domain's name. */
     private static final float PLATE_NAME_HEIGHT = 12;
-    /** Plate fills, faint enough that links and cards read over them: the opened domain pale, related ones blue. */
-    private static final int PLATE_OPENED = 0x1ad8d3e4;
-    private static final int PLATE_RELATED = 0x149cd3ff;
     private static final PolicyCapability[] CAPABILITIES = PolicyCapability.values();
     private static final int LINK_SEGMENTS = 24;
     /** One run of a quartz bead along a shared-energy link, from end to end. */
@@ -2497,7 +2494,7 @@ final class FederationTopologyView {
             var spots = new HashMap<Long, Integer>();
             for (var plate : FederationTopologyView.this.plates) {
                 boolean opened = plate.domain().equals(OPENED_DOMAIN);
-                int fill = opened ? PLATE_OPENED : PLATE_RELATED;
+                int fill = opened ? FederationTheme.PLATE_OPENED : FederationTheme.PLATE_RELATED;
                 for (var row : plate.rows()) {
                     context.graphics.fill(Math.round(row[1]), (int) row[0], Math.round(row[2]), (int) row[0] + 1, fill);
                 }
@@ -2509,7 +2506,7 @@ final class FederationTopologyView {
                 int y = Math.round(top - PLATE_NAME_HEIGHT);
                 long spot = (long) x << 32 | (y & 0xffffffffL);
                 x = spots.getOrDefault(spot, x);
-                context.graphics.drawString(font, name, x, y, opened ? 0xffd8d3e4 : FederationTheme.SELECT, false);
+                context.graphics.drawString(font, name, x, y, opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
                 spots.put(spot, x + font.width(name) + 6);
             }
         }

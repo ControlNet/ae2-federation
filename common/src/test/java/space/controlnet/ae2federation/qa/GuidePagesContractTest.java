@@ -386,12 +386,14 @@ final class GuidePagesContractTest {
         return parsed;
     }
 
-    /** The diagram with every network's and Endpoint's label and details left out. */
+    /** The diagram with every network's, Endpoint's and domain's label and details left out. */
     private static TopologyDiagram withoutText(TopologyDiagram diagram) {
         return new TopologyDiagram(diagram.networks().stream().map(network -> new TopologyDiagram.Network(network.key(),
                 "", network.color(), network.column(), network.row(), List.of())).toList(), diagram.rules(),
                 diagram.energy(), diagram.endpoints().stream().map(endpoint -> new TopologyDiagram.Endpoint(endpoint.key(),
-                        "", endpoint.owner(), endpoint.energy(), List.of())).toList());
+                        "", endpoint.owner(), endpoint.energy(), List.of())).toList(),
+                diagram.domains().stream().map(domain -> new TopologyDiagram.Domain(domain.key(), "", domain.networks(),
+                        domain.opened())).toList());
     }
 
     /** Close to Minecraft's font: advances of its narrow ASCII glyphs, 6 for the rest, 9 for CJK from Unifont. */
