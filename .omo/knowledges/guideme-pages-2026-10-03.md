@@ -187,7 +187,7 @@ and page ids did not change.
 | `guide_mekanism` | mekanism | `examples/mekanism-crusher.md` | `endpointCrusherTopOff` |
 | `guide_mekanism` | mekanism | `examples/ore-line.md` | `endpointOreLine` |
 | `guide_mekanism` | mekanism | `examples/power-plant.md` | `inductionMatrixPowerPlant` |
-| `guide_mekanism_appmek` | mekanism, appmek | `examples/mekanism-chemical.md` | `endpointOxidizerEjectOff` |
+| `guide_mekanism_appmek` | mekanism, appmek | `examples/chemical-tank-farm.md` | `dynamicTankFarm` |
 | `guide_appflux_mekanism` | appflux, mekanism | `examples/power-bank.md` | `fluxAccessorRunsCrusher` |
 | `guide_induction_mekanism` (group `induction`) | appflux, mekanism | `examples/induction-card.md` | `inductionCardPowersEndpointMachine` |
 | `guide_induction_createaddition` (group `induction`, 2nd) | appflux, createaddition, create | `examples/induction-card.md` | `inductionCardTurnsElectricMotor` |
@@ -195,13 +195,13 @@ and page ids did not change.
 | `guide_induction_industrialforegoing` (group `induction`, 4th) | appflux, industrialforegoing | `examples/induction-card.md` | `inductionCardPowersResourcefulFurnace` |
 | `guide_advanced_ae` | advanced_ae | `examples/quantum-lab.md` | `quantumComputerLab` |
 | `guide_create` | create | `examples/create-crushing-wheels.md` | `endpointCrushingWheelsStopped` |
-| `guide_extendedae` | extendedae | `examples/assembler-matrix.md` | `assemblerMatrixDismantled` |
+| `guide_extendedae` | extendedae | `examples/local-endpoint.md` | `localEndpointProviderTurned` |
 | `guide_extendedae_plus` | extendedae_plus, extendedae | `examples/super-matrix-hub.md` | `superAssemblerMatrixHub` |
 | `guide_ae2lt` | ae2lt | `examples/tianshu-foundry.md` | `tianshuOrdersFromMatrix` |
 | `guide_data_energistics` | data_energistics | `examples/solar-observatory.md` | `solarObservatory` |
-| `guide_neoecoae` | neoecoae | `examples/eco-district.md` | `storageSystemDismantled`, `computationSystemOrdering` |
+| `guide_neoecoae` | neoecoae | `examples/eco-warehouse.md` | `ecoWarehouseChain` |
 | `guide_omnisequence` | molecularmanipulator | `examples/matter-fabrication.md` | `matterFabricationWell` |
-| `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceWorkshop` |
+| `guide_useless_mod` | useless_mod | `examples/alloy-furnace.md` | `alloyFurnaceTradingPost` |
 
 - Each "Try it" is a compat GameTest that was mutation-checked (the interruption made a no-op, or a block outside the
   structure broken, must fail). Hooks: `EndpointMachineScene.poweredThroughEndpoint()` (no subnet energy cell, as the
@@ -403,3 +403,32 @@ there), then breaks a crafting-system casing for the page's "Try it".
 - In the scene, network A carries the tunnels and is the only power source. Its smart cables carry 3 channels (the
   drive and two tunnels) and network B's carry 1; these values were taken from `guidescenecables`.
 - Rendered under Xvfb in English and Chinese: both pages compiled with no `PageCompiler` warnings.
+
+## Domains, Across Domains and less samey examples (2026-10-10)
+
+- **Domain plates in diagrams**: `<Domain key label networks="a,b" opened="true" />` draws the topology screen's
+  translucent plate behind those networks (pale for the opened domain, light blue for a related one; name above the
+  top-left corner, moved right when it would overlap another). Use it only on diagrams with two or more domains; a
+  one-domain diagram has no plate. Nested domains (all networks inside another shown domain) use the smaller padding.
+  Unknown network keys and duplicate domain keys are parse problems.
+- **Across Domains** (`across-domains.md`, position 25, between How Federation Works and Remote Crafting): A-Bridge-B-
+  Bridge-C; B's rule on C with re-export lets A reach C's storage and crafting with no rule of its own. Rules are keyed
+  by network pair, so domains do not stop the chain. Backed by testmod `acrossdomainsstorage` /
+  `acrossdomainscrafting` (shared `test/crafting/BridgeChainFixture`).
+- **Examples reworked so they are not all remote-crafting variants**:
+  - Neo ECO: `eco-warehouse.md`, an ECO warehouse re-exported across two Bridges (replaces `eco-district.md`).
+  - Useless Mod: the alloy furnace now sits two Bridges away (cross-domain crafting chain).
+  - Mekanism + AppMek: `chemical-tank-farm.md`, a Dynamic Tank read by a chemical storage bus and shared through a
+    Storage rule (replaces `mekanism-chemical.md`). The Dynamic Tank forms from plain placement and the storage bus
+    reads it. Extract-only is not a rule option, so "Try it" switches the rule off.
+  - ExtendedAE: `local-endpoint.md`, a Local-mode Endpoint run by an Extended Pattern Provider (replaces
+    `assembler-matrix.md`). A Local Endpoint shares no power: the scene powers it with a Quartz Fiber. Breaking a
+    quartz fiber between touching cables merges the two networks.
+  - AE2 only: `examples/nether-outpost.md` (position 15), Federation P2P to a Nether outpost (`p2pNetherOutpost`).
+    The tunnels need their own carrier network through a Quantum Bridge: a domain member's own cable cannot carry
+    them through a Quantum Bridge built in two parts ("Merge pending" by design, see troubleshooting). The P2P item
+    page says so. `AE2_PAGES` allows `quantum_bridge.md`; `AE2_ITEMS` gained the quantum ring, link, entangled
+    singularity and spatial anchor.
+  - Kept as they were: Create crushing wheels and the four induction-card variants.
+- The Neo ECO page was screenshotted with Neo ECO 21.2.0 (the ldlib pin).
+

@@ -45,7 +45,7 @@ final class GuidePagesContractTest {
             "quantum_link", "quantum_entangled_singularity", "spatial_anchor");
     /** Other mods' items the optional examples name, by mod; only a pack that requires the mod may name them. */
     private static final Map<String, Set<String>> MOD_ITEMS = Map.ofEntries(
-            Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "chemical_oxidizer", "enrichment_chamber",
+            Map.entry("mekanism", Set.of("crusher", "basic_energy_cube", "enrichment_chamber", "dynamic_tank", "dynamic_valve",
                     "energized_smelter", "induction_casing", "induction_port", "basic_induction_cell",
                     "basic_induction_provider", "configurator")),
             Map.entry("appmek", Set.of("chemical_storage_cell_1k")),
@@ -55,7 +55,7 @@ final class GuidePagesContractTest {
             Map.entry("createaddition", Set.of("electric_motor")),
             Map.entry("enderio", Set.of("sag_mill", "basic_capacitor")),
             Map.entry("industrialforegoing", Set.of("resourceful_furnace")),
-            Map.entry("extendedae", Set.of("assembler_matrix_frame")),
+            Map.entry("extendedae", Set.of("ex_pattern_provider")),
             Map.entry("extendedae_plus", Set.of("super_assembler_matrix_frame")),
             Map.entry("ae2lt", Set.of("tianshu_supercomputer_controller", "tianshu_supercomputer_port",
                     "matter_warping_matrix_controller", "matter_warping_matrix_port")),
@@ -70,7 +70,7 @@ final class GuidePagesContractTest {
     private static final Map<String, Set<String>> MOD_PAGES = Map.ofEntries(
             Map.entry("appflux", Set.of("appflux/flux_accessor.md", "appflux/flux_cells.md")),
             Map.entry("advanced_ae", Set.of("aae_intro/quantum_computer.md")),
-            Map.entry("extendedae", Set.of("epp_intro/assembler_matrix.md")),
+            Map.entry("extendedae", Set.of("epp_intro/extended_pattern_provider.md")),
             Map.entry("extendedae_plus", Set.of("introduction/devices/super_assembler_matrix.md")),
             Map.entry("ae2lt", Set.of("tianshu/construction.md", "matrix/construction.md")),
             Map.entry("data_energistics", Set.of("items-blocks-machines/6.1_me_solar_panel.md",
