@@ -52,7 +52,7 @@ A/B check of a new texture (2026-10-10, the artist's core revision): put it in a
 
 ## Undecided alternative: full-width cable joins
 
-Branch `cable-full-width-joins` (fdeaa7b, pushed 2026-10-10; reverted on dev in ba4e96c at the user's request) joins
+Branch `feature/cable-full-width-joins` (fdeaa7b, pushed 2026-10-10; reverted on dev in ba4e96c at the user's request) joins
 cables to each other at the core's full width (a `CABLE` kind, 12-voxel arm, the core face toward a cable left out),
 keeps the 10-voxel neck only toward a Router or Provider/Endpoint front, and drops the tube end faces, JOINS bits and
 the flowMask redraw. Shots: `build/neck-shots/`, and with the artist's third core revision `build/core-rev3/`.
