@@ -45,7 +45,7 @@ The Federation screen then shows the two networks and the rules between them:
 1. **Put the furnace on network B's cable** and put your crafting patterns into its pattern slots. It needs a
    channel, like other AE2 devices.
 2. **Connect the two networks** with a Bridge on A's cable, its outer side touching B's cable. If they are far apart,
-   use a Router on each network and Federation Cable between them instead.
+   use a Switch on each network and Federation Cable between them instead.
 3. **Switch on Crafting under "A uses B's"** in the Federation screen, and ME power for the pair, so network B runs
    on network A's power. The furnace crafts these patterns with no FE of its own.
 4. **Order from network A.** The furnace's recipes are listed among A's craftables, and A's crafting CPU runs the job

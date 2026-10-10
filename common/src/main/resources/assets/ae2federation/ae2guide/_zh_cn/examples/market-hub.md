@@ -2,7 +2,7 @@
 navigation:
   parent: examples/index.md
   title: 市场枢纽
-  icon: ae2federation:router
+  icon: ae2federation:switch
   position: 25
 ---
 
@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 几个基地通过一个市场网络交易。 每个基地只和市场之间有规则， 市场把它的供应方能做的东西转发出去。 再给市场接一个供应方， 每个基地都能向它下单， 不用自己再加规则。
 
-**需要**： 带合成CPU、合成终端、存储和电源的基地网络； 带存储的市场网络； 一个供应方网络， 这里是锯木厂， 它的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板； 它们共同接触的一个<ItemLink id="ae2federation:router" />。
+**需要**： 带合成CPU、合成终端、存储和电源的基地网络； 带存储的市场网络； 一个供应方网络， 这里是锯木厂， 它的<ItemLink id="ae2:pattern_provider" />和<ItemLink id="ae2:molecular_assembler" />把原木做成木板； 它们共同接触的一个<ItemLink id="ae2federation:switch" />。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/market_hub.snbt" />
@@ -24,7 +24,7 @@ navigation:
     锯木厂： 样板供应器， 旁边是分子装配室
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    一个路由器： 每个面加入它接触的网络
+    一个交换机： 每个面加入它接触的网络
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -45,7 +45,7 @@ navigation:
 
 ## 搭建
 
-1. **把三个网络接到同一个路由器的各个面上**， 如场景所示。
+1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。
 2. **打开“基地使用市场的”合成规则**。 存储规则会随之打开。
 3. **打开“市场使用锯木厂的”合成规则**， 再往前切一次， 切到开启并转发。 市场从此把锯木厂的配方转发给每个使用市场合成的网络。
 4. **打开基地和市场之间、 市场和锯木厂之间的ME能量**。 能量沿着这条链汇到一起， 三个网络都靠基地的能源元件运行。

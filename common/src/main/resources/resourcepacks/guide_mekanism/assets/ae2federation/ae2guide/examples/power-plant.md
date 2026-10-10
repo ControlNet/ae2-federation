@@ -16,7 +16,7 @@ power. This page appears because Mekanism is installed.
 <ItemLink id="mekanism:induction_port" />, a <ItemLink id="mekanism:basic_induction_cell" /> and a
 <ItemLink id="mekanism:basic_induction_provider" />) and an <ItemLink id="ae2:energy_acceptor" />; a district network
 with a crafting CPU, a crafting terminal and storage; a workshop network with a pattern provider and a molecular
-assembler; a <ItemLink id="ae2federation:router" /> all three touch.
+assembler; a <ItemLink id="ae2federation:switch" /> all three touch.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_plant.snbt" />
@@ -30,7 +30,7 @@ assembler; a <ItemLink id="ae2federation:router" /> all three touch.
     Workshop: a pattern provider with a pattern from two planks to four sticks, beside a molecular assembler
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -49,8 +49,8 @@ The Federation screen then shows the three networks and the rules between them:
 
 ## Build it
 
-1. **Join the three networks** on the faces of one Router, as in the scene.
-2. **Build the plant:** an ME cable on the Router's face with the Energy Acceptor on top, and the Induction Matrix
+1. **Join the three networks** on the faces of one Switch, as in the scene.
+2. **Build the plant:** an ME cable on the Switch's face with the Energy Acceptor on top, and the Induction Matrix
    beyond it with its port touching the acceptor. Sneak-right-click the port with a
    <ItemLink id="mekanism:configurator" /> to set it to output: it then pushes the matrix's power into the acceptor,
    which turns it into AE.

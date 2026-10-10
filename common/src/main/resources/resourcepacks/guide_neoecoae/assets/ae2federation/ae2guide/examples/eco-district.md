@@ -25,7 +25,7 @@ Neo ECO AE Extension is installed.
 * on network B: a formed ECO crafting system, with its controller (<ItemLink id="neoecoae:crafting_system_l4" />),
   patterns in its <ItemLink id="neoecoae:crafting_pattern_bus" />es, and its
   <ItemLink id="neoecoae:crafting_interface" />. No power of its own.
-* a <ItemLink id="ae2federation:router" />.
+* a <ItemLink id="ae2federation:switch" />.
 
 <GameScene zoom="2" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/eco_district.snbt" />
@@ -33,7 +33,7 @@ Neo ECO AE Extension is installed.
     Network B's factory: the smallest ECO crafting system, seen from the back, its interface on network B's cable
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 1 2" max="6 2 3">
-    Router: one face per network
+    Switch: one face per network
   </BoxAnnotation>
   <BoxAnnotation color="#915dcd" min="6 0 0" max="11 3 2">
     Network A's CPU: the smallest ECO computation system, seen from the back, its interface on network A's cable
@@ -67,7 +67,7 @@ The Federation screen then shows the two networks and the rules between them:
 2. **Fill them.** Put ECO storage matrices into the storage system's drives, with the ingredients your orders need,
    and patterns into the crafting system's pattern buses. Put a flash crystal matrix into one of the computation
    system's drives: without one, it has no room for a job.
-3. **Connect networks A and B** to their own faces of a Router.
+3. **Connect networks A and B** to their own faces of a Switch.
 4. **Switch on Crafting under "A uses B's"** in the Federation screen, which switches the same direction's Storage on
    too, and switch on **ME power** for the pair: the crafting system then runs on network A's power.
 5. **Order from network A.** B's recipes are listed among A's craftables. The computation system plans the job and

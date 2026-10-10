@@ -11,14 +11,14 @@ navigation:
 ## Networks stay independent
 
 A Federation connection never merges two ME networks. Each network keeps its own [channels](ae2:ae2-mechanics/channels.md),
-controllers, storage and crafting CPUs. Router faces and Bridges join the network they touch as a node, but they use
+controllers, storage and crafting CPUs. Switch faces and Bridges join the network they touch as a node, but they use
 no channel, carry no channels and draw no idle power. Federation Cable is not part of any ME network at all.
 
 ## Federation domains
 
-All networks that touch the same Routers, or the Routers, Pattern Providers and Endpoints linked by one stretch of
+All networks that touch the same Switches, or the Switches, Routers, Pattern Providers and Endpoints linked by one stretch of
 Federation Cable, form one **Federation domain**. A Bridge forms a small domain of its own with exactly the two
-networks it joins. Right-clicking any Router or Bridge of a domain opens the same screen; no block holds a private
+networks it joins. Right-clicking any Switch, Router or Bridge of a domain opens the same screen; no block holds a private
 copy of the settings.
 
 ## Rules
@@ -40,7 +40,7 @@ you switch a rule on.
 * **Re-export** (the third state) passes access along a chain: if A uses B's storage and B uses C's storage with Re-export, A can reach
   C's storage through B. Crafting works the same way, and two networks may each craft with the other's providers.
 * **ME power** has one switch for the pair, and energy flows both ways, as with a <ItemLink id="ae2:quartz_fiber" />.
-  Pools join up: if A shares with B and B with C, all three share one pool. Each network needs a Router face or a
+  Pools join up: if A shares with B and B with C, all three share one pool. Each network needs a Switch face or a
   Bridge for this; a network that reaches the domain only through a Pattern Provider front cannot join the pool.
 * **Processing needs no rule.** Any Federation Pattern Provider can use any Processing Endpoint in its domain; see
   [Remote Crafting](remote-processing.md).
@@ -58,4 +58,4 @@ you switch a rule on.
 
 * Everything in a domain must be in the same dimension and in loaded chunks. Federation does not load chunks.
 * Federation Cable has no length limit, but one domain can hold at most 4096 Federation blocks.
-* There are no player or team permissions: anyone who can open a Router or Bridge can change its domain's rules.
+* There are no player or team permissions: anyone who can open a Switch, Router or Bridge can change its domain's rules.

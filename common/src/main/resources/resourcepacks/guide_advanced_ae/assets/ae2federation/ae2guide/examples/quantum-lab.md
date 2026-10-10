@@ -15,7 +15,7 @@ installed.
 
 **You need:** a lab network with a formed <ItemLink id="advanced_ae:quantum_core" />-based Quantum Computer, a
 crafting terminal, storage and an energy cell; two workshop networks, each with a pattern provider and a molecular
-assembler; a <ItemLink id="ae2federation:router" /> all three touch. How to build the Quantum Computer is in
+assembler; a <ItemLink id="ae2federation:switch" /> all three touch. How to build the Quantum Computer is in
 [Advanced AE's guide](advanced_ae:aae_intro/quantum_computer.md).
 
 <GameScene zoom="3" interactive={true} background="transparent">
@@ -30,7 +30,7 @@ assembler; a <ItemLink id="ae2federation:router" /> all three touch. How to buil
     Joinery: a pattern provider with a pattern from two planks to four sticks, beside a molecular assembler
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -51,7 +51,7 @@ The Federation screen then shows the three networks and the rules between them:
 
 ## Build it
 
-1. **Join the three networks** on the faces of one Router, as in the scene. The Quantum Computer joins the lab's
+1. **Join the three networks** on the faces of one Switch, as in the scene. The Quantum Computer joins the lab's
    network through any of its outer blocks.
 2. **Give each workshop its pattern**: the sawmill a crafting pattern from one log to four planks, the joinery one from
    two planks to four sticks, each in a pattern provider beside a molecular assembler.

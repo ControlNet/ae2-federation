@@ -34,7 +34,7 @@ final class GuidePagesContractTest {
     private static final Path GUIDE = RESOURCES.resolve("assets/ae2federation/ae2guide");
     private static final Set<String> BASE_NAMESPACES = Set.of("minecraft", "ae2", "ae2federation");
     private static final Set<String> FEDERATION_ITEMS = Set.of("printed_nexus_circuit", "nexus_processor", "nexus_core",
-            "bridge", "router", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel");
+            "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel");
     /** The AE2 19.2.17 guide pages and items the pages name; the client check opens them for real. */
     private static final Set<String> AE2_PAGES = Set.of("ae2-mechanics/channels.md",
             "items-blocks-machines/p2p_tunnels.md");

@@ -38,4 +38,4 @@ item_ids:
 
 <RecipeFor id="ae2federation:nexus_core" />
 
-用于： <ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、<ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />。
+用于： <ItemLink id="ae2federation:bridge" />、<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、<ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />。

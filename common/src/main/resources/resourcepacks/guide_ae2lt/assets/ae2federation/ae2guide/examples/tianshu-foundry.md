@@ -10,12 +10,12 @@ navigation:
 
 **Goal:** a district network whose only CPU is AE2 Lightning Tech's Tianshu Supercomputer orders sticks from a foundry
 network whose only crafter is its Tianshu Matter Warping Matrix. Each multiblock stays on its own network, and the two
-work together through one Router. This page appears because AE2 Lightning Tech is installed.
+work together through one Switch. This page appears because AE2 Lightning Tech is installed.
 
 **You need:** a district network with a formed Tianshu Supercomputer
 (<ItemLink id="ae2lt:tianshu_supercomputer_controller" />), a crafting terminal, storage and an energy cell; a foundry
 network with a formed Tianshu Matter Warping Matrix (<ItemLink id="ae2lt:matter_warping_matrix_controller" />) and a
-crafting pattern from two planks to four sticks; a <ItemLink id="ae2federation:router" /> both touch. How to build them
+crafting pattern from two planks to four sticks; a <ItemLink id="ae2federation:switch" /> both touch. How to build them
 is in AE2 Lightning Tech's guide: [the Supercomputer](ae2lt:tianshu/construction.md) and
 [the Matrix](ae2lt:matrix/construction.md).
 
@@ -28,7 +28,7 @@ is in AE2 Lightning Tech's guide: [the Supercomputer](ae2lt:tianshu/construction
     Foundry: the Tianshu Matter Warping Matrix, with the sticks pattern in a Pattern Storage
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="8 0 0" max="9 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -45,7 +45,7 @@ The Federation screen then shows the two networks and the rules between them:
 
 ## Build it
 
-1. **Join the two networks** on the faces of one Router, as in the scene: ME cable from one face to the
+1. **Join the two networks** on the faces of one Switch, as in the scene: ME cable from one face to the
    <ItemLink id="ae2lt:tianshu_supercomputer_port" /> in the middle of the Supercomputer's bottom face, and from another
    to the <ItemLink id="ae2lt:matter_warping_matrix_port" /> opposite the Matrix's controller. Each Port takes cables only
    once its structure has formed.

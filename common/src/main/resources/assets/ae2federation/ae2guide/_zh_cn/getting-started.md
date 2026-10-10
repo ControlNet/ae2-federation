@@ -46,28 +46,28 @@ navigation:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-### 两个网络相距较远：路由器和联邦线缆
+### 两个网络相距较远：交换机和联邦线缆
 
 <Row>
   <RecipeFor id="ae2federation:cable" />
-  <RecipeFor id="ae2federation:router" />
+  <RecipeFor id="ae2federation:switch" />
 </Row>
 
-让<ItemLink id="ae2federation:router" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个路由器最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个路由器， 再用<ItemLink id="ae2federation:cable" />把路由器连起来。 两个路由器面对面贴在一起时会直接连通， 中间不需要线缆。
+让<ItemLink id="ae2federation:switch" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个交换机最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个交换机， 再用<ItemLink id="ae2federation:cable" />把交换机连起来。 两个交换机面对面贴在一起时会直接连通， 中间不需要线缆。 <ItemLink id="ae2federation:router" />用来连接联邦线缆或让线缆分岔， 但不接入任何网络。
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/router_cable.snbt" />
+  <ImportStructure src="assets/switch_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     网络A： 它的能源元件给两个网络供电
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
-    路由器： 一面接网络A的线缆， 另一面接联邦线缆
+    交换机： 一面接网络A的线缆， 另一面接联邦线缆
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
-    两个路由器之间的联邦线缆
+    两个交换机之间的联邦线缆
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
-    路由器： 一面接网络B的线缆， 另一面接联邦线缆
+    交换机： 一面接网络B的线缆， 另一面接联邦线缆
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
     网络B： 一个驱动器， 没有自己的电源
@@ -77,7 +77,7 @@ navigation:
 
 ## 3. 打开共享
 
-右键路由器或桥接器（站在八格以内）打开联邦界面。 界面把这个联邦域里的网络画成卡片。 点击两张卡片之间的连线， 或者先选中一张卡片， 再在右侧列表里点另一个网络。 右侧随即显示这对网络的规则， 分为“A使用B的”和“B使用A的”两组， 每条规则一个开关， 下面是共享能量的开关。 规则只在它的方向上生效。
+右键交换机或桥接器（站在八格以内）打开联邦界面。 界面把这个联邦域里的网络画成卡片。 点击两张卡片之间的连线， 或者先选中一张卡片， 再在右侧列表里点另一个网络。 右侧随即显示这对网络的规则， 分为“A使用B的”和“B使用A的”两组， 每条规则一个开关， 下面是共享能量的开关。 规则只在它的方向上生效。
 
 * 左键开关向前切换（禁用、启用、启用（可转出））， 右键向后切换。
 * **存储**： 让一个网络查看、存入和取出另一个网络的物品、流体和其他资源。

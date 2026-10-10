@@ -13,7 +13,7 @@ navigation:
 moving the patterns or merging the networks.
 
 **You need:** the workshop network (network B), set up the usual AE2 way but with no power of its own; your main network
-(network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:router" /> for
+(network A) with a crafting CPU, a crafting terminal, storage and power; a <ItemLink id="ae2federation:switch" /> for
 each network and <ItemLink id="ae2federation:cable" /> between them, or a <ItemLink id="ae2federation:bridge" /> if they
 touch.
 
@@ -23,7 +23,7 @@ touch.
     Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="7 1 1">
-    A Router on each network, joined by Federation Cable
+    A Switch on each network, joined by Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="3 3 1">
     Network B: pattern providers with their patterns, next to Molecular Assemblers
@@ -44,7 +44,7 @@ The Federation screen then shows the two networks and the rules between them:
 ## Build it
 
 1. **Leave the workshop as it is.** Its pattern providers keep their patterns, and its assemblers stay beside them.
-2. **Connect the two networks** with Routers and Federation Cable.
+2. **Connect the two networks** with Switches and Federation Cable.
 3. **Switch on Crafting under "A uses B's"** in the Federation screen. This switches the same direction's Storage on
    too, because A's CPU takes the ingredients from what A can see, which now includes B's storage.
 4. **Switch on ME power** for the pair. The two networks then share one energy pool, so network B runs on network A's

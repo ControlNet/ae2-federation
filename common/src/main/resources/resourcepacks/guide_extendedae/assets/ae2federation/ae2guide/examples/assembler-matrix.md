@@ -14,7 +14,7 @@ appears because ExtendedAE is installed.
 
 **You need:** the workshop network (network B) with a formed <ItemLink id="extendedae:assembler_matrix_frame" />
 structure; your main network (network A) with a crafting CPU, a crafting terminal, storage and power; a
-<ItemLink id="ae2federation:router" /> for each network and <ItemLink id="ae2federation:cable" /> between them.
+<ItemLink id="ae2federation:switch" /> for each network and <ItemLink id="ae2federation:cable" /> between them.
 
 <GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/assembler_matrix.snbt" />
@@ -22,7 +22,7 @@ structure; your main network (network A) with a crafting CPU, a crafting termina
     Network A: crafting terminal, crafting CPU, storage, and the energy cell that powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="9 1 1">
-    A Router on each network, joined by Federation Cable
+    A Switch on each network, joined by Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="4 3 3">
     Network B: the smallest Assembler Matrix, frames on its edges and walls on its faces, with a pattern core and a
@@ -45,7 +45,7 @@ The Federation screen then shows the two networks and the rules between them:
 
 1. **Build the matrix on network B** as [ExtendedAE's guide](extendedae:epp_intro/assembler_matrix.md) shows, and put your crafting patterns into it. The smallest
    one is 4 blocks long, 3 high and 3 deep. Its frame joins network B like any other AE2 block.
-2. **Connect the two networks** with Routers and Federation Cable.
+2. **Connect the two networks** with Switches and Federation Cable.
 3. **Switch on Crafting under "A uses B's"** in the Federation screen, and ME power for the pair, so network B runs
    on network A's power.
 4. **Order from network A.** The matrix's recipes are listed among A's craftables, and A's crafting CPU runs the job

@@ -20,17 +20,18 @@
 
 后文可以用 **Federation** 简称本模组或其协作机制；**ME Federation** 不作为模组名称使用。
 
-**ME Network** 指原生 AE2 网络。**ME Federation Domain（ME联邦域）** 指由 Bridge 或 Router / Cable 形成的 Federation 连通与管理范围；它不是额外方块，也不是管理全部联邦域的全局 Matrix。一个 ME Network 可以同时属于多个 Domain，Domain 之间不因此合并。代码中该概念统一称 `FederationDomain*`，与存储来源域 `NativeSourceDomain`、Processing 目标域 `NativeTargetDomain*` 区分。
+**ME Network** 指原生 AE2 网络。**ME Federation Domain（ME联邦域）** 指由 Bridge 或 Switch / Router / Cable 形成的 Federation 连通与管理范围；它不是额外方块，也不是管理全部联邦域的全局 Matrix。一个 ME Network 可以同时属于多个 Domain，Domain 之间不因此合并。代码中该概念统一称 `FederationDomain*`，与存储来源域 `NativeSourceDomain`、Processing 目标域 `NativeTargetDomain*` 区分。
 
 | 注册 ID | 英文名称 | 简体中文名称 | 旧 ID（仅兼容读取） |
 |---|---|---|---|
-| `ae2federation:router` | ME Federation Router | ME联邦路由器 | `ae2federation:hub` |
+| `ae2federation:switch` | ME Federation Switch | ME联邦交换机 | `ae2federation:hub` |
+| `ae2federation:router` | ME Federation Router | ME联邦路由器 | — |
 | `ae2federation:bridge` | ME Federation Bridge | ME联邦桥 | `ae2federation:multipart_bridge` |
 | `ae2federation:cable` | ME Federation Cable | ME联邦线缆 | `ae2federation:federation_cable` |
 | `ae2federation:pattern_provider` | ME Federation Pattern Provider | ME联邦样板供应器 | — |
 | `ae2federation:processing_endpoint` | ME Federation Processing Endpoint | ME联邦处理端点 | 未改名 |
 
-旧 ID 通过 NeoForge 注册表别名（`DeferredRegister#addAlias`）映射到新条目，覆盖方块、物品和方块实体类型；Bridge 作为 AE2 multipart 部件按物品 ID 保存在线缆总线中，同样由物品别名解析。新数据只写新 ID。SavedData 名称与 NBT 键不含旧术语，未作改动。Bridge 的内部实现类仍名为 `MultipartBridgePart`，因为它描述的是 AE2 multipart 技术实现，而不是玩家可见名称。
+旧 ID 通过 NeoForge 注册表别名（`DeferredRegister#addAlias`）映射到新条目，覆盖方块、物品和方块实体类型；Bridge 作为 AE2 multipart 部件按物品 ID 保存在线缆总线中，同样由物品别名解析。新数据只写新 ID。SavedData 名称与 NBT 键不含旧术语，未作改动。旧 Hub 接入 ME 网络，所以 `ae2federation:hub` 映射到 Switch；Router 只连接联邦，旧存档中的 `ae2federation:router` 不做迁移（pre-alpha）。Bridge 的内部实现类仍名为 `MultipartBridgePart`，因为它描述的是 AE2 multipart 技术实现，而不是玩家可见名称。
 
 ## 文档状态与阅读方式
 
@@ -50,7 +51,7 @@
 
 - 运行时复用 AE2 原生执行路径是架构约束；Federation 主要管理连接与映射，不以独立实现相同行为代替原生委托。
 - 网络对之间的 Policy 在当前世界中全局、持久保存；联邦域决定直接共享关系是否生效。缺少规则时默认不共享。
-- 右键同一联邦域内任意 Router 或 Bridge，进入同一份完整联邦域管理界面。双网络 Bridge 本身也构成一个最小联邦域；不再增加 Matrix 方块。
+- 右键同一联邦域内任意 Switch、Router 或 Bridge，进入同一份完整联邦域管理界面。双网络 Bridge 本身也构成一个最小联邦域；不再增加 Matrix 方块。
 - Storage 的链式共享由独立 Policy 开关控制；多个 Bridge 或共同联邦域不叠加同一份能力、库存或吞吐量。
 - Crafting 的原料、规划、执行和结果规则沿用选定的 AE2 原生机制，不设另一套 Federation 供料契约。
 - Federation Pattern Provider 为定向方块：一个面连接 Federation，另外五个面连接本地标准 ME 网络。
@@ -114,7 +115,7 @@ AE2 Federation 提供一层明确的跨网关系，让玩家可以：
 | 加工语义原生化 | 远端加工以本地 `Pattern Provider → 未配置 Interface → subnet` 为行为参照 |
 | 结果回到正确入口 | 加工返回必须经过原始 Provider 的正确逻辑上下文 |
 | 可观测但不臆测 | 已提交、已返回、机器是否完成等状态必须区分，不能凭时间猜测 |
-| 去中心化拓扑 | 任意 Router / Bridge 提供所属联邦域的同等管理入口，不设置唯一核心管理方块 |
+| 去中心化拓扑 | 任意 Switch / Router / Bridge 提供所属联邦域的同等管理入口，不设置唯一核心管理方块 |
 | 全局网络 Policy | 持久保存网络对规则；联邦域变化只改变生效条件，默认没有资源或能力共享 |
 | 连接冗余不增加能力 | 重复 Bridge 不重复注册同一网络对的能力，不增加名义容量或吞吐量 |
 | 跨联邦域的依赖分析与缓存 | 按实际 ME Grid 识别跨多个独立联邦域的依赖、来源与订阅，不能只优化单个联邦域内部 |
@@ -172,11 +173,12 @@ Federation 自定义代码主要承担跨网络寻址、全局 Policy、目标�
 | Federation Member | 某个持久 ME 网络身份在当前联邦域中的成员关系；多个接入口不等于多个网络 |
 | NetworkId | 跨联邦域使用的持久逻辑网络身份，映射到当前原生 Grid |
 | Network Pair Policy | 以有方向的网络对组织、在世界范围持久保存的能力共享规则 |
-| Federation Domain | 可由 Bridge 单独构成或由 Router / Cable 组成的连接域；决定网络对规则的生效条件，提供本域管理视图；与 Fabric Loader 无关 |
+| Federation Domain | 可由 Bridge 单独构成或由 Switch / Router / Cable 组成的连接域；决定网络对规则的生效条件，提供本域管理视图；与 Fabric Loader 无关 |
 | 跨联邦域依赖图 | 以网络及其当前 Grid 为节点、有效能力关系为有向边；边关联全局 Policy 及提供连接的联邦域集合 |
 | 来源订阅表 | 记录某个真实来源的变化应影响哪些成员及资源范围，用于避免按每条到达路径重复传播 |
 | Bridge | 将本地 Grid 的获准能力接入 Federation 的边界组件 |
-| Router | 联邦域的连接组件及完整管理入口，不承载合并后的 ME Grid |
+| Switch | 把 ME 网络接入联邦域的六面接入组件及完整管理入口，不承载合并后的 ME Grid |
+| Router | 只连接联邦一侧（Cable、Switch、Router、设备正面）的连接组件及完整管理入口，不接入 ME 网络 |
 | Export | 一个成员允许其他成员使用的资源或能力声明 |
 | Projection | 在请求方提供的远端能力视图；不等于复制实际库存 |
 | Re-export | 经授权，继续向其他成员公布可访问的远端能力，保留原始来源 |
@@ -213,21 +215,22 @@ Policy 不以显示名称、方块坐标或运行时 Grid 对象地址作为主�
 
 以下是游戏内方块与组件的工作命名，沿用 ME 前缀；模组本身的名称为 AE2 Federation。Provider 的一个 Federation 面与五个 ME 面已确定；其他方块的具体连面和槽位数量仍可细化。正式外形和贴图在原型跑通后制作。
 
-**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Nexus Core（联结核心）照 AE2 的处理器和核心分三步：压印器以刻印模式用逻辑压印模板（保留）把末影珍珠（`c:ender_pearls`）印成 Printed Nexus Circuit（联结电路板）；再以压制模式把联结电路板（顶槽）、红石粉（中槽）和硅板（底槽）压成 1 个 Nexus Processor（联结处理器）；工作台一排依次放福鲁伊克斯水晶（`c:gems/fluix`）、末影粉（`c:dusts/ender_pearl`）和联结处理器，合成 16 个联结核心。Bridge = Storage Bus + Quartz Fiber + 联结核心；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联结核心；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联结核心，出 16 根；Router = 4 根 Cable 在四角，Import Bus、Storage Bus、ME Interface、Export Bus 在四边，联结核心在中心，出 4 个。由原生方块合成时不继承其中的样板或配置。
+**生存获取（已确认，已实现）：** 基础功能在 AE2 早期即可获得。共用材料 Nexus Core（联结核心）照 AE2 的处理器和核心分三步：压印器以刻印模式用逻辑压印模板（保留）把末影珍珠（`c:ender_pearls`）印成 Printed Nexus Circuit（联结电路板）；再以压制模式把联结电路板（顶槽）、红石粉（中槽）和硅板（底槽）压成 1 个 Nexus Processor（联结处理器）；工作台一排依次放福鲁伊克斯水晶（`c:gems/fluix`）、末影粉（`c:dusts/ender_pearl`）和联结处理器，合成 16 个联结核心。Bridge = Storage Bus + Quartz Fiber + 联结核心；Pattern Provider / Processing Endpoint = 原生 Pattern Provider / ME Interface 方块 + 联结核心；Cable = 8 根任意颜色 ME 玻璃线缆围住 1 个联结核心，出 16 根；Switch = 4 根 Cable 在四角，Import Bus、Storage Bus、ME Interface、Export Bus 在四边，联结核心在中心，出 4 个；Router = 4 根 Cable 在四角，4 个福鲁伊克斯水晶（`c:gems/fluix`）在四边，联结核心在中心，出 4 个。由原生方块合成时不继承其中的样板或配置。
 
 | 组件 | 主要职责 | 关键边界 |
 |---|---|---|
 | ME Federation Cable | 构成联邦域的物理连接 | 不直接连接 ME Grid，不携带 AE2 频道 |
-| ME Federation Router | 连接联邦域分支；右键打开所属联邦域的完整信息与规则界面 | 同联邦域的任意 Router / Bridge 等价，不持有唯一配置副本 |
+| ME Federation Switch | 每个面接入一个 ME 网络或连接联邦一侧；右键打开所属联邦域的完整信息与规则界面 | 各面不合并 ME 网络；同联邦域的任意 Switch / Router / Bridge 等价，不持有唯一配置副本 |
+| ME Federation Router | 连接、分岔联邦域；右键打开所属联邦域的完整信息与规则界面 | 不接入 ME 网络，各面没有 ME 节点 |
 | ME Federation Bridge | 形成双网络最小联邦域；右键管理该联邦域；按全局 Policy 接入能力 | ME 网络独立；重复 Bridge 不复制规则、库存或生产能力 |
 | ME Federation Pattern Provider | 保存 Pattern、映射与独立 Lane；一个定向 Federation 面，五个本地 ME 面 | 两类连接隔离；不接管机器内部分发 |
 | ME Federation Processing Endpoint | 对接原生 Processing Subnet Storage；提供返回入口；支持本地与 Federation 用法 | 不建立独立配方队列，不自动抽取产物 |
 
-### 3.1 Bridge 与 Router 的区别
+### 3.1 Bridge、Switch 与 Router 的区别
 
-**已确认交互：** Bridge 本身可以构成连接两个 ME 网络的最小联邦域，无需额外 Router。Router 用于更大联邦域的连接组织。无论入口是 Router 还是 Bridge，右键都进入其所属联邦域的完整管理界面。
+**已确认交互：** Bridge 本身可以构成连接两个 ME 网络的最小联邦域，无需额外 Switch。更大的联邦域由 Switch 接入 ME 网络，Router 只负责联邦一侧的连接组织（2026-10-10 拆分：Switch 承接原 Router 的全部职责，Router 关闭 ME 接入）。无论入口是 Switch、Router 还是 Bridge，右键都进入其所属联邦域的完整管理界面。
 
-同一个联邦域内各入口读取和编辑同一份成员关系与网络对 Policy，不存在只有某个 Router 才能查看全图或保存规则的行为。管理范围是当前联邦域；后台全局 Policy 表不自动引入一个管理所有联邦域的新设备。
+同一个联邦域内各入口读取和编辑同一份成员关系与网络对 Policy，不存在只有某个 Switch 或 Router 才能查看全图或保存规则的行为。管理范围是当前联邦域；后台全局 Policy 表不自动引入一个管理所有联邦域的新设备。
 
 多个 Bridge 同时连接 A 与 B，只提供多个可用连接，不构成多份 A–B 规则，也不提高该关系的名义吞吐量。断开其中一条后，其他连接仍可使同一规则保持 active。
 
@@ -240,7 +243,7 @@ Provider 的接线按第 3.3 节执行。Endpoint 继续承担后端 Subnet 与�
 - **Local：** 与原版 Pattern Provider 物理相邻，简化 Interface、独立子网供能与返回入口的搭建。
 - **Federated：** 接受已绑定 Federation Pattern Provider 的远端整批输入。
 
-两种模式共享后端 Subnet Storage 与返回机制。一个 Endpoint 同时只启用一个上游模式，不同时接受本地 Provider 和远端 Provider 的加工输入。模式由 Federation 面接触的对象决定：Federation Cable、Router 或 Federation Pattern Provider 的正面为 Federated，另一网络的原版 Pattern Provider 为 Local；切换前先排空并释放原归属。
+两种模式共享后端 Subnet Storage 与返回机制。一个 Endpoint 同时只启用一个上游模式，不同时接受本地 Provider 和远端 Provider 的加工输入。模式由 Federation 面接触的对象决定：Federation Cable、Switch、Router 或 Federation Pattern Provider 的正面为 Federated，另一网络的原版 Pattern Provider 为 Local；切换前先排空并释放原归属。
 
 ### 3.3 Federation Pattern Provider 的方向与连接
 
@@ -254,7 +257,7 @@ Provider 的接线按第 3.3 节执行。Endpoint 继续承担后端 Subnet 与�
 
 ### 4.1 拓扑
 
-**已确认方向：** 一个联邦域可以是 Bridge 构成的双成员连接，也可以是含 Router、Cable、分支和多跳的连接域。不要求唯一主控制器，物理环路也不应造成重复库存或无限转发。
+**已确认方向：** 一个联邦域可以是 Bridge 构成的双成员连接，也可以是含 Switch、Router、Cable、分支和多跳的连接域。不要求唯一主控制器，物理环路也不应造成重复库存或无限转发。
 
 联邦域连通关系只提供建立直接能力共享的条件。A 与 B 即使同属一个联邦域，也不会自动共享任何资源；必须存在对应的全局 Policy。同一个 ME 网络可分别参与多个联邦域，它不会因此把这些联邦域的物理拓扑合并。
 
@@ -546,7 +549,7 @@ Federation 如需关联标识，只用于衔接真实原生请求、回调、必
 
 **已确认定义（2026-10-01 取代此前的单向供能）：** 两个同属一个联邦域的网络之间，任一方向存在已启用、处于 ACTIVE 状态的 ME 能量规则（`ME_POWER` + `SUPPLY`），即视为一条无向边；由这些边连通的网络共用同一个 AE2 原生能量池（`EnergyOverlayGrid`），与石英纤维相同：互相取用、互相充能，并且可传递（A–B、B–C 共享时 A、B、C 同在一个池）。界面上每对网络只有一个“共享能量”开关；从任一侧关闭都会同时关闭两个方向的规则。
 
-- 实现复用 AE2 原生机制：Router 面与 Bridge 两侧节点挂载 `IEnergyOverlayGridConnection`，由 AE2 在组建能量池时询问可达的能量服务；每次取电、充电都不经过 Federation 代码，按真实来源扣除，不加转移税或重复扣费，性能与原生石英纤维一致。
+- 实现复用 AE2 原生机制：Switch 面与 Bridge 两侧节点挂载 `IEnergyOverlayGridConnection`，由 AE2 在组建能量池时询问可达的能量服务；每次取电、充电都不经过 Federation 代码，按真实来源扣除，不加转移税或重复扣费，性能与原生石英纤维一致。
 - 规则修改、启停立即重组相关能量池；联邦域拓扑的任何变化（断开路径、拆除 Bridge）在同一 tick 内解散能量池，AE2 在下一次能量操作时按新拓扑重建。来源不足时池中无能量可取，不会凭缓存能量数继续供电。
 - 由于共享是对称的，不再提供“只允许单向供能”的选项；需要隔离时关闭该对网络的共享开关即可。
 - 能量共享不产生逐次流量记录；拓扑图用能量绿的发光连线与双向移动的光点表示两网正在共享能量，自身储能不足但由共享池供电的网络显示“共享供电”而非低能量警告。

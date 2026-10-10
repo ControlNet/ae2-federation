@@ -2,7 +2,7 @@
 navigation:
   parent: examples/index.md
   title: A Market Hub
-  icon: ae2federation:router
+  icon: ae2federation:switch
   position: 25
 ---
 
@@ -14,7 +14,7 @@ without a new rule of its own.
 
 **You need:** a district network with a crafting CPU, a crafting terminal, storage and power; a market network with
 storage; a supplier network, here a sawmill whose <ItemLink id="ae2:pattern_provider" />s and
-<ItemLink id="ae2:molecular_assembler" />s turn logs into planks; a <ItemLink id="ae2federation:router" /> they all
+<ItemLink id="ae2:molecular_assembler" />s turn logs into planks; a <ItemLink id="ae2federation:switch" /> they all
 touch.
 
 <GameScene zoom="4" interactive={true} background="transparent">
@@ -29,7 +29,7 @@ touch.
     Sawmill: pattern providers next to Molecular Assemblers
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    One Router: each face joins the network it touches
+    One Switch: each face joins the network it touches
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -50,7 +50,7 @@ The Federation screen then shows the three networks and the rules between them:
 
 ## Build it
 
-1. **Join the three networks** on the faces of one Router, as in the scene.
+1. **Join the three networks** on the faces of one Switch, as in the scene.
 2. **Switch on Crafting under "District uses Market's"**. Its Storage comes on with it.
 3. **Switch on Crafting under "Market uses Sawmill's"** and step it on once more, to Enabled with re-export. The
    market now passes the sawmill's recipes on to every network that uses the market's Crafting.

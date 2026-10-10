@@ -26,9 +26,9 @@ item_ids:
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-Federation Cable links Routers, Federation Pattern Providers and Processing Endpoints into one
+Federation Cable links Switches, Routers, Federation Pattern Providers and Processing Endpoints into one
 [Federation domain](../mechanics.md). It connects on every side to another Federation Cable, to any face of a
-<ItemLink id="ae2federation:router" />, and to the front of a <ItemLink id="ae2federation:pattern_provider" />,
+<ItemLink id="ae2federation:switch" /> or <ItemLink id="ae2federation:router" />, and to the front of a <ItemLink id="ae2federation:pattern_provider" />,
 <ItemLink id="ae2federation:processing_endpoint" /> or <ItemLink id="ae2federation:federation_p2p_tunnel" />.
 
 It is not an ME cable: ME cables and devices do not attach to it, it carries no channels and it uses no power. It has

@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 把FE存在一个电力库网络里， 让另一个网络上的Mekanism粉碎机用它运行。 工坊网络自己没有存储， 也没有能源元件。 这一页出现， 是因为安装了Applied Flux和Mekanism。
 
-**需要**： 一个电力库网络， ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />， 再加一个能源元件； 一个工坊网络， 带一个终端和一个<ItemLink id="appflux:flux_accessor" />； 一台<ItemLink id="mekanism:crusher" />； 两个网络共同接触的一个<ItemLink id="ae2federation:router" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)。
+**需要**： 一个电力库网络， ME驱动器里装着<ItemLink id="appflux:fe_1k_cell" />， 再加一个能源元件； 一个工坊网络， 带一个终端和一个<ItemLink id="appflux:flux_accessor" />； 一台<ItemLink id="mekanism:crusher" />； 两个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 FE怎样存进元件见[Applied Flux的指南](appflux:appflux/flux_cells.md)。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/power_bank.snbt" />
@@ -24,7 +24,7 @@ navigation:
     通量访问点： 把它所在网络能取到的FE送进它接触的机器
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    一个路由器： 每个面加入它接触的网络
+    一个交换机： 每个面加入它接触的网络
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -40,7 +40,7 @@ navigation:
 
 ## 搭建
 
-1. **把两个网络接到同一个路由器的两个面上**， 如场景所示。
+1. **把两个网络接到同一个交换机的两个面上**， 如场景所示。
 2. **打开“工坊使用电力库的”存储规则**。 电力库的FE就会和它存的其他东西一起出现在工坊的终端里。
 3. **打开两个网络之间的ME能量**， 工坊靠电力库的能源元件运行。
 4. **设置粉碎机的各面**： 在它的侧面配置里， 能量方面把朝向通量访问点的一面设为输入； 物品方面把顶面设为输入， 底面设为输出。

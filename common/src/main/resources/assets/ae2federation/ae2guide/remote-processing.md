@@ -21,7 +21,7 @@ Say network B has the machines: ordinary AE2 <ItemLink id="ae2:pattern_provider"
 <ItemLink id="ae2:molecular_assembler" />s or processing machines, set up the usual AE2 way. Network A wants to order
 from them.
 
-1. **Connect the two networks** with a Bridge or Routers; see [Getting Started](getting-started.md).
+1. **Connect the two networks** with a Bridge or Switches; see [Getting Started](getting-started.md).
 2. **Switch on "A uses B's" Crafting** in the Federation screen. It switches the same direction's Storage on too,
    because A's crafting CPU takes the ingredients from what A can see.
 3. **Switch on ME power** for the pair. Network B then runs on network A's power and needs no energy cell of its own.
@@ -39,7 +39,7 @@ from them.
     Network A's crafting terminal: lists network B's patterns to order
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.25 0.25" max="3.375 0.75 0.75">
-    A Bridge (or Routers) connects the two networks
+    A Bridge (or Switches) connects the two networks
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="1 0 0" max="2 1 1">
     Network B's AE2 Pattern Provider: receives the ingredients from network A's CPU
@@ -96,7 +96,7 @@ The results come back to the Provider's network. Processing needs no rule in the
    ME faces joins this subnet. The subnet must not be the Provider's own network. While the Provider uses the
    Endpoint, the Endpoint powers the subnet from the Provider's network, so the subnet needs no power of its own.
 2. **Face both fronts to the Federation side.** Both blocks have one Federation face, their front, which faces the
-   block you clicked when placing them. Click Federation Cable (or a Router) to place them, or put the two fronts
+   block you clicked when placing them. Click Federation Cable (or a Switch or Router) to place them, or put the two fronts
    against each other. The Provider's other five faces join its own ME network like a normal pattern provider, and
    it uses one channel there.
 3. **Insert patterns.** Right-click the Provider and put encoded processing patterns in its nine slots.

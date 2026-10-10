@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个工厂网络有一台装满合成样板的超级装配矩阵， 两个基地网络同时向它下单， 各用自己的合成CPU。 工厂还给两个基地供电。 这一页出现， 是因为安装了ExtendedAE-Plus。
 
-**需要**： 工厂网络上一台已成型的超级装配矩阵， 装好样板， 再加一个能源元件； 两个基地网络， 每个都有合成CPU、合成终端和存储； 三个网络共同接触的一个<ItemLink id="ae2federation:router" />。 矩阵怎么搭见[ExtendedAE-Plus的指南](extendedae_plus:introduction/devices/super_assembler_matrix.md)。
+**需要**： 工厂网络上一台已成型的超级装配矩阵， 装好样板， 再加一个能源元件； 两个基地网络， 每个都有合成CPU、合成终端和存储； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 矩阵怎么搭见[ExtendedAE-Plus的指南](extendedae_plus:introduction/devices/super_assembler_matrix.md)。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/super_matrix_hub.snbt" />
@@ -24,7 +24,7 @@ navigation:
     第二个基地： 合成终端、合成CPU和存储
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="4 1 1">
-    一个路由器： 每个面加入它接触的网络
+    一个交换机： 每个面加入它接触的网络
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -45,7 +45,7 @@ navigation:
 
 ## 搭建
 
-1. **把三个网络接到同一个路由器的各个面上**， 如场景所示。 矩阵通过它任何一个外层方块加入工厂的网络。
+1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。 矩阵通过它任何一个外层方块加入工厂的网络。
 2. **打开“第一个基地使用工厂的”和“第二个基地使用工厂的”合成规则**。 每条都会打开同方向的存储规则。
 3. **打开工厂和每个基地之间的ME能量**， 两个基地都靠工厂的能源元件运行。
 4. **在两个基地同时下单**。 矩阵的配方列在每个基地的可合成物品里。

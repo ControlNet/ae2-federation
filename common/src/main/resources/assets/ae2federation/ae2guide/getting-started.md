@@ -51,31 +51,32 @@ cable or device of the second network. The two networks stay separate; the Bridg
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
 
-### Networks further apart: Routers and Federation Cable
+### Networks further apart: Switches and Federation Cable
 
 <Row>
   <RecipeFor id="ae2federation:cable" />
-  <RecipeFor id="ae2federation:router" />
+  <RecipeFor id="ae2federation:switch" />
 </Row>
 
-Touch one face of a <ItemLink id="ae2federation:router" /> with an ME cable of the first network and another face
-with an ME cable of the second network. One Router can take up to six networks, one per face. For networks far
-apart, give each its own Router and join the Routers with <ItemLink id="ae2federation:cable" />. Two Routers placed
-face to face link directly, with no cable between them.
+Touch one face of a <ItemLink id="ae2federation:switch" /> with an ME cable of the first network and another face
+with an ME cable of the second network. One Switch can take up to six networks, one per face. For networks far
+apart, give each its own Switch and join the Switches with <ItemLink id="ae2federation:cable" />. Two Switches placed
+face to face link directly, with no cable between them. A <ItemLink id="ae2federation:router" /> joins or branches
+Federation Cable but attaches no network.
 
 <GameScene zoom="4" interactive={true} background="transparent">
-  <ImportStructure src="assets/router_cable.snbt" />
+  <ImportStructure src="assets/switch_cable.snbt" />
   <BoxAnnotation color="#915dcd" min="6 0 0" max="8 2 1">
     Network A: its energy cell powers both networks
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="5 0 0" max="6 1 1">
-    Router: one face on network A's cable, another on Federation Cable
+    Switch: one face on network A's cable, another on Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0.3 0.3" max="5 0.7 0.7">
-    Federation Cable between the two Routers
+    Federation Cable between the two Switches
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
-    Router: one face on network B's cable, another on Federation Cable
+    Switch: one face on network B's cable, another on Federation Cable
   </BoxAnnotation>
   <BoxAnnotation color="#5CA7CD" min="0 0 0" max="2 1 1">
     Network B: a drive and no power of its own
@@ -85,7 +86,7 @@ face to face link directly, with no cable between them.
 
 ## 3. Switch sharing on
 
-Right-click the Router or the Bridge (stay within eight blocks) to open the Federation screen. It draws the networks
+Right-click the Switch or the Bridge (stay within eight blocks) to open the Federation screen. It draws the networks
 in this Federation domain as cards. Click the line between two cards, or select one card and then the other network
 in the list on the right. The right side then shows that pair's rules in two groups, "A uses B's" and "B uses A's",
 each rule with a switch, and below them the shared energy switch. A rule works in its direction only.

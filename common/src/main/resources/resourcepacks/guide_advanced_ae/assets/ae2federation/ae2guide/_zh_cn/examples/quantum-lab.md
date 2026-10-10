@@ -10,7 +10,7 @@ navigation:
 
 **目标**： 一个实验室网络唯一的CPU是Advanced AE的量子计算机， 它同时向两个工坊网络下单： 锯木厂把原木做成木板， 细木坊把木板做成木棍。 一份订单要依次用到两个工坊， 第二份订单同时在同一台量子计算机上运行。 这一页出现， 是因为安装了Advanced AE。
 
-**需要**： 一个实验室网络， 带一台以<ItemLink id="advanced_ae:quantum_core" />为核心、已成型的量子计算机， 以及合成终端、存储和能源元件； 两个工坊网络， 每个都有一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:router" />。 量子计算机怎么搭见[Advanced AE的指南](advanced_ae:aae_intro/quantum_computer.md)。
+**需要**： 一个实验室网络， 带一台以<ItemLink id="advanced_ae:quantum_core" />为核心、已成型的量子计算机， 以及合成终端、存储和能源元件； 两个工坊网络， 每个都有一个样板供应器和一台分子装配室； 三个网络共同接触的一个<ItemLink id="ae2federation:switch" />。 量子计算机怎么搭见[Advanced AE的指南](advanced_ae:aae_intro/quantum_computer.md)。
 
 <GameScene zoom="3" interactive={true} background="transparent">
   <ImportStructure src="../assets/examples/quantum_lab.snbt" />
@@ -24,7 +24,7 @@ navigation:
     细木坊： 样板供应器里有从两块木板到四根木棍的样板， 旁边是分子装配室
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="4 0 0" max="5 1 1">
-    一个路由器： 每个面加入它接触的网络
+    一个交换机： 每个面加入它接触的网络
   </BoxAnnotation>
   <IsometricCamera yaw="195" pitch="30" />
 </GameScene>
@@ -45,7 +45,7 @@ navigation:
 
 ## 搭建
 
-1. **把三个网络接到同一个路由器的各个面上**， 如场景所示。 量子计算机通过它任何一个外层方块加入实验室的网络。
+1. **把三个网络接到同一个交换机的各个面上**， 如场景所示。 量子计算机通过它任何一个外层方块加入实验室的网络。
 2. **给每个工坊放样板**： 锯木厂放从一块原木到四块木板的合成样板， 细木坊放从两块木板到四根木棍的合成样板， 各放在一台分子装配室旁边的样板供应器里。
 3. **打开“实验室使用锯木厂的”和“实验室使用细木坊的”合成规则**。 每条都会打开同方向的存储规则。
 4. **打开实验室和每个工坊之间的ME能量**， 两个工坊都靠实验室的能源元件运行。
