@@ -61,8 +61,7 @@ cable or device of the second network. The two networks stay separate; the Bridg
 Touch one face of a <ItemLink id="ae2federation:switch" /> with an ME cable of the first network and another face
 with an ME cable of the second network. One Switch can take up to six networks, one per face. For networks far
 apart, give each its own Switch and join the Switches with <ItemLink id="ae2federation:cable" />. Two Switches placed
-face to face link directly, with no cable between them. A <ItemLink id="ae2federation:router" /> joins or branches
-Federation Cable but attaches no network.
+face to face link directly, with no cable between them.
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />

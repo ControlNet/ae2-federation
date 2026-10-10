@@ -53,7 +53,7 @@ navigation:
   <RecipeFor id="ae2federation:switch" />
 </Row>
 
-让<ItemLink id="ae2federation:switch" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个交换机最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个交换机， 再用<ItemLink id="ae2federation:cable" />把交换机连起来。 两个交换机面对面贴在一起时会直接连通， 中间不需要线缆。 <ItemLink id="ae2federation:router" />用来连接联邦线缆或让线缆分岔， 但不接入任何网络。
+让<ItemLink id="ae2federation:switch" />的一个面接触第一个网络的ME线缆， 另一个面接触第二个网络的ME线缆。 一个交换机最多可接六个网络， 每面一个。 网络相距较远时， 给每个网络各放一个交换机， 再用<ItemLink id="ae2federation:cable" />把交换机连起来。 两个交换机面对面贴在一起时会直接连通， 中间不需要线缆。
 
 <GameScene zoom="4" interactive={true} background="transparent">
   <ImportStructure src="assets/switch_cable.snbt" />

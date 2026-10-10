@@ -14,7 +14,9 @@ ME Federation Router (`ae2federation:router`) now links Federation ports only. T
   meet at one Switch and are never merged; two faces on one network count once. Two Switches face to face link
   directly.
 - **Router faces:** link to Federation Cable, a Switch, another Router, a Pattern Provider front or an Endpoint front.
-  An ME cable or device touching a Router face stays unconnected: the Router has no ME node on any face.
+  An ME cable or device touching a Router face stays unconnected: the Router has no ME node on any face. The Router is
+  not fully implemented yet and has no use for now, because Federation Cable already connects and branches on its
+  own; the guide says so.
 - **Domain screen:** right-clicking a Switch or a Router opens its domain's screen, as with a Bridge.
 - **Unchanged paths:** a Federation Pattern Provider still brings its own network in, and a Bridge still forms its
   two-network domain.

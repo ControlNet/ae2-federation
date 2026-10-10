@@ -23,7 +23,8 @@ reason.
 * **A Switch face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
   Federation face when Federation Cable, a Router, another Switch, a Pattern Provider front or an Endpoint front
   touches it. Any other block leaves the face unused.
-* **A Router does not join my network.** Routers attach no ME networks; put a Switch there instead.
+* **A Router does not join my network.** Routers attach no ME networks and are not fully implemented yet; put a
+  Switch there instead.
 * **"No domain with two networks."** The block you opened does not reach two networks yet. Connect a Switch or
   Bridge, then open it again.
 

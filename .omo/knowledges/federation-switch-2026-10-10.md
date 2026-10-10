@@ -40,6 +40,7 @@ attaches Federation ports only. Provider and Bridge attachment paths stay as the
 - Scenes: a neighbour script classified every guide Router; all but the one in `cable_connections.snbt` (cables on
   both sides) touched ME cables and became Switches. `router_hub.snbt` / `router_cable.snbt` were renamed
   `switch_hub.snbt` / `switch_cable.snbt`; the old Router page became `items/switch.md`, and a new short
-  `items/router.md` uses `cable_connections.snbt`.
+  `items/router.md` says the Router is not fully implemented yet and has no use for now (user wording: Federation
+  Cable already branches on its own, so the Router is not a branching device).
 - UI strings that named the Router as the entry point now name the Switch (or "Switch, Router or Bridge"); the
   topology "Via N Routers" label counts both block kinds, so it says "Switches and Routers".

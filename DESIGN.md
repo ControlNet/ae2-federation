@@ -221,7 +221,7 @@ Policy 不以显示名称、方块坐标或运行时 Grid 对象地址作为主�
 |---|---|---|
 | ME Federation Cable | 构成联邦域的物理连接 | 不直接连接 ME Grid，不携带 AE2 频道 |
 | ME Federation Switch | 每个面接入一个 ME 网络或连接联邦一侧；右键打开所属联邦域的完整信息与规则界面 | 各面不合并 ME 网络；同联邦域的任意 Switch / Router / Bridge 等价，不持有唯一配置副本 |
-| ME Federation Router | 连接、分岔联邦域；右键打开所属联邦域的完整信息与规则界面 | 不接入 ME 网络，各面没有 ME 节点 |
+| ME Federation Router | 功能尚未完全实现，暂无实际用途（联邦线缆本身即可连接、分岔）；右键可打开所属联邦域界面 | 不接入 ME 网络，各面没有 ME 节点 |
 | ME Federation Bridge | 形成双网络最小联邦域；右键管理该联邦域；按全局 Policy 接入能力 | ME 网络独立；重复 Bridge 不复制规则、库存或生产能力 |
 | ME Federation Pattern Provider | 保存 Pattern、映射与独立 Lane；一个定向 Federation 面，五个本地 ME 面 | 两类连接隔离；不接管机器内部分发 |
 | ME Federation Processing Endpoint | 对接原生 Processing Subnet Storage；提供返回入口；支持本地与 Federation 用法 | 不建立独立配方队列，不自动抽取产物 |
