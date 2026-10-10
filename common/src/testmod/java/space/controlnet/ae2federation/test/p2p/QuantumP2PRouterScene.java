@@ -84,10 +84,10 @@ public final class QuantumP2PRouterScene implements AutoCloseable {
                     "Waiting for both networks to settle");
             helper.assertTrue(carrier.linked(), "Waiting for the Quantum Bridge to join the carrier's halves");
             carrier.pair();
-            helper.setBlock(CONSUMER_ROUTER, RouterRegistration.ROUTER.get());
+            helper.setBlock(CONSUMER_ROUTER, RouterRegistration.SWITCH.get());
             helper.setBlock(QuantumP2PCarrier.OVERWORLD_FRONT, RouterRegistration.FEDERATION_CABLE.get());
             site.setBlock(QuantumP2PCarrier.NETHER_FRONT, RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());
-            site.setBlock(PROVIDER_ROUTER, RouterRegistration.ROUTER.get().defaultBlockState());
+            site.setBlock(PROVIDER_ROUTER, RouterRegistration.SWITCH.get().defaultBlockState());
             step = 2;
         }
         if (step == 2) {

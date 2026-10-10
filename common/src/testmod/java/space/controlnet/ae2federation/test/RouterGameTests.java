@@ -25,7 +25,7 @@ public final class RouterGameTests {
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void routerMixedSixFaces(GameTestHelper helper) {
         var fixtures = new RouterFixtures(helper);
-        var router = fixtures.placeRouter(CENTER);
+        var router = fixtures.placeSwitch(CENTER);
         fixtures.placeNativeDevice(CENTER, Direction.DOWN);
         fixtures.placeNativeCable(CENTER, Direction.UP);
         fixtures.placeNativeDevice(CENTER, Direction.NORTH);
@@ -57,7 +57,7 @@ public final class RouterGameTests {
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void routerSixIndependentMe(GameTestHelper helper) {
         var fixtures = new RouterFixtures(helper);
-        var router = fixtures.placeRouter(CENTER);
+        var router = fixtures.placeSwitch(CENTER);
         for (var face : Direction.values()) {
             fixtures.placeNativeDevice(CENTER, face);
         }
@@ -84,7 +84,7 @@ public final class RouterGameTests {
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void routerRepeatNetwork(GameTestHelper helper) {
         var fixtures = new RouterFixtures(helper);
-        var router = fixtures.placeRouter(CENTER);
+        var router = fixtures.placeSwitch(CENTER);
         for (var face : Direction.values()) {
             fixtures.placeNativeDevice(CENTER, face);
         }
@@ -116,7 +116,7 @@ public final class RouterGameTests {
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void routerPortReplacement(GameTestHelper helper) {
         var fixtures = new RouterFixtures(helper);
-        var router = fixtures.placeRouter(CENTER);
+        var router = fixtures.placeSwitch(CENTER);
         fixtures.placeNativeDevice(CENTER, Direction.EAST);
         for (var face : Direction.values()) {
             if (face != Direction.EAST) {
@@ -165,12 +165,12 @@ public final class RouterGameTests {
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void routerRejectUnsupported(GameTestHelper helper) {
         var fixtures = new RouterFixtures(helper);
-        var router = fixtures.placeRouter(CENTER);
+        var router = fixtures.placeSwitch(CENTER);
         for (var face : Direction.values()) {
             fixtures.placeFederationCable(CENTER, face);
         }
         var unsupportedPosition = new BlockPos(2, 6, 2);
-        var unsupportedRouter = fixtures.placeRouter(unsupportedPosition);
+        var unsupportedRouter = fixtures.placeSwitch(unsupportedPosition);
         fixtures.placeUnsupported(unsupportedPosition, Direction.NORTH);
         helper.succeedWhen(() -> {
             helper.assertValueEqual(fixtures.count(router, RouterPortKind.FEDERATION), 6L,
@@ -191,9 +191,9 @@ public final class RouterGameTests {
     }
 
     /**
-     * Two Routers placed face to face link directly, as through Federation Cable: the touching faces resolve as
+     * Two Switches placed face to face link directly, as through Federation Cable: the touching faces resolve as
      * Federation, their boundary nodes stay unconnected (no two-node native Grid between them), and the networks on
-     * the far faces share a domain. Replacing the second Router with a native device turns the face native again.
+     * the far faces share a domain. Replacing the second Switch with a native device turns the face native again.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 400, required = true, manualOnly = true)
@@ -212,7 +212,7 @@ public final class RouterGameTests {
                     helper.assertTrue(space.controlnet.ae2federation.domain.FederationDomainRegistryAccess
                             .confirmedNetworkId(grid).isPresent(), "Waiting for native identities to settle");
                 }
-                fixtures.placeRouter(CENTER);
+                fixtures.placeSwitch(CENTER);
                 phase[0] = 1;
                 helper.assertTrue(false, "Waiting for the first Router");
             }
@@ -220,7 +220,7 @@ public final class RouterGameTests {
             if (phase[0] == 1) {
                 helper.assertValueEqual(first.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
                         "The first Router must join its native network");
-                fixtures.placeRouter(second);
+                fixtures.placeSwitch(second);
                 phase[0] = 2;
                 helper.assertTrue(false, "Waiting for the adjacent Router");
             }
@@ -254,6 +254,81 @@ public final class RouterGameTests {
                     "adjacentFederation", "true", "reciprocal", "true", "touchingNativeEdge", "false",
                     "sharedDomain", "true", "nativeJoin", "false", "replacedNative", "true",
                     "placement", "sequential"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * A Router attaches Federation ports only: an ME chest and an ME cable beside it stay disconnected and unconnected,
+     * as the Router has no boundary node on any face, while a Federation Cable on another face links.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void routerRefusesMeNetworks(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var router = fixtures.placeRouter(CENTER);
+        fixtures.placeNativeDevice(CENTER, Direction.DOWN);
+        fixtures.placeNativeCable(CENTER, Direction.UP);
+        fixtures.placeFederationCable(CENTER, Direction.SOUTH);
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(router.binding(Direction.SOUTH).kind(), RouterPortKind.FEDERATION,
+                    "The Router must link to the Federation Cable");
+            helper.assertValueEqual(router.binding(Direction.DOWN).kind(), RouterPortKind.DISCONNECTED,
+                    "The Router must not attach the ME chest");
+            helper.assertValueEqual(router.binding(Direction.UP).kind(), RouterPortKind.DISCONNECTED,
+                    "The Router must not attach the ME cable");
+            helper.assertValueEqual(fixtures.count(router, RouterPortKind.NATIVE_ME), 0L,
+                    "No Router face may resolve native");
+            var noNodes = true;
+            for (var face : Direction.values()) {
+                noNodes &= router.boundaryNode(face) == null && router.getGridNode(face) == null;
+            }
+            helper.assertTrue(noNodes, "The Router must expose no grid node on any face");
+            helper.assertTrue(fixtures.nativeDeviceNode(CENTER, Direction.DOWN).getConnections().isEmpty(),
+                    "The ME chest must have no connection toward the Router");
+            RouterEvidence.write("routerrefusesmenetworks", 6, Map.of(
+                    "federationFace", "south", "nativeCount", "0", "chestAttached", "false",
+                    "cableAttached", "false", "gridNodes", "0"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * ME networks reach a Federation domain through Switches, and Routers carry it between them: two Switches, each
+     * with an ME chest, joined by cable through a Router, put both networks in one domain, and the Router's faces are
+     * all Federation.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void switchesJoinThroughRouter(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var left = CENTER.west(3);
+        var right = CENTER.east(3);
+        var leftSwitch = fixtures.placeSwitch(left);
+        var rightSwitch = fixtures.placeSwitch(right);
+        fixtures.placeNativeDevice(left, Direction.WEST);
+        fixtures.placeNativeDevice(right, Direction.EAST);
+        for (var position : new BlockPos[] {CENTER.west(2), CENTER.west(), CENTER.east(), CENTER.east(2)}) {
+            fixtures.placeFederationCable(position);
+        }
+        var router = fixtures.placeRouter(CENTER);
+        var registry = space.controlnet.ae2federation.domain.FederationDomainRegistryAccess.get(helper.getLevel());
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(router.binding(Direction.WEST).kind(), RouterPortKind.FEDERATION,
+                    "The Router must link to the western cable");
+            helper.assertValueEqual(router.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
+                    "The Router must link to the eastern cable");
+            helper.assertValueEqual(fixtures.count(router, RouterPortKind.NATIVE_ME), 0L,
+                    "The Router must attach no ME network");
+            var leftNetwork = network(helper, leftSwitch, Direction.WEST);
+            var rightNetwork = network(helper, rightSwitch, Direction.EAST);
+            helper.assertTrue(!leftNetwork.equals(rightNetwork), "The two chests must be separate networks");
+            helper.assertTrue(!registry.federationdomainsFor(leftNetwork).isEmpty()
+                    && registry.federationdomainsFor(leftNetwork).equals(registry.federationdomainsFor(rightNetwork)),
+                    "Networks on Switches joined through a Router must share a Federation domain");
+            RouterEvidence.write("switchesjointhroughrouter", 5, Map.of(
+                    "routerFederationFaces", "2", "routerNativeFaces", "0", "switchNativeFaces", "2",
+                    "sharedDomain", "true"));
             fixtures.close();
         });
     }

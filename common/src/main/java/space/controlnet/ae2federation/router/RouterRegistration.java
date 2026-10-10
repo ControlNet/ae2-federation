@@ -48,9 +48,10 @@ public final class RouterRegistration {
 
     /**
      * Registry ids used before the Router/Cable rename. Registry aliases let chunk palettes, block entity ids and item
-     * stacks saved under the old ids load as the new entries; new data is written with the new ids.
+     * stacks saved under the old ids load as the new entries; new data is written with the new ids. The Hub attached
+     * ME networks, so it loads as the Switch.
      */
-    static final java.util.Map<String, String> LEGACY_IDS = java.util.Map.of("hub", "router",
+    static final java.util.Map<String, String> LEGACY_IDS = java.util.Map.of("hub", "switch",
             "federation_cable", "cable");
 
     public static void register(IEventBus modBus) {

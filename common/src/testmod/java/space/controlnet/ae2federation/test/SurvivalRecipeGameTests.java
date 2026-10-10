@@ -72,17 +72,20 @@ public final class SurvivalRecipeGameTests {
                 grid(null, core, null, null, null, null, AEBlocks.PATTERN_PROVIDER.stack(), null, null));
         assertions += crafts(helper, "processing_endpoint", ProcessingRegistration.ENDPOINT_ITEM.get().getDefaultInstance(), 1,
                 grid(AEBlocks.INTERFACE.stack(), core, null, null, null, null, null, null, null));
-        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 4,
+        assertions += crafts(helper, "switch", RouterRegistration.SWITCH_ITEM.get().getDefaultInstance(), 4,
                 grid(cable, AEParts.IMPORT_BUS.stack(), cable,
                         AEParts.STORAGE_BUS.stack(), core, AEBlocks.INTERFACE.stack(),
                         cable, AEParts.EXPORT_BUS.stack(), cable));
-        // The Router's centre takes the Nexus Core, not AE2's Formation Core.
-        var nativeRouter = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
+        // The Switch's centre takes the Nexus Core, not AE2's Formation Core.
+        var nativeSwitch = level.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,
                 grid(cable, AEParts.IMPORT_BUS.stack(), cable,
                         AEParts.STORAGE_BUS.stack(), AEItems.FORMATION_CORE.stack(), AEBlocks.INTERFACE.stack(),
                         cable, AEParts.EXPORT_BUS.stack(), cable), level);
-        helper.assertFalse(nativeRouter.isPresent(), "A Formation Core must not make Routers");
+        helper.assertFalse(nativeSwitch.isPresent(), "A Formation Core must not make Switches");
         assertions++;
+        var fluixCrystal = AEItems.FLUIX_CRYSTAL.stack();
+        assertions += crafts(helper, "router", RouterRegistration.ROUTER_ITEM.get().getDefaultInstance(), 4,
+                grid(cable, fluixCrystal, cable, fluixCrystal, core, fluixCrystal, cable, fluixCrystal, cable));
         // Any glass cable colour, mixed within one craft.
         var white = AEParts.GLASS_CABLE.stack(AEColor.WHITE);
         var fluix = AEParts.GLASS_CABLE.stack(AEColor.TRANSPARENT);
@@ -125,13 +128,15 @@ public final class SurvivalRecipeGameTests {
             assertions++;
         }
 
-        for (var name : List.of("nexus_core", "bridge", "pattern_provider", "processing_endpoint", "router", "cable")) {
+        for (var name : List.of("nexus_core", "bridge", "pattern_provider", "processing_endpoint", "router", "switch",
+                "cable")) {
             var id = ResourceLocation.fromNamespaceAndPath("ae2federation", "recipes/misc/" + name);
             helper.assertTrue(level.getServer().getAdvancements().get(id) != null, "Missing recipe-book unlock " + id);
             assertions++;
         }
-        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "6", "inscriberRecipes", "2",
-                "coreBatch", "16", "routerBatch", "4", "cableBatch", "16", "recipeBookUnlocks", "6"));
+        PolicyEvidence.write("survivalrecipes", assertions, Map.of("craftingRecipes", "7", "inscriberRecipes", "2",
+                "coreBatch", "16", "routerBatch", "4", "switchBatch", "4", "cableBatch", "16",
+                "recipeBookUnlocks", "7"));
         helper.succeed();
     }
 

@@ -254,8 +254,8 @@ public final class TopologyContinuityGameTests {
                         || FederationDomainRegistryAccess.confirmedNetworkId(grid(RIGHT)).isEmpty()) {
                     throw new GameTestAssertException("Waiting for A and B to settle");
                 }
-                routers.placeRouter(LEFT);
-                routers.placeRouter(RIGHT);
+                routers.placeSwitch(LEFT);
+                routers.placeSwitch(RIGHT);
                 for (var x = LEFT.getX() + 1; x < RIGHT.getX(); x++) {
                     routers.placeFederationCable(new BlockPos(x, LEFT.getY(), LEFT.getZ()));
                 }

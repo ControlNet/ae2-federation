@@ -30,7 +30,7 @@ import space.controlnet.ae2federation.router.RouterRegistration;
  * Loads a structure exported by the pre-rename build (the exporter source is kept next to the sample). Its block
  * palette, block entities, AE2 cable-bus part and chest item stacks use {@code ae2federation:hub},
  * {@code ae2federation:federation_cable} and {@code ae2federation:multipart_bridge}; after load they must be the
- * Router, Cable and Bridge with their native node identities, ports and Domain relationships intact.
+ * Switch, Cable and Bridge with their native node identities, ports and Domain relationships intact.
  */
 @PrefixGameTestTemplate(false)
 public final class LegacySaveImportGameTests {
@@ -59,14 +59,14 @@ public final class LegacySaveImportGameTests {
         var bridgePosition = new BlockPos(4, 1, 4);
         var chestPosition = new BlockPos(7, 1, 1);
         helper.succeedWhen(() -> {
-            helper.assertBlockPresent(RouterRegistration.ROUTER.get(), router);
+            helper.assertBlockPresent(RouterRegistration.SWITCH.get(), router);
             helper.assertBlockPresent(RouterRegistration.FEDERATION_CABLE.get(), router.east());
             helper.assertBlockPresent(RouterRegistration.FEDERATION_CABLE.get(), router.east(2));
             var routerEntity = helper.<RouterBlockEntity>getBlockEntity(router);
             helper.assertValueEqual(routerEntity.binding(Direction.WEST).kind(), RouterPortKind.NATIVE_ME,
-                    "Legacy Hub face ports must restore as Router native ports");
+                    "Legacy Hub face ports must restore as Switch native ports");
             helper.assertValueEqual(routerEntity.binding(Direction.EAST).kind(), RouterPortKind.FEDERATION,
-                    "Legacy Federation Cable must reconnect to the Router");
+                    "Legacy Federation Cable must reconnect to the Switch");
             var part = PartHelper.getPartHost(helper.getLevel(), helper.absolutePos(bridgePosition))
                     .getPart(Direction.NORTH);
             helper.assertTrue(part instanceof MultipartBridgePart, "Legacy multipart_bridge part must load as Bridge");
@@ -82,26 +82,26 @@ public final class LegacySaveImportGameTests {
             helper.assertValueEqual(outerNetwork, expected.getProperty("bridgeOuterNetwork"),
                     "Bridge outer NetworkId must be restored, not regenerated");
             helper.assertValueEqual(routerNetwork, expected.getProperty("hubNativeNetwork"),
-                    "Router-attached NetworkId must be restored, not regenerated");
+                    "Switch-attached NetworkId must be restored, not regenerated");
             var domains = FederationDomainRegistryAccess.get(helper.getLevel()).snapshot().federationDomains()
                     .values();
             helper.assertTrue(domains.stream().anyMatch(domain -> domain.memberships().keySet().stream()
                     .map(id -> id.value().toString()).toList().containsAll(java.util.List.of(mainNetwork, outerNetwork))),
                     "Restored Bridge must re-form its Federation Domain with both ME Networks");
             var chest = helper.<ChestBlockEntity>getBlockEntity(chestPosition);
-            helper.assertTrue(chest.getItem(0).is(RouterRegistration.ROUTER_ITEM.get()) && chest.getItem(0).getCount() == 3,
-                    "Legacy hub items must load as ME Federation Router items");
+            helper.assertTrue(chest.getItem(0).is(RouterRegistration.SWITCH_ITEM.get()) && chest.getItem(0).getCount() == 3,
+                    "Legacy hub items must load as ME Federation Switch items");
             helper.assertTrue(chest.getItem(1).is(RouterRegistration.FEDERATION_CABLE_ITEM.get())
                     && chest.getItem(1).getCount() == 17, "Legacy federation_cable items must load as Cable items");
             helper.assertTrue(chest.getItem(2).is(BridgeRegistration.BRIDGE.get()) && chest.getItem(2).getCount() == 5,
                     "Legacy multipart_bridge items must load as Bridge items");
             var facts = new LinkedHashMap<String, String>();
-            facts.put("routerRestored", "true");
+            facts.put("switchRestored", "true");
             facts.put("cableRestored", "true");
             facts.put("bridgePartRestored", "true");
             facts.put("networkIdsRestored", "true");
             facts.put("domainReformed", "true");
-            facts.put("legacyItemStacksMigrated", "router=3,cable=17,bridge=5");
+            facts.put("legacyItemStacksMigrated", "switch=3,cable=17,bridge=5");
             facts.forEach((name, value) -> org.slf4j.LoggerFactory.getLogger(LegacySaveImportGameTests.class)
                     .info("AE2F_LEGACY_IMPORT fact={} value={}", name, value));
             writeEvidence(facts);

@@ -19,7 +19,8 @@ import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 
 /**
- * The Router and the Switch: both are this block, each with its own block entity type, and share all their code.
+ * The Router and the Switch: both are this block, each with its own block entity type, and share all their code. A
+ * Switch's faces attach ME networks and Federation ports; a Router's faces attach Federation ports only.
  */
 public final class RouterBlock extends BaseEntityBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
@@ -60,8 +61,13 @@ public final class RouterBlock extends BaseEntityBlock {
 
     /** The Router's or the Switch's block entity type, whichever block {@code state} is. */
     static BlockEntityType<RouterBlockEntity> blockEntityType(BlockState state) {
-        return state.is(RouterRegistration.SWITCH.get()) ? RouterRegistration.SWITCH_BLOCK_ENTITY.get()
+        return attachesNetworks(state) ? RouterRegistration.SWITCH_BLOCK_ENTITY.get()
                 : RouterRegistration.ROUTER_BLOCK_ENTITY.get();
+    }
+
+    /** Whether {@code state} is a Switch, whose faces attach ME networks; a Router's do not. */
+    static boolean attachesNetworks(BlockState state) {
+        return state.is(RouterRegistration.SWITCH.get());
     }
 
     @Override

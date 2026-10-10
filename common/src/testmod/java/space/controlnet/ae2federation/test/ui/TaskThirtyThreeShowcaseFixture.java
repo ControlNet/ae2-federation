@@ -75,7 +75,7 @@ final class TaskThirtyThreeShowcaseFixture {
         }
         state.cables = List.copyOf(cables);
         require(context.level().isEmptyBlock(remote), "Showcase second Router position must be empty");
-        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.ROUTER.get()
+        context.level().setBlockAndUpdate(remote, space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get()
                 .defaultBlockState());
         for (var network : state.remoteNetworks) placeChestNetwork(context, network[0], network[1]);
     }

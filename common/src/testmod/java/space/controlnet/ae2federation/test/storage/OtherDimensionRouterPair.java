@@ -49,8 +49,8 @@ public final class OtherDimensionRouterPair {
     }
 
     public void connectRouters() {
-        site.setBlock(LEFT, RouterRegistration.ROUTER.get().defaultBlockState());
-        site.setBlock(RIGHT, RouterRegistration.ROUTER.get().defaultBlockState());
+        site.setBlock(LEFT, RouterRegistration.SWITCH.get().defaultBlockState());
+        site.setBlock(RIGHT, RouterRegistration.SWITCH.get().defaultBlockState());
         for (var x = LEFT.getX() + 1; x < RIGHT.getX(); x++) {
             site.setBlock(new BlockPos(x, LEFT.getY(), LEFT.getZ()),
                     RouterRegistration.FEDERATION_CABLE.get().defaultBlockState());

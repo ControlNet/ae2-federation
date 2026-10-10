@@ -81,7 +81,7 @@ public final class ProjectionChainFixture implements AutoCloseable {
             if (grids().stream().anyMatch(grid -> FederationDomainRegistryAccess.confirmedNetworkId(grid).isEmpty())) {
                 return false;
             }
-            routers.placeRouter(CENTER);
+            routers.placeSwitch(CENTER);
             stage = 1;
             return false;
         }
