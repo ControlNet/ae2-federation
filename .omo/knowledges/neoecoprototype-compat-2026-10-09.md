@@ -30,3 +30,18 @@ crashes 3/3, patched boots 4/4 without MEGA Cells and also with it. Once a relea
 - Trinity is left out: upstream marks it not implemented.
 
 Neo ECO 21.2.1 includes the `getRequestedAmount` fix (tag is ahead of 76bfb358).
+
+## Processor assembler and the Nexus chain (2026-10-10)
+
+`ProcessorAssemblerRecipes.derived` (source, 1.3.2 to master 6bbbdf5) turns every AE2 Inscriber `press`-mode recipe
+with all three slots filled into an assembler recipe. Each single-item input is replaced by the middle input of the
+`inscribe` recipe that makes it ("printed part -> material inscribed into it"). `inscribe` outputs, i.e. printed
+circuits, never become assembler outputs: AE2's own printed circuits are not offered either. Checked with a temporary
+reflection probe in the `neoecoprototype` profile (not committed):
+
+- `ae2federation:nexus_processor` <- redstone, ender pearl, silicon (the circuit unfolds to the pearl). Expected.
+- `ae2federation:nexus_processor_press` <- ender pearl, iron block, iron block. AE2's press copy recipes (press on top,
+  iron block in the middle, `inscribe`) count as "the press is inscribed from an iron block", so both AE2 presses unfold
+  to iron blocks. MEGA's `accumulation_processor_press` gets singularity + 2 iron blocks the same way. Upstream side
+  effect; a pack can refuse it with the server config `disabled_processor_recipes = ["ae2federation:nexus_processor_press"]`.
+  An upstream fix would skip `inscribe` recipes whose top input is their own result (the copies) when building the map.
