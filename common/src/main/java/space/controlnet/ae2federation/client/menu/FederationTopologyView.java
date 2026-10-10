@@ -2355,6 +2355,29 @@ final class FederationTopologyView {
         return ui.selectId(id, type).findFirst().orElseThrow(() -> new IllegalStateException("Missing UI element #" + id));
     }
 
+    /**
+     * The opened domain's plate with its name, and this domain's Endpoints, as {@code [left, top, right, bottom]}; null
+     * when no plates are drawn.
+     */
+    private float[] focusBounds() {
+        var plate = plates.stream().filter(candidate -> candidate.domain().equals(OPENED_DOMAIN)).findFirst().orElse(null);
+        if (plate == null) return null;
+        var bounds = new float[] {Float.MAX_VALUE, Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+        for (var point : plate.outline()) {
+            bounds[0] = Math.min(bounds[0], point[0]);
+            bounds[1] = Math.min(bounds[1], point[1] - PLATE_NAME_HEIGHT);
+            bounds[2] = Math.max(bounds[2], point[0]);
+            bounds[3] = Math.max(bounds[3], point[1]);
+        }
+        for (var place : endpointPlaces.values()) {
+            bounds[0] = Math.min(bounds[0], place.x());
+            bounds[1] = Math.min(bounds[1], place.y());
+            bounds[2] = Math.max(bounds[2], place.x() + place.width());
+            bounds[3] = Math.max(bounds[3], place.y() + ENDPOINT_HEIGHT);
+        }
+        return bounds;
+    }
+
     /** A domain's plate: its outline, its fill as one-pixel rows {@code [y, left, right]}, and its margin. */
     record Plate(String domain, List<float[]> outline, List<float[]> rows, float padding) {
     }
@@ -2398,7 +2421,10 @@ final class FederationTopologyView {
                 fitDelay = 1;
             }
             if (!fitted && fitDelay-- <= 0) {
-                graph.fitToChildren(16, MIN_FIT_SCALE);
+                // With other domains shown, the view starts on the opened domain; Fit still shows them all.
+                var focus = focusBounds();
+                if (focus == null) graph.fitToChildren(16, MIN_FIT_SCALE);
+                else graph.fit(focus[0] - 16, focus[1] - 16, focus[2] + 16, focus[3] + 16, MIN_FIT_SCALE);
                 fitted = true;
                 fittedWidth = graph.getContentWidth();
                 fittedHeight = graph.getContentHeight();

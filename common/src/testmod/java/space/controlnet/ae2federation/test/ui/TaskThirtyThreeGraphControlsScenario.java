@@ -425,7 +425,24 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 .click("#graph_scope")
                 .waitUntil("all related shows both related networks read-only, however far", context ->
                         context.all(".related-network").size() == 2 && context.all(".graph-node-member").size() == 4)
-                .waitUntil("the graph refits so the related cards are in view", context -> {
+                .waitUntil("all related focuses this domain: its cards are in view, in the middle of the canvas", context -> {
+                    var viewport = context.el("#domain_graph").bounds();
+                    var own = context.all(".graph-node-member").stream()
+                            .filter(card -> !card.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("related-network"))
+                            .map(card -> card.bounds()).toList();
+                    if (own.isEmpty()) return false;
+                    float left = (float) own.stream().mapToDouble(card -> card.x()).min().orElse(0);
+                    float top = (float) own.stream().mapToDouble(card -> card.y()).min().orElse(0);
+                    float right = (float) own.stream().mapToDouble(card -> card.x() + card.width()).max().orElse(0);
+                    float bottom = (float) own.stream().mapToDouble(card -> card.y() + card.height()).max().orElse(0);
+                    return left >= viewport.x() && top >= viewport.y() && right <= viewport.x() + viewport.width()
+                            && bottom <= viewport.y() + viewport.height()
+                            && Math.abs((left + right) / 2 - viewport.centerX()) < viewport.width() * 0.12f
+                            && Math.abs((top + bottom) / 2 - viewport.centerY()) < viewport.height() * 0.12f;
+                })
+                .screenshot("ui-scope-related-focus")
+                .click("#graph_fit")
+                .waitUntil("Fit brings the related cards into view", context -> {
                     var viewport = context.el("#domain_graph").bounds();
                     return context.all(".related-network").stream().map(element -> element.bounds()).allMatch(card ->
                             card.x() >= viewport.x() && card.y() >= viewport.y()
@@ -466,12 +483,21 @@ public final class TaskThirtyThreeGraphControlsScenario implements UIScenario {
                 })
                 .waitForTextContains("#pair_note", "Read-only: belongs to Domain ")
                 .check("related rules are shown but cannot be switched", context -> context.all(".policy-switch").stream()
-                        .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 1)
-                .check("only the related pair's configured rule is listed", context -> context.all(".policy-row").size() == 1)
+                        .noneMatch(toggle -> toggle.isActive()) && context.all(".policy-switch.on").size() == 2)
+                .check("only the related pair's configured rules are listed: storage and energy",
+                        context -> context.all(".policy-row").size() == 2)
+                // A related pair lists only the direction that has rules, so its storage row may sit in either section.
+                .waitUntil("related rules show their real state: the energy it shares and the storage it uses work", context -> {
+                    var states = context.all(".policy-state");
+                    return states.size() == 2 && states.stream().allMatch(state ->
+                            state.as(com.lowdragmc.lowdraglib2.gui.ui.UIElement.class).hasClass("health-active"));
+                })
                 .checkTextContains("#scope_caption", "with connected domains (read-only)")
                 .check("all shown related networks fit under the cap", context -> !context.el("#scope_caption").text().contains("showing"))
+                // One label per direction with rules: the near pair's storage and its energy, which reads both ways,
+                // and the far pair's storage.
                 .check("both related domains' links are drawn as read-only, the far one too", context ->
-                        context.all(".related-pair").size() == 2)
+                        context.all(".related-pair").size() == 3)
                 .check("a related domain's network shows its own status, read-only", context -> {
                     var texts = TaskThirtyThreeScenarioSupport.cardTexts(context, context.get("related.id"));
                     return context.all(".related-network").size() > 0

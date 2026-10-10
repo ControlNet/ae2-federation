@@ -1041,7 +1041,9 @@ public final class FederationDomainPolicySession {
                         row.addProperty("enabled", record.rule().enabled());
                         row.addProperty("reexport", RuleMode.of(record.rule()) == RuleMode.REEXPORT);
                         row.addProperty("revision", record.revision().value());
-                            row.addProperty("domain", domainId.value());
+                        row.addProperty("domain", domainId.value());
+                        // Its observed state, as for this domain's rules, so its labels read the same colours.
+                        row.add("runtime", runtimeObservation(record.key(), record.rule()).toJson());
                         rulesOut.add(row);
                     });
         }

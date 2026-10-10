@@ -54,6 +54,11 @@ lived in a session scratchpad and were not kept.
   `NESTED_PADDING` (10), drawn after the host's, so its name lands in the strip between the host's top edge and the
   cards; names on the same spot go side by side. Found in the UI scenario: the north Bridge domain held only the
   opened domain's two networks, got its own column, and pulled the chain into a long diagonal.
+- Camera: switching to the related scope (and any later refit, such as a window resize) fits the opened domain's
+  plate, its name and this domain's Endpoints (`focusBounds`); the canvas Fit button still fits every domain.
+- Related rules carry `runtime` in the payload (`runtimeObservation`, the same global per-key lookup as this domain's
+  rules). Without it every related label read "not active yet" yellow, and the energy chip never turned quartz,
+  because `sharesEnergy` reads the same runtime.
 - A test lesson: the rule-chain ordering only showed in a test that checks links of one domain do not cross. A check
   for links passing over cards passed without it.
 
