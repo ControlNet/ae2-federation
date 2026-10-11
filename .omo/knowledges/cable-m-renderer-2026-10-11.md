@@ -100,7 +100,7 @@ before/after sheet of real in-game renders.
   `.65+.7*pulse`), additive in the glow pass; distant LOD keeps the two outer volumes unanimated.
   First fog trial (alpha .05/.07/.10) was barely visible in daylight; ~2x was needed.
 - In-world A/B rig: `function hero_scene:beam` in `tools/visual/build_hero_scene.py` (origin x+45 from the base),
-  `tools/visual/compose_before_after.py <before> <after> <out>`. Views used: overview `649.5 72.5 907.5 facing
+  `tools/visual/compose_before_after.py BEFORE=<dir> AFTER=<dir> [V2=<dir> ...] --output <png>`. Views used: overview `649.5 72.5 907.5 facing
   641.5 68.0 899.5`, close `638.2 70.4 902.4 facing 637.0 68.5 900.5`, side `638.0 69.6 903.5 facing 638.0 67.9
   900.5`, junction `645.5 71.6 903.8 facing 643.0 69.8 900.5`; night = same at `time set 18000`.
 - Capture pitfalls: wait ~45 s after join and ~9 s per teleport or every shot lags one view and the HUD may show;
