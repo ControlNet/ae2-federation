@@ -1,20 +1,52 @@
 package space.controlnet.ae2federation.client;
 
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
-/** Cable interiors rendered with Minecraft's standard emissive translucent shader. */
+/** Default M coherent optical carrier, soft moving packets and depth-tested light shoulders. */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
-    private static final RenderType FLOW = RenderType.entityTranslucentEmissive(
-            ResourceLocation.fromNamespaceAndPath("ae2federation", "textures/entity/cable_flow.png"), false);
+    private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
+    // Entity translucent emissive still calls minecraft_mix_light and dims optical carriers.
+    // Beacon's shader uses unlit vertex color, with world fog and normal scene depth testing.
+    private static final RenderType CORE = RenderType.create("ae2federation_optical_core",
+            DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS, 1536, false, true,
+            RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.RENDERTYPE_BEACON_BEAM_SHADER)
+                    .setTextureState(new RenderStateShard.TextureStateShard(WHITE, false, false))
+                    .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .createCompositeState(false));
+    private static final RenderType GLOW = RenderType.create("ae2federation_optical_glow",
+            DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS, 1536, false, false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(RenderStateShard.RENDERTYPE_BEACON_BEAM_SHADER)
+                    .setTextureState(new RenderStateShard.TextureStateShard(WHITE, false, false))
+                    .setTransparencyState(new RenderStateShard.TransparencyStateShard("optical_additive", () -> {
+                        RenderSystem.enableBlend();
+                        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
+                    }, () -> {
+                        RenderSystem.disableBlend();
+                        RenderSystem.defaultBlendFunc();
+                    }))
+                    .setCullState(RenderStateShard.NO_CULL)
+                    .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
+                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    .createCompositeState(false));
+    private static final CableBeamStyle DEFAULT_STYLE = CableBeamStyle.fromLoad(CableBeamStyle.DEFAULT_LOAD);
 
     public static void register(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(),
@@ -27,31 +59,26 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var level = cable.getLevel();
         if (level == null) return;
         var pos = cable.getBlockPos();
-        int mask = cable.flowMask();
-        var vertices = buffers.getBuffer(FLOW);
+        double distance = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
+                .distanceToSqr(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
+        // No capacity telemetry exists yet. Never infer traffic from the connection mask.
+        draw(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), level.getGameTime(),
+                partialTick, DEFAULT_STYLE, CableBeamMesh.detail(distance));
+    }
+
+    /** Explicit visual-input seam for future telemetry and native renderer previews; no gameplay effects. */
+    public static void draw(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z,
+            long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
-        // These are decorative pulses, not packet paths or measured traffic.
-        for (var ribbon : CableFlowGeometry.ribbons(mask)) {
-            int coordinate = switch (ribbon.axis()) {
-                case 0 -> pos.getX();
-                case 1 -> pos.getY();
-                default -> pos.getZ();
-            };
-            float phase = CableFlowGeometry.phase(coordinate, level.getGameTime(), partialTick);
-            for (var vertex : ribbon.vertices()) {
-                float u = switch (ribbon.layer()) {
-                    case FLOW -> phase + vertex.along();
-                    case HUB -> vertex.along();
-                    case BASE, BEND -> 0.03125f;
-                };
-                float v = vertex.across() * 0.5f + (ribbon.layer() == CableFlowGeometry.Layer.HUB ? 0.5f : 0);
-                vertices.addVertex(pose, vertex.x(), vertex.y(), vertex.z())
-                        .setColor(255, 255, 255, Math.round(vertex.alpha() * 255))
-                        .setUv(u, v)
-                        .setOverlay(OverlayTexture.NO_OVERLAY)
-                        .setLight(LightTexture.FULL_BRIGHT)
-                        .setNormal(pose, 0, 1, 0);
-            }
+        // Switching RenderTypes can finish the prior shared buffer. Complete each pass before switching.
+        for (int pass = 0; pass < (detail == 2 ? 1 : 2); pass++) {
+            var out = buffers.getBuffer(pass == 0 ? CORE : GLOW);
+            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 1,
+                (additive, px, py, pz, red, green, blue, alpha) -> {
+                    out.addVertex(pose, px, py, pz).setColor(red, green, blue, alpha)
+                            .setUv(.5f, .5f)
+                            .setLight(LightTexture.FULL_BRIGHT).setNormal(pose, 0, 1, 0);
+                });
         }
     }
 
