@@ -72,6 +72,11 @@ switches the two rules separately, and loading a save adds no rule.
     remains until jobs, pending restores, inventories and requester outputs drain. This read-only public API probe
     does not infer completion from the Grid CPU list. Actual chunk unload and a separate server-process restart
     are covered with Storage never enabled; the compatibility fixture uses a hand-operated chest processor.
+    Advanced AE 1.6.12's active loaded owner can likewise resolve historical jobs only when the non-destroyed
+    cluster's private `activeCpus` map is empty and every loaded member has no `getPreviousState()` pending NBT.
+    The private field dependency is centralized in the adapter; `getActiveCPUs()` is deliberately avoided because
+    it prunes native CPU slots. Native restore inserts each slot before restoring its logic, then clears pending
+    state. A different running job, any pending restore or an unloaded member suppresses terminal inference.
     The additive saved job outcome `TERMINATED` means the addon proves ending without exposing completion versus
     cancellation. Existing worlds load unchanged; downgrading to a version whose enum lacks `TERMINATED` is not
     supported after such a record is saved. The real Neo ECO processing CPU test waits for both declared outputs

@@ -52,7 +52,7 @@ final class IndependentCpuRestart {
         // Do not close the fixture: the ordinary server shutdown now saves these actual blocks and the owed stock.
     }
 
-    static void resume(GameTestHelper helper) {
+    static void resume(GameTestHelper helper, boolean advanced) {
         var state = new Properties();
         try (var stream = Files.newInputStream(STATE)) {
             state.load(stream);
@@ -110,7 +110,8 @@ final class IndependentCpuRestart {
             }
             helper.assertTrue(nether.isLoaded(cpu), "Waiting for the saved independent CPU chunk to reload");
             helper.assertTrue(grid.getCraftingService().getCpus().stream().anyMatch(value ->
-                    value.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCPU")
+                    value.getClass().getName().equals(advanced ? "net.pedroksl.advanced_ae.common.cluster.AdvCraftingCPU"
+                            : "com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCPU")
                             || value.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool")),
                     "The real independent CPU must rejoin the original consumer Grid");
             helper.assertTrue(grid.getCraftingService().getCpus().stream().noneMatch(value -> value.isBusy()),

@@ -18,7 +18,9 @@ import org.jetbrains.annotations.Nullable;
  * field. Neo ECO terminal evidence uses its persisted isTerminated API, guarded by isFormed and its private
  * deferredInit array (21.2.1): any deferred or quarantined slot suppresses the terminal inference. Only block-entity
  * anchors are recognized. Lightning Tech 2.1.1's loaded active Pigmee owner also proves termination once its full
- * native CPU pool has no persistent state, including pending-loaded jobs. No job is scheduled here.
+ * native CPU pool has no persistent state, including pending-loaded jobs. Advanced AE 1.6.12's active formed host
+ * requires the private cluster activeCpus map empty and every loaded member's previousState null. This avoids its
+ * mutating getActiveCPUs accessor and refuses deferred restores. No job is scheduled here.
  */
 final class CraftingCpuLifecycle {
     record Observation(@Nullable ICraftingLink link, ServerLevel level, BlockPos position, boolean nativeCpu) {}
@@ -59,6 +61,29 @@ final class CraftingCpuLifecycle {
 
     /** Native addon evidence for jobs whose CPU retired; never infer termination from Grid CPU-list absence. */
     static boolean terminated(BlockEntity anchor, java.util.UUID craftingId) {
+        var advanced = ADVANCED_TERMINAL.get(anchor.getClass());
+        if (advanced != null) {
+            try {
+                if (anchor.isRemoved() || !Boolean.TRUE.equals(advanced.active().invoke(anchor))) return false;
+                var cluster = advanced.cluster().invoke(anchor);
+                if (cluster == null || Boolean.TRUE.equals(advanced.destroyed().invoke(cluster))) return false;
+                var members = (java.util.Iterator<?>) advanced.members().invoke(cluster);
+                boolean foundAnchor = false;
+                while (members.hasNext()) {
+                    var member = members.next();
+                    if (!(member instanceof BlockEntity block) || block.isRemoved()
+                            || block.getLevel() != anchor.getLevel()
+                            || !block.getLevel().isLoaded(block.getBlockPos())
+                            || advanced.pending().invoke(member) != null) return false;
+                    foundAnchor |= member == anchor;
+                }
+                // getActiveCPUs mutates the native cluster (pruning/killing slots); inspect the complete backing
+                // map instead. Native restore inserts each slot before loading its CPU state, then clears pending NBT.
+                return foundAnchor && ((java.util.Map<?, ?>) advanced.cpus().get(cluster)).isEmpty();
+            } catch (ReflectiveOperationException | RuntimeException unavailable) {
+                return false;
+            }
+        }
         var pool = DRAINED_POOL.get(anchor.getClass());
         if (pool != null) {
             try {
@@ -80,6 +105,27 @@ final class CraftingCpuLifecycle {
             return false;
         }
     }
+
+    private record AdvancedTerminalAccess(Method active, Method cluster, Method destroyed, Method members,
+            Method pending, java.lang.reflect.Field cpus) {}
+
+    private static final ClassValue<AdvancedTerminalAccess> ADVANCED_TERMINAL = new ClassValue<>() {
+        @Override
+        protected AdvancedTerminalAccess computeValue(Class<?> type) {
+            if (!type.getName().equals("net.pedroksl.advanced_ae.common.entities.AdvCraftingBlockEntity")) return null;
+            try {
+                var cluster = type.getMethod("getCluster");
+                var clusterType = cluster.getReturnType();
+                var cpus = clusterType.getDeclaredField("activeCpus");
+                if (!cpus.trySetAccessible()) return null;
+                return new AdvancedTerminalAccess(type.getMethod("isActive"), cluster,
+                        clusterType.getMethod("isDestroyed"), clusterType.getMethod("getBlockEntities"),
+                        type.getMethod("getPreviousState"), cpus);
+            } catch (ReflectiveOperationException unavailable) {
+                return null;
+            }
+        }
+    };
 
     private record PoolAccess(Method active, Method pool, Method persistent) {}
 

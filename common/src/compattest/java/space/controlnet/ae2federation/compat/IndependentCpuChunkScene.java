@@ -14,8 +14,14 @@ final class IndependentCpuChunkScene {
     private static final String TYPE = "com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCPU";
 
     static void run(GameTestHelper helper) {
+        run(helper, false);
+    }
+
+    static void run(GameTestHelper helper, boolean advanced) {
+        var cpuPosition = advanced ? CPU.above() : CPU;
+        var cpuType = advanced ? "net.pedroksl.advanced_ae.common.cluster.AdvCraftingCPU" : TYPE;
         if ("resume".equals(System.getProperty("ae2federation.compat.cpuRestartPhase"))) {
-            IndependentCpuRestart.resume(helper);
+            IndependentCpuRestart.resume(helper, advanced);
             return;
         }
         var fixture = new PatternProjectionFixture(helper, PatternProjectionFixture.ConsumerCpus.NETHER);
@@ -24,11 +30,17 @@ final class IndependentCpuChunkScene {
         helper.succeedWhen(() -> {
             if (stage[0] == 0) {
                 helper.assertTrue(fixture.ready(), "Waiting for the native quantum-linked fixture");
-                fixture.site().setBlock(CPU, AddonCraftingScene.block("ae2lt:pigmee_mentalmath_unit").defaultBlockState());
+                if (advanced) {
+                    fixture.site().setBlock(CPU, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                    appeng.api.parts.PartHelper.setPart(fixture.site().level(), fixture.site().absolute(CPU), null, null,
+                            appeng.core.definitions.AEParts.GLASS_CABLE.item(appeng.api.util.AEColor.TRANSPARENT));
+                }
+                fixture.site().setBlock(cpuPosition, AddonCraftingScene.block(advanced
+                        ? "advanced_ae:quantum_core" : "ae2lt:pigmee_mentalmath_unit").defaultBlockState());
                 stage[0] = 1;
             }
             if (stage[0] == 1) {
-                helper.assertTrue(fixture.consumerService().getCpus().stream().anyMatch(cpu -> cpu.getClass().getName().equals(TYPE) || cpu.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool")),
+                helper.assertTrue(fixture.consumerService().getCpus().stream().anyMatch(cpu -> cpu.getClass().getName().equals(cpuType) || cpu.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool")),
                         "The actual independent CPU must join through the native Quantum Network Bridge: "
                                 + fixture.consumerService().getCpus().stream().map(cpu -> cpu.getClass().getName()).toList());
                 helper.assertValueEqual(fixture.visibleConsumerCpus(), 1, "No native CPU substitute remains");
@@ -72,14 +84,14 @@ final class IndependentCpuChunkScene {
                 helper.assertValueEqual(fixture.held(fixture.consumerChest(), PatternProjectionFixture.stone()), 0L,
                         "No held output may leak into ordinary consumer storage before CPU reload");
                 if ("prepare".equals(System.getProperty("ae2federation.compat.cpuRestartPhase"))) {
-                    IndependentCpuRestart.prepare(helper, fixture, CPU);
+                    IndependentCpuRestart.prepare(helper, fixture, cpuPosition);
                     return;
                 }
                 fixture.site().forceAgain();
                 stage[0] = 7;
             }
             helper.assertTrue(stage[0] == 7 && fixture.site().ticking(), "Waiting for actual CPU chunk reload");
-            helper.assertTrue(fixture.consumerService().getCpus().stream().anyMatch(cpu -> cpu.getClass().getName().equals(TYPE) || cpu.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool")),
+            helper.assertTrue(fixture.consumerService().getCpus().stream().anyMatch(cpu -> cpu.getClass().getName().equals(cpuType) || cpu.getClass().getName().equals("com.moakiee.ae2lt.crafting.timewheel.TimeWheelCraftingCpuPool")),
                     "The reloaded independent CPU rejoins the same consumer");
             helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "The original job completes without a replacement request");
             helper.assertValueEqual(fixture.owed(PatternProjectionFixture.stone()), 0L, "Actual delivery settles both owed outputs");

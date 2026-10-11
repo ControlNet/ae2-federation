@@ -53,7 +53,10 @@ python3 tools/compat_cpu_restart.py --accept-eula --no-build
   correctly exposes its pool sentinel while idle. Correcting the fixture then passed on
   baseline. That initial failure was not a production defect.
 
-## Confirmed open boundary: Advanced AE retirement
+## Confirmed open boundary at round-two handoff: Advanced AE retirement
+
+Follow-up: `audit-advanced-cpu-retirement-2026-10-11.md` records the subsequent repair and
+actual restart validation. The history below preserves the original failing evidence.
 
 A second distinct audit pass ran the same saved-history observation against actual
 Advanced AE 1.6.12. `quantumCoreRetirement` failed: after native CPU completion and removal,

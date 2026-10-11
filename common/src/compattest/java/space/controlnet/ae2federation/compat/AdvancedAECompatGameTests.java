@@ -15,6 +15,16 @@ public final class AdvancedAECompatGameTests {
     private AdvancedAECompatGameTests() {
     }
 
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1600)
+    public static void quantumCoreChunkUnload(GameTestHelper helper) {
+        IndependentCpuChunkScene.run(helper, true);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void quantumCoreRetirement(GameTestHelper helper) {
+        IndependentCpuRetirementScene.run(helper, true);
+    }
+
     /**
      * The Nexus Press and Advanced AE's Quantum Press both press the Engineering and Logic Presses together; the middle
      * input decides which one comes out.

@@ -1,6 +1,6 @@
 """Verify a real independent CPU unload across two actual server processes sharing one saved world.
 
-The pinned Lightning Tech profile supplies the real TimeWheel CPU. This uses a separate compatibility test mod,
+The pinned Lightning Tech or Advanced AE profile supplies the real independent CPU. This uses a separate compatibility test mod,
 not a production-client proof. The test manually converts chest inputs to outputs, never substitutes CPU logic.
 
     python3 tools/compat_cpu_restart.py --accept-eula
@@ -17,19 +17,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--accept-eula", action="store_true")
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument("--profile", choices=("ae2-lightning-tech", "advanced-ae"), default="ae2-lightning-tech")
     args = parser.parse_args()
     if not args.accept_eula:
         parser.error("Starting Minecraft accepts its EULA; pass --accept-eula")
     if not args.no_build:
         compat_run.build()
-    profile = compat_run.load_profiles()["ae2-lightning-tech"]
+    profile = compat_run.load_profiles()[args.profile]
     compat_run.neoforge_server(profile["neoforge"])
     directory = compat_run.RUNS / f"independent-cpu-restart-{time.time_ns()}"
     compat_run.assemble(profile, directory)
     outcomes = []
     for phase in ("prepare", "resume"):
         report = directory / f"{phase}-report.json"
-        command = ["java", "-Xmx4G", "-Dae2federation.compat.tests=mentalmathunitchunkunload",
+        test = "quantumcorechunkunload" if args.profile == "advanced-ae" else "mentalmathunitchunkunload"
+        command = ["java", "-Xmx4G", f"-Dae2federation.compat.tests={test}",
                    f"-Dae2federation.compat.report={report}", "-Dae2federation.compat.parallel=1",
                    f"-Dae2federation.compat.cpuRestartPhase={phase}",
                    f"-Dae2federation.compat.originX={4096 if phase == 'resume' else 0}",
