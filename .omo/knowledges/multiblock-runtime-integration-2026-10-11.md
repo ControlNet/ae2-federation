@@ -50,8 +50,9 @@ closed the 2x2 channel each edge assembly sits in; without them the 1-unit notch
 16/17 showed the world through the block (visible at grazing angles; also present in the offline prototype,
 where Blender staging hid it). Fix: `channel_walls` adds the two inner channel walls behind every emitted edge
 of a connected Switch member, textured from the source face on that plane with end pixels repeated. A ray test
-(`test_connected_switch_and_router_members_are_opaque`) fails without it; all 63 non-full masks per device have
-zero see-through rays afterwards. Single blocks are unchanged.
+(`test_connected_switch_and_router_members_are_opaque`, six masks x 600 rays per device) fails without it. A
+one-off scratch scan (3000 rays for each of the 63 non-full masks per device, not committed) also found zero
+see-through rays afterwards. Single blocks are unchanged.
 
 ## Test tricks
 
