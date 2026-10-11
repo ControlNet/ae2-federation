@@ -31,7 +31,9 @@ main checkout (concept on the left, composition on the right).
 
 ## Implementation
 
-- Prototype `tools/multiblock/router_tiles.py` (`router_style='tiles'`), Java `RouterTileGeometry`.
+- Prototype `tools/multiblock/face_tiles.py` (`router_style='tiles'`), Java `DeviceStructureGeometry`. Both
+  started Router-only (`router_tiles.py`, `RouterTileGeometry`) and were generalized for the Switch tiles; see
+  `switch-artist-connected-tiles-2026-10-11.md`.
   Faces merge texels of one tile and depth into rectangles (greedy, row-major); walls are emitted by the
   raised texel toward each recessed neighbour, merged along a row or column within one tile, UV folded
   over the edge. Seams look at the neighbour member's composed texel, computable from the member's own
@@ -41,7 +43,6 @@ main checkout (concept on the left, composition on the right).
 - The baked model reads the tiles with `NativeImage`; `getPixelRGBA` returns ABGR, converted with
   `FastColor`. The JUnit parity test reads them with `ImageIO.getRGB` (ARGB). A recessed texel on a face's
   outer edge throws, and the model falls back to the standalone one.
-- A class cannot implement its own nested interface (cyclic inheritance), hence `DeviceStructureMember`.
 - Parity lines now include the texture; Java matched Python for all 128 sets on the first run.
 - Quads per member: 372 for a lone block (the runtime keeps the standalone model there), 45 to 262 for the other 62 connection sets.
 

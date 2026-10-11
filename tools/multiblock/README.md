@@ -2,7 +2,7 @@
 
 This is an executable geometry prototype for Router and Switch cuboids. It reads the current
 artist-authored production JSON models and PNG textures and produces connected meshes and Blender
-renders. The game uses a Java port of the same geometry (`RouterTileGeometry`, `DeviceStructureGeometry`);
+renders. The game uses a Java port of the accepted `'tiles'` geometry (`DeviceStructureGeometry`);
 the parity fixture below keeps the two equal.
 
 ## Implemented geometry
@@ -18,12 +18,13 @@ the parity fixture below keeps the two equal.
 - Export geometry as Minecraft-coordinate quads with normalized UVs, independent of Blender.
 - Keep source models and textures unchanged, recording SHA-256 checks in the render report.
 
-The accepted appearance uses `router_style='tiles'` and `switch_style='white-backed'`. Default
-`plain` styles, the raised Router links and earlier renders remain historical comparisons. Start with the
+The accepted appearance uses `router_style='tiles'` and `switch_style='tiles'`. Default `plain`
+styles, the raised Router links, the white-backed Switch and earlier renders remain historical
+comparisons. Start with the
 [implementation handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for accepted
 requirements, final render commands and runtime behaviour.
 
-A connected Switch member also gets the inner walls of each edge channel (`channel_walls`): the
+The superseded white-backed Switch also gets the inner walls of each edge channel (`channel_walls`): the
 original body and face slabs closed them, and without them the world shows through the notches
 beside the edge contacts.
 
@@ -131,16 +132,18 @@ an original-block/connected-body close-up, a grazing-angle socket view, mesh JSO
 report and packed `.blend`. Tests additionally check the exact source-contact UV range and
 depths and prove that no skin/infill quad still covers a socket opening.
 
-## Router connected-face tiles
+## Connected-face tiles
 
-`router_style='tiles'` (`router_tiles.py`) builds the Router from the artist's four tiles in
-`textures/block/router/`: `router_base` on every exposed face, the top/bottom rows of `router_side_hor`
-and left/right columns of `router_side_ver` where a face edge is on the body's outside, and the 4x4
-corner squares of `router_corner` where both are. Texels in the two backing greys are recessed one
-unit; every other texel is flush; walls close each step and show the raised texel folded over the
-edge. The PNGs are read with a small standard-library decoder. Tests check that a single block
-equals `router.png` and the standalone model's relief on all six faces, that four members share a
-small core, that frame tiles stay on the body's outer edges, and that every step has a wall.
+`router_style='tiles'` and `switch_style='tiles'` (`face_tiles.py`) build each device from the
+artist's four tiles in `textures/block/<device>/`: `<device>_base` on every exposed face, the frame
+rows of `<device>_side_hor` and columns of `<device>_side_ver` where a face edge is on the body's
+outside, and the corner squares of `<device>_corner` where both are. The frame width is the side
+tiles' opaque band: four texels for the Router, three for the Switch. Texels in the two backing greys
+are recessed one unit; every other texel is flush; walls close each step and show the raised texel
+folded over the edge. The PNGs are read with a small standard-library decoder. Tests check that a
+single block equals the standalone texture and relief on all six faces (the Switch's eight two-unit
+notches on the outer edge excepted), that four members share a small core or contact, that frame
+tiles stay on the body's outer edges, and that every step has a wall.
 
 ## Raised Router links (superseded)
 
@@ -163,7 +166,7 @@ seams on all six faces, unchanged core/frame, and unchanged single-block/Switch 
 
 ## Runtime integration
 
-The Router tiles and the white-backed Switch run in game as a chunk-baked model; see the
+The tile-built Router and Switch run in game as a chunk-baked model; see the
 [handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for the runtime, its tests
 and the in-game screenshot run. Offline lighting differs from Minecraft, and the Blender images
 are not in-game screenshots.
