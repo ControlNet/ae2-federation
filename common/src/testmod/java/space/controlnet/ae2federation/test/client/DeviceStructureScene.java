@@ -112,6 +112,9 @@ public final class DeviceStructureScene {
         view("overview", out, new Vec3(-7, Y + 6, -9), new Vec3(10, Y + 1, 4));
         view("router-front-east", out, new Vec3(5.2, Y + 3.6, -3.2), new Vec3(1.5, Y + 1, 1));
         view("router-back-west", out, new Vec3(-2.2, Y + 3.6, 5.2), new Vec3(1.5, Y + 1, 1));
+        // Straight at the 3x2 north faces, as the artist's concept shows a Router face.
+        view("router-face-on", out, new Vec3(1.5, Y + 1, -3.4), new Vec3(1.5, Y + 1, 0));
+        view("switch-face-on", out, new Vec3(7.5, Y + 1, -3.4), new Vec3(7.5, Y + 1, 0));
         view("switch-front-east", out, new Vec3(11.2, Y + 3.6, -3.2), new Vec3(7.5, Y + 1, 1));
         view("switch-back-west", out, new Vec3(3.8, Y + 3.6, 5.2), new Vec3(7.5, Y + 1, 1));
         view("switch-grazing", out, new Vec3(10.8, Y + 0.7, -1.4), new Vec3(7.5, Y + 0.6, 0));

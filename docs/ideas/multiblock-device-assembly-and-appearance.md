@@ -9,7 +9,8 @@ Remaining work is listed under [Not yet verified](#not-yet-verified).
 
 This page is the entry point for the next implementer. The user accepted the latest appearance after
 reviewing the raised Router connectors and white-backed Switch, and it now renders in game from
-validated bodies. Previous dark Switch infill and flat Router links are historical comparisons, not
+validated bodies. The Router's faces have since been refined by the artist's connected-face tiles
+(see [Router](#router-the-artists-connected-face-tiles)). Previous dark Switch infill and flat Router links are historical comparisons, not
 alternative final designs. The user also selected the failure, merge, size and chunk rules recorded
 under [Selected rules](#selected-rules).
 
@@ -57,14 +58,25 @@ motifs at their original scale. Preserve visible geometry and texture orientatio
 including one-block-thick bodies. The accepted prototype uses the existing model and texture assets;
 no replacement texture artwork was needed.
 
-### Router: raised blue connections
+### Router: the artist's connected-face tiles
 
-Use `router_style='raised'` in the prototype. The middle blue links must be physically raised above
-the backing. Extend the original four-model-unit-wide core tabs toward adjacent members. Their top
-is level with the original core top and one model unit (1/16 block) above the backing. Keep actual
-sidewalls, original tab UVs and the original core/frame. Do not reproduce the earlier inset/flat links.
+On 2026-10-11 the artist refined the Router: a concept image of a 3x2 face (grey areas recessed)
+and four 16x16 tiles in `textures/block/router/`: `router_base`, `router_side_hor`, `router_side_ver`
+and `router_corner`. Use `router_style='tiles'` in the prototype (`router_tiles.py`).
 
-Reference: `build/multiblock-devices/router-raised-v2/`:
+- Each exposed face of a member starts from `router_base`: a core, 4-wide blue links to each edge and a
+  quarter of a small core in each corner. Where a face edge lies on the body's outside, four rows of
+  `router_side_hor` (top, bottom) or four columns of `router_side_ver` (left, right) are laid over it;
+  where both edges of a corner do, the corner's 4x4 square of `router_corner` covers that.
+- The result: links run between neighbouring cores, a small core forms where four members meet, and
+  the frame stays on the body's outside. A 1x1 face composed this way equals `router.png` exactly.
+- Relief comes from the art: texels in the two backing greys sit one unit (1/16) below the face and
+  all others are flush, with real walls on every step. This reproduces the standalone model's relief
+  exactly, and keeps the earlier rule that links stand 1/16 above the backing, level with the core.
+- Texture edges follow Minecraft's face UVs, as the standalone model's do (top face: u along x, v along z).
+
+The superseded raised-link composition (`router_style='raised'`) stays in the prototype for comparison.
+Its reference renders are in `build/multiblock-devices/router-raised-v2/`:
 
 - `router-raised-comparison.png`: previous appearance on the left, accepted raised links on the right.
 - `router-raised-closeup.png`: low-angle comparison showing the raised sidewalls.
@@ -102,20 +114,21 @@ single blocks and the Router are unchanged.
 | File | Role for the next implementer |
 |---|---|
 | [geometry.py](../../tools/multiblock/geometry.py) | Cuboid validation and asset-backed quad generation; explicit accepted style arguments are required |
+| [router_tiles.py](../../tools/multiblock/router_tiles.py) | Router faces composed from the artist's tiles, relief read from the art (`router_style='tiles'`) |
 | [switch_connectors.py](../../tools/multiblock/switch_connectors.py) | Six-face socket transforms, backing cutouts, original contact geometry and UVs |
 | [test_geometry.py](../../tools/multiblock/test_geometry.py) | Offline geometric invariants and regression checks, including a see-through ray test |
 | [export_runtime_parity.py](../../tools/multiblock/export_runtime_parity.py) | Writes and checks the per-mask hashes the Java port must match |
-| [render_router_links.py](../../tools/multiblock/render_router_links.py) | Accepted Router comparison and low-angle render |
+| [render_router_links.py](../../tools/multiblock/render_router_links.py) | Superseded raised-link Router comparison and low-angle render |
 | [render_switch_white.py](../../tools/multiblock/render_switch_white.py) | Accepted Switch comparison, original-block reference and low-angle render |
 | [Preview README](../../tools/multiblock/README.md) | Tooling usage and historical variants |
 
 Important: `build()` still defaults to `plain` for both styles so historical comparisons remain
 reproducible. Do not mistake these defaults, `render.py`, or Switch `infill`/`edge-matched` outputs
-for the approved final appearance. Select `router_style='raised'` and `switch_style='white-backed'`.
+for the approved final appearance. Select `router_style='tiles'` and `switch_style='white-backed'`.
 
 Source artwork lives under `common/src/main/resources/assets/ae2federation/`:
-`models/block/router.json`, `models/block/switch.json`, `textures/block/router/router.png`, and
-`textures/block/switch/switch.png`. Exported quads use Minecraft coordinates measured in blocks and
+`models/block/router.json`, `models/block/switch.json`, `textures/block/router/router.png`, the four
+`textures/block/router/router_*.png` tiles, and `textures/block/switch/switch.png`. Exported quads use Minecraft coordinates measured in blocks and
 normalized UVs. Renderer camera, staging and lighting are preview-only, not game implementation rules.
 
 Run from the current worktree (render commands regenerate files in their respective output folders):
@@ -127,13 +140,13 @@ blender --background --factory-startup --threads 8 --python tools/multiblock/ren
 blender --background --factory-startup --threads 8 --python tools/multiblock/render_switch_white.py
 ```
 
-Expected: `Ran 17 tests` and `OK`; two Router renders followed by `ROUTER_RAISED_OK`; three Switch
+Expected: `Ran 21 tests` and `OK`; two Router renders followed by `ROUTER_RAISED_OK`; three Switch
 renders followed by `SWITCH_WHITE_OK`. Each render report must show `source_assets_unchanged: true`.
 The geometry tests use standard-library Python. Rendering uses the installed Blender executable and
 its bundled Python (reviewed with Blender 5.2.1); do not install `bpy` into system Python.
 
 The Blender renders above are offline previews, not game screenshots. They predate the channel walls
-and were not regenerated; the walls are only visible through the contact notches.
+and the Router tiles and were not regenerated; the Router tiles were checked in game instead.
 
 ## Runtime implementation
 
@@ -143,7 +156,8 @@ and were not regenerated; the walls are only visible through the contact notches
 | [DeviceStructureUpdater](../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructureUpdater.java) | Queues checks from block entity initialization and neighbour changes, checks each body once per level tick, writes `formed` and six connection booleans as blockstates |
 | [RouterBlock](../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlock.java) | Blockstate properties; right-clicking an unformed member shows why it does not form |
 | [RouterFacePort](../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java) | A face of an unformed block binds nothing, so its Federation evidence is withdrawn; its boundary node is untouched |
-| [DeviceStructureGeometry](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureGeometry.java) | Client-free Java port of `geometry.py` and `switch_connectors.py` with the accepted styles |
+| [RouterTileGeometry](../../common/src/main/java/space/controlnet/ae2federation/client/RouterTileGeometry.java) | Client-free Java port of `router_tiles.py`; reads the four tiles' pixels |
+| [DeviceStructureGeometry](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureGeometry.java) | Client-free Java port of the Switch parts of `geometry.py` and `switch_connectors.py` |
 | [DeviceStructureBakedModel](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureBakedModel.java) | Wraps each connected blockstate's model; quads per connection mask, cached, rebuilt on resource reload |
 
 - Checks never load chunks and only change blockstates, sent to clients without neighbour updates.
@@ -326,7 +340,7 @@ LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1600x960x24 +extension GLX" \
   ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:runStructureSceneClient --no-configuration-cache
 ```
 
-Expected: `Ran 17 tests` / `OK`; `PARITY_FIXTURE_CURRENT`; 3 geometry and 6 cuboid-search JUnit tests
+Expected: `Ran 21 tests` / `OK`; `PARITY_FIXTURE_CURRENT`; 3 geometry and 6 cuboid-search JUnit tests
 pass; the six GameTests and the whole manifest (220 on 2026-10-11) pass; `check build` succeeds
 (556 JUnit tests on 2026-10-11).
 After a geometry change, run `python3 tools/multiblock/export_runtime_parity.py` to rewrite the fixture.
@@ -341,21 +355,28 @@ body recovers), and a body across a chunk border kept while the other chunk is u
 `runStructureSceneClient` builds a flat test world, photographs it and quits; it writes to
 `build/multiblock-devices/ingame/` (`first-run/` when it creates the world, `reopened/` when the world
 already exists, which checks save and re-entry). Move the saved world in `neoforge-1.21.1/run-structure-scene/saves/`
-aside for a fresh first run. Views: overview; Router and Switch 3x2x2 from front and back; grazing
+aside for a fresh first run. Views: overview; the 3x2 north faces of the Router and the Switch straight on;
+Router and Switch 3x2x2 from front and back; grazing
 views of both; floating 2x2x2 bodies from below; thin and flat bodies; an unformed L beside singles;
 8x4x1 walls from 32 blocks; a Switch with a member removed and replaced; both devices after a resource
 reload. These are real client screenshots (software OpenGL), unlike the Blender previews above.
+
+The Router tiles were compared in game with the same scene before and after (`-PstructureSceneOut=`
+`build/multiblock-devices/router-tiles-compare/before` and `.../after`):
+`router-tiles-compare/router-before-after.png` pairs the Router views, and
+`router-tiles-compare/concept-before-after-face-on.png` sets the concept beside both face-on shots.
 
 ## Not yet verified
 
 - A remote client on a dedicated server (screenshots use the integrated server).
 - Hardware GPU lighting and shader packs; screenshots use software OpenGL.
-- Other resource packs replacing the Router/Switch models (the connected model reads the active
-  `router.json`/`switch.json`; on a read failure it logs a warning and keeps the standalone models).
+- Other resource packs replacing the Router tiles or the Switch model (the connected model reads the
+  active `router_*.png` tiles and `switch.json`; on a read failure, or a recessed texel on a face's outer
+  edge, it logs a warning and keeps the standalone models).
 - Performance with many large bodies changing at once.
 - The right-click status message through a real player click; GameTests check the message itself.
 
-The visual choice is settled: raised Router links, white Switch backing, recessed original-style
+The visual choice is settled: the artist's connected Router tiles, white Switch backing, recessed original-style
 Switch contacts, continuous outer frames and repeated modules. Do not reopen these as unanswered art
 questions merely because the prototype retains earlier comparison styles. Cable capacity and power
 balancing remain separate deferred discussions.
@@ -367,6 +388,7 @@ records the pinned AE2 assembly/rendering classes and current project assets. Th
 their useful construction/rendering patterns without claiming direct reuse is already implemented.
 
 [Visual acceptance and runtime assessment](../../.omo/knowledges/multiblock-visual-acceptance-and-runtime-scope-2026-10-11.md),
-[raised Router evidence](../../.omo/knowledges/router-raised-links-2026-10-11.md), and
+[raised Router evidence](../../.omo/knowledges/router-raised-links-2026-10-11.md) (superseded),
+[Router tiles evidence](../../.omo/knowledges/router-artist-connected-tiles-2026-10-11.md), and
 [white Switch evidence](../../.omo/knowledges/switch-white-backing-2026-10-11.md) record the latest
 accepted references and verification boundaries.

@@ -2,8 +2,8 @@
 
 This is an executable geometry prototype for Router and Switch cuboids. It reads the current
 artist-authored production JSON models and PNG textures and produces connected meshes and Blender
-renders. The game uses a Java port of the same geometry (`DeviceStructureGeometry`); the parity fixture
-below keeps the two equal.
+renders. The game uses a Java port of the same geometry (`RouterTileGeometry`, `DeviceStructureGeometry`);
+the parity fixture below keeps the two equal.
 
 ## Implemented geometry
 
@@ -18,10 +18,10 @@ below keeps the two equal.
 - Export geometry as Minecraft-coordinate quads with normalized UVs, independent of Blender.
 - Keep source models and textures unchanged, recording SHA-256 checks in the render report.
 
-The accepted appearance uses `router_style='raised'` and `switch_style='white-backed'`. Default
-`plain` styles and earlier renders remain historical comparisons. Start with the
+The accepted appearance uses `router_style='tiles'` and `switch_style='white-backed'`. Default
+`plain` styles, the raised Router links and earlier renders remain historical comparisons. Start with the
 [implementation handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for accepted
-requirements, final render commands and runtime behaviour. No replacement artwork was needed.
+requirements, final render commands and runtime behaviour.
 
 A connected Switch member also gets the inner walls of each edge channel (`channel_walls`): the
 original body and face slabs closed them, and without them the world shows through the notches
@@ -35,7 +35,7 @@ From this worktree's root, check geometry with standard-library Python (no packa
 python -m unittest discover -s tools/multiblock -v
 ```
 
-Expected: seventeen tests pass, including exterior coverage, corner counts, source assets, UV bounds,
+Expected: twenty-one tests pass, including exterior coverage, corner counts, source assets, UV bounds,
 thin structures, invalid shapes, unchanged Router/single-block geometry, links meeting across
 all six face orientations, and rays into connected members always meeting a face. The shape inputs
 are local geometry test cases, not game-world integration tests.
@@ -131,7 +131,18 @@ an original-block/connected-body close-up, a grazing-angle socket view, mesh JSO
 report and packed `.blend`. Tests additionally check the exact source-contact UV range and
 depths and prove that no skin/infill quad still covers a socket opening.
 
-## Raised Router links
+## Router connected-face tiles
+
+`router_style='tiles'` (`router_tiles.py`) builds the Router from the artist's four tiles in
+`textures/block/router/`: `router_base` on every exposed face, the top/bottom rows of `router_side_hor`
+and left/right columns of `router_side_ver` where a face edge is on the body's outside, and the 4x4
+corner squares of `router_corner` where both are. Texels in the two backing greys are recessed one
+unit; every other texel is flush; walls close each step and show the raised texel folded over the
+edge. The PNGs are read with a small standard-library decoder. Tests check that a single block
+equals `router.png` and the standalone model's relief on all six faces, that four members share a
+small core, that frame tiles stay on the body's outer edges, and that every step has a wall.
+
+## Raised Router links (superseded)
 
 The user requested that the Router's middle blue connections protrude above the backing. The
 earlier preview left most of each connection as a texture on the one-unit-inset panel. With
@@ -150,18 +161,18 @@ only under `build/multiblock-devices/router-raised-v2/`: `router-raised-comparis
 images are retained. The additional tests assert connector height, sidewall thickness, matching
 seams on all six faces, unchanged core/frame, and unchanged single-block/Switch geometry.
 
-## Runtime integration still required
+## Runtime integration
 
-Port the accepted raised Router and white-backed Switch geometry into a chunk-baked model. Minecraft formation state,
-same-body membership, port isolation, internal-face occlusion, chunk lifecycle, model-data refresh,
-and resource reload need real game validation. Offline lighting differs from Minecraft, and these
-images are not in-game screenshots. See the design proposal under `docs/ideas/` for those contracts.
+The Router tiles and the white-backed Switch run in game as a chunk-baked model; see the
+[handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for the runtime, its tests
+and the in-game screenshot run. Offline lighting differs from Minecraft, and the Blender images
+are not in-game screenshots.
 
 ### Original white Switch backing
 
 The `white-backed` style retains V3 geometry and replaces only the infill UVs with
 original Switch body pixel `(2, 2)` (`RGB 242, 242, 242`). Contact sockets, purple
-modules, outer frame, junction grooves and the raised Router remain unchanged.
+modules, outer frame and junction grooves remain unchanged.
 
 ```bash
 python -m unittest discover -s tools/multiblock -v
