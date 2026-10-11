@@ -44,7 +44,7 @@ public final class FederationTestMod {
     private void registerGameTests(RegisterGameTestsEvent event) {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
-        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, P2PCollisionGameTests.class, GlobalProviderLifecycleGameTests.class, ProjectionReviewGameTests.class, ReturnReentryGameTests.class, ReturnSimulationGameTests.class, ReturnIdentityGameTests.class, ProjectionProductionExportGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
+        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, ReturnCoverageGameTests.class, ProviderPriorityCoverageGameTests.class, IdentityBindingCoverageGameTests.class, P2PCollisionGameTests.class, GlobalProviderLifecycleGameTests.class, ProjectionReviewGameTests.class, ReturnReentryGameTests.class, ReturnSimulationGameTests.class, ReturnIdentityGameTests.class, ProjectionProductionExportGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
 					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class, StorageStatusGameTests.class,
 					 PortGameTests.class, CableModelGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,

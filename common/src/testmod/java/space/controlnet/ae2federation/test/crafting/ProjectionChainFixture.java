@@ -122,6 +122,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
         helper.setBlock(CENTER, net.minecraft.world.level.block.Blocks.AIR);
     }
 
+    /** Reconnects the same three native networks after an explicit physical Switch removal. */
+    public void restoreSwitch() {
+        routers.placeSwitch(CENTER);
+    }
+
     /** Consumer uses middle, middle uses source with {@code sourceMode}; each with its storage rule. */
     public void enableChain(RuleMode sourceMode) {
         crafting(CONSUMER, MIDDLE, RuleMode.ENABLED);

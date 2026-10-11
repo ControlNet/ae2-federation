@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "cases": [
     {"id":"p2p.colliding-inputs-linear-publication","backend":"gametest","testId":"p2pcollidinginputslinearpublication","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"crafting.priority-two-consumer-plans","backend":"gametest","testId":"projectionprioritytwoconsumerplans","structure":"ae2federation_test:harness_native_smoke","assertions":32},
+    {"id":"identity.fresh-policy-binding","backend":"gametest","testId":"identityfreshpolicybinding","structure":"ae2federation_test:harness_native_smoke","assertions":18},
+    {"id":"crafting.mixed-job-responsibilities","backend":"gametest","testId":"projectionmixedjobresponsibilities","structure":"ae2federation_test:harness_native_smoke","assertions":42},
+    {"id":"crafting.partial-retry-recovery","backend":"gametest","testId":"projectionpartialretryrecovery","structure":"ae2federation_test:harness_native_smoke","assertions":70},
     {"id":"crafting.projection-accepted-push-disconnect","backend":"gametest","testId":"projectionacceptedpushdisconnect","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"crafting.router-identity-replacement","backend":"gametest","testId":"projectionrouteridentityreplacement","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"crafting.return-simulation-capacity","backend":"gametest","testId":"projectionreturnsimulationcapacity","structure":"ae2federation_test:harness_native_smoke","assertions":7},
