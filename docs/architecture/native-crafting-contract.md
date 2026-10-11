@@ -67,6 +67,16 @@ switches the two rules separately, and loading a save adds no rule.
     terminal record after a completed CPU retires. The adapter requires `isFormed()` and no pending entries in the
     private `deferredInit` array (pinned to 21.2.1); any deferred or quarantined slot suppresses this inference because
     resuming persisted jobs can clear a temporary cancellation marker. No lifecycle registration is replayed.
+    Lightning Tech 2.1.1's active loaded Pigmee owner proves historical jobs ended only when its native
+    `TimeWheelCraftingCpuPool.hasPersistentState()` is false. That full pool includes pending-loaded CPUs; a slot
+    remains until jobs, pending restores, inventories and requester outputs drain. This read-only public API probe
+    does not infer completion from the Grid CPU list. Actual chunk unload and a separate server-process restart
+    are covered with Storage never enabled; the compatibility fixture uses a hand-operated chest processor.
+    Advanced AE 1.6.12's active loaded owner can likewise resolve historical jobs only when the non-destroyed
+    cluster's private `activeCpus` map is empty and every loaded member has no `getPreviousState()` pending NBT.
+    The private field dependency is centralized in the adapter; `getActiveCPUs()` is deliberately avoided because
+    it prunes native CPU slots. Native restore inserts each slot before restoring its logic, then clears pending
+    state. A different running job, any pending restore or an unloaded member suppresses terminal inference.
     The additive saved job outcome `TERMINATED` means the addon proves ending without exposing completion versus
     cancellation. Existing worlds load unchanged; downgrading to a version whose enum lacks `TERMINATED` is not
     supported after such a record is saved. The real Neo ECO processing CPU test waits for both declared outputs
@@ -120,7 +130,13 @@ switches the two rules separately, and loading a save adds no rule.
   domain topology, a rule or a Grid identity. Providers and their patterns are compared every 20 ticks, because AE2
   has no event for a provider's patterns changing. Discovery is shared once per source Grid in each reconciliation
   round; consumer projections remain separate. Stale membership checks use identity sets. Confirmed Grid lookup
-  follows the identity epoch, not a TTL.
+  follows the identity epoch, not a TTL. Explicit global-provider removal is synchronous: a small AE2 19.2.17
+  `CraftingService.removeGlobalCraftingProvider` return hook withdraws existing consumer projections by source
+  Grid and provider identity, so a retained medium cannot execute an unregistered provider between polls. The
+  same mixin captures server context at native service construction, while a Grid pivot still exists; withdrawal
+  also works after the last node has left and the pivot is null. Native
+  refresh's internal remove/add pair does not trigger this hook. Re-registration creates a new projection on the
+  next discovery; it cannot reactivate a withdrawn object.
 
 Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
 are abandoned on load.

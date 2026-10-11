@@ -12,7 +12,9 @@ display and so on) are not current requirements.
 - **Getting one:** there is no recipe. A player attunes any P2P tunnel with Federation Cable, through AE2's
   attunement tag `ae2federation:p2p_attunements/federation_p2p_tunnel`. The tunnel keeps its frequency and its role.
   It is also in the creative tab.
-- **Pairing:** with a memory card, as for AE2's tunnels.
+- **Pairing:** with a memory card, as for AE2's tunnels. Unpaired tunnels (frequency zero) remain separate.
+  Two inputs do not link directly, even if copied configurations or carrier changes give them the same frequency;
+  outputs follow the input selected by AE2's native P2P registry.
 - **Cable-equivalent links:** tunnels of one frequency act as if Federation Cable ran between their fronts.
   - A tunnel's front is a Federation port, so a Federation Cable, Router, Pattern Provider or Endpoint in front of it
     joins the domain.

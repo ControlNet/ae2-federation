@@ -94,6 +94,7 @@ public final class ProjectionReviewGameTests {
             var executing = fixture.providerNetwork();
             var consumer = fixture.consumerNetwork();
             var mounted = new MEStorage[1];
+            var mountedRouter = new appeng.api.storage.IStorageProvider[1];
             try {
                 var add = CraftingReturnLedger.class.getDeclaredMethod("add",
                         space.controlnet.ae2federation.identity.NetworkId.class,
@@ -105,7 +106,9 @@ public final class ProjectionReviewGameTests {
                 constructor.setAccessible(true);
                 var router = (appeng.api.storage.IStorageProvider) constructor.newInstance(executing,
                         fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null);
-                router.mountInventories((storage, priority) -> mounted[0] = storage);
+                fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
+                mountedRouter[0] = router;
+                mounted[0] = fixture.providerGrid().getStorageService().getInventory();
             } catch (ReflectiveOperationException failure) {
                 throw new IllegalStateException(failure);
             }
@@ -126,6 +129,7 @@ public final class ProjectionReviewGameTests {
             helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 1L, "The item really reached local storage");
             space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionrejectedarrival", 30,
                     java.util.Map.of("rejectedRetries", "12", "heldAfterRetries", "0", "heldAfterAcceptance", "1"));
+            fixture.providerGrid().getStorageService().removeGlobalStorageProvider(mountedRouter[0]);
             fixture.close();
         });
     }
@@ -249,13 +253,15 @@ public final class ProjectionReviewGameTests {
                         (object, method, arguments) -> method.getName().equals("getCraftingService") ? crafting
                                 : method.invoke(fixture.consumerGrid(), arguments));
                 cpu.busy = false;
+                var idle = invoke(service, "observeJobs", new Class<?>[] {appeng.api.networking.IGrid.class}, grid);
                 invoke(service, "watchJobs", new Class<?>[] {CraftingReturnLedger.class,
-                        space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.networking.IGrid.class},
-                        ledger, fixture.consumerNetwork(), grid);
+                        space.controlnet.ae2federation.identity.NetworkId.class, idle.getClass()},
+                        ledger, fixture.consumerNetwork(), idle);
                 cpu.busy = true;
+                var running = invoke(service, "observeJobs", new Class<?>[] {appeng.api.networking.IGrid.class}, grid);
                 invoke(service, "watchJobs", new Class<?>[] {CraftingReturnLedger.class,
-                        space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.networking.IGrid.class},
-                        ledger, fixture.consumerNetwork(), grid);
+                        space.controlnet.ae2federation.identity.NetworkId.class, running.getClass()},
+                        ledger, fixture.consumerNetwork(), running);
                 helper.assertTrue(ledger.hasUnknownJobs(fixture.consumerNetwork()), "A second CPU observation in the same tick must persist a newly started independent job");
                 helper.assertTrue(ledger.jobs(fixture.consumerNetwork()).isEmpty(), "No native CPU subclass supplied the lifecycle");
                 // This view disappears while the real consumer Grid remains; no CPU job is observable on later sweeps.

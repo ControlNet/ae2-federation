@@ -11,6 +11,7 @@
     "compat.DelegatingMEInventoryAccessMixin",
     "compat.StorageServiceMountLedgerMixin",
     "compat.CraftingServiceProvidersAccess",
+    "compat.CraftingGlobalProviderLifecycleMixin",
     "compat.NetworkStorageAccess",
     "compat.NetworkCraftingProvidersAccess",
     "compat.CraftingProviderStateAccess",

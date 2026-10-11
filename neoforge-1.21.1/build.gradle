@@ -322,6 +322,14 @@ neoForge {
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareStructureSceneClientOptions)
         }
+        beamPreviewClient {
+            client()
+            gameDirectory = project.file('run-logo')
+            sourceSet = testmod
+            systemProperty('ae2federation.beamPreview.out', layout.buildDirectory.dir('beam-preview').get().asFile.absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareLogoClientOptions)
+        }
         gameTestServer {
             type = 'gameTestServer'
             gameDirectory = project.file('run-gametest')

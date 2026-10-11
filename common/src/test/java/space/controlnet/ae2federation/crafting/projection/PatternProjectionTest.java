@@ -13,8 +13,8 @@ class PatternProjectionTest {
     @Test
     void priorityChangesRefreshEveryConsumerExactlyOnce() {
         var provider = new Provider();
-        var first = new PatternProjection(provider, (p, d, c) -> {});
-        var second = new PatternProjection(provider, (p, d, c) -> {});
+        var first = new PatternProjection(provider, (p, d, c) -> () -> {});
+        var second = new PatternProjection(provider, (p, d, c) -> () -> {});
         assertFalse(first.refresh());
         for (int priority : new int[] {10, -5, 0}) {
             provider.priority = priority;

@@ -19,10 +19,10 @@ import java.util.Objects;
  * before AE2 drops it from its provider list.
  */
 final class PatternProjection implements ICraftingProvider {
-    /** Told of every accepted push, so the outputs the consumer waits for are routed back to it. */
+    /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
     interface PushListener {
         /** {@code containerItems}: what the pushed inputs leave behind, counted before the push. */
-        void pushed(PatternProjection projection, IPatternDetails details, KeyCounter containerItems);
+        Runnable prepare(PatternProjection projection, IPatternDetails details, KeyCounter containerItems);
     }
 
     private final ICraftingProvider real;
@@ -75,8 +75,9 @@ final class PatternProjection implements ICraftingProvider {
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
         if (!live) return false;
         var containerItems = containerItems(patternDetails, inputHolder);
+        var accepted = listener.prepare(this, patternDetails, containerItems);
         if (!real.pushPattern(patternDetails, inputHolder)) return false;
-        listener.pushed(this, patternDetails, containerItems);
+        accepted.run();
         return true;
     }
 

@@ -1,8 +1,18 @@
 {
   "schemaVersion": 1,
   "cases": [
+    {"id":"p2p.colliding-inputs-linear-publication","backend":"gametest","testId":"p2pcollidinginputslinearpublication","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"crafting.priority-two-consumer-plans","backend":"gametest","testId":"projectionprioritytwoconsumerplans","structure":"ae2federation_test:harness_native_smoke","assertions":32},
+    {"id":"identity.fresh-policy-binding","backend":"gametest","testId":"identityfreshpolicybinding","structure":"ae2federation_test:harness_native_smoke","assertions":18},
+    {"id":"crafting.mixed-job-responsibilities","backend":"gametest","testId":"projectionmixedjobresponsibilities","structure":"ae2federation_test:harness_native_smoke","assertions":42},
+    {"id":"crafting.partial-retry-recovery","backend":"gametest","testId":"projectionpartialretryrecovery","structure":"ae2federation_test:harness_native_smoke","assertions":70},
+    {"id":"crafting.projection-accepted-push-disconnect","backend":"gametest","testId":"projectionacceptedpushdisconnect","structure":"ae2federation_test:harness_native_smoke","assertions":15},
+    {"id":"crafting.router-identity-replacement","backend":"gametest","testId":"projectionrouteridentityreplacement","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"crafting.return-simulation-capacity","backend":"gametest","testId":"projectionreturnsimulationcapacity","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"p2p.colliding-inputs-stay-separate","backend":"gametest","testId":"p2pcollidinginputsstayseparate","structure":"ae2federation_test:harness_native_smoke","assertions":13},
     {"id":"crafting.transit-partial-reentry","backend":"gametest","testId":"projectiontransitpartialreentry","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"crafting.transit-reentry","backend":"gametest","testId":"projectiontransitreentry","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"crafting.projection-global-withdrawal-immediate","backend":"gametest","testId":"projectionglobalwithdrawalimmediate","structure":"ae2federation_test:harness_native_smoke","assertions":16},
     {"id":"identity.part-policy-activation","backend":"gametest","testId":"policypartpreservesactivation","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"rules.crafting-and-storage-apart","backend":"gametest","testId":"rulescraftingandstorageapart","structure":"ae2federation_test:harness_native_smoke","assertions":15},
     {"id":"identity.initialization-order","backend":"gametest","testId":"identityinitializationorder","structure":"ae2federation_test:harness_native_smoke","assertions":32},

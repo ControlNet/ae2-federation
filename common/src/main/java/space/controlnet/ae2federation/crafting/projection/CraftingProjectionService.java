@@ -119,6 +119,31 @@ public final class CraftingProjectionService implements AutoCloseable {
         if (service != null) service.reconcileAll();
     }
 
+    /**
+     * Called after AE2 removes an official global registration. Stop retained consumer mediums synchronously:
+     * a global provider need not disable its own push method after native unregistration. Additions and pattern
+     * changes still use coalesced discovery; removal only touches already observed projections by object identity.
+     */
+    public static synchronized void globalProviderRemoved(MinecraftServer server, IGrid source, ICraftingProvider provider) {
+        if (provider instanceof PatternProjection) return;
+        var service = SERVICES.get(server);
+        if (service == null) return;
+        for (var entry : List.copyOf(service.projected.entrySet())) {
+            var projected = entry.getValue();
+            if (projected.provider() != source) continue;
+            var projection = projected.projections().remove(provider);
+            if (projection == null) continue;
+            projection.withdraw();
+            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection);
+            var status = service.statuses.get(entry.getKey().rule());
+            if (status != null && status.active()) {
+                int patterns = projected.projections().values().stream()
+                        .mapToInt(remaining -> remaining.getAvailablePatterns().size()).sum();
+                service.statuses.put(entry.getKey().rule(), new Status(Optional.empty(), patterns));
+            }
+        }
+    }
+
     public static synchronized void tick(MinecraftServer server) {
         var service = SERVICES.get(server);
         if (service != null) service.tick();
@@ -287,7 +312,10 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var real : reals) {
             var projection = entry.projections().get(real);
             if (projection == null) {
-                projection = new PatternProjection(real, (pushed, details, containerItems) -> owe(pair, details, containerItems));
+                projection = new PatternProjection(real, (pushed, details, containerItems) -> {
+                    var jobs = observeJobs(consumer);
+                    return () -> owe(pair, provider, details, containerItems, jobs);
+                });
                 entry.projections().put(real, projection);
                 crafting.addGlobalCraftingProvider(projection);
             } else if (projection.refresh()) {
@@ -313,7 +341,7 @@ public final class CraftingProjectionService implements AutoCloseable {
      * Records what the executing network now owes the consumer's CPU for one accepted push: the pattern's outputs and
      * the container items its inputs leave behind, such as empty buckets, which the CPU waits for as well.
      */
-    private void owe(Pair pair, IPatternDetails details, KeyCounter containerItems) {
+    private void owe(Pair pair, IGrid provider, IPatternDetails details, KeyCounter containerItems, WatchedJobs jobs) {
         var ledger = CraftingReturnLedger.get(level);
         var executing = pair.executing();
         var consumer = pair.consumer();
@@ -323,25 +351,38 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var containerItem : containerItems) {
             ledger.add(executing, consumer, containerItem.getKey(), containerItem.getLongValue());
         }
-        var entry = projected.get(pair);
-        if (entry == null) return;
-        watchJobs(ledger, consumer, entry.consumer());
-        if (!routers.containsKey(entry.provider())) syncRouters();
+        // A successful provider callback may already have removed this projection or its physical connection.
+        // Responsibility belongs to the accepted dispatch, not to the current projection map entry.
+        watchJobs(ledger, consumer, jobs);
+        if (!routers.containsKey(provider)) syncRouters();
     }
 
+    private record WatchedJobs(List<CraftingCpuLifecycle.Observation> known, boolean unknown) {}
+
     /**
-     * Watches the consumer's running jobs: one of them made this push. AE2 does not say which, so every busy CPU of the
-     * consumer is watched; a job that never pushed here only keeps the consumer's debts while it runs out of sight.
+     * Reads the consumer's running jobs before invoking a provider. AE2 does not identify the dispatching job, so every
+     * busy CPU is captured. Only an accepted push commits this snapshot; a refused push creates no lifecycle records.
+     * A job that never pushed here only keeps the consumer's debts while it runs out of sight.
      */
-    private void watchJobs(CraftingReturnLedger ledger, NetworkId consumer, IGrid grid) {
+    private WatchedJobs observeJobs(IGrid grid) {
+        var known = new ArrayList<CraftingCpuLifecycle.Observation>();
+        boolean unknown = false;
         // Another CPU can start after an earlier push in this same tick. A Grid/tick cache would miss that job.
         for (var cpu : grid.getCraftingService().getCpus()) {
             if (!cpu.isBusy()) continue;
             var observation = CraftingCpuLifecycle.observe(cpu);
             if (observation == null || observation.link() == null) {
-                ledger.watchUnknown(consumer);
+                unknown = true;
                 continue;
             }
+            known.add(observation);
+        }
+        return new WatchedJobs(List.copyOf(known), unknown);
+    }
+
+    private void watchJobs(CraftingReturnLedger ledger, NetworkId consumer, WatchedJobs jobs) {
+        if (jobs.unknown()) ledger.watchUnknown(consumer);
+        for (var observation : jobs.known()) {
             var link = observation.link();
             jobLinks.put(link.getCraftingID(), link);
             ledger.watch(consumer, link.getCraftingID(), observation.level().dimension().location().toString(),
@@ -366,7 +407,11 @@ public final class CraftingProjectionService implements AutoCloseable {
             federationDomains.grid(network).ifPresent(grid -> wanted.put(grid, network));
         }
         for (var grid : List.copyOf(routers.keySet())) {
-            if (!wanted.containsKey(grid)) grid.getStorageService().removeGlobalStorageProvider(routers.remove(grid));
+            // A native Grid can survive a same-tick merge while fresh nodes adopt another durable identity.
+            // The router captures its executing identity; retaining it would assign new arrivals to the old owner.
+            if (!routers.get(grid).executing().equals(wanted.get(grid))) {
+                grid.getStorageService().removeGlobalStorageProvider(routers.remove(grid));
+            }
         }
         wanted.forEach((grid, network) -> {
             if (routers.containsKey(grid)) return;

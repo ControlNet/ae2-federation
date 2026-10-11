@@ -46,6 +46,10 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
         return executingGrid;
     }
 
+    NetworkId executing() {
+        return executing;
+    }
+
     /**
      * How much of {@code what} the consumer's CPUs still wait for, at most {@code owed}, counted over the CPUs AE2
      * lists as active. In the tick a CPU leaves the Grid (its chunk unloads), AE2's requested amount and requested keys
@@ -101,6 +105,10 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
                 handed += accepted;
                 left -= accepted;
             }
+            // The enclosing native NetworkStorage will simulate its own mounts after this router. Claiming their
+            // capacity here too would count the same free space twice when the insert exceeds the routed amount.
+            // MODULATE must intercept actual local acceptance so only real arrivals become held.
+            if (mode == Actionable.SIMULATE) return handed;
             // Claim only stock actually accepted by the executing Grid's native storage. A rejected insert remains
             // in the machine and can be retried indefinitely; attempts must never inflate held arrival counts.
             long eligible = 0;

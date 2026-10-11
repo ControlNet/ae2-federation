@@ -117,6 +117,16 @@ public final class ProjectionChainFixture implements AutoCloseable {
                         .stream().anyMatch(common::contains));
     }
 
+    /** Removes the actual Switch after a test has finished assertions on its native member Grids. */
+    public void removeSwitch() {
+        helper.setBlock(CENTER, net.minecraft.world.level.block.Blocks.AIR);
+    }
+
+    /** Reconnects the same three native networks after an explicit physical Switch removal. */
+    public void restoreSwitch() {
+        routers.placeSwitch(CENTER);
+    }
+
     /** Consumer uses middle, middle uses source with {@code sourceMode}; each with its storage rule. */
     public void enableChain(RuleMode sourceMode) {
         crafting(CONSUMER, MIDDLE, RuleMode.ENABLED);
@@ -237,6 +247,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
     /** Sets {@code consumer} uses {@code provider}'s crafting to {@code mode}, with the pair's storage rule on. */
     public void crafting(int consumer, int provider, RuleMode mode) {
         rule(key(consumer, provider, PolicyCapability.STORAGE), PolicyRule.storageDefaults());
+        craftingOnly(consumer, provider, mode);
+    }
+
+    /** Enables a crafting relationship without ever creating a storage rule. */
+    public void craftingOnly(int consumer, int provider, RuleMode mode) {
         rule(key(consumer, provider, PolicyCapability.CRAFTING),
                 PolicyRule.enabled(Set.of(PolicyOperation.REQUEST)).withMode(mode));
     }
