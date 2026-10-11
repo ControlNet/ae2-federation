@@ -292,17 +292,17 @@ def switch_fill(cell, side, connections, style):
 
 
 def build(device, cells, connected=True, switch_style='plain', router_style='plain'):
-    if switch_style not in ('plain', 'links', 'infill', 'edge-matched', 'white-backed'):
+    if switch_style not in ('plain', 'links', 'infill', 'edge-matched', 'white-backed', 'tiles'):
         raise ValueError('Unknown Switch surface style: ' + switch_style)
     if router_style not in ('plain','raised','tiles'):
         raise ValueError('Unknown Router surface style: ' + router_style)
     cells = set(cells)
     validate(cells)
-    if device == 'router' and connected and router_style == 'tiles':
+    if connected and (router_style if device == 'router' else switch_style) == 'tiles':
         # The artist's connected-face tiles, with relief read from the art.
-        import router_tiles
-        tiles = router_tiles.load_tiles()
-        return [q for cell in sorted(cells) for q in router_tiles.build_cell(tiles, cell, cells)]
+        import face_tiles
+        tiles = face_tiles.load_tiles(device)
+        return [q for cell in sorted(cells) for q in face_tiles.build_cell(device, tiles, cell, cells)]
     model = load_model(device)
     if device == 'switch' and connected and switch_style in ('edge-matched', 'white-backed'):
         from switch_connectors import match_edges

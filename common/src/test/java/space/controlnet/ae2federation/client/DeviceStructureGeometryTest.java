@@ -22,8 +22,8 @@ import space.controlnet.ae2federation.client.DeviceStructureGeometry.Quad;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Side;
 
 /**
- * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices: the
- * Router composed from its connected-face tiles, the Switch from its model. The
+ * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices, each
+ * composed from its connected-face tiles. The
  * fixture comes from {@code tools/multiblock/export_runtime_parity.py}; on a mismatch, dump the prototype's lines
  * with its {@code --dump} option and compare them with the lines this test prints.
  */
@@ -35,20 +35,17 @@ final class DeviceStructureGeometryTest {
         }
     }
 
-    private static DeviceStructureMember geometry(Device device) throws Exception {
-        if (device == Device.SWITCH) {
-            return new DeviceStructureGeometry(json("assets/ae2federation/models/block/switch.json"));
-        }
+    private static DeviceStructureGeometry geometry(Device device) throws Exception {
         var tiles = new HashMap<String, int[]>();
-        for (var name : RouterTileGeometry.TILES) {
-            var path = "assets/ae2federation/textures/block/router/router_" + name + ".png";
+        for (var name : DeviceStructureGeometry.TILES) {
+            var path = "assets/ae2federation/textures/block/" + device.id() + "/" + device.id() + "_" + name + ".png";
             try (var stream = DeviceStructureGeometryTest.class.getClassLoader().getResourceAsStream(path)) {
                 assertTrue(stream != null, path);
                 var image = ImageIO.read(stream);
                 tiles.put(name, image.getRGB(0, 0, 16, 16, null, 0, 16));
             }
         }
-        return new RouterTileGeometry(tiles);
+        return new DeviceStructureGeometry(device, tiles);
     }
 
     static Set<Side> sides(int mask) {
@@ -79,7 +76,7 @@ final class DeviceStructureGeometryTest {
     void everyConnectionSetMatchesTheAcceptedPrototype() throws Exception {
         var fixture = json("multiblock/device-structure-parity.json");
         assertEquals("tiles", fixture.getAsJsonObject("styles").get("router_style").getAsString());
-        assertEquals("white-backed", fixture.getAsJsonObject("styles").get("switch_style").getAsString());
+        assertEquals("tiles", fixture.getAsJsonObject("styles").get("switch_style").getAsString());
         var order = fixture.getAsJsonArray("sideOrder");
         for (var side : Side.values()) {
             assertEquals(side.name().toLowerCase(java.util.Locale.ROOT), order.get(side.ordinal()).getAsString());

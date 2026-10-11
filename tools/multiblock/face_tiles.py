@@ -1,14 +1,16 @@
-"""The connected Router face composed from the artist's four tiles, with relief taken from the art.
+"""Connected Router and Switch faces composed from the artist's four tiles per device, with relief from the art.
 
-Each exposed face of a member starts from `router_base`. Where a face edge lies on the body's outside, the
-matching four rows of `router_side_hor` (top, bottom) or four columns of `router_side_ver` (left, right) are laid
-over it; where both edges of a corner do, the corner's 4x4 square of `router_corner` covers that. Composed this
-way a single block's face equals `router.png`, and a larger face the artist's concept.
+Each exposed face of a member starts from `<device>_base`. Where a face edge lies on the body's outside, the
+frame rows of `<device>_side_hor` (top, bottom) or frame columns of `<device>_side_ver` (left, right) are laid
+over it; where both edges of a corner do, the corner's square of `<device>_corner` covers that. The frame width
+is the side tiles' opaque band (four texels for the Router, three for the Switch). Composed this way a single
+block's face equals the standalone texture, and a larger face the artist's concept.
 
-Texels in the backing greys sit one model unit below the face; every other texel (frame, links and cores) is flush
-with it, as in the standalone model. Walls close each step; each wall shows its raised texel folded over the edge.
+Texels in the backing greys sit one model unit below the face; every other texel (frame, links, cores, contacts and
+modules) is flush with it, as in the standalone models, bar the Switch's two-unit notches on its frame edge. Walls
+close each step; each wall shows its raised texel folded over the edge.
 
-Texture edges follow Minecraft's face UVs, the ones the standalone model uses: on the four sides the top edge
+Texture edges follow Minecraft's face UVs, the ones the standalone models use: on the four sides the top edge
 is up; on the top face u runs along x and v along z; on the bottom face v runs against z.
 
 Standard library only.
@@ -19,7 +21,7 @@ import zlib
 from geometry import ASSETS, SIDES, face_points, neighbor
 
 TILES = ('base', 'corner', 'side_hor', 'side_ver')
-# The two backing greys of the Router art: these texels are recessed.
+# The two backing greys of the Router and Switch art: these texels are recessed.
 RECESSED = {(135, 143, 165), (120, 126, 151)}
 DEPTH = 1
 # The four texture edges of each face, as the side of the block they lie on: left (u = 0), right (u = 16),
@@ -93,32 +95,41 @@ def read_png(path):
     return result
 
 
-def load_tiles():
-    return {name: read_png(ASSETS / 'textures/block/router' / f'router_{name}.png') for name in TILES}
+def load_tiles(device):
+    return {name: read_png(ASSETS / 'textures/block' / device / f'{device}_{name}.png') for name in TILES}
+
+
+def band(tile, horizontal):
+    """How many rows (or columns) from the top (or left) edge the side tile covers completely."""
+    count = 0
+    while count < 8 and all((tile[count][i] if horizontal else tile[i][count])[3] for i in range(16)):
+        count += 1
+    return count
 
 
 def compose(tiles, left, right, top, bottom):
     """16x16 rows of (tile, recessed) for a face whose edges marked true lie on the body's outside."""
     grid = [['base'] * 16 for _ in range(16)]
+    rows, columns = band(tiles['side_hor'], True), band(tiles['side_ver'], False)
 
-    def lay(tile, columns, rows):
-        for v in rows:
-            for u in columns:
+    def lay(tile, us, vs):
+        for v in vs:
+            for u in us:
                 if tiles[tile][v][u][3]:
                     grid[v][u] = tile
     if top:
-        lay('side_hor', range(16), range(4))
+        lay('side_hor', range(16), range(rows))
     if bottom:
-        lay('side_hor', range(16), range(12, 16))
+        lay('side_hor', range(16), range(16 - rows, 16))
     if left:
-        lay('side_ver', range(4), range(16))
+        lay('side_ver', range(columns), range(16))
     if right:
-        lay('side_ver', range(12, 16), range(16))
-    for vertical, horizontal, columns, rows in [(left, top, range(4), range(4)), (right, top, range(12, 16), range(4)),
-                                                (left, bottom, range(4), range(12, 16)),
-                                                (right, bottom, range(12, 16), range(12, 16))]:
+        lay('side_ver', range(16 - columns, 16), range(16))
+    low_u, high_u, low_v, high_v = range(columns), range(16 - columns, 16), range(rows), range(16 - rows, 16)
+    for vertical, horizontal, us, vs in [(left, top, low_u, low_v), (right, top, high_u, low_v),
+                                         (left, bottom, low_u, high_v), (right, bottom, high_u, high_v)]:
         if vertical and horizontal:
-            lay('corner', columns, rows)
+            lay('corner', us, vs)
     return [[(grid[v][u], tiles[grid[v][u]][v][u][:3] in RECESSED) for u in range(16)] for v in range(16)]
 
 
@@ -161,13 +172,13 @@ def rectangles(grid, key):
     return result
 
 
-def quad(cell, side, points, uv, tile, kind):
+def quad(device, cell, side, points, uv, tile, kind):
     return {'positions': [[cell[a] + p[a]/16 for a in range(3)] for p in points],
             'uv': [[t[0]/16, t[1]/16] for t in uv], 'side': side, 'kind': kind,
-            'cell': list(cell), 'element': -1, 'texture': f'block/router/router_{tile}'}
+            'cell': list(cell), 'element': -1, 'texture': f'block/{device}/{device}_{tile}'}
 
 
-def face_quads(cell, side, grid, beyond):
+def face_quads(device, cell, side, grid, beyond):
     """Quads of one exposed face. beyond[edge] gives the texel just past that edge in a connected member, or None
     where the edge lies on the body's outside."""
     result = []
@@ -176,7 +187,7 @@ def face_quads(cell, side, grid, beyond):
         lo, hi = box(side, u0, v0, u1, v1, d, d)
         points = face_points(lo, hi)[side]
         uv = [to_texture(side, p) for p in points]
-        result.append(quad(cell, side, points, uv, tile, 'tile-recess' if recessed else 'tile-surface'))
+        result.append(quad(device, cell, side, points, uv, tile, 'tile-recess' if recessed else 'tile-surface'))
     left, right, top, bottom = EDGES[side]
     # Each raised texel walls in every recessed neighbour: (du, dv, wall side, texture edge). Runs of walls along
     # one texel row or column from one tile merge into one quad.
@@ -215,12 +226,12 @@ def face_quads(cell, side, grid, beyond):
                         else:
                             tv = line + (1 - depth if dv > 0 else depth)
                         uv.append((tu, tv))
-                    result.append(quad(cell, side, points, uv, tile, 'tile-wall'))
+                    result.append(quad(device, cell, side, points, uv, tile, 'tile-wall'))
                 run = end
     for edge, rows in [('left', [grid[v][0] for v in range(16)]), ('right', [grid[v][15] for v in range(16)]),
                        ('top', grid[0]), ('bottom', grid[15])]:
         if beyond[edge] is None and any(recessed for _, recessed in rows):
-            raise ValueError(f'The Router art recesses a texel on the outer {edge} edge of a face')
+            raise ValueError(f'The {device} art recesses a texel on the outer {edge} edge of a face')
     return result
 
 
@@ -229,7 +240,7 @@ def _depth(side, point):
     return point[axis] if sign < 0 else 16 - point[axis]
 
 
-def build_cell(tiles, cell, cells):
+def build_cell(device, tiles, cell, cells):
     result = []
     for side in SIDES:
         if neighbor(cell, side) in cells:
@@ -254,5 +265,5 @@ def build_cell(tiles, cell, cells):
                 beyond[edge] = lambda i, g=past: g[15][i]
             else:
                 beyond[edge] = lambda i, g=past: g[0][i]
-        result.extend(face_quads(cell, side, grid, beyond))
+        result.extend(face_quads(device, cell, side, grid, beyond))
     return result

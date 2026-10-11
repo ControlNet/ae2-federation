@@ -1,11 +1,8 @@
 package space.controlnet.ae2federation.client;
 
-import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -41,11 +38,11 @@ import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
- * A formed Router or Switch member's model: the connected geometry for the connection properties of its blockstate
- * ({@link RouterTileGeometry} from the Router's connected-face tiles, {@link DeviceStructureGeometry} from the
- * Switch's model), baked into the chunk mesh like the standalone model. A block with no connections keeps the
- * artist's standalone model unchanged. Quads are built the first time a chunk needs a connection set and kept until
- * the next resource reload, which rebuilds them from the then current model and textures.
+ * A formed Router or Switch member's model: the connected geometry of {@link DeviceStructureGeometry}, composed from
+ * the device's connected-face tiles, for the connection properties of its blockstate, baked into the chunk mesh like
+ * the standalone model. A block with no connections keeps the artist's standalone model unchanged. Quads are built the
+ * first time a chunk needs a connection set and kept until the next resource reload, which rebuilds them from the then
+ * current tiles.
  */
 public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedModel> {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -69,11 +66,11 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         var id = BuiltInRegistries.BLOCK.getKey(block);
         Shapes shapes;
         try {
-            var geometry = device == Device.ROUTER ? routerGeometry(id.getNamespace()) : switchGeometry(id);
+            var geometry = geometry(id.getNamespace(), device);
             shapes = new Shapes(geometry, texture -> event.getTextureGetter().apply(new Material(
                     TextureAtlas.LOCATION_BLOCKS, ResourceLocation.fromNamespaceAndPath(id.getNamespace(), texture))));
         } catch (Exception exception) {
-            // A resource pack without the artist's groups or tiles still shows the standalone model on every member.
+            // A resource pack without the artist's tiles still shows the standalone model on every member.
             LOGGER.warn("Formed {} model unavailable; members keep the standalone model", id, exception);
             return;
         }
@@ -87,19 +84,12 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         }
     }
 
-    private static DeviceStructureGeometry switchGeometry(ResourceLocation id) throws IOException {
-        var path = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "models/block/" + id.getPath() + ".json");
-        try (var reader = new InputStreamReader(Minecraft.getInstance().getResourceManager().open(path),
-                StandardCharsets.UTF_8)) {
-            return new DeviceStructureGeometry(JsonParser.parseReader(reader).getAsJsonObject());
-        }
-    }
-
-    /** The Router's connected-face tiles, read as ARGB pixels from the active resource packs. */
-    private static RouterTileGeometry routerGeometry(String namespace) throws IOException {
+    /** The device's connected-face tiles, read as ARGB pixels from the active resource packs. */
+    private static DeviceStructureGeometry geometry(String namespace, Device device) throws IOException {
         var tiles = new HashMap<String, int[]>();
-        for (var name : RouterTileGeometry.TILES) {
-            var path = ResourceLocation.fromNamespaceAndPath(namespace, "textures/block/router/router_" + name + ".png");
+        for (var name : DeviceStructureGeometry.TILES) {
+            var path = ResourceLocation.fromNamespaceAndPath(namespace,
+                    "textures/block/" + device.id() + "/" + device.id() + "_" + name + ".png");
             try (var stream = Minecraft.getInstance().getResourceManager().open(path);
                     var image = NativeImage.read(stream)) {
                 if (image.getWidth() != 16 || image.getHeight() != 16) {
@@ -116,7 +106,7 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
                 tiles.put(name, pixels);
             }
         }
-        return new RouterTileGeometry(tiles);
+        return new DeviceStructureGeometry(device, tiles);
     }
 
     @Override
@@ -132,12 +122,12 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
 
     /** One device's quads for each connection set, by cull face (index 6 holds the unculled ones). */
     private static final class Shapes {
-        private final DeviceStructureMember geometry;
+        private final DeviceStructureGeometry geometry;
         private final Function<String, TextureAtlasSprite> sprites;
         private final Map<String, TextureAtlasSprite> resolved = new ConcurrentHashMap<>();
         private final AtomicReferenceArray<List<List<BakedQuad>>> byConnections = new AtomicReferenceArray<>(64);
 
-        Shapes(DeviceStructureMember geometry, Function<String, TextureAtlasSprite> sprites) {
+        Shapes(DeviceStructureGeometry geometry, Function<String, TextureAtlasSprite> sprites) {
             this.geometry = geometry;
             this.sprites = sprites;
         }
