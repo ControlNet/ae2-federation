@@ -18,6 +18,12 @@ public final class MegaCellsCompatGameTests {
     private MegaCellsCompatGameTests() {
     }
 
+    /** Real official global provider: a Compression-enabled Bulk Cell and its native Decompression Module. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void megaGlobalDecompressionCrafting(GameTestHelper helper) {
+        MegaGlobalCraftingScene.run(helper);
+    }
+
     /** The provider network's processing pattern sits in a MEGA Pattern Provider, which takes no other kind. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void megaPatternProviderProcessing(GameTestHelper helper) {
