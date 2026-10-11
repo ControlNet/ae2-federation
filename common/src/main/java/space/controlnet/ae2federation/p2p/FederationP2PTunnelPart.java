@@ -184,7 +184,10 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
                 }
                 var group = List.copyOf(members);
                 P2PRefreshDiagnostics.groupBuilt(group.size());
-                for (var tunnel : group) tunnel.publish(group);
+                // Changed inputs can share a nonzero frequency after carrier merges or copied configurations.
+                // Native P2P connects inputs only to outputs; callback membership never creates input-input links.
+                var outputs = group.stream().filter(FederationP2PTunnelPart::isOutput).toList();
+                for (var tunnel : group) tunnel.publish(outputs);
             });
         }
         P2PRefreshDiagnostics.ran(System.nanoTime() - started);
@@ -194,7 +197,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
      * Publishes this tunnel's node: its front port, and one port per tunnel of its frequency it is linked to. The peer
      * publishes the matching port, so a link holds only when both agree.
      */
-    private void publish(List<FederationP2PTunnelPart> group) {
+    private void publish(List<FederationP2PTunnelPart> outputs) {
         if (nodeId == null || front == null || !(getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -209,7 +212,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         int links = 0;
         // Frequency zero is unpaired. Coalescing callbacks does not give those tunnels a shared virtual link.
         var linked = getFrequency() == 0 ? List.<FederationP2PTunnelPart>of()
-                : TunnelLinks.linked(this, isOutput() ? getInput() : this, group, FederationP2PTunnelPart::isActive);
+                : TunnelLinks.linked(this, isOutput() ? getInput() : this, outputs, FederationP2PTunnelPart::isActive);
         for (var other : linked) {
             if (other.nodeId != null) {
                 evidence.put(TUNNEL_PORT + other.nodeId, new FederationDomainPortEvidence.Federation(
