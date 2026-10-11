@@ -210,9 +210,11 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
                             peer.outwardFace().getSerializedName())));
         }
         int links = 0;
-        // Frequency zero is unpaired. Coalescing callbacks does not give those tunnels a shared virtual link.
-        var linked = getFrequency() == 0 ? List.<FederationP2PTunnelPart>of()
-                : TunnelLinks.linked(this, isOutput() ? getInput() : this, outputs, FederationP2PTunnelPart::isActive);
+        // Only AE2's selected input owns the output links. Other colliding inputs must still publish invalidation,
+        // but must not each scan all outputs or retain one-way evidence for links that native P2P never creates.
+        var input = getInput();
+        var linked = input == null || (!isOutput() && input != this) ? List.<FederationP2PTunnelPart>of()
+                : TunnelLinks.linked(this, input, outputs, FederationP2PTunnelPart::isActive);
         for (var other : linked) {
             if (other.nodeId != null) {
                 evidence.put(TUNNEL_PORT + other.nodeId, new FederationDomainPortEvidence.Federation(
