@@ -1,0 +1,9 @@
+# Beam-only candidates (2026-10-11)
+
+- User explicitly fixed the shell design: only the internal renderer/beam may change. User requested implemented alternatives with comparison images, rather than further proposals.
+- Implemented `tools/blender/beam_variants.py`: A production baseline, B focused core, C twin staggered channels, D sparse pulses. Three generated 64x128 two-tile textures use the current Java renderer's UV layout and are packaged as actual MC 1.21.1 folder resource packs. No production asset is replaced.
+- All candidate scenes share the exact original shell objects/materials, lights, camera, world and production flow geometry. Emission remains 1. Only the beam texture changes; animation speed and static BEND/HUB behavior remain as in production.
+- Output under ignored `tools/blender/build/beam-variants/`: matched-frame full-run and junction PNGs, editable blend, animation frames, comparison media, resource packs, and provenance report. `compose_beam_comparison.py` assembles labeled actual renders using ffmpeg; `verify_beam_variants.py` checks shell identity, unchanged geometry/UVs and real texture assets.
+- Static view: B has the clearest persistent single core; C shows several strands from the two crossed ribbon planes, which is more visually busy; D gives strongest emphasis to moving packets but a less legible quiet baseline at distance. These are Blender design observations, not Minecraft acceptance.
+- Candidate textures do not make pulses traverse the existing static elbows/junction hubs. Do not imply actual network traffic or bidirectional movement; C's channels have staggered pulses moving with the same production phase.
+- Completed: 8 full-size static renders and 128 animation frames. `BEAM_VARIANTS_OK`, `COMPARISON_MEDIA_OK`, and saved-file `BEAM_VARIANTS_VERIFY_OK` passed. Comparison PNGs, 3.2-second MP4/GIF, candidate resource packs and blend are git-ignored. Source assets remained byte-identical.
