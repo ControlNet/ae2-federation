@@ -2,7 +2,8 @@
 import random
 import unittest
 
-from geometry import SIDES, build, cuboid, load_model, surface_cells, validate
+from geometry import ASSETS, SIDES, build, cuboid, load_model, surface_cells, validate
+import router_tiles
 
 
 def ray_hits(origin, direction, quads):
@@ -221,14 +222,14 @@ class GeometryTest(unittest.TestCase):
         # drops the body and face slabs, so the edge channels need their own inner walls.
         rng = random.Random(1)
         order = ['west', 'east', 'down', 'up', 'north', 'south']
-        for device in ['router', 'switch']:
+        for device, router_style in [('router', 'raised'), ('router', 'tiles'), ('switch', 'plain')]:
             for mask in [1, 4, 5, 3, 21, 42]:
                 connected = {s for i, s in enumerate(order) if mask >> i & 1}
                 cells = {(0, 0, 0)}
                 for side in connected:
                     axis, sign = SIDES[side]
                     cells |= {tuple(c[a] + (sign if a == axis else 0) for a in range(3)) for c in cells}
-                quads = [q for q in build(device, cells, switch_style='white-backed', router_style='raised')
+                quads = [q for q in build(device, cells, switch_style='white-backed', router_style=router_style)
                          if tuple(q['cell']) == (0, 0, 0)]
                 exposed = [s for s in order if s not in connected]
                 for _ in range(600):
@@ -239,6 +240,89 @@ class GeometryTest(unittest.TestCase):
                     target = [rng.uniform(.3, .7) for _ in range(3)]
                     direction = [target[i]-origin[i] for i in range(3)]
                     self.assertTrue(ray_hits(origin, direction, quads), (device, mask, side, origin, target))
+
+
+class RouterTilesTest(unittest.TestCase):
+    def setUp(self):
+        self.tiles = router_tiles.load_tiles()
+
+    def depths(self, quads, side):
+        """Depth below the face of each texel of `side`, from the face-parallel quads."""
+        axis, sign = SIDES[side]
+        result = [[None] * 16 for _ in range(16)]
+        for q in quads:
+            if q['side'] != side or q['kind'] == 'tile-wall':
+                continue
+            points = [[(c - q['cell'][a])*16 for a, c in enumerate(p)] for p in q['positions']]
+            depth = round(points[0][axis] if sign < 0 else 16 - points[0][axis])
+            texels = [router_tiles.to_texture(side, p) for p in points]
+            for v in range(round(min(t[1] for t in texels)), round(max(t[1] for t in texels))):
+                for u in range(round(min(t[0] for t in texels)), round(max(t[0] for t in texels))):
+                    self.assertIsNone(result[v][u], (side, u, v))
+                    result[v][u] = depth
+        return result
+
+    def test_a_single_block_equals_the_standalone_texture_and_relief(self):
+        texture = router_tiles.read_png(ASSETS / 'textures/block/router/router.png')
+        grid = router_tiles.compose(self.tiles, True, True, True, True)
+        self.assertEqual([[self.tiles[t][v][u] for u, (t, _) in enumerate(row)] for v, row in enumerate(grid)], texture)
+        model = load_model('router')
+        quads = build('router', {(0, 0, 0)}, router_style='tiles')
+        for side in SIDES:
+            axis, sign = SIDES[side]
+            standalone = [[None] * 16 for _ in range(16)]
+            for element in model['elements']:
+                if side not in element['faces']:
+                    continue
+                depth = element['from'][axis] if sign < 0 else 16 - element['to'][axis]
+                corners = [router_tiles.to_texture(side, (x, y, z)) for x in (element['from'][0], element['to'][0])
+                           for y in (element['from'][1], element['to'][1])
+                           for z in (element['from'][2], element['to'][2])]
+                for v in range(round(min(c[1] for c in corners)), round(max(c[1] for c in corners))):
+                    for u in range(round(min(c[0] for c in corners)), round(max(c[0] for c in corners))):
+                        if standalone[v][u] is None or depth < standalone[v][u]:
+                            standalone[v][u] = depth
+            self.assertEqual(self.depths(quads, side), standalone, side)
+
+    def test_four_members_meeting_on_a_face_share_a_small_core(self):
+        cells = cuboid((2, 2, 1))
+        grid_quads = [q for q in build('router', cells, router_style='tiles') if tuple(q['cell']) == (0, 0, 0)]
+        depths = self.depths(grid_quads, 'north')
+        # The body's inner corner on the north face of (0, 0, 0) is texture corner u = 0, v = 0.
+        self.assertTrue(all(depths[v][u] == 0 for u in range(3) for v in range(3)))
+        grid = router_tiles.compose(self.tiles, False, True, False, True)
+        self.assertEqual({grid[v][u][0] for u in range(3) for v in range(3)}, {'base'})
+
+    def test_frame_tiles_stay_on_the_bodys_outer_edges(self):
+        for size in [(1, 1, 1), (1, 1, 4), (3, 2, 1), (2, 3, 4)]:
+            cells = cuboid(size)
+            for q in build('router', cells, router_style='tiles'):
+                if q['kind'] != 'tile-surface' or q['texture'].endswith('router_base'):
+                    continue
+                normal = SIDES[q['side']][0]
+                for p in q['positions']:
+                    near = [a for a in range(3) if a != normal and (p[a] <= .25 + 1e-9 or p[a] >= size[a] - .25 - 1e-9)]
+                    self.assertTrue(near, (size, q['side'], q['texture'], p))
+
+    def test_every_step_has_a_wall(self):
+        # Along each texel edge of a face, the two sides' depths differ only where a wall of that length stands.
+        cells = cuboid((3, 2, 2))
+        quads = build('router', cells, router_style='tiles')
+        for cell in sorted(cells):
+            own = [q for q in quads if tuple(q['cell']) == cell]
+            for side in SIDES:
+                if any(q['side'] == side for q in own if q['kind'] != 'tile-wall'):
+                    depths = self.depths(own, side)
+                    steps = sum(1 for v in range(16) for u in range(15) if depths[v][u] != depths[v][u+1])
+                    steps += sum(1 for v in range(15) for u in range(16) if depths[v][u] != depths[v+1][u])
+                    walls = 0
+                    for q in own:
+                        if q['kind'] == 'tile-wall' and q['side'] == side:
+                            points = [[(c - cell[a])*16 for a, c in enumerate(p)] for p in q['positions']]
+                            texels = [router_tiles.to_texture(side, p) for p in points]
+                            walls += round(max(abs(texels[i][0]-texels[j][0]) + abs(texels[i][1]-texels[j][1])
+                                               for i in range(4) for j in range(4)))
+                    self.assertGreaterEqual(walls, steps, (cell, side))
 
 
 if __name__ == '__main__':

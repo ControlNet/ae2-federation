@@ -2,8 +2,8 @@
 
 A member's quads depend only on which of its six neighbours belong to the same body. For each device and each
 of the 64 connection sets this builds the smallest cuboid with exactly those neighbours around the origin cell,
-keeps the origin cell's quads, and records a SHA-256 of their canonical text. The Minecraft model
-(`DeviceStructureGeometry`) must produce the same text. Standard library only.
+keeps the origin cell's quads, and records a SHA-256 of their canonical text. The Minecraft models
+(`RouterTileGeometry`, `DeviceStructureGeometry`) must produce the same text. Standard library only.
 
     python tools/multiblock/export_runtime_parity.py            # rewrite the test resource
     python tools/multiblock/export_runtime_parity.py --check    # fail if the resource is stale
@@ -22,7 +22,7 @@ import geometry  # noqa: E402
 OUTPUT = geometry.ROOT / 'common/src/test/resources/multiblock/device-structure-parity.json'
 # Bit i of a mask is SIDE_ORDER[i]; DeviceStructureGeometry.Side has the same order.
 SIDE_ORDER = ['west', 'east', 'down', 'up', 'north', 'south']
-STYLES = {'router_style': 'raised', 'switch_style': 'white-backed'}
+STYLES = {'router_style': 'tiles', 'switch_style': 'white-backed'}
 
 
 def cells_for(mask):
@@ -46,7 +46,7 @@ def canonical(quads):
     lines = []
     for q in quads:
         numbers = [fixed(c) for p in q['positions'] for c in p] + [fixed(c) for t in q['uv'] for c in t]
-        lines.append(q['kind'] + ' ' + ' '.join(numbers))
+        lines.append(q['kind'] + ' ' + q['texture'] + ' ' + ' '.join(numbers))
     return sorted(lines)
 
 

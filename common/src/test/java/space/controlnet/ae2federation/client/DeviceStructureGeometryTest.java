@@ -11,16 +11,19 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Device;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Quad;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Side;
 
 /**
- * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices. The
+ * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices: the
+ * Router composed from its connected-face tiles, the Switch from its model. The
  * fixture comes from {@code tools/multiblock/export_runtime_parity.py}; on a mismatch, dump the prototype's lines
  * with its {@code --dump} option and compare them with the lines this test prints.
  */
@@ -32,9 +35,20 @@ final class DeviceStructureGeometryTest {
         }
     }
 
-    private static DeviceStructureGeometry geometry(Device device) throws Exception {
-        var name = device.name().toLowerCase(java.util.Locale.ROOT);
-        return new DeviceStructureGeometry(device, json("assets/ae2federation/models/block/" + name + ".json"));
+    private static DeviceStructureMember geometry(Device device) throws Exception {
+        if (device == Device.SWITCH) {
+            return new DeviceStructureGeometry(json("assets/ae2federation/models/block/switch.json"));
+        }
+        var tiles = new HashMap<String, int[]>();
+        for (var name : RouterTileGeometry.TILES) {
+            var path = "assets/ae2federation/textures/block/router/router_" + name + ".png";
+            try (var stream = DeviceStructureGeometryTest.class.getClassLoader().getResourceAsStream(path)) {
+                assertTrue(stream != null, path);
+                var image = ImageIO.read(stream);
+                tiles.put(name, image.getRGB(0, 0, 16, 16, null, 0, 16));
+            }
+        }
+        return new RouterTileGeometry(tiles);
     }
 
     static Set<Side> sides(int mask) {
@@ -52,7 +66,7 @@ final class DeviceStructureGeometryTest {
     private static List<String> canonical(List<Quad> quads) {
         var lines = new ArrayList<String>();
         for (var quad : quads) {
-            var line = new StringBuilder(quad.kind());
+            var line = new StringBuilder(quad.kind()).append(' ').append(quad.texture());
             for (var p : quad.positions()) for (var c : p) line.append(' ').append(fixed(c));
             for (var t : quad.uv()) for (var c : t) line.append(' ').append(fixed(c));
             lines.add(line.toString());
@@ -64,7 +78,7 @@ final class DeviceStructureGeometryTest {
     @Test
     void everyConnectionSetMatchesTheAcceptedPrototype() throws Exception {
         var fixture = json("multiblock/device-structure-parity.json");
-        assertEquals("raised", fixture.getAsJsonObject("styles").get("router_style").getAsString());
+        assertEquals("tiles", fixture.getAsJsonObject("styles").get("router_style").getAsString());
         assertEquals("white-backed", fixture.getAsJsonObject("styles").get("switch_style").getAsString());
         var order = fixture.getAsJsonArray("sideOrder");
         for (var side : Side.values()) {

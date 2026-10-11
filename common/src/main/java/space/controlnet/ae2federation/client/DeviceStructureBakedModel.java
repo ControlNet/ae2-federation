@@ -1,16 +1,20 @@
 package space.controlnet.ae2federation.client;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockModelShaper;
@@ -22,6 +26,7 @@ import net.minecraft.client.resources.model.Material;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -36,10 +41,11 @@ import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
 /**
- * A formed Router or Switch member's model: the connected geometry of {@link DeviceStructureGeometry} for the
- * connection properties of its blockstate, baked into the chunk mesh like the standalone model. A block with no
- * connections keeps the artist's standalone model unchanged. Quads are built the first time a chunk needs a connection
- * set and kept until the next resource reload, which rebuilds them from the then current model and texture.
+ * A formed Router or Switch member's model: the connected geometry for the connection properties of its blockstate
+ * ({@link RouterTileGeometry} from the Router's connected-face tiles, {@link DeviceStructureGeometry} from the
+ * Switch's model), baked into the chunk mesh like the standalone model. A block with no connections keeps the
+ * artist's standalone model unchanged. Quads are built the first time a chunk needs a connection set and kept until
+ * the next resource reload, which rebuilds them from the then current model and textures.
  */
 public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedModel> {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -61,15 +67,13 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
 
     private static void bake(ModelEvent.ModifyBakingResult event, RouterBlock block, Device device) {
         var id = BuiltInRegistries.BLOCK.getKey(block);
-        var modelPath = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "models/block/" + id.getPath() + ".json");
         Shapes shapes;
-        try (var reader = new InputStreamReader(Minecraft.getInstance().getResourceManager().open(modelPath),
-                StandardCharsets.UTF_8)) {
-            var model = JsonParser.parseReader(reader).getAsJsonObject();
-            var sprite = event.getTextureGetter().apply(new Material(TextureAtlas.LOCATION_BLOCKS, texture(model)));
-            shapes = new Shapes(new DeviceStructureGeometry(device, model), sprite);
+        try {
+            var geometry = device == Device.ROUTER ? routerGeometry(id.getNamespace()) : switchGeometry(id);
+            shapes = new Shapes(geometry, texture -> event.getTextureGetter().apply(new Material(
+                    TextureAtlas.LOCATION_BLOCKS, ResourceLocation.fromNamespaceAndPath(id.getNamespace(), texture))));
         } catch (Exception exception) {
-            // A resource pack model without the artist's groups still shows the standalone model on every member.
+            // A resource pack without the artist's groups or tiles still shows the standalone model on every member.
             LOGGER.warn("Formed {} model unavailable; members keep the standalone model", id, exception);
             return;
         }
@@ -83,9 +87,36 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
         }
     }
 
-    private static ResourceLocation texture(JsonObject model) {
-        var name = model.getAsJsonObject("textures").get("0").getAsString();
-        return ResourceLocation.parse(name);
+    private static DeviceStructureGeometry switchGeometry(ResourceLocation id) throws IOException {
+        var path = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "models/block/" + id.getPath() + ".json");
+        try (var reader = new InputStreamReader(Minecraft.getInstance().getResourceManager().open(path),
+                StandardCharsets.UTF_8)) {
+            return new DeviceStructureGeometry(JsonParser.parseReader(reader).getAsJsonObject());
+        }
+    }
+
+    /** The Router's connected-face tiles, read as ARGB pixels from the active resource packs. */
+    private static RouterTileGeometry routerGeometry(String namespace) throws IOException {
+        var tiles = new HashMap<String, int[]>();
+        for (var name : RouterTileGeometry.TILES) {
+            var path = ResourceLocation.fromNamespaceAndPath(namespace, "textures/block/router/router_" + name + ".png");
+            try (var stream = Minecraft.getInstance().getResourceManager().open(path);
+                    var image = NativeImage.read(stream)) {
+                if (image.getWidth() != 16 || image.getHeight() != 16) {
+                    throw new IOException(path + " is not 16x16");
+                }
+                var pixels = new int[256];
+                for (int v = 0; v < 16; v++) {
+                    for (int u = 0; u < 16; u++) {
+                        int abgr = image.getPixelRGBA(u, v);
+                        pixels[v * 16 + u] = FastColor.ARGB32.color(FastColor.ABGR32.alpha(abgr),
+                                FastColor.ABGR32.red(abgr), FastColor.ABGR32.green(abgr), FastColor.ABGR32.blue(abgr));
+                    }
+                }
+                tiles.put(name, pixels);
+            }
+        }
+        return new RouterTileGeometry(tiles);
     }
 
     @Override
@@ -101,13 +132,14 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
 
     /** One device's quads for each connection set, by cull face (index 6 holds the unculled ones). */
     private static final class Shapes {
-        private final DeviceStructureGeometry geometry;
-        private final TextureAtlasSprite sprite;
+        private final DeviceStructureMember geometry;
+        private final Function<String, TextureAtlasSprite> sprites;
+        private final Map<String, TextureAtlasSprite> resolved = new ConcurrentHashMap<>();
         private final AtomicReferenceArray<List<List<BakedQuad>>> byConnections = new AtomicReferenceArray<>(64);
 
-        Shapes(DeviceStructureGeometry geometry, TextureAtlasSprite sprite) {
+        Shapes(DeviceStructureMember geometry, Function<String, TextureAtlasSprite> sprites) {
             this.geometry = geometry;
-            this.sprite = sprite;
+            this.sprites = sprites;
         }
 
         List<BakedQuad> quads(int connections, @Nullable Direction side) {
@@ -131,6 +163,7 @@ public final class DeviceStructureBakedModel extends BakedModelWrapper<BakedMode
                 var normal = DeviceStructureGeometry.normal(quad.positions());
                 var direction = Direction.getNearest(normal[0], normal[1], normal[2]);
                 var ordered = vanillaOrder(quad, direction);
+                var sprite = resolved.computeIfAbsent(quad.texture(), sprites);
                 baker.setDirection(direction);
                 baker.setSprite(sprite);
                 baker.setShade(true);

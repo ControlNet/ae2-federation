@@ -12,19 +12,19 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The geometry of one member of a formed Router or Switch, composed from the artist's own model as the accepted
- * offline prototype composes it ({@code tools/multiblock/geometry.py} with {@code router_style='raised'} and
- * {@code switch_style='white-backed'}, and {@code switch_connectors.py}). The whole body shares one outer frame:
- * corners and edges stay only on the body's outside, panels run on across members, the Router's raised core tabs
- * become solid links one unit above the backing, and the Switch's backing is the original white with the original
- * recessed contacts set in real sockets between modules.
+ * The geometry of one member of a formed Switch, composed from the artist's own model as the accepted offline
+ * prototype composes it ({@code tools/multiblock/geometry.py} with {@code switch_style='white-backed'}, and
+ * {@code switch_connectors.py}). The whole body shares one outer frame: corners and edges stay only on the body's
+ * outside, panels run on across members, and the backing is the original white with the original recessed contacts
+ * set in real sockets between modules. The Router's connected faces come from {@link RouterTileGeometry}; this class
+ * also holds the types both share.
  *
  * <p>A member's geometry depends only on which of its six neighbours belong to the same body, so it is built per
  * connection set. It reads the model's elements and Blockbench groups and touches no client class, so a unit test
  * compares it with the prototype's output. Coordinates are model units (0..16) and texture pixels (0..16) until
  * {@link Quad} divides them by 16.
  */
-public final class DeviceStructureGeometry {
+public final class DeviceStructureGeometry implements DeviceStructureMember {
     /** Python's side order; the order of output quads does not matter. */
     public enum Side {
         WEST(0, -1), EAST(0, 1), DOWN(1, -1), UP(1, 1), NORTH(2, -1), SOUTH(2, 1);
@@ -51,8 +51,11 @@ public final class DeviceStructureGeometry {
 
     public enum Device { ROUTER, SWITCH }
 
-    /** One quad: four corners in block units, counter-clockwise seen from its front, and normalized texture UVs. */
-    public record Quad(double[][] positions, double[][] uv, String kind) {
+    /**
+     * One quad: four corners in block units, counter-clockwise seen from its front, normalized texture UVs, and its
+     * texture's path in the mod's namespace.
+     */
+    public record Quad(double[][] positions, double[][] uv, String kind, String texture) {
     }
 
     private record Face(double[] uv, int rotation) {
@@ -64,13 +67,13 @@ public final class DeviceStructureGeometry {
         }
     }
 
-    private final Device device;
+    private static final String TEXTURE = "block/switch/switch";
+
     private final List<Element> elements = new ArrayList<>();
     private final Map<String, JsonObject> groups = new LinkedHashMap<>();
 
-    /** {@code model} is the device's block model JSON, including its Blockbench {@code groups}. */
-    public DeviceStructureGeometry(Device device, JsonObject model) {
-        this.device = device;
+    /** {@code model} is the Switch's block model JSON, including its Blockbench {@code groups}. */
+    public DeviceStructureGeometry(JsonObject model) {
         for (var element : model.getAsJsonArray("elements")) {
             var object = element.getAsJsonObject();
             var faces = new EnumMap<Side, Face>(Side.class);
@@ -87,10 +90,9 @@ public final class DeviceStructureGeometry {
                 groups.put(group.getAsJsonObject().get("name").getAsString(), group.getAsJsonObject());
             }
         }
-        for (var name : device == Device.ROUTER ? List.of("corner", "edge", "face", "face_detail")
-                : List.of("corner", "edge")) {
+        for (var name : List.of("corner", "edge")) {
             if (!groups.containsKey(name)) {
-                throw new IllegalArgumentException("The " + device + " model has no '" + name + "' group");
+                throw new IllegalArgumentException("The Switch model has no '" + name + "' group");
             }
         }
     }
@@ -101,34 +103,25 @@ public final class DeviceStructureGeometry {
         return values;
     }
 
-    /** The quads of a member whose neighbours on {@code connections} belong to the same body. */
+    @Override
     public List<Quad> build(Set<Side> connections) {
         var raw = new ArrayList<RawQuad>();
-        if (device == Device.ROUTER) {
-            frame(connections, 3, raw);
-            for (var side : Side.values()) {
-                if (connections.contains(side)) continue;
-                raw.addAll(panelQuads(side, connections, 3));
-                routerDetails(side, connections, raw);
-            }
-        } else {
-            frame(connections, 2, raw);
-            var surfaces = new ArrayList<RawQuad>();
-            for (var side : Side.values()) {
-                if (connections.contains(side)) continue;
-                var panels = panelQuads(side, connections, 2);
-                var fill = switchInfill(side, connections);
-                if (!fill.isEmpty()) {
-                    // The original panel sinks a quarter unit so the backing layers stay inside the block.
-                    for (var panel : panels) {
-                        for (var p : panel.positions) p[side.axis] -= side.sign * .25;
-                    }
+        frame(connections, 2, raw);
+        var surfaces = new ArrayList<RawQuad>();
+        for (var side : Side.values()) {
+            if (connections.contains(side)) continue;
+            var panels = panelQuads(side, connections, 2);
+            var fill = switchInfill(side, connections);
+            if (!fill.isEmpty()) {
+                // The original panel sinks a quarter unit so the backing layers stay inside the block.
+                for (var panel : panels) {
+                    for (var p : panel.positions) p[side.axis] -= side.sign * .25;
                 }
-                surfaces.addAll(fill);
-                surfaces.addAll(panels);
             }
-            matchEdges(surfaces, connections, raw);
+            surfaces.addAll(fill);
+            surfaces.addAll(panels);
         }
+        matchEdges(surfaces, connections, raw);
         var quads = new ArrayList<Quad>(raw.size());
         for (var quad : raw) quads.add(quad.normalized());
         return List.copyOf(quads);
@@ -145,7 +138,7 @@ public final class DeviceStructureGeometry {
                 for (int a = 0; a < 3; a++) p[i][a] = positions[i][a] / 16;
                 for (int a = 0; a < 2; a++) t[i][a] = uv[i][a] / 16;
             }
-            return new Quad(p, t, kind);
+            return new Quad(p, t, kind, TEXTURE);
         }
     }
 
@@ -184,7 +177,7 @@ public final class DeviceStructureGeometry {
                 }
                 out.addAll(elementQuads(element, "edge", connections, new double[] {axis, start, end}));
             }
-            if (device == Device.SWITCH && !connections.isEmpty()) {
+            if (!connections.isEmpty()) {
                 double start = lo[axis];
                 double end = hi[axis];
                 for (var side : connections) {
@@ -402,13 +395,12 @@ public final class DeviceStructureGeometry {
             for (int i = 0; i + 1 < cuts.size(); i++) pairs.add(new double[] {cuts.get(i), cuts.get(i + 1)});
             spans.add(pairs);
         }
-        double inset = device == Device.ROUTER ? 1 : 0;
         var result = new ArrayList<RawQuad>();
         for (var first : spans.get(0)) {
             for (var second : spans.get(1)) {
                 var lo = new double[] {0, 0, 0};
                 var hi = new double[] {16, 16, 16};
-                lo[side.axis] = hi[side.axis] = side.sign < 0 ? inset : 16 - inset;
+                lo[side.axis] = hi[side.axis] = side.sign < 0 ? 0 : 16;
                 var pair = new double[][] {first, second};
                 for (int i = 0; i < 2; i++) {
                     lo[tangent[i]] = pair[i][0];
@@ -439,31 +431,6 @@ public final class DeviceStructureGeometry {
             case 1 -> new int[] {0, 2};
             default -> new int[] {0, 1};
         };
-    }
-
-    // --- Router -----------------------------------------------------------------------------------------------
-
-    /** The artist's raised core and face details; core tabs toward a connected member become raised links. */
-    private void routerDetails(Side side, Set<Side> connections, List<RawQuad> out) {
-        var indices = new ArrayList<>(flat(groups.get("face")));
-        indices.addAll(flat(groups.get("face_detail")));
-        for (int index : indices) {
-            var element = elements.get(index);
-            if (!boundarySides(element.from, element.to, 1).contains(side)) continue;
-            double[] extension = null;
-            for (var direction : connections) {
-                if (direction.axis == side.axis) continue;
-                double start = element.from[direction.axis];
-                double end = element.to[direction.axis];
-                // The 4-wide, 1-high tab continues to the neighbour at core height, one unit above the backing.
-                if (start == 3 && end == 4 && direction.sign < 0) {
-                    extension = new double[] {direction.axis, 0, end};
-                } else if (start == 12 && end == 13 && direction.sign > 0) {
-                    extension = new double[] {direction.axis, start, 16};
-                }
-            }
-            out.addAll(elementQuads(element, extension != null ? "raised-link" : "detail", connections, extension));
-        }
     }
 
     // --- Switch -----------------------------------------------------------------------------------------------
