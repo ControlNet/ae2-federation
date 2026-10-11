@@ -77,9 +77,16 @@ public final class HeldReturnTransfer {
         var own = ownStorage(executingGrid);
         for (var entry : stock) {
             var key = entry.getKey();
-            long left = entry.getLongValue();
-            long stored = own.insert(key, left, Actionable.MODULATE, source);
-            ledger.takeTransit(executing, key, stored, Actionable.MODULATE);
+            // Remove the actual stock before calling a mounted inventory. Its insertion can reenter the Grid,
+            // whose return router must not expose these same in-flight items to extraction or another transfer.
+            long reserved = ledger.takeTransit(executing, key, entry.getLongValue(), Actionable.MODULATE);
+            if (reserved <= 0) continue;
+            long stored = 0;
+            try {
+                stored = own.insert(key, reserved, Actionable.MODULATE, source);
+            } finally {
+                ledger.addTransit(executing, key, reserved - stored);
+            }
         }
     }
 
