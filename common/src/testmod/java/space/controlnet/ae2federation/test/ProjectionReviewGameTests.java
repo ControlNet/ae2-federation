@@ -249,13 +249,15 @@ public final class ProjectionReviewGameTests {
                         (object, method, arguments) -> method.getName().equals("getCraftingService") ? crafting
                                 : method.invoke(fixture.consumerGrid(), arguments));
                 cpu.busy = false;
+                var idle = invoke(service, "observeJobs", new Class<?>[] {appeng.api.networking.IGrid.class}, grid);
                 invoke(service, "watchJobs", new Class<?>[] {CraftingReturnLedger.class,
-                        space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.networking.IGrid.class},
-                        ledger, fixture.consumerNetwork(), grid);
+                        space.controlnet.ae2federation.identity.NetworkId.class, idle.getClass()},
+                        ledger, fixture.consumerNetwork(), idle);
                 cpu.busy = true;
+                var running = invoke(service, "observeJobs", new Class<?>[] {appeng.api.networking.IGrid.class}, grid);
                 invoke(service, "watchJobs", new Class<?>[] {CraftingReturnLedger.class,
-                        space.controlnet.ae2federation.identity.NetworkId.class, appeng.api.networking.IGrid.class},
-                        ledger, fixture.consumerNetwork(), grid);
+                        space.controlnet.ae2federation.identity.NetworkId.class, running.getClass()},
+                        ledger, fixture.consumerNetwork(), running);
                 helper.assertTrue(ledger.hasUnknownJobs(fixture.consumerNetwork()), "A second CPU observation in the same tick must persist a newly started independent job");
                 helper.assertTrue(ledger.jobs(fixture.consumerNetwork()).isEmpty(), "No native CPU subclass supplied the lifecycle");
                 // This view disappears while the real consumer Grid remains; no CPU job is observable on later sweeps.

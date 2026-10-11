@@ -23,6 +23,86 @@ import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 public final class GlobalProviderLifecycleGameTests {
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 600)
+    public static void projectionAcceptedPushDisconnect(GameTestHelper helper) {
+        var fixture = new ProjectionChainFixture(helper);
+        var input = AEItemKey.of(Items.IRON_INGOT);
+        var output = AEItemKey.of(Items.DIAMOND);
+        var pattern = PatternDetailsHelper.decodePattern(PatternDetailsHelper.encodeProcessingPattern(
+                List.of(new GenericStack(input, 1)), List.of(new GenericStack(output, 1))), helper.getLevel());
+        var calls = new int[1];
+        var machineInput = new long[1];
+        var source = new appeng.api.networking.IGrid[1];
+        var consumer = new space.controlnet.ae2federation.identity.NetworkId[1];
+        var executing = new space.controlnet.ae2federation.identity.NetworkId[1];
+        var provider = new ICraftingProvider() {
+            @Override public List<IPatternDetails> getAvailablePatterns() { return List.of(pattern); }
+            @Override public boolean isBusy() { return false; }
+            @Override public boolean pushPattern(IPatternDetails details, KeyCounter[] inputs) {
+                calls[0]++;
+                for (var counter : inputs) {
+                    machineInput[0] += counter.get(input);
+                    counter.reset();
+                }
+                // Explicit callback fault injection: accepted inputs can synchronously change the source topology.
+                fixture.removeSwitch();
+                CraftingProjectionService.get(helper.getLevel()).reconcileAll();
+                return true;
+            }
+        };
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fixture.ready(), "Waiting for native Grids"))
+                .thenExecute(() -> {
+                    source[0] = fixture.grid(2);
+                    consumer[0] = fixture.network(0);
+                    executing[0] = fixture.network(2);
+                    source[0].getCraftingService().addGlobalCraftingProvider(provider);
+                    fixture.craftingOnly(0, 2, RuleMode.ENABLED);
+                    CraftingProjectionService.get(helper.getLevel()).observeFederationDomainMembers(fixture.grids());
+                    fixture.putIn(0, input, 1);
+                    fixture.begin(0, output, 1);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fixture.planReady(), "Waiting for the native calculation"))
+                .thenExecute(() -> helper.assertTrue(fixture.submit(), "The native CPU accepts the plan"))
+                .thenWaitUntil(() -> helper.assertValueEqual(calls[0], 1, "Waiting for the real CPU dispatch"))
+                .thenExecute(() -> {
+                    var ledger = space.controlnet.ae2federation.crafting.projection.CraftingReturnLedger.get(helper.getLevel());
+                    helper.assertValueEqual(machineInput[0], 1L, "The machine owns the one dispatched input");
+                    helper.assertValueEqual(ledger.owed(executing[0], consumer[0], output), 1L,
+                            "The accepted push records its output debt despite withdrawal");
+                    helper.assertValueEqual(ledger.jobs(consumer[0]).size(), 1,
+                            "The accepted push must retain its native CPU lifecycle after withdrawal");
+                    helper.assertTrue(CraftingProjectionService.get(helper.getLevel()).routes(source[0]),
+                            "The executing Grid must retain a return router for the new debt");
+                    helper.assertValueEqual(source[0].getStorageService().getInventory().insert(output, 1,
+                            appeng.api.config.Actionable.MODULATE,
+                            appeng.api.networking.security.IActionSource.empty()), 1L,
+                            "The disconnected machine output enters native local storage once");
+                    machineInput[0] = 0;
+                    helper.assertValueEqual(ledger.held(executing[0], consumer[0], output), 1L,
+                            "The accepted local arrival remains eligible for return without storage sharing");
+                    helper.setBlock(new net.minecraft.core.BlockPos(6, 5, 6),
+                            space.controlnet.ae2federation.router.RouterRegistration.SWITCH.get());
+                })
+                .thenWaitUntil(() -> helper.assertValueEqual(fixture.amount(0, output), 1L,
+                        "Restoring the physical connection must finish the original job"))
+                .thenExecute(() -> {
+                    helper.assertValueEqual(fixture.total(output), 1L, "Exactly one physical output exists");
+                    helper.assertValueEqual(fixture.owed(2, 0, output), 0L, "Actual return settles the debt");
+                    helper.assertValueEqual(fixture.busyCpus(0), 0L, "The original native CPU completes");
+                    var storageKey = new space.controlnet.ae2federation.policy.PolicyKey(consumer[0], executing[0],
+                            space.controlnet.ae2federation.policy.PolicyCapability.STORAGE);
+                    helper.assertTrue(space.controlnet.ae2federation.policy.PolicyService.get(helper.getLevel())
+                            .configured(storageKey).isEmpty(), "Storage sharing was never configured");
+                    PolicyEvidence.write("projectionacceptedpushdisconnect", 15,
+                            Map.of("dispatch", "native CPU", "provider", "callback fault injection",
+                                    "storageConfigured", "false", "returned", "1"));
+                    source[0].getCraftingService().removeGlobalCraftingProvider(provider);
+                    fixture.close();
+                }).thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 600)
     public static void projectionGlobalWithdrawalImmediate(GameTestHelper helper) {
         var fixture = new ProjectionChainFixture(helper);
         helper.startSequence()
