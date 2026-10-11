@@ -81,6 +81,7 @@
     {"id":"crafting.projection-native-fallback-order","backend":"gametest","testId":"projectionnativefallbackorder","structure":"ae2federation_test:harness_native_smoke","assertions":30},
     {"id":"crafting.projection-orphan-transit-recovery","backend":"gametest","testId":"projectionorphantransitrecovery","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"crafting.projection-held-sweep-cost","backend":"gametest","testId":"projectionheldsweepcost","structure":"ae2federation_test:harness_native_smoke","assertions":130},
+    {"id":"p2p.unpaired-stay-separate","backend":"gametest","testId":"p2punpairedstayseparate","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"p2p.refresh-independent-groups","backend":"gametest","testId":"p2prefreshindependentgroups","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"crafting.projection-native-access-remount","backend":"gametest","testId":"projectionnativeaccessandremount","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"crafting.projection-global-priority","backend":"gametest","testId":"projectionglobalpriority","structure":"ae2federation_test:harness_native_smoke","assertions":12},

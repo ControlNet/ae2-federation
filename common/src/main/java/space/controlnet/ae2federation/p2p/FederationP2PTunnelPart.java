@@ -207,8 +207,10 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
                             peer.outwardFace().getSerializedName())));
         }
         int links = 0;
-        for (var other : TunnelLinks.linked(this, isOutput() ? getInput() : this, group,
-                FederationP2PTunnelPart::isActive)) {
+        // Frequency zero is unpaired. Coalescing callbacks does not give those tunnels a shared virtual link.
+        var linked = getFrequency() == 0 ? List.<FederationP2PTunnelPart>of()
+                : TunnelLinks.linked(this, isOutput() ? getInput() : this, group, FederationP2PTunnelPart::isActive);
+        for (var other : linked) {
             if (other.nodeId != null) {
                 evidence.put(TUNNEL_PORT + other.nodeId, new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(other.nodeId, TUNNEL_PORT + nodeId)));

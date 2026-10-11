@@ -48,7 +48,9 @@ public final class PatternProjectionGameTests {
             if (stage[0] == 1) {
                 helper.assertTrue(fixture.consumerService().isCraftable(sticks()),
                         "Waiting for the provider's patterns on the consumer");
-                helper.assertValueEqual(fixture.projections(), 2, "Both of the provider's pattern providers are projected");
+                // Addons may legitimately register additional global providers, including empty decompression services.
+                // Count the exact fixture provider mediums, not every legal global registration on this Grid.
+                fixture.assertFixtureProvidersProjectedOnce();
                 helper.assertTrue(fixture.status().map(status -> status.active() && status.patterns() == 2).orElse(false),
                         "The rule must report two projected patterns");
                 helper.assertValueEqual(fixture.providerGrid().getCraftingService().getCpus().size(), 0,
@@ -363,7 +365,9 @@ public final class PatternProjectionGameTests {
             if (stage[0] == 1) {
                 helper.assertTrue(fixture.consumerService().isCraftable(sticks()),
                         "Waiting for the provider's patterns on the consumer without a storage rule");
-                helper.assertValueEqual(fixture.projections(), 2, "Both of the provider's pattern providers are projected");
+                // Addons may legitimately register additional global providers, including empty decompression services.
+                // Count the exact fixture provider mediums, not every legal global registration on this Grid.
+                fixture.assertFixtureProvidersProjectedOnce();
                 helper.assertTrue(fixture.status().map(status -> status.active()).orElse(false),
                         "The crafting rule must be active without a storage rule");
                 helper.assertFalse(PolicyService.get(helper.getLevel()).configured(fixture.storage())

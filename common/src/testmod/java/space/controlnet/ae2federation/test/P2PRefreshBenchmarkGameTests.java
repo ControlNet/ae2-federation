@@ -108,6 +108,32 @@ public final class P2PRefreshBenchmarkGameTests {
         });
     }
 
+    /** Frequency zero means unpaired, even when native callbacks coalesce on the same carrier Grid. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
+            required = true, timeoutTicks = 600)
+    public static void p2pUnpairedStaySeparate(GameTestHelper helper) {
+        var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), 3);
+        int[] stage = {0};
+        long[] refreshed = {0};
+        helper.succeedWhen(() -> {
+            helper.assertTrue(carrier.online(0, 1, 2), "Waiting for three powered native channels");
+            for (var tunnel : carrier.tunnels()) {
+                helper.assertValueEqual(tunnel.getFrequency(), (short) 0, "No memory card has paired these tunnels");
+            }
+            if (stage[0] == 0) {
+                carrier.tunnels().forEach(tunnel -> tunnel.onTunnelNetworkChange());
+                refreshed[0] = helper.getLevel().getGameTime();
+                stage[0] = 1;
+                helper.fail("Wait for the coalesced refresh");
+            }
+            helper.assertTrue(helper.getLevel().getGameTime() > refreshed[0] + 1, "Waiting for queued native callback");
+            for (int index = 0; index < 3; index++) {
+                helper.assertTrue(carrier.alone(index), "Unpaired active tunnel " + index + " must not link through frequency zero");
+            }
+            PolicyEvidence.write("p2punpairedstayseparate", 6, Map.of("unpairedTunnels", "3", "sharedCarrier", "true", "linked", "false"));
+        });
+    }
+
     private static void run(GameTestHelper helper, int outputs) {
         int count = outputs + 1;
         var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), count);
