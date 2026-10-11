@@ -15,9 +15,9 @@ final class CableBeamTest {
         var medium = CableBeamStyle.fromLoad(.6);
         var full = CableBeamStyle.fromLoad(1);
         var overload = CableBeamStyle.fromLoad(1.25);
-        assertEquals(.005, idle.coreRadius(), 1e-7);
-        assertEquals(.0092, medium.coreRadius(), 1e-7);
-        assertEquals(.054, medium.haloRadius(), 1e-7);
+        assertEquals(.03, idle.coreRadius(), 1e-7);
+        assertEquals(.051, medium.coreRadius(), 1e-7);
+        assertEquals(.131, medium.haloRadius(), 1e-7);
         assertEquals(2.2, medium.pulseDensity(), 1e-6);
         assertEquals(1.38, medium.emission(), 1e-6);
         assertFalse(full.overloaded());
@@ -49,23 +49,26 @@ final class CableBeamTest {
                                 if (p[a] == 0) faces[0] |= 2 << (2 * a);
                                 if (p[a] == 1) faces[0] |= 1 << (2 * a);
                             }
-                            assertTrue(insideGlass(expected, p), "Outside mask " + expected);
+                            // The carrier stays in the 6-voxel glass window; shoulders and fog stay inside the 10-voxel neck.
+                            assertTrue(insideShell(expected, p, glow ? 3f / 16 : 5f / 16), "Outside mask " + expected);
                             assertTrue(alpha >= 0 && alpha <= 1);
                             assertTrue(r >= 0 && r <= 1 && g >= 0 && g <= 1 && b >= 0 && b <= 1);
                         });
                 assertEquals(mask, faces[0]);
                 assertEquals(0, count[0] % 4);
-                assertTrue(count[0] > 0 && count[0] <= 10752);
+                assertTrue(count[0] > 0 && count[0] <= MAX_VERTICES, "Vertices " + count[0]);
             }
         }
     }
 
-    private static boolean insideGlass(int mask, float[] p) {
+    private static final int MAX_VERTICES = 25000;
+
+    private static boolean insideShell(int mask, float[] p, float inset) {
         for (int arm = -1; arm < 6; arm++) {
             if (arm >= 0 && (mask & (1 << arm)) == 0) continue;
             boolean inside = true;
             for (int a = 0; a < 3; a++) {
-                float lo = 5f / 16, hi = 11f / 16;
+                float lo = inset, hi = 1 - inset;
                 if (arm >= 0 && arm / 2 == a) {
                     if ((arm & 1) == 0) hi = 1; else lo = 0;
                 }
@@ -116,6 +119,12 @@ final class CableBeamTest {
             CableBeamMesh.emit(3, 0, 0, 0, 1, 0, style, lod, (glow,x,y,z,r,g,b,a) -> counts[index]++);
         }
         assertTrue(counts[0] > counts[1] && counts[1] > counts[2]);
+        // Budgets quoted in docs/art/cable-m-renderer.md.
+        assertEquals(4960, counts[0]);
+        assertEquals(256, counts[2]);
+        int[] sixWay = {0};
+        CableBeamMesh.emit(63, 0, 0, 0, 1, 0, style, 0, (glow,x,y,z,r,g,b,a) -> sixWay[0]++);
+        assertEquals(14592, sixWay[0]);
         assertEquals(0, CableBeamMesh.detail(20 * 20));
         assertEquals(1, CableBeamMesh.detail(30 * 30));
         assertEquals(2, CableBeamMesh.detail(60 * 60));

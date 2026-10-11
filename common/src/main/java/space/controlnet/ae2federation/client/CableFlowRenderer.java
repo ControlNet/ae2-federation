@@ -16,7 +16,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
-/** Default M coherent optical carrier, soft moving packets and depth-tested light shoulders. */
+/** Default M coherent optical carrier, soft moving packets, depth-tested light shoulders and in-shell fog. */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
     // Entity translucent emissive still calls minecraft_mix_light and dims optical carriers.
@@ -71,7 +71,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
         // Switching RenderTypes can finish the prior shared buffer. Complete each pass before switching.
-        for (int pass = 0; pass < (detail == 2 ? 1 : 2); pass++) {
+        for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? CORE : GLOW);
             CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 1,
                 (additive, px, py, pz, red, green, blue, alpha) -> {

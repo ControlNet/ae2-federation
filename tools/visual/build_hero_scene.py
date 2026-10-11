@@ -1,8 +1,9 @@
 """Write a datapack that builds the mod page scenes in a disposable world; never packaged in the mod.
 
 `function hero_scene:base` builds two real ME networks joined by Federation blocks, with a third network on a Bridge.
-`function hero_scene:lineup` puts every Federation block and item side by side. Both clear and replace the terrain
-around their origin, so run them only in a throwaway world.
+`function hero_scene:lineup` puts every Federation block and item side by side. `function hero_scene:beam` lays cable
+runs and junctions for renderer before/after shots. All clear and replace the terrain around their origin, so run them
+only in a throwaway world.
 """
 from pathlib import Path
 import argparse
@@ -13,6 +14,7 @@ parser.add_argument('world', type=Path, help='Disposable world directory; writes
 parser.add_argument('--origin', type=int, nargs=3, default=[596, 68, 900], metavar=('X', 'Y', 'Z'),
                     help='Base scene origin; Y is the ground block level')
 parser.add_argument('--lineup-offset', type=int, default=-45, help='X offset of the lineup from the base origin')
+parser.add_argument('--beam-offset', type=int, default=45, help='X offset of the cable beam scene from the base origin')
 args = parser.parse_args()
 
 pack = args.world / 'datapacks/hero_scene'
@@ -161,4 +163,26 @@ for i, item in enumerate(items):
                            'item_display:"fixed",Rotation:[180f,0f],transformation:{left_rotation:[0f,0f,0f,1f],'
                            'right_rotation:[0f,0f,0f,1f],translation:[0f,0f,0f],scale:[2.2f,2.2f,2.2f]}}')
 lineup.write('lineup')
+
+# --- Beam: straight runs, an elbow, a T and a six-way junction, for before/after shots of the cable beam renderer. ---
+beam = Scene(args.origin[0] + args.beam_offset, args.origin[1], args.origin[2])
+beam.commands += setup
+beam.clear(-12, 12, -8, 8)
+beam.fill((-9, 0, -5), (9, 0, 4), 'minecraft:polished_andesite')
+# Router - straight west run - elbow north - Router.
+beam.block(0, 1, 0, 'ae2federation:router')
+beam.fill((-6, 1, 0), (-1, 1, 0), 'ae2federation:cable')
+beam.fill((-6, 1, -2), (-6, 1, -1), 'ae2federation:cable')
+beam.block(-6, 1, -3, 'ae2federation:router')
+# Straight east run with a T up and south, on to a second Router.
+beam.fill((1, 1, 0), (6, 1, 0), 'ae2federation:cable')
+beam.fill((4, 2, 0), (4, 3, 0), 'ae2federation:cable')
+beam.fill((4, 1, 1), (4, 1, 2), 'ae2federation:cable')
+beam.block(7, 1, 0, 'ae2federation:router')
+# A six-way junction over the east run.
+beam.block(2, 2, 0, 'ae2federation:cable')
+beam.fill((1, 3, 0), (3, 3, 0), 'ae2federation:cable')
+beam.fill((2, 3, -1), (2, 3, 1), 'ae2federation:cable')
+beam.block(2, 4, 0, 'ae2federation:cable')
+beam.write('beam')
 print(pack)

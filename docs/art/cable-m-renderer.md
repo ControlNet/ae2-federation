@@ -16,9 +16,9 @@ For `u = min(load, 1)`:
 
 | Parameter | Mapping |
 | --- | --- |
-| Carrier radius, blocks | `0.005 + 0.007 * u` |
-| Halo radius, blocks | `0.027 + 0.045 * u` |
-| Pulse radius amplitude, blocks | `0.013 * u` |
+| Carrier radius, blocks | `0.03 + 0.035 * u` |
+| Halo radius, blocks | `0.08 + 0.085 * u` |
+| Pulse radius amplitude, blocks | `0.035 * u` |
 | Pulse density | `1 + 2 * u` |
 | Emission factor | `0.45 + 1.55 * u` |
 | Normal palette | Pale cyan core, cyan shoulders |
@@ -32,8 +32,19 @@ and 0.8-second fall; future telemetry integration must explicitly adopt it and d
 ## Minecraft implementation
 
 `CableBeamMesh` caches centerlines and cross-sections for all 64 connection masks. Two crossed planes form the
-carrier, with three vertex-alpha gradient layers: narrow shoulders, a broader envelope following the pulse, and an
-outer halo. `CableFlowRenderer` uses the vanilla unlit beacon shader and the vanilla white texture:
+carrier, pale at its centre and saturated cyan at its rim, with three vertex-alpha gradient layers: narrow shoulders,
+a broader envelope following the pulse, and an outer halo.
+
+The shell shows its interior only through a 6-voxel glass window in the middle of each 12-voxel face; a 3-voxel
+opaque frame surrounds it. The beam sits 6 voxels behind the surface, so at the common 30-60 degree downward view
+the frame between the top and side windows hides a thin centre line. The carrier is therefore sized to fill much of
+the window, and the overload breath still keeps the halo inside it (half-width 3/16).
+
+In-shell fog scatters the beam colour through the whole interior: three nested soft-edged volumes (half-widths
+0.29, 0.20 and 0.11 blocks, inside the 10-voxel neck) follow the connected arms. Each face is transparent at its long
+edges and densest along its middle, so the stacked volumes brighten towards the beam. Fog brightness follows load
+and the overload alarm, and pulses brighten it locally using the same world-anchored phase. It is drawn in the
+additive glow pass; the shell's glass, drawn later in the translucent terrain pass, blends over it. `CableFlowRenderer` uses the vanilla unlit beacon shader and the vanilla white texture:
 a normal-alpha carrier pass followed by an additive glow pass. Both depth-test;
 the glow does not write depth. Each buffer is filled before switching render types.
 
@@ -42,8 +53,10 @@ Fractional densities crossfade integer pulse trains to keep seams and clock wrap
 centerlines and crossfade the adjacent axis phases. Junctions meet at the center. This is decorative optical motion,
 not simulated packet routing or a claim about actual transfer direction.
 
-At distances above 24 blocks, sampling falls from 64 to 24 segments per full block; above 48 blocks, four segments
-retain only the carrier. Near straight cables emit 3,584 vertices, with 10,752 for six-way junctions. These are geometry
+At distances above 24 blocks, sampling falls from 64 to 24 segments per full block, and fog from four to two
+segments per arm; above 48 blocks, four segments retain the carrier plus the two outer fog volumes, unanimated, so
+distant cables still glow. Near straight cables emit 4,960 vertices (4,096 beam, 864 fog), with 14,592 for six-way
+junctions; distant straight cables emit 256. These are geometry
 budgets, not FPS measurements. `CableFlowGeometry` remains as a legacy reference for existing export/test tooling.
 
 Blender emission and compositor bloom are approximated with native geometry and blending; this is not pixel-identical

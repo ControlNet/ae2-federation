@@ -82,3 +82,29 @@ than a merge from `design/blender-cable-preview`. That design worktree has untra
 ahead of `dev`; it is preserved separately. Unrelated statistics/design notes in the main worktree are excluded.
 The full build and shared-JAR check passed again on the current main branch before committing. Staged secret scan
 and whitespace checks passed. No remote push or PR is part of this integration.
+
+## Thicker beam + in-shell fog (2026-10-11, user request)
+
+User feedback: the beam was too thin to tell whether it existed; wanted it thicker everywhere and a fog inside the
+shell that spreads the beam colour through the cable. Standing rule from the same request: every change ends with a
+before/after sheet of real in-game renders.
+
+- Root cause of invisibility is geometric, not shading: each 12-voxel shell face shows the interior only through a
+  6-voxel glass window (texture alpha 75, the rest of the face a 3-voxel opaque frame). The beam is 6 voxels deep,
+  so at 30-60 degree downward views a thin centre line hides behind the frame between top and side windows
+  (`probe-west.png`: only a sliver at the window's top edge). Thickening alone cannot fix all angles; the fog can.
+- Render order checked in 1.21.1 `LevelRenderer`: BER buffers end (`endLastBatch`) before `renderSectionLayer
+  (translucent)`, so the beam/fog draw first and the glass blends over them (about 29% attenuation). No depth issue.
+- New mapping: core `.03+.035u`, halo `.08+.085u`, pulse amplitude `.035u`. Core is a two-colour gradient strip.
+  Fog: three nested soft-edged volumes per arm (half-widths .29/.20/.11, alpha .15/.19/.24, modulation
+  `.65+.7*pulse`), additive in the glow pass; distant LOD keeps the two outer volumes unanimated.
+  First fog trial (alpha .05/.07/.10) was barely visible in daylight; ~2x was needed.
+- In-world A/B rig: `function hero_scene:beam` in `tools/visual/build_hero_scene.py` (origin x+45 from the base),
+  `tools/visual/compose_before_after.py <before> <after> <out>`. Views used: overview `649.5 72.5 907.5 facing
+  641.5 68.0 899.5`, close `638.2 70.4 902.4 facing 637.0 68.5 900.5`, side `638.0 69.6 903.5 facing 638.0 67.9
+  900.5`, junction `645.5 71.6 903.8 facing 643.0 69.8 900.5`; night = same at `time set 18000`.
+- Capture pitfalls: wait ~45 s after join and ~9 s per teleport or every shot lags one view and the HUD may show;
+  keep `sendCommandFeedback false`. Never `echo stop > cmd` unless the server is running: the FIFO keeps the line
+  and stops the NEXT server at start. `pkill -f` patterns must use `[x]yz` so they don't match the invoking shell.
+- Evidence (ignored): `build/beam-compare/` with `before-full/`, `after-v3/`, `cable-beam-before-after.png`,
+  jars `before.jar` (HEAD 54cf2ba7) and `after-v*.jar`. Pulse phase differs between shots (decorative animation).

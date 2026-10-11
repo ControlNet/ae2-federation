@@ -16,6 +16,12 @@ public final class CableBeamMesh {
     private record Sample(Point point, float nx, float ny, float nz, float bx, float by, float bz) {}
     private record Path(int firstAxis, int secondAxis, Sample[] samples) {}
     private static final List<List<List<Path>>> CACHE = buildCache();
+    /** Fog vertex: x, y, z, centre weight, wave axis, layer. */
+    private static final int FOG_STRIDE = 6;
+    /** Half-widths stay inside the 10-voxel dense neck, the narrowest part of the shell. */
+    private static final float[] FOG_HALF_WIDTH = {.29f, .20f, .11f};
+    private static final float[] FOG_ALPHA = {.15f, .19f, .24f};
+    private static final List<List<float[]>> FOG = buildFog();
 
     private CableBeamMesh() {}
 
@@ -39,6 +45,7 @@ public final class CableBeamMesh {
         if (mask < 0 || mask > 63 || detail < 0 || detail > 2) throw new IllegalArgumentException("Invalid beam geometry");
         float strength = style.strength(tick, partialTick);
         float breath = style.breath(tick, partialTick);
+        boolean red = style.overloaded();
         for (var path : CACHE.get(detail).get(mask)) {
             var samples = path.samples;
             for (int i = 0; i < samples.length - 1; i++) {
@@ -49,31 +56,53 @@ public final class CableBeamMesh {
                 float ra = Math.max(style.coreRadius() * breath, style.coreRadius() * .8f + style.pulseAmplitude() * wa);
                 float rb = Math.max(style.coreRadius() * breath, style.coreRadius() * .8f + style.pulseAmplitude() * wb);
                 for (int plane = 0; plane < 2; plane++) {
-                    // Full-bright carrier, then soft additive shoulders; all respect shell depth.
-                    if (layer != 1) strip(sink, a, b, plane, -ra, ra, -rb, rb, false,
-                            style.overloaded() ? 1 : .48f, style.overloaded() ? .55f : .94f,
-                            style.overloaded() ? .50f : 1, Math.min(1, strength), Math.min(1, strength));
-                    if (detail == 2 || layer == 0) continue;
-                    float shoulderA = style.coreRadius() * 1.3f + style.pulseAmplitude() * wa;
-                    float shoulderB = style.coreRadius() * 1.3f + style.pulseAmplitude() * wb;
-                    float opacity = (.12f + .88f * (float) Math.min(style.load(), 1)) * strength;
                     for (int sign : SIGNS) {
-                        strip(sink, a, b, plane, 0, sign * shoulderA, 0, sign * shoulderB, true,
-                                style.overloaded() ? 1 : .14f, style.overloaded() ? .045f : .85f,
-                                style.overloaded() ? .015f : 1, .70f * opacity, 0);
-                        strip(sink, a, b, plane, 0,
+                        // Full-bright carrier, pale at its centre and saturated at its rim, so a thick core reads as light.
+                        if (layer != 1) strip(sink, a, b, plane, 0, sign * ra, 0, sign * rb, false,
+                                red ? 1 : .82f, red ? .86f : 1, red ? .78f : 1,
+                                red ? 1 : .22f, red ? .30f : .86f, red ? .22f : 1,
+                                Math.min(1, strength), Math.min(1, .85f * strength));
+                        if (detail == 2 || layer == 0) continue;
+                        // Soft additive shoulders; all respect shell depth.
+                        float shoulderA = style.coreRadius() * 1.6f + style.pulseAmplitude() * wa;
+                        float shoulderB = style.coreRadius() * 1.6f + style.pulseAmplitude() * wb;
+                        float opacity = (.12f + .88f * (float) Math.min(style.load(), 1)) * strength;
+                        glowStrip(sink, a, b, plane, sign * shoulderA, sign * shoulderB,
+                                red ? 1 : .14f, red ? .045f : .85f, red ? .015f : 1, .70f * opacity);
+                        glowStrip(sink, a, b, plane,
                                 sign * (style.haloRadius() * .62f * breath + .35f * style.pulseAmplitude() * wa),
-                                0, sign * (style.haloRadius() * .62f * breath + .35f * style.pulseAmplitude() * wb), true,
-                                style.overloaded() ? 1 : .08f, style.overloaded() ? .025f : .7f,
-                                style.overloaded() ? .012f : 1, .70f * opacity, 0);
-                        strip(sink, a, b, plane, 0, sign * style.haloRadius() * breath,
-                                0, sign * style.haloRadius() * breath, true,
-                                style.overloaded() ? 1 : .15f, style.overloaded() ? .025f : .68f,
-                                style.overloaded() ? .012f : 1, .14f * opacity, 0);
+                                sign * (style.haloRadius() * .62f * breath + .35f * style.pulseAmplitude() * wb),
+                                red ? 1 : .08f, red ? .025f : .7f, red ? .012f : 1, .70f * opacity);
+                        glowStrip(sink, a, b, plane, sign * style.haloRadius() * breath,
+                                sign * style.haloRadius() * breath,
+                                red ? 1 : .15f, red ? .025f : .68f, red ? .012f : 1, .22f * opacity);
                     }
                 }
             }
         }
+        if (layer != 0) emitFog(mask, x, y, z, tick, partialTick, style, detail, strength, sink);
+    }
+
+    /** Light scattered inside the shell: nested soft-edged volumes that brighten where a pulse passes. */
+    private static void emitFog(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
+            int detail, float strength, VertexSink sink) {
+        boolean red = style.overloaded();
+        float fog = (.35f + .65f * (float) Math.min(style.load(), 1)) * strength / style.emission();
+        int[] world = {x, y, z};
+        float[] vertices = FOG.get(detail).get(mask);
+        for (int i = 0; i < vertices.length; i += FOG_STRIDE) {
+            int axis = (int) vertices[i + 4];
+            float pulse = detail == 2 ? .5f
+                    : style.wave(CableBeamStyle.phase(world[axis], vertices[i + axis], tick, partialTick));
+            float alpha = FOG_ALPHA[(int) vertices[i + 5]] * vertices[i + 3] * fog * (.65f + .7f * pulse);
+            sink.vertex(true, vertices[i], vertices[i + 1], vertices[i + 2],
+                    red ? 1 : .10f, red ? .10f : .72f, red ? .04f : 1, Math.min(1, alpha));
+        }
+    }
+
+    private static void glowStrip(VertexSink out, Sample a, Sample b, int plane, float edgeA, float edgeB,
+            float r, float g, float blue, float alpha) {
+        strip(out, a, b, plane, 0, edgeA, 0, edgeB, true, r, g, blue, r, g, blue, alpha, 0);
     }
 
     private static final int[] SIGNS = {-1, 1};
@@ -90,11 +119,12 @@ public final class CableBeamMesh {
     }
 
     private static void strip(VertexSink out, Sample a, Sample b, int plane, float a0, float a1,
-            float b0, float b1, boolean glow, float r, float g, float blue, float alpha0, float alpha1) {
-        vertex(out, a, plane, a0, glow, r, g, blue, alpha0);
-        vertex(out, b, plane, b0, glow, r, g, blue, alpha0);
-        vertex(out, b, plane, b1, glow, r, g, blue, alpha1);
-        vertex(out, a, plane, a1, glow, r, g, blue, alpha1);
+            float b0, float b1, boolean glow, float r0, float g0, float blue0, float r1, float g1, float blue1,
+            float alpha0, float alpha1) {
+        vertex(out, a, plane, a0, glow, r0, g0, blue0, alpha0);
+        vertex(out, b, plane, b0, glow, r0, g0, blue0, alpha0);
+        vertex(out, b, plane, b1, glow, r1, g1, blue1, alpha1);
+        vertex(out, a, plane, a1, glow, r1, g1, blue1, alpha1);
     }
 
     private static void vertex(VertexSink out, Sample sample, int plane, float radius, boolean glow,
@@ -113,6 +143,70 @@ public final class CableBeamMesh {
             levels.add(List.copyOf(masks));
         }
         return List.copyOf(levels);
+    }
+
+    private static List<List<float[]>> buildFog() {
+        var levels = new ArrayList<List<float[]>>();
+        for (int detail = 0; detail < 3; detail++) {
+            var masks = new ArrayList<float[]>();
+            for (int mask = 0; mask < 64; mask++) masks.add(buildFog(mask, detail));
+            levels.add(List.copyOf(masks));
+        }
+        return List.copyOf(levels);
+    }
+
+    private static float[] buildFog(int mask, int detail) {
+        var out = new ArrayList<Float>();
+        int main = mask == 0 ? 0 : Integer.numberOfTrailingZeros(mask) / 2;
+        int segments = new int[] {4, 2, 1}[detail];
+        for (int layer = 0; layer < (detail == 2 ? 2 : FOG_HALF_WIDTH.length); layer++) {
+            float lo = .5f - FOG_HALF_WIDTH[layer], hi = .5f + FOG_HALF_WIDTH[layer];
+            for (int axis = 0; axis < 3; axis++) {
+                for (int side = 0; side < 2; side++) {
+                    float at = side == 0 ? hi : lo;
+                    if ((mask & 1 << (2 * axis + side)) == 0) {
+                        // Centre volume face, aligned with the main arm so its strips continue into that arm.
+                        int u = axis != main ? main : (main + 1) % 3;
+                        fogFace(out, axis, at, u, lo, hi, 3 - axis - u, lo, hi, 1, main, layer);
+                        continue;
+                    }
+                    float from = side == 0 ? hi : 0, to = side == 0 ? 1 : lo;
+                    for (int normal = 0; normal < 3; normal++) {
+                        if (normal == axis) continue;
+                        for (float plane : new float[] {lo, hi}) {
+                            fogFace(out, normal, plane, axis, from, to, 3 - axis - normal, lo, hi, segments, axis, layer);
+                        }
+                    }
+                }
+            }
+        }
+        var result = new float[out.size()];
+        for (int i = 0; i < result.length; i++) result[i] = out.get(i);
+        return result;
+    }
+
+    /** One face split lengthwise into segments and crosswise into two strips, transparent at both long edges. */
+    private static void fogFace(List<Float> out, int normal, float at, int u, float u0, float u1, int v, float v0,
+            float v1, int segments, int waveAxis, int layer) {
+        float vm = (v0 + v1) / 2;
+        for (int i = 0; i < segments; i++) {
+            float ua = u0 + (u1 - u0) * i / segments, ub = u0 + (u1 - u0) * (i + 1) / segments;
+            float[][] strips = {{v0, vm, 0, 1}, {vm, v1, 1, 0}};
+            for (var strip : strips) {
+                fogVertex(out, normal, at, u, ua, v, strip[0], strip[2], waveAxis, layer);
+                fogVertex(out, normal, at, u, ub, v, strip[0], strip[2], waveAxis, layer);
+                fogVertex(out, normal, at, u, ub, v, strip[1], strip[3], waveAxis, layer);
+                fogVertex(out, normal, at, u, ua, v, strip[1], strip[3], waveAxis, layer);
+            }
+        }
+    }
+
+    private static void fogVertex(List<Float> out, int normal, float at, int u, float uValue, int v, float vValue,
+            float weight, int waveAxis, int layer) {
+        float[] p = new float[3];
+        p[normal] = at; p[u] = uValue; p[v] = vValue;
+        out.add(p[0]); out.add(p[1]); out.add(p[2]);
+        out.add(weight); out.add((float) waveAxis); out.add((float) layer);
     }
 
     private static List<Path> build(int mask, int segments) {
