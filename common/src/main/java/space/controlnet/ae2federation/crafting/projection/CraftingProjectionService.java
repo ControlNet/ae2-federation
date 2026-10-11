@@ -119,6 +119,31 @@ public final class CraftingProjectionService implements AutoCloseable {
         if (service != null) service.reconcileAll();
     }
 
+    /**
+     * Called after AE2 removes an official global registration. Stop retained consumer mediums synchronously:
+     * a global provider need not disable its own push method after native unregistration. Additions and pattern
+     * changes still use coalesced discovery; removal only touches already observed projections by object identity.
+     */
+    public static synchronized void globalProviderRemoved(MinecraftServer server, IGrid source, ICraftingProvider provider) {
+        if (provider instanceof PatternProjection) return;
+        var service = SERVICES.get(server);
+        if (service == null) return;
+        for (var entry : List.copyOf(service.projected.entrySet())) {
+            var projected = entry.getValue();
+            if (projected.provider() != source) continue;
+            var projection = projected.projections().remove(provider);
+            if (projection == null) continue;
+            projection.withdraw();
+            projected.consumer().getCraftingService().removeGlobalCraftingProvider(projection);
+            var status = service.statuses.get(entry.getKey().rule());
+            if (status != null && status.active()) {
+                int patterns = projected.projections().values().stream()
+                        .mapToInt(remaining -> remaining.getAvailablePatterns().size()).sum();
+                service.statuses.put(entry.getKey().rule(), new Status(Optional.empty(), patterns));
+            }
+        }
+    }
+
     public static synchronized void tick(MinecraftServer server) {
         var service = SERVICES.get(server);
         if (service != null) service.tick();

@@ -120,7 +120,13 @@ switches the two rules separately, and loading a save adds no rule.
   domain topology, a rule or a Grid identity. Providers and their patterns are compared every 20 ticks, because AE2
   has no event for a provider's patterns changing. Discovery is shared once per source Grid in each reconciliation
   round; consumer projections remain separate. Stale membership checks use identity sets. Confirmed Grid lookup
-  follows the identity epoch, not a TTL.
+  follows the identity epoch, not a TTL. Explicit global-provider removal is synchronous: a small AE2 19.2.17
+  `CraftingService.removeGlobalCraftingProvider` return hook withdraws existing consumer projections by source
+  Grid and provider identity, so a retained medium cannot execute an unregistered provider between polls. The
+  same mixin captures server context at native service construction, while a Grid pivot still exists; withdrawal
+  also works after the last node has left and the pivot is null. Native
+  refresh's internal remove/add pair does not trigger this hook. Re-registration creates a new projection on the
+  next discovery; it cannot reactivate a withdrawn object.
 
 Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
 are abandoned on load.
