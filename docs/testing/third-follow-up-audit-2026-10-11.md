@@ -120,3 +120,12 @@ This final production change supersedes the earlier artifact hash with
 `215f627a98adc99bba978600062920c7c4eb4cb7ce9b78e71c7ae70f7f4c2d6e`.
 Earlier addon/restart receipts remain explicitly source-bound; the final push's compatibility matrix validates the
 new artifact. No persistence format or crafting return implementation changed in this final P2P correction.
+
+The final `215f627a...` artifact was installed byte-identically on a new isolated server/client, again with only the
+four production mods and no testmod. A new actual terminal order consumed two cobblestone, blocked with two stone in
+the furnace and owed=2/held=0, survived a real server restart, completed after unblocking, and survived another saved
+restart. Terminal stone moved **19 → 21**, all ledger collections were empty, and Policy parsed exactly equal to the
+original one-entry Crafting-only Policy. Three formal server JVMs and the client exited zero. An earlier incomplete
+runtime-copy/client startup was excluded from this evidence and never submitted an order. Final screenshots, parsed
+NBT, hashes and logs use the `final-artifact-*` prefix in the round-three evidence directory. All acceptance processes
+were stopped after verification. The user requested stopping after this batch's verified delivery.
