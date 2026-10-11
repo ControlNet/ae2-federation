@@ -1,8 +1,8 @@
 # Multiblock device assembly and appearance
 
 Discussion date: 2026-10-11.
-Status: accepted appearance and solid-cuboid bodies implemented in Minecraft on branch
-`design/multiblock-devices`; operational rules selected (see [Selected rules](#selected-rules)).
+Status: accepted appearance and solid-cuboid bodies implemented in Minecraft and merged into `dev`;
+operational rules selected (see [Selected rules](#selected-rules)).
 Remaining work is listed under [Not yet verified](#not-yet-verified).
 
 ## Handoff: start here
@@ -13,9 +13,9 @@ validated bodies. Previous dark Switch infill and flat Router links are historic
 alternative final designs. The user also selected the failure, merge, size and chunk rules recorded
 under [Selected rules](#selected-rules).
 
-Work is in branch `design/multiblock-devices`, in the sibling `ae2-federation-multiblock` worktree.
-It is committed on that branch, not merged into `dev`. Generated renders and game screenshots belong
-under that worktree's `build/`; they are not committed, and the commands below regenerate them.
+The work was done on branch `design/multiblock-devices` and merged into `dev` on 2026-10-11.
+Generated renders and game screenshots belong under `build/`; they are not committed, and the
+commands below regenerate them.
 
 ## Confirmed requirements
 
