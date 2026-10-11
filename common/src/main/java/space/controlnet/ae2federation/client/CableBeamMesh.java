@@ -20,7 +20,7 @@ public final class CableBeamMesh {
     private static final int FOG_STRIDE = 6;
     /** Half-widths stay inside the 10-voxel dense neck, the narrowest part of the shell. */
     private static final float[] FOG_HALF_WIDTH = {.29f, .20f, .11f};
-    private static final float[] FOG_ALPHA = {.15f, .19f, .24f};
+    private static final float[] FOG_ALPHA = {.05f, .07f, .10f};
     private static final List<List<float[]>> FOG = buildFog();
 
     private CableBeamMesh() {}
@@ -94,7 +94,7 @@ public final class CableBeamMesh {
             int axis = (int) vertices[i + 4];
             float pulse = detail == 2 ? .5f
                     : style.wave(CableBeamStyle.phase(world[axis], vertices[i + axis], tick, partialTick));
-            float alpha = FOG_ALPHA[(int) vertices[i + 5]] * vertices[i + 3] * fog * (.65f + .7f * pulse);
+            float alpha = FOG_ALPHA[(int) vertices[i + 5]] * vertices[i + 3] * fog * (.55f + .9f * pulse);
             sink.vertex(true, vertices[i], vertices[i + 1], vertices[i + 2],
                     red ? 1 : .10f, red ? .10f : .72f, red ? .04f : 1, Math.min(1, alpha));
         }

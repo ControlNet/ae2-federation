@@ -9,10 +9,9 @@ public record CableBeamStyle(double load, boolean overloaded, float coreRadius, 
     public static CableBeamStyle fromLoad(double load) {
         if (!Double.isFinite(load) || load < 0) throw new IllegalArgumentException("Invalid visual load");
         float u = (float) Math.min(load, 1);
-        // Fills much of the shell's 6-voxel glass window (half-width 3/16), so the opaque frame cannot hide it at
-        // ordinary viewing angles; the overload breath still stays inside the window.
-        return new CableBeamStyle(load, load > 1, .03f + .035f * u, .08f + .085f * u,
-                .035f * u, 1 + 2 * u, .45f + 1.55f * u);
+        // Sized for the shell's 6-voxel glass window (half-width 3/16): visible at play distance, never touching the frame.
+        return new CableBeamStyle(load, load > 1, .018f + .027f * u, .06f + .09f * u,
+                .028f * u, 1 + 2 * u, .45f + 1.55f * u);
     }
 
     /** Bounded 64-tick clock, continuous across wrap, including negative coordinates. */

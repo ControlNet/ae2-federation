@@ -16,9 +16,9 @@ For `u = min(load, 1)`:
 
 | Parameter | Mapping |
 | --- | --- |
-| Carrier radius, blocks | `0.03 + 0.035 * u` |
-| Halo radius, blocks | `0.08 + 0.085 * u` |
-| Pulse radius amplitude, blocks | `0.035 * u` |
+| Carrier radius, blocks | `0.018 + 0.027 * u` |
+| Halo radius, blocks | `0.06 + 0.09 * u` |
+| Pulse radius amplitude, blocks | `0.028 * u` |
 | Pulse density | `1 + 2 * u` |
 | Emission factor | `0.45 + 1.55 * u` |
 | Normal palette | Pale cyan core, cyan shoulders |
@@ -37,11 +37,13 @@ a broader envelope following the pulse, and an outer halo.
 
 The shell shows its interior only through a 6-voxel glass window in the middle of each 12-voxel face; a 3-voxel
 opaque frame surrounds it. The beam sits 6 voxels behind the surface, so at the common 30-60 degree downward view
-the frame between the top and side windows hides a thin centre line. The carrier is therefore sized to fill much of
-the window, and the overload breath still keeps the halo inside it (half-width 3/16).
+the frame between the top and side windows hides a thin centre line. The carrier is therefore several times its
+original width, the halo stays inside the window even at the overload breath (half-width 3/16), and the fog below
+carries the colour to the angles where the frame still hides the beam.
 
 In-shell fog scatters the beam colour through the whole interior: three nested soft-edged volumes (half-widths
-0.29, 0.20 and 0.11 blocks, inside the 10-voxel neck) follow the connected arms. Each face is transparent at its long
+0.29, 0.20 and 0.11 blocks, inside the 10-voxel neck; alpha 0.05, 0.07 and 0.10) follow the connected arms. The fog
+is deliberately faint: a light haze, with pulses (`0.55 + 0.9 * wave`) lifting it locally. Each face is transparent at its long
 edges and densest along its middle, so the stacked volumes brighten towards the beam. Fog brightness follows load
 and the overload alarm, and pulses brighten it locally using the same world-anchored phase. It is drawn in the
 additive glow pass; the shell's glass, drawn later in the translucent terrain pass, blends over it. `CableFlowRenderer` uses the vanilla unlit beacon shader and the vanilla white texture:

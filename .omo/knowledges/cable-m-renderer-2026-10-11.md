@@ -95,10 +95,12 @@ before/after sheet of real in-game renders.
   (`probe-west.png`: only a sliver at the window's top edge). Thickening alone cannot fix all angles; the fog can.
 - Render order checked in 1.21.1 `LevelRenderer`: BER buffers end (`endLastBatch`) before `renderSectionLayer
   (translucent)`, so the beam/fog draw first and the glass blends over them (about 29% attenuation). No depth issue.
-- New mapping: core `.03+.035u`, halo `.08+.085u`, pulse amplitude `.035u`. Core is a two-colour gradient strip.
-  Fog: three nested soft-edged volumes per arm (half-widths .29/.20/.11, alpha .15/.19/.24, modulation
-  `.65+.7*pulse`), additive in the glow pass; distant LOD keeps the two outer volumes unanimated.
-  First fog trial (alpha .05/.07/.10) was barely visible in daylight; ~2x was needed.
+- Three in-world iterations (all-versions sheet `build/beam-compare/cable-beam-all-versions.png`):
+  V1 core `.018+.027u`, halo `.06+.09u`, pulse `.028u`, fog alpha .05/.07/.10, modulation `.55+.9*pulse`;
+  V2 core `.03+.035u`, halo `.08+.085u`, pulse `.035u`, fog .08/.11/.15; V3 = V2 sizes, fog .15/.19/.24,
+  modulation `.65+.7*pulse`. **User chose V1 as final** ("V1就感觉挺好"): a light haze, not a strong fog.
+  Core is a two-colour gradient strip; fog volumes (half-widths .29/.20/.11) are additive in the glow pass;
+  distant LOD keeps the two outer volumes unanimated.
 - In-world A/B rig: `function hero_scene:beam` in `tools/visual/build_hero_scene.py` (origin x+45 from the base),
   `tools/visual/compose_before_after.py BEFORE=<dir> AFTER=<dir> [V2=<dir> ...] --output <png>`. Views used: overview `649.5 72.5 907.5 facing
   641.5 68.0 899.5`, close `638.2 70.4 902.4 facing 637.0 68.5 900.5`, side `638.0 69.6 903.5 facing 638.0 67.9

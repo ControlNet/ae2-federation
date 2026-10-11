@@ -15,9 +15,9 @@ final class CableBeamTest {
         var medium = CableBeamStyle.fromLoad(.6);
         var full = CableBeamStyle.fromLoad(1);
         var overload = CableBeamStyle.fromLoad(1.25);
-        assertEquals(.03, idle.coreRadius(), 1e-7);
-        assertEquals(.051, medium.coreRadius(), 1e-7);
-        assertEquals(.131, medium.haloRadius(), 1e-7);
+        assertEquals(.018, idle.coreRadius(), 1e-7);
+        assertEquals(.0342, medium.coreRadius(), 1e-7);
+        assertEquals(.114, medium.haloRadius(), 1e-7);
         assertEquals(2.2, medium.pulseDensity(), 1e-6);
         assertEquals(1.38, medium.emission(), 1e-6);
         assertFalse(full.overloaded());
