@@ -104,3 +104,19 @@ native recursion guards, actual accepted held increments, reservation before ext
 job conservative lifecycle. Absence of a further qualified finding is not proof that every ecosystem path is bug-free.
 The locally customized audit skill now requires prompt cleanup of completed worktrees after evidence and integration
 checks. Finished worker worktrees have been removed; unrelated user worktrees and ongoing edits are preserved.
+
+## Final native-callback correction
+
+After the first delivery candidate, independent review identified a remaining P2P invalidation gap: native canonical
+input replacement does not notify the old input. Removing the regression's synthetic all-tunnel refresh reproduced
+three published edges where two should remain, although reciprocal domains were still correct. An output now captures
+its previous published input into the pending invalidation set at callback time. Native Grid/frequency matching and
+canonical selection remain authoritative. Capturing before removal/publication prevents losing the hint when the
+output is removed in the same callback burst or another frequency is drained first.
+
+The strengthened required case covers both replacement and immediate output removal. Fixed-source P2P batch **4/4,
+27 seconds**; complete required batch **224/224, 53 seconds**; strict build/archive and **547 JUnit tests** pass.
+This final production change supersedes the earlier artifact hash with
+`215f627a98adc99bba978600062920c7c4eb4cb7ce9b78e71c7ae70f7f4c2d6e`.
+Earlier addon/restart receipts remain explicitly source-bound; the final push's compatibility matrix validates the
+new artifact. No persistence format or crafting return implementation changed in this final P2P correction.

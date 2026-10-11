@@ -19,9 +19,10 @@ public final class P2PCollisionGameTests {
         var carrier = TunnelCarrier.withController(helper, new BlockPos(0, 4, 2), 3);
         int[] stage = {0};
         long[] changedAt = {0};
+        long[] linksBeforeReplacement = {0};
         helper.succeedWhen(() -> {
             var now = helper.getLevel().getGameTime();
-            helper.assertTrue(carrier.online(0, 1, 2), "Waiting for real active tunnels");
+            helper.assertTrue((stage[0] == 4 ? carrier.online(0, 1) : carrier.online(0, 1, 2)), "Waiting for real active tunnels");
             var service = P2PService.get(carrier.tunnel(0).getMainNode().getGrid());
             if (stage[0] == 0) {
                 helper.assertFalse(carrier.tunnel(0).isOutput(), "First tunnel is an input");
@@ -49,15 +50,27 @@ public final class P2PCollisionGameTests {
                 helper.assertTrue(service.getInput((short) 73) == carrier.tunnel(1), "Native registry selects input one");
                 helper.assertTrue(carrier.domainOf(1, 2), "The selected native input links to its output");
                 helper.assertTrue(carrier.alone(0), "An unselected input has no reciprocal output link");
+                linksBeforeReplacement[0] = space.controlnet.ae2federation.p2p.P2PRefreshDiagnostics.snapshot().links();
                 service.updateFreq(carrier.tunnel(0), (short) 73);
-                carrier.tunnels().forEach(tunnel -> tunnel.onTunnelNetworkChange());
                 stage[0] = 3;
                 changedAt[0] = now;
                 helper.fail("Native registration now selects the other input");
             }
-            helper.assertTrue(carrier.domainOf(0, 2), "The output follows the newly selected native input");
-            helper.assertTrue(carrier.alone(1), "The old input loses its reciprocal output link");
-            PolicyEvidence.write("p2pcollidinginputsstayseparate", 10,
+            if (stage[0] == 3) {
+                helper.assertTrue(carrier.domainOf(0, 2), "The output follows the newly selected native input");
+                helper.assertTrue(carrier.alone(1), "The old input loses its reciprocal output link");
+                helper.assertValueEqual(space.controlnet.ae2federation.p2p.P2PRefreshDiagnostics.snapshot().links(), linksBeforeReplacement[0],
+                        "Native replacement callbacks remove the old input evidence without a synthetic refresh");
+                service.updateFreq(carrier.tunnel(1), (short) 73);
+                carrier.remove(2);
+                stage[0] = 4;
+                changedAt[0] = now;
+                helper.fail("Replace the input and remove its output in the same callback burst");
+            }
+            helper.assertTrue(carrier.alone(0) && carrier.alone(1), "Both surviving inputs remain isolated");
+            helper.assertValueEqual(space.controlnet.ae2federation.p2p.P2PRefreshDiagnostics.snapshot().links(), linksBeforeReplacement[0] - 2,
+                    "Removal cannot erase the captured old-input invalidation hint");
+            PolicyEvidence.write("p2pcollidinginputsstayseparate", 13,
                     Map.of("configuration", "native frequency collision injection", "inputs", "2", "outputs", "0 then 1"));
         });
     }

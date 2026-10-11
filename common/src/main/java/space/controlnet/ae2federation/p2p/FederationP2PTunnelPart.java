@@ -49,6 +49,8 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
     private static final Map<MinecraftServer, Map<GroupKey, Set<FederationP2PTunnelPart>>> PENDING = new WeakHashMap<>();
     private record GroupKey(@Nullable IGrid grid, short frequency) {}
     private @Nullable GroupKey previousGroup;
+    /** Invalidation hint only: native P2P does not notify an input displaced by another input. */
+    private @Nullable FederationP2PTunnelPart publishedInput;
 
     private @Nullable CableFacePort front;
     private @Nullable FederationDomainNodeId nodeId;
@@ -94,6 +96,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             FederationBindingRefresh.request(serverLevel);
         }
         nodeId = null;
+        publishedInput = null;
     }
 
     /**
@@ -163,6 +166,12 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         var current = new GroupKey(getMainNode().getGrid(), getFrequency());
         if (previousGroup != null) pending.computeIfAbsent(previousGroup, ignored -> new LinkedHashSet<>()).add(this);
         pending.computeIfAbsent(current, ignored -> new LinkedHashSet<>()).add(this);
+        // Capture before removal or another publication can clear the output's previous evidence hint.
+        // A displaced input is absent from the native registry and does not receive its own callback.
+        if (publishedInput != null) {
+            var prior = new GroupKey(publishedInput.getMainNode().getGrid(), publishedInput.getFrequency());
+            pending.computeIfAbsent(prior, ignored -> new LinkedHashSet<>()).add(publishedInput);
+        }
         previousGroup = current;
     }
 
@@ -224,6 +233,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         }
         boolean changed = FederationDomainRegistryAccess.get(serverLevel).upsertNode(
                 new FederationDomainNodeEvidence(nodeId, evidence));
+        publishedInput = isOutput() && links != 0 ? input : null;
         P2PRefreshDiagnostics.published(nodeId, links, changed);
         if (changed) {
             FederationBindingRefresh.request(serverLevel);
