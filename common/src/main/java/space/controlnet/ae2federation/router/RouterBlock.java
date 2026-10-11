@@ -13,6 +13,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
@@ -21,12 +24,41 @@ import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
 /**
  * The Router and the Switch: both are this block, each with its own block entity type, and share all their code. A
  * Switch's faces attach ME networks and Federation ports; a Router's faces attach Federation ports only.
+ *
+ * <p>Touching blocks of one type that fill a solid cuboid form one body. Each block's six connection properties name
+ * its neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them.
  */
 public final class RouterBlock extends BaseEntityBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
+    /** Indexed by {@link net.minecraft.core.Direction#get3DDataValue()}. */
+    private static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
+            BlockStateProperties.NORTH, BlockStateProperties.SOUTH, BlockStateProperties.WEST, BlockStateProperties.EAST};
 
     public RouterBlock(Properties properties) {
         super(properties);
+        var state = stateDefinition.any();
+        for (var property : CONNECTED) state = state.setValue(property, false);
+        registerDefaultState(state);
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(CONNECTED);
+    }
+
+    /** The sides on which {@code state}'s neighbour belongs to the same formed body, one bit per 3D data value. */
+    public static int connections(BlockState state) {
+        if (!(state.getBlock() instanceof RouterBlock)) return 0;
+        int connections = 0;
+        for (int i = 0; i < CONNECTED.length; i++) {
+            if (state.getValue(CONNECTED[i])) connections |= 1 << i;
+        }
+        return connections;
+    }
+
+    static BlockState withConnections(BlockState state, int connections) {
+        for (int i = 0; i < CONNECTED.length; i++) state = state.setValue(CONNECTED[i], (connections & 1 << i) != 0);
+        return state;
     }
 
     @Override
@@ -87,6 +119,10 @@ public final class RouterBlock extends BaseEntityBlock {
             BlockPos neighborPosition, boolean movedByPiston) {
         if (level.getBlockEntity(position) instanceof RouterBlockEntity router) {
             router.neighborChanged(neighborPosition);
+        }
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && DeviceStructureUpdater.affects(serverLevel, position, neighborPosition)) {
+            DeviceStructureUpdater.request(serverLevel, position);
         }
     }
 }

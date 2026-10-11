@@ -88,6 +88,7 @@ public final class NeoForgeEntrypoint {
             // The services serve the whole server: the level's nodes leave the registry, then the relationships that
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
+            space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             CraftingProjectionService.levelClosed(level);
             EnergySharingService.levelClosed(level);

@@ -60,6 +60,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         initialized = true;
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         facePorts.values().forEach(port -> port.initialize(serverLevel));
+        // A placed or loaded block checks the body it belongs to; one check settles every member asking this tick.
+        DeviceStructureUpdater.request(serverLevel, worldPosition);
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, RouterBlockEntity router) {
