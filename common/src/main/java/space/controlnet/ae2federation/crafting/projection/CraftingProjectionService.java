@@ -407,7 +407,11 @@ public final class CraftingProjectionService implements AutoCloseable {
             federationDomains.grid(network).ifPresent(grid -> wanted.put(grid, network));
         }
         for (var grid : List.copyOf(routers.keySet())) {
-            if (!wanted.containsKey(grid)) grid.getStorageService().removeGlobalStorageProvider(routers.remove(grid));
+            // A native Grid can survive a same-tick merge while fresh nodes adopt another durable identity.
+            // The router captures its executing identity; retaining it would assign new arrivals to the old owner.
+            if (!routers.get(grid).executing().equals(wanted.get(grid))) {
+                grid.getStorageService().removeGlobalStorageProvider(routers.remove(grid));
+            }
         }
         wanted.forEach((grid, network) -> {
             if (routers.containsKey(grid)) return;

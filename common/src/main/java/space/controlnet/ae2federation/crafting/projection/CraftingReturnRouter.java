@@ -46,6 +46,10 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
         return executingGrid;
     }
 
+    NetworkId executing() {
+        return executing;
+    }
+
     /**
      * How much of {@code what} the consumer's CPUs still wait for, at most {@code owed}, counted over the CPUs AE2
      * lists as active. In the tick a CPU leaves the Grid (its chunk unloads), AE2's requested amount and requested keys
