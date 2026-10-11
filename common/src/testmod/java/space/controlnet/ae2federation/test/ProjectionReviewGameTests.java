@@ -94,6 +94,7 @@ public final class ProjectionReviewGameTests {
             var executing = fixture.providerNetwork();
             var consumer = fixture.consumerNetwork();
             var mounted = new MEStorage[1];
+            var mountedRouter = new appeng.api.storage.IStorageProvider[1];
             try {
                 var add = CraftingReturnLedger.class.getDeclaredMethod("add",
                         space.controlnet.ae2federation.identity.NetworkId.class,
@@ -105,7 +106,9 @@ public final class ProjectionReviewGameTests {
                 constructor.setAccessible(true);
                 var router = (appeng.api.storage.IStorageProvider) constructor.newInstance(executing,
                         fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null);
-                router.mountInventories((storage, priority) -> mounted[0] = storage);
+                fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
+                mountedRouter[0] = router;
+                mounted[0] = fixture.providerGrid().getStorageService().getInventory();
             } catch (ReflectiveOperationException failure) {
                 throw new IllegalStateException(failure);
             }
@@ -126,6 +129,7 @@ public final class ProjectionReviewGameTests {
             helper.assertValueEqual(fixture.held(fixture.providerChest(), key), 1L, "The item really reached local storage");
             space.controlnet.ae2federation.test.policy.PolicyEvidence.write("projectionrejectedarrival", 30,
                     java.util.Map.of("rejectedRetries", "12", "heldAfterRetries", "0", "heldAfterAcceptance", "1"));
+            fixture.providerGrid().getStorageService().removeGlobalStorageProvider(mountedRouter[0]);
             fixture.close();
         });
     }

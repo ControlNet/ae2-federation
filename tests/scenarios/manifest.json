@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "cases": [
     {"id":"crafting.projection-accepted-push-disconnect","backend":"gametest","testId":"projectionacceptedpushdisconnect","structure":"ae2federation_test:harness_native_smoke","assertions":15},
+    {"id":"crafting.return-simulation-capacity","backend":"gametest","testId":"projectionreturnsimulationcapacity","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"crafting.transit-partial-reentry","backend":"gametest","testId":"projectiontransitpartialreentry","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"crafting.transit-reentry","backend":"gametest","testId":"projectiontransitreentry","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"crafting.projection-global-withdrawal-immediate","backend":"gametest","testId":"projectionglobalwithdrawalimmediate","structure":"ae2federation_test:harness_native_smoke","assertions":16},
