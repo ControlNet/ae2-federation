@@ -1,9 +1,16 @@
 # Multiblock routers, switches, and cable capacity
 
-Discussion dates: 2026-10-09 through 2026-10-10.
+Discussion dates: 2026-10-09 through 2026-10-11.
 Status: gameplay idea with accepted layout tradeoffs and a candidate region-counting model. Cable multipliers,
 connection details and failure behavior still need evaluation. Router and switch multiblocks must be solid cuboids. Router capacity limits are out of scope for now;
 do not treat the original charger-rooted model as a requirement.
+
+On 2026-10-11 the user prioritized multiblock Switches and Routers while deferring bundled cables.
+The connected appearance is now accepted: raised blue Router links and white Switch backing with
+original-style recessed blue contacts. See the [device assembly and appearance handoff](multiblock-device-assembly-and-appearance.md)
+for the final visual references, executable prototype, reproduction commands and unresolved operational
+rules. Minecraft runtime integration has not started. This sequencing and visual acceptance do not
+select or implement the cable-capacity candidate below.
 
 ## Player experience
 

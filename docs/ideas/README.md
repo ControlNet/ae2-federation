@@ -15,6 +15,7 @@ what the feature should do; it does not mean implementation has started or a rel
 | [Optional Federation operating power](federation-operating-power.md) | User-proposed direction; details open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
 | [Line-of-sight beam links](line-of-sight-beam-links.md) | User-proposed connection form; details open | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
 | [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Region-counting candidate; concentrated layouts accepted; balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
+| [Multiblock device assembly and appearance](multiblock-device-assembly-and-appearance.md) | Visual direction accepted; runtime handoff ready | Solid cuboids, raised Router links, white-backed Switch with recessed contacts; executable references and open operational decisions |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
 Its name, appearance and detailed behavior remain undecided.
