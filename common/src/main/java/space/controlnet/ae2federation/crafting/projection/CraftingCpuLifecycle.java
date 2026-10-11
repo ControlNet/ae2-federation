@@ -17,7 +17,8 @@ import org.jetbrains.annotations.Nullable;
  * TimeWheelCraftingCPU uses getHost/getCraftingLogic. Advanced AE 1.6.12 exposes getSrc and the public craftingLogic
  * field. Neo ECO terminal evidence uses its persisted isTerminated API, guarded by isFormed and its private
  * deferredInit array (21.2.1): any deferred or quarantined slot suppresses the terminal inference. Only block-entity
- * anchors are recognized. No job is scheduled here.
+ * anchors are recognized. Lightning Tech 2.1.1's loaded active Pigmee owner also proves termination once its full
+ * native CPU pool has no persistent state, including pending-loaded jobs. No job is scheduled here.
  */
 final class CraftingCpuLifecycle {
     record Observation(@Nullable ICraftingLink link, ServerLevel level, BlockPos position, boolean nativeCpu) {}
@@ -56,8 +57,17 @@ final class CraftingCpuLifecycle {
         }
     }
 
-    /** Neo ECO persists its own terminal job ids, including CPUs removed from the active list on completion. */
+    /** Native addon evidence for jobs whose CPU retired; never infer termination from Grid CPU-list absence. */
     static boolean terminated(BlockEntity anchor, java.util.UUID craftingId) {
+        var pool = DRAINED_POOL.get(anchor.getClass());
+        if (pool != null) {
+            try {
+                return Boolean.TRUE.equals(pool.active().invoke(anchor))
+                        && Boolean.FALSE.equals(pool.persistent().invoke(pool.pool().invoke(anchor)));
+            } catch (ReflectiveOperationException | RuntimeException unavailable) {
+                return false;
+            }
+        }
         var access = TERMINAL.get(anchor.getClass());
         if (access == null) return false;
         try {
@@ -70,6 +80,24 @@ final class CraftingCpuLifecycle {
             return false;
         }
     }
+
+    private record PoolAccess(Method active, Method pool, Method persistent) {}
+
+    private static final ClassValue<PoolAccess> DRAINED_POOL = new ClassValue<>() {
+        @Override
+        protected PoolAccess computeValue(Class<?> type) {
+            if (!type.getName().equals("com.moakiee.ae2lt.blockentity.PigmeeMentalmathUnitBlockEntity")) return null;
+            try {
+                var pool = type.getMethod("getTimeWheelCraftingCpuPool");
+                // Lightning Tech 2.1.1: the full pool map includes pending-loaded CPUs and removes a CPU only after
+                // all of its persistent state is drained. No state in an active loaded owner proves old jobs ended.
+                return new PoolAccess(type.getMethod("isCpuActive"), pool,
+                        pool.getReturnType().getMethod("hasPersistentState"));
+            } catch (ReflectiveOperationException unavailable) {
+                return null;
+            }
+        }
+    };
 
     private record TerminalAccess(Method formed, java.lang.reflect.Field deferred, Method terminal) {}
 

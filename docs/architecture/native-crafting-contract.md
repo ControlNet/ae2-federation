@@ -67,6 +67,11 @@ switches the two rules separately, and loading a save adds no rule.
     terminal record after a completed CPU retires. The adapter requires `isFormed()` and no pending entries in the
     private `deferredInit` array (pinned to 21.2.1); any deferred or quarantined slot suppresses this inference because
     resuming persisted jobs can clear a temporary cancellation marker. No lifecycle registration is replayed.
+    Lightning Tech 2.1.1's active loaded Pigmee owner proves historical jobs ended only when its native
+    `TimeWheelCraftingCpuPool.hasPersistentState()` is false. That full pool includes pending-loaded CPUs; a slot
+    remains until jobs, pending restores, inventories and requester outputs drain. This read-only public API probe
+    does not infer completion from the Grid CPU list. Actual chunk unload and a separate server-process restart
+    are covered with Storage never enabled; the compatibility fixture uses a hand-operated chest processor.
     The additive saved job outcome `TERMINATED` means the addon proves ending without exposing completion versus
     cancellation. Existing worlds load unchanged; downgrading to a version whose enum lacks `TERMINATED` is not
     supported after such a record is saved. The real Neo ECO processing CPU test waits for both declared outputs
