@@ -7,6 +7,7 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
+| [Statistics dashboard](statistics-dashboard.md) | Preliminary visualization direction; metrics open | Federation and AE network statistics, time-series charts, and dashboard-like views |
 | [Rule-based automation](rule-based-automation.md) | Shared function system proposed; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
 | [Lightweight Jade cable capacity display](jade-cable-capacity.md) | Preliminary; depends on future capacity rules | A concise cable network-count/limit line; no broad diagnostic HUD |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
