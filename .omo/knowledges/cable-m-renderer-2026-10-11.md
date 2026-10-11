@@ -110,3 +110,16 @@ before/after sheet of real in-game renders.
   and stops the NEXT server at start. `pkill -f` patterns must use `[x]yz` so they don't match the invoking shell.
 - Evidence (ignored): `build/beam-compare/` with `before-full/`, `after-v3/`, `cable-beam-before-after.png`,
   jars `before.jar` (HEAD 54cf2ba7) and `after-v*.jar`. Pulse phase differs between shots (decorative animation).
+
+## Beam occluded by shell frames behind it (2026-10-11, user report)
+
+Cause: the beam is a block entity render (drawn before translucent terrain) and wrote no depth; the shell is
+translucent terrain drawn afterwards. Any shell face BEHIND the beam that still faces the camera (another arm of an
+elbow/T/junction, a neighbouring cable; a cable's own far wall is back-face culled) painted its opaque frame over the
+beam. Seen clearly in an eye-level view along the west run toward the elbow (the north arm's east wall frame cut it).
+Fix: the carrier (CORE) writes depth (`COLOR_DEPTH_WRITE`), and the glow pass now runs BEFORE the carrier so the
+carrier's depth does not z-fight its coplanar shoulders. Frames in front still cover the beam (they pass LEQUAL).
+Residual: glow and fog write no depth, so a frame behind can still dim the soft halo/fog (not the bright line).
+Writing depth for them would cut the additive volume and hide translucent geometry behind cables.
+Evidence: `build/beam-compare/occl-{before,after}/`, `cable-beam-occlusion-before-after.png`; native preview
+`AE2F_BEAM_BRIGHTNESS_OK pixels=15510`.

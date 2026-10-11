@@ -47,8 +47,12 @@ is deliberately faint: a light haze, with pulses (`0.55 + 0.9 * wave`) lifting i
 edges and densest along its middle, so the stacked volumes brighten towards the beam. Fog brightness follows load
 and the overload alarm, and pulses brighten it locally using the same world-anchored phase. It is drawn in the
 additive glow pass; the shell's glass, drawn later in the translucent terrain pass, blends over it. `CableFlowRenderer` uses the vanilla unlit beacon shader and the vanilla white texture:
-a normal-alpha carrier pass followed by an additive glow pass. Both depth-test;
-the glow does not write depth. Each buffer is filled before switching render types.
+an additive glow pass followed by a normal-alpha carrier pass. Both depth-test; only the carrier writes depth.
+The shell is translucent terrain, which Minecraft draws after block entities: without carrier depth, any shell face
+behind the beam that faces the camera (another arm of an elbow or junction, a neighbouring cable) painted its frame
+over the beam. The glow goes first so the carrier's depth does not fight its coplanar shoulders. The soft glow and
+fog still write no depth, so a frame behind them can still dim them. Each buffer is filled before switching render
+types.
 
 Straight runs share a world-coordinate phase with a bounded 64-tick clock, including negative coordinates.
 Fractional densities crossfade integer pulse trains to keep seams and clock wraps continuous. Elbows use curved
