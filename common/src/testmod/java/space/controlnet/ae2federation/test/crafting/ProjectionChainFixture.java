@@ -253,11 +253,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
         return Objects.requireNonNull(chest(FACES.get(index)).getOriginalCellInventory(0));
     }
 
-    private IGrid grid(int index) {
+    public IGrid grid(int index) {
         return grids().get(index);
     }
 
-    private NetworkId network(int index) {
+    public NetworkId network(int index) {
         return FederationDomainRegistryAccess.confirmedNetworkId(grid(index)).orElseThrow();
     }
 

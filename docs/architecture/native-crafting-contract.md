@@ -20,7 +20,8 @@ No compatibility shim, replacement planner, replacement CPU, or alternate crafti
 
 Network C crafts with network P's pattern providers as AE2 does within one network: C's own CPU plans and runs the
 job, with what C's storage shows, and pushes each pattern to P's provider. P needs no CPU. The code is in
-`crafting/projection/` and uses public AE2 API only.
+`crafting/projection/`. Planning, submission, execution and provider registration use AE2 API; the read-only
+compatibility access described below is pinned to AE2 19.2.17.
 
 A crafting rule "C uses P" projects P's providers onto C while all of these hold:
 
@@ -33,7 +34,10 @@ and pay with; without it, C pays with its own storage and P's leftovers stay out
 switches the two rules separately, and loading a save adds no rule.
 
 - **Projection.** `RealCraftingProviders` lists P's own providers: the `ICraftingProvider` node services on P's Grid,
-  plus the Federation Provider lanes registered on it. Each one gets a `PatternProjection` on C's crafting service
+  plus every native global registration, including Federation Provider lanes and third-party providers without node services.
+  Read-only accessors inspect AE2's `CraftingService.craftingProviders`, `NetworkCraftingProviders.globalProviders`,
+  and `ProviderState.provider`; no registration is replayed. Objects are deduplicated by identity, and Federation
+  projections are excluded. Priority-only edits refresh each consumer registration once; unchanged checks do not remount. Each one gets a `PatternProjection` on C's crafting service
   (`addGlobalCraftingProvider`). It offers the real provider's own pattern objects, priority and busy state, and no
   emitable items. A push goes straight to the real provider. A withdrawn projection offers no patterns, reports busy and
   refuses pushes before it is removed, so nothing is pushed through it afterwards.
@@ -41,25 +45,35 @@ switches the two rules separately, and loading a save adds no rule.
   container items its inputs leave behind, such as empty buckets. The ledger is saved data, so a debt survives a
   reload.
   - P's `CraftingReturnRouter` is mounted on P's storage at `Integer.MAX_VALUE` and is preferred only for owed keys. It
-    lists nothing and extracts nothing.
+    lists and extracts real saved transit stock. It does not list debt or `held` as additional inventory.
   - It hands back at most `min(inserted, owed, C.getRequestedAmount)` into C's storage, where AE2's
     `CraftingServiceStorage` gives it to the waiting CPU first. Any surplus stays on P.
-  - AE2 counts only its own CPU clusters in `getRequestedAmount`. An addon's CPU that AE2 still lists in
-    `isRequesting`, such as Neo ECO's computation system, waits for an amount AE2 cannot tell. While no AE2 cluster
-    requests the key, the cap is then what the ledger owes C; if that CPU takes less, the rest lands in C's storage,
-    which paid the inputs.
+  - AE2 counts only its own CPU clusters in `getRequestedAmount`. The optional lifecycle adapters provide exact
+    waiting amounts for recognized independent CPUs. For an unsupported busy CPU listed by native `isRequesting`,
+    the conservative cap is the debt; the public CPU interface supplies no exact waiting amount.
   - The container items are counted from the inputs C's CPU extracted for the push, as AE2's `CraftingCpuHelper`
     counts them, before the push: AE2's Molecular Assembler empties the input holder it is pushed, so nothing can be
     read back afterwards. They are owed only if the push is accepted; the holder goes to the provider untouched.
-  - Each push also records C's job: AE2's crafting id and its CPU's dimension and position. A debt is dropped when C,
-    loaded, requests nothing of the key (by either measure) on two 20-tick looks in a row and every watched job's CPU is
-    in sight. A CPU in an unloaded chunk or dimension leaves its Grid with its job intact, so while one is out of sight
-    C keeps its debts, however long that lasts; the chunk is only looked at, never loaded. The first look waits 100
-    ticks after the service starts, so it does not run while the world is still loading; no debt depends on that delay.
-  - How the jobs ended is read from AE2's link of each job. AE2 finishes a job on its final output, so the containers of
-    its last push often arrive after it; once a job finished, what P holds for it is handed to C's storage, as it would
-    land in one network. After a cancelled job (including a broken CPU, or a job that ended before its reloaded link
-    was read) late outputs stay on P, where C sees them only through a storage rule of its own on P.
+  - Each push observes C's busy CPUs. Native jobs retain the link ID, dimension and CPU position. Unknown
+    independent `ICraftingCPU` implementations expose no ID or position in the public interface, so their uncertainty
+    is saved explicitly, never interpreted as completion. A small optional adapter reads Neo ECO 21.2.1's concrete
+    `ECOCraftingCPU.getOwner/getLogic` and `getLastLink/getWaitingFor` methods, and Lightning Tech 2.1.1's
+    `TimeWheelCraftingCPU.getHost/getCraftingLogic` methods. These are version-sensitive dependencies, not proof that
+    every addon lifecycle or planner path was tested. Only block-entity anchors with a dimension are accepted. An
+    unformed or missing addon CPU remains unknown; a loaded adapter at the saved anchor can prove it no longer runs
+    the old link. The real Neo ECO processing CPU test waits for both declared outputs before finishing; native CPU
+    early completion must not be generalized to that implementation.
+  - Debt is removed only by actual delivery. Zero waiting, two idle observations, a completed job, cancellation,
+    or attempting a return cannot prove that all machine outputs arrived. A completed/cancelled consumer receives
+    its outstanding arrivals into its own storage once all observed jobs are resolved. With mixed running/unloaded
+    jobs, stock goes only to an actively requesting CPU; leftovers remain held until that ambiguity clears. There is
+    no invented job-to-output association. Unknown lifecycles conservatively retain debt and may require manual
+    recovery from the executing network's own storage after cancellation. `/ae2federation returns list` exposes owed,
+    held, transit, and unknown-CPU state to operators. No Storage rule is required for automatic return.
+  - Genuine native CPU removal ends its native job but does not erase machine return ownership. Outputs from already
+    dispatched inputs still belong to the consumer, including after cancellation; they no longer depend on sharing
+    the factory's inventory. If the consumer itself is permanently removed, responsibility remains diagnostic state;
+    the executing network still owns the physical storage from which a player can recover it.
   - A return crosses only a live Federation link: P and C share a Federation Domain, or are joined through networks
     the domains share, as a chained push is (`FederationLinks`). Switching the rule off keeps returns going, because C
     paid the inputs. An output that arrives while the link is broken, or while C is not loaded, stays in P's storage
@@ -67,22 +81,38 @@ switches the two rules separately, and loading a save adds no rule.
     it is linked and loaded, what is held and its CPUs still wait for, taken only from P's own mounts (never
     Federation's mounts of other networks' storage, which may be C's). If P's players used it up, C waits until P
     stores that much again.
-  - Handing held stock back is transactional (`HeldReturnTransfer`). Only what both P's sources and C's storage promise
+  - Handing held stock back uses simulated capacity checks and compensating storage (`HeldReturnTransfer`), not a
+    transaction or reservation. Only what both P's sources and C's storage promise
     on simulation is taken out; what C's storage then refuses goes back into P's own storage, and what that refuses too
     (an extract-only storage bus, a full drive) is kept as transit stock: real stock the ledger saves, P lists, the next
     hand-back takes first and P stores back once it has room. The debt goes down only by what C took, so nothing taken
     out is dropped, and the stock reaches the job once. Transit stock survives a restart and is listed again once P is
-    in a Federation Domain again.
+    in a Federation Domain again. Without the original NetworkId after permanent removal, split or unresolved identity,
+    it remains saved rather than being inherited by multiple branches. An operator can explicitly recover real transit
+    into a loaded ME block with `/ae2federation returns recover-transit <executing-uuid> <x> <y> <z>`;
+    use vanilla `execute in <dimension> run ...` for another dimension. Only accepted units leave saved transit;
+    repeated recovery cannot duplicate them. This transfers stock, never lineage or Policy. The destination must be
+    loaded; the command does not load chunks. Partial refusal leaves the balance available for a later attempt.
   - A Federation Provider's Lane keeps its binding to its Endpoint while the link between them is broken, so the
     outputs of inputs pushed before the break still come back through that Endpoint into the Provider's network; no
-    new inputs go out until the link is back. When storage on P is full the output may stay in the machine while it is counted as held;
-    the hand-back then takes P's stock early, and the output fills P again when it lands, so P loses nothing.
+    new inputs go out until the link is back. Rejected output remains in the machine and does not increase held.
+    The router directly inserts eligible residual output into the filtered native local storage view and reports that
+    actual acceptance to the caller before recording held. Repeated rejection is therefore not a new arrival.
+    Existing local inventory can still replace previously accepted stock that a player consumed; this permitted
+    advance is bounded by proven arrivals, not by retries.
+  - Filtered local storage uses native `NetworkStorage` insertion/extraction, preserving each priority's preferred
+    pass and real mount order. A read-only accessor to `NetworkStorage.priorityInventory` preserves that order;
+    original wrappers remain intact. Federation and crafting mounts are excluded. Views are reused within a sweep
+    and invalidated by native mount generation; reentrant mount changes make old operations fail closed. Native
+    end-of-tick storage refresh supplies watcher notifications; the sweep does not repeatedly invalidate full caches.
 - **Re-export.** Crafting passes on as storage does (`CraftingReach`). With "C uses M" and "M uses S" set to
   re-export, S's providers are projected onto C too. The push and the return still go straight between C and S; M
   takes no part. A consumer never reaches itself, so mutual rules and rings are allowed, and there is no cycle guard.
 - **Reconciliation.** Rule edits and topology changes reconcile at once. The tick reconciles only after a change to the
   domain topology, a rule or a Grid identity. Providers and their patterns are compared every 20 ticks, because AE2
-  has no event for a provider's patterns changing.
+  has no event for a provider's patterns changing. Discovery is shared once per source Grid in each reconciliation
+  round; consumer projections remain separate. Stale membership checks use identity sets. Confirmed Grid lookup
+  follows the identity epoch, not a TTL.
 
 Saves from the earlier delegated model, where P planned and ran its own job for C, keep no delegated jobs: those jobs
 are abandoned on load.

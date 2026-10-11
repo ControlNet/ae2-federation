@@ -184,7 +184,7 @@ public final class PatternProjectionGameTests {
         return true;
     }
 
-    /** A cancelled job forgets what it was owed: outputs that arrive later stay on the provider network. */
+    /** Cancellation retires the native job, but late outputs still belong to the consumer that paid the inputs. */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 800)
     public static void projectionCancel(GameTestHelper helper) {
@@ -198,16 +198,17 @@ public final class PatternProjectionGameTests {
             }
             if (stage[0] == 5) {
                 helper.assertValueEqual(fixture.busyConsumerCpus(), 0L, "The consumer's job must be cancelled");
-                helper.assertValueEqual(fixture.owed(stone()), 0L, "Waiting for the cancelled job's debt to be forgotten");
+                helper.assertValueEqual(fixture.owed(stone()), 2L, "Cancellation must retain undelivered return responsibility");
                 helper.assertValueEqual(fixture.runMachine(2), 2L, "The provider network takes the late stone");
                 stage[0] = 6;
             }
-            helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 2L,
-                    "The late stone stays on the provider network");
-            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 0L,
-                    "Nothing reaches the cancelled consumer");
-            PolicyEvidence.write("projectioncancel", 7, Map.of("cancelled", "true", "owedAfterCancel", "0",
-                    "lateOutputOnProvider", "2"));
+            helper.assertValueEqual(fixture.owed(stone()), 0L, "Only actual delivery retires the cancelled debt");
+            helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), 0L,
+                    "The provider keeps none of the consumer's late output");
+            helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), 2L,
+                    "The cancelled consumer receives its two late outputs");
+            PolicyEvidence.write("projectioncancel", 8, Map.of("cancelled", "true", "owedBeforeDelivery", "2",
+                    "owedAfterDelivery", "0", "lateOutputOnConsumer", "2"));
             fixture.close();
         });
     }

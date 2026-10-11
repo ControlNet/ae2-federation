@@ -370,6 +370,23 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return cell;
     }
 
+    public ItemStack takeConsumerCell() {
+        var chest = bridge.consumerChest();
+        var cell = chest.getCell().copy();
+        chest.setCell(ItemStack.EMPTY);
+        return cell;
+    }
+
+    public void restoreConsumerCell(ItemStack cell) {
+        bridge.consumerChest().setCell(cell);
+    }
+
+    public void installProcessingPattern(ItemStack pattern) {
+        var logic = processingProvider().getLogic();
+        logic.getPatternInv().addItems(pattern);
+        logic.updatePatterns();
+    }
+
     public void restoreProviderCell(ItemStack cell) {
         bridge.providerChest().setCell(cell);
     }

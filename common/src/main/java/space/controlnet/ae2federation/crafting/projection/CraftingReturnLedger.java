@@ -57,7 +57,7 @@ public final class CraftingReturnLedger extends SavedData {
      * A job a consumer's CPU ran when one of its pushes went through a projection: AE2's crafting id of the job, and the
      * CPU's dimension and lowest corner, where it is looked for while the consumer is owed anything.
      */
-    public record Job(UUID craftingId, String dimension, BlockPos cpu, JobEnd end) {
+    public record Job(UUID craftingId, String dimension, BlockPos cpu, JobEnd end, boolean nativeCpu) {
     }
 
     /** Executing network, then key, then consumer, in insertion order so returns are handed out deterministically. */
@@ -66,6 +66,15 @@ public final class CraftingReturnLedger extends SavedData {
     private final Map<NetworkId, Map<UUID, Job>> jobs = new LinkedHashMap<>();
     /** By executing network, the stock taken out to hand back that nothing took yet. */
     private final Map<NetworkId, KeyCounter> transit = new LinkedHashMap<>();
+    private final java.util.Set<NetworkId> unknownJobs = new java.util.HashSet<>();
+
+    void watchUnknown(NetworkId consumer) {
+        if (unknownJobs.add(consumer)) setDirty();
+    }
+
+    public boolean hasUnknownJobs(NetworkId consumer) {
+        return unknownJobs.contains(consumer);
+    }
 
     public static CraftingReturnLedger get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(FACTORY, DATA_NAME);
@@ -151,7 +160,7 @@ public final class CraftingReturnLedger extends SavedData {
         return Math.max(0, counted);
     }
 
-    /** Forgets a debt: the consumer's job no longer waits for the key (it finished or was cancelled). */
+    /** Removes a fully delivered debt. Native job state alone never authorizes this operation. */
     void drop(NetworkId executing, NetworkId consumer, AEKey key) {
         var keys = owed.get(executing);
         var consumers = keys == null ? null : keys.get(key);
@@ -163,11 +172,15 @@ public final class CraftingReturnLedger extends SavedData {
 
     /** Watches a consumer job seen at a push, unless it is watched already. */
     void watch(NetworkId consumer, UUID craftingId, String dimension, BlockPos cpu) {
+        watch(consumer, craftingId, dimension, cpu, true);
+    }
+
+    void watch(NetworkId consumer, UUID craftingId, String dimension, BlockPos cpu, boolean nativeCpu) {
         var watched = jobs.computeIfAbsent(consumer, ignored -> new LinkedHashMap<>());
         var current = watched.get(craftingId);
         if (current != null && current.dimension().equals(dimension) && current.cpu().equals(cpu)) return;
         watched.put(craftingId, new Job(craftingId, dimension, cpu.immutable(),
-                current == null ? JobEnd.RUNNING : current.end()));
+                current == null ? JobEnd.RUNNING : current.end(), nativeCpu));
         setDirty();
     }
 
@@ -182,7 +195,7 @@ public final class CraftingReturnLedger extends SavedData {
         var watched = jobs.get(consumer);
         var job = watched == null ? null : watched.get(craftingId);
         if (job == null || job.end() == end) return;
-        watched.put(craftingId, new Job(craftingId, job.dimension(), job.cpu(), end));
+        watched.put(craftingId, new Job(craftingId, job.dimension(), job.cpu(), end, job.nativeCpu()));
         setDirty();
     }
 
@@ -190,6 +203,7 @@ public final class CraftingReturnLedger extends SavedData {
     List<UUID> forgetJobsOfSettledConsumers() {
         var owedConsumers = new java.util.HashSet<NetworkId>();
         owed.values().forEach(keys -> keys.values().forEach(consumers -> owedConsumers.addAll(consumers.keySet())));
+        if (unknownJobs.removeIf(consumer -> !owedConsumers.contains(consumer))) setDirty();
         var forgotten = new java.util.ArrayList<UUID>();
         var iterator = jobs.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -269,9 +283,13 @@ public final class CraftingReturnLedger extends SavedData {
             row.putString("dimension", job.dimension());
             row.putLong("cpu", job.cpu().asLong());
             row.putString("end", job.end().name());
+            row.putBoolean("nativeCpu", job.nativeCpu());
             jobList.add(row);
         }));
         tag.put("jobs", jobList);
+        var unknown = new ListTag();
+        unknownJobs.forEach(consumer -> unknown.add(NbtUtils.createUUID(consumer.value())));
+        tag.put("unknownJobs", unknown);
         var transitList = new ListTag();
         transit.forEach((executing, stock) -> {
             for (var entry : stock) {
@@ -303,7 +321,8 @@ public final class CraftingReturnLedger extends SavedData {
             var row = (CompoundTag) element;
             var consumer = new NetworkId(NbtUtils.loadUUID(row.get("consumer")));
             var craftingId = NbtUtils.loadUUID(row.get("craftingId"));
-            ledger.watch(consumer, craftingId, row.getString("dimension"), BlockPos.of(row.getLong("cpu")));
+            ledger.watch(consumer, craftingId, row.getString("dimension"), BlockPos.of(row.getLong("cpu")),
+                    !row.contains("nativeCpu") || row.getBoolean("nativeCpu"));
             ledger.end(consumer, craftingId, JobEnd.valueOf(row.getString("end")));
         }
         for (var element : tag.getList("transit", Tag.TAG_COMPOUND)) {
@@ -312,6 +331,9 @@ public final class CraftingReturnLedger extends SavedData {
             // Stock of an item or fluid that no longer exists (a removed mod) is gone, as it is from a drive.
             if (key == null) continue;
             ledger.addTransit(new NetworkId(NbtUtils.loadUUID(row.get("executing"))), key, row.getLong("amount"));
+        }
+        for (var entry : tag.getList("unknownJobs", Tag.TAG_INT_ARRAY)) {
+            ledger.unknownJobs.add(new NetworkId(NbtUtils.loadUUID(entry)));
         }
         ledger.setDirty(false);
         return ledger;

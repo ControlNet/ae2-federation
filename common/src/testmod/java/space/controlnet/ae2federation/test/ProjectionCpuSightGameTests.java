@@ -147,9 +147,9 @@ public final class ProjectionCpuSightGameTests {
                     "Waiting for the nether job to finish; " + fixture.returns(stone()));
             helper.assertValueEqual(fixture.owed(stone()), 0L,
                     "Waiting for the rest of the debt to be forgotten; " + fixture.returns(stone()));
-            assertSettled(helper, fixture, 2, 2);
+            assertSettled(helper, fixture, 4, 0);
             PolicyEvidence.write("projectioncpuoutofsightotherjob", 15, Map.of("jobs", "2", "cancelled", "1",
-                    "debtKeptOutOfSight", "4", "consumerStone", "2", "lateStoneOnProvider", "2"));
+                    "debtKeptOutOfSight", "4", "consumerStone", "4", "lateStoneOnConsumer", "2"));
             fixture.close();
         });
     }

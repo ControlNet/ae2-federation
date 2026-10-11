@@ -29,11 +29,13 @@ final class PatternProjection implements ICraftingProvider {
     private final PushListener listener;
     private List<IPatternDetails> patterns;
     private boolean live = true;
+    private int priority;
 
     PatternProjection(ICraftingProvider real, PushListener listener) {
         this.real = Objects.requireNonNull(real);
         this.listener = Objects.requireNonNull(listener);
         patterns = List.copyOf(real.getAvailablePatterns());
+        priority = real.getPatternPriority();
     }
 
     ICraftingProvider real() {
@@ -43,7 +45,9 @@ final class PatternProjection implements ICraftingProvider {
     /** Takes the real provider's current patterns; true when they changed, so AE2 must re-read them. */
     boolean refresh() {
         var current = real.getAvailablePatterns();
-        if (current.equals(patterns)) return false;
+        int currentPriority = real.getPatternPriority();
+        if (current.equals(patterns) && currentPriority == priority) return false;
+        priority = currentPriority;
         patterns = List.copyOf(current);
         return true;
     }
@@ -59,7 +63,7 @@ final class PatternProjection implements ICraftingProvider {
 
     @Override
     public int getPatternPriority() {
-        return real.getPatternPriority();
+        return priority;
     }
 
     /**

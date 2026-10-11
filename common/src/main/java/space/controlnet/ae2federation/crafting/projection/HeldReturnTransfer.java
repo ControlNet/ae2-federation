@@ -6,11 +6,15 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.storage.MEStorage;
 import appeng.me.service.helpers.CraftingServiceStorage;
-import java.util.ArrayList;
-import java.util.Comparator;
+import appeng.me.storage.NetworkStorage;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import space.controlnet.ae2federation.mixin.compat.NetworkStorageAccess;
 import java.util.List;
 import space.controlnet.ae2federation.ae2.storage.NativeMountLedger;
 import space.controlnet.ae2federation.identity.NetworkId;
+import space.controlnet.ae2federation.identity.IdentityEpoch;
 import space.controlnet.ae2federation.storage.provenance.FederationManagedStorage;
 import space.controlnet.ae2federation.storage.provenance.FederationManagedStorageProvider;
 
@@ -44,29 +48,19 @@ public final class HeldReturnTransfer {
         var source = IActionSource.empty();
         var own = ownStorage(executingGrid);
         long available = ledger.takeTransit(executing, key, wanted, Actionable.SIMULATE);
-        for (var storage : own) {
-            if (available >= wanted) break;
-            available += storage.extract(key, wanted - available, Actionable.SIMULATE, source);
-        }
+        available += own.extract(key, wanted - available, Actionable.SIMULATE, source);
         long promised = Math.min(wanted, available);
         if (promised <= 0) return 0;
         promised = Math.min(promised, target.insert(key, promised, Actionable.SIMULATE, source));
         if (promised <= 0) return 0;
         long extracted = ledger.takeTransit(executing, key, promised, Actionable.MODULATE);
-        for (var storage : own) {
-            if (extracted >= promised) break;
-            extracted += storage.extract(key, promised - extracted, Actionable.MODULATE, source);
-        }
+        extracted += own.extract(key, promised - extracted, Actionable.MODULATE, source);
         if (extracted <= 0) return 0;
         long inserted = target.insert(key, extracted, Actionable.MODULATE, source);
         long residual = extracted - inserted;
-        // Highest priority first, where AE2 would store it.
-        for (int index = own.size() - 1; index >= 0 && residual > 0; index--) {
-            residual -= own.get(index).insert(key, residual, Actionable.MODULATE, source);
-        }
+        residual -= ownStorage(executingGrid).insert(key, residual, Actionable.MODULATE, source);
         if (residual > 0) {
             ledger.addTransit(executing, key, residual);
-            executingGrid.getStorageService().invalidateCache();
         }
         ledger.take(executing, consumer, key, inserted, inserted);
         return inserted;
@@ -84,33 +78,74 @@ public final class HeldReturnTransfer {
         for (var entry : stock) {
             var key = entry.getKey();
             long left = entry.getLongValue();
-            for (int index = own.size() - 1; index >= 0 && left > 0; index--) {
-                long stored = own.get(index).insert(key, left, Actionable.MODULATE, source);
-                left -= ledger.takeTransit(executing, key, stored, Actionable.MODULATE);
-            }
+            long stored = own.insert(key, left, Actionable.MODULATE, source);
+            ledger.takeTransit(executing, key, stored, Actionable.MODULATE);
         }
-        executingGrid.getStorageService().invalidateCache();
     }
 
     /**
-     * The executing network's own inventories in AE2's extraction order, lowest priority first: what its providers
+     * The executing network's own inventories using native AE2 insertion and extraction order: what its providers
      * mounted, without Federation's own mounts (other networks' storage, the return router) and AE2's crafting storage.
      */
-    private static List<MEStorage> ownStorage(IGrid grid) {
+    static MEStorage ownStorage(IGrid grid) {
         var service = grid.getStorageService();
-        if (!NativeMountLedger.available(service)) return List.of();
+        long generation = NativeMountLedger.generation(service);
+        long epoch = IdentityEpoch.current();
+        if (views != null) {
+            var cached = views.get(grid);
+            if (cached != null && cached.generation() == generation && cached.epoch() == epoch) return cached.storage();
+        }
+        long started = System.nanoTime();
+        var result = new NetworkStorage();
+        if (!NativeMountLedger.available(service)
+                || !(service.getInventory() instanceof NetworkStorageAccess ordered)) return result;
         var snapshot = NativeMountLedger.snapshot(service);
-        var mounts = new ArrayList<NativeMountLedger.Mount>();
+        var included = Collections.newSetFromMap(new IdentityHashMap<MEStorage, Boolean>());
         for (var providers : List.of(snapshot.nodeProviders(), snapshot.globalProviders())) {
             for (var provider : providers) {
                 if (provider.provider() instanceof FederationManagedStorageProvider
                         || provider.provider() instanceof CraftingServiceStorage) continue;
                 for (var mount : provider.mounts()) {
-                    if (!(mount.storage() instanceof FederationManagedStorage)) mounts.add(mount);
+                    if (!(mount.storage() instanceof FederationManagedStorage)) included.add(mount.storage());
                 }
             }
         }
-        mounts.sort(Comparator.comparingInt(NativeMountLedger.Mount::priority));
-        return mounts.stream().map(NativeMountLedger.Mount::storage).toList();
+        // Preserve AE2's actual mount order, not the provider-map iteration order. Keep all native wrappers intact.
+        ordered.ae2federation$orderedMounts().forEach((priority, mounts) -> {
+            for (var storage : mounts) {
+                if (included.contains(storage)) result.mount(priority, new appeng.me.storage.DelegatingMEInventory(storage) {
+                    private boolean valid() {
+                        return !grid.isEmpty() && NativeMountLedger.generation(service) == generation
+                                && IdentityEpoch.current() == epoch;
+                    }
+                    @Override
+                    public long insert(AEKey key, long amount, Actionable mode, IActionSource source) {
+                        return valid() ? super.insert(key, amount, mode, source) : 0;
+                    }
+                    @Override
+                    public long extract(AEKey key, long amount, Actionable mode, IActionSource source) {
+                        return valid() ? super.extract(key, amount, mode, source) : 0;
+                    }
+                });
+            }
+        });
+        ProjectionDiagnostics.viewBuilt(included.size(), System.nanoTime() - started);
+        if (views != null) views.put(grid, new View(generation, epoch, result));
+        return result;
+    }
+
+    private record View(long generation, long epoch, MEStorage storage) {}
+    private static Map<IGrid, View> views;
+
+    /** Server-thread sweep scope. Mount changes invalidate views immediately, including reentrant operations. */
+    static Scope scope() {
+        return new Scope();
+    }
+
+    static final class Scope implements AutoCloseable {
+        private final Map<IGrid, View> previous = views;
+        private Scope() { views = new IdentityHashMap<>(); }
+        @Override
+        public void close() { views = previous; }
     }
 }

@@ -2,15 +2,17 @@ package space.controlnet.ae2federation.crafting.projection;
 
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingProvider;
-import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.server.level.ServerLevel;
-import space.controlnet.ae2federation.processing.provider.ProviderObservationRegistry;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import space.controlnet.ae2federation.mixin.compat.CraftingServiceProvidersAccess;
+import space.controlnet.ae2federation.mixin.compat.NetworkCraftingProvidersAccess;
+import space.controlnet.ae2federation.mixin.compat.CraftingProviderStateAccess;
 
 /**
  * The pattern providers that really belong to a Grid: AE2 nodes with a crafting provider service (pattern providers,
- * and any add-on block that registers one), and the lanes of Federation Providers on the Grid, which register with
- * the crafting service directly. Projections of other networks' providers are never real, so projecting them again
+ * and any add-on block that registers one), plus native global registrations without node services. Projections of other networks' providers are never real, so projecting them again
  * cannot happen.
  */
 final class RealCraftingProviders {
@@ -18,21 +20,26 @@ final class RealCraftingProviders {
     }
 
     static List<ICraftingProvider> on(ServerLevel level, IGrid grid) {
-        var providers = new ArrayList<ICraftingProvider>();
+        long started = System.nanoTime();
+        long nodes = 0;
+        long globals = 0;
+        var providers = Collections.newSetFromMap(new IdentityHashMap<ICraftingProvider, Boolean>());
         for (var node : grid.getNodes()) {
+            nodes++;
             var provider = node.getService(ICraftingProvider.class);
             if (provider != null && node.isActive() && node.hasGridBooted() && node.getGrid() == grid) {
                 providers.add(provider);
             }
         }
-        // A provider network can span dimensions (a Quantum Bridge), so its Federation Providers may be in any of them.
-        for (var entry : ProviderObservationRegistry.entries(level.getServer())) {
-            var provider = entry.provider();
-            if (!provider.registered()) continue;
-            for (var lane : provider.nativeLanes()) {
-                if (lane.getGrid() == grid) providers.add(lane);
+        if (grid.getCraftingService() instanceof CraftingServiceProvidersAccess service
+                && service.ae2federation$providers() instanceof NetworkCraftingProvidersAccess access) {
+            for (var state : access.ae2federation$globals()) {
+                globals++;
+                var provider = ((CraftingProviderStateAccess) state).ae2federation$provider();
+                if (!(provider instanceof PatternProjection)) providers.add(provider);
             }
         }
-        return providers;
+        ProjectionDiagnostics.discovered(nodes, globals, System.nanoTime() - started);
+        return List.copyOf(providers);
     }
 }

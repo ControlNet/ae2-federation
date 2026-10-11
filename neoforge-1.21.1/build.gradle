@@ -623,7 +623,14 @@ def verifyReleaseArchive = { File archive, Boolean sources ->
             'UIScenario', 'ae2federation.testId', 'ae2federation_test', 'RegisterCommandsEvent']
     def leaked = entries.findAll { name, bytes ->
         def text = new String(bytes, sources ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1)
-        forbiddenPaths.any(name::contains) || forbiddenSymbols.any(text::contains)
+        forbiddenPaths.any(name::contains) || forbiddenSymbols.any { symbol ->
+            // Reviewed production recovery commands are intentional. All other command registrations remain forbidden.
+            def recoveryRegistration = symbol == 'RegisterCommandsEvent' && [
+                    'space/controlnet/ae2federation/crafting/projection/ReturnRecoveryCommands',
+                    'space/controlnet/ae2federation/neoforge/NeoForgeEntrypoint'
+            ].any { type -> name == type + '.class' || name == type + '.java' }
+            text.contains(symbol) && !recoveryRegistration
+        }
     }.keySet().sort()
     if (!leaked.isEmpty()) {
         throw new GradleException("Test, scenario, instrumentation, or debug registration leaked into ${archive}: ${leaked}")

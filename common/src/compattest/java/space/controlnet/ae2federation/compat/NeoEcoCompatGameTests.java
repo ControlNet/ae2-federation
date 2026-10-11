@@ -72,6 +72,33 @@ public final class NeoEcoCompatGameTests {
         helper.succeedWhen(computationOrdering(helper, Tier.L4)::tick);
     }
 
+    /** Real independent ECO CPU cancellation, with delayed output from the explicitly hand-run test machine. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemCancel(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().cancellingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Real independent ECO CPU waits for a separately delayed declared byproduct (test-operated machine). */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemDelayedByproduct(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().lateByproduct();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Real ECO CPU keeps its return debt with the Federation link removed after dispatch. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemDisconnect(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
     static AddonCraftingScene computationOrdering(GameTestHelper helper, Tier tier) {
         var start = AddonCraftingScene.PROVIDER.offset(0, -1, -1);
         return AddonCraftingScene.structure(helper, tier.id("crafting_system_l4"), List.of(),

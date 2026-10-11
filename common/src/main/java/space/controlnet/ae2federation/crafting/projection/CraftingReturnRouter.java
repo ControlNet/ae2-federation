@@ -6,7 +6,6 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.IStorageMounts;
-import appeng.me.cluster.implementations.CraftingCPUCluster;
 import java.util.function.Function;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
@@ -53,8 +52,8 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
      * still count it until the end of the tick, although its crafting storage no longer feeds it: what was handed to
      * the consumer then would land in its plain storage, where the job never finds it.
      *
-     * <p>AE2 counts only its own CPU clusters; an addon's CPU that AE2 lists as requesting the key, such as Neo ECO's
-     * computation system, waits for an amount AE2 cannot tell, so it is taken to wait for all it is owed.
+     * <p>Optional lifecycle adapters expose exact addon waiting amounts. Without one, an independently implemented
+     * busy CPU that AE2 lists as requesting the key is conservatively capped by the outstanding debt.
      */
     static long waiting(IGrid consumer, AEKey what, long owed) {
         var crafting = consumer.getCraftingService();
@@ -62,8 +61,9 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
         long requested = 0;
         boolean addonBusy = false;
         for (var cpu : crafting.getCpus()) {
-            if (cpu instanceof CraftingCPUCluster cluster) {
-                requested += cluster.craftingLogic.getWaitingFor(what);
+            long amount = CraftingCpuLifecycle.waiting(cpu, what);
+            if (amount >= 0) {
+                requested += amount;
             } else if (cpu.isBusy()) {
                 addonBusy = true;
             }
@@ -101,16 +101,24 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
                 handed += accepted;
                 left -= accepted;
             }
-            if (mode == Actionable.MODULATE) {
-                // The rest stays on this network, held for the consumers it is still owed to: they get it once they
-                // can take it again (their network links again, or their CPU's chunk loads again).
-                for (var owed : ledger.consumers(executing, what).entrySet()) {
-                    if (left <= 0) break;
-                    if (consumerGrids.apply(owed.getKey()) == executingGrid) continue;
-                    left -= ledger.hold(executing, owed.getKey(), what, left);
+            // Claim only stock actually accepted by the executing Grid's native storage. A rejected insert remains
+            // in the machine and can be retried indefinitely; attempts must never inflate held arrival counts.
+            long eligible = 0;
+            for (var owed : ledger.consumers(executing, what).entrySet()) {
+                if (consumerGrids.apply(owed.getKey()) != executingGrid) {
+                    eligible += Math.max(0, owed.getValue() - ledger.held(executing, owed.getKey(), what));
                 }
             }
-            return handed;
+            long stored = HeldReturnTransfer.ownStorage(executingGrid).insert(what, Math.min(left, eligible), mode, source);
+            if (mode == Actionable.MODULATE) {
+                long assign = stored;
+                for (var owed : ledger.consumers(executing, what).entrySet()) {
+                    if (assign <= 0) break;
+                    if (consumerGrids.apply(owed.getKey()) == executingGrid) continue;
+                    assign -= ledger.hold(executing, owed.getKey(), what, assign);
+                }
+            }
+            return handed + stored;
         }
 
         @Override
