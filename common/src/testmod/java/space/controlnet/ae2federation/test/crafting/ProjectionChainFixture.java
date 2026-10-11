@@ -117,6 +117,11 @@ public final class ProjectionChainFixture implements AutoCloseable {
                         .stream().anyMatch(common::contains));
     }
 
+    /** Removes the actual Switch after a test has finished assertions on its native member Grids. */
+    public void removeSwitch() {
+        helper.setBlock(CENTER, net.minecraft.world.level.block.Blocks.AIR);
+    }
+
     /** Consumer uses middle, middle uses source with {@code sourceMode}; each with its storage rule. */
     public void enableChain(RuleMode sourceMode) {
         crafting(CONSUMER, MIDDLE, RuleMode.ENABLED);

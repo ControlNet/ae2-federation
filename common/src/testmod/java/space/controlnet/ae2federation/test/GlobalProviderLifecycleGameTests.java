@@ -72,14 +72,18 @@ public final class GlobalProviderLifecycleGameTests {
             var sourceGrid = fixture.grid(2);
             var nodes = new java.util.ArrayList<appeng.api.networking.IGridNode>();
             sourceGrid.getNodes().forEach(nodes::add);
-            // Native Grid destruction is explicit lifecycle fault injection; consumer Grids remain loaded.
+            // Native blocks must finish CPU cluster teardown before their managed nodes are destroyed.
+            // Keep the Switch face alive for their neighbor updates; retire that face last.
             for (var node : nodes) {
-                if (node.getOwner() instanceof appeng.me.helpers.IGridConnectedBlockEntity owner) {
-                    owner.getMainNode().destroy();
-                } else if (node.getOwner() instanceof space.controlnet.ae2federation.domain.port.RouterFacePort owner) {
-                    owner.destroy();
-                } else {
+                if (node.getOwner() instanceof net.minecraft.world.level.block.entity.BlockEntity owner) {
+                    helper.getLevel().removeBlock(owner.getBlockPos(), false);
+                } else if (!(node.getOwner() instanceof space.controlnet.ae2federation.domain.port.RouterFacePort)) {
                     throw new IllegalStateException("Unexpected lifecycle-test node owner: " + node.getOwner().getClass());
+                }
+            }
+            for (var node : nodes) {
+                if (node.getOwner() instanceof space.controlnet.ae2federation.domain.port.RouterFacePort owner) {
+                    owner.destroy();
                 }
             }
             helper.assertTrue(sourceGrid.isEmpty(), "The old source Grid has no remaining pivot");
@@ -92,6 +96,8 @@ public final class GlobalProviderLifecycleGameTests {
             PolicyEvidence.write("projectionglobalwithdrawalimmediate", 16,
                     Map.of("provider", "independent accepting test double", "withdrawal", "same tick",
                             "callbacks", "0", "consumers", "2"));
+            // The destroyed face must not remain in a live Switch for later structure-clear neighbor updates.
+            fixture.removeSwitch();
             fixture.close();
         }).thenSucceed();
     }
