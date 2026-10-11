@@ -21,7 +21,7 @@ import space.controlnet.ae2federation.test.router.RouterFixtures;
 /**
  * Router and Switch bodies form only as solid cuboids: each block's connection properties name exactly its
  * neighbours inside the validated cuboid, and every block of an incomplete, hollow, branched or protruding candidate
- * has none. Forming changes only blockstates, so the faces' ports behave as before.
+ * is unformed and links nothing until the shape is fixed. A formed body's faces behave as single blocks' faces did.
  */
 @PrefixGameTestTemplate(false)
 public final class DeviceStructureGameTests {
@@ -80,12 +80,14 @@ public final class DeviceStructureGameTests {
                 }
             }
             helper.assertValueEqual(connections(helper, cell), expected, shape + " member " + cell + " connections");
+            helper.assertTrue(RouterBlock.formed(helper.getBlockState(cell)), shape + " member " + cell + " must be formed");
         }
     }
 
     private static void assertUnformed(GameTestHelper helper, List<BlockPos> cells, String shape) {
         for (var cell : cells) {
             helper.assertValueEqual(connections(helper, cell), 0, shape + " member " + cell + " must stay unformed");
+            helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), shape + " member " + cell + " must be unformed");
         }
     }
 
@@ -114,7 +116,9 @@ public final class DeviceStructureGameTests {
                 new Step(() -> helper.setBlock(corner, block), () -> assertFormed(helper, BASE, 2, 2, 2, "refilled")),
                 new Step(() -> helper.setBlock(router, RouterRegistration.ROUTER.get()), () -> {
                     assertFormed(helper, BASE, 2, 2, 2, "beside a Router");
-                    assertUnformed(helper, List.of(router), "different type");
+                    // A different type is never part of the body: the Router is its own formed single block.
+                    helper.assertValueEqual(connections(helper, router), 0, "the Router's connections");
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(router)), "the Router forms alone");
                 })), () -> {
                     RouterEvidence.write("devicestructurelifecycle", 6, Map.of(
                             "formed", "2x2x2", "protrusion", "unformed", "missingCorner", "unformed",
@@ -150,7 +154,7 @@ public final class DeviceStructureGameTests {
                     assertFormed(helper, plate, 1, 3, 3, "1x3x3 Switch");
                     assertUnformed(helper, hollowCells, "hollow 3x3x3");
                     assertUnformed(helper, l, "L");
-                    assertUnformed(helper, diagonal, "diagonal");
+                    for (var cell : diagonal) assertFormed(helper, cell, 1, 1, 1, "diagonal single");
                 }),
                 // Removing one end of the line leaves a valid 1x1x3; filling the hollow forms the full cube.
                 new Step(() -> {
@@ -216,6 +220,228 @@ public final class DeviceStructureGameTests {
                     "switchFormed", "2x1x1", "routerFormed", "2x1x1", "innerFaces", "federation",
                     "nativeJoin", "false", "separateGrids", "true", "sharedDomain", "true", "routerNodes", "0"));
             fixtures.close();
+        });
+    }
+
+    private static void assertIsolated(RouterFixtures fixtures, GameTestHelper helper, List<BlockPos> members) {
+        for (var member : members) {
+            var router = fixtures.router(member);
+            helper.assertTrue(!fixtures.hasInternalNativeConnection(router), member + " must not join its own faces");
+            for (var side : Direction.values()) {
+                var neighbor = member.relative(side);
+                if (members.contains(neighbor)) {
+                    helper.assertTrue(router.boundaryNode(side).getConnections().isEmpty(),
+                            member + " must not join a native Grid with the body member on its " + side.getName());
+                }
+            }
+        }
+    }
+
+    private static appeng.api.networking.IGrid chestGrid(RouterFixtures fixtures, BlockPos switchPosition, Direction face) {
+        return fixtures.nativeDeviceNode(switchPosition, face).getGrid();
+    }
+
+    /**
+     * An invalid candidate links nothing: a 2x1x1 Switch joins the ME chests at its ends in one domain; a third Switch
+     * against its side unforms all three, every face disconnects and both networks leave the domain; removing it
+     * restores the body and the shared domain. At every step the two chests stay separate native Grids and no inner
+     * face joins a native Grid, and using an unformed block names the reason.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void deviceStructureSuspendsSwitch(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = BASE.offset(1, 0, 1);
+        var east = west.east();
+        var extra = west.south();
+        fixtures.placeNativeDevice(west, Direction.WEST);
+        fixtures.placeNativeDevice(east, Direction.EAST);
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        var shareDomain = (Runnable) () -> {
+            var left = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(fixtures, west, Direction.WEST));
+            var right = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(fixtures, east, Direction.EAST));
+            helper.assertTrue(left.isPresent() && right.isPresent(), "Waiting for native identities");
+            helper.assertTrue(!registry.federationdomainsFor(left.get()).isEmpty()
+                    && registry.federationdomainsFor(left.get()).equals(registry.federationdomainsFor(right.get())),
+                    "Both networks share the body's domain");
+        };
+        var separateGrids = (Runnable) () -> helper.assertTrue(
+                chestGrid(fixtures, west, Direction.WEST) != chestGrid(fixtures, east, Direction.EAST),
+                "The two ME chests stay separate Grids");
+        run(helper, List.of(
+                new Step(() -> {
+                    fixtures.placeSwitch(west);
+                    fixtures.placeSwitch(east);
+                }, () -> {
+                    assertFormed(helper, west, 2, 1, 1, "2x1x1 Switch");
+                    shareDomain.run();
+                    separateGrids.run();
+                    assertIsolated(fixtures, helper, List.of(west, east));
+                }),
+                new Step(() -> fixtures.placeSwitch(extra), () -> {
+                    assertUnformed(helper, List.of(west, east, extra), "L-shaped Switch");
+                    for (var member : List.of(west, east, extra)) {
+                        helper.assertValueEqual(fixtures.count(fixtures.router(member), RouterPortKind.DISCONNECTED), 6L,
+                                member + " of an unformed candidate must link nothing");
+                    }
+                    for (var chest : List.of(chestGrid(fixtures, west, Direction.WEST), chestGrid(fixtures, east, Direction.EAST))) {
+                        var id = FederationDomainRegistryAccess.confirmedNetworkId(chest);
+                        helper.assertTrue(id.isPresent() && registry.federationdomainsFor(id.get()).isEmpty(),
+                                "A network on an unformed Switch must leave the domain");
+                    }
+                    separateGrids.run();
+                    assertIsolated(fixtures, helper, List.of(west, east, extra));
+                    var status = space.controlnet.ae2federation.router.DeviceStructureUpdater.status(helper.getLevel(),
+                            helper.absolutePos(west));
+                    helper.assertTrue(status.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents
+                            contents && contents.getKey().equals("ae2federation.structure.invalid.touching"),
+                            "Using an unformed block must name the touching block: " + status.getString());
+                }),
+                new Step(() -> helper.setBlock(extra, Blocks.AIR), () -> {
+                    assertFormed(helper, west, 2, 1, 1, "restored Switch");
+                    shareDomain.run();
+                    separateGrids.run();
+                    assertIsolated(fixtures, helper, List.of(west, east));
+                })), () -> {
+                    RouterEvidence.write("devicestructuresuspendsswitch", 8, Map.of(
+                            "formedShared", "true", "unformedDisconnected", "true", "networksLeftDomain", "true",
+                            "restoredShared", "true", "separateGrids", "true", "innerNativeJoin", "false",
+                            "status", "touching"));
+                    fixtures.close();
+                });
+    }
+
+    /**
+     * A Router body carries Federation only while formed: two Switches joined through a 2x1x1 Router share a domain,
+     * a Router block on top of it unforms the body and splits the domain, and removing it joins them again.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 600, required = true, manualOnly = true)
+    public static void deviceStructureSuspendsRouter(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var row = BASE.offset(0, 0, 6);
+        var leftSwitch = row;
+        var rightSwitch = row.east(5);
+        var routerWest = row.east(2);
+        var top = routerWest.above();
+        fixtures.placeSwitch(leftSwitch);
+        fixtures.placeSwitch(rightSwitch);
+        fixtures.placeNativeDevice(leftSwitch, Direction.WEST);
+        fixtures.placeNativeDevice(rightSwitch, Direction.EAST);
+        fixtures.placeFederationCable(row.east(1));
+        fixtures.placeFederationCable(row.east(4));
+        var registry = FederationDomainRegistryAccess.get(helper.getLevel());
+        var shared = (java.util.function.BooleanSupplier) () -> {
+            var left = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(fixtures, leftSwitch, Direction.WEST));
+            var right = FederationDomainRegistryAccess.confirmedNetworkId(chestGrid(fixtures, rightSwitch, Direction.EAST));
+            helper.assertTrue(left.isPresent() && right.isPresent(), "Waiting for native identities");
+            return registry.shareFederationDomain(left.get(), right.get());
+        };
+        run(helper, List.of(
+                new Step(() -> {
+                    fixtures.placeRouter(routerWest);
+                    fixtures.placeRouter(routerWest.east());
+                }, () -> {
+                    assertFormed(helper, routerWest, 2, 1, 1, "2x1x1 Router");
+                    helper.assertTrue(shared.getAsBoolean(), "Switches joined through a formed Router share a domain");
+                }),
+                new Step(() -> fixtures.placeRouter(top), () -> {
+                    assertUnformed(helper, List.of(routerWest, routerWest.east(), top), "protruding Router");
+                    helper.assertValueEqual(fixtures.router(routerWest).binding(Direction.WEST).kind(),
+                            RouterPortKind.DISCONNECTED, "An unformed Router links nothing");
+                    helper.assertTrue(!shared.getAsBoolean(), "An unformed Router carries no Federation");
+                }),
+                new Step(() -> helper.setBlock(top, Blocks.AIR), () -> {
+                    assertFormed(helper, routerWest, 2, 1, 1, "restored Router");
+                    helper.assertTrue(shared.getAsBoolean(), "The restored Router joins the Switches again");
+                })), () -> {
+                    RouterEvidence.write("devicestructuresuspendsrouter", 5, Map.of(
+                            "formedShared", "true", "protrusionSplits", "true", "restoredShared", "true",
+                            "unformedFaces", "disconnected"));
+                    fixtures.close();
+                });
+    }
+
+    /**
+     * A body across a chunk border keeps its last validated state while part of it is unloaded, and is checked again
+     * when that part loads. A 3x1x1 Switch with its last block in the next chunk forms; with that chunk unloaded a
+     * check keeps the body, and removing the far loaded end leaves the middle formed toward the unloaded block but not
+     * toward the removed one; loading the chunk again forms the remaining 2x1x1. No check loads a chunk.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void deviceStructureAcrossChunks(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var origin = helper.absolutePos(BASE).offset(0, 0, 1024);
+        int border = (origin.getX() >> 4 << 4) + 15;
+        var a1 = new BlockPos(border - 1, origin.getY(), origin.getZ());
+        var a2 = a1.east();
+        var b = a2.east();
+        var chunkA = new net.minecraft.world.level.ChunkPos(a2);
+        var chunkB = new net.minecraft.world.level.ChunkPos(b);
+        var block = RouterRegistration.SWITCH.get();
+        int west = 1 << Direction.WEST.get3DDataValue();
+        int east = 1 << Direction.EAST.get3DDataValue();
+        var phase = new int[1];
+        var waited = new int[1];
+        // A forced chunk keeps the next two around it loaded, so the anchor two chunks west keeps chunk A loaded
+        // (as a border chunk once B goes) while B itself can unload.
+        var anchor = new net.minecraft.world.level.ChunkPos(chunkA.x - 2, chunkA.z);
+        level.setChunkForced(anchor.x, anchor.z, true);
+        level.setChunkForced(chunkB.x, chunkB.z, true);
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                for (var cell : List.of(a1, a2, b)) level.setBlock(cell, block.defaultBlockState(), Block.UPDATE_ALL);
+                phase[0] = 1;
+                helper.assertTrue(false, "Waiting for the body to form");
+            }
+            if (phase[0] == 1) {
+                helper.assertValueEqual(RouterBlock.connections(level.getBlockState(a2)), west | east, "middle connections");
+                helper.assertTrue(RouterBlock.formed(level.getBlockState(b)), "The block across the border forms");
+                level.setChunkForced(chunkB.x, chunkB.z, false);
+                phase[0] = 2;
+                helper.assertTrue(false, "Waiting for the next chunk to unload");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(!level.isLoaded(b), "Waiting for the next chunk to unload");
+                space.controlnet.ae2federation.router.DeviceStructureUpdater.request(level, a1);
+                phase[0] = 3;
+                waited[0] = 0;
+                helper.assertTrue(false, "Waiting for the check");
+            }
+            if (phase[0] == 3) {
+                helper.assertTrue(++waited[0] > 2, "Waiting for the check");
+                helper.assertTrue(!level.isLoaded(b), "The check must not load the unloaded chunk");
+                helper.assertValueEqual(RouterBlock.connections(level.getBlockState(a2)), west | east,
+                        "A check with the far block unloaded keeps the body");
+                helper.assertTrue(level.isLoaded(a1), "Chunk A stays loaded");
+                helper.assertTrue(RouterBlock.formed(level.getBlockState(a1)), "The loaded end stays formed");
+                level.setBlock(a1, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                phase[0] = 4;
+                waited[0] = 0;
+                helper.assertTrue(false, "Waiting for the removal check");
+            }
+            if (phase[0] == 4) {
+                helper.assertTrue(++waited[0] > 2, "Waiting for the removal check");
+                helper.assertTrue(!level.isLoaded(b), "The removal check must not load the unloaded chunk");
+                helper.assertValueEqual(RouterBlock.connections(level.getBlockState(a2)), east,
+                        "The middle keeps its unloaded neighbour and drops the removed one");
+                helper.assertTrue(RouterBlock.formed(level.getBlockState(a2)), "The middle keeps its last state");
+                level.setChunkForced(chunkB.x, chunkB.z, true);
+                phase[0] = 5;
+                helper.assertTrue(false, "Waiting for the next chunk to load");
+            }
+            helper.assertTrue(level.isLoaded(b), "Waiting for the next chunk to load");
+            helper.assertValueEqual(RouterBlock.connections(level.getBlockState(a2)), east, "the remaining west block");
+            helper.assertValueEqual(RouterBlock.connections(level.getBlockState(b)), west, "the remaining east block");
+            helper.assertTrue(RouterBlock.formed(level.getBlockState(a2)) && RouterBlock.formed(level.getBlockState(b)),
+                    "The loaded chunk's block re-forms the remaining 2x1x1");
+            for (var cell : List.of(a2, b)) level.setBlock(cell, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            level.setChunkForced(anchor.x, anchor.z, false);
+            level.setChunkForced(chunkB.x, chunkB.z, false);
+            RouterEvidence.write("devicestructureacrosschunks", 7, Map.of(
+                    "formedAcrossBorder", "true", "unloadKeepsBody", "true", "forcedLoads", "0",
+                    "removedSeamCleared", "true", "reloadReforms", "2x1x1"));
         });
     }
 }

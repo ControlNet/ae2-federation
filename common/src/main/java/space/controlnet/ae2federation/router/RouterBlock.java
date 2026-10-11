@@ -25,25 +25,34 @@ import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
  * The Router and the Switch: both are this block, each with its own block entity type, and share all their code. A
  * Switch's faces attach ME networks and Federation ports; a Router's faces attach Federation ports only.
  *
- * <p>Touching blocks of one type that fill a solid cuboid form one body. Each block's six connection properties name
- * its neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them.
+ * <p>Touching blocks of one type that fill a solid cuboid form one body, like an AE2 crafting CPU; a single block is a
+ * 1x1x1 body. {@link #FORMED} says the block belongs to a validated body, and its six connection properties name its
+ * neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them. A block
+ * that is not formed, part of an incomplete, hollow, branched, protruding or oversized candidate, links nothing.
  */
 public final class RouterBlock extends BaseEntityBlock {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
     /** Indexed by {@link net.minecraft.core.Direction#get3DDataValue()}. */
     private static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
             BlockStateProperties.NORTH, BlockStateProperties.SOUTH, BlockStateProperties.WEST, BlockStateProperties.EAST};
+    /** Whether the block belongs to a validated body; a placed block becomes formed when its body is checked. */
+    public static final BooleanProperty FORMED = BooleanProperty.create("formed");
 
     public RouterBlock(Properties properties) {
         super(properties);
-        var state = stateDefinition.any();
+        var state = stateDefinition.any().setValue(FORMED, false);
         for (var property : CONNECTED) state = state.setValue(property, false);
         registerDefaultState(state);
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(CONNECTED);
+        builder.add(CONNECTED).add(FORMED);
+    }
+
+    /** Whether {@code state} is a Router or Switch of a validated body, whose faces link. */
+    public static boolean formed(BlockState state) {
+        return state.getBlock() instanceof RouterBlock && state.getValue(FORMED);
     }
 
     /** The sides on which {@code state}'s neighbour belongs to the same formed body, one bit per 3D data value. */
@@ -56,7 +65,8 @@ public final class RouterBlock extends BaseEntityBlock {
         return connections;
     }
 
-    static BlockState withConnections(BlockState state, int connections) {
+    static BlockState withBody(BlockState state, boolean formed, int connections) {
+        state = state.setValue(FORMED, formed);
         for (int i = 0; i < CONNECTED.length; i++) state = state.setValue(CONNECTED[i], (connections & 1 << i) != 0);
         return state;
     }
@@ -107,6 +117,11 @@ public final class RouterBlock extends BaseEntityBlock {
             BlockHitResult hit) {
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
+        }
+        if (!formed(state) && player instanceof ServerPlayer serverPlayer) {
+            // An unformed body links nothing, so there is no domain to open: say what keeps it from forming.
+            serverPlayer.displayClientMessage(DeviceStructureUpdater.status(serverPlayer.serverLevel(), position), true);
+            return InteractionResult.CONSUME;
         }
         return player instanceof ServerPlayer serverPlayer && FederationDomainPolicyMenu.openRouter(serverPlayer, position)
                 ? InteractionResult.CONSUME

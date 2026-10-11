@@ -43,7 +43,19 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks,
+                    () -> RouterBlock.formed(getBlockState())));
+        }
+    }
+
+    /** The body formed or broke: the faces link again, or stop linking, from the next tick. */
+    @Override
+    public void setBlockState(BlockState state) {
+        var wasFormed = RouterBlock.formed(getBlockState());
+        super.setBlockState(state);
+        if (wasFormed != RouterBlock.formed(state) && level instanceof ServerLevel) {
+            facePorts.values().forEach(RouterFacePort::markDirty);
+            federationDomainDirty = true;
         }
     }
 
