@@ -34,6 +34,10 @@ public final class FederationTestMod {
         if (System.getProperty(ModLogoRenderer.OUTPUT) != null && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             ModLogoRenderer.register();
         }
+        if (System.getProperty(space.controlnet.ae2federation.test.client.DeviceStructureScene.OUTPUT) != null
+                && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            space.controlnet.ae2federation.test.client.DeviceStructureScene.register();
+        }
         modBus.addListener(this::registerGameTests);
         modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
         modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);

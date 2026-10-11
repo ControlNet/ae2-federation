@@ -162,6 +162,21 @@ def prepareLogoClientOptions = tasks.register('prepareLogoClientOptions') {
     }
 }
 
+// The formed Router/Switch scene: never pause when the (virtual) window loses focus, and keep the default smooth
+// lighting and mipmaps the screenshots are judged with.
+def prepareStructureSceneClientOptions = tasks.register('prepareStructureSceneClientOptions') {
+    def optionsFile = layout.projectDirectory.file('run-structure-scene/options.txt')
+    outputs.file(optionsFile)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def file = optionsFile.asFile
+        file.parentFile.mkdirs()
+        file.setText('onboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\nfov:0.0\n',
+                StandardCharsets.UTF_8.name())
+    }
+}
+
 // GuideME preview: -PguideLanguage=zh_cn picks the language the pages open in.
 def prepareGuideClientOptions = tasks.register('prepareGuideClientOptions') {
     def optionsFile = layout.projectDirectory.file('run-guide/options.txt')
@@ -294,6 +309,18 @@ neoForge {
                     .getOrElse('src/main/resources/ae2federation_logo.png')).absolutePath)
             logLevel = org.slf4j.event.Level.INFO
             taskBefore(prepareLogoClientOptions)
+        }
+        // Screenshots formed Router and Switch bodies in a flat world and quits (testmod DeviceStructureScene). A second
+        // run reopens the saved world. -PstructureSceneOut=<dir> picks the output folder.
+        structureSceneClient {
+            client()
+            gameDirectory = project.file('run-structure-scene')
+            sourceSet = testmod
+            programArguments.addAll('--width', '1600', '--height', '960')
+            systemProperty('ae2federation.structureScene.out', rootProject.file(providers.gradleProperty('structureSceneOut')
+                    .getOrElse('build/multiblock-devices/ingame')).absolutePath)
+            logLevel = org.slf4j.event.Level.INFO
+            taskBefore(prepareStructureSceneClientOptions)
         }
         gameTestServer {
             type = 'gameTestServer'

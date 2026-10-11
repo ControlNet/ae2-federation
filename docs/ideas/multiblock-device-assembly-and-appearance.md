@@ -1,22 +1,21 @@
 # Multiblock device assembly and appearance
 
 Discussion date: 2026-10-11.
-Status: handoff for the accepted visual direction and solid-cuboid requirement. The executable offline
-prototype is complete for this visual review; Minecraft runtime integration has not started.
+Status: accepted appearance and solid-cuboid bodies implemented in Minecraft on branch
+`design/multiblock-devices`; operational rules selected (see [Selected rules](#selected-rules)).
+Remaining work is listed under [Not yet verified](#not-yet-verified).
 
 ## Handoff: start here
 
 This page is the entry point for the next implementer. The user accepted the latest appearance after
-reviewing the raised Router connectors and white-backed Switch. Carry this appearance forward;
-previous dark Switch infill and flat Router links are historical comparisons, not alternative final designs.
-The operational proposals below are still proposals: visual acceptance does not approve failure,
-merge/split, size-limit, or chunk-loading rules.
+reviewing the raised Router connectors and white-backed Switch, and it now renders in game from
+validated bodies. Previous dark Switch infill and flat Router links are historical comparisons, not
+alternative final designs. The user also selected the failure, merge, size and chunk rules recorded
+under [Selected rules](#selected-rules).
 
-Work is in branch `design/multiblock-devices`, at the current worktree
-the sibling `ae2-federation-multiblock` worktree. Continue in a worktree. Generated renders belong
-under that worktree's `build/`. Local generated files may not accompany a checkout; the reproduction
-commands below regenerate them from repository assets. This page does not imply that the working-tree
-changes have been committed or merged.
+Work is in branch `design/multiblock-devices`, in the sibling `ae2-federation-multiblock` worktree.
+It is committed on that branch, not merged into `dev`. Generated renders and game screenshots belong
+under that worktree's `build/`; they are not committed, and the commands below regenerate them.
 
 ## Confirmed requirements
 
@@ -29,6 +28,20 @@ changes have been committed or merged.
   interior modules. The surfaces must retain real relief; flat texture substitutions are insufficient.
 - Use the accepted Router and Switch appearances described below as the implementation reference.
 - Keep generated preview images in `build/` and perform changes in an isolated worktree.
+
+## Selected rules
+
+The user selected these on 2026-10-11; they are implemented.
+
+- **Invalid candidate:** an incomplete, hollow, L/T-shaped, protruding or oversized candidate stops
+  linking as a whole. No subset forms and the blocks do not fall back to single-block operation.
+- **Size:** each edge is at most 8 blocks (`DeviceStructure.MAX_EDGE`); there is no minimum, so 1x1x1 is valid.
+- **Grouping:** AE2 crafting-CPU rules. Same-type blocks sharing a face are judged together; one extra
+  block against a finished body invalidates the whole candidate; edge or corner contact keeps bodies
+  separate; Router and Switch never mix. No new persistent identity: the existing per-block nodes and
+  Federation evidence carry it, and right-clicking any member of a formed body opens the domain screen.
+- **Unloaded chunks:** a body keeps its last validated state, is checked again when its chunks load,
+  and never force-loads a chunk.
 
 Cable capacity, operating-power mechanics and new recipes are not selected by this handoff. The
 [broader multiblock and capacity idea](multiblock-routing-and-cable-capacity.md) remains the record
@@ -77,13 +90,21 @@ Reference: `build/multiblock-devices/switch-white-v4/`:
 - `switch-white-grazing.png`: low-angle view of the contact/socket relief.
 - `white-backed-mesh.json`, `switch-white-v4.blend`, `report.json`: geometry, editable scenes and asset hashes.
 
+The in-game check found that a connected Switch member let the world show through the 1-unit
+notches beside its edge contacts, at grazing angles; the offline renders hid it. The original block
+closes each edge channel with its body and face slabs, which a connected member drops. The geometry
+now adds the two inner channel walls behind each edge of a connected Switch member, textured from the
+original faces on those planes. They are visible only through the notches; the accepted surfaces,
+single blocks and the Router are unchanged.
+
 ## Implementation reference and reproduction
 
 | File | Role for the next implementer |
 |---|---|
 | [geometry.py](../../tools/multiblock/geometry.py) | Cuboid validation and asset-backed quad generation; explicit accepted style arguments are required |
 | [switch_connectors.py](../../tools/multiblock/switch_connectors.py) | Six-face socket transforms, backing cutouts, original contact geometry and UVs |
-| [test_geometry.py](../../tools/multiblock/test_geometry.py) | Offline geometric invariants and regression checks |
+| [test_geometry.py](../../tools/multiblock/test_geometry.py) | Offline geometric invariants and regression checks, including a see-through ray test |
+| [export_runtime_parity.py](../../tools/multiblock/export_runtime_parity.py) | Writes and checks the per-mask hashes the Java port must match |
 | [render_router_links.py](../../tools/multiblock/render_router_links.py) | Accepted Router comparison and low-angle render |
 | [render_switch_white.py](../../tools/multiblock/render_switch_white.py) | Accepted Switch comparison, original-block reference and low-angle render |
 | [Preview README](../../tools/multiblock/README.md) | Tooling usage and historical variants |
@@ -106,20 +127,38 @@ blender --background --factory-startup --threads 8 --python tools/multiblock/ren
 blender --background --factory-startup --threads 8 --python tools/multiblock/render_switch_white.py
 ```
 
-Expected: `Ran 16 tests` and `OK`; two Router renders followed by `ROUTER_RAISED_OK`; three Switch
+Expected: `Ran 17 tests` and `OK`; two Router renders followed by `ROUTER_RAISED_OK`; three Switch
 renders followed by `SWITCH_WHITE_OK`. Each render report must show `source_assets_unchanged: true`.
 The geometry tests use standard-library Python. Rendering uses the installed Blender executable and
 its bundled Python (reviewed with Blender 5.2.1); do not install `bpy` into system Python.
 
-Verified so far: the 16 tests, visual inspection of the accepted renders, and source-asset hash checks.
-A separate old/new mesh comparison covered 1x1x1, 1x1x4, 2x1x2 and 3x3x3 Switches and confirmed that
-V4 changes only infill UVs, preserving V3 contact geometry. The raised Router was unchanged by V4.
-These are offline results. No Minecraft renderer, world scanning, structure lifecycle, network-port
-aggregation, or client synchronization has been implemented or verified by these tools.
+The Blender renders above are offline previews, not game screenshots. They predate the channel walls
+and were not regenerated; the walls are only visible through the contact notches.
 
-## Proposed assembly contract
+## Runtime implementation
 
-| Situation | Recommended behavior |
+| Class | Role |
+|---|---|
+| [DeviceStructure](../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructure.java) | AE2 `MBCalculator`-style cuboid search: grow the corners, check edge length, full interior and the one-block shell; an unloaded position gives `Unknown` |
+| [DeviceStructureUpdater](../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructureUpdater.java) | Queues checks from block entity initialization and neighbour changes, checks each body once per level tick, writes `formed` and six connection booleans as blockstates |
+| [RouterBlock](../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlock.java) | Blockstate properties; right-clicking an unformed member shows why it does not form |
+| [RouterFacePort](../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java) | A face of an unformed block binds nothing, so its Federation evidence is withdrawn; its boundary node is untouched |
+| [DeviceStructureGeometry](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureGeometry.java) | Client-free Java port of `geometry.py` and `switch_connectors.py` with the accepted styles |
+| [DeviceStructureBakedModel](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureBakedModel.java) | Wraps each connected blockstate's model; quads per connection mask, cached, rebuilt on resource reload |
+
+- Checks never load chunks and only change blockstates, sent to clients without neighbour updates.
+  Formed members name exactly their neighbours inside the same cuboid; an invalid candidate clears
+  every member it reached.
+- A single block or unformed member keeps the artist's standalone model (connection mask 0).
+- Switch native ME networks stay separate Grids in every state, including while a body breaks or forms:
+  interior faces link members through Federation only, and the boundary nodes are never rewired.
+- Routers remain Federation-only. External faces keep their positions and orientations.
+- Java and Python agree for all 64 masks of both devices (SHA-256 of canonical quads,
+  `common/src/test/resources/multiblock/device-structure-parity.json`).
+
+## Assembly contract
+
+| Situation | Behavior |
 |---|---|
 | One block | A valid 1x1x1 device; retain the existing single-block construction option. |
 | Same-type blocks sharing faces | Consider them together as one candidate structure. |
@@ -129,25 +168,19 @@ aggregation, or client synchronization has been implemented or verified by these
 | Blocks touch only along an edge or corner | Remain separate structures. |
 | Router touches Switch | Remain two device types with a Federation connection; do not form a mixed multiblock. |
 | A member is added or removed | Re-evaluate affected components. A remaining cuboid can form; an irregular remainder cannot. |
-| Relevant chunks become unavailable | Treat completeness as unconfirmed and withdraw affected operational connections until revalidated; do not force-load chunks. |
+| Relevant chunks become unavailable | Keep the last validated state; check again on load; never force-load. A loaded member next to a removed one drops that connection. |
 
 Examples: 1x1x4, 1x3x5, and 2x3x4 are valid shapes. Removing one end of a 1x1x4 leaves a valid
 1x1x3. Removing a corner from a 2x2x2 leaves an invalid candidate. Putting one extra same-type block
 against the middle of a completed cuboid invalidates the expanded candidate until it is completed
-or the extra block is removed. These are examples of the proposed rules, not selected size limits.
+or the extra block is removed. Any edge longer than 8 blocks leaves the candidate unformed.
 
-The recommended invalid-state behavior is to suspend that candidate's device connectivity, while
-allowing inspection of the construction error. Falling back to individually operating blocks would
-make the cuboid requirement mostly cosmetic. This operational consequence needs user agreement.
-Preserve existing network Policies and processing ownership; structural failure must not delete
-configuration or invent successful deliveries. Existing recovery contracts still apply.
+An invalid candidate suspends its connectivity: its faces disconnect, attached networks leave the
+domain, and using a member names the reason (`ae2federation.structure.*`). Network Policies and
+processing ownership are untouched; structural failure deletes no configuration. A loaded slice of
+a cross-chunk body never becomes a smaller device while the rest is unloaded.
 
-Choose supported dimensions and a bounded validation strategy before implementation. Do not import
-AE2's dimension checks, crafting-storage requirement, channel use, or energy behavior automatically.
-Chunk loading and partial structure knowledge need explicit tests: a loaded slice must not silently
-become a smaller operational device while an existing cross-chunk structure is incomplete.
-
-## Proposed device semantics
+## Device semantics
 
 - A formed Switch exposes its exterior block faces as independent ME/Federation connection points,
   preserving the existing role of a Switch. Combining its body must not connect those ME faces into
@@ -156,10 +189,10 @@ become a smaller operational device while an existing cross-chunk structure is i
 - Interior touching faces belong to the body, not external attachment ports.
 - A formed multiblock is one logical device, while preserving physical port positions. A logical
   device is not the entire Federation domain; several devices may share a domain.
-- Right-clicking any member retains the existing whole-domain management scope when operational.
-  An invalid structure should explain its shape problem even when no operational domain is available.
-- Logical-device aggregation does not require immediately collapsing all physical registry nodes.
-  Keep the gameplay identity separate from an implementation choice about topology storage.
+- Right-clicking any member of a formed body opens the existing whole-domain management screen.
+  Right-clicking an unformed member shows its shape problem on the action bar.
+- The registry was not rewritten: each member keeps its six physical ports, and interior faces link
+  through Federation, so the body is one connected part of the domain.
 
 ## Why texture swapping alone is insufficient
 
@@ -204,23 +237,17 @@ tiles use compatible panel surfaces. For a one-block-wide face, opposite borders
 Repeated Router cores and Switch purple panels are now part of the accepted appearance.
 Their visual connections do not imply native ME connections between Switch ports.
 
-## Proposed rendering approach
+## Rendering approach (implemented)
 
-Use a chunk-baked connected model, following the same general approach as AE2 crafting CPUs and
-the project's existing `CableBakedModel`. Static chassis geometry does not need a per-frame block
-entity renderer. Animation is not required to validate this phase.
+The model is chunk-baked, like AE2 crafting CPUs: no block entity renderer and no animation.
 
-1. The server validates a structure and publishes enough formed-state and membership/bounds data
-   for consistent client rendering. Exact packet and state representation remain implementation choices.
-2. Derive each member's connections to the same formed logical body. A neighboring identical block,
-   or a neighboring device in the same Federation domain, is not sufficient evidence by itself.
-3. Use those directions to choose exterior surfaces, outer corners, edge segments, and panel extent.
-   Keep per-face texture orientation explicit for all six faces.
-4. Cache reusable baked geometry by device type and local connection pattern, invalidating it on
-   resource reload. With six connection bits there are at most 64 direction masks before additional
-   visual states; most valid cuboid placements use fewer patterns.
-5. Refresh model data and affected chunk meshes on formation, breakup, resize, load, and unload.
-   The server and client must not retain different borders after a change.
+1. The server validates the body and stores each member's membership as blockstate properties, which
+   vanilla synchronizes and saves; no custom packet exists.
+2. Connection bits name only neighbours inside the same validated cuboid, never mere same-type or
+   same-domain adjacency.
+3. Those bits choose exterior surfaces, outer corners, edge segments and panel extent on all six faces.
+4. Quads are cached per device and mask (at most 64) and rebuilt with the baked models on resource reload.
+5. A blockstate change re-meshes the chunk, so formation, breakup, load and unload refresh the client.
 
 Prefer geometrically separate frame/panel pieces to a full arbitrary-shape connected-texture atlas.
 The valid body is convex and rectangular, so its formed exterior does not need concave-corner art.
@@ -236,7 +263,10 @@ have gaps. Do not globally switch them to full-cube occlusion to eliminate inter
 faces specifically within the same valid body and keep any exterior recesses and neighboring cable
 contacts correct. Inspect collision/selection outlines together with rendered geometry.
 
-## Suggested runtime implementation sequence (not yet selected)
+## Original implementation sequence (historical)
+
+Kept for context; all three steps are now implemented as described under
+[Runtime implementation](#runtime-implementation).
 
 The existing [CableBakedModel](../../common/src/main/java/space/controlnet/ae2federation/client/CableBakedModel.java)
 provides a local model-data and cached-quad integration example. Reuse its general pattern, not its
@@ -264,7 +294,9 @@ Preserve the approved shape and material relationships while inspecting actual g
 Blender lighting is not a promise of identical in-game shading. Keep subsequent screenshots/renders
 under `build/`. This sequence is a recommendation, not an authorization or claim of runtime completion.
 
-## Verification targets for a future implementation
+## Verification
+
+### Targets
 
 - Valid thin/flat/full cuboids, invalid L/T shapes, holes, protrusions, and same-type merge/split.
 - Different device types remain separate; touching only at an edge or corner does not merge.
@@ -276,21 +308,52 @@ under `build/`. This sequence is a recommendation, not an authorization or claim
 - All six face orientations and one-block-thick dimensions have correct UVs, lighting, and borders.
 - Formation, resize, breakup, and resource reload leave no stale client meshes.
 
-Select runtime verification commands from [testing commands](../testing/commands.md) when game
-integration exists. The reproduction section above is the current offline verification entry point.
+### Commands
 
-## Decisions still required before runtime specification
+From the worktree root:
 
-1. **Dimensions and validation budget:** supported minimum/maximum dimensions, volume limits and bounded
-   revalidation work. Prototype support for a shape does not select its gameplay limits.
-2. **Grouping and merge/split:** accept or revise the proposed same-type connected-component rule,
-   single-block validity, automatic merging, and treatment of a protruding member.
-3. **Invalid structures:** decide whether they stop connectivity, retain single-block operation, or use
-   another behavior, and how the construction error is communicated.
-4. **Partial chunk availability:** define suspension and recovery without force-loading; distinguish
-   unloaded members from blocks that were removed.
-5. **Logical identity and management:** settle member/controller ownership, port/configuration persistence
-   and management access during rebuilding. Preserve existing Router/Switch role and isolation contracts.
+```bash
+python -m unittest discover -s tools/multiblock -v
+python3 tools/multiblock/export_runtime_parity.py --check
+./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:test \
+  --tests 'space.controlnet.ae2federation.client.DeviceStructureGeometryTest' \
+  --tests 'space.controlnet.ae2federation.router.DeviceStructureTest'
+python3 tools/dev_gametests.py devicestructurelifecycle devicestructureshapes devicestructurekeepsports \
+  devicestructuresuspendsswitch devicestructuresuspendsrouter devicestructureacrosschunks
+python3 tools/dev_gametests.py --manifest
+./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:check :neoforge-1.21.1:build
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1600x960x24 +extension GLX" \
+  ./gradlew --no-daemon --dependency-verification=strict :neoforge-1.21.1:runStructureSceneClient --no-configuration-cache
+```
+
+Expected: `Ran 17 tests` / `OK`; `PARITY_FIXTURE_CURRENT`; 3 geometry and 6 cuboid-search JUnit tests
+pass; the six GameTests and the whole manifest (220 on 2026-10-11) pass; `check build` succeeds
+(556 JUnit tests on 2026-10-11).
+After a geometry change, run `python3 tools/multiblock/export_runtime_parity.py` to rewrite the fixture.
+
+The six GameTests cover formation and breakup order, thin/flat/full and invalid shapes, edge/corner
+contact, Router/Switch separation, ME isolation with a shared domain, suspension of a Switch and a
+Router candidate (all faces disconnect, networks leave the domain, the status names the reason, the
+body recovers), and a body across a chunk border kept while the other chunk is unloaded.
+
+### In-game screenshots
+
+`runStructureSceneClient` builds a flat test world, photographs it and quits; it writes to
+`build/multiblock-devices/ingame/` (`first-run/` when it creates the world, `reopened/` when the world
+already exists, which checks save and re-entry). Move the saved world in `neoforge-1.21.1/run-structure-scene/saves/`
+aside for a fresh first run. Views: overview; Router and Switch 3x2x2 from front and back; grazing
+views of both; floating 2x2x2 bodies from below; thin and flat bodies; an unformed L beside singles;
+8x4x1 walls from 32 blocks; a Switch with a member removed and replaced; both devices after a resource
+reload. These are real client screenshots (software OpenGL), unlike the Blender previews above.
+
+## Not yet verified
+
+- A remote client on a dedicated server (screenshots use the integrated server).
+- Hardware GPU lighting and shader packs; screenshots use software OpenGL.
+- Other resource packs replacing the Router/Switch models (the connected model reads the active
+  `router.json`/`switch.json`; on a read failure it logs a warning and keeps the standalone models).
+- Performance with many large bodies changing at once.
+- The right-click status message through a real player click; GameTests check the message itself.
 
 The visual choice is settled: raised Router links, white Switch backing, recessed original-style
 Switch contacts, continuous outer frames and repeated modules. Do not reopen these as unanswered art

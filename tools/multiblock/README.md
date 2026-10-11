@@ -2,7 +2,8 @@
 
 This is an executable geometry prototype for Router and Switch cuboids. It reads the current
 artist-authored production JSON models and PNG textures and produces connected meshes and Blender
-renders. It does not register a Minecraft renderer or implement server-side multiblock lifecycle.
+renders. The game uses a Java port of the same geometry (`DeviceStructureGeometry`); the parity fixture
+below keeps the two equal.
 
 ## Implemented geometry
 
@@ -20,7 +21,11 @@ renders. It does not register a Minecraft renderer or implement server-side mult
 The accepted appearance uses `router_style='raised'` and `switch_style='white-backed'`. Default
 `plain` styles and earlier renders remain historical comparisons. Start with the
 [implementation handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for accepted
-requirements, final render commands and unresolved runtime decisions. No replacement artwork was needed.
+requirements, final render commands and runtime behaviour. No replacement artwork was needed.
+
+A connected Switch member also gets the inner walls of each edge channel (`channel_walls`): the
+original body and face slabs closed them, and without them the world shows through the notches
+beside the edge contacts.
 
 ## Run
 
@@ -30,10 +35,19 @@ From this worktree's root, check geometry with standard-library Python (no packa
 python -m unittest discover -s tools/multiblock -v
 ```
 
-Expected: sixteen tests pass, including exterior coverage, corner counts, source assets, UV bounds,
-thin structures, invalid shapes, unchanged Router/single-block geometry, and links meeting across
-all six face orientations. The shape inputs are local geometry test cases, not game-world
-integration tests.
+Expected: seventeen tests pass, including exterior coverage, corner counts, source assets, UV bounds,
+thin structures, invalid shapes, unchanged Router/single-block geometry, links meeting across
+all six face orientations, and rays into connected members always meeting a face. The shape inputs
+are local geometry test cases, not game-world integration tests.
+
+After changing the geometry, rewrite and check the Java parity fixture
+(`common/src/test/resources/multiblock/device-structure-parity.json`), then run
+`DeviceStructureGeometryTest`:
+
+```bash
+python3 tools/multiblock/export_runtime_parity.py
+python3 tools/multiblock/export_runtime_parity.py --check   # PARITY_FIXTURE_CURRENT
+```
 
 Render with the installed Blender executable and its bundled Python; do not install `bpy` with pip:
 
