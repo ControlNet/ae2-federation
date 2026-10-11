@@ -28,7 +28,9 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                     .setTextureState(new RenderStateShard.TextureStateShard(WHITE, false, false))
                     .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
                     .setCullState(RenderStateShard.NO_CULL)
-                    .setWriteMaskState(RenderStateShard.COLOR_WRITE)
+                    // The shell is translucent terrain, drawn after block entities. Without depth, any shell face
+                    // behind the carrier (another arm, a neighbouring cable) would paint its frame over it.
+                    .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE)
                     .createCompositeState(false));
     private static final RenderType GLOW = RenderType.create("ae2federation_optical_glow",
             DefaultVertexFormat.BLOCK, VertexFormat.Mode.QUADS, 1536, false, false,
@@ -71,9 +73,10 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
         // Switching RenderTypes can finish the prior shared buffer. Complete each pass before switching.
+        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
         for (int pass = 0; pass < 2; pass++) {
-            var out = buffers.getBuffer(pass == 0 ? CORE : GLOW);
-            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 1,
+            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 0,
                 (additive, px, py, pz, red, green, blue, alpha) -> {
                     out.addVertex(pose, px, py, pz).setColor(red, green, blue, alpha)
                             .setUv(.5f, .5f)
