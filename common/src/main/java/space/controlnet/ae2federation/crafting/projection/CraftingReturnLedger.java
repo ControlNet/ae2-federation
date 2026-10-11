@@ -50,7 +50,9 @@ public final class CraftingReturnLedger extends SavedData {
 
     /** How a watched job stands: still running (or not seen ending), or ended as AE2 recorded it. */
     public enum JobEnd {
-        RUNNING, DONE, CANCELLED
+        RUNNING, DONE, CANCELLED,
+        /** An addon proves that the job ended without exposing completion versus cancellation. */
+        TERMINATED
     }
 
     /**

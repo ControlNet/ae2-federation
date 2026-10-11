@@ -379,6 +379,10 @@ final class AddonCraftingScene {
         return this;
     }
 
+    boolean submitted() { return stage >= 6; }
+
+    PolicyBridgeFixtures bridge() { return bridge; }
+
     /** Runs the whole craft; call from {@code succeedWhen}. */
     void tick() {
         switch (stage) {
@@ -666,7 +670,7 @@ final class AddonCraftingScene {
         return null;
     }
 
-    private IGrid consumerGrid() {
+    IGrid consumerGrid() {
         return bridge.mainGrid();
     }
 

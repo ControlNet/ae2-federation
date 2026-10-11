@@ -58,11 +58,19 @@ switches the two rules separately, and loading a save adds no rule.
     independent `ICraftingCPU` implementations expose no ID or position in the public interface, so their uncertainty
     is saved explicitly, never interpreted as completion. A small optional adapter reads Neo ECO 21.2.1's concrete
     `ECOCraftingCPU.getOwner/getLogic` and `getLastLink/getWaitingFor` methods, and Lightning Tech 2.1.1's
-    `TimeWheelCraftingCPU.getHost/getCraftingLogic` methods. These are version-sensitive dependencies, not proof that
-    every addon lifecycle or planner path was tested. Only block-entity anchors with a dimension are accepted. An
-    unformed or missing addon CPU remains unknown; a loaded adapter at the saved anchor can prove it no longer runs
-    the old link. The real Neo ECO processing CPU test waits for both declared outputs before finishing; native CPU
-    early completion must not be generalized to that implementation.
+    `TimeWheelCraftingCPU.getHost/getCraftingLogic` methods. Advanced AE 1.6.12 uses its public `getSrc().machine()`
+    block anchor and public `craftingLogic` field. These are version-sensitive dependencies, not proof that every
+    addon lifecycle or planner path was tested. Only block-entity anchors with a dimension are accepted. Multiple
+    independent CPUs can share an anchor: lifecycle lookup must match the crafting UUID across every slot, and a
+    different job at that anchor never proves completion. An unformed or missing addon CPU remains unknown unless
+    native terminal evidence exists. Neo ECO's `ECOCraftingJobLifecycle.isTerminated(Level, UUID)` reads its own saved
+    terminal record after a completed CPU retires. The adapter requires `isFormed()` and no pending entries in the
+    private `deferredInit` array (pinned to 21.2.1); any deferred or quarantined slot suppresses this inference because
+    resuming persisted jobs can clear a temporary cancellation marker. No lifecycle registration is replayed.
+    The additive saved job outcome `TERMINATED` means the addon proves ending without exposing completion versus
+    cancellation. Existing worlds load unchanged; downgrading to a version whose enum lacks `TERMINATED` is not
+    supported after such a record is saved. The real Neo ECO processing CPU test waits for both declared outputs
+    before finishing; native CPU early completion must not be generalized to that implementation.
   - Debt is removed only by actual delivery. Zero waiting, two idle observations, a completed job, cancellation,
     or attempting a return cannot prove that all machine outputs arrived. A completed/cancelled consumer receives
     its outstanding arrivals into its own storage once all observed jobs are resolved. With mixed running/unloaded

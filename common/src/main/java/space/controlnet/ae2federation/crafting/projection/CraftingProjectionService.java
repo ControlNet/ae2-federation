@@ -76,7 +76,6 @@ public final class CraftingProjectionService implements AutoCloseable {
      * is a new object, read again from the CPU once it is loaded.
      */
     private final Map<UUID, ICraftingLink> jobLinks = new HashMap<>();
-    /** The server tick each consumer Grid's jobs were last watched at, so a burst of pushes reads its CPUs once. */
     private Object reconciledRegistry;
     private long reconciledTopology = Long.MIN_VALUE;
     private Object reconciledPolicies;
@@ -489,17 +488,22 @@ public final class CraftingProjectionService implements AutoCloseable {
                         jobLinks.put(job.craftingId(), current);
                         if (current.isCanceled()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
                         if (cpu.isBusy()) return CraftingReturnLedger.JobEnd.RUNNING;
+                        return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.DONE);
                     }
-                    // A loaded, formed adapter at the saved anchor explicitly no longer runs this job. Merely
-                    // failing to find that CPU is not the same evidence and remains unresolved below.
-                    return ended(ledger, consumer, job, link != null && link.isCanceled()
-                            ? CraftingReturnLedger.JobEnd.CANCELLED : CraftingReturnLedger.JobEnd.DONE);
+                    // Addons can run several independent CPUs at one block anchor. A different job here is not
+                    // evidence that the watched job ended; continue looking for its exact crafting id.
                 }
             }
             if (link != null && link.isCanceled()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
+            if (link != null && link.isDone()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.DONE);
             // An addon cluster can disappear from the active CPU list while unformed. Missing is not completion.
-            if (cpuLevel.getBlockEntity(job.cpu()) == null) {
+            var anchor = cpuLevel.getBlockEntity(job.cpu());
+            if (anchor == null) {
                 return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
+            }
+            if (CraftingCpuLifecycle.terminated(anchor, job.craftingId())) {
+                // The addon proves termination but does not expose whether it completed or was cancelled.
+                return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.TERMINATED);
             }
             return null;
         }
