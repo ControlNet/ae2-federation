@@ -119,6 +119,64 @@ def element_quads(element, device, cell, kind, index, connections=(), extension=
     return result
 
 
+def face_patch(element, side, lo, hi, cell, kind, index):
+    """A rectangle on one of the element's face planes, textured like that face.
+
+    Points beyond the element along a tangent axis repeat its end pixel, as edge extensions do.
+    """
+    face = element['faces'][side]
+    u, v, U, V = face['uv']
+    source_uv = [(u,v), (u,V), (U,V), (U,v)]
+    turns = face.get('rotation', 0)//90
+    source_uv = source_uv[turns:] + source_uv[:turns]
+    origin, vertical, _, horizontal = face_points(element['from'], element['to'])[side]
+    du = [horizontal[a]-origin[a] for a in range(3)]
+    dv = [vertical[a]-origin[a] for a in range(3)]
+    points = face_points(lo, hi)[side]
+    uv = []
+    for p in points:
+        coords = list(p)
+        for a in range(3):
+            if a != SIDES[side][0]:
+                if coords[a] < element['from'][a]:
+                    coords[a] = element['from'][a] + .5
+                elif coords[a] > element['to'][a]:
+                    coords[a] = element['to'][a] - .5
+        s = sum((coords[a]-origin[a])*du[a] for a in range(3))/sum(c*c for c in du)
+        t = sum((coords[a]-origin[a])*dv[a] for a in range(3))/sum(c*c for c in dv)
+        uv.append(tuple(source_uv[0][a] + s*(source_uv[3][a]-source_uv[0][a])
+                        + t*(source_uv[1][a]-source_uv[0][a]) for a in range(2)))
+    return quad(points, uv, element_device(element), cell, side, kind, index)
+
+
+def channel_walls(elements, device, cell, boundaries, axis, lo, hi, start, end):
+    """The two inner walls of the channel an edge assembly sits in.
+
+    In the original Switch the body and face slabs close the channel; the connected body drops them, so
+    without these walls the notches beside the recessed contact pieces would show through the block.
+    """
+    result = []
+    for side in sorted(boundaries):
+        a, sign = SIDES[side]
+        b = next(SIDES[s][0] for s in boundaries if s != side)
+        plane = hi[a] if sign < 0 else lo[a]
+        wall_lo, wall_hi = [0, 0, 0], [0, 0, 0]
+        wall_lo[a] = wall_hi[a] = plane
+        wall_lo[b], wall_hi[b] = lo[b], hi[b]
+        wall_lo[axis], wall_hi[axis] = start, end
+        index, source = next((i, e) for i, e in enumerate(elements) if side in e['faces']
+                             and (e['from'][a] if sign < 0 else e['to'][a]) == plane
+                             and e['from'][b] <= lo[b] and e['to'][b] >= hi[b]
+                             and e['from'][axis] <= lo[axis] and e['to'][axis] >= hi[axis])
+        source = dict(source, device=device)
+        result.append(face_patch(source, side, wall_lo, wall_hi, cell, 'channel-wall', index))
+    return result
+
+
+def element_device(element):
+    return element.get('device', 'switch')
+
+
 def flat_indices(group):
     if isinstance(group, int):
         return [group]
@@ -285,6 +343,15 @@ def build(device, cells, connected=True, switch_style='plain', router_style='pla
                         end = 16
                 result.extend(element_quads(element, device, cell, 'edge', index,
                                             connections, (axis, start, end)))
+            if device == 'switch' and connections and switch_style in ('edge-matched', 'white-backed', 'infill'):
+                start, end = lo[axis], hi[axis]
+                for side in connections:
+                    a, sign = SIDES[side]
+                    if a == axis and sign < 0 and start == rim:
+                        start = 0
+                    if a == axis and sign > 0 and end == 16-rim:
+                        end = 16
+                result.extend(channel_walls(elements, device, cell, boundaries, axis, lo, hi, start, end))
         for side in SIDES:
             if side in connections:
                 continue

@@ -184,7 +184,76 @@ public final class DeviceStructureGeometry {
                 }
                 out.addAll(elementQuads(element, "edge", connections, new double[] {axis, start, end}));
             }
+            if (device == Device.SWITCH && !connections.isEmpty()) {
+                double start = lo[axis];
+                double end = hi[axis];
+                for (var side : connections) {
+                    if (side.axis == axis && side.sign < 0 && start == rim) start = 0;
+                    if (side.axis == axis && side.sign > 0 && end == 16 - rim) end = 16;
+                }
+                channelWalls(boundaries, axis, lo, hi, start, end, out);
+            }
         }
+    }
+
+    /**
+     * The two inner walls of the channel an edge assembly sits in. In the original Switch the body and face slabs
+     * close the channel; a connected member drops them, so without these walls the notches beside the recessed
+     * contact pieces would show through the block.
+     */
+    private void channelWalls(Set<Side> boundaries, int axis, double[] lo, double[] hi, double start, double end,
+            List<RawQuad> out) {
+        for (var side : boundaries) {
+            int a = side.axis;
+            int b = boundaries.stream().filter(other -> other != side).findFirst().orElseThrow().axis;
+            double plane = side.sign < 0 ? hi[a] : lo[a];
+            var wallLo = new double[3];
+            var wallHi = new double[3];
+            wallLo[a] = wallHi[a] = plane;
+            wallLo[b] = lo[b];
+            wallHi[b] = hi[b];
+            wallLo[axis] = start;
+            wallHi[axis] = end;
+            var source = elements.stream().filter(element -> element.faces.containsKey(side)
+                    && (side.sign < 0 ? element.from[a] : element.to[a]) == plane
+                    && element.from[b] <= lo[b] && element.to[b] >= hi[b]
+                    && element.from[axis] <= lo[axis] && element.to[axis] >= hi[axis]).findFirst().orElseThrow();
+            out.add(facePatch(source, side, wallLo, wallHi, "channel-wall"));
+        }
+    }
+
+    /**
+     * A rectangle on one of the element's face planes, textured like that face; points beyond the element along a
+     * tangent axis repeat its end pixel, as edge extensions do.
+     */
+    private static RawQuad facePatch(Element element, Side side, double[] lo, double[] hi, String kind) {
+        var face = element.faces.get(side);
+        double u = face.uv[0], v = face.uv[1], uMax = face.uv[2], vMax = face.uv[3];
+        var sourceUv = new double[][] {{u, v}, {u, vMax}, {uMax, vMax}, {uMax, v}};
+        int turns = face.rotation / 90;
+        var rotated = new double[4][];
+        for (int i = 0; i < 4; i++) rotated[i] = sourceUv[(i + turns) % 4];
+        var sourcePoints = facePoints(element.from, element.to, side);
+        var points = facePoints(lo, hi, side);
+        var uv = new double[4][];
+        for (int i = 0; i < 4; i++) {
+            var coords = points[i].clone();
+            for (int a = 0; a < 3; a++) {
+                if (a == side.axis) continue;
+                if (coords[a] < element.from[a]) {
+                    coords[a] = element.from[a] + .5;
+                } else if (coords[a] > element.to[a]) {
+                    coords[a] = element.to[a] - .5;
+                }
+            }
+            double s = projection(coords, sourcePoints[0], sourcePoints[3]);
+            double t = projection(coords, sourcePoints[0], sourcePoints[1]);
+            uv[i] = new double[2];
+            for (int a = 0; a < 2; a++) {
+                uv[i][a] = rotated[0][a] + s * (rotated[3][a] - rotated[0][a]) + t * (rotated[1][a] - rotated[0][a]);
+            }
+        }
+        return new RawQuad(points, uv, side, kind);
     }
 
     /**

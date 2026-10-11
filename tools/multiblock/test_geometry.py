@@ -1,7 +1,27 @@
 """Geometry checks for asset-backed connected device previews."""
+import random
 import unittest
 
 from geometry import SIDES, build, cuboid, load_model, surface_cells, validate
+
+
+def ray_hits(origin, direction, quads):
+    """Whether the ray from origin along direction, up to one direction length, meets a quad's front."""
+    def sub(a, b): return [a[i]-b[i] for i in range(3)]
+    def dot(a, b): return sum(a[i]*b[i] for i in range(3))
+    for q in quads:
+        p = q['positions']
+        u, v = sub(p[1], p[0]), sub(p[2], p[0])
+        n = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]]
+        if dot(n, direction) >= 0:
+            continue
+        t = dot(n, sub(p[0], origin))/dot(n, direction)
+        if not 0 < t < 1:
+            continue
+        x = [origin[i]+t*direction[i] for i in range(3)]
+        if all(min(c[i] for c in p)-1e-9 <= x[i] <= max(c[i] for c in p)+1e-9 for i in range(3)):
+            return True
+    return False
 
 
 class GeometryTest(unittest.TestCase):
@@ -195,6 +215,30 @@ class GeometryTest(unittest.TestCase):
                          build('router',cuboid((1,1,1)),router_style='raised'))
         self.assertEqual(build('switch',cells,switch_style='edge-matched'),
                          build('switch',cells,switch_style='edge-matched',router_style='raised'))
+
+    def test_connected_switch_and_router_members_are_opaque(self):
+        # Rays entering an exposed face toward the block centre must meet a front face: the connected Switch
+        # drops the body and face slabs, so the edge channels need their own inner walls.
+        rng = random.Random(1)
+        order = ['west', 'east', 'down', 'up', 'north', 'south']
+        for device in ['router', 'switch']:
+            for mask in [1, 4, 5, 3, 21, 42]:
+                connected = {s for i, s in enumerate(order) if mask >> i & 1}
+                cells = {(0, 0, 0)}
+                for side in connected:
+                    axis, sign = SIDES[side]
+                    cells |= {tuple(c[a] + (sign if a == axis else 0) for a in range(3)) for c in cells}
+                quads = [q for q in build(device, cells, switch_style='white-backed', router_style='raised')
+                         if tuple(q['cell']) == (0, 0, 0)]
+                exposed = [s for s in order if s not in connected]
+                for _ in range(600):
+                    side = rng.choice(exposed)
+                    axis, sign = SIDES[side]
+                    origin = [rng.uniform(.02, .98) for _ in range(3)]
+                    origin[axis] = -.05 if sign < 0 else 1.05
+                    target = [rng.uniform(.3, .7) for _ in range(3)]
+                    direction = [target[i]-origin[i] for i in range(3)]
+                    self.assertTrue(ray_hits(origin, direction, quads), (device, mask, side, origin, target))
 
 
 if __name__ == '__main__':
