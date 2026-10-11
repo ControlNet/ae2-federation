@@ -62,7 +62,8 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         for (var variant : CableCoreFaces.Variant.values()) {
             cores.put(variant, atlas.apply(texture("dense/" + variant.texture())));
         }
-        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")));
+        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")),
+                atlas.apply(texture("dense/collar")));
     }
 
     private static ResourceLocation texture(String name) {

@@ -52,10 +52,10 @@ for ref, model in generated.items():
 # texture.
 CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connected_1', 'core_connected_2',
                                                            'core_connected_3', 'core_connected_4',
-                                                           'core_connected_2_straight', 'line')}
+                                                           'core_connected_2_straight', 'line', 'collar')}
 # Shipped but not drawn yet: the artist's dense cable textures not wired up yet (the connector's machine cap went
 # when Provider and Endpoint fronts became dense connections), and the old cable's textures the artist still edits.
-NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'collar', 'stream_u', 'stream_v')}
+NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'stream_u', 'stream_v')}
                  | {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')})
 used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
     | NOT_DRAWN_YET

@@ -68,9 +68,15 @@ core with a dense arm toward it.
 
 The shell is translucent so the BER flow shows through it: arms start at the core's surface, and a straight tube stays
 inside its block. Where two cables meet nothing is drawn across the tube, neither a tube's end face nor the core's
-side toward a cable, so a run shows no seam ring through the glass. (The artist's `cable_display` rule, an end face
-toward a non-tube neighbour, covered the old 12-to-10 voxel step between cables; with no step left it never applies.)
-The item is a closed north-south tube.
+side toward a cable, so a run shows no glass seam. (The artist's `cable_display` rule, an end face toward a non-tube
+neighbour, covered the old 12-to-10 voxel step between cables; with no step left it never applies.) The item is a
+closed north-south tube.
+
+**Collars.** Where two cables meet, each draws the artist's collar from `cable_straight.bbmodel` (`collar.png`): four
+1-voxel bars ringing the tube at 4..12, inside the shell, so the two halves make a 2-voxel ring at every seam, seen
+through the glass windows. A straight tube draws one at each end, a core one at the end of each arm toward another
+cable, and the item one at each end. Ends toward a Router, Provider, Endpoint or P2P tunnel have none. The bars,
+faces and UVs are the artist's, turned onto the tube's axis as a blockstate rotation would turn them.
 
 **Connected cores.** Each core face shows one of the artist's connected textures (`CableCoreFaces`): the frame
 opens on an edge whose side joins another Federation Cable, so the rails run on into its full-width arm and a run of
@@ -81,7 +87,7 @@ three `core_connected_3`, four `core_connected_4`, each turned in quarter turns 
 a flat tee.
 
 **Textures.** The artist's interim dense textures are wired in `CableBakedModel.builder()` and listed as code-drawn in
-`validate_assets.py`. `part/cable/dense/{connector,collar,stream_u,stream_v}` and the old
+`validate_assets.py`. `part/cable/dense/{connector,stream_u,stream_v}` and the old
 `block/{glass,collar,stream_u,stream_v}` ship but are not drawn; the validator lists them as not drawn yet. The
 `connector` was the machine cap, which went when machine fronts became dense. The artist's models and notes are in
 `tools/blockbench/projects/` and `tools/blockbench/docs/cable_design.md`.
