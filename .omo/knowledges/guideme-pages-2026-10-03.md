@@ -84,6 +84,7 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | `bridge_part.snbt`, one Bridge on a cable | Bridge (header) |
 | `p2p_tunnel_part.snbt`, one Federation P2P tunnel on a cable | Federation P2P Tunnel (header) |
 | `federation_p2p_tunnel.snbt`, two Routers joined through tunnels on network A's cable | Federation P2P Tunnel |
+| `network_capacity.snbt`, three cable segments split by two Routers (2 / 4 / 1) | Network Capacity |
 
 - Markup follows AE2's pages:
   `<GameScene zoom interactive={true} background="transparent">`, `<ImportStructure src>`, and `<BoxAnnotation>`

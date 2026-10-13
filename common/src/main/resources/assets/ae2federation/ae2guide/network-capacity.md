@@ -1,0 +1,73 @@
+---
+navigation:
+  parent: index.md
+  title: Network Capacity
+  icon: ae2federation:cable
+  position: 22
+---
+
+# Network Capacity
+
+Every piece of <ItemLink id="ae2federation:cable" /> counts how many networks and Endpoints it carries. For now this is
+only a count: no cable has a limit yet, and nothing stops working however high the count gets.
+
+<GameScene zoom="4" interactive={true} background="transparent">
+  <ImportStructure src="assets/network_capacity.snbt" />
+  <BoxAnnotation color="#915dcd" min="9 0 0" max="11 1 1">
+    Network A: counts 1
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="8 1 0" max="9 2 1">
+    Network B, on the same Switch: counts 1 more
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="7 0 0" max="8 1 1">
+    Left segment: 2 (local), networks A and B
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="6 0 0" max="7 1 1">
+    Router: ends a segment
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="3 0 0" max="6 1 1">
+    Middle segment, through the Switch: 4 (whole domain), as it runs between two Routers
+  </BoxAnnotation>
+  <BoxAnnotation color="#5dcd70" min="4 1 0" max="5 2 1">
+    Network C: counts 1
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="2 0 0" max="3 1 1">
+    Router: ends a segment
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
+    Right segment: 1 (local), the Endpoint
+  </BoxAnnotation>
+  <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
+    Processing Endpoint: counts 1
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
+## What counts
+
+* **Each ME network on a Switch counts 1.** A network that touches several Switch faces still counts once.
+* **Each Processing Endpoint counts 1.**
+* **A Federation Pattern Provider counts nothing.** The Endpoints it sends work to are counted instead.
+
+Neither rules nor power play a part: a network counts as soon as it joins the domain.
+
+## Segments
+
+Federation Cables joined to each other form a segment. A <ItemLink id="ae2federation:switch" /> does not end a segment,
+and neither does a pair of <ItemLink id="ae2federation:federation_p2p_tunnel" />s: the cable on both sides belongs to
+the same segment. Only a <ItemLink id="ae2federation:router" /> ends one, and a Router built from several blocks counts
+as one Router.
+
+* A segment that touches **no Router or one Router** counts only its own: the networks on its Switches and the
+  Endpoints on it. It reads **local**.
+* A segment that touches **two or more Routers** carries traffic between them, so it counts everything in the
+  [Federation domain](mechanics.md). It reads **whole domain**.
+* A network whose Switches sit on two segments counts in each of them.
+
+In the scene, the left segment counts networks A and B, and the right one the Endpoint. The middle segment runs from
+one Router to the other, so it counts all four, network C on its own Switch included.
+
+## Seeing the count
+
+With the Jade mod installed on both the server and your client, look at a Federation Cable:
+Jade adds a line such as "Capacity count: 4 (whole domain)". Without Jade the count is not shown anywhere yet.

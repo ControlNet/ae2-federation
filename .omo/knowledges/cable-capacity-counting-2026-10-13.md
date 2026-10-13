@@ -30,3 +30,15 @@ function. `tp ... facing` aims from the feet, so the crosshair misses a block be
 height (+1.62). Jade needs the HUD: no F1; it works in creative and spectator. Jade jar must be in both server and
 client mods. Shots: `build/beam-compare/capacity-{before,after}/`, sheet `cable-capacity-before-after.png`, crop
 `cable-capacity-jade-lines.png`. With Jade installed the beam scene looks as before (no beam regression).
+
+## Guide page (2026-10-13)
+
+The owner asked for a page of its own: `ae2guide/network-capacity.md` ("Network Capacity" / 「网络容量」, position 22,
+between How Federation Works and Across Domains), linked from the index, the Cable page and the Router page. The Router
+page and index bullet no longer say "no use for now": for now it only ends a capacity segment. Scene
+`assets/network_capacity.snbt`: Switch with networks A (drive + the only energy cell) and B - cable - Router - cable -
+Switch with network C - cable - Router - cable - Endpoint; it reads 2 local / 4 whole domain / 1 local. It has no AE2
+cables (devices sit straight on Switch faces, never face to face with another network), so `guideSceneCables` has
+nothing to check. The Chinese contract rule (space after `：` before more text) rejects quoting the Jade line
+`容量计数：N（…）` verbatim, so the zh page describes it instead. The inline Switch in the trunk is covered by
+`CableCapacityCounterTest`, not by the GameTest (which keeps the Switch above the trunk).
