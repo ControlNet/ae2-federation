@@ -186,7 +186,7 @@
   "ae2federation.ui.domain.runtime.backend.policy_unconfigured": "规则尚未配置。",
   "ae2federation.ui.domain.runtime.backend.policy_disabled": "规则已禁用。",
   "ae2federation.ui.domain.runtime.backend.network_pair_disconnected": "网络身份或共同联邦域已不匹配。",
-  "ae2federation.ui.domain.runtime.backend.domain_over_capacity": "这个联邦域里有联邦线缆超出容量，整个联邦域已停止。",
+  "ae2federation.ui.domain.runtime.backend.domain_over_capacity": "这个联邦域里有联邦线缆超出容量，这个联邦域已停止。",
   "ae2federation.ui.domain.runtime.backend.backend_unready": "原生后端尚未就绪。",
   "ae2federation.ui.domain.runtime.backend.domain_reference_missing": "没有有效的共同联邦域引用。",
   "ae2federation.ui.domain.runtime.backend.energy_connection_missing": "两个网络中有一方没有可以加入共享能量池的联邦节点。",

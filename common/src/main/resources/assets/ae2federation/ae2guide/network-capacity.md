@@ -9,7 +9,7 @@ navigation:
 # Network Capacity
 
 Every piece of <ItemLink id="ae2federation:cable" /> counts how many networks and devices it carries, and carries at
-most 4. When any cable of a Federation domain carries more, the **whole domain stops**: its networks keep working on
+most 4. When any cable of a Federation domain carries more, the **Federation domain stops**: its networks keep working on
 their own, but share no storage, crafting, processing or power until the count fits again.
 
 <GameScene zoom="4" interactive={true} background="transparent">
@@ -73,7 +73,7 @@ one Router to the other, so it counts all four, network C on its own Switch incl
 A stopped domain changes nothing in the world: every block stays where it is, and the domain starts again by itself
 as soon as no cable carries more than 4. To get there, take a network or device off the full segment, or end the
 segment with a Router: what stands behind a Router no longer counts on a segment that touches only that one Router.
-A segment between two Routers counts the whole domain, so a long trunk between Routers fills first.
+A segment between two Routers counts everything in the Federation domain, so a long trunk between Routers fills first.
 
 The domain's topology screen turns dark red, and every rule in it reads "over capacity". With connected domains
 shown, only the stopped domain's plate turns red.
