@@ -52,11 +52,18 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     /** The body formed or broke: the faces link again, or stop linking, from the next tick. */
     @Override
     public void setBlockState(BlockState state) {
-        var wasFormed = RouterBlock.formed(getBlockState());
+        var previous = getBlockState();
+        var wasFormed = RouterBlock.formed(previous);
         super.setBlockState(state);
         if (wasFormed != RouterBlock.formed(state) && level instanceof ServerLevel) {
             facePorts.values().forEach(RouterFacePort::markDirty);
             federationDomainDirty = true;
+        }
+        if (previous != state && level instanceof ServerLevel serverLevel) {
+            // A bundled cable links only to a whole body: the cables beside it, and this block's own caches of them,
+            // judge the contact again. A body changes without neighbour updates, so nothing else would tell them.
+            serverLevel.invalidateCapabilities(worldPosition);
+            for (var face : Direction.values()) serverLevel.invalidateCapabilities(worldPosition.relative(face));
         }
     }
 

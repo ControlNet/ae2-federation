@@ -36,6 +36,37 @@ final class FederationJadeText {
         return Component.translatable(PREFIX + "cable_capacity." + (domain ? "domain" : "subdomain"), count);
     }
 
+    static Component bundleTitle() {
+        return Component.translatable(PREFIX + "bundle.title");
+    }
+
+    /** A bundle's cross-section and the capacity it carries: a number, unlimited, or nothing while not enforced. */
+    static Component bundleShape(int narrow, int wide, java.util.OptionalInt capacity, boolean unlimited) {
+        if (unlimited) return Component.translatable(PREFIX + "bundle.shape.unlimited", narrow, wide);
+        return capacity.isPresent() ? Component.translatable(PREFIX + "bundle.shape", narrow, wide, capacity.getAsInt())
+                : Component.translatable(PREFIX + "bundle.shape.unenforced", narrow, wide);
+    }
+
+    /** "Connected: 2 ends, 1 side", counting whole contacts with devices. */
+    static Component bundleConnected(int ends, int sides) {
+        if (ends == 0 && sides == 0) return Component.translatable(PREFIX + "bundle.connected.none");
+        var parts = new java.util.ArrayList<Component>();
+        if (ends > 0) parts.add(Component.translatable(PREFIX + (ends == 1 ? "bundle.end" : "bundle.ends"), ends));
+        if (sides > 0) parts.add(Component.translatable(PREFIX + (sides == 1 ? "bundle.side" : "bundle.sides"), sides));
+        var list = Component.empty();
+        for (int index = 0; index < parts.size(); index++) {
+            if (index > 0) list.append(Component.translatable(PREFIX + "bundle.separator"));
+            list.append(parts.get(index));
+        }
+        return Component.translatable(PREFIX + "bundle.connected", list);
+    }
+
+    /** A device beside the bundle that covers only part of its contact, in the error colour. */
+    static Component bundlePartial(int x, int y, int z, int covered, int cells) {
+        return Component.translatable(PREFIX + "bundle.partial", x, y, z, covered, cells)
+                .withStyle(style -> style.withColor(OVER));
+    }
+
     static Component networks(int count) {
         return Component.translatable(PREFIX + "switch_networks", count);
     }

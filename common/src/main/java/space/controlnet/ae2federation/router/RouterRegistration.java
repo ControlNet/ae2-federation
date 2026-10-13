@@ -61,6 +61,8 @@ public final class RouterRegistration {
         }
         event.registerBlock(FederationPortCapability.BLOCK,
                 (level, position, state, blockEntity, face) -> face == null
+                        || level instanceof net.minecraft.server.level.ServerLevel server
+                                && !space.controlnet.ae2federation.bundle.BundleContacts.open(server, position, face)
                         ? null
                         : new FederationPort(position, face),
                 FEDERATION_CABLE.get());

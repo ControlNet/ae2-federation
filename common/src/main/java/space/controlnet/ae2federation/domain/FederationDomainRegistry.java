@@ -27,10 +27,10 @@ import space.controlnet.ae2federation.policy.AuthorityEpoch;
  * next read: a chunk of cables publishing in one tick costs one walk of the domain, not one per cable. Every read sees
  * the same domains an immediate recomputation would give, up to which new id a merged component receives.
  *
- * <p>A domain with any Federation Cable over {@link CableCapacityLimit} is over capacity: it keeps its nodes, members
- * and id, so nothing it counts changes, but the features that link networks treat it as stopped. Only domains whose
- * evidence changed, or every domain when the limit changes, are judged again, and only a changed verdict advances the
- * topology revision and the authority epoch.
+ * <p>A domain with any Federation Cable over {@link CableCapacityLimit}, times the cable's capacity factor, is over
+ * capacity: it keeps its nodes, members and id, so nothing it counts changes, but the features that link networks treat
+ * it as stopped. Only domains whose evidence changed, or every domain when the limit changes, are judged again, and only
+ * a changed verdict advances the topology revision and the authority epoch.
  */
 public final class FederationDomainRegistry {
     private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
@@ -335,8 +335,10 @@ public final class FederationDomainRegistry {
         boolean changed = false;
         for (var federationDomainId : capacityDomains) {
             var domain = federationDomains.get(federationDomainId);
-            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain)).values()
-                    .stream().anyMatch(demand -> demand.units() > limit.getAsInt());
+            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain))
+                    .entrySet().stream().anyMatch(entry -> CableCapacityLimit.current(
+                            nodes.get(entry.getKey()).capacityFactor()).stream()
+                            .anyMatch(cap -> entry.getValue().units() > cap));
             changed |= over ? overCapacity.add(federationDomainId) : overCapacity.remove(federationDomainId);
         }
         capacityDomains.clear();

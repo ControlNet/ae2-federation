@@ -59,6 +59,9 @@ public final class FederationCableBlock extends BaseEntityBlock {
     protected void onRemove(BlockState state, Level level, BlockPos position, BlockState newState,
             boolean movedByPiston) {
         level.invalidateCapabilities(position);
+        if (!newState.is(this) && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            space.controlnet.ae2federation.bundle.BundledCables.get(serverLevel).removed(serverLevel, position);
+        }
         super.onRemove(state, level, position, newState, movedByPiston);
     }
 

@@ -16,6 +16,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.bundle.BundleContacts;
+import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.client.CableBeamStyle;
 import space.controlnet.ae2federation.domain.CableCapacity;
 import space.controlnet.ae2federation.domain.CableCapacityCounter;
@@ -60,7 +62,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
         for (var face : Direction.values()) {
-            ports.put(face, new CableFacePort(position, face));
+            ports.put(face, new CableFacePort(position, face, "", () -> {
+            }, () -> !(level instanceof ServerLevel serverLevel) || BundleContacts.open(serverLevel, position, face)));
         }
     }
 
@@ -81,8 +84,10 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Counts this cable again once its domain or the limit changed, and tells clients when the count differs. */
     private void syncCapacity(ServerLevel serverLevel) {
         long revision = FederationDomainRegistryAccess.get(serverLevel).evidenceRevision();
-        int limit = CableCapacityLimit.capacity();
-        boolean enforced = CableCapacityLimit.current().isPresent();
+        int factor = capacityFactor(serverLevel);
+        int limit = CableCapacityLimit.capacity()
+                * (factor == FederationDomainNodeEvidence.UNLIMITED ? CableBeamStyle.UNLIMITED_SCALE : factor);
+        boolean enforced = CableCapacityLimit.current(factor).isPresent();
         long now = serverLevel.getGameTime();
         if (revision == capacityRevision && limit == capacity && enforced == capacityEnforced
                 || now < nextCapacityCheck) {
@@ -96,6 +101,25 @@ public final class FederationCableBlockEntity extends BlockEntity {
         capacity = limit;
         capacityEnforced = enforced;
         serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    /** How many cables' capacity this cable carries: its bundle's multiple, or 1 when it is not bundled. */
+    public static int capacityFactor(ServerLevel level, BlockPos position) {
+        return BundledCables.get(level).at(position)
+                .map(membership -> membership.bundle().shape().multiplier().orElse(FederationDomainNodeEvidence.UNLIMITED))
+                .orElse(1);
+    }
+
+    private int capacityFactor(ServerLevel level) {
+        return capacityFactor(level, worldPosition);
+    }
+
+    /** The bundle this cable belongs to changed: its faces, its evidence and its capacity count are judged again. */
+    public void bundleChanged() {
+        ports.values().forEach(CableFacePort::revalidate);
+        federationDomainDirty = true;
+        capacityRevision = Long.MIN_VALUE;
+        nextCapacityCheck = 0;
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -144,7 +168,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
             }
         });
         if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.CABLE, evidence))) {
+                new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.CABLE, evidence,
+                        capacityFactor(serverLevel)))) {
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = false;

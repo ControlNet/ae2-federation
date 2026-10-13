@@ -47,6 +47,21 @@ final class CableCapacityLimitTest {
     }
 
     @Test
+    void aBundledCableCarriesItsMultipleOfTheLimit() {
+        var registry = registry();
+        switchWith(registry, 24, 3);
+        assertFalse(registry.overCapacity(registry.federationDomainOf(node(0)).orElseThrow().federationDomainId()),
+                "a 1x2 bundle carries three cables' worth");
+        var over = registry();
+        switchWith(over, 25, 3);
+        assertTrue(over.overCapacity(over.federationDomainOf(node(0)).orElseThrow().federationDomainId()));
+        var unlimited = registry();
+        switchWith(unlimited, 200, FederationDomainNodeEvidence.UNLIMITED);
+        assertFalse(unlimited.overCapacity(
+                unlimited.federationDomainOf(node(0)).orElseThrow().federationDomainId()), "a 3x3 bundle has no limit");
+    }
+
+    @Test
     void aDomainAtTheLimitRuns() {
         var registry = registry();
         var networks = switchWith(registry, 8);
@@ -89,11 +104,16 @@ final class CableCapacityLimitTest {
 
     /** A cable linked to a Switch whose faces attach {@code count} distinct networks, all in one subdomain. */
     private static NetworkId[] switchWith(FederationDomainRegistry registry, int count) {
+        return switchWith(registry, count, 1);
+    }
+
+    private static NetworkId[] switchWith(FederationDomainRegistry registry, int count, int capacityFactor) {
         var networks = new NetworkId[count];
         for (int index = 0; index < count; index++) networks[index] = new NetworkId(new UUID(0, index + 1));
         var cablePorts = new LinkedHashMap<String, FederationDomainPortEvidence>();
         cablePorts.put("east", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(1), "west")));
-        registry.upsertNode(new FederationDomainNodeEvidence(node(0), FederationDomainNodeKind.CABLE, cablePorts));
+        registry.upsertNode(new FederationDomainNodeEvidence(node(0), FederationDomainNodeKind.CABLE, cablePorts,
+                capacityFactor));
         registry.upsertNode(switchEvidence(1, networks));
         return networks;
     }

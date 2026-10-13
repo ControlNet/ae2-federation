@@ -5,6 +5,11 @@ public record CableBeamStyle(double load, boolean overloaded, float coreRadius, 
         float pulseAmplitude, float pulseDensity, float emission) {
     /** A presentation default for previews; world cables use {@link #loadOf} their synced capacity count. */
     public static final double DEFAULT_LOAD = 0.6;
+    /**
+     * A 3x3 bundle has no limit: its beams show its count against nine cables' capacity, the largest limited multiple,
+     * and never alarm.
+     */
+    public static final int UNLIMITED_SCALE = 9;
 
     /**
      * A cable's load: the units it carries over the units it may carry. Above 1 it alarms, but only while the limit is

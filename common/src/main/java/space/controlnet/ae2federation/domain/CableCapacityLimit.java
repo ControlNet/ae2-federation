@@ -22,6 +22,15 @@ public final class CableCapacityLimit {
         return enforced ? OptionalInt.of(capacity) : OptionalInt.empty();
     }
 
+    /**
+     * The units a cable node of {@code capacityFactor} cables may carry, or empty when capacity is not enforced or the
+     * factor is {@link FederationDomainNodeEvidence#UNLIMITED}.
+     */
+    public static OptionalInt current(int capacityFactor) {
+        return enforced && capacityFactor != FederationDomainNodeEvidence.UNLIMITED
+                ? OptionalInt.of(capacity * capacityFactor) : OptionalInt.empty();
+    }
+
     /** The units one cable may carry as configured, enforced or not. */
     public static int capacity() {
         return capacity;
