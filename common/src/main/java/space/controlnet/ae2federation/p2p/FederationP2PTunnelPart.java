@@ -26,6 +26,7 @@ import net.minecraft.world.level.BlockGetter;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -232,7 +233,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             }
         }
         boolean changed = FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(nodeId, evidence));
+                new FederationDomainNodeEvidence(nodeId, FederationDomainNodeKind.P2P_TUNNEL, evidence));
         publishedInput = isOutput() && links != 0 ? input : null;
         P2PRefreshDiagnostics.published(nodeId, links, changed);
         if (changed) {

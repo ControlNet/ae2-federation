@@ -24,6 +24,7 @@ import space.controlnet.ae2federation.domain.port.FederationPort;
 import space.controlnet.ae2federation.domain.port.RouterFacePort;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -201,6 +202,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
+        var kind = getType() == RouterRegistration.SWITCH_BLOCK_ENTITY.get() ? FederationDomainNodeKind.SWITCH
+                : FederationDomainNodeKind.ROUTER;
+        return new FederationDomainNodeEvidence(federationDomainNodeId, kind, evidence);
     }
 }

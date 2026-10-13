@@ -1,16 +1,33 @@
 # Multiblock routers, switches, and cable capacity
 
-Discussion dates: 2026-10-09 through 2026-10-11.
-Status: gameplay idea with accepted layout tradeoffs and a candidate region-counting model. Cable multipliers,
-connection details and failure behavior still need evaluation. Router and switch multiblocks must be solid cuboids. Router capacity limits are out of scope for now;
-do not treat the original charger-rooted model as a requirement.
+Discussion dates: 2026-10-09 through 2026-10-13.
+Status: region counting rules confirmed on 2026-10-13 (see [Confirmed counting rules](#confirmed-counting-rules));
+counting comes first and is shown read-only, limits and their enforcement come later. Cable multipliers,
+failure behavior and balancing still need evaluation. Router and switch multiblocks must be solid cuboids. Router
+capacity limits are out of scope for now; do not treat the original charger-rooted model as a requirement.
 
 On 2026-10-11 the user prioritized multiblock Switches and Routers while deferring bundled cables.
-The connected appearance is now accepted: raised blue Router links and white Switch backing with
-original-style recessed blue contacts. See the [device assembly and appearance handoff](multiblock-device-assembly-and-appearance.md)
-for the final visual references, executable prototype, reproduction commands and unresolved operational
-rules. Minecraft runtime integration has not started. This sequencing and visual acceptance do not
-select or implement the cable-capacity candidate below.
+The connected appearance is accepted and the solid-cuboid devices are implemented on `dev`; see the
+[device assembly and appearance handoff](multiblock-device-assembly-and-appearance.md). That work did not select or
+implement the cable-capacity rules below.
+
+## Confirmed counting rules
+
+On 2026-10-13 the user ordered the work as counting first, limits afterwards, and settled the open counting choices:
+
+- **Units.** Each distinct ME network attached through a Federation Switch is one unit, and each Processing Endpoint
+  is one unit. A Federation Pattern Provider's own network is not counted. Policy never changes the count.
+- **Regions.** A region is a connected group of Federation Cables. A Switch does not split a region: cables on both
+  sides of a Switch body belong to one region, and the Switch's attached networks count in it. A Federation P2P
+  tunnel pair counts as cable: the regions at both ends are one region, and the tunnel's carrier network is not
+  counted. Only Routers bound regions.
+- **Router identity.** R(S) counts distinct Router bodies (one formed solid cuboid is one router), not blocks or faces.
+- **Demand.** A region touching no Router or exactly one Router counts its own units |A(S)|; a region touching two
+  or more Routers counts the whole domain's units |A(D)|.
+- **Repeated networks.** One ME network attached in two regions counts once in each region and once in the domain.
+- **Display.** The count is shown on a Federation Cable through Jade (see [Jade cable capacity](jade-cable-capacity.md)).
+
+Implemented on `dev` as a read-only count; see [cable capacity counting](../architecture/cable-capacity-counting.md).
 
 ## Player experience
 

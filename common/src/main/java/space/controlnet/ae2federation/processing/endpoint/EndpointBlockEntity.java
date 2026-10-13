@@ -16,6 +16,7 @@ import appeng.me.energy.IEnergyOverlayGridConnection;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -218,7 +219,7 @@ public final class EndpointBlockEntity extends AENetworkedBlockEntity {
                     new FederationDomainPortId(remoteNode, peer.outwardFace().getSerializedName())));
         }
         if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+                new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.ENDPOINT, evidence))) {
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = false;

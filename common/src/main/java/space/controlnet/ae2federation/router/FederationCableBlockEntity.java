@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -93,7 +94,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
             }
         });
         if (FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(federationDomainNodeId, evidence))) {
+                new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.CABLE, evidence))) {
             FederationBindingRefresh.request(serverLevel);
         }
         federationDomainDirty = false;

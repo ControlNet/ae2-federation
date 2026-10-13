@@ -154,6 +154,7 @@
     {"id":"router.adjacent-federation","backend":"gametest","testId":"routeradjacentfederation","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"switch.router-refuses-me-networks","backend":"gametest","testId":"routerrefusesmenetworks","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"switch.joins-through-router","backend":"gametest","testId":"switchesjointhroughrouter","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"capacity.cable-regions","backend":"gametest","testId":"cablecapacitycountsregions","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"visual.device-occlusion","backend":"gametest","testId":"deviceocclusion","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"structure.device-lifecycle","backend":"gametest","testId":"devicestructurelifecycle","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"structure.device-shapes","backend":"gametest","testId":"devicestructureshapes","structure":"ae2federation_test:harness_native_smoke","assertions":7},

@@ -9,13 +9,13 @@ what the feature should do; it does not mean implementation has started or a rel
 |---|---|---|
 | [Statistics dashboard](statistics-dashboard.md) | Preliminary visualization direction; metrics open | Federation and AE network statistics, time-series charts, and dashboard-like views |
 | [Rule-based automation](rule-based-automation.md) | Shared function system proposed; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
-| [Lightweight Jade cable capacity display](jade-cable-capacity.md) | Preliminary; depends on future capacity rules | A concise cable network-count/limit line; no broad diagnostic HUD |
+| [Lightweight Jade cable capacity display](jade-cable-capacity.md) | Count line implemented on `dev`; limit part waits for capacity limits | A concise cable network-count/limit line; no broad diagnostic HUD |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
 | [Optional Federation operating power](federation-operating-power.md) | User-proposed direction; details open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
 | [Line-of-sight beam links](line-of-sight-beam-links.md) | User-proposed connection form; details open | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
-| [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Region-counting candidate; concentrated layouts accepted; balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
+| [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Counting rules confirmed and counting implemented on `dev`; limits, bundled cables and balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 | [Multiblock device assembly and appearance](multiblock-device-assembly-and-appearance.md) | Implemented on `dev` | Solid cuboids (edge ≤ 8, AE2 rules, invalid candidates stop linking), raised Router links, white-backed Switch with recessed contacts, in-game screenshots |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.

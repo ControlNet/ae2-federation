@@ -51,6 +51,8 @@ public final class FederationDomainRegistry {
     /** The dimension each Bridge's part lives in, so closing that level withdraws it. */
     private final Map<FederationDomainSourceId, String> bridgeDimensions = new HashMap<>();
     private long topologyRevision;
+    /** Advances on every evidence change, including ones that leave every domain as it was. */
+    private long evidenceRevision;
     private long physicalSequence;
     /** Nodes whose components changed since the last recomputation; recomputed together before the next read. */
     private final Set<FederationDomainNodeId> pendingSeeds = new TreeSet<>();
@@ -97,14 +99,14 @@ public final class FederationDomainRegistry {
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
         bridgeDimensions.put(source, dimension);
-        mutationListener.run();
+        mutated();
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
         flush();
         AuthorityEpoch.advance();
         removeDirectBridge(source);
-        mutationListener.run();
+        mutated();
     }
 
     /** Records a node's evidence; returns false when it equals what the node already published. */
@@ -122,7 +124,7 @@ public final class FederationDomainRegistry {
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
-        mutationListener.run();
+        mutated();
         return true;
     }
 
@@ -133,7 +135,7 @@ public final class FederationDomainRegistry {
             pendingSeeds.addAll(affectedBy(nodeId, previous, null));
             pendingRemovals.add(nodeId);
             removeIncoming(previous);
-            mutationListener.run();
+            mutated();
         }
         invalidations.put(nodeId, reason);
         if (reason == FederationDomainInvalidationReason.SOURCE_UNLOADED) {
@@ -174,7 +176,7 @@ public final class FederationDomainRegistry {
         invalidations.keySet().removeIf(node -> node.dimension().equals(dimension));
         unloaded.removeIf(node -> node.dimension().equals(dimension));
         if (!removedNodes.isEmpty() || !removedBridges.isEmpty()) {
-            mutationListener.run();
+            mutated();
         }
         var left = (int) nodes.keySet().stream().filter(node -> node.dimension().equals(dimension)).count();
         return new DimensionRemoval(dimension, removedNodes.size(), removedBridges.size(), left);
@@ -219,6 +221,24 @@ public final class FederationDomainRegistry {
     public Optional<FederationDomainSnapshot> federationDomainOf(FederationDomainNodeId nodeId) {
         flush();
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
+    }
+
+    /** Changes whenever any node's or Bridge's evidence changes, even when no domain does. */
+    public long evidenceRevision() {
+        return evidenceRevision;
+    }
+
+    /** The evidence each node of a domain published; empty for a direct Bridge domain or an unknown id. */
+    public List<FederationDomainNodeEvidence> nodeEvidence(FederationDomainId federationDomainId) {
+        flush();
+        var domain = federationDomains.get(federationDomainId);
+        return domain == null ? List.of()
+                : domain.nodes().stream().map(nodes::get).filter(Objects::nonNull).toList();
+    }
+
+    private void mutated() {
+        evidenceRevision++;
+        mutationListener.run();
     }
 
     private long nextTopologyRevision() {

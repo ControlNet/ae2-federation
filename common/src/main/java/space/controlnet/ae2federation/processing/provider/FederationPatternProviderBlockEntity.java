@@ -44,6 +44,7 @@ import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
 import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -869,7 +870,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             evidence.put(NATIVE_PORT, FederationDomainRegistryAccess.nativeEvidence(grid, new FederationDomainPortId(federationDomainNodeId,
                     NATIVE_PORT)));
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
+        return new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.PATTERN_PROVIDER,
+                evidence);
     }
 
     private @Nullable FederationPort federationPeer(ServerLevel serverLevel) {

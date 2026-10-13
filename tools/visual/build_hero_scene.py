@@ -2,8 +2,9 @@
 
 `function hero_scene:base` builds two real ME networks joined by Federation blocks, with a third network on a Bridge.
 `function hero_scene:lineup` puts every Federation block and item side by side. `function hero_scene:beam` lays cable
-runs and junctions for renderer before/after shots. All clear and replace the terrain around their origin, so run them
-only in a throwaway world.
+runs and junctions for renderer before/after shots. `function hero_scene:capacity` lays one line of Switches, Routers,
+cables and an Endpoint for cable capacity count shots. All clear and replace the terrain around their origin, so run
+them only in a throwaway world.
 """
 from pathlib import Path
 import argparse
@@ -15,6 +16,8 @@ parser.add_argument('--origin', type=int, nargs=3, default=[596, 68, 900], metav
                     help='Base scene origin; Y is the ground block level')
 parser.add_argument('--lineup-offset', type=int, default=-45, help='X offset of the lineup from the base origin')
 parser.add_argument('--beam-offset', type=int, default=45, help='X offset of the cable beam scene from the base origin')
+parser.add_argument('--capacity-offset', type=int, default=75,
+                    help='X offset of the cable capacity scene from the base origin')
 args = parser.parse_args()
 
 pack = args.world / 'datapacks/hero_scene'
@@ -185,4 +188,20 @@ beam.fill((1, 3, 0), (3, 3, 0), 'ae2federation:cable')
 beam.fill((2, 3, -1), (2, 3, 1), 'ae2federation:cable')
 beam.block(2, 4, 0, 'ae2federation:cable')
 beam.write('beam')
+
+# --- Capacity: Switch (two ME chests) - cables - Router - cables - Switch (one chest) - cables - Router - cables -
+# Endpoint. The outer runs touch one Router each and count their own region; the trunk touches both and counts the
+# whole domain: three networks and the Endpoint. ---
+capacity = Scene(args.origin[0] + args.capacity_offset, args.origin[1], args.origin[2])
+capacity.commands += setup
+capacity.clear(-12, 12, -6, 6)
+capacity.fill((-10, 0, -3), (10, 0, 3), 'minecraft:polished_andesite')
+for dx, state in [(-8, 'ae2federation:switch'), (-4, 'ae2federation:router'), (0, 'ae2federation:switch'),
+                  (4, 'ae2federation:router'), (8, 'ae2federation:processing_endpoint[facing=west]')]:
+    capacity.block(dx, 1, 0, state)
+for x0, x1 in [(-7, -5), (-3, -1), (1, 3), (5, 7)]:
+    capacity.fill((x0, 1, 0), (x1, 1, 0), 'ae2federation:cable')
+for position in [(-8, 2, 0), (-8, 1, -1), (0, 2, 0)]:
+    capacity.block(*position, 'ae2:chest')
+capacity.write('capacity')
 print(pack)

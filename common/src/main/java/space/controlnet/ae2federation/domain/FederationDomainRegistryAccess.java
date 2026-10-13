@@ -63,6 +63,7 @@ public final class FederationDomainRegistryAccess {
         last = null;
         AuthorityEpoch.advance();
         REGISTRIES.remove(server);
+        CableCapacity.clear();
     }
 
     public static synchronized void removeNodeIfPresent(ServerLevel level, FederationDomainNodeId nodeId) {

@@ -439,5 +439,8 @@
   "ae2federation.ui.processing.returns_empty": "Buffer empty",
   "ae2federation.ui.processing.returns_waiting": "%s kinds waiting to enter the network",
   "ae2federation.ui.processing.release_blocked_returns": "Cannot release yet: %s kinds of result are still in its return buffer. They enter the ME network as soon as it has room.",
-  "ae2federation.ui.processing.release_blocked_send": "Cannot release yet: a send to it is still in progress."
+  "ae2federation.ui.processing.release_blocked_send": "Cannot release yet: a send to it is still in progress.",
+  "ae2federation.jade.cable_capacity.local": "Capacity count: %s (local)",
+  "ae2federation.jade.cable_capacity.domain": "Capacity count: %s (whole domain)",
+  "config.jade.plugin_ae2federation.cable_capacity": "Federation Cable capacity count"
 }
