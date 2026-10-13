@@ -27,9 +27,7 @@ final class BundleCableBuilder {
         var quads = new ArrayList<BakedQuad>();
         var baker = new QuadBakingVertexConsumer();
         for (var panel : BundleShellLayout.panels(look)) {
-            for (var u : BundleShellLayout.slices(panel.u())) {
-                for (var v : BundleShellLayout.slices(panel.v())) quads.add(quad(baker, panel, u, v));
-            }
+            for (var tile : BundleShellLayout.tiles(panel)) quads.add(quad(baker, panel, tile));
         }
         for (var side : Direction.values()) {
             if (look.open(side)) cable.addCollar(side, quads);
@@ -38,9 +36,11 @@ final class BundleCableBuilder {
         return List.copyOf(quads);
     }
 
-    /** One rectangle of a panel, wound counter-clockwise seen from outside, as the translucent layer culls. */
-    private BakedQuad quad(QuadBakingVertexConsumer baker, BundleShellLayout.Panel panel, BundleShellLayout.Slice u,
-            BundleShellLayout.Slice v) {
+    /**
+     * One tile of a panel, wound counter-clockwise seen from outside, as the translucent layer culls. It samples the
+     * middle of its one texel, so mipmaps never blend in the next.
+     */
+    private BakedQuad quad(QuadBakingVertexConsumer baker, BundleShellLayout.Panel panel, BundleShellLayout.Tile tile) {
         var normal = panel.normal();
         baker.setSprite(frame);
         baker.setDirection(normal);
@@ -51,25 +51,23 @@ final class BundleCableBuilder {
         boolean forward = cross(panel.uAxis(), panel.vAxis()) == normal.getAxis().ordinal()
                 && sign(panel.uAxis(), panel.vAxis()) == normal.getAxisDirection().getStep();
         float[][] corners = forward
-                ? new float[][] {{u.from(), v.from()}, {u.to(), v.from()}, {u.to(), v.to()}, {u.from(), v.to()}}
-                : new float[][] {{u.from(), v.from()}, {u.from(), v.to()}, {u.to(), v.to()}, {u.to(), v.from()}};
+                ? new float[][] {{tile.u0(), tile.v0()}, {tile.u1(), tile.v0()}, {tile.u1(), tile.v1()},
+                        {tile.u0(), tile.v1()}}
+                : new float[][] {{tile.u0(), tile.v0()}, {tile.u0(), tile.v1()}, {tile.u1(), tile.v1()},
+                        {tile.u1(), tile.v0()}};
+        float texelU = tile.texelU() + .5f;
+        float texelV = tile.texelV() + .5f;
         for (var corner : corners) {
             float[] position = new float[3];
             position[normal.getAxis().ordinal()] = panel.plane() / 16;
             position[panel.uAxis().ordinal()] = corner[0] / 16;
             position[panel.vAxis().ordinal()] = corner[1] / 16;
-            float texelU = texel(u, corner[0]);
-            float texelV = texel(v, corner[1]);
             baker.addVertex(position[0], position[1], position[2]);
             baker.setColor(255, 255, 255, 255);
             baker.setUv(frame.getU(texelU / 16), frame.getV(texelV / 16));
             baker.setNormal(normal.getStepX(), normal.getStepY(), normal.getStepZ());
         }
         return baker.bakeQuad();
-    }
-
-    private static float texel(BundleShellLayout.Slice slice, float at) {
-        return at == slice.from() ? slice.texelFrom() : slice.texelTo();
     }
 
     /** The axis of {@code a x b} for two different axes. */
