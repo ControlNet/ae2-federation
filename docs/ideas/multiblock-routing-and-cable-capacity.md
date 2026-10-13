@@ -149,9 +149,8 @@ direction is ever inferred.
 - **Branching and turning.** A branch may leave any side of a bundle, at any point along it, wherever the same
   cross-section fits: its cross-section has the same M x N, it covers that side's full width, and it occupies as many
   layers of the bundle as its other dimension needs (a 2x2 branch takes two layers; a 2x3 bundle can branch from its
-  3-wide side over two layers or its 2-wide side over three). A turn is a branch at the end. The user first said a
-  1x2 cannot branch from its 1-wide side, then chose "wherever the same cross-section fits", which allows it over two
-  layers; confirm before implementing.
+  3-wide side over two layers or its 2-wide side over three). A turn is a branch at the end. A 1x2 branches from
+  its 1-wide side too, over two layers (user, 2026-10-13).
 - **Breaking.** Breaking a bundled block, or wrench Shift+right-click on it, removes that one block and drops one
   ordinary cable; the rest of that layer's cross-section turns back into ordinary cable blocks, and the bundle splits
   into two at that layer, as Create's fluid tanks split. Bundles of the same cross-section whose end faces meet,
@@ -238,8 +237,7 @@ proposal proceeds. No changes to their existing contracts are selected by this b
 4. **Router and switch behavior:** distinguish their roles and counting-boundary behavior. Keep router
    capacity limits out of the current scope and preserve the accepted concentrated layouts.
 5. **Shape recognition:** solid cuboids are required for routers and switches. Bundled cables are formed explicitly
-   with a wrench, which settles their axis, cross-section, turns and forks; 1x2 branching from its narrow side and
-   the 1x3 capacity remain open.
+   with a wrench, which settles their axis, cross-section, turns and forks; the 1x3 capacity remains open.
 6. **Usability:** saturated spans, power loss, obstructed remote links, and inactive policy rules should have
    distinguishable feedback. Rebuilding one segment should not silently change unrelated connection priorities.
 7. **Progression:** does an unlimited 3x3 trunk leave useful roles for smaller sizes and potential larger sizes?
