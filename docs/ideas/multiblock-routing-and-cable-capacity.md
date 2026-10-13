@@ -163,7 +163,9 @@ direction is ever inferred.
   2026-10-13).
 - **Feedback.** Jade shows a bundle's cross-section, capacity and whether each end is connected. The selection box,
   extension and branch previews and the Jade line are shown in the design canvas before any code.
-- **Appearance** is left for later.
+- **Appearance** (user, 2026-10-13): extend the ordinary cable's textures and rendering flexibly. A bundle has one
+  shell the size of its cross-section (a 2x3 bundle is one 2x3 shell, not six cable shells), and one beam per cell
+  runs inside it, so a 2x3 carries six beams. Each beam follows the bundle's capacity load like an ordinary cable's.
 
 ## Bundled cable capacity and multiblock connections
 
