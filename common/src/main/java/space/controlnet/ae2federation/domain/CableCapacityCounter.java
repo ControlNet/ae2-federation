@@ -14,8 +14,8 @@ import java.util.Set;
  * {@code docs/ideas/multiblock-routing-and-cable-capacity.md}, "Confirmed counting rules"). It counts only; nothing
  * limits a cable yet.
  *
- * <p>A unit is a distinct ME network attached through a Switch, or a Processing Endpoint; a Pattern Provider's own
- * network is not one. Cables, Switches and P2P tunnels joined by links form a region; only Router bodies bound it. A
+ * <p>A unit is a distinct ME network attached through a Switch, a Processing Endpoint or a Federation Pattern Provider;
+ * a Provider is one device, whatever network stands behind it. Cables, Switches and P2P tunnels joined by links form a region; only Router bodies bound it. A
  * region touching at most one Router body is a subdomain and carries its own units; one touching two or more carries
  * the whole Federation domain's.
  * Only links both sides name count, as in the domain itself.
@@ -69,7 +69,7 @@ public final class CableCapacityCounter {
                 for (var neighbour : neighbours.get(member)) {
                     var kind = nodes.get(neighbour).kind();
                     if (kind == FederationDomainNodeKind.ROUTER) routers.add(bodies.get(neighbour));
-                    if (kind == FederationDomainNodeKind.ENDPOINT) units.add(neighbour);
+                    if (device(kind)) units.add(neighbour);
                 }
             }
             var demand = routers.size() >= 2 ? new Demand(Scope.DOMAIN, domainUnits.size())
@@ -86,13 +86,18 @@ public final class CableCapacityCounter {
                 || kind == FederationDomainNodeKind.P2P_TUNNEL;
     }
 
-    /** Switch networks by id and Endpoints by node; settled native evidence only. */
+    /** Endpoints and Pattern Providers: one unit each, linked to a region from outside it. */
+    private static boolean device(FederationDomainNodeKind kind) {
+        return kind == FederationDomainNodeKind.ENDPOINT || kind == FederationDomainNodeKind.PATTERN_PROVIDER;
+    }
+
+    /** Switch networks by id (settled native evidence only), and Endpoints and Providers by node. */
     private static void addUnits(FederationDomainNodeEvidence evidence, Set<Object> units) {
         switch (evidence.kind()) {
             case SWITCH -> evidence.ports().values().forEach(port -> {
                 if (port instanceof FederationDomainPortEvidence.Native attached) units.add(attached.networkId());
             });
-            case ENDPOINT -> units.add(evidence.nodeId());
+            case ENDPOINT, PATTERN_PROVIDER -> units.add(evidence.nodeId());
             default -> {
             }
         }

@@ -24,9 +24,10 @@ public final class CableCapacityGameTests {
 
     /**
      * One line along x, within three blocks of the centre like the other harness tests: Switch (two chests) - cable -
-     * Router - cable - Router - cable - Endpoint, and a Switch (one chest) on top of the middle cable. The outer cables
-     * touch one Router and count their own subdomain; the trunk touches both and counts the Federation domain: three networks
-     * and the Endpoint. (A Switch passing a region through is covered by {@code CableCapacityCounterTest}.)
+     * Router - cable - Router - cable - Endpoint, a Switch (one chest) on top of the middle cable and a Pattern Provider
+     * facing the left cable. The outer cables touch one Router and count their own subdomain; the trunk touches both and
+     * counts the Federation domain: three networks, the Provider and the Endpoint. (A Switch passing a region through
+     * is covered by {@code CableCapacityCounterTest}.)
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 300, required = true, manualOnly = true)
@@ -46,14 +47,17 @@ public final class CableCapacityGameTests {
         fixtures.placeRouter(CENTER.east());
         fixtures.placeSwitch(CENTER.above());
         fixtures.placeNativeDevice(CENTER.above(), Direction.UP);
+        helper.setBlock(CENTER.west(2).south(), ProcessingRegistration.PROVIDER.get().defaultBlockState()
+                .setValue(BlockStateProperties.FACING, Direction.NORTH));
         helper.setBlock(CENTER.east(3), ProcessingRegistration.ENDPOINT.get().defaultBlockState()
                 .setValue(BlockStateProperties.FACING, Direction.WEST));
         helper.succeedWhen(() -> {
             var left = demand(helper, CENTER.west(2));
             var trunk = demand(helper, CENTER);
             var right = demand(helper, CENTER.east(2));
-            helper.assertValueEqual(left, new Demand(Scope.SUBDOMAIN, 2), "The left subdomain counts its Switch's two networks");
-            helper.assertValueEqual(trunk, new Demand(Scope.DOMAIN, 4),
+            helper.assertValueEqual(left, new Demand(Scope.SUBDOMAIN, 3),
+                    "The left subdomain counts its Switch's two networks and the Provider");
+            helper.assertValueEqual(trunk, new Demand(Scope.DOMAIN, 5),
                     "The trunk between two Routers counts the Federation domain");
             helper.assertValueEqual(right, new Demand(Scope.SUBDOMAIN, 1), "The right subdomain counts its Endpoint");
             RouterEvidence.write("cablecapacitycountsregions", 3, Map.of(

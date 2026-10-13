@@ -2,7 +2,7 @@
 
 User order: counting first, limits later. Decisions (recorded in `docs/ideas/multiblock-routing-and-cable-capacity.md`,
 "Confirmed counting rules"): Switch passes a region through, P2P pair counts as cable, no-Router region counts locally,
-a network on two regions counts once in each, Pattern Provider's own network is NOT a unit, Endpoints are. Display via
+a network on two regions counts once in each, Pattern Provider counts 1 as a device (changed later the same day; was "not a unit"), Endpoints are. Display via
 Jade. Contract: `docs/architecture/cable-capacity-counting.md`.
 
 ## Implementation notes
@@ -50,3 +50,11 @@ its networks and Endpoints, is a **subdomain** / 「子域」, the part of a dom
 other case is just "Federation domain" / 「联邦域」. Code: `CableCapacityCounter.Scope.SUBDOMAIN` (was `LOCAL`), lang key
 `ae2federation.jade.cable_capacity.subdomain` (was `.local`); Jade reads "Capacity count: N (subdomain)" /
 "(Federation domain)", 「容量计数：N（子域）」/「（联邦域）」. Guide pages and docs use the same words.
+
+## Pattern Providers count 1 (2026-10-13)
+
+A network reaching the domain only through a Federation Pattern Provider's front was counted nowhere, a way around any
+future limit. The owner chose the simplest fix: every Provider node is one unit, like an Endpoint, not deduplicated
+against a Switch carrying the same network. `CableCapacityCounterTest.aPatternProviderCountsOneLikeAnEndpointWhatever
+ItsNetwork`; the GameTest adds a Provider facing the left cable (left 3 subdomain, trunk 5 domain, right 1). The guide
+scene has no Provider, so its 2 / 4 / 1 is unchanged.

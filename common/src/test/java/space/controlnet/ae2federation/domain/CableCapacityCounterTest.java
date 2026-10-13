@@ -106,14 +106,20 @@ final class CableCapacityCounterTest {
     }
 
     @Test
-    void aPatternProvidersOwnNetworkIsNotCounted() {
+    void aPatternProviderCountsOneLikeAnEndpointWhateverItsNetwork() {
         var graph = new Graph();
         var cable = graph.node(FederationDomainNodeKind.CABLE);
-        var provider = graph.node(FederationDomainNodeKind.PATTERN_PROVIDER, C);
-        graph.link(cable, provider).link(provider, graph.node(FederationDomainNodeKind.ENDPOINT));
-        graph.link(graph.node(FederationDomainNodeKind.ROUTER), cable);
+        var trunk = graph.node(FederationDomainNodeKind.CABLE);
+        var left = graph.node(FederationDomainNodeKind.ROUTER);
+        var right = graph.node(FederationDomainNodeKind.ROUTER);
+        graph.link(cable, graph.node(FederationDomainNodeKind.PATTERN_PROVIDER, C));
+        graph.link(cable, graph.node(FederationDomainNodeKind.SWITCH, C));
+        graph.link(left, cable).link(left, trunk).link(trunk, right);
 
-        assertEquals(new Demand(Scope.SUBDOMAIN, 0), graph.count().get(cable));
+        var demand = graph.count();
+        // The Provider is a device of its own: it counts beside the network C a Switch attaches.
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(cable));
+        assertEquals(new Demand(Scope.DOMAIN, 2), demand.get(trunk));
     }
 
     @Test

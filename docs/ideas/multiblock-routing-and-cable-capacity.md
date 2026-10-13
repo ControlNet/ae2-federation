@@ -16,7 +16,8 @@ implement the cable-capacity rules below.
 On 2026-10-13 the user ordered the work as counting first, limits afterwards, and settled the open counting choices:
 
 - **Units.** Each distinct ME network attached through a Federation Switch is one unit, and each Processing Endpoint
-  is one unit. A Federation Pattern Provider's own network is not counted. Policy never changes the count.
+  is one unit. A Federation Pattern Provider is one unit too, as a device (changed 2026-10-13 from "not counted", so a
+  network cannot reach the domain uncounted through a Provider alone); its own network is not counted for it. Policy never changes the count.
 - **Regions.** A region is a connected group of Federation Cables. A Switch does not split a region: cables on both
   sides of a Switch body belong to one region, and the Switch's attached networks count in it. A Federation P2P
   tunnel pair counts as cable: the regions at both ends are one region, and the tunnel's carrier network is not

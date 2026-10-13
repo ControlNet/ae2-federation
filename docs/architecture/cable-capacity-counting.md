@@ -11,15 +11,16 @@ The count reads the domain registry's evidence only. Each node's evidence carrie
 part that publishes it. Links count only when both sides name each other, exactly as for the domain itself.
 
 - **Units.** A Switch node's settled `Native` ports give one unit per distinct `NetworkId`; unsettled faces give none.
-  An Endpoint node is one unit. A Pattern Provider's own `Native` port is not a unit.
+  An Endpoint node is one unit, and so is a Pattern Provider node: a device of its own, not deduplicated against
+  the network behind it (whose `Native` port is not a unit).
 - **Router bodies.** Router nodes linked to each other form one body. Two Router bodies cannot touch (the cuboid check
   rejects it), so a linked component of Router nodes is exactly one formed device.
 - **Regions.** Cable, Switch and P2P tunnel nodes linked to each other form a region: a Switch passes a region through
   and a P2P tunnel pair joins the regions at its ends. Router, Provider and Endpoint nodes are outside every region.
 
 A region's routers are the bodies linked to any of its nodes; its units are its Switches' networks plus the Endpoints
-linked to it. A region with at most one router, together with those units, is a **subdomain**: every cable in it counts
-the subdomain's units (`SUBDOMAIN`). With two or more routers every cable counts the Federation domain's (`DOMAIN`). An Endpoint or Switch linked straight to a Router belongs to the domain's count but to no region.
+and Providers linked to it. A region with at most one router, together with those units, is a **subdomain**: every cable in it counts
+the subdomain's units (`SUBDOMAIN`). With two or more routers every cable counts the Federation domain's (`DOMAIN`). An Endpoint, Provider or Switch linked straight to a Router belongs to the domain's count but to no region.
 
 ## Server and display
 

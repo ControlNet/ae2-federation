@@ -8,7 +8,7 @@ navigation:
 
 # Network Capacity
 
-Every piece of <ItemLink id="ae2federation:cable" /> counts how many networks and Endpoints it carries. For now this is
+Every piece of <ItemLink id="ae2federation:cable" /> counts how many networks and devices it carries. For now this is
 only a count: no cable has a limit yet, and nothing stops working however high the count gets.
 
 <GameScene zoom="4" interactive={true} background="transparent">
@@ -46,8 +46,8 @@ only a count: no cable has a limit yet, and nothing stops working however high t
 ## What counts
 
 * **Each ME network on a Switch counts 1.** A network that touches several Switch faces still counts once.
-* **Each Processing Endpoint counts 1.**
-* **A Federation Pattern Provider counts nothing.** The Endpoints it sends work to are counted instead.
+* **Each Processing Endpoint and each Federation Pattern Provider counts 1.** A Provider counts as a device of its
+  own, even when its network is also on a Switch.
 
 Neither rules nor power play a part: a network counts as soon as it joins the domain.
 
@@ -59,7 +59,7 @@ the same segment. Only a <ItemLink id="ae2federation:router" /> ends one, and a 
 as one Router.
 
 * A segment that touches **no Router or one Router**, together with the networks on its Switches and the Endpoints
-  on it, is a **subdomain**: the part of the domain that counts on its own. The segment counts only its subdomain.
+  and Providers on it, is a **subdomain**: the part of the domain that counts on its own. The segment counts only its subdomain.
 * A segment that touches **two or more Routers** carries traffic between them, so it counts everything in the
   [Federation domain](mechanics.md).
 * A network whose Switches sit on two segments counts in each of them.

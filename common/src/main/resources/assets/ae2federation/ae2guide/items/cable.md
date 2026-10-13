@@ -33,7 +33,7 @@ Federation Cable links Switches, Routers, Federation Pattern Providers and Proce
 
 It is not an ME cable: ME cables and devices do not attach to it, it carries no channels and it uses no power. It has
 no length limit. The pulses inside it are decoration; use **Live flow** in the Federation screen to see real traffic.
-Each cable counts the networks and Endpoints it carries; see [Network Capacity](../network-capacity.md).
+Each cable counts the networks, Endpoints and Pattern Providers it carries; see [Network Capacity](../network-capacity.md).
 
 <RecipeFor id="ae2federation:cable" />
 

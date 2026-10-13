@@ -190,8 +190,8 @@ beam.block(2, 4, 0, 'ae2federation:cable')
 beam.write('beam')
 
 # --- Capacity: Switch (two ME chests) - cables - Router - cables - Switch (one chest) - cables - Router - cables -
-# Endpoint. The outer runs touch one Router each and count their own region; the trunk touches both and counts the
-# whole domain: three networks and the Endpoint. ---
+# Endpoint, and a Pattern Provider on the left run. The outer runs touch one Router each and count their own subdomain;
+# the trunk touches both and counts the Federation domain: three networks, the Provider and the Endpoint. ---
 capacity = Scene(args.origin[0] + args.capacity_offset, args.origin[1], args.origin[2])
 capacity.commands += setup
 capacity.clear(-12, 12, -6, 6)
@@ -199,6 +199,7 @@ capacity.fill((-10, 0, -3), (10, 0, 3), 'minecraft:polished_andesite')
 for dx, state in [(-8, 'ae2federation:switch'), (-4, 'ae2federation:router'), (0, 'ae2federation:switch'),
                   (4, 'ae2federation:router'), (8, 'ae2federation:processing_endpoint[facing=west]')]:
     capacity.block(dx, 1, 0, state)
+capacity.block(-6, 1, -1, 'ae2federation:pattern_provider[facing=south]')
 for x0, x1 in [(-7, -5), (-3, -1), (1, 3), (5, 7)]:
     capacity.fill((x0, 1, 0), (x1, 1, 0), 'ae2federation:cable')
 for position in [(-8, 2, 0), (-8, 1, -1), (0, 2, 0)]:
