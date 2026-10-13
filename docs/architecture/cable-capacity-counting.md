@@ -39,10 +39,10 @@ explains the rules to players.
 
 ## Limit
 
-`CableCapacityLimit` holds the server's rule: enforced by default with 4 units per cable, set from
-`serverconfig/ae2federation-server.toml` (`capacity.enforceCableCapacity`, `capacity.cableCapacity`, 1 to 1024) by
-`FederationServerConfig` when the file loads or is edited. The owner decided (2026-10-13) that any cable over the
-limit stops the **whole** Federation domain, judged again only when the domain's evidence or the limit changes.
+`CableCapacityLimit` holds the server's rule: enforced by default with 8 units per cable, set from
+`config/ae2federation-server.toml` (`capacity.enforceCableCapacity`, `capacity.cableCapacity`, 1 to 1024; a world's
+`serverconfig/` may override the file) by `FederationServerConfig` when the file loads or is edited. The owner decided (2026-10-13) that any cable over the
+limit stops its Federation domain, every subdomain of it included, judged again only when the domain's evidence or the limit changes.
 
 - **Verdict.** `FederationDomainRegistry` judges a domain on the read after its evidence changed or it was installed,
   or every domain after the limit changed (`judgeCapacity`, inside `flush`). The verdict keeps the domain's nodes,
@@ -55,5 +55,7 @@ limit stops the **whole** Federation domain, judged again only when the domain's
 - **Display.** The topology sends `openedOverCapacity` and `overCapacityDomains`: the opened domain alone turns the
   canvas `CANVAS_STOPPED` with "over capacity, stopped" after the scope caption; with related domains on plates, only
   stopped plates turn `PLATE_STOPPED` with that suffix on their names. Jade reads "Capacity count: N/C", N red over C.
+  Each cable's light shows N/C (`CableBeamStyle.loadOf`, synced by `FederationCableBlockEntity`) and pulses red over
+  an enforced C; see [the M renderer](../art/cable-m-renderer.md).
 - **Tests.** `CableCapacityLimitTest`, `PolicyActivationTest`; GameTests `capacity.over-limit-stops-power` (five
   networks on two Switches stop the energy pool, four restore it) and `capacity.over-limit-stops-processing`.

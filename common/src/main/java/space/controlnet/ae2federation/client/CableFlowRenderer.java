@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -48,7 +49,6 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                     .setDepthTestState(RenderStateShard.LEQUAL_DEPTH_TEST)
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .createCompositeState(false));
-    private static final CableBeamStyle DEFAULT_STYLE = CableBeamStyle.fromLoad(CableBeamStyle.DEFAULT_LOAD);
 
     public static void register(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(),
@@ -63,12 +63,15 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var pos = cable.getBlockPos();
         double distance = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition()
                 .distanceToSqr(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-        // No capacity telemetry exists yet. Never infer traffic from the connection mask.
+        // The beam shows the cable's capacity count against its limit, as the server counted it; not traffic.
+        // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
+        double target = cable.capacityLoad();
+        var style = CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
         draw(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), level.getGameTime(),
-                partialTick, DEFAULT_STYLE, CableBeamMesh.detail(distance));
+                partialTick, style, CableBeamMesh.detail(distance));
     }
 
-    /** Explicit visual-input seam for future telemetry and native renderer previews; no gameplay effects. */
+    /** The visual-input seam shared by world cables and native renderer previews; no gameplay effects. */
     public static void draw(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z,
             long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();

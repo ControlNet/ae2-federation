@@ -22,7 +22,7 @@ file reader. Saved network Policy settings and artifact-proof JVM flags are sepa
 |---|---|---|
 | Require Federation operating power | Enabled by default; independently disableable | Operating power |
 | Enforce Federation cable capacity | Enabled by default; independently disableable | Multiblock and cable capacity |
-| Base capacity of one cable | Used only while cable capacity enforcement is enabled; 4 by default (owner, 2026-10-13), `capacity.cableCapacity` | Multiblock and cable capacity |
+| Base capacity of one cable | Used only while cable capacity enforcement is enabled; 8 by default (owner, 2026-10-13; first 4), `capacity.cableCapacity` | Multiblock and cable capacity |
 | Operating energy costs | Used only while operating-power requirements are enabled; values undecided | Operating power |
 
 Disabled parent rules make their numerical settings inactive; they do not require removing those settings

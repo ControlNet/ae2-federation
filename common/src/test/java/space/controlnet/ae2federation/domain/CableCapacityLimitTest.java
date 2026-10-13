@@ -23,8 +23,8 @@ final class CableCapacityLimitTest {
     }
 
     @Test
-    void theDefaultIsEnforcedWithFourUnitsPerCable() {
-        assertEquals(OptionalInt.of(4), CableCapacityLimit.current());
+    void theDefaultIsEnforcedWithEightUnitsPerCable() {
+        assertEquals(OptionalInt.of(8), CableCapacityLimit.current());
         CableCapacityLimit.set(false, 9);
         assertEquals(OptionalInt.empty(), CableCapacityLimit.current(), "a limit that is not enforced limits nothing");
     }
@@ -32,15 +32,15 @@ final class CableCapacityLimitTest {
     @Test
     void aDomainStopsWhileOneOfItsCablesCarriesMoreThanTheLimit() {
         var registry = registry();
-        var networks = switchWith(registry, 5);
+        var networks = switchWith(registry, 9);
         var domain = registry.federationDomainOf(node(0)).orElseThrow().federationDomainId();
 
-        assertTrue(registry.overCapacity(domain), "five networks on one cable exceed four");
+        assertTrue(registry.overCapacity(domain), "nine networks on one cable exceed eight");
         assertTrue(registry.shareFederationDomain(networks[0], networks[1]), "the domain itself stays as it was");
         assertFalse(registry.shareRunningFederationDomain(networks[0], networks[1]), "a stopped domain links nothing");
 
-        // The fifth network leaves: four units fit, and the domain runs again.
-        registry.upsertNode(switchEvidence(1, java.util.Arrays.copyOf(networks, 4)));
+        // The ninth network leaves: eight units fit, and the domain runs again.
+        registry.upsertNode(switchEvidence(1, java.util.Arrays.copyOf(networks, 8)));
         var after = registry.federationDomainOf(node(0)).orElseThrow().federationDomainId();
         assertFalse(registry.overCapacity(after));
         assertTrue(registry.shareRunningFederationDomain(networks[0], networks[1]));
@@ -49,9 +49,9 @@ final class CableCapacityLimitTest {
     @Test
     void aDomainAtTheLimitRuns() {
         var registry = registry();
-        var networks = switchWith(registry, 4);
+        var networks = switchWith(registry, 8);
         assertFalse(registry.overCapacity(registry.federationDomainOf(node(0)).orElseThrow().federationDomainId()));
-        assertTrue(registry.shareRunningFederationDomain(networks[0], networks[3]));
+        assertTrue(registry.shareRunningFederationDomain(networks[0], networks[7]));
     }
 
     @Test

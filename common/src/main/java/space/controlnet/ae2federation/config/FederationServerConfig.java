@@ -8,8 +8,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
 
 /**
- * The gameplay rules a server sets for its world, in {@code serverconfig/ae2federation-server.toml}. They are on by
- * default; a pack author may turn them off. Editing the file while the server runs takes effect at once.
+ * The gameplay rules a server sets for its world, in {@code config/ae2federation-server.toml}; a world's
+ * {@code serverconfig} folder may override it. They are on by default; a pack author may turn them off. Editing the
+ * file while the server runs takes effect at once.
  */
 public final class FederationServerConfig {
     public static final ModConfigSpec SPEC;
@@ -21,7 +22,7 @@ public final class FederationServerConfig {
         builder.push("capacity");
         ENFORCE_CABLE_CAPACITY = builder.comment(
                         "Limit how many networks and devices one Federation Cable carries. When any cable of a",
-                        "Federation domain carries more than cableCapacity, the whole domain stops: its networks no",
+                        "Federation domain carries more than cableCapacity, its Federation domain stops: its networks no",
                         "longer share storage, crafting, processing or energy until the count fits again. The count",
                         "itself is shown either way.")
                 .define("enforceCableCapacity", true);

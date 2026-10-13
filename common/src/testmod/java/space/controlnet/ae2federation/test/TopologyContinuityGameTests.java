@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainReference;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
@@ -40,6 +41,7 @@ import space.controlnet.ae2federation.policy.PolicyOperation;
 import space.controlnet.ae2federation.policy.PolicyRule;
 import space.controlnet.ae2federation.policy.PolicyService;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.domain.FederationDomainEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -186,7 +188,7 @@ public final class TopologyContinuityGameTests {
     }
 
     /**
-     * Three more ME networks on the two Switches put five units on the cable, over the default capacity of four: the
+     * Three more ME networks on the two Switches put five units on the cable, over the capacity of four it sets: the
      * domain keeps its members but stops as a whole, so B loses A's power. Taking one network away lets it run again.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -198,6 +200,8 @@ public final class TopologyContinuityGameTests {
         helper.succeedWhen(() -> {
             if (phase[0] == 0) {
                 scene.awaitPowered();
+                // Below the default capacity of eight, so five networks stop the domain.
+                CableCapacityLimit.set(true, 4);
                 routers.placeNativeDevice(LEFT, Direction.SOUTH);
                 routers.placeNativeDevice(RIGHT, Direction.SOUTH);
                 routers.placeNativeDevice(RIGHT, Direction.UP);
@@ -210,6 +214,7 @@ public final class TopologyContinuityGameTests {
                 helper.assertTrue(scene.registry().overCapacity(shared.iterator().next()),
                         "Waiting for five networks on the cable to stop the domain");
                 helper.assertTrue(!scene.shares(), "Waiting for the stopped domain to end A and B's energy sharing");
+                helper.assertValueEqual(beamCount(helper), "5/4 enforced", "the cable's beam must learn its count");
                 phase[0] = 2;
                 throw new GameTestAssertException("Waiting for AE2 to publish B's power state");
             }
@@ -222,12 +227,22 @@ public final class TopologyContinuityGameTests {
             helper.assertTrue(!scene.registry().overCapacity(scene.sharedDomains().iterator().next()),
                     "Waiting for the domain to run at four networks");
             helper.assertTrue(scene.shares() && scene.consumerPowered(), "Waiting for B to draw A's power again");
-            FederationDomainEvidence.write("topologyovercapacitystopspower", 5, Map.of(
+            helper.assertValueEqual(beamCount(helper), "4/4 enforced", "Waiting for the cable's beam to learn four");
+            CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+            FederationDomainEvidence.write("topologyovercapacitystopspower", 6, Map.of(
                     "overCapacity", "true", "sharingWithdrawn", "true", "consumerUnpowered", "true",
-                    "restoredAtFour", "true", "worldScan", "false"));
+                    "restoredAtFour", "true", "beamCountSynced", "true", "worldScan", "false"));
             scene.close();
             routers.close();
         });
+    }
+
+    /** The capacity count the path cable sends its clients' flow renderer, as "units/capacity enforced". */
+    private static String beamCount(GameTestHelper helper) {
+        var cable = (FederationCableBlockEntity) helper.getBlockEntity(PATH_CABLE);
+        var tag = cable.getUpdateTag(helper.getLevel().registryAccess());
+        return tag.getInt("CapacityUnits") + "/" + tag.getInt("Capacity")
+                + (tag.getBoolean("CapacityEnforced") ? " enforced" : " not enforced");
     }
 
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",

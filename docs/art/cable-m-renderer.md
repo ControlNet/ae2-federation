@@ -8,9 +8,17 @@ existing baked model.
 ## Visual input
 
 `CableBeamStyle.fromLoad(double)` maps a nonnegative finite utilization ratio to the visual parameters below.
-There is no real capacity telemetry yet: the production renderer explicitly uses `DEFAULT_LOAD = 0.6`.
-This is a presentation setting, not measured utilization. The overload state is therefore available to the renderer
-and native preview but cannot currently be triggered by actual traffic.
+In the world the ratio is the cable's capacity count over the cable capacity
+([cable capacity counting](../architecture/cable-capacity-counting.md)), `CableBeamStyle.loadOf(units, capacity,
+enforced)`. It is not measured traffic. The server counts each cable when its domain's evidence or the limit changes,
+at most every 10 ticks per cable, and sends units, capacity and enforcement in the block entity's update packet; the
+values are derived and never saved. Until a count arrives, and for a cable in no domain, the load is 0.
+
+The alarm (`load > 1`) means the cable stops its domain, so it shows only while the limit is enforced; without
+enforcement the load clamps to 1. The beam is per cable: in a stopped domain only the cables over the limit turn red,
+and the topology screen shows the domain as a whole. The renderer eases the drawn load with `smooth`, but takes the
+alarm from the synced count itself. The count changes only with the domain, so it needs no hysteresis.
+`DEFAULT_LOAD = 0.6` remains the native preview's medium setting.
 
 For `u = min(load, 1)`:
 

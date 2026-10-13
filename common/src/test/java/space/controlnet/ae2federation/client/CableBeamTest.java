@@ -34,6 +34,17 @@ final class CableBeamTest {
     }
 
     @Test
+    void aCableShinesByItsCapacityCountAndAlarmsOnlyWhileTheLimitStopsItsDomain() {
+        assertEquals(0, CableBeamStyle.loadOf(0, 4, true), "an idle cable keeps only its carrier");
+        assertEquals(.75, CableBeamStyle.loadOf(3, 4, true), 1e-9);
+        assertFalse(CableBeamStyle.fromLoad(CableBeamStyle.loadOf(4, 4, true)).overloaded(), "a full cable still runs");
+        assertTrue(CableBeamStyle.fromLoad(CableBeamStyle.loadOf(5, 4, true)).overloaded());
+        assertEquals(1, CableBeamStyle.loadOf(5, 4, false), "a limit that is not enforced stops nothing, so no alarm");
+        assertEquals(.5, CableBeamStyle.loadOf(2, 4, false), 1e-9);
+        assertEquals(0, CableBeamStyle.loadOf(3, 0, true), "a count not yet received shows an idle carrier");
+    }
+
+    @Test
     void allMasksAndLodsStayInsideTheShellAndOpenOnlyConnectedFaces() {
         for (int mask = 0; mask < 64; mask++) {
             final int expected = mask;

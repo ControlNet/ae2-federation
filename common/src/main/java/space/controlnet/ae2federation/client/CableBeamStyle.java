@@ -1,16 +1,35 @@
 package space.controlnet.ae2federation.client;
 
-/** M optical design parameters. Load is a visual input, not measured cable traffic. */
+/** M optical design parameters. Load is the cable's capacity count against its limit, not measured traffic. */
 public record CableBeamStyle(double load, boolean overloaded, float coreRadius, float haloRadius,
         float pulseAmplitude, float pulseDensity, float emission) {
-    /** Capacity accounting is not implemented; this is an explicit presentation default. */
+    /** A presentation default for previews; world cables use {@link #loadOf} their synced capacity count. */
     public static final double DEFAULT_LOAD = 0.6;
 
+    /**
+     * A cable's load: the units it carries over the units it may carry. Above 1 it alarms, but only while the limit is
+     * enforced, since only then does it stop its domain; otherwise it clamps to full. A capacity of 0 means no count
+     * has arrived yet, shown as an idle carrier.
+     */
+    public static double loadOf(int units, int capacity, boolean enforced) {
+        if (capacity <= 0 || units <= 0) return 0;
+        double load = (double) units / capacity;
+        return enforced ? load : Math.min(load, 1);
+    }
+
     public static CableBeamStyle fromLoad(double load) {
+        return fromLoad(load, load > 1);
+    }
+
+    /**
+     * As {@link #fromLoad(double)}, with the alarm decided apart from the load: a cable eases its drawn load towards a
+     * new count, but alarms by the count itself.
+     */
+    public static CableBeamStyle fromLoad(double load, boolean overloaded) {
         if (!Double.isFinite(load) || load < 0) throw new IllegalArgumentException("Invalid visual load");
         float u = (float) Math.min(load, 1);
         // Sized for the shell's 6-voxel glass window (half-width 3/16): visible at play distance, never touching the frame.
-        return new CableBeamStyle(load, load > 1, .018f + .027f * u, .06f + .09f * u,
+        return new CableBeamStyle(load, overloaded, .018f + .027f * u, .06f + .09f * u,
                 .028f * u, 1 + 2 * u, .45f + 1.55f * u);
     }
 

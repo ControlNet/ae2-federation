@@ -5,11 +5,21 @@ import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.client.CableBeamStyle;
+import space.controlnet.ae2federation.domain.CableCapacity;
+import space.controlnet.ae2federation.domain.CableCapacityCounter;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
@@ -20,6 +30,12 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.domain.port.CableFacePort;
 
 public final class FederationCableBlockEntity extends BlockEntity {
+    /** Ticks between two capacity counts of one cable while its domain keeps changing, as when a player builds. */
+    private static final int CAPACITY_CHECK_TICKS = 10;
+    private static final String CAPACITY_UNITS = "CapacityUnits";
+    private static final String CAPACITY = "Capacity";
+    private static final String CAPACITY_ENFORCED = "CapacityEnforced";
+
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
     private boolean initialized;
     private boolean federationDomainDirty = true;
@@ -27,6 +43,19 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Client only: the flow renderer's neighbour mask and its game tick. */
     private int flowMask;
     private long flowMaskTick = Long.MIN_VALUE;
+    /**
+     * The capacity count the flow renderer draws: computed on the server, sent to clients when it changes. Derived, so
+     * never saved. A capacity of 0 means none has been counted yet.
+     */
+    private int capacityUnits;
+    private int capacity;
+    private boolean capacityEnforced;
+    /** Server only: the evidence revision last counted, and the earliest tick to count again. */
+    private long capacityRevision = Long.MIN_VALUE;
+    private long nextCapacityCheck;
+    /** Client only: the load the flow renderer last drew and when, so a new count eases in. */
+    private double beamLoad = Double.NaN;
+    private long beamNanos;
 
     public FederationCableBlockEntity(BlockPos position, BlockState state) {
         super(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(), position, state);
@@ -46,6 +75,27 @@ public final class FederationCableBlockEntity extends BlockEntity {
         if (changed || cable.federationDomainDirty) {
             cable.publishFederationDomainTopology();
         }
+        if (level instanceof ServerLevel serverLevel) cable.syncCapacity(serverLevel);
+    }
+
+    /** Counts this cable again once its domain or the limit changed, and tells clients when the count differs. */
+    private void syncCapacity(ServerLevel serverLevel) {
+        long revision = FederationDomainRegistryAccess.get(serverLevel).evidenceRevision();
+        int limit = CableCapacityLimit.capacity();
+        boolean enforced = CableCapacityLimit.current().isPresent();
+        long now = serverLevel.getGameTime();
+        if (revision == capacityRevision && limit == capacity && enforced == capacityEnforced
+                || now < nextCapacityCheck) {
+            return;
+        }
+        capacityRevision = revision;
+        nextCapacityCheck = now + CAPACITY_CHECK_TICKS;
+        int units = CableCapacity.demand(serverLevel, worldPosition).map(CableCapacityCounter.Demand::units).orElse(0);
+        if (units == capacityUnits && limit == capacity && enforced == capacityEnforced) return;
+        capacityUnits = units;
+        capacity = limit;
+        capacityEnforced = enforced;
+        serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -108,6 +158,42 @@ public final class FederationCableBlockEntity extends BlockEntity {
         initialized = false;
         federationDomainDirty = true;
         ports.values().forEach(CableFacePort::destroy);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
+        tag.putInt(CAPACITY_UNITS, capacityUnits);
+        tag.putInt(CAPACITY, capacity);
+        tag.putBoolean(CAPACITY_ENFORCED, capacityEnforced);
+        return tag;
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        if (!tag.contains(CAPACITY)) return;
+        capacityUnits = tag.getInt(CAPACITY_UNITS);
+        capacity = tag.getInt(CAPACITY);
+        capacityEnforced = tag.getBoolean(CAPACITY_ENFORCED);
+    }
+
+    /** The load of this cable's capacity count, as {@link CableBeamStyle#loadOf} reads it. */
+    public double capacityLoad() {
+        return CableBeamStyle.loadOf(capacityUnits, capacity, capacityEnforced);
+    }
+
+    /** Client only: eases the drawn load towards {@code target}, frame-rate independent. */
+    public double beamLoad(double target, long nanos) {
+        beamLoad = Double.isNaN(beamLoad) ? target
+                : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
+        beamNanos = nanos;
+        return beamLoad;
     }
 
     /**

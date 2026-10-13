@@ -81,7 +81,7 @@ final class PolicyActivationTest {
         var store = new PolicyStore();
         store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
         var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
-        // One cable carries a Switch with five networks, one more than the default capacity of four.
+        // One cable carries a Switch with nine networks, one more than the default capacity of eight.
         var cable = new FederationDomainNodeId("test:dimension", 0);
         var sw = new FederationDomainNodeId("test:dimension", 1);
         var cablePorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
@@ -89,7 +89,8 @@ final class PolicyActivationTest {
         registry.upsertNode(new FederationDomainNodeEvidence(cable, FederationDomainNodeKind.CABLE, cablePorts));
         var switchPorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
         switchPorts.put("west", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(cable, "east")));
-        var networks = java.util.List.of(CONSUMER, PROVIDER, network(3), network(4), network(5));
+        var networks = new java.util.ArrayList<>(java.util.List.of(CONSUMER, PROVIDER));
+        for (int extra = 3; extra <= 9; extra++) networks.add(network(extra));
         for (int index = 0; index < networks.size(); index++) {
             switchPorts.put("native" + index, new FederationDomainPortEvidence.Native(
                     FederationDomainSourceId.nativePort(new FederationDomainPortId(sw, "native" + index)), networks.get(index)));

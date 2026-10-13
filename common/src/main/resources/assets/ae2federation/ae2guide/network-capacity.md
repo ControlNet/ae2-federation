@@ -9,7 +9,7 @@ navigation:
 # Network Capacity
 
 Every piece of <ItemLink id="ae2federation:cable" /> counts how many networks and devices it carries, and carries at
-most 4. When any cable of a Federation domain carries more, the **Federation domain stops**: its networks keep working on
+most 8. When any cable of a Federation domain carries more, the **Federation domain stops**: its networks keep working on
 their own, but share no storage, crafting, processing or power until the count fits again.
 
 <GameScene zoom="4" interactive={true} background="transparent">
@@ -71,17 +71,20 @@ one Router to the other, so it counts all four, network C on its own Switch incl
 ## When a cable is full
 
 A stopped domain changes nothing in the world: every block stays where it is, and the domain starts again by itself
-as soon as no cable carries more than 4. To get there, take a network or device off the full segment, or end the
+as soon as no cable carries more than 8. To get there, take a network or device off the full segment, or end the
 segment with a Router: what stands behind a Router no longer counts on a segment that touches only that one Router.
 A segment between two Routers counts everything in the Federation domain, so a long trunk between Routers fills first.
 
-The domain's topology screen turns dark red, and every rule in it reads "over capacity". With connected domains
+The light inside each cable shows how full it is: thin and dim when it carries little, fuller and brighter near the
+limit. A cable over the limit pulses red, so the full segment is easy to find. The domain's topology screen turns dark
+red, and every rule in it reads "over capacity". With connected domains
 shown, only the stopped domain's plate turns red.
 
-The server can change the capacity of a cable, or turn the limit off, in `serverconfig/ae2federation-server.toml`.
+The server can change the capacity of a cable, or turn the limit off, in `config/ae2federation-server.toml`;
+a file of the same name in a world's `serverconfig` folder sets it for that world alone.
 
 ## Seeing the count
 
 With the Jade mod installed on both the server and your client, look at a Federation Cable:
-Jade adds a line such as "Capacity count: 4/4 (Federation domain)" or "Capacity count: 2/4 (subdomain)", the count in red
-once it is over the limit. Without Jade the count is not shown anywhere yet.
+Jade adds a line such as "Capacity count: 4/8 (Federation domain)" or "Capacity count: 2/8 (subdomain)", the count in red
+once it is over the limit. Without Jade, the light inside the cable still shows how full it is.

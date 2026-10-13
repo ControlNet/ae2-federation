@@ -8,7 +8,7 @@ import java.util.OptionalInt;
  * server configuration sets it when it loads; until then, and in tests, the defaults hold.
  */
 public final class CableCapacityLimit {
-    public static final int DEFAULT_CAPACITY = 4;
+    public static final int DEFAULT_CAPACITY = 8;
     public static final int MAX_CAPACITY = 1024;
 
     private static volatile boolean enforced = true;
@@ -20,6 +20,11 @@ public final class CableCapacityLimit {
     /** The units one cable may carry, or empty when capacity is not enforced. */
     public static OptionalInt current() {
         return enforced ? OptionalInt.of(capacity) : OptionalInt.empty();
+    }
+
+    /** The units one cable may carry as configured, enforced or not. */
+    public static int capacity() {
+        return capacity;
     }
 
     /** Sets the rule; every registry judges its domains again on its next read. */
