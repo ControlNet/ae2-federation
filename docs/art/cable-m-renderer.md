@@ -59,8 +59,12 @@ an additive glow pass followed by a normal-alpha carrier pass. Both depth-test; 
 The shell is translucent terrain, which Minecraft draws after block entities: without carrier depth, any shell face
 behind the beam that faces the camera (another arm of an elbow or junction, a neighbouring cable) painted its frame
 over the beam. The glow goes first so the carrier's depth does not fight its coplanar shoulders. The soft glow and
-fog still write no depth, so a frame behind them can still dim them. Each buffer is filled before switching render
-types.
+fog still write no depth, so a frame behind them can still dim them.
+
+In the world each pass has a buffer of its own (`RegisterRenderBuffersEvent`), flushed glow first at
+`RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES`, so the carrier's depth is in place before the shells in every
+graphics mode. In vanilla's shared buffer every cable's switch between the two passes ended a batch: two draw calls
+per cable per frame. Elsewhere (previews, guide scenes), `draw` still fills each pass before switching render types.
 
 Straight runs share a world-coordinate phase with a bounded 64-tick clock, including negative coordinates.
 Fractional densities crossfade integer pulse trains to keep seams and clock wraps continuous. Elbows use curved
@@ -69,9 +73,27 @@ not simulated packet routing or a claim about actual transfer direction.
 
 At distances above 24 blocks, sampling falls from 64 to 24 segments per full block, and fog from four to two
 segments per arm; above 48 blocks, four segments retain the carrier plus the two outer fog volumes, unanimated, so
-distant cables still glow. Near straight cables emit 4,960 vertices (4,096 beam, 864 fog), with 14,592 for six-way
-junctions; distant straight cables emit 256. These are geometry
-budgets, not FPS measurements. `CableFlowGeometry` remains as a legacy reference for existing export/test tooling.
+distant cables still glow. `CableFlowGeometry` remains as a legacy reference for existing export/test tooling.
+
+### Cost per frame
+
+The beam is rebuilt every frame, so three things keep it cheap (2026-10-13; the user saw 100+ FPS fall to about 30
+with a few hundred cables):
+
+- **Flat stretches merge.** Along a straight stretch only the pulses change the beam's widths, and the fog's
+  brightness. Samples are kept wherever the centerline bends; between them, a segment reaches as far as every width
+  stays within 0.001 block of the full sampling (under half a pixel up close) and the fog within 1/512 alpha. Near
+  straight cables emit about 450 vertices idle, 1,240 at 60% and 1,640 full (4,960 before); six-way junctions 1,060,
+  3,440 and 4,590 (14,592 before). `CableBeamTest` checks the shape against the full sampling and these budgets.
+- **Alike cables share one beam per frame.** The pulses depend on a cable's position only through whether each
+  coordinate is odd or even, so `CableBeamFrame` computes each (connections, load, parity, detail) once per frame and
+  replays it; `CableBeamFrameTest` checks the replay is identical.
+- **One batch per pass** (above), and each vertex is written in one call, which a block-format `BufferBuilder` writes
+  straight to memory.
+
+Measured on the development host (400 near cables, CPU only, real `BufferBuilder` writes): straight cables at 60%
+fell from 74 ms to 10 ms per frame, junctions from 170 ms to 23 ms. In-game numbers are in
+`.omo/knowledges/cable-beam-performance-2026-10-13.md`.
 
 Blender emission and compositor bloom are approximated with native geometry and blending; this is not pixel-identical
 to Blender, and it does not require a shader pack or add actual world lighting.

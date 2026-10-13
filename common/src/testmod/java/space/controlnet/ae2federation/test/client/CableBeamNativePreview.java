@@ -194,10 +194,12 @@ public final class CableBeamNativePreview {
             for (var variant : CableCoreFaces.Variant.values()) cores.put(variant, atlas.apply(
                     ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/dense/" + variant.texture())));
             var builderType = Class.forName("space.controlnet.ae2federation.client.FederationCableBuilder");
-            var constructor = builderType.getDeclaredConstructor(java.util.Map.class, TextureAtlasSprite.class);
+            var constructor = builderType.getDeclaredConstructor(java.util.Map.class, TextureAtlasSprite.class,
+                    TextureAtlasSprite.class);
             constructor.setAccessible(true);
-            var builder = constructor.newInstance(cores, atlas.apply(
-                    ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/dense/line")));
+            var builder = constructor.newInstance(cores,
+                    atlas.apply(ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/dense/line")),
+                    atlas.apply(ResourceLocation.fromNamespaceAndPath("ae2federation", "part/cable/dense/collar")));
             var build = builderType.getDeclaredMethod("build", int.class);
             build.setAccessible(true);
             // Fully lit native asset preview, with the same transparent shell textures and quads as the world.

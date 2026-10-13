@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.client;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -12,8 +13,13 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Vector3f;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
@@ -50,9 +56,34 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .createCompositeState(false));
 
+    /** World cables that look alike in a frame share one computed beam; only the render thread draws. */
+    private static final CableBeamFrame FRAME = new CableBeamFrame();
+    /** Room for a few hundred near cables before a buffer grows; it keeps what it grew to. */
+    private static final int BATCH_BYTES = 1 << 20;
+
     public static void register(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(RouterRegistration.FEDERATION_CABLE_BLOCK_ENTITY.get(),
                 context -> new CableFlowRenderer());
+    }
+
+    /**
+     * Each pass gets a buffer of its own, glow first. In the shared buffer every cable's switch from glow to carrier
+     * and back ended a batch: two draw calls per cable per frame. Now all cables' beams go out in two.
+     */
+    public static void registerBuffers(RegisterRenderBuffersEvent event) {
+        event.registerRenderBuffer(GLOW, new ByteBufferBuilder(BATCH_BYTES));
+        event.registerRenderBuffer(CORE, new ByteBufferBuilder(BATCH_BYTES));
+    }
+
+    /**
+     * Draws the frame's beams as soon as the block entities are done, before translucent terrain: the carrier's depth
+     * must be in place before the shells are drawn, in every graphics mode.
+     */
+    public static void flush(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) return;
+        var buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+        buffers.endBatch(GLOW);
+        buffers.endBatch(CORE);
     }
 
     @Override
@@ -67,15 +98,35 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
         double target = cable.capacityLoad();
         var style = CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
-        draw(stack, buffers, cable.flowMask(), pos.getX(), pos.getY(), pos.getZ(), level.getGameTime(),
-                partialTick, style, CableBeamMesh.detail(distance));
+        int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
+        long tick = level.getGameTime();
+        var pose = stack.last();
+        var matrix = pose.pose();
+        var normal = pose.transformNormal(0, 1, 0, new Vector3f());
+        var position = new Vector3f();
+        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
+        for (int pass = 0; pass < 2; pass++) {
+            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+            float[] layer = FRAME.layer(mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
+                    pass == 0);
+            // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
+            // values the chained calls in draw() would write.
+            for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
+                matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
+                int color = FastColor.ARGB32.color((int) (layer[i + 6] * 255), (int) (layer[i + 3] * 255),
+                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
+                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
+                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
+            }
+        }
     }
 
     /** The visual-input seam shared by world cables and native renderer previews; no gameplay effects. */
     public static void draw(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z,
             long tick, float partialTick, CableBeamStyle style, int detail) {
         var pose = stack.last();
-        // Switching RenderTypes can finish the prior shared buffer. Complete each pass before switching.
+        // In the world each pass has its own buffer (registerBuffers). Elsewhere, as in previews, switching RenderTypes
+        // can finish the prior shared buffer, so each pass is complete before the next starts.
         // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);

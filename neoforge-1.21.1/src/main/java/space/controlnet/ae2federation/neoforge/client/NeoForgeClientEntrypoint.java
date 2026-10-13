@@ -17,6 +17,7 @@ public final class NeoForgeClientEntrypoint {
         modBus.addListener(space.controlnet.ae2federation.client.CableBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.DeviceStructureBakedModel::bake);
         modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::register);
+        modBus.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::registerBuffers);
         modBus.addListener(NeoForgeClientEntrypoint::onLoadBuiltinResource);
         modBus.addListener(NeoForgeClientEntrypoint::onAddPackFinders);
         ClientStartup.start(LOGGER);
@@ -26,6 +27,7 @@ public final class NeoForgeClientEntrypoint {
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onLoggingOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onScreenInit);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.WorldHighlight::render);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.CableFlowRenderer::flush);
         space.controlnet.ae2federation.bundle.BundleInteraction.registerClientClick(
                 space.controlnet.ae2federation.client.BundleSelectionClient::click);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.BundleSelectionClient::tick);

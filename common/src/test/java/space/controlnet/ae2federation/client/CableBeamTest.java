@@ -130,15 +130,102 @@ final class CableBeamTest {
             CableBeamMesh.emit(3, 0, 0, 0, 1, 0, style, lod, (glow,x,y,z,r,g,b,a) -> counts[index]++);
         }
         assertTrue(counts[0] > counts[1] && counts[1] > counts[2]);
-        // Budgets quoted in docs/art/cable-m-renderer.md.
-        assertEquals(4960, counts[0]);
-        assertEquals(256, counts[2]);
+        // Budgets quoted in docs/art/cable-m-renderer.md: flat stretches merge, so these are typical, not fixed.
+        assertTrue(counts[0] <= NEAR_STRAIGHT_BUDGET, "Near straight " + counts[0]);
+        assertTrue(counts[2] <= 256, "Distant straight " + counts[2]);
         int[] sixWay = {0};
         CableBeamMesh.emit(63, 0, 0, 0, 1, 0, style, 0, (glow,x,y,z,r,g,b,a) -> sixWay[0]++);
-        assertEquals(14592, sixWay[0]);
+        assertTrue(sixWay[0] <= NEAR_SIX_WAY_BUDGET, "Near six-way " + sixWay[0]);
         assertEquals(0, CableBeamMesh.detail(20 * 20));
         assertEquals(1, CableBeamMesh.detail(30 * 30));
         assertEquals(2, CableBeamMesh.detail(60 * 60));
+    }
+
+    private static final int NEAR_STRAIGHT_BUDGET = 1700;
+    private static final int NEAR_SIX_WAY_BUDGET = 4800;
+    /** How far a merged beam edge may stray from the full 64-sample shape, in blocks: under half a pixel up close. */
+    private static final float SHAPE_TOLERANCE = .001f;
+
+    @Test
+    void aStraightBeamMergesOnlyStretchesItsShapeDoesNotNeed() {
+        for (double load : new double[] {0, .25, .6, 1, 1.25}) {
+            var style = CableBeamStyle.fromLoad(load);
+            for (long tick = 0; tick < 64; tick += 5) {
+                for (int worldX : new int[] {-3, 0, 5}) {
+                    float partial = .25f;
+                    // The carrier's upper edge in its first plane: x along the beam, y - .5 its radius there.
+                    var edge = new java.util.TreeMap<Float, Float>();
+                    CableBeamMesh.emit(3, worldX, 0, 0, tick, partial, style, 0, (glow, x, y, z, r, g, b, a) -> {
+                        if (!glow && z == .5f && y > .5f) edge.put(x, y - .5f);
+                    });
+                    float breath = style.breath(tick, partial);
+                    for (int i = 0; i <= 64; i++) {
+                        float along = i / 64f;
+                        float wave = style.wave(CableBeamStyle.phase(worldX, along, tick, partial));
+                        float expected = Math.max(style.coreRadius() * breath,
+                                style.coreRadius() * .8f + style.pulseAmplitude() * wave);
+                        var low = edge.floorEntry(along);
+                        var high = edge.ceilingEntry(along);
+                        float drawn = low.getKey().equals(high.getKey()) ? low.getValue()
+                                : low.getValue() + (high.getValue() - low.getValue())
+                                        * (along - low.getKey()) / (high.getKey() - low.getKey());
+                        assertEquals(expected, drawn, SHAPE_TOLERANCE + 1e-6,
+                                "load " + load + " tick " + tick + " x " + worldX + " at " + along);
+                    }
+                }
+            }
+        }
+    }
+
+    /** How far merged fog may stray from the full sampling, in alpha: under half a step of an 8-bit channel. */
+    private static final float FOG_TOLERANCE = 1 / 512f;
+
+    @Test
+    void fogMergesOnlyStretchesThePulsesLeaveEven() {
+        for (double load : new double[] {0, .6, 1, 1.25}) {
+            var style = CableBeamStyle.fromLoad(load);
+            for (long tick = 0; tick < 64; tick += 3) {
+                for (int worldX : new int[] {-3, 0, 5}) {
+                    float partial = .75f;
+                    // The innermost fog volume's upper face, along its middle line: alpha as it runs along x.
+                    var line = new java.util.TreeMap<Float, Float>();
+                    CableBeamMesh.emit(3, worldX, 0, 0, tick, partial, style, 0, (glow, x, y, z, r, g, b, a) -> {
+                        if (glow && Math.abs(y - .61f) < 1e-6 && z == .5f) line.put(x, a);
+                    });
+                    float fog = (.35f + .65f * (float) Math.min(style.load(), 1)) * style.strength(tick, partial)
+                            / style.emission();
+                    float[] full = {0, .0975f, .195f, .2925f, .39f, .61f, .7075f, .805f, .9025f, 1};
+                    for (float along : full) {
+                        float pulse = style.wave(CableBeamStyle.phase(worldX, along, tick, partial));
+                        float expected = Math.min(1, .10f * fog * (.55f + .9f * pulse));
+                        var low = line.floorEntry(along + 1e-6f);
+                        var high = line.ceilingEntry(along - 1e-6f);
+                        float drawn = low.getKey() >= high.getKey() ? low.getValue()
+                                : low.getValue() + (high.getValue() - low.getValue())
+                                        * (along - low.getKey()) / (high.getKey() - low.getKey());
+                        assertEquals(expected, drawn, FOG_TOLERANCE + 1e-6,
+                                "load " + load + " tick " + tick + " x " + worldX + " at " + along);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void nearBeamsStayWithinTheirVertexBudgetOverAWholeCycle() {
+        for (double load : new double[] {0, .6, 1, 1.25}) {
+            var style = CableBeamStyle.fromLoad(load);
+            long straight = 0, sixWay = 0;
+            for (long tick = 0; tick < 64; tick++) {
+                int[] counts = {0, 0};
+                CableBeamMesh.emit(3, 7, 0, 0, tick, .5f, style, 0, (glow, x, y, z, r, g, b, a) -> counts[0]++);
+                CableBeamMesh.emit(63, 7, 0, 0, tick, .5f, style, 0, (glow, x, y, z, r, g, b, a) -> counts[1]++);
+                straight += counts[0];
+                sixWay += counts[1];
+            }
+            assertTrue(straight / 64 <= NEAR_STRAIGHT_BUDGET, "load " + load + " straight " + straight / 64);
+            assertTrue(sixWay / 64 <= NEAR_SIX_WAY_BUDGET, "load " + load + " six-way " + sixWay / 64);
+        }
     }
 
     @Test
