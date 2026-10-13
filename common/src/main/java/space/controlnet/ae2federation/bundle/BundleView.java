@@ -6,6 +6,7 @@ import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 
@@ -20,15 +21,20 @@ public final class BundleView {
     private BundleView() {
     }
 
-    public static Optional<BundleSegment> segmentAt(Level level, BlockPos pos) {
+    /**
+     * The segment holding the cable at {@code pos}. The server reads its registry; anything else, such as a client
+     * level or a chunk section being meshed, reads the segment the cable last reported.
+     */
+    public static Optional<BundleSegment> segmentAt(BlockGetter level, BlockPos pos) {
         if (level instanceof ServerLevel serverLevel) {
             return BundledCables.get(serverLevel).at(pos).map(BundleSet.Membership::segment);
         }
-        return level.isLoaded(pos) && level.getBlockEntity(pos) instanceof FederationCableBlockEntity cable
+        if (level instanceof Level loaded && !loaded.isLoaded(pos)) return Optional.empty();
+        return level.getBlockEntity(pos) instanceof FederationCableBlockEntity cable
                 ? Optional.ofNullable(cable.bundleSegment()) : Optional.empty();
     }
 
-    public static boolean bundled(Level level, BlockPos pos) {
+    public static boolean bundled(BlockGetter level, BlockPos pos) {
         return segmentAt(level, pos).isPresent();
     }
 

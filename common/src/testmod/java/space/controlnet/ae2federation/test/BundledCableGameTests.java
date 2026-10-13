@@ -12,6 +12,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -22,6 +23,7 @@ import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
+import space.controlnet.ae2federation.router.CableVisualConnections;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
@@ -224,6 +226,70 @@ public final class BundledCableGameTests {
         clear(helper);
         fixtures.close();
         helper.succeed();
+    }
+
+    /**
+     * What a 2x2 bundle three long shows, read on the server as a client reads it: one shell, so a cell's outline
+     * reaches the faces it shares with other cells and stops 2 voxels short of the outer ones; beams that run along the
+     * bundle, end at a closed end, and reach a Router body that covers the whole end face; and no join to the
+     * ordinary cable beyond the other end, which joined the cables before they were bundled.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void bundleShowsOneShellClosedToOrdinaryCables(GameTestHelper helper) {
+        clear(helper);
+        var fixtures = new RouterFixtures(helper);
+        var west = CENTER.west();
+        var east = CENTER.east();
+        for (var pos : BlockPos.betweenClosed(west, east.offset(0, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        for (var pos : BlockPos.betweenClosed(west.west(), west.west().offset(0, 1, 1))) {
+            fixtures.placeRouter(pos.immutable());
+        }
+        var stray = east.east();
+        fixtures.placeFederationCable(stray);
+        var level = helper.getLevel();
+        helper.assertValueEqual(kind(helper, stray, Direction.WEST), CableVisualConnections.CABLE,
+                "two ordinary cables join");
+        BundledCables.get(level).form(level, new BundleSegment(helper.absolutePos(west),
+                helper.absolutePos(east.offset(0, 1, 1)), Direction.Axis.X));
+        helper.succeedWhen(() -> {
+            helper.assertValueEqual(kind(helper, stray, Direction.WEST), CableVisualConnections.NONE,
+                    "an ordinary cable stays closed toward a bundle");
+            helper.assertValueEqual(CableVisualConnections.mask(level, helper.absolutePos(east)),
+                    bits(Direction.WEST), "the beam ends at the closed end");
+            helper.assertValueEqual(CableVisualConnections.mask(level, helper.absolutePos(CENTER)),
+                    bits(Direction.EAST, Direction.WEST), "the beam runs along the bundle");
+            helper.assertValueEqual(CableVisualConnections.mask(level, helper.absolutePos(west)),
+                    bits(Direction.EAST, Direction.WEST), "Waiting for the beam to reach the Router body");
+            helper.assertValueEqual(outline(helper, CENTER), new AABB(0, 2 / 16d, 2 / 16d, 1, 1, 1),
+                    "a cell's outline is its part of one shell");
+            helper.assertValueEqual(outline(helper, east.above().south()), new AABB(0, 0, 0, 14 / 16d, 14 / 16d,
+                    14 / 16d), "the closed end stops 2 voxels short");
+            var cable = (FederationCableBlockEntity) helper.getBlockEntity(CENTER);
+            helper.assertTrue(cable.bundleSegment() != null, "the server's cable knows its segment");
+            RouterEvidence.write("bundleshowsoneshellclosedtoordinarycables", 8, Map.of("ordinaryJoinsBefore", "true",
+                    "ordinaryClosedAfter", "true", "closedEndBeam", "true", "runningBeam", "true",
+                    "deviceBeam", "true", "sharedFacesOpen", "true", "closedEndInset", "true",
+                    "serverSegment", "true"));
+            clear(helper);
+            fixtures.close();
+        });
+    }
+
+    private static int kind(GameTestHelper helper, BlockPos relative, Direction side) {
+        return CableVisualConnections.kind(CableVisualConnections.connections(helper.getLevel(),
+                helper.absolutePos(relative)), side);
+    }
+
+    private static int bits(Direction... sides) {
+        int mask = 0;
+        for (var side : sides) mask |= 1 << java.util.List.of(CableVisualConnections.DIRECTIONS).indexOf(side);
+        return mask;
+    }
+
+    private static AABB outline(GameTestHelper helper, BlockPos relative) {
+        var absolute = helper.absolutePos(relative);
+        return helper.getLevel().getBlockState(absolute).getShape(helper.getLevel(), absolute).bounds();
     }
 
     /** Right-clicks {@code face} of {@code relative} with the main hand, as the server handles a player's click. */

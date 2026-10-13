@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.bundle.BundleContacts;
 import space.controlnet.ae2federation.bundle.BundleSegment;
+import space.controlnet.ae2federation.bundle.BundleSet;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.client.CableBeamStyle;
 import space.controlnet.ae2federation.domain.CableCapacity;
@@ -59,7 +60,10 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Server only: the evidence revision last counted, and the earliest tick to count again. */
     private long capacityRevision = Long.MIN_VALUE;
     private long nextCapacityCheck;
-    /** Client only: the bundle segment holding this cable, sent by the server; null for an ordinary cable. */
+    /**
+     * The bundle segment holding this cable, null for an ordinary cable: on the server, as its registry last said; on a
+     * client, as the server sent it. The model, outline and beam read it through {@link BundleView}.
+     */
     private @Nullable BundleSegment bundleSegment;
     /** Client only: the load the flow renderer last drew and when, so a new count eases in. */
     private double beamLoad = Double.NaN;
@@ -122,6 +126,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     /** The bundle this cable belongs to changed: its faces, its evidence and its capacity count are judged again. */
     public void bundleChanged() {
+        if (level instanceof ServerLevel serverLevel) bundleSegment = registeredSegment(serverLevel);
         ports.values().forEach(CableFacePort::revalidate);
         federationDomainDirty = true;
         capacityRevision = Long.MIN_VALUE;
@@ -159,8 +164,13 @@ public final class FederationCableBlockEntity extends BlockEntity {
             return;
         }
         initialized = true;
+        bundleSegment = registeredSegment(serverLevel);
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         ports.values().forEach(port -> port.initialize(serverLevel));
+    }
+
+    private @Nullable BundleSegment registeredSegment(ServerLevel serverLevel) {
+        return BundledCables.get(serverLevel).at(worldPosition).map(BundleSet.Membership::segment).orElse(null);
     }
 
     private void publishFederationDomainTopology() {
@@ -223,12 +233,17 @@ public final class FederationCableBlockEntity extends BlockEntity {
         capacity = tag.getInt(CAPACITY);
         capacityEnforced = tag.getBoolean(CAPACITY_ENFORCED);
         var axis = Direction.Axis.byName(tag.getString(BUNDLE_AXIS));
+        var previous = bundleSegment;
         bundleSegment = tag.contains(BUNDLE_MIN) && axis != null
                 ? new BundleSegment(BlockPos.of(tag.getLong(BUNDLE_MIN)), BlockPos.of(tag.getLong(BUNDLE_MAX)), axis)
                 : null;
+        // A new segment changes this cable's shell and its neighbours': mesh the sections around it again.
+        if (level != null && level.isClientSide() && !java.util.Objects.equals(previous, bundleSegment)) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_IMMEDIATE);
+        }
     }
 
-    /** Client only: the bundle segment holding this cable, or null when it is an ordinary cable. */
+    /** The bundle segment holding this cable, or null when it is an ordinary cable. */
     public @Nullable BundleSegment bundleSegment() {
         return bundleSegment;
     }

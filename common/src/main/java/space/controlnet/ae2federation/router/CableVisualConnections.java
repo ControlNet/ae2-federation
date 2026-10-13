@@ -5,6 +5,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import space.controlnet.ae2federation.bundle.BundleLook;
+import space.controlnet.ae2federation.bundle.BundleView;
 import space.controlnet.ae2federation.p2p.FederationP2PTunnelPart;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlock;
 import space.controlnet.ae2federation.processing.provider.FederationPatternProviderBlock;
@@ -18,6 +20,9 @@ import space.controlnet.ae2federation.processing.provider.FederationPatternProvi
  * Provider to a covered one with a cap; at the artist's request a Federation machine's port joins the cable as a
  * Router does. A Federation P2P tunnel's front is a part on another cable bus, which AE2 joins with a covered
  * connection.
+ *
+ * <p>A bundled cable is no ordinary cable: an ordinary cable stays closed toward one, and a bundled cell's sides come
+ * from its {@link BundleLook} instead of these kinds.
  */
 public final class CableVisualConnections {
     public static final Direction[] DIRECTIONS = {
@@ -46,9 +51,10 @@ public final class CableVisualConnections {
         return connections;
     }
 
-    /** Which sides connect, one bit per side in {@link #DIRECTIONS} order. */
+    /** Which sides connect, one bit per side in {@link #DIRECTIONS} order; a bundled cable's as its look says. */
     public static int mask(BlockGetter level, BlockPos position) {
-        return maskOf(connections(level, position));
+        var look = BundleLook.of(level, position);
+        return look.isPresent() ? look.get().flowMask() : maskOf(connections(level, position));
     }
 
     public static int maskOf(int connections) {
@@ -95,7 +101,10 @@ public final class CableVisualConnections {
     private static int kind(BlockGetter level, BlockPos position, Direction direction) {
         var neighbor = level.getBlockState(position.relative(direction));
         var block = neighbor.getBlock();
-        if (block instanceof FederationCableBlock) return CABLE;
+        // A bundle never joins an ordinary cable; its own cells take their look from BundleLook instead.
+        if (block instanceof FederationCableBlock) {
+            return BundleView.bundled(level, position.relative(direction)) ? NONE : CABLE;
+        }
         if (block instanceof RouterBlock) return DENSE;
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)

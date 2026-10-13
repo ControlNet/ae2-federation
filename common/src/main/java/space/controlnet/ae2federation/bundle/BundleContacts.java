@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import java.util.function.Predicate;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import space.controlnet.ae2federation.router.RouterBlock;
 
@@ -49,14 +50,14 @@ public final class BundleContacts {
      * The contact that {@code face} of {@code pos} belongs to: the whole end face along the axis, or the row across the
      * side at {@code pos}'s layer.
      */
-    public static Contact contact(Level level, BundleSegment segment, BlockPos pos, Direction face) {
+    public static Contact contact(BlockGetter level, BundleSegment segment, BlockPos pos, Direction face) {
         var cells = face.getAxis() == segment.axis() ? segment.endLayer(face).cells() : row(segment, pos, face);
         int covered = 0;
         BlockPos firstDevice = null;
         net.minecraft.world.level.block.Block body = null;
         for (var cell : cells) {
             var device = cell.relative(face);
-            if (!level.isLoaded(device)) continue;
+            if (level instanceof Level loaded && !loaded.isLoaded(device)) continue;
             var state = level.getBlockState(device);
             if (!RouterBlock.formed(state) || body != null && state.getBlock() != body) continue;
             if (body == null) {
@@ -126,7 +127,7 @@ public final class BundleContacts {
     }
 
     /** Whether the devices beside {@code cells} are joined into one body along every edge between them. */
-    private static boolean oneBody(Level level, List<BlockPos> cells, Direction face) {
+    private static boolean oneBody(BlockGetter level, List<BlockPos> cells, Direction face) {
         for (var cell : cells) {
             int connections = RouterBlock.connections(level.getBlockState(cell.relative(face)));
             for (var step : Direction.values()) {

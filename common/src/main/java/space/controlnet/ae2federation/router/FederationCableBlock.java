@@ -22,7 +22,9 @@ public final class FederationCableBlock extends BaseEntityBlock {
     protected net.minecraft.world.phys.shapes.VoxelShape getShape(BlockState state,
             net.minecraft.world.level.BlockGetter level, BlockPos position,
             net.minecraft.world.phys.shapes.CollisionContext context) {
-        return CableShapes.shape(CableVisualConnections.connections(level, position));
+        var look = space.controlnet.ae2federation.bundle.BundleLook.of(level, position);
+        return look.isPresent() ? CableShapes.bundle(look.get())
+                : CableShapes.shape(CableVisualConnections.connections(level, position));
     }
 
     @Override

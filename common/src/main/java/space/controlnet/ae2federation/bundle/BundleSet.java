@@ -179,11 +179,19 @@ public final class BundleSet {
     public boolean linked(BlockPos a, BlockPos b) {
         var sa = cells.get(a);
         var sb = cells.get(b);
-        if (sa == null || sb == null || a.distManhattan(b) != 1) return false;
-        if (sa.equals(sb)) return true;
+        if (sa == null || sb == null) return false;
+        return linked(a, segments.get(sa), b, segments.get(sb));
+    }
+
+    /**
+     * Whether adjacent cells {@code a} and {@code b}, in segments {@code first} and {@code second}, carry a connection:
+     * the same segment, or a branch's end face against the side it branches from. Needs only the two segments, so a
+     * client can ask it of the segments its cables report.
+     */
+    public static boolean linked(BlockPos a, BundleSegment first, BlockPos b, BundleSegment second) {
+        if (a.distManhattan(b) != 1) return false;
+        if (first.equals(second)) return true;
         var toward = Direction.fromDelta(b.getX() - a.getX(), b.getY() - a.getY(), b.getZ() - a.getZ());
-        var first = segments.get(sa);
-        var second = segments.get(sb);
         return toward.getAxis() == first.axis() && endAgainst(first, toward, second)
                 || toward.getAxis() == second.axis() && endAgainst(second, toward.getOpposite(), first);
     }

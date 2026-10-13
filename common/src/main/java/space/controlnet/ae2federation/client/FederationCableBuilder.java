@@ -154,7 +154,7 @@ final class FederationCableBuilder {
         addCableSizedCube(facing, cubeBuilder);
     }
 
-    private void addDenseConnection(Direction facing, List<BakedQuad> quadsOut) {
+    void addDenseConnection(Direction facing, List<BakedQuad> quadsOut) {
         var cubeBuilder = new CubeBuilder(quadsOut);
         // Every face but the one on the connection side; the inner end is the artist's seam against the core
         cubeBuilder.setDrawFaces(EnumSet.complementOf(EnumSet.of(facing)));
@@ -169,7 +169,7 @@ final class FederationCableBuilder {
         addCoveredCableSizedCube(facing, cubeBuilder);
     }
 
-    private void addCollar(Direction toward, List<BakedQuad> quadsOut) {
+    void addCollar(Direction toward, List<BakedQuad> quadsOut) {
         var end = collarEnd(toward);
         float shift = end.high() ? 15 : 0;
         for (var bar : COLLAR) {
