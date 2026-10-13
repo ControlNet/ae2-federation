@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.bundle.BundleContacts;
+import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.client.CableBeamStyle;
 import space.controlnet.ae2federation.domain.CableCapacity;
@@ -37,6 +38,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private static final String CAPACITY_UNITS = "CapacityUnits";
     private static final String CAPACITY = "Capacity";
     private static final String CAPACITY_ENFORCED = "CapacityEnforced";
+    private static final String BUNDLE_MIN = "BundleMin";
+    private static final String BUNDLE_MAX = "BundleMax";
+    private static final String BUNDLE_AXIS = "BundleAxis";
 
     private final Map<Direction, CableFacePort> ports = new EnumMap<>(Direction.class);
     private boolean initialized;
@@ -55,6 +59,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Server only: the evidence revision last counted, and the earliest tick to count again. */
     private long capacityRevision = Long.MIN_VALUE;
     private long nextCapacityCheck;
+    /** Client only: the bundle segment holding this cable, sent by the server; null for an ordinary cable. */
+    private @Nullable BundleSegment bundleSegment;
     /** Client only: the load the flow renderer last drew and when, so a new count eases in. */
     private double beamLoad = Double.NaN;
     private long beamNanos;
@@ -120,6 +126,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
         federationDomainDirty = true;
         capacityRevision = Long.MIN_VALUE;
         nextCapacityCheck = 0;
+        if (level instanceof ServerLevel serverLevel) {
+            serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
     }
 
     public void neighborChanged(BlockPos neighborPosition) {
@@ -191,6 +200,13 @@ public final class FederationCableBlockEntity extends BlockEntity {
         tag.putInt(CAPACITY_UNITS, capacityUnits);
         tag.putInt(CAPACITY, capacity);
         tag.putBoolean(CAPACITY_ENFORCED, capacityEnforced);
+        if (level instanceof ServerLevel serverLevel) {
+            BundledCables.get(serverLevel).at(worldPosition).ifPresent(membership -> {
+                tag.putLong(BUNDLE_MIN, membership.segment().min().asLong());
+                tag.putLong(BUNDLE_MAX, membership.segment().max().asLong());
+                tag.putString(BUNDLE_AXIS, membership.segment().axis().getSerializedName());
+            });
+        }
         return tag;
     }
 
@@ -206,6 +222,15 @@ public final class FederationCableBlockEntity extends BlockEntity {
         capacityUnits = tag.getInt(CAPACITY_UNITS);
         capacity = tag.getInt(CAPACITY);
         capacityEnforced = tag.getBoolean(CAPACITY_ENFORCED);
+        var axis = Direction.Axis.byName(tag.getString(BUNDLE_AXIS));
+        bundleSegment = tag.contains(BUNDLE_MIN) && axis != null
+                ? new BundleSegment(BlockPos.of(tag.getLong(BUNDLE_MIN)), BlockPos.of(tag.getLong(BUNDLE_MAX)), axis)
+                : null;
+    }
+
+    /** Client only: the bundle segment holding this cable, or null when it is an ordinary cable. */
+    public @Nullable BundleSegment bundleSegment() {
+        return bundleSegment;
     }
 
     /** The load of this cable's capacity count, as {@link CableBeamStyle#loadOf} reads it. */

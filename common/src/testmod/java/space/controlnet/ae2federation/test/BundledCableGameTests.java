@@ -7,16 +7,26 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import appeng.core.definitions.AEItems;
 import space.controlnet.ae2federation.bundle.BundleContacts;
+import space.controlnet.ae2federation.bundle.BundleInteraction;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
 import space.controlnet.ae2federation.domain.FederationDomainId;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
+import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
  * Bundled Federation Cables in the world: formed straight from the server's bundle record, as the wrench will form
@@ -145,6 +155,86 @@ public final class BundledCableGameTests {
             clear(helper);
             fixtures.close();
         });
+    }
+
+    /**
+     * A survival player: nine Federation Cables right-clicked onto a 2x2 bundle's end face add a layer of four, onto its
+     * side a branch of four, and the last cable is too few for another branch. Shift+right-click with a wrench
+     * dismantles one cell and reverts its layer. Three wrench clicks sent to the server form a 1x2 bundle, once every
+     * position holds a cable.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 200, required = true, manualOnly = true)
+    public static void bundlePlayerExtendsBranchesAndDismantles(GameTestHelper helper) {
+        clear(helper);
+        var fixtures = new RouterFixtures(helper);
+        var run = CENTER.west(2);
+        for (var pos : BlockPos.betweenClosed(run, CENTER.offset(0, 1, 1))) fixtures.placeFederationCable(pos.immutable());
+        var level = helper.getLevel();
+        var bundles = BundledCables.get(level);
+        bundles.form(level, new BundleSegment(helper.absolutePos(run), helper.absolutePos(CENTER.offset(0, 1, 1)),
+                Direction.Axis.X));
+        var player = MockServerPlayers.inLevel(helper);
+        player.setPos(Vec3.atCenterOf(helper.absolutePos(CENTER.above(3))));
+        player.setGameMode(GameType.SURVIVAL);
+        var cables = new ItemStack(RouterRegistration.FEDERATION_CABLE_ITEM.get(), 9);
+        player.setItemInHand(InteractionHand.MAIN_HAND, cables);
+
+        use(helper, player, CENTER, Direction.EAST);
+        helper.assertTrue(bundled(helper, CENTER.east().above().south()), "the end face grew a layer");
+        helper.assertValueEqual(bundles.at(helper.absolutePos(CENTER)).orElseThrow().segment().length(), 4,
+                "the layer joined the run");
+        helper.assertValueEqual(player.getMainHandItem().getCount(), 5, "a 2x2 layer uses four cables");
+
+        use(helper, player, CENTER.west().south(), Direction.SOUTH);
+        var branch = CENTER.west().south(2);
+        helper.assertTrue(bundled(helper, branch) && bundled(helper, branch.east().above()), "the side grew a branch");
+        helper.assertValueEqual(bundles.at(helper.absolutePos(branch)).orElseThrow().bundle().id(),
+                bundles.at(helper.absolutePos(run)).orElseThrow().bundle().id(), "the branch joined the bundle");
+        helper.assertValueEqual(player.getMainHandItem().getCount(), 1, "the branch used four cables");
+
+        use(helper, player, CENTER.west(), Direction.NORTH);
+        helper.assertTrue(helper.getBlockState(CENTER.west().north()).isAir(), "one cable is too few for a branch");
+        helper.assertValueEqual(player.getMainHandItem().getCount(), 1, "nothing was used");
+
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        player.setShiftKeyDown(true);
+        use(helper, player, run.above().south(), Direction.UP);
+        player.setShiftKeyDown(false);
+        helper.assertTrue(helper.getBlockState(run.above().south()).isAir(), "the wrench dismantled the cell");
+        helper.assertFalse(bundled(helper, run), "the rest of its layer reverted");
+        helper.assertTrue(bundled(helper, run.east()), "the rest of the bundle stays");
+
+        var lineStart = CENTER.offset(-2, 3, -3);
+        for (var pos : BlockPos.betweenClosed(lineStart, lineStart.offset(1, 0, 1))) {
+            fixtures.placeFederationCable(pos.immutable());
+        }
+        BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(lineStart.south()),
+                helper.absolutePos(lineStart.offset(2, 0, 1)), Direction.UP);
+        helper.assertFalse(bundled(helper, lineStart), "a position without a cable refuses the whole box");
+        BundleInteraction.form(player, helper.absolutePos(lineStart), helper.absolutePos(lineStart.south()),
+                helper.absolutePos(lineStart.offset(1, 0, 1)), Direction.UP);
+        var line = bundles.at(helper.absolutePos(lineStart));
+        helper.assertTrue(line.isPresent(), "three valid clicks form the bundle");
+        helper.assertValueEqual(line.get().bundle().shape().toString(), "1x2", "a 1x2 bundle along x");
+        helper.assertValueEqual(line.get().segment().axis(), Direction.Axis.X, "the third click set the axis");
+        RouterEvidence.write("bundleplayerextendsbranchesanddismantles", 7, Map.of("extendUsesFour", "true",
+                "branchUsesFour", "true", "tooFewRefused", "true", "wrenchDismantles", "true",
+                "dismantleRevertsLayer", "true", "missingCableRefuses", "true", "threeClicksForm", "true"));
+        clear(helper);
+        fixtures.close();
+        helper.succeed();
+    }
+
+    /** Right-clicks {@code face} of {@code relative} with the main hand, as the server handles a player's click. */
+    private static void use(GameTestHelper helper, ServerPlayer player, BlockPos relative, Direction face) {
+        var absolute = helper.absolutePos(relative);
+        var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(face, 0.5), face, absolute, false);
+        player.gameMode.useItemOn(player, helper.getLevel(), player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+    }
+
+    private static boolean bundled(GameTestHelper helper, BlockPos relative) {
+        return BundledCables.get(helper.getLevel()).at(helper.absolutePos(relative)).isPresent();
     }
 
     /** Clears the area; removing the cables also removes their bundles, which the level keeps between tests. */

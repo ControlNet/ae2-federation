@@ -10,6 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import space.controlnet.ae2federation.router.FederationCableBlock;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
@@ -43,15 +44,30 @@ public final class BundledCables extends SavedData {
         return set.linked(a, b);
     }
 
+    /** Why a box cannot be formed: the problem, how many of its positions have it, and how many positions it has. */
+    public record Refusal(Problem problem, int count, int total) {
+    }
+
     /** Why {@code segment} cannot be formed in {@code level}, or empty when every cell is a free Federation Cable. */
-    public Optional<Problem> formable(ServerLevel level, BundleSegment segment) {
-        for (var pos : segment.cells()) {
-            if (!level.isLoaded(pos)) return Optional.of(Problem.UNLOADED);
-            if (!(level.getBlockState(pos).getBlock() instanceof FederationCableBlock)) {
-                return Optional.of(Problem.NOT_ALL_CABLES);
-            }
-            if (set.at(pos).isPresent()) return Optional.of(Problem.ALREADY_BUNDLED);
+    public Optional<Refusal> formable(ServerLevel level, BundleSegment segment) {
+        return check(level, segment);
+    }
+
+    /**
+     * {@link #formable} on either side: a client checks its own view of the cables, the server its record. Positions
+     * without a Federation Cable come first, as the more basic problem.
+     */
+    public static Optional<Refusal> check(Level level, BundleSegment segment) {
+        var cells = segment.cells();
+        int missing = 0;
+        int bundled = 0;
+        for (var pos : cells) {
+            if (!level.isLoaded(pos)) return Optional.of(new Refusal(Problem.UNLOADED, 1, cells.size()));
+            if (!(level.getBlockState(pos).getBlock() instanceof FederationCableBlock)) missing++;
+            else if (BundleView.bundled(level, pos)) bundled++;
         }
+        if (missing > 0) return Optional.of(new Refusal(Problem.NOT_ALL_CABLES, missing, cells.size()));
+        if (bundled > 0) return Optional.of(new Refusal(Problem.ALREADY_BUNDLED, bundled, cells.size()));
         return Optional.empty();
     }
 
@@ -89,7 +105,8 @@ public final class BundledCables extends SavedData {
                 var neighbour = pos.relative(face);
                 if (invalidated.add(neighbour) && level.isLoaded(neighbour)) level.invalidateCapabilities(neighbour);
             }
-            if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof FederationCableBlockEntity cable) {
+            if (level.isLoaded(pos) && level.getBlockState(pos).getBlock() instanceof FederationCableBlock
+                    && level.getBlockEntity(pos) instanceof FederationCableBlockEntity cable) {
                 cable.bundleChanged();
             }
         }

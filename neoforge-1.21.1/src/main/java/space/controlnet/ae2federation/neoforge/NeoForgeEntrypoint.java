@@ -59,6 +59,7 @@ public final class NeoForgeEntrypoint {
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
+        space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);

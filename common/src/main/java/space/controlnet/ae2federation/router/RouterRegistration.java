@@ -52,6 +52,8 @@ public final class RouterRegistration {
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(RouterRegistration::registerCapabilities);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(DeviceStructureUpdater::onLevelTick);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                space.controlnet.ae2federation.bundle.BundleInteraction::onRightClickBlock);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

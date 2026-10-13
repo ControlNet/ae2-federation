@@ -26,6 +26,11 @@ public final class NeoForgeClientEntrypoint {
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onLoggingOut);
         NeoForge.EVENT_BUS.addListener(NeoForgeClientEntrypoint::onScreenInit);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.WorldHighlight::render);
+        space.controlnet.ae2federation.bundle.BundleInteraction.registerClientClick(
+                space.controlnet.ae2federation.client.BundleSelectionClient::click);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.BundleSelectionClient::tick);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.BundleSelectionClient::render);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.BundleSelectionClient::onRightClickEmpty);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onOpening);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationGuiScale::onFrame);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.client.FederationScreenSwitch::onClosing);

@@ -84,11 +84,7 @@ public final class BundleSet {
     public Plan planExtend(BlockPos pos, Direction face) {
         var serial = cells.get(pos);
         if (serial == null) return new Refused(Problem.NOT_BUNDLED);
-        var segment = segments.get(serial);
-        if (face.getAxis() != segment.axis() || segment.contains(pos.relative(face))) {
-            return new Refused(Problem.NOT_AN_END);
-        }
-        return placed(segment.endLayer(face).moved(face, 1));
+        return placed(extend(segments.get(serial), pos, face));
     }
 
     /**
@@ -100,7 +96,19 @@ public final class BundleSet {
     public Plan planBranch(BlockPos pos, Direction face, double along) {
         var serial = cells.get(pos);
         if (serial == null) return new Refused(Problem.NOT_BUNDLED);
-        var segment = segments.get(serial);
+        return placed(branch(segments.get(serial), pos, face, along));
+    }
+
+    /** {@link #planExtend} from {@code segment} alone, before checking that the new cells are free. */
+    public static Plan extend(BundleSegment segment, BlockPos pos, Direction face) {
+        if (face.getAxis() != segment.axis() || segment.contains(pos.relative(face))) {
+            return new Refused(Problem.NOT_AN_END);
+        }
+        return new Placement(segment.endLayer(face).moved(face, 1));
+    }
+
+    /** {@link #planBranch} from {@code segment} alone, before checking that the new cells are free. */
+    public static Plan branch(BundleSegment segment, BlockPos pos, Direction face, double along) {
         var axis = segment.axis();
         if (face.getAxis() == axis || segment.contains(pos.relative(face))) return new Refused(Problem.NOT_A_SIDE);
         int layers = segment.extent(face.getAxis());
@@ -112,7 +120,12 @@ public final class BundleSet {
                 ? segment.max().get(outward) : segment.min().get(outward)) + face.getAxisDirection().getStep();
         var min = BundleSegment.with(BundleSegment.with(segment.min(), axis, start), outward, outside);
         var max = BundleSegment.with(BundleSegment.with(segment.max(), axis, start + layers - 1), outward, outside);
-        return placed(new BundleSegment(min, max, outward));
+        return new Placement(new BundleSegment(min, max, outward));
+    }
+
+    /** The extension or branch that {@code face} of {@code pos} asks for: an end face extends, a side branches. */
+    public static Plan place(BundleSegment segment, BlockPos pos, Direction face, double along) {
+        return face.getAxis() == segment.axis() ? extend(segment, pos, face) : branch(segment, pos, face, along);
     }
 
     /** Breaks one cell: the rest of its layer reverts to ordinary cables and the segment splits there. */
@@ -175,11 +188,12 @@ public final class BundleSet {
                 || toward.getAxis() == second.axis() && endAgainst(second, toward.getOpposite(), first);
     }
 
-    private Plan placed(BundleSegment segment) {
-        for (var pos : segment.cells()) {
+    private Plan placed(Plan plan) {
+        if (!(plan instanceof Placement placement)) return plan;
+        for (var pos : placement.cells()) {
             if (cells.containsKey(pos)) return new Refused(Problem.OCCUPIED);
         }
-        return new Placement(segment);
+        return plan;
     }
 
     private long add(long serial, BundleSegment segment) {
