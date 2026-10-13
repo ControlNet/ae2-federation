@@ -440,7 +440,7 @@
   "ae2federation.ui.processing.returns_waiting": "%s 种产物等待存入网络",
   "ae2federation.ui.processing.release_blocked_returns": "暂时不能释放：它的回流缓冲里还有 %s 种产物。ME 网络有空间时会自动存入。",
   "ae2federation.ui.processing.release_blocked_send": "暂时不能释放：仍有发送到它的样板未完成。",
-  "ae2federation.jade.cable_capacity.local": "容量计数：%s（本地）",
-  "ae2federation.jade.cable_capacity.domain": "容量计数：%s（整个联邦域）",
+  "ae2federation.jade.cable_capacity.subdomain": "容量计数：%s（子域）",
+  "ae2federation.jade.cable_capacity.domain": "容量计数：%s（联邦域）",
   "config.jade.plugin_ae2federation.cable_capacity": "联邦线缆容量计数"
 }

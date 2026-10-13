@@ -16,14 +16,18 @@ import java.util.Set;
  *
  * <p>A unit is a distinct ME network attached through a Switch, or a Processing Endpoint; a Pattern Provider's own
  * network is not one. Cables, Switches and P2P tunnels joined by links form a region; only Router bodies bound it. A
- * region touching at most one Router body carries its own units; one touching two or more carries the whole domain's.
+ * region touching at most one Router body is a subdomain and carries its own units; one touching two or more carries
+ * the whole Federation domain's.
  * Only links both sides name count, as in the domain itself.
  */
 public final class CableCapacityCounter {
     public enum Scope {
-        /** The region's own units: it touches no Router or one Router body. */
-        LOCAL,
-        /** The whole domain's units: the region touches two or more Router bodies. */
+        /**
+         * The region's own units: it touches no Router or one Router body, so it and what attaches to it form a
+         * subdomain.
+         */
+        SUBDOMAIN,
+        /** The Federation domain's units: the region touches two or more Router bodies. */
         DOMAIN
     }
 
@@ -69,7 +73,7 @@ public final class CableCapacityCounter {
                 }
             }
             var demand = routers.size() >= 2 ? new Demand(Scope.DOMAIN, domainUnits.size())
-                    : new Demand(Scope.LOCAL, units.size());
+                    : new Demand(Scope.SUBDOMAIN, units.size());
             for (var member : region) {
                 if (nodes.get(member).kind() == FederationDomainNodeKind.CABLE) demands.put(member, demand);
             }

@@ -12,7 +12,7 @@ import snownee.jade.api.config.IPluginConfig;
 import space.controlnet.ae2federation.domain.CableCapacity;
 import space.controlnet.ae2federation.domain.CableCapacityCounter;
 
-/** One line on a Federation Cable: the capacity it counts, and whether that is its region's or the whole domain's. */
+/** One line on a Federation Cable: the capacity it counts, and whether that is its subdomain's or its domain's. */
 enum CableCapacityProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     INSTANCE;
 
@@ -34,7 +34,7 @@ enum CableCapacityProvider implements IBlockComponentProvider, IServerDataProvid
         var data = accessor.getServerData();
         if (!data.contains(UNITS)) return;
         tooltip.add(Component.translatable(data.getBoolean(DOMAIN) ? "ae2federation.jade.cable_capacity.domain"
-                : "ae2federation.jade.cable_capacity.local", data.getInt(UNITS)));
+                : "ae2federation.jade.cable_capacity.subdomain", data.getInt(UNITS)));
     }
 
     @Override

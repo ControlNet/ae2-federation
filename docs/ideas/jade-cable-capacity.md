@@ -1,7 +1,7 @@
 # Lightweight Jade cable capacity display
 
 Discussion date: 2026-10-10.
-Status: the count line is implemented on `dev` (2026-10-13): `Capacity count: N (local)` or `(whole domain)`, from
+Status: the count line is implemented on `dev` (2026-10-13): `Capacity count: N (subdomain)` or `(Federation domain)`, from
 the [counting rules](../architecture/cable-capacity-counting.md); the limit part waits for capacity limits.
 
 ## Direction

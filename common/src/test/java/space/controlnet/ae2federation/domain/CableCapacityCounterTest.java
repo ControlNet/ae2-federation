@@ -32,9 +32,9 @@ final class CableCapacityCounterTest {
         graph.link(router, away).link(away, graph.node(FederationDomainNodeKind.SWITCH, C));
 
         var demand = graph.count();
-        assertEquals(new Demand(Scope.LOCAL, 3), demand.get(first));
-        assertEquals(new Demand(Scope.LOCAL, 3), demand.get(second));
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(away));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(first));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(second));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(away));
         assertFalse(demand.containsKey(sw), "only cables have a demand");
     }
 
@@ -56,8 +56,8 @@ final class CableCapacityCounterTest {
         var demand = graph.count();
         assertEquals(new Demand(Scope.DOMAIN, 3), demand.get(trunk));
         assertEquals(new Demand(Scope.DOMAIN, 3), demand.get(spur), "a dead-end branch inherits the domain demand");
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(leftCable));
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(rightCable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(leftCable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(rightCable));
     }
 
     @Test
@@ -70,7 +70,7 @@ final class CableCapacityCounterTest {
                 .link(cable, graph.node(FederationDomainNodeKind.ENDPOINT));
         graph.link(sameBody, graph.node(FederationDomainNodeKind.SWITCH, A));
 
-        assertEquals(new Demand(Scope.LOCAL, 1), graph.count().get(cable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), graph.count().get(cable));
     }
 
     @Test
@@ -101,8 +101,8 @@ final class CableCapacityCounterTest {
         graph.link(far, graph.node(FederationDomainNodeKind.SWITCH, A));
 
         var demand = graph.count();
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(near));
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(far));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(near));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(far));
     }
 
     @Test
@@ -113,7 +113,7 @@ final class CableCapacityCounterTest {
         graph.link(cable, provider).link(provider, graph.node(FederationDomainNodeKind.ENDPOINT));
         graph.link(graph.node(FederationDomainNodeKind.ROUTER), cable);
 
-        assertEquals(new Demand(Scope.LOCAL, 0), graph.count().get(cable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 0), graph.count().get(cable));
     }
 
     @Test
@@ -130,13 +130,13 @@ final class CableCapacityCounterTest {
         graph.link(rightCable, graph.node(FederationDomainNodeKind.SWITCH, A, B));
 
         var demand = graph.count();
-        assertEquals(new Demand(Scope.LOCAL, 1), demand.get(leftCable));
-        assertEquals(new Demand(Scope.LOCAL, 2), demand.get(rightCable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(leftCable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(rightCable));
         assertEquals(new Demand(Scope.DOMAIN, 2), demand.get(trunk));
     }
 
     @Test
-    void aRegionWithoutRoutersCountsLocallyAndOneSidedLinksAreIgnored() {
+    void aRegionWithoutRoutersIsASubdomainAndOneSidedLinksAreIgnored() {
         var graph = new Graph();
         var cable = graph.node(FederationDomainNodeKind.CABLE);
         graph.link(cable, graph.node(FederationDomainNodeKind.SWITCH, A))
@@ -147,7 +147,7 @@ final class CableCapacityCounterTest {
         graph.link(cable, unsettled);
         graph.unsettled(unsettled);
 
-        assertEquals(new Demand(Scope.LOCAL, 2), graph.count().get(cable));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), graph.count().get(cable));
     }
 
     private static NetworkId network(long value) {

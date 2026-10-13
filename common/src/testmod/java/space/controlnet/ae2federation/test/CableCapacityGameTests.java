@@ -25,7 +25,7 @@ public final class CableCapacityGameTests {
     /**
      * One line along x, within three blocks of the centre like the other harness tests: Switch (two chests) - cable -
      * Router - cable - Router - cable - Endpoint, and a Switch (one chest) on top of the middle cable. The outer cables
-     * touch one Router and count their own region; the trunk touches both and counts the whole domain: three networks
+     * touch one Router and count their own subdomain; the trunk touches both and counts the Federation domain: three networks
      * and the Endpoint. (A Switch passing a region through is covered by {@code CableCapacityCounterTest}.)
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -52,10 +52,10 @@ public final class CableCapacityGameTests {
             var left = demand(helper, CENTER.west(2));
             var trunk = demand(helper, CENTER);
             var right = demand(helper, CENTER.east(2));
-            helper.assertValueEqual(left, new Demand(Scope.LOCAL, 2), "The left region counts its Switch's two networks");
+            helper.assertValueEqual(left, new Demand(Scope.SUBDOMAIN, 2), "The left subdomain counts its Switch's two networks");
             helper.assertValueEqual(trunk, new Demand(Scope.DOMAIN, 4),
-                    "The trunk between two Routers counts the whole domain");
-            helper.assertValueEqual(right, new Demand(Scope.LOCAL, 1), "The right region counts its Endpoint");
+                    "The trunk between two Routers counts the Federation domain");
+            helper.assertValueEqual(right, new Demand(Scope.SUBDOMAIN, 1), "The right subdomain counts its Endpoint");
             RouterEvidence.write("cablecapacitycountsregions", 3, Map.of(
                     "left", String.valueOf(left), "trunk", String.valueOf(trunk), "right", String.valueOf(right)));
             fixtures.close();

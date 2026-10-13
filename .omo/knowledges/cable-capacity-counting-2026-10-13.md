@@ -25,7 +25,7 @@ Jade. Contract: `docs/architecture/cable-capacity-counting.md`.
 
 `tools/visual/build_hero_scene.py` `function hero_scene:capacity` (origin x+75): Switch(2 chests) - 3 cables - Router -
 3 cables - Switch(1 chest) - 3 cables - Router - 3 cables - Endpoint. Expected and seen: 2 local / 4 whole domain /
-4 whole domain / 1 local. AE2's ME chest block id is `ae2:chest`. Teleport the player to the scene before running the
+4 whole domain / 1 local (wording before the subdomain rename). AE2's ME chest block id is `ae2:chest`. Teleport the player to the scene before running the
 function. `tp ... facing` aims from the feet, so the crosshair misses a block below; give yaw/pitch computed from eye
 height (+1.62). Jade needs the HUD: no F1; it works in creative and spectator. Jade jar must be in both server and
 client mods. Shots: `build/beam-compare/capacity-{before,after}/`, sheet `cable-capacity-before-after.png`, crop
@@ -37,8 +37,16 @@ The owner asked for a page of its own: `ae2guide/network-capacity.md` ("Network 
 between How Federation Works and Across Domains), linked from the index, the Cable page and the Router page. The Router
 page and index bullet no longer say "no use for now": for now it only ends a capacity segment. Scene
 `assets/network_capacity.snbt`: Switch with networks A (drive + the only energy cell) and B - cable - Router - cable -
-Switch with network C - cable - Router - cable - Endpoint; it reads 2 local / 4 whole domain / 1 local. It has no AE2
+Switch with network C - cable - Router - cable - Endpoint; it reads 2 subdomain / 4 Federation domain / 1 subdomain. It has no AE2
 cables (devices sit straight on Switch faces, never face to face with another network), so `guideSceneCables` has
 nothing to check. The Chinese contract rule (space after `：` before more text) rejects quoting the Jade line
 `容量计数：N（…）` verbatim, so the zh page describes it instead. The inline Switch in the trunk is covered by
 `CableCapacityCounterTest`, not by the GameTest (which keeps the Switch above the trunk).
+
+## Subdomain wording (2026-10-13)
+
+The owner found "whole domain" / 「整个联邦域」 odd and named the concept: a region touching at most one Router, with
+its networks and Endpoints, is a **subdomain** / 「子域」, the part of a domain that counts capacity on its own. The
+other case is just "Federation domain" / 「联邦域」. Code: `CableCapacityCounter.Scope.SUBDOMAIN` (was `LOCAL`), lang key
+`ae2federation.jade.cable_capacity.subdomain` (was `.local`); Jade reads "Capacity count: N (subdomain)" /
+"(Federation domain)", 「容量计数：N（子域）」/「（联邦域）」. Guide pages and docs use the same words.

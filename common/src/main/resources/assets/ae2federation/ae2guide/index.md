@@ -20,7 +20,7 @@ on, and each permission works in one direction.
 
 * [Getting Started](getting-started.md): craft the parts and connect your first two networks.
 * [How Federation Works](mechanics.md): domains, rules, shared energy and the limits.
-* [Network Capacity](network-capacity.md): what each Federation Cable counts, and where Routers split it.
+* [Network Capacity](network-capacity.md): what each Federation Cable counts, and how Routers split a domain into subdomains.
 * [Across Domains](across-domains.md): reach a network two Bridges away through re-export, with no rule of your own for it.
 * [Remote Crafting](remote-processing.md): order from another network's pattern providers, or send processing
   patterns to its machines.

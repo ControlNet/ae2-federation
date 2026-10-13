@@ -22,8 +22,9 @@ On 2026-10-13 the user ordered the work as counting first, limits afterwards, an
   tunnel pair counts as cable: the regions at both ends are one region, and the tunnel's carrier network is not
   counted. Only Routers bound regions.
 - **Router identity.** R(S) counts distinct Router bodies (one formed solid cuboid is one router), not blocks or faces.
-- **Demand.** A region touching no Router or exactly one Router counts its own units |A(S)|; a region touching two
-  or more Routers counts the whole domain's units |A(D)|.
+- **Demand.** A region touching no Router or exactly one Router is a **subdomain** and counts its own units |A(S)|;
+  a region touching two or more Routers counts the Federation domain's units |A(D)|.
+- **Names.** Players see "subdomain" / 「子域」 and "Federation domain" / 「联邦域」 (not "local" or "whole domain").
 - **Repeated networks.** One ME network attached in two regions counts once in each region and once in the domain.
 - **Display.** The count is shown on a Federation Cable through Jade (see [Jade cable capacity](jade-cable-capacity.md)).
 

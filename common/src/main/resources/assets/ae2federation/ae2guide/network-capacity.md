@@ -20,13 +20,13 @@ only a count: no cable has a limit yet, and nothing stops working however high t
     Network B, on the same Switch: counts 1 more
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="7 0 0" max="8 1 1">
-    Left segment: 2 (local), networks A and B
+    Left segment: 2 (subdomain), networks A and B
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="6 0 0" max="7 1 1">
     Router: ends a segment
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="3 0 0" max="6 1 1">
-    Middle segment, through the Switch: 4 (whole domain), as it runs between two Routers
+    Middle segment, through the Switch: 4 (Federation domain), as it runs between two Routers
   </BoxAnnotation>
   <BoxAnnotation color="#5dcd70" min="4 1 0" max="5 2 1">
     Network C: counts 1
@@ -35,7 +35,7 @@ only a count: no cable has a limit yet, and nothing stops working however high t
     Router: ends a segment
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="1 0 0" max="2 1 1">
-    Right segment: 1 (local), the Endpoint
+    Right segment: 1 (subdomain), the Endpoint
   </BoxAnnotation>
   <BoxAnnotation color="#dddddd" min="0 0 0" max="1 1 1">
     Processing Endpoint: counts 1
@@ -58,16 +58,16 @@ and neither does a pair of <ItemLink id="ae2federation:federation_p2p_tunnel" />
 the same segment. Only a <ItemLink id="ae2federation:router" /> ends one, and a Router built from several blocks counts
 as one Router.
 
-* A segment that touches **no Router or one Router** counts only its own: the networks on its Switches and the
-  Endpoints on it. It reads **local**.
+* A segment that touches **no Router or one Router**, together with the networks on its Switches and the Endpoints
+  on it, is a **subdomain**: the part of the domain that counts on its own. The segment counts only its subdomain.
 * A segment that touches **two or more Routers** carries traffic between them, so it counts everything in the
-  [Federation domain](mechanics.md). It reads **whole domain**.
+  [Federation domain](mechanics.md).
 * A network whose Switches sit on two segments counts in each of them.
 
-In the scene, the left segment counts networks A and B, and the right one the Endpoint. The middle segment runs from
+In the scene, the left subdomain counts networks A and B, and the right one the Endpoint. The middle segment runs from
 one Router to the other, so it counts all four, network C on its own Switch included.
 
 ## Seeing the count
 
 With the Jade mod installed on both the server and your client, look at a Federation Cable:
-Jade adds a line such as "Capacity count: 4 (whole domain)". Without Jade the count is not shown anywhere yet.
+Jade adds a line such as "Capacity count: 4 (Federation domain)" or "Capacity count: 2 (subdomain)". Without Jade the count is not shown anywhere yet.
