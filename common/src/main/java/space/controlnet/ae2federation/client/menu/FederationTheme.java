@@ -24,6 +24,8 @@ public final class FederationTheme {
     public static final int DARK_TITLE = 0xffefeaf8;
     public static final int DARK_MUTED = 0xffaaa4b2;
     public static final int CANVAS = 0xff201e27;
+    /** The canvas of a domain over cable capacity, which has stopped as a whole: the CANVAS hue turned to ERROR. */
+    public static final int CANVAS_STOPPED = 0xff2e171c;
     public static final int WELL = 0xff17141e;
     public static final int SELECT = 0xff9cd3ff;
     public static final int OK = 0xff55ff8a;
@@ -43,6 +45,8 @@ public final class FederationTheme {
     /** Domain plates, faint enough that links and cards read over them: the opened domain pale, related ones blue. */
     public static final int PLATE_OPENED = 0x1ad8d3e4;
     public static final int PLATE_RELATED = 0x149cd3ff;
+    /** The plate of a domain over cable capacity: ERROR, a little stronger than the other plates. */
+    public static final int PLATE_STOPPED = 0x2eff6a75;
     /** The opened domain's plate name; a related domain's name is {@link #SELECT}. */
     public static final int PLATE_OPENED_NAME = 0xffd8d3e4;
     /** A rule in effect that passes its access on: apart from active green, selection blue and the switch's green. */

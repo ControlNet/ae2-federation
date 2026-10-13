@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.neoforge;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -12,6 +13,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.config.FederationServerConfig;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
@@ -36,7 +38,7 @@ public final class NeoForgeEntrypoint {
     public static final String MOD_ID = "ae2federation";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public NeoForgeEntrypoint(IEventBus modBus) {
+    public NeoForgeEntrypoint(IEventBus modBus, ModContainer container) {
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             try {
                 var path = ModList.get().getModFileById(MOD_ID).getFile().getFilePath().toRealPath();
@@ -48,6 +50,7 @@ public final class NeoForgeEntrypoint {
             NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onArtifactPlayerJoin);
         }
         CommonStartup.start(LOGGER);
+        FederationServerConfig.register(container, modBus);
         BridgeRegistration.register(modBus);
         FederationP2PRegistration.register(modBus);
         RouterRegistration.register(modBus);

@@ -185,6 +185,51 @@ public final class TopologyContinuityGameTests {
         });
     }
 
+    /**
+     * Three more ME networks on the two Switches put five units on the cable, over the default capacity of four: the
+     * domain keeps its members but stops as a whole, so B loses A's power. Taking one network away lets it run again.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1000, required = true, manualOnly = true)
+    public static void topologyOverCapacityStopsPower(GameTestHelper helper) {
+        var scene = new PoweredDomain(helper);
+        var routers = new RouterFixtures(helper);
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                scene.awaitPowered();
+                routers.placeNativeDevice(LEFT, Direction.SOUTH);
+                routers.placeNativeDevice(RIGHT, Direction.SOUTH);
+                routers.placeNativeDevice(RIGHT, Direction.UP);
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the three networks to join the Switches");
+            }
+            if (phase[0] == 1) {
+                var shared = scene.sharedDomains();
+                helper.assertValueEqual(shared.size(), 1, "A and B must still share their domain");
+                helper.assertTrue(scene.registry().overCapacity(shared.iterator().next()),
+                        "Waiting for five networks on the cable to stop the domain");
+                helper.assertTrue(!scene.shares(), "Waiting for the stopped domain to end A and B's energy sharing");
+                phase[0] = 2;
+                throw new GameTestAssertException("Waiting for AE2 to publish B's power state");
+            }
+            if (phase[0] == 2) {
+                helper.assertTrue(!scene.consumerPowered(), "Waiting for B to lose A's power");
+                helper.setBlock(RIGHT.above(), Blocks.AIR);
+                phase[0] = 3;
+                throw new GameTestAssertException("Waiting for four networks to fit the cable");
+            }
+            helper.assertTrue(!scene.registry().overCapacity(scene.sharedDomains().iterator().next()),
+                    "Waiting for the domain to run at four networks");
+            helper.assertTrue(scene.shares() && scene.consumerPowered(), "Waiting for B to draw A's power again");
+            FederationDomainEvidence.write("topologyovercapacitystopspower", 5, Map.of(
+                    "overCapacity", "true", "sharingWithdrawn", "true", "consumerUnpowered", "true",
+                    "restoredAtFour", "true", "worldScan", "false"));
+            scene.close();
+            routers.close();
+        });
+    }
+
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
             timeoutTicks = 1000, required = true, manualOnly = true)
     public static void topologyUnsettledAttachKeepsDomain(GameTestHelper helper) {

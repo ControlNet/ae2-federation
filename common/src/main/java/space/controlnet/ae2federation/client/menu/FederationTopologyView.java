@@ -124,6 +124,10 @@ final class FederationTopologyView {
     /** The domain's Router group or Bridge, as the server reports it. */
     private JsonObject via;
     private boolean showRelated;
+    /** Whether the opened domain is over cable capacity, and which shown related domains are. */
+    private boolean openedStopped;
+    private final java.util.Set<String> stoppedDomains = new java.util.HashSet<>();
+    private int canvasColor = FederationTheme.CANVAS;
     private final Button scopeButton;
     private final Button domainScopeButton;
     private final Label scopeCaption;
@@ -371,6 +375,10 @@ final class FederationTopologyView {
         if (!root.has("networks") && !networks.isEmpty()) return;
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
         via = root.has("via") ? root.getAsJsonObject("via") : null;
+        openedStopped = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
+        stoppedDomains.clear();
+        if (root.has("overCapacityDomains")) root.getAsJsonArray("overCapacityDomains")
+                .forEach(value -> stoppedDomains.add(value.getAsString()));
         networks.clear();
         networkDomains.clear();
         shownById = null;
@@ -526,7 +534,11 @@ final class FederationTopologyView {
         var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
         boolean truncated = relatedTotal > related.size();
         if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
+        if (openedStopped) caption.append(" · ").append(tr("over_capacity")
+                .withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         scopeCaption.setText(caption);
+        scopeCaption.style(style -> style.tooltips(openedStopped
+                ? Component.translatable("ae2federation.ui.domain.runtime.backend.domain_over_capacity") : Component.empty()));
         scopeButton.style(style -> style.tooltips(truncated
                 ? tr("scope.help_truncated", related.size(), relatedTotal) : tr("scope.help", related.size())));
         scopeButton.removeClass("selected");
@@ -761,6 +773,13 @@ final class FederationTopologyView {
             if (index.containsKey(ends[0]) && index.containsKey(ends[1])) linked.add(pair);
         }
         boolean clustered = showRelated && !related.isEmpty();
+        // The opened domain alone fills the canvas, so a stopped one turns the whole canvas; with related domains on
+        // their plates, only the stopped domains' plates turn.
+        int canvas = openedStopped && !clustered ? FederationTheme.CANVAS_STOPPED : FederationTheme.CANVAS;
+        if (canvas != canvasColor) {
+            canvasColor = canvas;
+            graph.style(style -> style.backgroundTexture(FederationTheme.solid(canvas)));
+        }
         var clusterCards = ordered.stream().map(network -> new DomainClusterLayout.Card(network.id(), shownDomains(network))).toList();
         var raw = new ArrayList<Vector2f>();
         if (clustered) {
@@ -2498,7 +2517,8 @@ final class FederationTopologyView {
             var spots = new HashMap<Long, Integer>();
             for (var plate : FederationTopologyView.this.plates) {
                 boolean opened = plate.domain().equals(OPENED_DOMAIN);
-                int fill = opened ? FederationTheme.PLATE_OPENED : FederationTheme.PLATE_RELATED;
+                boolean stopped = opened ? openedStopped : stoppedDomains.contains(plate.domain());
+                int fill = stopped ? FederationTheme.PLATE_STOPPED : opened ? FederationTheme.PLATE_OPENED : FederationTheme.PLATE_RELATED;
                 for (var row : plate.rows()) {
                     context.graphics.fill(Math.round(row[1]), (int) row[0], Math.round(row[2]), (int) row[0] + 1, fill);
                 }
@@ -2506,13 +2526,14 @@ final class FederationTopologyView {
                 float left = (float) plate.outline().stream().filter(point -> point[1] <= top + 1)
                         .mapToDouble(point -> point[0]).min().orElse(0);
                 var name = opened ? tr("plate_opened") : domainName(plate.domain());
+                if (stopped) name = name.copy().append(" · ").append(tr("over_capacity"));
                 int x = Math.round(left - plate.padding() + 8);
                 int y = Math.round(top - PLATE_NAME_HEIGHT);
                 long spot = (long) x << 32 | (y & 0xffffffffL);
                 x = spots.getOrDefault(spot, x);
                 // LDLib2's renderer, as the canvas text draws it: vanilla drawString breaks glyphs up at a fractional zoom.
                 com.lowdragmc.lowdraglib2.gui.LDLibFonts.drawText(context.graphics, com.lowdragmc.lowdraglib2.gui.LDLibFonts.font(), canvasFont(name),
-                        x, y, opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
+                        x, y, stopped ? FederationTheme.ERROR : opened ? FederationTheme.PLATE_OPENED_NAME : FederationTheme.SELECT, false);
                 spots.put(spot, x + font.width(canvasFont(name)) + 6);
             }
         }

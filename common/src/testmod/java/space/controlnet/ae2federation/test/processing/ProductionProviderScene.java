@@ -155,7 +155,9 @@ public final class ProductionProviderScene {
             }
         }
         if (!routerPlaced) {
-            helper.setBlock(ROUTER, RouterRegistration.SWITCH.get());
+            // A Router, not a Switch: it ends the cable's segment, so the Endpoints on its faces do not count on the
+            // Providers' cable, which would carry five units with the second Provider, over the default capacity.
+            helper.setBlock(ROUTER, RouterRegistration.ROUTER.get());
             routerPlaced = true;
             return "router-placed";
         }

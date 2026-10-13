@@ -1006,6 +1006,11 @@ public final class FederationDomainPolicySession {
                         .sorted(byId).toList()).orElse(List.of()));
         root.addProperty("relatedTotal", reach.networks().size());
         var domains = new java.util.LinkedHashSet<>(reach.domains());
+        // A domain over cable capacity has stopped as a whole: the canvas tints it.
+        root.addProperty("openedOverCapacity", registry.overCapacity(context.federationDomainId()));
+        var overCapacity = new com.google.gson.JsonArray();
+        domains.stream().filter(registry::overCapacity).forEach(domainId -> overCapacity.add(domainId.value()));
+        root.add("overCapacityDomains", overCapacity);
         var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
         var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
         var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);

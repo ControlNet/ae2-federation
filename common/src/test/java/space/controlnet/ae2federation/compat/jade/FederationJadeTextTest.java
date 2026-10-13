@@ -54,6 +54,24 @@ final class FederationJadeTextTest {
     }
 
     @Test
+    void aCableShowsItsCountAgainstTheLimitAndRedOnceOver() {
+        var fits = FederationJadeText.capacity(4, java.util.OptionalInt.of(4), false);
+        assertEquals("ae2federation.jade.cable_capacity.subdomain", contents(fits).getKey());
+        var count = (Component) contents(fits).getArgs()[0];
+        assertEquals("4/4", count.getString());
+        assertEquals(null, count.getStyle().getColor(), "a count within the limit keeps the line's colour");
+
+        var over = (Component) contents(FederationJadeText.capacity(5, java.util.OptionalInt.of(4), true)).getArgs()[0];
+        assertEquals("5/4", over.getString());
+        assertEquals(0xff6a75, over.getStyle().getColor().getValue(), "a count over the limit is red");
+        assertEquals("ae2federation.jade.cable_capacity.domain",
+                contents(FederationJadeText.capacity(5, java.util.OptionalInt.of(4), true)).getKey());
+
+        var unlimited = (Component) contents(FederationJadeText.capacity(7, java.util.OptionalInt.empty(), false)).getArgs()[0];
+        assertEquals("7", unlimited.getString(), "without enforcement only the count shows");
+    }
+
+    @Test
     void everyLineAndConfigNameIsTranslatedInBothLanguages() throws IOException {
         var keys = List.of("structure.size", "structure.not_solid", "structure.touching", "structure.too_large",
                 "structure.unloaded", "switch_networks", "endpoint.local", "endpoint.claimed", "endpoint.unclaimed",

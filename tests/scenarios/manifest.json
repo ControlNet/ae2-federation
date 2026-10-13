@@ -171,6 +171,8 @@
     {"id":"topology.placement-keeps-power","backend":"gametest","testId":"topologyplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"topology.player-placement-keeps-power","backend":"gametest","testId":"topologyplayerplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"topology.break-cuts-power","backend":"gametest","testId":"topologybreakcutspower","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"capacity.over-limit-stops-power","backend":"gametest","testId":"topologyovercapacitystopspower","structure":"ae2federation_test:harness_native_smoke","assertions":5},
+    {"id":"capacity.over-limit-stops-processing","backend":"gametest","testId":"productionproviderovercapacity","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"topology.unsettled-attach-keeps-domain","backend":"gametest","testId":"topologyunsettledattachkeepsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"policy.lifecycle-matrix","backend":"gametest-restart","testId":"policylifecyclematrix","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"policy.new-bridge-restore","backend":"gametest","testId":"policynewbridgerestore","structure":"ae2federation_test:harness_native_smoke","assertions":8},

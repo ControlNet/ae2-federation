@@ -1,8 +1,8 @@
 # Cable capacity counting
 
-Federation Cables count the capacity they would carry under the rules confirmed in the
-[cable capacity idea](../ideas/multiblock-routing-and-cable-capacity.md#confirmed-counting-rules). Nothing limits a
-cable yet: the count is shown read-only, and limits come later.
+Federation Cables count the capacity they carry under the rules confirmed in the
+[cable capacity idea](../ideas/multiblock-routing-and-cable-capacity.md#confirmed-counting-rules). A domain with any
+cable over the limit stops as a whole (see [Limit](#limit)).
 
 ## Inputs
 
@@ -36,3 +36,24 @@ and is the only class that refers to Jade, so the mod runs without it. Its serve
 cable being looked at; the client line reads `Capacity count: N (subdomain)` or `(Federation domain)` (zh: 子域 / 联邦域). Both sides need Jade for
 the line to appear. The GameTest `capacity.cable-regions` checks the counts in a real level. The guide page `network-capacity.md`
 explains the rules to players.
+
+## Limit
+
+`CableCapacityLimit` holds the server's rule: enforced by default with 4 units per cable, set from
+`serverconfig/ae2federation-server.toml` (`capacity.enforceCableCapacity`, `capacity.cableCapacity`, 1 to 1024) by
+`FederationServerConfig` when the file loads or is edited. The owner decided (2026-10-13) that any cable over the
+limit stops the **whole** Federation domain, judged again only when the domain's evidence or the limit changes.
+
+- **Verdict.** `FederationDomainRegistry` judges a domain on the read after its evidence changed or it was installed,
+  or every domain after the limit changed (`judgeCapacity`, inside `flush`). The verdict keeps the domain's nodes,
+  members, id and generation, so nothing the count reads changes and it cannot oscillate. Only a changed verdict
+  advances `topologyRevision` and `AuthorityEpoch`, which is how storage, crafting and energy notice it.
+- **Gates.** Network pairs: `PolicyActivation` returns `OVER_CAPACITY` when the two networks share only stopped
+  domains (`shareRunningFederationDomain`); its reason `DOMAIN_OVER_CAPACITY` shows on the rule and reads as an error.
+  Processing: `ProviderTargetAuthorization` pauses a Lane with `FEDERATION_DOMAIN_OVER_CAPACITY`. Endpoint power:
+  `EnergySharingService.endpointEdges` skips an Endpoint in a stopped domain. Native networks keep working.
+- **Display.** The topology sends `openedOverCapacity` and `overCapacityDomains`: the opened domain alone turns the
+  canvas `CANVAS_STOPPED` with "over capacity, stopped" after the scope caption; with related domains on plates, only
+  stopped plates turn `PLATE_STOPPED` with that suffix on their names. Jade reads "Capacity count: N/C", N red over C.
+- **Tests.** `CableCapacityLimitTest`, `PolicyActivationTest`; GameTests `capacity.over-limit-stops-power` (five
+  networks on two Switches stop the energy pool, four restore it) and `capacity.over-limit-stops-processing`.
