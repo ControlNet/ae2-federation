@@ -358,7 +358,7 @@
   "ae2federation.ui.processing.column.providers": "样板供应器",
   "ae2federation.ui.processing.column.endpoints": "处理端点",
   "ae2federation.ui.processing.provider_title": "供应器 · %s",
-  "ae2federation.ui.processing.endpoint_title": "端点 · %s",
+  "ae2federation.ui.processing.endpoint_title": "端点 @ %s",
   "ae2federation.ui.processing.network_unknown": "域外网络",
   "ae2federation.ui.processing.ownership": "供应器 @ %s",
   "ae2federation.ui.processing.owner_here": "此供应器",

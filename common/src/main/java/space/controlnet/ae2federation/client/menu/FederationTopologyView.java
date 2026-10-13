@@ -1404,7 +1404,7 @@ final class FederationTopologyView {
         var notes = new ArrayList<Component>();
         if (local) notes.add(tr("endpoint_local_help"));
         else if (endpoint.alone()) notes.add(tr("endpoint_node.alone"));
-        else if (!endpoint.ready()) notes.add(tr("endpoint_node.not_ready"));
+        else if (!endpoint.ready()) notes.add(EndpointText.notReady(json));
         else if (endpoint.mode().equals("LOCAL")) notes.add(tr("endpoint_node.local"));
         var flow = endpointFlows.get(endpoint.id());
         if (flow != null && flow.get("events").getAsLong() > 0) notes.add(tr("flow", flow.get("events").getAsLong()));
@@ -1433,9 +1433,7 @@ final class FederationTopologyView {
                 endpointFact("face", FederationWorkspace.tr("face." + string(json, "face"))),
                 endpointFact("owner", json.has("ownerPosition") ? tr("endpoint_owner_at", json.get("ownerPosition").getAsString())
                         : json.has("owner") ? tr("endpoint_owner_unloaded") : FederationWorkspace.tr("unclaimed")),
-                endpointFact("native", host != null ? name(host) : json.has("nativeNetwork")
-                        ? tr("network_name", json.get("nativeNetwork").getAsString().substring(0, 4).toUpperCase(Locale.ROOT))
-                        : FederationWorkspace.tr("network_unconfirmed")));
+                endpointFact("native", host != null ? name(host) : EndpointText.unnamedNetwork(json)));
         if (json.has("energyTarget")) endpointDetail.addChild(endpointEnergyFact(json));
         boolean navigable = json.has("mappingNavigation") && json.get("mappingNavigation").getAsBoolean();
         devices.setDisplay(!local);

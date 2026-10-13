@@ -480,6 +480,7 @@ public final class FederationDomainPolicySession {
         choice.addProperty("z", runtime.position().getZ());
         choice.addProperty("dimension", FederationDomainRegistryAccess.dimension(endpoint.level()));
         choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
+        choice.addProperty("nodePowered", endpoint.subnetNode().isPowered());
         choice.addProperty("subnetAlone", endpoint.subnetAlone());
         choice.addProperty("configuredMode", runtime.configuredMode().name());
         choice.addProperty("runtimeMode", runtime.mode().map(mode ->
@@ -574,8 +575,10 @@ public final class FederationDomainPolicySession {
                         .findFirst().ifPresent(position -> choice.addProperty("ownerPosition", position.toShortString()));
             });
             // The same order as the "networks" array, so the canvas names the Endpoint's network as the overview does.
-            choice.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
-                    .map(members::indexOf).orElse(-1));
+            var subnet = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid());
+            choice.addProperty("networkIndex", subnet.map(members::indexOf).orElse(-1));
+            // The subnet is seldom a member, so the view names it by its identity, as the topology does.
+            subnet.ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
         }
         return choice;
     }

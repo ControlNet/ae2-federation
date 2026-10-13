@@ -358,7 +358,7 @@
   "ae2federation.ui.processing.column.providers": "Pattern Provider",
   "ae2federation.ui.processing.column.endpoints": "Processing Endpoint",
   "ae2federation.ui.processing.provider_title": "Provider · %s",
-  "ae2federation.ui.processing.endpoint_title": "Endpoint · %s",
+  "ae2federation.ui.processing.endpoint_title": "Endpoint @ %s",
   "ae2federation.ui.processing.network_unknown": "outside the domain",
   "ae2federation.ui.processing.ownership": "Provider @ %s",
   "ae2federation.ui.processing.owner_here": "This Provider",
