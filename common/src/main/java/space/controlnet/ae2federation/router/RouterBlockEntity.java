@@ -124,6 +124,17 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         return Collections.unmodifiableMap(snapshot);
     }
 
+    /** The settled networks this block's faces attach, as last published to the domain registry. */
+    public java.util.Set<space.controlnet.ae2federation.identity.NetworkId> attachedNetworks() {
+        var networks = new java.util.HashSet<space.controlnet.ae2federation.identity.NetworkId>();
+        if (publishedEvidence != null) {
+            publishedEvidence.ports().values().forEach(port -> {
+                if (port instanceof FederationDomainPortEvidence.Native attached) networks.add(attached.networkId());
+            });
+        }
+        return networks;
+    }
+
     public Map<IGrid, List<Direction>> nativeFacesByGrid() {
         var mutable = new IdentityHashMap<IGrid, ArrayList<Direction>>();
         facePorts.forEach((face, port) -> {

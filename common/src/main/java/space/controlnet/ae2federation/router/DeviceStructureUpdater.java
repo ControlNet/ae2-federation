@@ -81,6 +81,11 @@ public final class DeviceStructureUpdater {
         }, DeviceStructure.MAX_EDGE);
     }
 
+    /** The body the Router or Switch at {@code position} belongs to, judged now. */
+    public static DeviceStructure.Result body(ServerLevel level, BlockPos position) {
+        return evaluate(level, position, level.getBlockState(position).getBlock());
+    }
+
     /** What keeps the block at {@code position} from forming, for the player who uses it. */
     public static Component status(ServerLevel level, BlockPos position) {
         var block = level.getBlockState(position).getBlock();

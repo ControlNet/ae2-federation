@@ -442,5 +442,18 @@
   "ae2federation.ui.processing.release_blocked_send": "Cannot release yet: a send to it is still in progress.",
   "ae2federation.jade.cable_capacity.subdomain": "Capacity count: %s (subdomain)",
   "ae2federation.jade.cable_capacity.domain": "Capacity count: %s (Federation domain)",
-  "config.jade.plugin_ae2federation.cable_capacity": "Federation Cable capacity count"
+  "config.jade.plugin_ae2federation.cable_capacity": "Federation Cable capacity count",
+  "ae2federation.jade.structure.size": "Structure: %s×%s×%s",
+  "ae2federation.jade.structure.not_solid": "Not formed: not a solid box",
+  "ae2federation.jade.structure.touching": "Not formed: touches a block of its type",
+  "ae2federation.jade.structure.too_large": "Not formed: an edge is longer than %s",
+  "ae2federation.jade.structure.unloaded": "Not formed: partly in unloaded chunks",
+  "ae2federation.jade.switch_networks": "Networks attached: %s",
+  "ae2federation.jade.endpoint.local": "Local mode",
+  "ae2federation.jade.endpoint.claimed": "Federated mode · claimed",
+  "ae2federation.jade.endpoint.unclaimed": "Federated mode · unclaimed",
+  "ae2federation.jade.pattern_provider": "Patterns %s/%s · mappings %s",
+  "config.jade.plugin_ae2federation.device": "Federation Router and Switch",
+  "config.jade.plugin_ae2federation.endpoint": "Federation Processing Endpoint mode",
+  "config.jade.plugin_ae2federation.pattern_provider": "Federation Pattern Provider patterns"
 }

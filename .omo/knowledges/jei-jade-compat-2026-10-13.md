@@ -34,3 +34,23 @@ Seen in `hero_scene:base` (shots in `build/jei-jade-check/`):
 - Our screens (LDLib2, full screen) open normally, and JEI's ingredient list does not appear on them, so nothing is
   covered; nor can a player press R/U or drag from JEI there (the Provider's pattern slots included).
 - No warning or error mentions JEI, Jade or Federation in the client debug log or the server log.
+
+## Jade lines on more blocks
+
+The owner chose four lines and to hide AE2's "Device Online/Offline" on the Endpoint only:
+
+- Router/Switch (`ae2federation:device`, `DeviceProvider`): the body from `DeviceSummary.of`, which reads
+  `DeviceStructureUpdater.body` and, for a Switch, unions `RouterBlockEntity.attachedNetworks()` over the Valid body.
+  "Networks attached: N" comes first; "Structure: X×Y×Z" shows only for a body bigger than 1×1×1, and an unformed body
+  says why (not solid, touching a block of its type, an edge over 8, unloaded chunks). An L of three Routers reads as
+  TOUCHING from its corner, not NOT_SOLID: the evaluator grows a 2×1×1 box first and then finds the third block beside it.
+- Endpoint (`ae2federation:endpoint`): "Local mode" (`nativeProviderOnFederationFace()`) or "Federated mode · claimed /
+  unclaimed" (`claimState()` Owned). It removes `ae2:grid_node_state`; that needs priority 1500 because AE2's Jade
+  module adds the line at 1000 and a provider can only remove what earlier providers added.
+- Federation Pattern Provider (`ae2federation:pattern_provider`): "Patterns used/total · mappings N", where mappings is
+  the sum of `endpointsForSlot(slot)` over the slots. AE2's online line stays.
+
+Text lives in the Jade-free `FederationJadeText` (unit-tested, keys checked in both languages); the providers only move
+NBT. `DeviceSummaryGameTests` (manifest `structure.device-summary`) checks the server half. Before/after shots:
+`build/jei-jade-check/jade-lines-before-after.png` and `jade-lines-multiblock.png` (2×1×1 Switch with 3 networks; L of
+Routers "Not formed: touches a block of its type"). The `recipe-viewers` profile still passes 19/19 with them.

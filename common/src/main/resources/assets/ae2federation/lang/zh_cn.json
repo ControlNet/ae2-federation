@@ -442,5 +442,18 @@
   "ae2federation.ui.processing.release_blocked_send": "暂时不能释放：仍有发送到它的样板未完成。",
   "ae2federation.jade.cable_capacity.subdomain": "容量计数：%s（子域）",
   "ae2federation.jade.cable_capacity.domain": "容量计数：%s（联邦域）",
-  "config.jade.plugin_ae2federation.cable_capacity": "联邦线缆容量计数"
+  "config.jade.plugin_ae2federation.cable_capacity": "联邦线缆容量计数",
+  "ae2federation.jade.structure.size": "结构：%s×%s×%s",
+  "ae2federation.jade.structure.not_solid": "未成形：不是实心长方体",
+  "ae2federation.jade.structure.touching": "未成形：贴着同类方块",
+  "ae2federation.jade.structure.too_large": "未成形：边长超过 %s 格",
+  "ae2federation.jade.structure.unloaded": "未成形：部分位于未加载区块",
+  "ae2federation.jade.switch_networks": "接入网络：%s",
+  "ae2federation.jade.endpoint.local": "本地模式",
+  "ae2federation.jade.endpoint.claimed": "联邦模式 · 已归属",
+  "ae2federation.jade.endpoint.unclaimed": "联邦模式 · 尚无归属",
+  "ae2federation.jade.pattern_provider": "样板 %s/%s · 映射 %s",
+  "config.jade.plugin_ae2federation.device": "联邦路由器与交换机",
+  "config.jade.plugin_ae2federation.endpoint": "联邦处理端点模式",
+  "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板"
 }

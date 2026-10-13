@@ -530,6 +530,21 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         return endpointLevel != null && endpointLevel.isLoaded(binding.position);
     }
 
+    /** Filled pattern slots of all slots, and the Endpoint mappings they hold, as the Provider's screen counts them. */
+    public record PatternSummary(int used, int total, int mappings) {
+    }
+
+    public PatternSummary patternSummary() {
+        var inventory = provider.patternInventory();
+        int used = 0;
+        int mappings = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (!inventory.getStackInSlot(slot).isEmpty()) used++;
+            mappings += endpointsForSlot(slot).size();
+        }
+        return new PatternSummary(used, inventory.size(), mappings);
+    }
+
     @Override
     public Set<EndpointIdentity> endpointsForSlot(int slot) {
         var result = new java.util.LinkedHashSet<EndpointIdentity>();

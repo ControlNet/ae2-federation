@@ -162,6 +162,7 @@
     {"id":"structure.device-suspends-switch","backend":"gametest","testId":"devicestructuresuspendsswitch","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"structure.device-suspends-router","backend":"gametest","testId":"devicestructuresuspendsrouter","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"structure.device-across-chunks","backend":"gametest","testId":"devicestructureacrosschunks","structure":"ae2federation_test:harness_native_smoke","assertions":7},
+    {"id":"structure.device-summary","backend":"gametest","testId":"devicesummaryshowsbodiesandnetworks","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"domain.bridge-diamond","backend":"gametest","testId":"federationdomainbridgediamond","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.router-merge-split","backend":"gametest","testId":"federationdomainroutermergesplit","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.redundant-membership","backend":"gametest","testId":"federationdomainredundantmembership","structure":"ae2federation_test:harness_native_smoke","assertions":8},
