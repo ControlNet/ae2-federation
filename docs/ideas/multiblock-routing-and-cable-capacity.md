@@ -159,7 +159,8 @@ direction is ever inferred.
   An end face connects only when the whole M x N face lies against a device. A side connects to a device that covers
   that side's full width (a 2x2's side accepts a 1x2 Router face, not a 1x1; a 1x2's 1-wide side accepts a 1x1).
   Anything incomplete counts as not connected.
-- **Capacity.** A bundle carries the capacity of its cross-section, from the multipliers below; 1x3 has no value yet.
+- **Capacity.** A bundle carries the capacity of its cross-section, from the multipliers below (1x3 = 4C, user,
+  2026-10-13).
 - **Feedback.** Jade shows a bundle's cross-section, capacity and whether each end is connected. The selection box,
   extension and branch previews and the Jade line are shown in the design canvas before any code.
 - **Appearance** is left for later.
@@ -173,13 +174,14 @@ older illustrative sizes/counts as the current balancing candidate; C and final 
 |---|---|---|
 | 1x1 | C | 8 |
 | 1x2 | 3C | 24 |
+| 1x3 | 4C | 32 |
 | 2x2 | 6C | 48 |
 | 2x3 | 9C | 72 |
 | 3x3 | Unlimited | Unlimited |
 
 Bundles are formed explicitly ([Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13)); spatially separate
 routes never add capacity. The finite bundled tiers yield
-1.5C per constituent block; 3x3 deliberately ends capacity progression if retained. Larger visual sizes
+1.5C per constituent block, except 1x3 at 4/3 C; 3x3 deliberately ends capacity progression. Larger visual sizes
 would need a purpose other than additional capacity. These are consequences to evaluate, not new requirements.
 
 Routers and switches can expand as solid cuboid multiblocks to provide physical space for large cable connections.
@@ -237,7 +239,7 @@ proposal proceeds. No changes to their existing contracts are selected by this b
 4. **Router and switch behavior:** distinguish their roles and counting-boundary behavior. Keep router
    capacity limits out of the current scope and preserve the accepted concentrated layouts.
 5. **Shape recognition:** solid cuboids are required for routers and switches. Bundled cables are formed explicitly
-   with a wrench, which settles their axis, cross-section, turns and forks; the 1x3 capacity remains open.
+   with a wrench, which settles their axis, cross-section, turns and forks.
 6. **Usability:** saturated spans, power loss, obstructed remote links, and inactive policy rules should have
    distinguishable feedback. Rebuilding one segment should not silently change unrelated connection priorities.
 7. **Progression:** does an unlimited 3x3 trunk leave useful roles for smaller sizes and potential larger sizes?
