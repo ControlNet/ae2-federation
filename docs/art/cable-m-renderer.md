@@ -76,6 +76,20 @@ budgets, not FPS measurements. `CableFlowGeometry` remains as a legacy reference
 Blender emission and compositor bloom are approximated with native geometry and blending; this is not pixel-identical
 to Blender, and it does not require a shader pack or add actual world lighting.
 
+## Bundled cables
+
+A bundled cable keeps one beam per cell: each cell's block entity draws the ordinary beam, with its connection mask
+from `BundleLook.flowMask()`, so a 2x3 bundle runs six beams. Its load is the bundle's count over the bundle's limit:
+the cable capacity times the cross-section's multiple (3, 4, 6 or 9). A 3x3 bundle is unlimited, so its beam scales
+against `CableBeamStyle.UNLIMITED_SCALE` = 9 cables and never alarms.
+
+The shell is not the ordinary cable's. `BundleShellLayout` draws one shell the size of the cross-section, inset
+2 voxels at its outer edges; each cell draws only its share of the outer faces, so nothing is drawn between cells.
+Rails are cut per voxel from the artist's core frame (`core.png`): three voxels along each closed edge, the frame's
+corner where two meet, glass elsewhere. A branch or turn opens the face it meets, and the rails turn into the branch's
+walls instead of crossing the joint, as an ordinary cable's connected core faces do. Collars ring each cell where its
+beam runs on, and dense arms reach each Router or Switch the bundle wholly connects to.
+
 ## Verification
 
 From the repository root:

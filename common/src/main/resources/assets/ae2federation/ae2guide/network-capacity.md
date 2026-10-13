@@ -74,6 +74,7 @@ A stopped domain changes nothing in the world: every block stays where it is, an
 as soon as no cable carries more than 8. To get there, take a network or device off the full segment, or end the
 segment with a Router: what stands behind a Router no longer counts on a segment that touches only that one Router.
 A segment between two Routers counts everything in the Federation domain, so a long trunk between Routers fills first.
+Build such a trunk as a [bundled cable](bundled-cables.md): a 2×2 bundle carries 48, and a 3×3 has no limit.
 
 The light inside each cable shows how full it is: thin and dim when it carries little, fuller and brighter near the
 limit. A cable over the limit pulses red, so the full segment is easy to find. The domain's topology screen turns dark
