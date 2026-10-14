@@ -1,0 +1,25 @@
+{
+    DataVersion: 3955,
+    size: [6, 2, 1],
+    data: [
+        {pos: [3, 0, 0], state: "ae2federation:router{down:false,east:true,north:false,south:false,up:true,west:false,formed:true}"},
+        {pos: [3, 1, 0], state: "ae2federation:router{down:true,east:true,north:false,south:false,up:false,west:false,formed:true}"},
+        {pos: [4, 0, 0], state: "ae2federation:router{down:false,east:true,north:false,south:false,up:true,west:true,formed:true}"},
+        {pos: [4, 1, 0], state: "ae2federation:router{down:true,east:true,north:false,south:false,up:false,west:true,formed:true}"},
+        {pos: [5, 0, 0], state: "ae2federation:router{down:false,east:false,north:false,south:false,up:true,west:true,formed:true}"},
+        {pos: [5, 1, 0], state: "ae2federation:router{down:true,east:false,north:false,south:false,up:false,west:true,formed:true}"},
+        {pos: [0, 0, 0], state: "ae2federation:router"},
+        {pos: [1, 0, 0], state: "ae2federation:router"},
+        {pos: [0, 1, 0], state: "ae2federation:router"}
+    ],
+    entities: [],
+    palette: [
+        "ae2federation:router{down:false,east:true,north:false,south:false,up:true,west:false,formed:true}",
+        "ae2federation:router{down:true,east:true,north:false,south:false,up:false,west:false,formed:true}",
+        "ae2federation:router{down:false,east:true,north:false,south:false,up:true,west:true,formed:true}",
+        "ae2federation:router{down:true,east:true,north:false,south:false,up:false,west:true,formed:true}",
+        "ae2federation:router{down:false,east:false,north:false,south:false,up:true,west:true,formed:true}",
+        "ae2federation:router{down:true,east:false,north:false,south:false,up:false,west:true,formed:true}",
+        "ae2federation:router"
+    ]
+}

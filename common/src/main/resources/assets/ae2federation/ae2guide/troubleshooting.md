@@ -23,8 +23,11 @@ reason.
 * **A Switch face does nothing.** A face counts as an ME face when an ME cable or device touches it, and as a
   Federation face when Federation Cable, a Router, another Switch, a Pattern Provider front or an Endpoint front
   touches it. Any other block leaves the face unused.
-* **A Router does not join my network.** Routers attach no ME networks and are not fully implemented yet; put a
-  Switch there instead.
+* **A Router does not join my network.** Routers attach no ME networks; put a Switch there instead.
+* **"This ME Federation Router is not formed and links nothing: ..."** Router (or Switch) blocks that touch each other must fill a
+  solid box with no edge longer than 8 blocks, and no block of the same type may touch the box from outside. Until
+  then all of their faces stay disconnected. Complete the box or take the extra blocks away; see
+  <ItemLink id="ae2federation:router" />.
 * **"No domain with two networks."** The block you opened does not reach two networks yet. Connect a Switch or
   Bridge, then open it again.
 

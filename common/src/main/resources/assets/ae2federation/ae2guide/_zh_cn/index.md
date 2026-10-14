@@ -29,6 +29,6 @@ AE2 联邦把彼此独立的ME网络连接起来， 让它们共享存储、自�
 * <ItemLink id="ae2federation:nexus_core" />： 所有联邦设备都要用到的材料， 由<ItemLink id="ae2federation:nexus_processor" />合成。
 * <ItemLink id="ae2federation:bridge" />： 直接连接两个相邻的网络。
 * <ItemLink id="ae2federation:switch" />： 把最多六个网络接入一个联邦域。
-* <ItemLink id="ae2federation:router" />： 功能还没有完全实现， 目前只用来给[网络容量](network-capacity.md)分段。
+* <ItemLink id="ae2federation:router" />： 给线缆分段， 让线缆不至于满载（[网络容量](network-capacity.md)）； 多个方块可以组成一台更大的路由器。
 * <ItemLink id="ae2federation:cable" />： 远距离连接交换机、路由器、联邦样板供应器和处理端点。
 * <ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />： 在属于其他网络的机器上执行处理样板。

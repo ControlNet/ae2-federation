@@ -76,8 +76,8 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | Scene | Pages |
 |---|---|
 | `bridge.snbt`, two networks and a Bridge | Getting Started, Bridge |
-| `router_cable.snbt`, a Router per network and Federation Cable | Getting Started |
-| `router_hub.snbt`, three networks on one Router | Router |
+| `switch_cable.snbt`, a Switch per network and Federation Cable (was `router_cable`) | Getting Started |
+| `switch_hub.snbt`, three networks on one Switch (was `router_hub`) | Switch |
 | `cable_connections.snbt`, what Federation Cable joins | Cable (header) |
 | `remote_processing.snbt`, a Provider, an Endpoint and a furnace subnet | Remote Crafting |
 | `native_projection.snbt`, ordering from network B's AE2 pattern provider through a Crafting rule | Remote Crafting |
@@ -85,6 +85,9 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | `p2p_tunnel_part.snbt`, one Federation P2P tunnel on a cable | Federation P2P Tunnel (header) |
 | `federation_p2p_tunnel.snbt`, two Routers joined through tunnels on network A's cable | Federation P2P Tunnel |
 | `network_capacity.snbt`, three cable segments split by two Routers (2 / 4 / 1) | Network Capacity |
+| `bundled_cables.snbt`, a 2x2 Router, a 2x2 bundle with a branch and a turn | Bundled Cables |
+| `router_segments.snbt`, one Router ending three segments (1 / 2 / 1) | Router |
+| `router_multiblock.snbt`, a formed 3x2x1 Router beside an L that does not form | Router |
 
 - Markup follows AE2's pages:
   `<GameScene zoom interactive={true} background="transparent">`, `<ImportStructure src>`, and `<BoxAnnotation>`
@@ -460,3 +463,17 @@ there), then breaks a crafting-system casing for the page's "Try it".
   materials or reach leftovers (market-hub district->market, nether-outpost outpost->base); elsewhere both were
   removed. Compat scenes (`RouterCraftingScene`, `AddonCraftingScene`) still switch Storage on for their tests; the
   pages' claims stay true because their consumers pay from their own storage.
+
+## Router page (2026-10-14)
+
+- The Router page no longer says "not fully implemented"; it explains what the Router does today: it ends cable
+  segments (capacity), forms larger Routers from solid boxes (edge at most 8, invalid groups link nothing, Jade and
+  the action bar give the reason), and joins bundled cables to ordinary ones. Index and Troubleshooting followed, and
+  Troubleshooting quotes the `ae2federation.structure.invalid.*` message.
+- A formed Router in a scene needs `formed:true` and its six connection booleans set toward members of the same box;
+  a bare `ae2federation:router` (formed:false) draws the standalone model, which is how the unformed L is shown.
+  The scenes were generated once by a scratch script (not kept).
+- In the guide client, edits to an English page and to `.snbt` files hot-reload; an edit to a `_zh_cn` page did not
+  (the page was not recompiled). Restart `runGuideClient -PguideLanguage=zh_cn` to see Chinese edits.
+- Quoting a Jade string like `结构：%s` in a Chinese page needs a space after the colon, or
+  `GuidePagesContractTest` fails (no break point after punctuation).

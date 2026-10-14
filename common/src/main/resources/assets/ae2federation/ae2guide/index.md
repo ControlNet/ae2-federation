@@ -33,8 +33,8 @@ on, and each permission works in one direction.
   <ItemLink id="ae2federation:nexus_processor" />.
 * <ItemLink id="ae2federation:bridge" />: joins two adjacent networks directly.
 * <ItemLink id="ae2federation:switch" />: puts up to six networks into a Federation domain.
-* <ItemLink id="ae2federation:router" />: not fully implemented yet; for now it only splits
-  [Network Capacity](network-capacity.md) segments.
+* <ItemLink id="ae2federation:router" />: ends cable segments, so that cables do not fill up
+  ([Network Capacity](network-capacity.md)); several blocks form one larger Router.
 * <ItemLink id="ae2federation:cable" />: links Switches, Routers, Pattern Providers and Endpoints over a distance.
 * <ItemLink id="ae2federation:pattern_provider" /> and <ItemLink id="ae2federation:processing_endpoint" />: run
   processing patterns on machines that belong to another network.
