@@ -88,6 +88,7 @@ assets (`assets/ae2/ae2guide/assets/assemblies/*.snbt` in the AE2 jar). The scri
 | `bundled_cables.snbt`, a 2x2 Router, a 2x2 bundle with a branch and a turn | Bundled Cables |
 | `router_segments.snbt`, one Router ending three segments (1 / 2 / 1) | Router |
 | `router_multiblock.snbt`, a formed 3x2x1 Router beside an L that does not form | Router |
+| `switch_multiblock.snbt`, a formed 2x2x1 Switch with three networks (A on two faces) | Switch |
 
 - Markup follows AE2's pages:
   `<GameScene zoom interactive={true} background="transparent">`, `<ImportStructure src>`, and `<BoxAnnotation>`
@@ -477,3 +478,6 @@ there), then breaks a crafting-system casing for the page's "Try it".
   (the page was not recompiled). Restart `runGuideClient -PguideLanguage=zh_cn` to see Chinese edits.
 - Quoting a Jade string like `结构：%s` in a Chinese page needs a space after the colon, or
   `GuidePagesContractTest` fails (no break point after punctuation).
+- The Switch page gained "Bigger Switches" the same way (2026-10-14). Two Switches face to face now form one 2x1x1
+  Switch, so the old "link directly, as if cable joined them" lines on the Switch and Getting Started pages were
+  replaced. A formed Switch state is `ae2federation:switch{<six booleans>,formed:true}` (the same block class).

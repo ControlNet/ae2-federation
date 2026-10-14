@@ -32,7 +32,8 @@ on, and each permission works in one direction.
 * <ItemLink id="ae2federation:nexus_core" />: the ingredient every device needs, crafted from a
   <ItemLink id="ae2federation:nexus_processor" />.
 * <ItemLink id="ae2federation:bridge" />: joins two adjacent networks directly.
-* <ItemLink id="ae2federation:switch" />: puts up to six networks into a Federation domain.
+* <ItemLink id="ae2federation:switch" />: puts networks into a Federation domain, one on each face; several blocks
+  form one larger Switch.
 * <ItemLink id="ae2federation:router" />: ends cable segments, so that cables do not fill up
   ([Network Capacity](network-capacity.md)); several blocks form one larger Router.
 * <ItemLink id="ae2federation:cable" />: links Switches, Routers, Pattern Providers and Endpoints over a distance.
