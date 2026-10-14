@@ -50,7 +50,7 @@ assuming behavior from current upstream development. Relevant entries:
 
 ## Proposal and verification boundary
 
-The [design proposal](../../docs/ideas/multiblock-device-assembly-and-appearance.md) recommends
+The [design proposal](../../docs/archive/ideas/multiblock-device-assembly-and-appearance.md) recommends
 homogeneous solid bodies, single-block validity, explicit invalid-state behavior, and continuous
 outer frames with repeating inner panels. These details are assistant recommendations, not accepted
 user decisions. Assembly, lifecycle, rendering and performance remain untested in game.

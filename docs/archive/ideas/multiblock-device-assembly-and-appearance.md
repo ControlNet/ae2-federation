@@ -1,4 +1,12 @@
-# Multiblock device assembly and appearance
+# Multiblock device assembly and appearance — archived discussion
+
+Archived: 2026-10-14, after the owner agreed to archive implemented ideas.
+
+See [implemented multiblock Routers and Switches](../../features/multiblock-devices.md) for current behavior. The
+handoff below is historical: its status line and "Not yet verified" list reflect 2026-10-11. A remote client on a
+dedicated server has since been checked (2026-10-14).
+
+[Idea index](../../ideas/README.md).
 
 Discussion date: 2026-10-11.
 Status: accepted appearance and solid-cuboid bodies implemented in Minecraft and merged into `dev`;
@@ -45,7 +53,7 @@ The user selected these on 2026-10-11; they are implemented.
   and never force-loads a chunk.
 
 Cable capacity, operating-power mechanics and new recipes are not selected by this handoff. The
-[broader multiblock and capacity idea](multiblock-routing-and-cable-capacity.md) remains the record
+[broader multiblock and capacity idea](../../ideas/multiblock-routing-and-cable-capacity.md) remains the record
 for those separate discussions.
 
 ## Accepted appearance
@@ -130,14 +138,14 @@ single blocks and the Router are unchanged. (The tile-built Switch has no such c
 
 | File | Role for the next implementer |
 |---|---|
-| [geometry.py](../../tools/multiblock/geometry.py) | Cuboid validation and asset-backed quad generation; explicit accepted style arguments are required |
-| [face_tiles.py](../../tools/multiblock/face_tiles.py) | Router and Switch faces composed from the artist's tiles, relief read from the art (`'tiles'` styles) |
-| [switch_connectors.py](../../tools/multiblock/switch_connectors.py) | Superseded Switch: six-face socket transforms, backing cutouts, original contact geometry and UVs |
-| [test_geometry.py](../../tools/multiblock/test_geometry.py) | Offline geometric invariants and regression checks, including a see-through ray test |
-| [export_runtime_parity.py](../../tools/multiblock/export_runtime_parity.py) | Writes and checks the per-mask hashes the Java port must match |
-| [render_router_links.py](../../tools/multiblock/render_router_links.py) | Superseded raised-link Router comparison and low-angle render |
-| [render_switch_white.py](../../tools/multiblock/render_switch_white.py) | Accepted Switch comparison, original-block reference and low-angle render |
-| [Preview README](../../tools/multiblock/README.md) | Tooling usage and historical variants |
+| [geometry.py](../../../tools/multiblock/geometry.py) | Cuboid validation and asset-backed quad generation; explicit accepted style arguments are required |
+| [face_tiles.py](../../../tools/multiblock/face_tiles.py) | Router and Switch faces composed from the artist's tiles, relief read from the art (`'tiles'` styles) |
+| [switch_connectors.py](../../../tools/multiblock/switch_connectors.py) | Superseded Switch: six-face socket transforms, backing cutouts, original contact geometry and UVs |
+| [test_geometry.py](../../../tools/multiblock/test_geometry.py) | Offline geometric invariants and regression checks, including a see-through ray test |
+| [export_runtime_parity.py](../../../tools/multiblock/export_runtime_parity.py) | Writes and checks the per-mask hashes the Java port must match |
+| [render_router_links.py](../../../tools/multiblock/render_router_links.py) | Superseded raised-link Router comparison and low-angle render |
+| [render_switch_white.py](../../../tools/multiblock/render_switch_white.py) | Accepted Switch comparison, original-block reference and low-angle render |
+| [Preview README](../../../tools/multiblock/README.md) | Tooling usage and historical variants |
 
 Important: `build()` still defaults to `plain` for both styles so historical comparisons remain
 reproducible. Do not mistake these defaults, `render.py`, or Switch `infill`/`edge-matched` outputs
@@ -169,12 +177,12 @@ and the tiles and were not regenerated; the tiles were checked in game instead.
 
 | Class | Role |
 |---|---|
-| [DeviceStructure](../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructure.java) | AE2 `MBCalculator`-style cuboid search: grow the corners, check edge length, full interior and the one-block shell; an unloaded position gives `Unknown` |
-| [DeviceStructureUpdater](../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructureUpdater.java) | Queues checks from block entity initialization and neighbour changes, checks each body once per level tick, writes `formed` and six connection booleans as blockstates |
-| [RouterBlock](../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlock.java) | Blockstate properties; right-clicking an unformed member shows why it does not form |
-| [RouterFacePort](../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java) | A face of an unformed block binds nothing, so its Federation evidence is withdrawn; its boundary node is untouched |
-| [DeviceStructureGeometry](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureGeometry.java) | Client-free Java port of `face_tiles.py` for both devices; built from the four tiles' pixels |
-| [DeviceStructureBakedModel](../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureBakedModel.java) | Wraps each connected blockstate's model; quads per connection mask, cached, rebuilt on resource reload |
+| [DeviceStructure](../../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructure.java) | AE2 `MBCalculator`-style cuboid search: grow the corners, check edge length, full interior and the one-block shell; an unloaded position gives `Unknown` |
+| [DeviceStructureUpdater](../../../common/src/main/java/space/controlnet/ae2federation/router/DeviceStructureUpdater.java) | Queues checks from block entity initialization and neighbour changes, checks each body once per level tick, writes `formed` and six connection booleans as blockstates |
+| [RouterBlock](../../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlock.java) | Blockstate properties; right-clicking an unformed member shows why it does not form |
+| [RouterFacePort](../../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java) | A face of an unformed block binds nothing, so its Federation evidence is withdrawn; its boundary node is untouched |
+| [DeviceStructureGeometry](../../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureGeometry.java) | Client-free Java port of `face_tiles.py` for both devices; built from the four tiles' pixels |
+| [DeviceStructureBakedModel](../../../common/src/main/java/space/controlnet/ae2federation/client/DeviceStructureBakedModel.java) | Wraps each connected blockstate's model; quads per connection mask, cached, rebuilt on resource reload |
 
 - Checks never load chunks and only change blockstates, sent to clients without neighbour updates.
   Formed members name exactly their neighbours inside the same cuboid; an invalid candidate clears
@@ -298,7 +306,7 @@ contacts correct. Inspect collision/selection outlines together with rendered ge
 Kept for context; all three steps are now implemented as described under
 [Runtime implementation](#runtime-implementation).
 
-The existing [CableBakedModel](../../common/src/main/java/space/controlnet/ae2federation/client/CableBakedModel.java)
+The existing [CableBakedModel](../../../common/src/main/java/space/controlnet/ae2federation/client/CableBakedModel.java)
 provides a local model-data and cached-quad integration example. Reuse its general pattern, not its
 cable-specific translucent render layer. AE2's crafting model is a source reference, not a public
 base class available for direct subclassing.
@@ -312,9 +320,9 @@ base class available for direct subclassing.
    recovery. Resolve the open operational rules before implementing their dependent behavior.
 
 The geometry transfer is expected to be less risky than lifecycle and topology changes.
-[RouterBlockEntity](../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlockEntity.java)
+[RouterBlockEntity](../../../common/src/main/java/space/controlnet/ae2federation/router/RouterBlockEntity.java)
 currently owns six per-block ports and publishes per-block domain evidence;
-[RouterFacePort](../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java)
+[RouterFacePort](../../../common/src/main/java/space/controlnet/ae2federation/domain/port/RouterFacePort.java)
 maintains boundary-node isolation and initialization ordering. Reassembly must preserve these invariants,
 including transient states. A partially loaded structure must not accidentally become an unrelated
 smaller device without a deliberate operational rule.
@@ -401,13 +409,13 @@ balancing remain separate deferred discussions.
 
 ## Evidence
 
-[Source investigation](../../.omo/knowledges/multiblock-assembly-rendering-reference-2026-10-11.md)
+[Source investigation](../../../.omo/knowledges/multiblock-assembly-rendering-reference-2026-10-11.md)
 records the pinned AE2 assembly/rendering classes and current project assets. This proposal adopts
 their useful construction/rendering patterns without claiming direct reuse is already implemented.
 
-[Visual acceptance and runtime assessment](../../.omo/knowledges/multiblock-visual-acceptance-and-runtime-scope-2026-10-11.md),
-[raised Router evidence](../../.omo/knowledges/router-raised-links-2026-10-11.md) (superseded),
-[Router tiles evidence](../../.omo/knowledges/router-artist-connected-tiles-2026-10-11.md),
-[Switch tiles evidence](../../.omo/knowledges/switch-artist-connected-tiles-2026-10-11.md), and
-[white Switch evidence](../../.omo/knowledges/switch-white-backing-2026-10-11.md) record the latest
+[Visual acceptance and runtime assessment](../../../.omo/knowledges/multiblock-visual-acceptance-and-runtime-scope-2026-10-11.md),
+[raised Router evidence](../../../.omo/knowledges/router-raised-links-2026-10-11.md) (superseded),
+[Router tiles evidence](../../../.omo/knowledges/router-artist-connected-tiles-2026-10-11.md),
+[Switch tiles evidence](../../../.omo/knowledges/switch-artist-connected-tiles-2026-10-11.md), and
+[white Switch evidence](../../../.omo/knowledges/switch-white-backing-2026-10-11.md) record the latest
 accepted references and verification boundaries.

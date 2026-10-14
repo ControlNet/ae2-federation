@@ -1,16 +1,16 @@
 # Multiblock routers, switches, and cable capacity
 
 Discussion dates: 2026-10-09 through 2026-10-13.
-Status: region counting rules confirmed on 2026-10-13 (see [Confirmed counting rules](#confirmed-counting-rules));
-counting comes first and is shown read-only, limits and their enforcement come later. Cable multipliers,
-failure behavior and balancing still need evaluation. Router and switch multiblocks must be solid cuboids. Router
+Status: counting, the limit, the Jade line and bundled cables are implemented on `dev` (2026-10-13); see
+[implemented cable capacity](../features/cable-capacity.md). Still open: power versus capacity, progression and
+balancing (see [Questions to resolve](#questions-to-resolve-before-specification)). Router and switch multiblocks must be solid cuboids. Router
 capacity limits are out of scope for now; do not treat the original charger-rooted model as a requirement.
 
 On 2026-10-11 the user prioritized multiblock Switches and Routers while deferring bundled cables. On 2026-10-13 the
 limit shipped (default C = 8) and the bundled cable rules were confirmed; see
 [Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13).
 The connected appearance is accepted and the solid-cuboid devices are implemented on `dev`; see the
-[device assembly and appearance handoff](multiblock-device-assembly-and-appearance.md). That work did not select or
+[device assembly and appearance handoff](../archive/ideas/multiblock-device-assembly-and-appearance.md). That work did not select or
 implement the cable-capacity rules below.
 
 ## Confirmed counting rules
@@ -29,7 +29,7 @@ On 2026-10-13 the user ordered the work as counting first, limits afterwards, an
   a region touching two or more Routers counts the Federation domain's units |A(D)|.
 - **Names.** Players see "subdomain" / 「子域」 and "Federation domain" / 「联邦域」 (not "local" or "whole domain").
 - **Repeated networks.** One ME network attached in two regions counts once in each region and once in the domain.
-- **Display.** The count is shown on a Federation Cable through Jade (see [Jade cable capacity](jade-cable-capacity.md)).
+- **Display.** The count is shown on a Federation Cable through Jade (see [Jade cable capacity](../archive/ideas/jade-cable-capacity.md)).
 
 Implemented on `dev` as a read-only count; see [cable capacity counting](../architecture/cable-capacity-counting.md).
 

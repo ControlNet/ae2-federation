@@ -21,7 +21,7 @@ the parity fixture below keeps the two equal.
 The accepted appearance uses `router_style='tiles'` and `switch_style='tiles'`. Default `plain`
 styles, the raised Router links, the white-backed Switch and earlier renders remain historical
 comparisons. Start with the
-[implementation handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for accepted
+[implementation handoff](../../docs/archive/ideas/multiblock-device-assembly-and-appearance.md) for accepted
 requirements, final render commands and runtime behaviour.
 
 The superseded white-backed Switch also gets the inner walls of each edge channel (`channel_walls`): the
@@ -167,7 +167,7 @@ seams on all six faces, unchanged core/frame, and unchanged single-block/Switch 
 ## Runtime integration
 
 The tile-built Router and Switch run in game as a chunk-baked model; see the
-[handoff](../../docs/ideas/multiblock-device-assembly-and-appearance.md) for the runtime, its tests
+[handoff](../../docs/archive/ideas/multiblock-device-assembly-and-appearance.md) for the runtime, its tests
 and the in-game screenshot run. Offline lighting differs from Minecraft, and the Blender images
 are not in-game screenshots.
 

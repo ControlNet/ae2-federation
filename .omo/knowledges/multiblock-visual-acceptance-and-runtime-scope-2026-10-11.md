@@ -23,7 +23,7 @@ merge/split, save/load and cross-chunk regression coverage. This is an assessmen
 not authorization to begin implementation or an accepted operational contract.
 
 The user explicitly requested an idea document for handoff. The canonical entry is now
-`docs/ideas/multiblock-device-assembly-and-appearance.md`, with accepted style selectors,
+`docs/archive/ideas/multiblock-device-assembly-and-appearance.md`, with accepted style selectors,
 exact artifact paths, source/tooling links, reproduction commands, verified boundaries,
 suggested runtime sequencing and open operational decisions. The idea index, broader
 capacity page and preview README point to this status. Local Markdown links and all

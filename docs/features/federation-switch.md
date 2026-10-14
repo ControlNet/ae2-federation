@@ -11,12 +11,12 @@ ME Federation Router (`ae2federation:router`) now links Federation ports only. T
 - **Switch faces:** each of the six faces works on its own, as the Router's did before the split. A face touched by
   an ME cable or device joins that network without a channel or idle power; a face touched by Federation Cable, a
   Router, another Switch, a Pattern Provider front or an Endpoint front links the domain onwards. Up to six networks
-  meet at one Switch and are never merged; two faces on one network count once. Two Switches face to face link
-  directly.
+  meet at one Switch block and are never merged; two faces on one network count once. Switches against each other
+  form one larger Switch ([multiblock devices](multiblock-devices.md)).
 - **Router faces:** link to Federation Cable, a Switch, another Router, a Pattern Provider front or an Endpoint front.
-  An ME cable or device touching a Router face stays unconnected: the Router has no ME node on any face. The Router is
-  not fully implemented yet and has no use for now, because Federation Cable already connects and branches on its
-  own; the guide says so.
+  An ME cable or device touching a Router face stays unconnected: the Router has no ME node on any face. Since
+  2026-10-13 the Router ends cable segments for [cable capacity](cable-capacity.md), and since 2026-10-11 Routers
+  form larger bodies.
 - **Domain screen:** right-clicking a Switch or a Router opens its domain's screen, as with a Bridge.
 - **Unchanged paths:** a Federation Pattern Provider still brings its own network in, and a Bridge still forms its
   two-network domain.
@@ -24,8 +24,8 @@ ME Federation Router (`ae2federation:router`) now links Federation ports only. T
   ME Interface on the sides and a Nexus Core in the centre, one Switch: the materials name what a Switch face
   exchanges (storage, crafting and processing, energy without channels), as the Bridge's do. The Router is four
   Federation Cables in the corners, four Fluix Crystals on the sides and a Nexus Core in the centre, one Router.
-- **Appearance:** none yet, on purpose; the Switch shows the missing-texture cube until the artist draws it. It joins
-  Federation Cable densely, as the Router does.
+- **Appearance:** the artist's Switch model and texture (2026-10-10), later the connected tiles of a formed body. It
+  joins Federation Cable densely, as the Router does.
 - **Saves:** pre-alpha; Routers in older saves are not converted, and the pre-rename ids no longer load.
 
 ## Evidence

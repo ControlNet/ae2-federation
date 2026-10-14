@@ -68,6 +68,6 @@ see-through rays afterwards. Single blocks are unchanged.
 
 ## Not verified
 
-Dedicated-server client sync with a remote player, other resource packs/shaders, hardware GPU lighting
-(screenshots use llvmpipe), performance of many large bodies, and the right-click message through a real
-click (GameTests check `DeviceStructureUpdater.status`).
+Other resource packs and shaders, hardware GPU lighting (screenshots use llvmpipe), and the performance of many
+large bodies. Dedicated-server sync with a remote client, and the right-click message from a real click, were checked
+on 2026-10-14 ([dedicated-server check](dedicated-server-sync-2026-10-14.md)).
