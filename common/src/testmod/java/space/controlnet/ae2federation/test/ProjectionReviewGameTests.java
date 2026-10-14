@@ -105,7 +105,8 @@ public final class ProjectionReviewGameTests {
                         .getDeclaredConstructors()[0];
                 constructor.setAccessible(true);
                 var router = (appeng.api.storage.IStorageProvider) constructor.newInstance(executing,
-                        fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null);
+                        fixture.providerGrid(), ledger, (java.util.function.Function<Object, Object>) ignored -> null,
+                        space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
                 fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
                 mountedRouter[0] = router;
                 mounted[0] = fixture.providerGrid().getStorageService().getInventory();

@@ -40,7 +40,7 @@ public final class ReturnReentryGameTests {
                     var key = PatternProjectionFixture.stone();
                     call(CraftingReturnLedger.class, ledger, "addTransit",
                             new Class<?>[]{NetworkId.class, AEKey.class, long.class}, fixture.providerNetwork(), key, 3L);
-                    var router = router(fixture, ledger);
+                    var router = router(helper, fixture, ledger);
                     fixture.providerGrid().getStorageService().addGlobalStorageProvider(router);
                     long[] accepted = {0};
                     long[] reentrant = {0};
@@ -77,13 +77,15 @@ public final class ReturnReentryGameTests {
                 }).thenSucceed();
     }
 
-    private static IStorageProvider router(PatternProjectionFixture fixture, CraftingReturnLedger ledger) {
+    private static IStorageProvider router(GameTestHelper helper, PatternProjectionFixture fixture,
+            CraftingReturnLedger ledger) {
         try {
             var type = Class.forName("space.controlnet.ae2federation.crafting.projection.CraftingReturnRouter");
-            var constructor = type.getDeclaredConstructor(NetworkId.class, IGrid.class, CraftingReturnLedger.class, Function.class);
+            var constructor = type.getDeclaredConstructor(NetworkId.class, IGrid.class, CraftingReturnLedger.class, Function.class,
+                    space.controlnet.ae2federation.observability.statistics.FederationStatistics.class);
             constructor.setAccessible(true);
             return (IStorageProvider) constructor.newInstance(fixture.providerNetwork(), fixture.providerGrid(), ledger,
-                    (Function<NetworkId, IGrid>) ignored -> null);
+                    (Function<NetworkId, IGrid>) ignored -> null, space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel()).statistics());
         } catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
     }
 

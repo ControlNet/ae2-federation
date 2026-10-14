@@ -46,6 +46,8 @@ public final class LevelObservabilityService implements AutoCloseable {
     private appeng.api.stacks.AEKeyType lastKeyType;
     private ResourceUnit lastKeyUnit;
 
+    private space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics;
+
     private LevelObservabilityService(MinecraftServer server) {
         this.level = server.overworld();
     }
@@ -98,7 +100,18 @@ public final class LevelObservabilityService implements AutoCloseable {
         return subscriptions;
     }
 
+    /** The server's statistics, created with the saved book on first use. */
+    public space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics() {
+        if (statistics == null) {
+            var data = space.controlnet.ae2federation.persistence.StatisticsSavedData.get(level);
+            statistics = new space.controlnet.ae2federation.observability.statistics.FederationStatistics(level,
+                    System::currentTimeMillis, data.book(), data::changed);
+        }
+        return statistics;
+    }
+
     public void sweep() {
+        statistics().tick();
         for (var scope : subscriptions.activeScopes()) {
             subscriptions.synchronizeProjection(new FederationDomainStateProjector(level).snapshot(scope),
                     flowedScopes.contains(scope) && transportMeter.window(scope).resnapshotRequired());

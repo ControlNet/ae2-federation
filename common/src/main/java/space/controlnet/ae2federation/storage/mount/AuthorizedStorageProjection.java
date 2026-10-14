@@ -35,7 +35,7 @@ final class AuthorizedStorageProjection implements
         var accepted = authorization.permits(PolicyOperation.INSERT, what)
                 ? delegate.insert(what, amount, mode, source)
                 : 0;
-        observe(what, accepted, mode);
+        observe(what, accepted, mode, true);
         return accepted;
     }
 
@@ -45,7 +45,7 @@ final class AuthorizedStorageProjection implements
         var accepted = authorization.permits(PolicyOperation.EXTRACT, what)
                 ? delegate.extract(what, amount, mode, source)
                 : 0;
-        observe(what, accepted, mode);
+        observe(what, accepted, mode, false);
         return accepted;
     }
 
@@ -75,9 +75,9 @@ final class AuthorizedStorageProjection implements
         return Component.literal("AE2 Federation authorized storage");
     }
 
-    private void observe(AEKey key, long accepted, Actionable mode) {
+    private void observe(AEKey key, long accepted, Actionable mode, boolean inserted) {
         if (mode == Actionable.MODULATE && accepted > 0) {
-            acceptedObserver.accept(new AcceptedStorageOperation(key, accepted));
+            acceptedObserver.accept(new AcceptedStorageOperation(key, accepted, inserted));
         }
     }
 }

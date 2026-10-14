@@ -88,6 +88,8 @@
     {"id":"craft-proof.no-cpu","backend":"gametest","testId":"craftproofnocpu","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"craft-proof.disconnect-cancel-restart","backend":"gametest","testId":"craftproofdisconnectcancelrestart","structure":"ae2federation_test:harness_native_smoke","assertions":14},
     {"id":"crafting.projection-request","backend":"gametest","testId":"projectionrequest","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"statistics.count-real-traffic","backend":"gametest","testId":"statisticscountrealtraffic","structure":"ae2federation_test:harness_native_smoke","assertions":10},
+    {"id":"statistics.survive-a-save","backend":"gametest","testId":"statisticssurviveasave","structure":"ae2federation_test:harness_native_smoke","assertions":16},
     {"id":"crafting.projection-remote-materials","backend":"gametest","testId":"projectionremotematerials","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"crafting.projection-manual-return","backend":"gametest","testId":"projectionmanualreturn","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"crafting.projection-native-fallback-order","backend":"gametest","testId":"projectionnativefallbackorder","structure":"ae2federation_test:harness_native_smoke","assertions":30},

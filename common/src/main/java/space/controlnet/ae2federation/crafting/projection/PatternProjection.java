@@ -21,8 +21,12 @@ import java.util.Objects;
 final class PatternProjection implements ICraftingProvider {
     /** Captures dispatch context before external callbacks; the returned action runs only for an accepted push. */
     interface PushListener {
-        /** {@code containerItems}: what the pushed inputs leave behind, counted before the push. */
-        Runnable prepare(PatternProjection projection, IPatternDetails details, KeyCounter containerItems);
+        /**
+         * {@code containerItems}: what the pushed inputs leave behind; {@code inputs}: the inputs themselves. Both are
+         * counted before the push, which may empty the holder.
+         */
+        Runnable prepare(PatternProjection projection, IPatternDetails details, KeyCounter containerItems,
+                KeyCounter inputs);
     }
 
     private final ICraftingProvider real;
@@ -75,7 +79,11 @@ final class PatternProjection implements ICraftingProvider {
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
         if (!live) return false;
         var containerItems = containerItems(patternDetails, inputHolder);
-        var accepted = listener.prepare(this, patternDetails, containerItems);
+        var inputs = new KeyCounter();
+        for (var holder : inputHolder) {
+            if (holder != null) inputs.addAll(holder);
+        }
+        var accepted = listener.prepare(this, patternDetails, containerItems, inputs);
         if (!real.pushPattern(patternDetails, inputHolder)) return false;
         accepted.run();
         return true;

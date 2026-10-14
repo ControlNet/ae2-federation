@@ -67,6 +67,8 @@ public final class CraftingProjectionService implements AutoCloseable {
     /** The overworld: it names the server for registry, rule and ledger lookups; nothing here is limited to it. */
     private final ServerLevel level;
     private final CraftingFederationDomainObserver federationDomains;
+    /** Jobs that pushed to another network, by crafting id, until the statistics count how they ended. */
+    private final Map<java.util.UUID, CountedJob> countedJobs = new HashMap<>();
     /** By (consumer, network whose providers are projected): a rule's own provider, or one reached through re-export. */
     private final Map<Pair, Projected> projected = new HashMap<>();
     private final Map<IGrid, CraftingReturnRouter> routers = new IdentityHashMap<>();
@@ -312,9 +314,15 @@ public final class CraftingProjectionService implements AutoCloseable {
         for (var real : reals) {
             var projection = entry.projections().get(real);
             if (projection == null) {
-                projection = new PatternProjection(real, (pushed, details, containerItems) -> {
+                projection = new PatternProjection(real, (pushed, details, containerItems, inputs) -> {
                     var jobs = observeJobs(consumer);
-                    return () -> owe(pair, provider, details, containerItems, jobs);
+                    return () -> {
+                        owe(pair, provider, details, containerItems, jobs);
+                        var statistics = statistics();
+                        statistics.pushed(pair.consumer(), pair.executing());
+                        var sent = statistics.meter(pair.consumer(), pair.executing());
+                        for (var input : inputs) sent.add(input.getKey(), input.getLongValue());
+                    };
                 });
                 entry.projections().put(real, projection);
                 crafting.addGlobalCraftingProvider(projection);
@@ -387,6 +395,9 @@ public final class CraftingProjectionService implements AutoCloseable {
             jobLinks.put(link.getCraftingID(), link);
             ledger.watch(consumer, link.getCraftingID(), observation.level().dimension().location().toString(),
                     observation.position(), observation.nativeCpu());
+            countedJobs.computeIfAbsent(link.getCraftingID(), id -> new CountedJob(consumer, new CraftingReturnLedger.Job(id,
+                    observation.level().dimension().location().toString(), observation.position(),
+                    CraftingReturnLedger.JobEnd.RUNNING, observation.nativeCpu()), link));
         }
     }
 
@@ -417,7 +428,7 @@ public final class CraftingProjectionService implements AutoCloseable {
             if (routers.containsKey(grid)) return;
             // An output returns only while the networks are linked; otherwise it is held where it arrived.
             var router = new CraftingReturnRouter(network, grid, ledger, consumer -> linked(network, consumer)
-                    ? federationDomains.grid(consumer).orElse(null) : null);
+                    ? federationDomains.grid(consumer).orElse(null) : null, statistics());
             routers.put(grid, router);
             grid.getStorageService().addGlobalStorageProvider(router);
         });
@@ -444,6 +455,7 @@ public final class CraftingProjectionService implements AutoCloseable {
         try (var scope = HeldReturnTransfer.scope()) {
             sweepReturns();
         }
+        countEndedJobs();
     }
 
     private void sweepReturns() {
@@ -455,8 +467,9 @@ public final class CraftingProjectionService implements AutoCloseable {
             var executing = federationDomains.grid(owed.executing()).orElse(null);
             if (consumer == null || executing == null || consumer == executing) continue;
             long waiting = CraftingReturnRouter.waiting(consumer, owed.key(), owed.amount());
-            HeldReturnTransfer.handBack(ledger, owed.executing(), executing, owed.consumer(), owed.key(),
-                    Math.min(owed.held(), waiting), consumer.getStorageService().getInventory());
+            statistics().meter(owed.executing(), owed.consumer()).add(owed.key(), HeldReturnTransfer.handBack(ledger,
+                    owed.executing(), executing, owed.consumer(), owed.key(), Math.min(owed.held(), waiting),
+                    consumer.getStorageService().getInventory()));
         }
         var jobs = new HashMap<NetworkId, Jobs>();
         for (var owed : ledger.entries()) {
@@ -467,8 +480,9 @@ public final class CraftingProjectionService implements AutoCloseable {
             var executing = federationDomains.grid(owed.executing()).orElse(null);
             if (owed.held() > 0 && executing != null && executing != consumer
                     && linked(owed.executing(), owed.consumer())) {
-                HeldReturnTransfer.handBack(ledger, owed.executing(), executing, owed.consumer(), owed.key(),
-                        owed.held(), consumer.getStorageService().getInventory());
+                statistics().meter(owed.executing(), owed.consumer()).add(owed.key(), HeldReturnTransfer.handBack(
+                        ledger, owed.executing(), executing, owed.consumer(), owed.key(), owed.held(),
+                        consumer.getStorageService().getInventory()));
             }
             // Completion/cancellation says nothing about unreturned containers or late machine outputs. Only actual
             // delivery in ledger.take settles debt. Unknown provenance remains visible and recoverable indefinitely.
@@ -513,12 +527,22 @@ public final class CraftingProjectionService implements AutoCloseable {
     private CraftingReturnLedger.@Nullable JobEnd end(CraftingReturnLedger ledger, NetworkId consumer,
             CraftingReturnLedger.Job job) {
         if (job.end() != CraftingReturnLedger.JobEnd.RUNNING) return job.end();
-        var link = jobLinks.get(job.craftingId());
+        var state = state(consumer, job, jobLinks.get(job.craftingId()), true);
+        if (state != null && state != CraftingReturnLedger.JobEnd.RUNNING) ledger.end(consumer, job.craftingId(), state);
+        return state;
+    }
+
+    /**
+     * How a watched job stands ({@link #end}), read with {@code link}, the job's link as last seen; {@code track}
+     * keeps {@link #jobLinks} current, which only the ledger's own reading does.
+     */
+    private CraftingReturnLedger.@Nullable JobEnd state(NetworkId consumer, CraftingReturnLedger.Job job,
+            @Nullable ICraftingLink link, boolean track) {
         var dimension = ResourceLocation.tryParse(job.dimension());
         var cpuLevel = dimension == null ? null
                 : level.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimension));
         if (cpuLevel == null || !cpuLevel.isLoaded(job.cpu())) {
-            jobLinks.remove(job.craftingId());
+            if (track) jobLinks.remove(job.craftingId());
             return null;
         }
         if (!job.nativeCpu()) {
@@ -530,50 +554,67 @@ public final class CraftingProjectionService implements AutoCloseable {
                             || !observation.position().equals(job.cpu())) continue;
                     var current = observation.link();
                     if (current != null && current.getCraftingID().equals(job.craftingId())) {
-                        jobLinks.put(job.craftingId(), current);
-                        if (current.isCanceled()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
+                        if (track) jobLinks.put(job.craftingId(), current);
+                        if (current.isCanceled()) return CraftingReturnLedger.JobEnd.CANCELLED;
                         if (cpu.isBusy()) return CraftingReturnLedger.JobEnd.RUNNING;
-                        return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.DONE);
+                        return CraftingReturnLedger.JobEnd.DONE;
                     }
                     // Addons can run several independent CPUs at one block anchor. A different job here is not
                     // evidence that the watched job ended; continue looking for its exact crafting id.
                 }
             }
-            if (link != null && link.isCanceled()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
-            if (link != null && link.isDone()) return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.DONE);
+            if (link != null && link.isCanceled()) return CraftingReturnLedger.JobEnd.CANCELLED;
+            if (link != null && link.isDone()) return CraftingReturnLedger.JobEnd.DONE;
             // An addon cluster can disappear from the active CPU list while unformed. Missing is not completion.
             var anchor = cpuLevel.getBlockEntity(job.cpu());
             if (anchor == null) {
-                return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
+                return CraftingReturnLedger.JobEnd.CANCELLED;
             }
             if (CraftingCpuLifecycle.terminated(anchor, job.craftingId())) {
                 // The addon proves termination but does not expose whether it completed or was cancelled.
-                return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.TERMINATED);
+                return CraftingReturnLedger.JobEnd.TERMINATED;
             }
             return null;
         }
         if (!(cpuLevel.getBlockEntity(job.cpu()) instanceof CraftingBlockEntity crafting)) {
             // The CPU was broken: AE2 cancels the job of a CPU that breaks and drops what it held.
-            return ended(ledger, consumer, job, CraftingReturnLedger.JobEnd.CANCELLED);
+            return CraftingReturnLedger.JobEnd.CANCELLED;
         }
         var cluster = crafting.getCluster();
         if (cluster == null || cluster.isDestroyed()) {
-            jobLinks.remove(job.craftingId());
+            if (track) jobLinks.remove(job.craftingId());
             return null;
         }
         var current = cluster.craftingLogic.getLastLink();
         if (current != null && current.getCraftingID().equals(job.craftingId())) {
-            jobLinks.put(job.craftingId(), current);
+            if (track) jobLinks.put(job.craftingId(), current);
             return CraftingReturnLedger.JobEnd.RUNNING;
         }
-        return ended(ledger, consumer, job, link == null || link.isCanceled() ? CraftingReturnLedger.JobEnd.CANCELLED
-                : CraftingReturnLedger.JobEnd.DONE);
+        return link == null || link.isCanceled() ? CraftingReturnLedger.JobEnd.CANCELLED
+                : CraftingReturnLedger.JobEnd.DONE;
     }
 
-    private static CraftingReturnLedger.JobEnd ended(CraftingReturnLedger ledger, NetworkId consumer,
-            CraftingReturnLedger.Job job, CraftingReturnLedger.JobEnd end) {
-        ledger.end(consumer, job.craftingId(), end);
-        return end;
+    /** Counts the watched jobs that ended since the last sweep; a job whose CPU is out of sight waits. */
+    private void countEndedJobs() {
+        var iterator = countedJobs.values().iterator();
+        while (iterator.hasNext()) {
+            var counted = iterator.next();
+            var state = state(counted.consumer(), counted.job(), counted.link(), false);
+            if (state == null || state == CraftingReturnLedger.JobEnd.RUNNING) continue;
+            // An addon's termination says neither finished nor cancelled, so the statistics leave it out.
+            if (state != CraftingReturnLedger.JobEnd.TERMINATED) {
+                statistics().jobEnded(counted.consumer(), state == CraftingReturnLedger.JobEnd.DONE);
+            }
+            iterator.remove();
+        }
+    }
+
+    /** A job that pushed to another network, watched until it ends for the statistics only. */
+    private record CountedJob(NetworkId consumer, CraftingReturnLedger.Job job, ICraftingLink link) {
+    }
+
+    private space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics() {
+        return space.controlnet.ae2federation.observability.LevelObservabilityService.get(level).statistics();
     }
 
     @Override

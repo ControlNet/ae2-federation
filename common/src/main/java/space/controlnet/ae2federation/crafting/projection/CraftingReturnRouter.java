@@ -32,14 +32,17 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
     private final IGrid executingGrid;
     private final CraftingReturnLedger ledger;
     private final Function<NetworkId, @Nullable IGrid> consumerGrids;
+    private final space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics;
     private final Storage storage = new Storage();
 
     CraftingReturnRouter(NetworkId executing, IGrid executingGrid, CraftingReturnLedger ledger,
-            Function<NetworkId, @Nullable IGrid> consumerGrids) {
+            Function<NetworkId, @Nullable IGrid> consumerGrids,
+            space.controlnet.ae2federation.observability.statistics.FederationStatistics statistics) {
         this.executing = executing;
         this.executingGrid = executingGrid;
         this.ledger = ledger;
         this.consumerGrids = consumerGrids;
+        this.statistics = statistics;
     }
 
     IGrid grid() {
@@ -101,7 +104,10 @@ final class CraftingReturnRouter implements FederationManagedStorageProvider {
                 if (offer <= 0) continue;
                 // The consumer's own crafting storage takes it for the waiting CPU, as for any insert there.
                 long accepted = consumer.getStorageService().getInventory().insert(what, offer, mode, source);
-                if (mode == Actionable.MODULATE) ledger.take(executing, owed.getKey(), what, accepted, 0);
+                if (mode == Actionable.MODULATE) {
+                    ledger.take(executing, owed.getKey(), what, accepted, 0);
+                    statistics.meter(executing, owed.getKey()).add(what, accepted);
+                }
                 handed += accepted;
                 left -= accepted;
             }

@@ -3,6 +3,8 @@ package space.controlnet.ae2federation.test;
 import appeng.api.config.Actionable;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import appeng.me.helpers.PlayerSource;
@@ -22,6 +24,10 @@ import space.controlnet.ae2federation.observability.LevelObservabilityService;
 import space.controlnet.ae2federation.observability.meter.OperationEventId;
 import space.controlnet.ae2federation.observability.state.FlowState;
 import space.controlnet.ae2federation.observability.state.ResourceUnit;
+import space.controlnet.ae2federation.observability.statistics.FederationStatistics;
+import space.controlnet.ae2federation.observability.statistics.StatisticsBook;
+import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
+import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
 import space.controlnet.ae2federation.policy.AuthorityEpoch;
 import space.controlnet.ae2federation.policy.PolicyEdit;
 import space.controlnet.ae2federation.policy.PolicyRevision;
@@ -220,6 +226,7 @@ public final class PerformanceBenchmarkGameTests {
                     EnergySharingService.get(helper.getLevel()).reconcileAll();
                 });
                 perf.nanosPerOp("bridgeNeighborChanged", 500, 300, fixtures::refreshFirstBridge);
+                measureStatistics(helper, perf, fixtures);
                 helper.assertTrue(mounts.projection(key) != null, "Bridge refresh must keep the projection");
                 state[0] = 3;
                 window[0] = new PerfMeasure.TickWindow(helper.getLevel().getServer());
@@ -306,6 +313,30 @@ public final class PerformanceBenchmarkGameTests {
             consumer.insert(iron, 1, Actionable.MODULATE, source);
         });
         helper.assertValueEqual(bulk.amount(iron), 1_000_000L, "Every benchmark extract must return to the bulk source");
+    }
+
+    /**
+     * One second of the statistics page's bookkeeping with both networks in a domain: on average, and in a second
+     * that reads the provider's own stock of every bulk type. A book of its own, so the level's saved one is untouched.
+     */
+    private static void measureStatistics(GameTestHelper helper, PerfMeasure perf, PolicyBridgeFixtures fixtures) {
+        var book = new StatisticsBook<AEKey>();
+        var statistics = new FederationStatistics(helper.getLevel(), System::currentTimeMillis, book, second -> {
+        });
+        var provider = fixtures.outerNetwork();
+        long phase = Math.floorMod(-(long) provider.value().hashCode(), FederationStatistics.STORAGE_PERIOD_SECONDS);
+        var second = new long[] {1_000_000L * FederationStatistics.STORAGE_PERIOD_SECONDS + phase};
+        statistics.finishSecond(second[0]);
+        var items = StatisticsNames.stored(provider, AEKeyType.items().getId().toString());
+        helper.assertTrue(book.latest(items, StatisticsRange.SECONDS, second[0]) >= STORAGE_TYPES * 1_000_000d,
+                "Statistics must read the provider's own stock of every bulk type");
+        perf.nanosPerOp("statisticsSecond", 2000, 300, () -> statistics.finishSecond(++second[0]));
+        second[0] += FederationStatistics.STORAGE_PERIOD_SECONDS - Math.floorMod(second[0] - phase,
+                FederationStatistics.STORAGE_PERIOD_SECONDS);
+        perf.nanosPerOp("statisticsSecondReadingStock", 500, 300, () -> {
+            statistics.finishSecond(second[0]);
+            second[0] += FederationStatistics.STORAGE_PERIOD_SECONDS;
+        });
     }
 
     /** A plane of Federation Cables: first publication, idle ticking, and a cable toggled at the edge every tick. */
