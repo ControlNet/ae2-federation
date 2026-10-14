@@ -35,5 +35,8 @@ same day (`1dd81c1d`). The former idea is preserved as an
   right-click reason showed the same when placed live, after the client left and reloaded the chunks, and after a
   server restart. Notes: [dedicated-server check](../../.omo/knowledges/dedicated-server-sync-2026-10-14.md).
 - Guide: the Router and Switch item pages ("Bigger Routers", "Bigger Switches").
-- Not verified: hardware GPU lighting and shader packs (screenshots use llvmpipe), resource packs replacing the
-  tiles, and performance with many large bodies.
+- Shader packs (2026-10-14): Complementary Reimagined, BSL and MakeUp under Iris 1.8.12 with Sodium 0.6.13, and
+  Complementary under Iris 1.8.14-beta.1 with Sodium 0.8.13, drew the formed bodies, bundles and selection box as
+  without shaders ([notes](../../.omo/knowledges/iris-shader-compatibility-2026-10-14.md)).
+- Not verified: hardware GPU lighting (screenshots use llvmpipe), resource packs replacing the tiles, and performance
+  with many large bodies.

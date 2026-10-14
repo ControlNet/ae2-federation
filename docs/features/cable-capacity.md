@@ -32,4 +32,6 @@ balancing questions stay in the [multiblock and cable capacity idea](../ideas/mu
 - Dedicated server with a remote client (2026-10-14): the bundle read "4/48 (Federation domain)" and an ordinary
   segment "3/8 (subdomain)", live, after a chunk reload and after a server restart
   ([notes](../../.omo/knowledges/dedicated-server-sync-2026-10-14.md)).
+- Shader packs (2026-10-14): under Iris with Complementary Reimagined, BSL and MakeUp the beams keep their shape,
+  colour and load, with the packs' bloom on top ([notes](../../.omo/knowledges/iris-shader-compatibility-2026-10-14.md)).
 - Guide: Network Capacity and Bundled Cables pages.
