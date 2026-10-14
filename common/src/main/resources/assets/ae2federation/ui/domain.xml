@@ -140,7 +140,14 @@
                         <element id="stats_chart" class="stats-chart">
                             <element id="stats_kinds" class="stats-kinds"/>
                         </element>
-                        <element id="stats_rank" class="stats-rank"/>
+                        <element id="stats_lower" class="stats-lower">
+                            <element id="stats_filter" class="stats-filter">
+                                <text-field id="stats_search" mode="string" value=""/>
+                                <button id="stats_pick_top" class="kind-chip" text="ae2federation.ui.statistics.stock.top"/>
+                                <button id="stats_pick_pinned" class="kind-chip" text="ae2federation.ui.statistics.stock.pinned"/>
+                                <button id="stats_pick_none" class="kind-chip" text="ae2federation.ui.statistics.stock.none"/>
+                            </element>
+                        </element>
                     </element>
                 </element>
             </element>

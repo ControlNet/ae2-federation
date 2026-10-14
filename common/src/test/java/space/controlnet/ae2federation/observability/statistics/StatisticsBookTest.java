@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class StatisticsBookTest {
@@ -87,12 +88,54 @@ class StatisticsBookTest {
         }
         book.count("flow", 1004, 12);
         book.moved("to-a", 1004, "iron", 12);
+        book.keyGauge("stock/a", "iron", 1005, 64);
+        book.pin("a", Set.of("gold"));
         var restored = StatisticsBook.restore(book.save(1009));
         for (var range : StatisticsRange.values()) {
             assertArrayEquals(book.gauge("energy", range, 1009), restored.gauge("energy", range, 1009));
             assertArrayEquals(book.rate("flow", range, 1009), restored.rate("flow", range, 1009));
             assertArrayEquals(book.observed(range, 1009), restored.observed(range, 1009));
             assertEquals(book.ranking("to-a", range, 1009, 4), restored.ranking("to-a", range, 1009, 4));
+            assertArrayEquals(book.keyGauge("stock/a", "iron", range, 1009),
+                    restored.keyGauge("stock/a", "iron", range, 1009));
         }
+        assertEquals(Set.of("gold"), restored.pins("a"));
+    }
+
+    @Test
+    void aKeyGaugeKeepsEachKeysOwnPoints() {
+        var book = new StatisticsBook<String>();
+        book.observe(200);
+        book.keyGauge("stock/a", "iron", 200, 64);
+        book.keyGauge("stock/a", "gold", 200, 3);
+        assertEquals(64, book.keyGauge("stock/a", "iron", StatisticsRange.SECONDS, 200)[119]);
+        assertEquals(Set.of("iron", "gold"), book.keys("stock/a"));
+        assertTrue(Double.isNaN(book.keyGauge("stock/a", "copper", StatisticsRange.SECONDS, 200)[119]));
+        assertTrue(book.keys("stock/b").isEmpty());
+    }
+
+    @Test
+    void pruneForgetsKeysNotSampledForADay() {
+        var book = new StatisticsBook<String>();
+        book.keyGauge("stock/a", "iron", 10, 1);
+        book.keyGauge("stock/a", "gold", 90_000, 1);
+        book.keyGauge("stock/b", "iron", 10, 1);
+        book.prune(90_000);
+        assertEquals(Set.of("gold"), book.keys("stock/a"));
+        assertEquals(Set.of("stock/a"), book.keyGaugeNames());
+    }
+
+    @Test
+    void pinsAreKeptPerNameUpToTheCap() {
+        var book = new StatisticsBook<String>();
+        book.pin("a", Set.of("iron", "gold"));
+        assertEquals(Set.of("iron", "gold"), book.pins("a"));
+        assertTrue(book.pins("b").isEmpty());
+        var many = new java.util.HashSet<String>();
+        for (int index = 0; index < StatisticsBook.PIN_CAP + 4; index++) many.add("key" + index);
+        book.pin("a", many);
+        assertEquals(StatisticsBook.PIN_CAP, book.pins("a").size());
+        book.pin("a", Set.of());
+        assertTrue(book.pins("a").isEmpty());
     }
 }

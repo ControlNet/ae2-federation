@@ -76,6 +76,26 @@ public final class TopKeys<K> {
                 .toList();
     }
 
+    /** What each of {@code keys} moved in each point of the range, oldest first; 0 where it moved nothing. */
+    public Map<K, double[]> series(StatisticsRange range, long nowSecond, java.util.Collection<K> keys) {
+        int tier = range.ordinal();
+        int size = range.buckets();
+        long last = Math.floorDiv(nowSecond, range.seconds());
+        var out = new HashMap<K, double[]>();
+        for (var key : keys) out.put(key, new double[size]);
+        for (int index = 0; index < size; index++) {
+            long bucket = last - (size - 1 - index);
+            int slot = (int) Math.floorMod(bucket, (long) size);
+            var point = points.get(tier).get(slot);
+            if (point == null || buckets[tier][slot] != bucket) continue;
+            for (var entry : out.entrySet()) {
+                var amount = point.get(entry.getKey());
+                if (amount != null) entry.getValue()[index] = amount[0];
+            }
+        }
+        return out;
+    }
+
     /** Whether the longest range holds nothing at {@code nowSecond}. */
     public boolean idle(long nowSecond) {
         return read(StatisticsRange.LONGEST, nowSecond, 1).isEmpty();

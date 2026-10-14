@@ -11,12 +11,18 @@ public final class StatisticsNames {
     public static final String POWER = "power";
     /** Gauge: the stored ME power of the energy pool the network shares, as a percentage. */
     public static final String POOL = "pool";
+    /** Gauge: the ME power a network uses, AE per tick; split by idle draw when it shares a pool. */
+    public static final String USAGE = "usage";
     /** Gauges: crafting CPUs, busy crafting CPUs, channels in use. */
     public static final String CPUS = "cpus";
     public static final String BUSY_CPUS = "busy";
     public static final String CHANNELS = "channels";
     /** Gauge per resource type: what the network's own storage holds. */
     public static final String STORED = "stored";
+    /** Key gauge per network: how much of each tracked key its own storage holds; also the name of its pins. */
+    public static final String STOCK = "stock";
+    /** Counter per network: crafting jobs its CPUs started. */
+    public static final String STARTED = "started";
     /** Counter per pair and resource type, and the ranking per pair: what moved from one network to the other. */
     public static final String MOVED = "moved";
     /** Counter per pair: pattern pushes one network's CPUs sent to another network's provider. */

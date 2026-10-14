@@ -207,6 +207,10 @@
 .domain-panel .kind-chip .__button_text__ { text-color: #ffaaa4b2; }
 .domain-panel .kind-chip.selected { base-background: built-in(federation:KIND_CHIP_SELECTED); hover-background: built-in(federation:KIND_CHIP_SELECTED); }
 .domain-panel .kind-chip.selected .__button_text__ { text-color: #ffefeaf8; }
-.stats-rank { width: 100%; height: 30%; min-height: 48; max-height: 130; flex-shrink: 0; }
-.domain-shell.compact .stats-rank { display: none; }
+.domain-panel .kind-chip.colour-chip { width: 64; }
+.stats-lower { width: 100%; height: 46%; min-height: 48; max-height: 200; flex-shrink: 0; }
+.stats-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.stats-filter { position: absolute; left: 5; top: 15; right: 5; height: 14; flex-direction: row; gap-all: 3; align-items: center; }
+.domain-panel .stats-filter text-field { width: 45%; height: 14; padding-top: 3; background: #ff17141e; text-color: #ffefeaf8; }
+.domain-shell.compact .stats-lower { display: none; }
 .domain-shell.compact .stats-metrics { min-width: 96; }

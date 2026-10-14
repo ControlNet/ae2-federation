@@ -26,8 +26,8 @@ import space.controlnet.ae2federation.test.policy.PolicyEvidence;
 
 /**
  * The statistics page's numbers come from real operations: what one network takes out of another's storage, the
- * inputs a CPU pushes to another network's provider and the outputs that come back, pushes and finished jobs, and
- * each network's own stock, which a storage rule must not inflate.
+ * inputs a CPU pushes to another network's provider and the outputs that come back, pushes, started and finished
+ * jobs, and each network's own stock, by resource type and by item, which a storage rule must not inflate.
  */
 @PrefixGameTestTemplate(false)
 public final class StatisticsGameTests {
@@ -69,6 +69,10 @@ public final class StatisticsGameTests {
             }
             if (stage[0] == 2) {
                 helper.assertTrue(fixture.planReady(), "Waiting for the consumer's plan");
+                // Member networks are looked up once a wall-clock second, and a batch can run this whole test within
+                // one: look them up now, or a job that starts and ends before the first lookup is not seen.
+                statistics.finishSecond(statistics.nowSecond() - 1);
+                helper.assertTrue(!statistics.cpus(consumer).isEmpty(), "Waiting for the statistics to see the consumer");
                 helper.assertTrue(fixture.submit(), "The consumer's own CPU must take the job");
                 stage[0] = 3;
             }
@@ -102,6 +106,8 @@ public final class StatisticsGameTests {
                     now), 1d, "One pattern push");
             helper.assertValueEqual(book.total(StatisticsNames.network(StatisticsNames.DONE, consumer), range, now), 1d,
                     "One finished job");
+            helper.assertValueEqual(book.total(StatisticsNames.network(StatisticsNames.STARTED, consumer), range, now), 1d,
+                    "The consumer's CPU started one job");
             // Each network's own stock, read every ten seconds from its native storage only.
             double consumerOwn = fixture.held(fixture.consumerChest(), sticks()) + fixture.held(fixture.consumerChest(), planks());
             double providerOwn = fixture.held(fixture.providerChest(), cobblestone()) + sticksStoredOnProvider;
@@ -109,6 +115,11 @@ public final class StatisticsGameTests {
                     "The consumer's stock is its own chest, not what the storage rule shows of the provider");
             helper.assertValueEqual(book.latest(StatisticsNames.stored(provider, ITEMS), range, now), providerOwn,
                     "The provider's stock is its own chest");
+            var providerStock = StatisticsNames.network(StatisticsNames.STOCK, provider);
+            helper.assertValueEqual(latest(book.keyGauge(providerStock, cobblestone(), range, now)),
+                    (double) fixture.held(fixture.providerChest(), cobblestone()), "The provider's cobblestone is kept by item");
+            helper.assertTrue(!book.keys(StatisticsNames.network(StatisticsNames.STOCK, consumer)).contains(cobblestone()),
+                    "The consumer holds no cobblestone of its own, whatever its storage rule shows");
             PolicyEvidence.write("statisticscountrealtraffic", 10, Map.of("cobblestoneToConsumer", "3",
                     "planksToProvider", "2", "sticksToConsumer", "4", "pushes", "1", "jobsDone", "1"));
             fixture.close();
@@ -131,6 +142,11 @@ public final class StatisticsGameTests {
         book.count(StatisticsNames.moved(from, to, ITEMS), start + 650, 64);
         book.moved(StatisticsNames.pair(StatisticsNames.MOVED, from, to), start + 650, AEItemKey.of(Items.IRON_INGOT), 64);
         book.moved(StatisticsNames.pair(StatisticsNames.MOVED, from, to), start + 651, AEItemKey.of(Items.GOLD_INGOT), 8);
+        var stock = StatisticsNames.network(StatisticsNames.STOCK, from);
+        for (long second = start + 600; second < start + 700; second++) {
+            book.keyGauge(stock, AEItemKey.of(Items.IRON_INGOT), second, second % 50);
+        }
+        book.pin(stock, java.util.Set.of(AEItemKey.of(Items.DIAMOND), AEItemKey.of(Items.GOLD_INGOT)));
         var data = new StatisticsSavedData(book);
         data.changed(start + 699);
         var tag = data.save(new CompoundTag(), registries);
@@ -147,9 +163,17 @@ public final class StatisticsGameTests {
             helper.assertValueEqual(loaded.ranking(StatisticsNames.pair(StatisticsNames.MOVED, from, to), range, now, 4),
                     book.ranking(StatisticsNames.pair(StatisticsNames.MOVED, from, to), range, now, 4),
                     "Ranking survives: " + range);
+            helper.assertTrue(java.util.Arrays.equals(book.keyGauge(stock, AEItemKey.of(Items.IRON_INGOT), range, now),
+                    loaded.keyGauge(stock, AEItemKey.of(Items.IRON_INGOT), range, now)), "Stock by item survives: " + range);
         }
-        PolicyEvidence.write("statisticssurviveasave", 16, Map.of("ranges", "4"));
+        helper.assertValueEqual(loaded.pins(stock), book.pins(stock), "Pins survive");
+        PolicyEvidence.write("statisticssurviveasave", 16, Map.of("ranges", "4", "pins", "2"));
         helper.succeed();
+    }
+
+    private static double latest(double[] points) {
+        for (int index = points.length - 1; index >= 0; index--) if (!Double.isNaN(points[index])) return points[index];
+        return Double.NaN;
     }
 
     private static double moved(StatisticsBook<AEKey> book, NetworkId from, NetworkId to, AEKey key, long now) {

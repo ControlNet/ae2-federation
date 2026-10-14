@@ -117,3 +117,39 @@ so that all of its seconds fall in one window.
   - `ScenarioOptions.scenarioTimeoutMs` is the whole scenario's budget. `ui.mapping` needs 300 s because of the 75 s
     of showcase traffic. `.timeoutMs` on a step does not extend it.
   - The showcase domain is over the shipped C=8 cable limit, so the fixture sets the limit to 32 while it runs.
+
+## Version 2: a lower box per metric (2026-10-14)
+
+- The request is one string, `StatisticsPayload.Request` (`RANGE;metric;kind;items,catalog`). The payload carries
+  only what the metric needs: rankings for Moved, per-item stock for Stored, per-item moved series when "by item",
+  the CPU list for Crafting and CPUs, and the search list while the search box has text. Every other metric got
+  cheaper than v1, which always sent the rankings.
+- Pins go client to server through a two-way `DataBindingBuilder.tag(getter, setter)`. The getter returns the last
+  pins received, so the server does not sync an older value back. A `*C2S` binding is refused when the menu opens
+  (see phase 2).
+- Pins are stored per member network under `stock/<network>`, not per domain. Domain ids (`physical:<n>`) are not
+  stable across restarts. Pinning in a domain overwrites the pins of every member; the domain's pins are the union.
+- Per-item stock: `StatisticsBook.keyGauge(name, key, ...)`, one `Timeline` per key (about 9 KB). Tracked per network
+  and type: top 16 by amount, pinned keys still held, and earlier keys still held up to 48. A key no longer held
+  writes one 0 point and stops. Without the 48 cap, every key ever seen would be sampled forever.
+- Jobs started: AE2 keeps one `finalOutput` `GenericStack` per job (`CraftingCPUCluster.getJobStatus`), so a new
+  reference means a new job. Other CPUs may build a new stack per call, so equal output, equal total and
+  non-decreasing elapsed time also count as the same job. `finishJob` is private with no event, so local ends are
+  not observable.
+- Power use in a shared pool: `EnergyService.getAvgPowerUsage()` counts the drain on the service whose cells supplied
+  it (`extractProviderPower`). The pool's total drain is right; the split by idle draw is an estimate.
+- Lag versus pause: `SecondClock` takes tick starts (`ServerTickEvent.Pre`) and ends (`Post`). A gap of more than 1 s
+  between one tick's end and the next tick's start means no tick ran (paused singleplayer, stopped clock), so the
+  seconds stay unobserved. The seconds a long tick spans are observed. Before this, a stall of more than a second
+  left "no record" holes.
+- `StatisticsSavedData` FORMAT 2 adds `keyGauges` and `pins` (keys go through the shared key table). A FORMAT 1 save
+  loads as an empty book (pre-alpha: no save compatibility).
+- Payload benchmarks measure the median of 20 builds after 200 warm-up builds. With 20 warm-ups, moved-by-item read
+  10 ms against 5.3 ms steady state, because C2 compilation had not finished.
+- Member Grids are looked up once a second (`sample`), so `pollJobs` misses a job that starts and ends in a network's
+  first second. `statisticsCountRealTraffic` failed this way in the full batch: the batch ran the whole test (1200
+  ticks) within one wall-clock second, so no lookup happened. Before submitting, the test now calls
+  `finishSecond(nowSecond() - 1)`, a second inside the range it checks, and waits for `statistics.cpus(consumer)`.
+- UI scenario `ui.mapping` alone takes about 170 s; run it on its own (the full `federationUiTest` set hits the 240 s
+  client cap). Do not run two UI clients at once: they share the run directory, and the second one finds blocks the
+  first placed ("Showcase Provider position must be empty").

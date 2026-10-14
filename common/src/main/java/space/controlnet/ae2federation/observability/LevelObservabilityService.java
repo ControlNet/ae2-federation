@@ -88,6 +88,11 @@ public final class LevelObservabilityService implements AutoCloseable {
         SERVICES.values().forEach(service -> service.subscriptions.closePlayer(playerId));
     }
 
+    /** Called as each server tick starts. */
+    public static synchronized void tickStartedAll() {
+        SERVICES.values().forEach(service -> service.statistics().tickStarted());
+    }
+
     public static synchronized void sweepAll() {
         SERVICES.values().forEach(LevelObservabilityService::sweep);
     }

@@ -19,12 +19,12 @@ import space.controlnet.ae2federation.observability.statistics.TopKeys;
 
 /**
  * The overworld's {@link StatisticsBook}: the last day of Federation statistics outlives a restart. Every key a
- * ranking names is written once, in a table the rankings refer to by index; a key that no longer loads (its mod was
- * removed) drops the amounts that named it.
+ * ranking, a key gauge or a pin names is written once, in a table they refer to by index; a key that no longer loads
+ * (its mod was removed) drops what named it.
  */
 public final class StatisticsSavedData extends SavedData {
     private static final String DATA_NAME = "ae2federation_statistics";
-    private static final int FORMAT = 1;
+    private static final int FORMAT = 2;
     private static final StatisticsRange[] RANGES = StatisticsRange.values();
 
     private final StatisticsBook<AEKey> book;
@@ -60,6 +60,24 @@ public final class StatisticsSavedData extends SavedData {
         tag.put("counters", timelines(saved.counters()));
         var keys = new ListTag();
         var index = new HashMap<AEKey, Integer>();
+        java.util.function.ToIntFunction<AEKey> indexOf = key -> index.computeIfAbsent(key, added -> {
+            keys.add(added.toTagGeneric(registries));
+            return keys.size() - 1;
+        });
+        var keyGauges = new CompoundTag();
+        saved.keyGauges().forEach((name, byKey) -> {
+            var list = new ListTag();
+            byKey.forEach((key, tiers) -> {
+                var entry = new CompoundTag();
+                entry.putInt("key", indexOf.applyAsInt(key));
+                entry.put("tiers", tiers(tiers));
+                list.add(entry);
+            });
+            keyGauges.put(name, list);
+        });
+        var pins = new CompoundTag();
+        saved.pins().forEach((name, pinned) -> pins.putIntArray(name,
+                pinned.stream().mapToInt(indexOf).toArray()));
         var rankings = new CompoundTag();
         saved.rankings().forEach((name, points) -> {
             var list = new ListTag();
@@ -68,10 +86,7 @@ public final class StatisticsSavedData extends SavedData {
                 var amounts = new long[point.amounts().size()];
                 int at = 0;
                 for (var entry : point.amounts().entrySet()) {
-                    keyIndices[at] = index.computeIfAbsent(entry.getKey(), key -> {
-                        keys.add(key.toTagGeneric(registries));
-                        return keys.size() - 1;
-                    });
+                    keyIndices[at] = indexOf.applyAsInt(entry.getKey());
                     amounts[at++] = Double.doubleToRawLongBits(entry.getValue());
                 }
                 var pointTag = new CompoundTag();
@@ -85,6 +100,8 @@ public final class StatisticsSavedData extends SavedData {
         });
         tag.put("keys", keys);
         tag.put("rankings", rankings);
+        tag.put("keyGauges", keyGauges);
+        tag.put("pins", pins);
         return tag;
     }
 
@@ -115,16 +132,42 @@ public final class StatisticsSavedData extends SavedData {
                 var byKey = new HashMap<AEKey, Double>();
                 for (int entry = 0; entry < keyIndices.length; entry++) {
                     int keyIndex = keyIndices[entry];
-                    var key = keyIndex >= 0 && keyIndex < keys.size() ? keys.get(keyIndex) : null;
+                    var key = key(keys, keyIndex);
                     if (key != null) byKey.merge(key, Double.longBitsToDouble(amounts[entry]), Double::sum);
                 }
                 if (!byKey.isEmpty()) points.add(new TopKeys.SavedPoint<>(RANGES[range], pointTag.getLong("bucket"), byKey));
             }
             if (!points.isEmpty()) rankings.put(name, points);
         }
+        var keyGauges = new HashMap<String, Map<AEKey, Timeline.SavedTier[]>>();
+        var keyGaugeTags = tag.getCompound("keyGauges");
+        for (var name : keyGaugeTags.getAllKeys()) {
+            var byKey = new HashMap<AEKey, Timeline.SavedTier[]>();
+            for (var value : keyGaugeTags.getList(name, Tag.TAG_COMPOUND)) {
+                var entry = (CompoundTag) value;
+                var key = key(keys, entry.getInt("key"));
+                if (key != null) byKey.put(key, tiers(entry.getList("tiers", Tag.TAG_COMPOUND)));
+            }
+            if (!byKey.isEmpty()) keyGauges.put(name, byKey);
+        }
+        var pins = new HashMap<String, java.util.Set<AEKey>>();
+        var pinTags = tag.getCompound("pins");
+        for (var name : pinTags.getAllKeys()) {
+            var pinned = new java.util.LinkedHashSet<AEKey>();
+            for (int keyIndex : pinTags.getIntArray(name)) {
+                var key = key(keys, keyIndex);
+                if (key != null) pinned.add(key);
+            }
+            if (!pinned.isEmpty()) pins.put(name, pinned);
+        }
         var saved = new StatisticsBook.Saved<>(tiers(tag.getList("observed", Tag.TAG_COMPOUND)),
-                timelines(tag.getCompound("gauges")), timelines(tag.getCompound("counters")), rankings);
+                timelines(tag.getCompound("gauges")), keyGauges, timelines(tag.getCompound("counters")), rankings,
+                pins);
         return new StatisticsSavedData(StatisticsBook.restore(saved));
+    }
+
+    private static AEKey key(List<AEKey> keys, int index) {
+        return index >= 0 && index < keys.size() ? keys.get(index) : null;
     }
 
     private static CompoundTag timelines(Map<String, Timeline.SavedTier[]> timelines) {

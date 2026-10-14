@@ -53,4 +53,18 @@ class TopKeysTest {
         assertEquals("key99", ranked.get(0).key());
         assertEquals(99, ranked.get(0).amount());
     }
+
+    @Test
+    void aKeysSeriesHoldsWhatItMovedInEachPoint() {
+        var top = new TopKeys<String>(4);
+        top.add(100, "iron", 3);
+        top.add(102, "iron", 5);
+        top.add(102, "gold", 1);
+        var series = top.series(StatisticsRange.SECONDS, 102, java.util.List.of("iron", "copper"));
+        assertEquals(5, series.get("iron")[119]);
+        assertEquals(0, series.get("iron")[118]);
+        assertEquals(3, series.get("iron")[117]);
+        assertEquals(0, series.get("copper")[119]);
+        assertEquals(8, top.series(StatisticsRange.MINUTES, 102, java.util.List.of("iron")).get("iron")[59]);
+    }
 }

@@ -61,6 +61,11 @@ final class TaskThirtyThreeShowcaseFixture {
         var state = new State(router.east(), router.below());
         context.put(STATE, state);
         placeChestNetwork(context, state.mine, state.mine.east());
+        // Two one-block crafting CPUs on the Mine, for the statistics page's CPU list.
+        for (var cpu : mineCpus(state)) {
+            require(context.level().isEmptyBlock(cpu.getKey()), "Showcase CPU position must be empty: " + cpu.getKey());
+            context.level().setBlockAndUpdate(cpu.getKey(), cpu.getValue().defaultBlockState());
+        }
         placeChestNetwork(context, state.hall, state.hall.below());
         state.remoteRouter = router.above().east(4);
         var remote = state.remoteRouter;
@@ -276,9 +281,17 @@ final class TaskThirtyThreeShowcaseFixture {
         blocks.addAll(state.towerEndpoints);
         if (state.hallEndpoint != null) blocks.add(state.hallEndpoint);
         blocks.addAll(List.of(state.mine, state.mine.east(), state.hall, state.hall.below()));
+        mineCpus(state).forEach(cpu -> blocks.add(cpu.getKey()));
         for (var network : state.remoteNetworks) blocks.addAll(List.of(network));
         if (state.remoteRouter != null) blocks.add(state.remoteRouter);
         for (var position : blocks) context.level().setBlockAndUpdate(position, Blocks.AIR.defaultBlockState());
+    }
+
+    /** The Mine's crafting CPUs: a 1k one north of its energy cell and a 4k one under it, not touching each other. */
+    private static List<Map.Entry<BlockPos, net.minecraft.world.level.block.Block>> mineCpus(State state) {
+        var cell = state.mine.east();
+        return List.of(Map.entry(cell.north(), AEBlocks.CRAFTING_STORAGE_1K.block()),
+                Map.entry(cell.below(), AEBlocks.CRAFTING_STORAGE_4K.block()));
     }
 
     private static void placeChestNetwork(ServerContext context, BlockPos chest, BlockPos cell) {
