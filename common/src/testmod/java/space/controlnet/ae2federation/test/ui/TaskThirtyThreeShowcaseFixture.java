@@ -54,6 +54,9 @@ final class TaskThirtyThreeShowcaseFixture {
      * (which the Mine's Provider joins later), so both Routers are one domain. No two networks touch.
      */
     static void placeNetworks(ServerContext context) {
+        // Eight networks, three Providers and five Endpoints share the Routers' cable: more than the default cable
+        // capacity, which would stop the whole domain. The design-review world raises it, as a server owner can.
+        space.controlnet.ae2federation.domain.CableCapacityLimit.set(true, 32);
         var router = TaskFifteenWorldFixture.routerPosition(context);
         var state = new State(router.east(), router.below());
         context.put(STATE, state);
@@ -254,6 +257,8 @@ final class TaskThirtyThreeShowcaseFixture {
     }
 
     static void cleanup(ServerContext context) {
+        space.controlnet.ae2federation.domain.CableCapacityLimit.set(true,
+                space.controlnet.ae2federation.domain.CableCapacityLimit.DEFAULT_CAPACITY);
         var state = context.<State>get(STATE);
         if (state == null) return;
         var policies = PolicyService.get(context.level());
@@ -382,6 +387,61 @@ final class TaskThirtyThreeShowcaseFixture {
         return tick - since >= 20;
     }
 
+    /** Ticks of storage traffic before the statistics page is opened: most of its two-minute range. */
+    private static final int TRAFFIC_TICKS = 1_500;
+    /**
+     * Test-world activity for the statistics page: [consumer, provider] network indexes, the item, and a base amount.
+     * Each consumer takes the item out of the provider's chest through its Storage rule, as its machines would.
+     */
+    private static final Object[][] TRAFFIC = {
+            {0, 4, Items.WHEAT, 3}, {0, 4, Items.CARROT, 2}, {6, 2, Items.RAW_IRON, 2}, {6, 2, Items.COAL, 4},
+            {0, 6, Items.IRON_INGOT, 5}, {0, 6, Items.COPPER_INGOT, 2}, {5, 3, Items.OAK_LOG, 4}, {5, 3, Items.GLASS, 2},
+            {0, 2, Items.COBBLESTONE, 12}, {0, 2, Items.REDSTONE, 1}};
+
+    /** Starts the statistics showcase's storage traffic. */
+    static void startTraffic(ServerContext context) {
+        var state = state(context);
+        state.trafficStart = context.level().getGameTime();
+        state.trafficSlot = -1;
+    }
+
+    /**
+     * One tick of storage traffic: every half second each route moves a varying amount, with an occasional burst, as
+     * automation pulling in batches does. True once {@link #TRAFFIC_TICKS} ticks have passed.
+     */
+    static boolean traffic(ServerContext context) {
+        var state = state(context);
+        long tick = context.level().getGameTime() - state.trafficStart;
+        // The wait may read the server more or less than once a tick: each half-second slot runs once.
+        for (long slot = state.trafficSlot + 1; slot <= tick / 10; slot++) {
+            state.trafficSlot = slot;
+            long at = slot * 10;
+            for (int route = 0; route < TRAFFIC.length; route++) {
+                var entry = TRAFFIC[route];
+                var consumer = grid(context, state, (Integer) entry[0]);
+                if (consumer == null) continue;
+                int base = (Integer) entry[3];
+                double wave = 0.4 + 0.6 * Math.abs(Math.sin(at / (37.0 + route * 11)));
+                long amount = Math.round(base * wave) + (Math.floorMod(at / 100 + route, 5) == 0 ? base * 3L : 0);
+                if (amount > 0) consumer.getStorageService().getInventory().extract(AEItemKey.of((Item) entry[2]), amount,
+                        Actionable.MODULATE, IActionSource.empty());
+            }
+        }
+        return tick >= TRAFFIC_TICKS;
+    }
+
+    /** The grid of the showcase network at {@code index} in {@link State#networks}. */
+    private static appeng.api.networking.IGrid grid(ServerContext context, State state, int index) {
+        IGridNode node = switch (index) {
+            case 0 -> TaskThirtyThreeWorldFixture.mainNode(context);
+            case 1 -> TaskThirtyThreeWorldFixture.outerNode(context);
+            case 2 -> chestNode(context, state.mine);
+            case 3 -> chestNode(context, state.hall);
+            default -> chestNode(context, state.remoteNetworks.get(index - 4)[0]);
+        };
+        return node == null ? null : node.getGrid();
+    }
+
     private static State state(ServerContext context) {
         var state = context.<State>get(STATE);
         require(state != null, "Showcase world was not arranged");
@@ -404,6 +464,8 @@ final class TaskThirtyThreeShowcaseFixture {
         private List<BlockPos[]> remoteNetworks = List.of();
         private BlockPos hallEndpoint;
         private boolean stocked;
+        private long trafficStart;
+        private long trafficSlot;
 
         private State(BlockPos mine, BlockPos hall) {
             this.mine = mine;

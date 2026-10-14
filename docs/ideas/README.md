@@ -7,7 +7,6 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
-| [Statistics dashboard](statistics-dashboard.md) | Preliminary visualization direction; metrics open | Federation and AE network statistics, time-series charts, and dashboard-like views |
 | [Rule-based automation](rule-based-automation.md) | Shared function system proposed; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
@@ -41,6 +40,9 @@ Its name, appearance and detailed behavior remain undecided.
 - [Cable capacity](../features/cable-capacity.md): implemented counting, the limit, the Jade line and bundled cables.
   The [Jade display discussion](../archive/ideas/jade-cable-capacity.md) is archived for historical context; the
   [capacity idea](multiblock-routing-and-cable-capacity.md) keeps its open balancing questions.
+- [Statistics dashboard](../features/statistics-dashboard.md): implemented the domain screen's statistics page with
+  24 h of saved history. The [original discussion](../archive/ideas/statistics-dashboard.md) is archived for
+  historical context.
 
 ## Comparative research
 

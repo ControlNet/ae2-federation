@@ -1117,6 +1117,31 @@ public final class FederationDomainPolicySession {
         return flowText;
     }
 
+    /**
+     * The statistics page's figures for this domain's member networks over {@code range}, up to the last second the
+     * server finished; an empty tag without a domain.
+     */
+    public net.minecraft.nbt.CompoundTag statistics(space.controlnet.ae2federation.observability.statistics.StatisticsRange range) {
+        if (context == null) return new net.minecraft.nbt.CompoundTag();
+        var members = FederationDomainRegistryAccess.get(level).federationDomain(context.federationDomainId())
+                .map(domain -> List.copyOf(domain.memberships().keySet())).orElse(List.of());
+        var memberSet = java.util.Set.copyOf(members);
+        var shared = java.util.EnumSet.noneOf(space.controlnet.ae2federation.policy.PolicyCapability.class);
+        space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
+                .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
+                .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
+                .filter(record -> record.rule().enabled() && memberSet.contains(record.key().consumerNetworkId())
+                        && memberSet.contains(record.key().providerNetworkId())
+                        && !record.key().consumerNetworkId().equals(record.key().providerNetworkId()))
+                .forEach(record -> shared.add(record.key().capability()));
+        var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level).statistics();
+        var registries = level.registryAccess();
+        return space.controlnet.ae2federation.observability.statistics.StatisticsPayload.encode(statistics.book(), members,
+                range, statistics.finishedSecond(), shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.STORAGE),
+                shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING),
+                key -> key.toTagGeneric(registries), key -> key.getType().getId().toString());
+    }
+
     /** Renames a member network whose identity is settled; an empty name clears it. */
     public boolean renameNetwork(String encoded) {
         var target = NetworkRenameTarget.parse(encoded).orElse(null);

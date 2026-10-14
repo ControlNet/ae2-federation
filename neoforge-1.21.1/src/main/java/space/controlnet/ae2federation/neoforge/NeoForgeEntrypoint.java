@@ -84,6 +84,8 @@ public final class NeoForgeEntrypoint {
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
+        // Created on the first tick, not on first use, so the statistics count every second the server runs.
+        LevelObservabilityService.get(event.getServer().overworld());
         LevelObservabilityService.sweepAll();
     }
 

@@ -64,6 +64,17 @@ public final class StatisticsBook<K> {
         return out;
     }
 
+    /** How many seconds the server observed in each point of the range, oldest first. */
+    public int[] observedSeconds(StatisticsRange range, long nowSecond) {
+        return observed.readCounts(range, nowSecond);
+    }
+
+    /** What a counter gathered in each point of the range, oldest first; 0 where it gathered nothing. */
+    public double[] sums(String name, StatisticsRange range, long nowSecond) {
+        var timeline = counters.get(name);
+        return timeline == null ? new double[range.buckets()] : timeline.readSums(range, nowSecond);
+    }
+
     /** A gauge's points, oldest first; {@code NaN} where it was not sampled. */
     public double[] gauge(String name, StatisticsRange range, long nowSecond) {
         var timeline = gauges.get(name);

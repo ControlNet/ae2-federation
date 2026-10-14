@@ -36,6 +36,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
      */
     private final Throttled choicesText = new Throttled();
     private final Throttled graphText = new Throttled();
+    /** The range the client's open statistics page asked for, or null while the page is closed; server side. */
+    private @Nullable space.controlnet.ae2federation.observability.statistics.StatisticsRange statisticsRange;
+    private net.minecraft.nbt.CompoundTag statisticsPayload = new net.minecraft.nbt.CompoundTag();
+    private @Nullable space.controlnet.ae2federation.observability.statistics.StatisticsRange statisticsBuiltRange;
+    private long statisticsBuiltAt;
     /** The largest size this screen grows to; it fills the screen up to it. */
     private final int maxWidth;
     private final int maxHeight;
@@ -94,6 +99,20 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
             }
         };
         workspace.bindProcessing(target -> send(FederationDomainPolicyAction.SET_MAPPING, target), prepareRelease);
+        // The statistics page asks for its range while it is open; the server sends the figures only then.
+        var statisticsRequest = new BindableValue<String>("");
+        // Both ways: the server sends the opened menu's initial values for every binding, a client-only one included.
+        statisticsRequest.bind(DataBindingBuilder.string(() -> statisticsRange == null ? "" : statisticsRange.name(),
+                this::acceptStatisticsRequest).initialValue("").build());
+        statisticsRequest.addClass("state-sync");
+        ui.rootElement.addChild(statisticsRequest);
+        var statistics = new FederationStatisticsView(ui, value -> statisticsRequest.setValue(value, true));
+        var statisticsSync = new BindableValue<net.minecraft.nbt.Tag>(new net.minecraft.nbt.CompoundTag());
+        statisticsSync.bind(DataBindingBuilder.tagS2C(this::statisticsPayload).initialValue(new net.minecraft.nbt.CompoundTag())
+                .remoteSetter(statistics::accept).build());
+        statisticsSync.addClass("state-sync");
+        ui.rootElement.addChild(statisticsSync);
+        workspace.bindStatistics(statistics);
         element(ui, "return_provider", Button.class).setOnClick(event ->
                 FederationDomainPolicyActionSink.returnToProvider(player.containerMenu.containerId));
         var graphState = new FederationTopologyView(ui, target -> send(FederationDomainPolicyAction.SET_POLICY, target),
@@ -378,6 +397,36 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
         void invalidate() {
             value = null;
         }
+    }
+
+    /** The open page's range by name, or empty when it closes; anything else closes it too. */
+    private void acceptStatisticsRequest(String value) {
+        statisticsRange = null;
+        if (value == null || value.isEmpty()) return;
+        for (var range : space.controlnet.ae2federation.observability.statistics.StatisticsRange.values()) {
+            if (range.name().equals(value)) statisticsRange = range;
+        }
+    }
+
+    /**
+     * The open page's figures, rebuilt when its range changes and otherwise every second for the two-minute range and
+     * every five for the longer ones, whose points change more slowly; the same tag in between, so nothing is resent.
+     */
+    private net.minecraft.nbt.Tag statisticsPayload() {
+        var range = statisticsRange;
+        if (session == null || range == null) {
+            if (!statisticsPayload.isEmpty()) statisticsPayload = new net.minecraft.nbt.CompoundTag();
+            statisticsBuiltRange = null;
+            return statisticsPayload;
+        }
+        long now = Math.floorDiv(System.currentTimeMillis(), 1000L);
+        long period = Math.min(range.seconds(), 5);
+        if (range != statisticsBuiltRange || now >= statisticsBuiltAt + period || now < statisticsBuiltAt) {
+            statisticsPayload = session.statistics(range);
+            statisticsBuiltRange = range;
+            statisticsBuiltAt = now;
+        }
+        return statisticsPayload;
     }
 
     private String statusCode() {

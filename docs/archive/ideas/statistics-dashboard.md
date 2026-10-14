@@ -1,4 +1,16 @@
-# Federation and AE network statistics dashboard
+# Federation and AE network statistics dashboard — archived discussion
+
+Archived: 2026-10-14, when the statistics page shipped.
+
+See [implemented statistics dashboard](../../features/statistics-dashboard.md) for current behavior. The discussion
+below is historical. Its open questions were settled as follows:
+- the metrics are ME power, own stock, moved, crafting pushes and jobs, busy CPUs and channels;
+- the layout is a metric list, a large chart and a "most moved" ranking;
+- four ranges, up to 24 h, are saved with the world;
+- unloaded networks and server downtime are hatched, never drawn as zero;
+- all history is kept by default, with no per-player tracking.
+
+[Idea index](../../ideas/README.md).
 
 Discussion date: 2026-10-10.
 Status: preliminary user-proposed idea; metrics and detailed UX remain open.
@@ -54,4 +66,4 @@ than persisted by the terminal; it does not establish long-term AE2/Federation s
 Its remote device controls are not automatically included in this idea. No layout, sampling interval,
 new terminal block, or implementation framework is selected by citing this reference.
 
-See [source inspection and limitations](../../.omo/knowledges/singularity-iteration-statistics-reference-2026-10-10.md).
+See [source inspection and limitations](../../../.omo/knowledges/singularity-iteration-statistics-reference-2026-10-10.md).

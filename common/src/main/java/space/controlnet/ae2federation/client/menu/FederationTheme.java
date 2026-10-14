@@ -118,6 +118,18 @@ public final class FederationTheme {
     public static final IGuiTexture TOOLBAR = sprite(AE2_STATES, 176, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_HOVER = sprite(AE2_STATES, 212, 128, 18, 20);
     public static final IGuiTexture TOOLBAR_ACTIVE = sprite(AE2_STATES, 194, 128, 18, 20);
+    /** A statistics range: AE2's toolbar sprite stretched to a chip; the chosen range on its focused sprite. */
+    public static final IGuiTexture CHIP = sprite(AE2_STATES, 176, 128, 18, 20, 2, 2, 2, 3);
+    public static final IGuiTexture CHIP_HOVER = sprite(AE2_STATES, 212, 128, 18, 20, 2, 2, 2, 3);
+    public static final IGuiTexture CHIP_SELECTED = sprite(AE2_STATES, 194, 128, 18, 20, 2, 2, 2, 3);
+    /** A network to show statistics of: flat on the frame, dark with the selection edge when chosen. */
+    public static final IGuiTexture NETWORK_CHIP = outlined(INSET, 0xff77798d);
+    public static final IGuiTexture NETWORK_CHIP_HOVER = outlined(0xffc9cbd6, 0xff535669);
+    public static final IGuiTexture NETWORK_CHIP_SELECTED = outlined(0xff2c2735, SELECT);
+    /** A resource kind on the dark chart. */
+    public static final IGuiTexture KIND_CHIP = outlined(WELL, 0xff4a4655);
+    public static final IGuiTexture KIND_CHIP_HOVER = outlined(0xff2c2735, 0xff6d6a82);
+    public static final IGuiTexture KIND_CHIP_SELECTED = outlined(0xff2c2735, SELECT);
     /** AE2's empty upgrade slot icon ({@code Icon.BACKGROUND_UPGRADE}), at the 40% AE2 draws slot icons with. */
     public static final IGuiTexture UPGRADE_SLOT = tinted(AE2_STATES, 240, 208, 16, 16, 0x66ffffff);
 
@@ -193,6 +205,15 @@ public final class FederationTheme {
         provider.addResource("ROW_RULE", ROW_RULE);
         provider.addResource("LINK", LINK);
         provider.addResource("LINK_HOVER", LINK_HOVER);
+        provider.addResource("CHIP", CHIP);
+        provider.addResource("CHIP_HOVER", CHIP_HOVER);
+        provider.addResource("CHIP_SELECTED", CHIP_SELECTED);
+        provider.addResource("NETWORK_CHIP", NETWORK_CHIP);
+        provider.addResource("NETWORK_CHIP_HOVER", NETWORK_CHIP_HOVER);
+        provider.addResource("NETWORK_CHIP_SELECTED", NETWORK_CHIP_SELECTED);
+        provider.addResource("KIND_CHIP", KIND_CHIP);
+        provider.addResource("KIND_CHIP_HOVER", KIND_CHIP_HOVER);
+        provider.addResource("KIND_CHIP_SELECTED", KIND_CHIP_SELECTED);
         provider.addResource("TOOLBAR", TOOLBAR);
         provider.addResource("TOOLBAR_HOVER", TOOLBAR_HOVER);
         provider.addResource("TOOLBAR_ACTIVE", TOOLBAR_ACTIVE);
@@ -313,6 +334,14 @@ public final class FederationTheme {
             pen.rect(x + 1, y + 1, width - 2, 1, HIGHLIGHT);
             pen.rect(x + 1, y + 1, 1, height - 2, HIGHLIGHT);
             pen.rect(x + 1, y + height - 3, width - 2, 2, BAND);
+        });
+    }
+
+    /** A one-pixel {@code edge} around a {@code fill}. */
+    private static IGuiTexture outlined(int fill, int edge) {
+        return painted((pen, x, y, width, height) -> {
+            pen.rect(x, y, width, height, edge);
+            pen.rect(x + 1, y + 1, width - 2, height - 2, fill);
         });
     }
 

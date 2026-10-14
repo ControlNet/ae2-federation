@@ -1,6 +1,6 @@
 # Statistics dashboard: what can be measured (2026-10-14)
 
-Source survey for [the statistics idea](../../docs/ideas/statistics-dashboard.md) before the design canvas (row
+Source survey for [the statistics idea](../../docs/archive/ideas/statistics-dashboard.md) before the design canvas (row
 "统计面板" on the GUI design artifact: options A grid and B focus list, plus one-network, missing-data and no-rules
 states, all with sample data). Paths are under `common/src/main/java/space/controlnet/ae2federation/`.
 
@@ -91,3 +91,29 @@ a `tab_x` / `page_x` pair and a `PAGES` entry. Screen data rides LDLib2 `stringS
 A GameTest server runs ticks faster than the wall clock: 1200 ticks took about 1.4 s. A test cannot wait for
 `tick()` to finish seconds. Instead it calls `finishSecond(++second)` itself on every retry, and reads the 1 h range
 so that all of its seconds fall in one window.
+
+## Phase 2: the page (2026-10-14)
+
+- Code:
+  - `client/menu/FederationStatisticsView` draws the page.
+  - `observability/statistics/StatisticsPayload` sends the data as one NBT tag per refresh.
+  - `FederationDomainPolicySession.statistics(range)` builds it from the domain's members and enabled rules.
+  - `FederationDomainPolicyMenuHolder` carries it on a `tagS2C` binding. It sends an empty tag until the page asks.
+- Requests go client to server through `DataBindingBuilder.string(getter, setter)`, not `stringC2S`. The latter
+  logged "IllegalAccessException: unknown receive sync data while it does not accept sync" in `readInitialData`.
+- The page sends `finishedSecond()`, the newest second written into the book, not `nowSecond() - 1`. That second may
+  not be finished yet when the menu syncs, and the newest column then showed as a gap.
+- The overworld's `LevelObservabilityService` is now created on the first server tick (`NeoForgeEntrypoint`).
+  Before, it was created on first use, so seconds before the first storage mount or screen were missing.
+- Chart hover uses `isMouseOver(x, y)`. `isHover()` is true only for `ModularUI.getLastHoveredElement()`, and the
+  crosshair never appeared under the UI test's hover.
+- Payload size and build time are measured in `StatisticsPayloadTest.aBusyEightNetworkDomainStaysSmall`. For 8
+  networks with all 56 pairs active:
+  - with UUID strings in every row it was 192 KB;
+  - with network indices and a shared key table it is 142 KB raw, 51 KB compressed;
+  - building it takes about 6.5 ms after warm-up, 3.7 ms of that the rankings (each pair merges 120 points).
+  - If that ever matters, keep running totals per range in `TopKeys` rather than merging on read.
+- UI scenario pitfalls:
+  - `ScenarioOptions.scenarioTimeoutMs` is the whole scenario's budget. `ui.mapping` needs 300 s because of the 75 s
+    of showcase traffic. `.timeoutMs` on a step does not extend it.
+  - The showcase domain is over the shipped C=8 cable limit, so the fixture sets the limit to 32 while it runs.

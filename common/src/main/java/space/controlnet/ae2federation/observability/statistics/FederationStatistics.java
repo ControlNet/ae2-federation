@@ -70,6 +70,7 @@ public final class FederationStatistics {
     /** Our own index of native sources: reading storage must not change the one storage mounts rely on. */
     private final NativeSourceDomainRegistry provenance = new NativeSourceDomainRegistry();
     private long lastSecond = Long.MIN_VALUE;
+    private long finishedSecond = Long.MIN_VALUE;
 
     /**
      * @param level   the overworld; the registries it reaches are the server's
@@ -115,6 +116,11 @@ public final class FederationStatistics {
         counts.computeIfAbsent(name, ignored -> new long[1])[0]++;
     }
 
+    /** The newest second written into the book, or the second before now while none is. */
+    public long finishedSecond() {
+        return finishedSecond == Long.MIN_VALUE ? nowSecond() - 1 : finishedSecond;
+    }
+
     /** Called every server tick: finishes the previous second once the wall clock has passed it. */
     public void tick() {
         long now = nowSecond();
@@ -132,6 +138,7 @@ public final class FederationStatistics {
      * member network. {@link #tick()} calls it once per wall-clock second; tests call it with a second of their own.
      */
     public void finishSecond(long second) {
+        finishedSecond = Math.max(finishedSecond, second);
         book.observe(second);
         drain(second);
         sample(second);
