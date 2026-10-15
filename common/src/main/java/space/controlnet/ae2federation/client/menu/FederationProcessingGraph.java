@@ -748,7 +748,9 @@ public final class FederationProcessingGraph {
         if (withThumbnail && endpoint.has("position")) card.addChild(deviceThumbnail(endpoint, endpoint.get("position").getAsString()));
         var lines = new UIElement();
         lines.layout(style -> style.flex(1).minWidth(0).gapAll(1).flexDirection(FlexDirection.COLUMN));
-        var name = titled(endpoint, endpointTitle(endpoint));
+        // The card's title is the coordinates alone; the dimension goes on the network line, where it has room.
+        var name = titled(endpoint, endpoint.has("position")
+                ? tr("endpoint_title", endpoint.get("position").getAsString()) : endpointTitle(endpoint));
         int returned = returnKinds(endpoint);
         if (returned > 0) {
             // Results waiting in this Endpoint's Lane buffer to enter the ME network; they keep it from being released.
@@ -759,9 +761,10 @@ public final class FederationProcessingGraph {
                     .tooltips(tr("returns_badge_help", returned)));
             name.addChild(badge);
         }
-        // The title already says where it is, so this line names its network.
-        var where = text(endpoint.has("position") ? EndpointText.network(endpoint, networkNames)
-                : Component.literal(endpoint.get("label").getAsString()), FederationTheme.DARK_MUTED);
+        // The title already says where it is, so this line names its network, and its dimension seen from another.
+        var where = text(endpoint.has("position") ? DevicePlace.withDimension(EndpointText.network(endpoint, networkNames),
+                dimension(endpoint), playerDimension()) : Component.literal(endpoint.get("label").getAsString()),
+                FederationTheme.DARK_MUTED);
         var state = new Label();
         state.addClass("processing-endpoint-state");
         state.setId("processing_endpoint_state_" + sanitize(id));
