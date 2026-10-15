@@ -9,13 +9,16 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
-/** The Simplified Chinese translation covers every English key and names the mod 「AE2 联邦」, with the space. */
+/** The Simplified Chinese translation covers every English key and names the mod 「AE2 联邦组网」, with the space. */
 final class LanguageContractTest {
     private static final Path ASSETS = Path.of("..").toAbsolutePath().normalize()
             .resolve("common/src/main/resources/assets/ae2federation");
+    /** The old name 「AE2 联邦」 and the unspaced 「AE2联邦…」; item names such as ME联邦线缆 keep 联邦. */
+    private static final Pattern OLD_OR_UNSPACED_NAME = Pattern.compile("AE2联邦|AE2 联邦(?!组网)");
     private static final Path LANG = ASSETS.resolve("lang");
     private static final String MOD_DESCRIPTION = "fml.menu.mods.info.description.ae2federation";
 
@@ -25,17 +28,17 @@ final class LanguageContractTest {
     }
 
     @Test
-    void chineseNamesTheModAe2Lianbang() throws IOException {
+    void chineseNamesTheModAe2LianbangZuwang() throws IOException {
         var chinese = language("zh_cn");
-        assertEquals("AE2 联邦", chinese.get("itemGroup.ae2federation.main").getAsString());
-        assertEquals("AE2 联邦", chinese.get("mod.ae2federation.name").getAsString());
+        assertEquals("AE2 联邦组网", chinese.get("itemGroup.ae2federation.main").getAsString());
+        assertEquals("AE2 联邦组网", chinese.get("mod.ae2federation.name").getAsString());
         chinese.entrySet().forEach(entry -> {
             assertFalse(entry.getValue().getAsString().contains("AE2 Federation"), entry.getKey() + ": " + entry.getValue());
-            assertFalse(entry.getValue().getAsString().contains("AE2联邦"), entry.getKey() + ": " + entry.getValue());
+            assertFalse(OLD_OR_UNSPACED_NAME.matcher(entry.getValue().getAsString()).find(), entry.getKey() + ": " + entry.getValue());
         });
         try (Stream<Path> pages = Files.walk(ASSETS.resolve("ae2guide/_zh_cn"))) {
             for (var page : pages.filter(path -> path.toString().endsWith(".md")).toList()) {
-                assertFalse(Files.readString(page).contains("AE2联邦"), page.toString());
+                assertFalse(OLD_OR_UNSPACED_NAME.matcher(Files.readString(page)).find(), page.toString());
             }
         }
     }
