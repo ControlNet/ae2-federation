@@ -18,6 +18,13 @@ public final class DevicePlace {
         return Component.literal(position + " · ").append(dimensionName(dimension));
     }
 
+    /** "Network E484", or "Network E484 · Nether" when {@code dimension} is not the player's: a card's second line. */
+    public static MutableComponent withDimension(Component text, String dimension, String playerDimension) {
+        var line = text.copy();
+        if (dimension.isEmpty() || dimension.equals(playerDimension)) return line;
+        return line.append(" · ").append(dimensionName(dimension));
+    }
+
     /** The dimension's name, "Nether" for {@code minecraft:the_nether}; its path when it has no name. */
     public static MutableComponent dimensionName(String dimension) {
         var path = dimension.substring(dimension.indexOf(':') + 1);
