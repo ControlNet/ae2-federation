@@ -201,6 +201,21 @@ final class GuidePagesContractTest {
         }
     }
 
+    /** A screenshot shows the screen's text, so a Chinese copy under {@code _zh_cn} shows it in Chinese. */
+    @Test
+    void screenshotsHaveAChineseCopy() throws IOException {
+        var image = Pattern.compile("!\\[[^]]*]\\(([^)]+\\.png)\\)");
+        for (var guide : guides()) {
+            for (var page : pages(guide.root())) {
+                var images = image.matcher(Files.readString(guide.root().resolve(page)));
+                while (images.find()) {
+                    var asset = guide.root().relativize(guide.root().resolve(page).getParent().resolve(images.group(1)).normalize());
+                    assertTrue(Files.isRegularFile(guide.root().resolve("_zh_cn").resolve(asset)), page + " -> _zh_cn/" + asset);
+                }
+            }
+        }
+    }
+
     @Test
     void itemIdsAreQualifiedAndRegistered() throws IOException {
         for (var guide : guides()) {

@@ -53,6 +53,7 @@ you switch a rule on.
   to spot. Only you see it, and only in your current dimension. Several highlights can run at once.
 * **Live flow** shows what really moved over each link in the last five seconds as moving dots. The pulses inside
   Federation Cable are decoration, not measured traffic.
+* The [Statistics](statistics.md) tab charts the domain's networks over the last 24 hours.
 * The screen closes when you move more than eight blocks away.
 
 ## Limits

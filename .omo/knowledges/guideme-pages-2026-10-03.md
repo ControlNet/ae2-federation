@@ -481,3 +481,27 @@ there), then breaks a crafting-system casing for the page's "Try it".
 - The Switch page gained "Bigger Switches" the same way (2026-10-14). Two Switches face to face now form one 2x1x1
   Switch, so the old "link directly, as if cable joined them" lines on the Switch and Getting Started pages were
   replaced. A formed Switch state is `ae2federation:switch{<six booleans>,formed:true}` (the same block class).
+
+## Screenshots in guide pages (2026-10-15, Statistics page)
+
+- Markdown `![alt](assets/x.png)` works. GuideME's `LytImage` lays an image out at **width/4 GUI pixels**, scaled down
+  to the page width, and draws it with **nearest sampling** (a plain `DynamicTexture`). There is no width attribute.
+  AE2's own guide uses GUI screenshots the same way.
+- A Chinese copy of an asset goes at `_zh_cn/assets/x.png`. `MutableGuide.loadAsset` tries `_<language>/` first and
+  falls back to the English file, and both pages write the same `assets/x.png`. `GuidePagesContractTest
+  .screenshotsHaveAChineseCopy` requires the Chinese copy of every PNG an English page shows.
+- Federation screens ignore the GUI scale option (`FederationGuiScale`, `FixedGuiScale.forFramebuffer`): the scale
+  is the largest that still leaves 640x380 logical pixels. A 1600x960 window gives scale 2 (800x480). For a sharp
+  shot, the `ui.mapping` scenario resizes the window to 3196x1916 (scale 4, the same 799x479 layout). 3200x1920 would
+  give scale 5 and the compressed 640x384 layout. The Xvfb screen must be that large, e.g.
+  `xvfb-run -a -s "-screen 0 3200x1920x24"`.
+- `tools/visual/build_guide_statistics.py` makes the guide images from those shots, in three steps:
+  - it crops to the panel and tab rail and makes the world beside the rail transparent;
+  - it resizes the image to 2520 pixels wide with Lanczos, which is 630 GUI pixels, the page width at GUI scale 2.
+    After GuideME's 2:1 nearest sampling the Chinese text stays readable. Taken directly at scale 2, or left at full
+    size, the image lost strokes, for example 甘蔗 read as 川蔗;
+  - it quantizes to 255 colours with max coverage and `kmeans=4`, at about 150 KB each. Plain max coverage tinted the
+    dark navy panel purple, and keeping full RGB was about 790 KB.
+- Before/after shots of a page: `runGuideClient -PguidePage=... -PguideLanguage=...` under
+  `xvfb-run -n <N> -f <xauth>`, and `import -window root` once the log shows "Compiling ae2federation:". Use a
+  detached worktree of the previous commit for the before shot.

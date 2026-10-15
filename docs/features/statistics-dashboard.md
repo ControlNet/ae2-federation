@@ -4,6 +4,8 @@ Status: implemented on `dev` (2026-10-14). The server keeps the history (`4f2c0d
 page shows it. The former idea is preserved as an [archived discussion](../archive/ideas/statistics-dashboard.md).
 The design is option B ("metric list, large chart and a box below it") on the GUI design canvas. Version 2 gives each
 metric its own lower box.
+The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`), with a screenshot from the
+`ui.mapping` showcase in each language.
 
 ## Behavior
 

@@ -33,6 +33,34 @@ final class TaskThirtyThreeScenarioSupport {
     }
 
     /** Clicks the middle of the wire from a pattern port to the only Endpoint card of the processing view. */
+    /** Selects {@code code} as the game's language and waits for the resource reload to finish. */
+    static ScenarioBuilder selectLanguage(ScenarioBuilder scenario, String code) {
+        return scenario.step("select language " + code, context -> {
+            if (context.firstAttempt()) {
+                context.mc().getLanguageManager().setSelected(code);
+                context.mc().options.languageCode = code;
+                context.put("languageReload", context.mc().reloadResourcePacks());
+            }
+            java.util.concurrent.CompletableFuture<Void> reload = context.get("languageReload");
+            if (!reload.isDone()) context.repeat("resource reload for " + code);
+            else reload.join();
+        }).timeoutMs(45_000).waitUntil("resources finish loading", context -> context.mc().getOverlay() == null);
+    }
+
+    /** Back to English after a failure in another language; nothing to do when English is already selected. */
+    static void restoreEnglish(com.lowdragmc.lowdraglib2.uitest.TestContext context) {
+        if (context.firstAttempt()) {
+            if (context.mc().getLanguageManager().getSelected().equals("en_us")) return;
+            context.mc().getLanguageManager().setSelected("en_us");
+            context.mc().options.languageCode = "en_us";
+            context.put("languageRestore", context.mc().reloadResourcePacks());
+        }
+        java.util.concurrent.CompletableFuture<Void> reload = context.get("languageRestore");
+        if (reload == null) return;
+        if (!reload.isDone()) context.repeat("English resource reload");
+        else reload.join();
+    }
+
     static void clickWire(com.lowdragmc.lowdraglib2.uitest.TestContext context, String slot) {
         var port = context.el("#processing_port_" + slot).bounds();
         var card = context.el(".processing-endpoint").bounds();

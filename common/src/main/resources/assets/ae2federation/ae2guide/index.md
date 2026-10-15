@@ -24,6 +24,7 @@ on, and each permission works in one direction.
 * [Across Domains](across-domains.md): reach a network two Bridges away through re-export, with no rule of your own for it.
 * [Remote Crafting](remote-processing.md): order from another network's pattern providers, or send processing
   patterns to its machines.
+* [Statistics](statistics.md): charts of the domain's power, storage, traffic, crafting and channels.
 * [Examples](examples/index.md): complete builds for a shared warehouse, an assembly workshop and outsourced machines.
 * [Troubleshooting](troubleshooting.md): what the warnings in the Federation screen mean.
 
