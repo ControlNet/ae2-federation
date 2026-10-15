@@ -108,3 +108,24 @@
 - Notes: upgrade callout (the Router no longer joins ME networks, use a Switch; the Federation Logic Processor is gone
   and every recipe is new; saved Storage rules stay on); sections New blocks and items, Networks and crafting, Look and
   interface, Modpacks and addons, In-game guide. The owner chose not to migrate 0.0.5 Routers or keep the processor.
+
+## Published v0.0.7 (2026-10-15)
+
+- Flow: a separate worktree, `release/v0.0.7` from `dev` ("Prepare 0.0.7": only `mod_version`). Release checks
+  passed: strict build, release-metadata and artifact Python tests, `artifact_verify.py inspect`, the manifest batch
+  240/240, and Quick correctness and Compatibility on the release head.
+- The cross-dimension production run (now a documented gate) ran on the release JAR. It found the nether Endpoint's
+  card title clipped before "· Nether". The fix landed on `dev` (`41f4c2bb`) and was merged into the release branch
+  (`71c37d9b`). The run was repeated on the rebuilt JAR and passed; the record was committed on the release branch
+  (`622e3e30`). A docs-only commit leaves the JAR byte-identical (rebuilt and compared).
+- Master "Release 0.0.7" `c33027b4` (tag `v0.0.7` by CI), merged back into `dev` (`949ba87f`). Release run
+  38667791303: build, 16 GameTest shards, GitHub, Modrinth and CurseForge all succeeded.
+- Binary `ae2federation-neoforge-1.21.1-0.0.7.jar`, 2,519,426 bytes, SHA-256
+  `2714b10aa50cc125ac1cb1db4c25cb5b86139382f89e52be2189592c9566335c`. This is the JAR the production run used.
+  Downloaded assets pass `sha256sum -c`, and `neoforge.mods.toml` reads 0.0.7, NeoForge `[21.1.216,)`, AE2 `[19.2.9,)`
+  and LDLib2 `[2.2.34,)`.
+- Notes are English (the owner wants English notes; conversation in Chinese). The upgrade callout covers the cable
+  capacity limit (C=8 stops the whole domain; the config keys) and the multiblock Router/Switch solid-box rule. Sections:
+  New blocks and building; Networks and crafting; Look and interface; Modpacks and addons; In-game guide.
+- The unauthenticated Modrinth API (`/v2/project/orso4Dml/version`) returned a non-JSON body from this host. The
+  workflow's own authenticated read-back is the check.
