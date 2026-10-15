@@ -28,6 +28,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
+import space.controlnet.ae2federation.client.policy.SearchText;
 import space.controlnet.ae2federation.observability.statistics.StatisticsNames;
 import space.controlnet.ae2federation.observability.statistics.StatisticsPayload;
 import space.controlnet.ae2federation.observability.statistics.StatisticsRange;
@@ -1530,7 +1531,7 @@ public final class FederationStatisticsView {
         }
 
         private boolean matches(AEKey key) {
-            return search.isEmpty() || key.getDisplayName().getString().toLowerCase(Locale.ROOT).contains(search);
+            return SearchText.contains(key.getDisplayName().getString(), search);
         }
 
         /** What the shown networks hold now besides the picked items. */

@@ -25,7 +25,8 @@ metric its own lower box.
 - **Stored by item.** The chart stacks the picked items, the most held lowest. "Everything else" is one grey band on
   top when it is picked. The box below lists the domain's 16 most-held items of the shown kind, plus the pinned ones.
   - **Pick.** Top 6 (the default, with everything else), Pinned, or None. Ticking an item makes the pick your own.
-  - **Search.** Searches every item the networks hold, by name. An item without history says "not recorded yet" and
+  - **Search.** Searches every item the networks hold, by name (and by pinyin with JustEnoughCharacters, see
+    [compatibility](../compatibility/matrix.md#client-mods)). An item without history says "not recorded yet" and
     can be pinned.
   - **Pin.** A pinned item's stock is kept on every member network, whether or not it is among the most held; its
     history starts when it is pinned. Up to 16 per domain. Pinning needs the right to edit the domain, and the last

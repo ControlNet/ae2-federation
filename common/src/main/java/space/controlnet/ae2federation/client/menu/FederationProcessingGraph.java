@@ -28,6 +28,7 @@ import net.minecraft.network.chat.Style;
 import org.joml.Vector2f;
 import space.controlnet.ae2federation.client.policy.BlockMarks;
 import space.controlnet.ae2federation.client.policy.MappingWireTarget;
+import space.controlnet.ae2federation.client.policy.SearchText;
 
 /**
  * Processing wires for the domain's Pattern Providers: each Provider as a card of pattern rows with an output port on
@@ -857,7 +858,7 @@ public final class FederationProcessingGraph {
     }
 
     private boolean matches(String text) {
-        return query.isEmpty() || text.toLowerCase(java.util.Locale.ROOT).contains(query);
+        return SearchText.contains(text, query);
     }
 
     /** "#1 Gold Ingot" and its resources, as the search reads a pattern. */

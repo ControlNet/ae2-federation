@@ -17,6 +17,17 @@ fixtures. `compat.reject-unsupported` verifies that a blocked row cannot be prom
 
 [Production compatibility runs](production-runs.md) cover AE2 addons and modpacks in production servers.
 
+## Client mods
+
+- **JustEnoughCharacters** (`jecharacters`, checked with 4.5.30 for NeoForge 1.21.1, MIT). The domain screen's three
+  searches also match by pinyin while it is installed. These are the topology and processing header search and the
+  statistics stock search, so `wangluo` finds 网络 and `tie` finds 铁锭. JECh only rewrites the searches on its own
+  list of mods' methods, so AE2 Federation asks its matcher (`Match.contains`) directly, looked up at run time. There
+  is no build dependency, and without JECh the searches stay plain text. Evidence: `SearchTextTest`, and the UI
+  scenario `ui.chinese-scales` (`ui-chinese-pinyin-search`), run with and without the JECh jar in the client's mods
+  folder. The scenario checks the topology search in game; the processing and statistics searches share the same
+  matcher.
+
 ## Reproduction
 
 ```bash
