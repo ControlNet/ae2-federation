@@ -90,3 +90,21 @@
   its tests error with FileNotFoundError.
 - Notes: upgrade callout says worlds load as they are (no save-format change since 0.0.4, only more lenient loading)
   and that 0.0.4 refused other NeoForge builds; sections "Modpacks and addons" and "In-game guide".
+
+## Published v0.0.6 (2026-10-10)
+
+- Same flow in a separate worktree: `release/v0.0.6` from `dev` ("Prepare 0.0.6": only `mod_version`) → Quick
+  correctness and Compatibility (all addon profiles plus ATM10, CUS2, neoforge-min) green → master "Release 0.0.6"
+  (`391e505`). Release run 38066437883 failed one of 16 GameTest shards (`projectioncpulateafterrestart`, a test-only
+  race: see `gametest-chunk-unload-race-2026-10-10.md`), so publish, Modrinth and CurseForge were skipped and no tag
+  was made. The fix landed on dev (`7544489`), was cherry-picked onto the release branch, Quick correctness passed
+  again, and a second master merge (`8749cf4`) ran release 38068473359: 16/16 shards, GitHub, Modrinth and CurseForge
+  published. Tag `v0.0.6` points at `8749cf4`. An unpublished version can simply be released again from a later master
+  commit; nothing had to be reverted.
+- Binary `ae2federation-neoforge-1.21.1-0.0.6.jar`, 2,105,913 bytes (+~0.5 MB: the canvas CJK font). Downloaded
+  assets pass `sha256sum -c`; the jar's `neoforge.mods.toml` reads 0.0.6, NeoForge `[21.1.216,)`, AE2 `[19.2.9,)`,
+  LDLib2 `[2.2.34,)`. Before release, production code compiled against AE2 19.2.9 + LDLib2 2.2.34 + GuideME 21.1.1
+  (`-Pae2_version=19.2.9 --dependency-verification=lenient`), and no mixin changed since 0.0.5.
+- Notes: upgrade callout (the Router no longer joins ME networks, use a Switch; the Federation Logic Processor is gone
+  and every recipe is new; saved Storage rules stay on); sections New blocks and items, Networks and crafting, Look and
+  interface, Modpacks and addons, In-game guide. The owner chose not to migrate 0.0.5 Routers or keep the processor.

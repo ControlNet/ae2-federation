@@ -19,7 +19,7 @@ item_ids:
 * 接触ME线缆或设备时， 这个面加入那个网络， 不占用频道， 也没有待机耗电；
 * 接触<ItemLink id="ae2federation:cable" />、<ItemLink id="ae2federation:router" />、另一个交换机、联邦样板供应器前面或处理端点前面时， 这个面把联邦域继续向外连接。
 
-一个交换机上最多可以汇集六个不同的网络， 它的各个面不会把这些网络合成一个。 两个面接同一个网络也可以， 只算一次。 两个交换机面对面贴在一起会直接连通， 和用联邦线缆连接一样。
+一个交换机方块上最多可以汇集六个不同的网络， 它的各个面不会把这些网络合成一个。 两个面接同一个网络也可以， 只算一次。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
@@ -51,5 +51,30 @@ item_ids:
 </FederationTopology>
 
 右键交换机打开它所在联邦域的联邦界面， 在那里打开共享。 参见[入门](../getting-started.md)。
+
+## 更大的交换机
+
+彼此贴着放的交换机， 合起来填满一个实心长方体、每条边不超过8格时， 就组成一台交换机： 规则和[更大的路由器](router.md)相同。 交换机和路由器不会合成一个方块。 成形交换机外侧的每个面仍然各自独立工作， 所以更大的交换机能接更多网络， 这些网络也仍各自独立。
+
+<GameScene zoom="5" interactive={true} background="transparent">
+  <ImportStructure src="../assets/switch_multiblock.snbt" />
+  <BoxAnnotation color="#dddddd" min="1 0 0" max="3 2 1">
+    一台2×2×1的交换机： 外侧每个面加入它接触的网络
+  </BoxAnnotation>
+  <BoxAnnotation color="#915dcd" min="3 0 0" max="4 2 1">
+    网络A： 接在两个面上， 只算一次； 它的能源元件是唯一的电源
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="1 1 1">
+    网络B
+  </BoxAnnotation>
+  <BoxAnnotation color="#5dcd70" min="1 2 0" max="2 3 1">
+    网络C
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
+不是实心长方体的一组方块不会成形， 它的面都不连接： 在你补全长方体或拿走多余的方块之前， 接在上面的网络都离开联邦域。 右键其中一个方块， 动作栏会说明原因。
+
+交换机再大也不会给线缆分段： 它各个面上的线缆算作同一段（见[网络容量](../network-capacity.md)）。 只有路由器会分段。
 
 <RecipeFor id="ae2federation:switch" />

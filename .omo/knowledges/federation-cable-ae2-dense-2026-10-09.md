@@ -65,3 +65,25 @@ down, north; east: up, north, down, south; up and down: north, east, south, west
 the texture k quarter turns clockwise; both confirmed in-game on the first render. Only `CABLE` opens an edge. New
 `part/cable/dense/*` textures need no atlas entry: AE2's blocks atlas lists the whole `part/` directory for every
 namespace. Shots: `build/neck-shots/`, `build/core-connected-shots/` (diagnostics in `connected-shapes.png`).
+
+## Artist's collar (2026-10-11)
+
+`cable_straight.bbmodel` and `cable_display.bbmodel` had a collar since the artist's 44d6610 (four 1-voxel
+`collar.png` bars ringing the tube at 4..12 at both ends of a straight block), but it was never built: the artist's
+interim builder wired only core, line, connector and streams, and 9aed66a filed `dense/collar` under
+`validate_assets.py` NOT_DRAWN_YET instead of checking the bbmodel geometry. Lesson: when the artist's textures arrive,
+diff every `.bbmodel` element against `FederationCableBuilder`, not just the textures the interim code wires.
+
+`FederationCableBuilder.addCollar` copies the artist's bars, faces, UVs and rotations verbatim (north ring samples the
+bar's inner column, south ring the outer, mirrored, so two halves at a seam show the texture's 2-pixel bar) and bakes
+them with vanilla `FaceBakery` under `BlockModelRotation` X0_Y0 / X90_Y0 / X0_Y90, as a blockstate rotation would.
+`collarEnd` picks the ring that lands on the requested side via `Direction.rotate(matrix, SOUTH)`
+(`CableCollarTest`). Drawn on both ends of a straight tube, at the end of every `CABLE` arm of a core, and on the
+item; never toward Router, machine or P2P.
+
+In game: rings show through the glass windows at every seam. The collar is opaque, unlit terrain in the translucent
+layer drawn after the beam, so it correctly hides the beam behind it but also cuts the glow line into segments; at night
+it is dark and the night crop lost about 25% of its bright cyan pixels (1732 -> 1305). Light emission 0 is the
+artist's choice; making it full-bright would be a design change. Shots: `build/beam-compare/collar-{before,after}/`,
+sheet `cable-collar-before-after.png`, night crop `collar-night-crop.png`, bbmodel render `artist-collar.png`.
+`validate_assets.py` currently fails on `block/router/router_side_ver` (unused texture from e2348d1), unrelated.

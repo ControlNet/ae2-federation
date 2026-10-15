@@ -8,6 +8,13 @@ import appeng.me.service.P2PService;
 import appeng.parts.p2p.P2PModels;
 import appeng.parts.p2p.P2PTunnelPart;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
+import appeng.api.networking.IGrid;
+import net.minecraft.server.MinecraftServer;
 import java.util.List;
 import java.util.TreeMap;
 import net.minecraft.core.BlockPos;
@@ -19,6 +26,7 @@ import net.minecraft.world.level.BlockGetter;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.domain.FederationBindingRefresh;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -38,14 +46,15 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             ResourceLocation.fromNamespaceAndPath("ae2federation", "part/p2p_tunnel_federation");
     private static final P2PModels MODELS = new P2PModels(FRONT_MODEL);
     private static final String TUNNEL_PORT = "tunnel:";
-    /** Refresh requests of every tunnel so far, on the server thread. */
-    private static long refreshRequests;
+    /** Server-thread event coalescing, scoped by the native Grid and frequency. Entries live for one queued drain. */
+    private static final Map<MinecraftServer, Map<GroupKey, Set<FederationP2PTunnelPart>>> PENDING = new WeakHashMap<>();
+    private record GroupKey(@Nullable IGrid grid, short frequency) {}
+    private @Nullable GroupKey previousGroup;
+    /** Invalidation hint only: native P2P does not notify an input displaced by another input. */
+    private @Nullable FederationP2PTunnelPart publishedInput;
 
     private @Nullable CableFacePort front;
     private @Nullable FederationDomainNodeId nodeId;
-    private boolean refreshScheduled;
-    /** {@link #refreshRequests} when this tunnel last published. */
-    private long publishedAt = -1;
 
     public FederationP2PTunnelPart(IPartItem<?> partItem) {
         super(partItem);
@@ -76,6 +85,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
 
     @Override
     public void removeFromWorld() {
+        scheduleRefresh();
         super.removeFromWorld();
         if (front != null) {
             front.destroy();
@@ -87,6 +97,7 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             FederationBindingRefresh.request(serverLevel);
         }
         nodeId = null;
+        publishedInput = null;
     }
 
     /**
@@ -138,62 +149,68 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
      * Like the Bridge, never during a node event itself, when a neighbouring chunk may be unloading, and never while the
      * server stops.
      *
-     * <p>When AE2 tells every tunnel of a frequency at once (pairing, power, a channel reshuffle), each one's refresh
-     * would republish the whole frequency. A tunnel already published since the last refresh request anywhere has
-     * nothing new to publish, so each is published once per such burst.
+     * <p>A burst queues one drain per server and builds each affected frequency once. Both the previous and current
+     * group are dirtied on a frequency change, including outputs left behind after the input moves.
      */
     private void scheduleRefresh() {
-        if (!(getLevel() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-        refreshRequests++;
+        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
         P2PRefreshDiagnostics.requested();
-        if (refreshScheduled) {
-            return;
-        }
         var server = serverLevel.getServer();
-        if (!server.isRunning()) {
-            return;
+        if (!server.isRunning()) return;
+        var pending = PENDING.get(server);
+        if (pending == null) {
+            pending = new LinkedHashMap<>();
+            PENDING.put(server, pending);
+            P2PRefreshDiagnostics.queued();
+            server.tell(new TickTask(server.getTickCount() + 1, () -> drain(server)));
         }
-        refreshScheduled = true;
-        server.tell(new TickTask(server.getTickCount() + 1, () -> {
-            refreshScheduled = false;
-            long started = System.nanoTime();
-            if (nodeId != null && server.isRunning()) {
-                for (var tunnel : group()) {
-                    if (tunnel.publishedAt != refreshRequests) tunnel.publish();
-                }
-            }
-            P2PRefreshDiagnostics.ran(System.nanoTime() - started);
-        }));
+        var current = new GroupKey(getMainNode().getGrid(), getFrequency());
+        if (previousGroup != null) pending.computeIfAbsent(previousGroup, ignored -> new LinkedHashSet<>()).add(this);
+        pending.computeIfAbsent(current, ignored -> new LinkedHashSet<>()).add(this);
+        // Capture before removal or another publication can clear the output's previous evidence hint.
+        // A displaced input is absent from the native registry and does not receive its own callback.
+        if (publishedInput != null) {
+            var prior = new GroupKey(publishedInput.getMainNode().getGrid(), publishedInput.getFrequency());
+            pending.computeIfAbsent(prior, ignored -> new LinkedHashSet<>()).add(publishedInput);
+        }
+        previousGroup = current;
     }
 
-    /** This tunnel and the others of its frequency on its ME network: the input first, if it is one of these. */
-    private List<FederationP2PTunnelPart> group() {
-        var members = new ArrayList<FederationP2PTunnelPart>();
-        var grid = getMainNode().getGrid();
-        if (grid != null && getFrequency() != 0) {
-            var service = P2PService.get(grid);
-            if (service.getInput(getFrequency()) instanceof FederationP2PTunnelPart input) {
-                members.add(input);
-                service.getOutputs(getFrequency(), FederationP2PTunnelPart.class).forEach(members::add);
-            }
+    private static void drain(MinecraftServer server) {
+        var pending = PENDING.remove(server);
+        if (pending == null) return;
+        long started = System.nanoTime();
+        if (server.isRunning()) {
+            pending.forEach((key, changed) -> {
+                var members = new LinkedHashSet<FederationP2PTunnelPart>();
+                if (key.grid() != null && !key.grid().isEmpty() && key.frequency() != 0) {
+                    var service = P2PService.get(key.grid());
+                    if (service.getInput(key.frequency()) instanceof FederationP2PTunnelPart input) members.add(input);
+                    service.getOutputs(key.frequency(), FederationP2PTunnelPart.class).forEach(members::add);
+                }
+                // Include disconnected/inactive members, but never publish a moved tunnel using its old group.
+                for (var tunnel : changed) {
+                    if (key.equals(new GroupKey(tunnel.getMainNode().getGrid(), tunnel.getFrequency()))) members.add(tunnel);
+                }
+                var group = List.copyOf(members);
+                P2PRefreshDiagnostics.groupBuilt(group.size());
+                // Changed inputs can share a nonzero frequency after carrier merges or copied configurations.
+                // Native P2P connects inputs only to outputs; callback membership never creates input-input links.
+                var outputs = group.stream().filter(FederationP2PTunnelPart::isOutput).toList();
+                for (var tunnel : group) tunnel.publish(outputs);
+            });
         }
-        if (!members.contains(this)) {
-            members.add(this);
-        }
-        return members;
+        P2PRefreshDiagnostics.ran(System.nanoTime() - started);
     }
 
     /**
      * Publishes this tunnel's node: its front port, and one port per tunnel of its frequency it is linked to. The peer
      * publishes the matching port, so a link holds only when both agree.
      */
-    private void publish() {
+    private void publish(List<FederationP2PTunnelPart> outputs) {
         if (nodeId == null || front == null || !(getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        publishedAt = refreshRequests;
         var evidence = new TreeMap<String, FederationDomainPortEvidence>();
         front.revalidate();
         var peer = front.peer();
@@ -203,8 +220,12 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
                             peer.outwardFace().getSerializedName())));
         }
         int links = 0;
-        for (var other : TunnelLinks.linked(this, isOutput() ? getInput() : this, group(),
-                FederationP2PTunnelPart::isActive)) {
+        // Only AE2's selected input owns the output links. Other colliding inputs must still publish invalidation,
+        // but must not each scan all outputs or retain one-way evidence for links that native P2P never creates.
+        var input = getInput();
+        var linked = input == null || (!isOutput() && input != this) ? List.<FederationP2PTunnelPart>of()
+                : TunnelLinks.linked(this, input, outputs, FederationP2PTunnelPart::isActive);
+        for (var other : linked) {
             if (other.nodeId != null) {
                 evidence.put(TUNNEL_PORT + other.nodeId, new FederationDomainPortEvidence.Federation(
                         new FederationDomainPortId(other.nodeId, TUNNEL_PORT + nodeId)));
@@ -212,7 +233,8 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
             }
         }
         boolean changed = FederationDomainRegistryAccess.get(serverLevel).upsertNode(
-                new FederationDomainNodeEvidence(nodeId, evidence));
+                new FederationDomainNodeEvidence(nodeId, FederationDomainNodeKind.P2P_TUNNEL, evidence));
+        publishedInput = isOutput() && links != 0 ? input : null;
         P2PRefreshDiagnostics.published(nodeId, links, changed);
         if (changed) {
             FederationBindingRefresh.request(serverLevel);

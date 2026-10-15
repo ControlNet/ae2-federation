@@ -16,6 +16,8 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
     @Override
     public void configure(ScenarioOptions options) {
         TaskThirtyThreeScenarioSupport.configure(options, 3);
+        // The statistics showcase waits through most of two minutes of traffic on top of the other pages.
+        options.scenarioTimeoutMs(300_000);
     }
 
     @Override
@@ -463,6 +465,64 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 })
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-processing-other")
+                // The statistics page over real traffic: the Storage rules move items for a while, then the page shows
+                // the last two minutes. The routes and amounts are test-world activity, as the names and rules are.
+                .server("showcase: start storage traffic", TaskThirtyThreeShowcaseFixture::startTraffic)
+                .timeoutMs(120_000)
+                .waitUntilServer("showcase: storage traffic for most of two minutes", TaskThirtyThreeShowcaseFixture::traffic)
+                .click("#tab_statistics").frames(2)
+                .click("#stats_range_SECONDS")
+                .waitUntil("showcase: the statistics page shows the server's figures for all eight networks", context ->
+                        space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownNetworks() == 8)
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics")
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-hover")
+                .click("#stats_card_stored").frames(2)
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-storage")
+                .click("#stats_card_moved")
+                .step("showcase: show Main Base only", context -> showcaseStatisticsNetwork(context, "Main Base"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-network")
+                // Each metric with what it has below its chart.
+                .click("#stats_by_item")
+                .waitUntil("showcase: what moved by item arrives", context -> statisticsFor("moved;ae2:i"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-moved-network-items")
+                .step("showcase: show all networks", context -> showcaseStatisticsNetwork(context, "All networks"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-moved-items")
+                .click("#stats_card_power")
+                .waitUntil("showcase: power figures arrive", context -> statisticsFor("power;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-power")
+                .click("#stats_card_crafting")
+                .waitUntil("showcase: crafting figures arrive", context -> statisticsFor("crafting;"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-crafting")
+                .click("#stats_card_cpus")
+                .waitUntil("showcase: CPU figures arrive", context -> statisticsFor("cpus;"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-cpus")
+                .click("#stats_card_channels")
+                .waitUntil("showcase: channel figures arrive", context -> statisticsFor("channels;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-channels")
+                .click("#stats_card_stored")
+                .waitUntil("showcase: stock by item arrives", context -> statisticsFor("stock;ae2:i"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-stock-items")
+                .typeInto("#stats_search", "ingot")
+                .waitUntil("showcase: the keys to search arrive", context ->
+                        space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().startsWith("stock;ae2:i;")
+                                && !space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().endsWith(";0"))
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-stock-search")
+                .typeInto("#stats_search", "").blur()
+                .click("#stats_by_network").frames(3)
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-stock-networks")
                 .closeScreen()
                 // The host's own Provider screen in the fuller domain: its two Endpoints, two that other Providers own
                 // (read-only) and one still free.
@@ -530,6 +590,22 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                         .anyMatch(text -> ((com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement) text).getText().getString().equals(name)))
                 .findFirst().orElseThrow(() -> new IllegalStateException("No card named " + name));
         var bounds = card.bounds();
+        context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
+        context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
+    }
+
+    /** Whether the statistics page's last figures were for {@code prefix} ("metric;kind"). */
+    private static boolean statisticsFor(String prefix) {
+        return space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest().startsWith(prefix);
+    }
+
+    /** Clicks the statistics page's chip of the network named {@code name}. */
+    private static void showcaseStatisticsNetwork(com.lowdragmc.lowdraglib2.uitest.TestContext context, String name) {
+        var chip = context.all(".network-chip").stream()
+                .filter(candidate -> candidate.as(com.lowdragmc.lowdraglib2.gui.ui.elements.Button.class).text.getText()
+                        .getString().endsWith(name))
+                .findFirst().orElseThrow(() -> new IllegalStateException("No statistics chip for " + name));
+        var bounds = chip.bounds();
         context.input().mouseDown(bounds.centerX(), bounds.centerY(), 0);
         context.input().mouseUp(bounds.centerX(), bounds.centerY(), 0);
     }

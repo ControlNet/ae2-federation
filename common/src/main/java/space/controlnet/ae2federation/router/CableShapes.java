@@ -1,16 +1,21 @@
 package space.controlnet.ae2federation.router;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import space.controlnet.ae2federation.bundle.BundleLook;
 
 /**
  * A Federation Cable's outline, with the boxes {@code FederationCableBuilder} draws: a 12-voxel core, 12-voxel arms
- * to other cables, 10-voxel dense arms, 4-voxel covered arms, and one 12-voxel tube for a straight line of cables.
+ * to other cables, 10-voxel dense arms, 4-voxel covered arms, and one 12-voxel tube for a straight line of cables. A
+ * bundled cell's outline is its part of the bundle's shell, as {@code BundleCableBuilder} draws it.
  */
 public final class CableShapes {
     private static final VoxelShape[] SHAPES = new VoxelShape[CableVisualConnections.COUNT];
+    private static final Map<BundleLook, VoxelShape> BUNDLES = new ConcurrentHashMap<>();
 
     private CableShapes() {
     }
@@ -23,6 +28,51 @@ public final class CableShapes {
             SHAPES[connections] = shape;
         }
         return shape;
+    }
+
+    /**
+     * A bundled cell's outline: its part of the shell, 2 voxels inside the bundle's outer boundary and its closed ends,
+     * a branch's opening out to the cell's face, and a dense arm to each device it reaches.
+     */
+    public static VoxelShape bundle(BundleLook look) {
+        return BUNDLES.computeIfAbsent(look, CableShapes::buildBundle);
+    }
+
+    private static VoxelShape buildBundle(BundleLook look) {
+        var shape = Shapes.box(shellLow(look, Direction.Axis.X) / 16, shellLow(look, Direction.Axis.Y) / 16,
+                shellLow(look, Direction.Axis.Z) / 16, shellHigh(look, Direction.Axis.X) / 16,
+                shellHigh(look, Direction.Axis.Y) / 16, shellHigh(look, Direction.Axis.Z) / 16);
+        for (var side : Direction.values()) {
+            if (look.dense(side)) shape = Shapes.or(shape, arm(side, 14, 3, 13));
+            if (side.getAxis() == look.axis() || !look.join(side)) continue;
+            // The opening onto a branch reaches the cell's face, as far along as the branch's own shell.
+            double[] from = new double[3];
+            double[] to = new double[3];
+            for (var axis : Direction.Axis.values()) {
+                from[axis.ordinal()] = shellLow(look, axis);
+                to[axis.ordinal()] = shellHigh(look, axis);
+            }
+            int across = side.getAxis().ordinal();
+            if (side.getAxisDirection() == Direction.AxisDirection.POSITIVE) to[across] = 16;
+            else from[across] = 0;
+            int along = look.axis().ordinal();
+            from[along] = look.joinsBefore(side) ? 0 : 2;
+            to[along] = look.joinsAfter(side) ? 16 : 14;
+            shape = Shapes.or(shape, Block.box(from[0], from[1], from[2], to[0], to[1], to[2]));
+        }
+        return shape.optimize();
+    }
+
+    /** Where the cell's part of the shell starts along {@code axis}, in voxels. */
+    public static double shellLow(BundleLook look, Direction.Axis axis) {
+        var side = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE);
+        return axis == look.axis() ? look.open(side) ? 0 : 2 : look.edge(side) ? 2 : 0;
+    }
+
+    /** Where the cell's part of the shell ends along {@code axis}, in voxels. */
+    public static double shellHigh(BundleLook look, Direction.Axis axis) {
+        var side = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE);
+        return axis == look.axis() ? look.open(side) ? 16 : 14 : look.edge(side) ? 14 : 16;
     }
 
     private static VoxelShape build(int connections) {

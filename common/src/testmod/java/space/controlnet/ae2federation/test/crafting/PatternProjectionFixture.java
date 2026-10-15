@@ -222,6 +222,20 @@ public final class PatternProjectionFixture implements AutoCloseable {
         return CraftingProjectionService.get(helper.getLevel()).projectionCount(crafting());
     }
 
+    /** Exactly one consumer medium per pattern from each of the two actual fixture providers. */
+    public void assertFixtureProvidersProjectedOnce() {
+        var providers = List.of(assembler.provider().getLogic(), processingProvider().getLogic());
+        var projected = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ICraftingProvider, Boolean>());
+        for (var provider : providers) {
+            helper.assertValueEqual(provider.getAvailablePatterns().size(), 1, "Each fixture provider has exactly one pattern");
+            var pattern = provider.getAvailablePatterns().getFirst();
+            var mediums = consumerProviders(pattern);
+            helper.assertValueEqual(mediums.size(), 1, "Each actual fixture pattern has exactly one projected consumer medium");
+            projected.add(mediums.getFirst());
+        }
+        helper.assertValueEqual(projected.size(), 2, "Both distinct fixture providers are projected exactly once");
+    }
+
     public java.util.Optional<CraftingProjectionService.Status> status() {
         return CraftingProjectionService.status(helper.getLevel(), crafting());
     }
@@ -368,6 +382,23 @@ public final class PatternProjectionFixture implements AutoCloseable {
         var cell = chest.getCell().copy();
         chest.setCell(ItemStack.EMPTY);
         return cell;
+    }
+
+    public ItemStack takeConsumerCell() {
+        var chest = bridge.consumerChest();
+        var cell = chest.getCell().copy();
+        chest.setCell(ItemStack.EMPTY);
+        return cell;
+    }
+
+    public void restoreConsumerCell(ItemStack cell) {
+        bridge.consumerChest().setCell(cell);
+    }
+
+    public void installProcessingPattern(ItemStack pattern) {
+        var logic = processingProvider().getLogic();
+        logic.getPatternInv().addItems(pattern);
+        logic.updatePatterns();
     }
 
     public void restoreProviderCell(ItemStack cell) {

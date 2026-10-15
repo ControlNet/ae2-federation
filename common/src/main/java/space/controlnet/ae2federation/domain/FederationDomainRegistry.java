@@ -26,6 +26,11 @@ import space.controlnet.ae2federation.policy.AuthorityEpoch;
  * <p>Node changes are applied to the evidence at once and their components are recomputed lazily, together, before the
  * next read: a chunk of cables publishing in one tick costs one walk of the domain, not one per cable. Every read sees
  * the same domains an immediate recomputation would give, up to which new id a merged component receives.
+ *
+ * <p>A domain with any Federation Cable over {@link CableCapacityLimit}, times the cable's capacity factor, is over
+ * capacity: it keeps its nodes, members and id, so nothing it counts changes, but the features that link networks treat
+ * it as stopped. Only domains whose evidence changed, or every domain when the limit changes, are judged again, and only
+ * a changed verdict advances the topology revision and the authority epoch.
  */
 public final class FederationDomainRegistry {
     private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
@@ -51,11 +56,21 @@ public final class FederationDomainRegistry {
     /** The dimension each Bridge's part lives in, so closing that level withdraws it. */
     private final Map<FederationDomainSourceId, String> bridgeDimensions = new HashMap<>();
     private long topologyRevision;
+    /** Advances on every evidence change, including ones that leave every domain as it was. */
+    private long evidenceRevision;
     private long physicalSequence;
     /** Nodes whose components changed since the last recomputation; recomputed together before the next read. */
     private final Set<FederationDomainNodeId> pendingSeeds = new TreeSet<>();
     /** Nodes removed since the last recomputation: one that returns first lets its removal take effect. */
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
+    /** Domains whose cables exceed the capacity limit; they stop as a whole. */
+    private final Set<FederationDomainId> overCapacity = new HashSet<>();
+    /** Nodes whose evidence changed since their domains were last judged against the capacity limit. */
+    private final Set<FederationDomainNodeId> capacityNodes = new HashSet<>();
+    /** Domains installed since they were last judged against the capacity limit. */
+    private final Set<FederationDomainId> capacityDomains = new HashSet<>();
+    /** The limit the verdicts were judged with; null before the first judgement. */
+    private java.util.OptionalInt judgedLimit;
 
     private long recomputes;
     private long recomputeNanos;
@@ -97,14 +112,14 @@ public final class FederationDomainRegistry {
         install(new FederationDomainSnapshot(federationDomainId, ++topologyRevision, Set.of(), memberships));
         directBridges.put(source, federationDomainId);
         bridgeDimensions.put(source, dimension);
-        mutationListener.run();
+        mutated();
     }
 
     public void invalidateDirectBridge(FederationDomainSourceId source) {
         flush();
         AuthorityEpoch.advance();
         removeDirectBridge(source);
-        mutationListener.run();
+        mutated();
     }
 
     /** Records a node's evidence; returns false when it equals what the node already published. */
@@ -119,10 +134,11 @@ public final class FederationDomainRegistry {
         }
         AuthorityEpoch.advance();
         pendingSeeds.addAll(affectedBy(evidence.nodeId(), previous, evidence));
+        capacityNodes.add(evidence.nodeId());
         removeIncoming(previous);
         nodes.put(evidence.nodeId(), evidence);
         addIncoming(evidence);
-        mutationListener.run();
+        mutated();
         return true;
     }
 
@@ -133,7 +149,7 @@ public final class FederationDomainRegistry {
             pendingSeeds.addAll(affectedBy(nodeId, previous, null));
             pendingRemovals.add(nodeId);
             removeIncoming(previous);
-            mutationListener.run();
+            mutated();
         }
         invalidations.put(nodeId, reason);
         if (reason == FederationDomainInvalidationReason.SOURCE_UNLOADED) {
@@ -174,7 +190,7 @@ public final class FederationDomainRegistry {
         invalidations.keySet().removeIf(node -> node.dimension().equals(dimension));
         unloaded.removeIf(node -> node.dimension().equals(dimension));
         if (!removedNodes.isEmpty() || !removedBridges.isEmpty()) {
-            mutationListener.run();
+            mutated();
         }
         var left = (int) nodes.keySet().stream().filter(node -> node.dimension().equals(dimension)).count();
         return new DimensionRemoval(dimension, removedNodes.size(), removedBridges.size(), left);
@@ -183,6 +199,26 @@ public final class FederationDomainRegistry {
     public Set<FederationDomainId> federationdomainsFor(NetworkId networkId) {
         flush();
         return Set.copyOf(networkIndex.getOrDefault(networkId, Set.of()));
+    }
+
+    /**
+     * Whether two networks share a Federation domain that runs: one that is not over capacity. The features that link
+     * networks ask this; {@link #shareFederationDomain} answers for the topology alone.
+     */
+    public boolean shareRunningFederationDomain(NetworkId first, NetworkId second) {
+        flush();
+        var firstDomains = networkIndex.getOrDefault(first, Set.of());
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        for (var domain : firstDomains) {
+            if (!overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
+        }
+        return false;
+    }
+
+    /** Whether a domain has a Federation Cable over the capacity limit, and so stops as a whole. */
+    public boolean overCapacity(FederationDomainId federationDomainId) {
+        flush();
+        return overCapacity.contains(federationDomainId);
     }
 
     /** Whether two networks are members of a common Federation Domain, without copying either membership set. */
@@ -221,6 +257,27 @@ public final class FederationDomainRegistry {
         return Optional.ofNullable(nodeToFederationDomain.get(nodeId)).map(federationDomains::get);
     }
 
+    /** Changes whenever any node's or Bridge's evidence changes, even when no domain does. */
+    public long evidenceRevision() {
+        return evidenceRevision;
+    }
+
+    /** The evidence each node of a domain published; empty for a direct Bridge domain or an unknown id. */
+    public List<FederationDomainNodeEvidence> nodeEvidence(FederationDomainId federationDomainId) {
+        flush();
+        return evidenceOf(federationDomains.get(federationDomainId));
+    }
+
+    private List<FederationDomainNodeEvidence> evidenceOf(FederationDomainSnapshot domain) {
+        return domain == null ? List.of()
+                : domain.nodes().stream().map(nodes::get).filter(Objects::nonNull).toList();
+    }
+
+    private void mutated() {
+        evidenceRevision++;
+        mutationListener.run();
+    }
+
     private long nextTopologyRevision() {
         AuthorityEpoch.advance();
         return ++topologyRevision;
@@ -245,18 +302,50 @@ public final class FederationDomainRegistry {
         return new FederationDomainRegistrySnapshot(federationDomains, copiedIndex, invalidations, topologyRevision);
     }
 
-    /** Recomputes every component a node change touched since the last read. */
+    /** Recomputes every component a node change touched since the last read, then judges their capacity. */
     private void flush() {
-        if (pendingSeeds.isEmpty()) {
+        if (!pendingSeeds.isEmpty()) {
+            var seeds = new TreeSet<>(pendingSeeds);
+            pendingSeeds.clear();
+            pendingRemovals.clear();
+            long started = System.nanoTime();
+            recompute(seeds);
+            recomputes++;
+            recomputeNanos += System.nanoTime() - started;
+        }
+        judgeCapacity();
+    }
+
+    /**
+     * Judges again the domains whose evidence changed or that were installed since, or every domain when the limit
+     * changed. The verdict changes nothing the count reads, so a stopped domain stays stopped until its evidence or the
+     * limit changes.
+     */
+    private void judgeCapacity() {
+        var limit = CableCapacityLimit.current();
+        if (!limit.equals(judgedLimit)) {
+            judgedLimit = limit;
+            capacityDomains.addAll(federationDomains.keySet());
+        }
+        if (capacityNodes.isEmpty() && capacityDomains.isEmpty()) {
             return;
         }
-        var seeds = new TreeSet<>(pendingSeeds);
-        pendingSeeds.clear();
-        pendingRemovals.clear();
-        long started = System.nanoTime();
-        recompute(seeds);
-        recomputes++;
-        recomputeNanos += System.nanoTime() - started;
+        capacityNodes.stream().map(nodeToFederationDomain::get).filter(Objects::nonNull).forEach(capacityDomains::add);
+        capacityNodes.clear();
+        boolean changed = false;
+        for (var federationDomainId : capacityDomains) {
+            var domain = federationDomains.get(federationDomainId);
+            boolean over = domain != null && limit.isPresent() && CableCapacityCounter.count(evidenceOf(domain))
+                    .entrySet().stream().anyMatch(entry -> CableCapacityLimit.current(
+                            nodes.get(entry.getKey()).capacityFactor()).stream()
+                            .anyMatch(cap -> entry.getValue().units() > cap));
+            changed |= over ? overCapacity.add(federationDomainId) : overCapacity.remove(federationDomainId);
+        }
+        capacityDomains.clear();
+        if (changed) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
     }
 
     /** How many times changed components were recomputed, for diagnostics and benchmarks. */
@@ -460,6 +549,7 @@ public final class FederationDomainRegistry {
 
     private void install(FederationDomainSnapshot snapshot) {
         federationDomains.put(snapshot.federationDomainId(), snapshot);
+        capacityDomains.add(snapshot.federationDomainId());
         snapshot.memberships().keySet().forEach(network -> networkIndex
                 .computeIfAbsent(network, ignored -> new TreeSet<>()).add(snapshot.federationDomainId()));
     }
@@ -470,6 +560,8 @@ public final class FederationDomainRegistry {
             return null;
         }
         physicalSequences.remove(federationDomainId);
+        // Judged again, so a stopped domain that is gone lets go of its verdict with a topology change.
+        capacityDomains.add(federationDomainId);
         removed.nodes().forEach(node -> nodeToFederationDomain.remove(node, federationDomainId));
         removed.memberships().keySet().forEach(network -> {
             var indexed = networkIndex.get(network);

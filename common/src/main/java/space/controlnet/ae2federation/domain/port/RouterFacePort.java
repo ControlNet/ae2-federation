@@ -6,6 +6,7 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.IManagedGridNode;
 import java.util.EnumSet;
+import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -19,7 +20,9 @@ import space.controlnet.ae2federation.energy.FederationEnergyConnection;
 
 /**
  * One face of a Router or a Switch. A Switch's face attaches an ME network through a boundary node or links to a
- * Federation port; a Router's face has no node and only links to a Federation port.
+ * Federation port; a Router's face has no node and only links to a Federation port. A face of a block that is not part
+ * of a formed body binds nothing, though its node keeps facing a Federation port hidden as before, so reshaping a body
+ * never joins two native Grids.
  */
 public final class RouterFacePort implements IdentityNeutralNodeOwner {
     /**
@@ -50,6 +53,7 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private final Direction face;
     private final FederationPort routerFederationDomainPort;
     private final @Nullable IManagedGridNode boundaryNode;
+    private final BooleanSupplier linking;
     private RouterPortBinding binding = RouterPortBinding.Disconnected.INSTANCE;
     private BlockCapabilityCache<FederationPort, Direction> federationCache;
     private ServerLevel level;
@@ -59,8 +63,9 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     private boolean alive;
 
     public RouterFacePort(BlockPos routerPosition, Direction face, FederationPort routerFederationDomainPort,
-            boolean attachesNetworks) {
+            boolean attachesNetworks, BooleanSupplier linking) {
         this.routerPosition = routerPosition.immutable();
+        this.linking = linking;
         this.face = face;
         this.routerFederationDomainPort = routerFederationDomainPort;
         if (!attachesNetworks) {
@@ -139,6 +144,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
         dirty = true;
     }
 
+    /** Whether the block may link changed, as when its body forms or breaks: resolve again on the next tick. */
+    public void markDirty() {
+        dirty = true;
+    }
+
     public void destroy() {
         binding = RouterPortBinding.Disconnected.INSTANCE;
         dirty = false;
@@ -172,6 +182,11 @@ public final class RouterFacePort implements IdentityNeutralNodeOwner {
     }
 
     private RouterPortBinding resolve() {
+        var link = resolveLink();
+        return linking.getAsBoolean() ? link : RouterPortBinding.Disconnected.INSTANCE;
+    }
+
+    private RouterPortBinding resolveLink() {
         var neighborPosition = routerPosition.relative(face);
         if (level == null || !level.isLoaded(neighborPosition) || federationCache == null) {
             return RouterPortBinding.Disconnected.INSTANCE;

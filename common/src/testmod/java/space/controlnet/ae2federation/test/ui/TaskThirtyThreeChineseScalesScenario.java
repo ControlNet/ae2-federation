@@ -45,6 +45,11 @@ public final class TaskThirtyThreeChineseScalesScenario implements UIScenario {
                 .hover("#domain_title").frames(3).screenshot("ui-chinese-pair-editor")
                 .typeInto("#graph_search", "网络")
                 .check("localized network search matches", context -> !context.el("#graph_search_empty").isVisible())
+                // 网络 by its pinyin: matches while JustEnoughCharacters is installed, and only then.
+                .typeInto("#graph_search", "wangluo").frames(3).screenshot("ui-chinese-pinyin-search")
+                .check("pinyin search matches only with JustEnoughCharacters", context ->
+                        context.el("#graph_search_empty").isVisible()
+                                != net.neoforged.fml.ModList.get().isLoaded("jecharacters"))
                 .typeInto("#graph_search", "").blur()
                 .step("select the Provider host network", context -> TaskThirtyThreeScenarioSupport.selectNetworkCard(
                         context, context.get("net.providerHost")))

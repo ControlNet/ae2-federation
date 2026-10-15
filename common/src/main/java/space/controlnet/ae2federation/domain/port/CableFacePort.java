@@ -11,6 +11,7 @@ public final class CableFacePort {
     private final Direction face;
     private final String part;
     private final Runnable changed;
+    private final java.util.function.BooleanSupplier open;
     private @Nullable BlockCapabilityCache<FederationPort, Direction> cache;
     private @Nullable ServerLevel level;
     private @Nullable FederationPort peer;
@@ -27,10 +28,17 @@ public final class CableFacePort {
      * may have changed, for an owner without a tick of its own to resolve the port on.
      */
     public CableFacePort(BlockPos cablePosition, Direction face, String part, Runnable changed) {
+        this(cablePosition, face, part, changed, () -> true);
+    }
+
+    /** A port that links only while {@code open} holds, as a bundled cable's face does. */
+    public CableFacePort(BlockPos cablePosition, Direction face, String part, Runnable changed,
+            java.util.function.BooleanSupplier open) {
         this.cablePosition = cablePosition.immutable();
         this.face = face;
         this.part = part;
         this.changed = changed;
+        this.open = open;
     }
 
     public void initialize(ServerLevel serverLevel) {
@@ -97,7 +105,9 @@ public final class CableFacePort {
         if (level == null || !level.isLoaded(neighborPosition) || cache == null) {
             return null;
         }
+        // Read the cache even on a closed face: it calls its listener again only once read since its last invalidation.
         var candidate = cache.getCapability();
+        if (!open.getAsBoolean()) return null;
         var local = new FederationPort(cablePosition, face, part);
         return candidate != null && candidate.ownerPosition().equals(neighborPosition)
                 && candidate.outwardFace() == face.getOpposite() && local.connectsTo(candidate) ? candidate : null;

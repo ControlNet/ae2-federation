@@ -34,6 +34,14 @@ public final class FederationTestMod {
         if (System.getProperty(ModLogoRenderer.OUTPUT) != null && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
             ModLogoRenderer.register();
         }
+        if (System.getProperty(space.controlnet.ae2federation.test.client.DeviceStructureScene.OUTPUT) != null
+                && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            space.controlnet.ae2federation.test.client.DeviceStructureScene.register();
+        }
+        if (System.getProperty("ae2federation.beamPreview.out") != null
+                && net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+            space.controlnet.ae2federation.test.client.CableBeamNativePreview.register();
+        }
         modBus.addListener(this::registerGameTests);
         modBus.addListener(space.controlnet.ae2federation.test.world.RestartChunkTickets::register);
         modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
@@ -44,9 +52,9 @@ public final class FederationTestMod {
     private void registerGameTests(RegisterGameTestsEvent event) {
         var selection = System.getProperty("ae2federation.testSelection", "positive");
         var testId = System.getProperty("ae2federation.testId", "harnessnativesmoke");
-        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
+        var testClasses = new java.util.ArrayList<>(Arrays.asList(FederationGameTests.class, ReturnCoverageGameTests.class, ProviderPriorityCoverageGameTests.class, IdentityBindingCoverageGameTests.class, P2PCollisionGameTests.class, GlobalProviderLifecycleGameTests.class, ProjectionReviewGameTests.class, ReturnReentryGameTests.class, ReturnSimulationGameTests.class, ReturnIdentityGameTests.class, ProjectionProductionExportGameTests.class, IdentityBaselineGameTests.class, IdentityGameTests.class, BoundaryIdentityGameTests.class,
 					 IdentityQueryCostGameTests.class, ProductionProviderGameTests.class, ProductionProviderRetentionGameTests.class, StorageAliasSemanticsGameTests.class, StorageStatusGameTests.class,
-					 PortGameTests.class, CableModelGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
+					 PortGameTests.class, CableModelGameTests.class, DeviceStructureGameTests.class, DeviceSummaryGameTests.class, ProviderLaneGameTests.class, EndpointGameTests.class, EndpointFederationFaceGameTests.class, ProviderFederationFaceGameTests.class, EndpointModeGameTests.class,
 					 EndpointReturnGameTests.class, EndpointAuthorizationGameTests.class,
 					 StorageProofGameTests.class, StorageNativeCharacterizationGameTests.class, StorageMountGameTests.class,
 					 StorageProvenanceGameTests.class, StorageChainGameTests.class, AcrossDomainsGameTests.class,
@@ -59,8 +67,8 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, RouterGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
-					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, SurvivalRecipeGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
+					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
 							   ProcessingRestartGameTests.class, ProcessingOwnershipGameTests.class,

@@ -27,21 +27,25 @@ import net.neoforged.neoforge.client.model.BakedModelWrapper;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.data.ModelProperty;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.router.CableCoreFaces;
 import space.controlnet.ae2federation.router.CableVisualConnections;
 
 /**
  * A Federation Cable's model: AE2's dense cable geometry ({@link FederationCableBuilder}), built from code for each
- * set of side connections the first time a chunk needs it, and kept until the next resource reload. The connections
- * are read when the chunk mesh is rebuilt; there is no per-frame geometry or network state.
+ * set of side connections the first time a chunk needs it, and kept until the next resource reload. A bundled cell
+ * draws its part of its bundle's shell instead ({@link BundleCableBuilder}), built once for each {@link BundleLook}.
+ * The connections are read when the chunk mesh is rebuilt; there is no per-frame geometry or network state.
  */
 public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     private static final ModelProperty<Integer> CONNECTIONS = new ModelProperty<>();
+    private static final ModelProperty<BundleLook> BUNDLE = new ModelProperty<>();
     private static final ModelData[] DATA = new ModelData[CableVisualConnections.COUNT];
     private static final ChunkRenderTypeSet LAYERS = ChunkRenderTypeSet.of(RenderType.translucent());
     private static final ResourceLocation CABLE = ResourceLocation.fromNamespaceAndPath("ae2federation", "cable");
 
     private final Map<Integer, List<BakedQuad>> shapes = new ConcurrentHashMap<>();
+    private final Map<BundleLook, List<BakedQuad>> bundles = new ConcurrentHashMap<>();
     private volatile List<BakedQuad> item;
 
     private CableBakedModel(BakedModel base) {
@@ -62,7 +66,8 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
         for (var variant : CableCoreFaces.Variant.values()) {
             cores.put(variant, atlas.apply(texture("dense/" + variant.texture())));
         }
-        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")));
+        return new FederationCableBuilder(cores, atlas.apply(texture("dense/line")),
+                atlas.apply(texture("dense/collar")));
     }
 
     private static ResourceLocation texture(String name) {
@@ -70,6 +75,12 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
     }
 
     private List<BakedQuad> quads(ModelData data) {
+        var look = data.get(BUNDLE);
+        if (look != null) {
+            return bundles.computeIfAbsent(look, key -> new BundleCableBuilder(builder(),
+                    Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS)
+                            .apply(texture("dense/" + CableCoreFaces.Variant.CLOSED.texture()))).build(key));
+        }
         var connections = data.get(CONNECTIONS);
         return shapes.computeIfAbsent(connections == null ? 0 : connections, key -> builder().build(key));
     }
@@ -85,6 +96,8 @@ public final class CableBakedModel extends BakedModelWrapper<BakedModel> {
 
     @Override
     public ModelData getModelData(BlockAndTintGetter level, BlockPos position, BlockState state, ModelData data) {
+        var look = BundleLook.of(level, position);
+        if (look.isPresent()) return ModelData.builder().with(BUNDLE, look.get()).build();
         int connections = CableVisualConnections.connections(level, position);
         var modelData = DATA[connections];
         if (modelData == null) {

@@ -26,6 +26,16 @@ public final class LightningTechCompatGameTests {
 
     /** AE2 Lightning Tech's Overloaded Pattern Provider serves the remote craft. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void mentalMathUnitRetirement(GameTestHelper helper) {
+        IndependentCpuRetirementScene.run(helper);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 1600)
+    public static void mentalMathUnitChunkUnload(GameTestHelper helper) {
+        IndependentCpuChunkScene.run(helper);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
     public static void overloadedPatternProviderCrafting(GameTestHelper helper) {
         var scene = new AddonCraftingScene(helper, "ae2lt:overloaded_pattern_provider", "ae2:molecular_assembler", List.of("ae2:1k_crafting_storage"));
         helper.succeedWhen(scene::tick);

@@ -93,7 +93,8 @@ final class ProductionGameTestRunner {
             rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
             level.setWeatherParameters(20_000_000, 20_000_000, false, false);
             var runner = GameTestRunner.Builder.fromBatches(batches(functions, level), level)
-                    .newStructureSpawner(new CellGridSpawner(ORIGIN, 8)).build();
+                    .newStructureSpawner(new CellGridSpawner(ORIGIN.offset(
+                            Integer.getInteger("ae2federation.compat.originX", 0), 0, 0), 8)).build();
             infos = List.copyOf(runner.getTestInfos());
             tracker = new MultipleTestTracker(infos);
             started = System.nanoTime();

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Audit and Fix"
+  short_description: "Find bugs, coordinate fixes, and verify delivery"
+  default_prompt: "Use $audit-and-fix to inspect this project, coordinate verified fixes in isolated worktrees, integrate them into the current branch, and verify the pushed commit in CI."

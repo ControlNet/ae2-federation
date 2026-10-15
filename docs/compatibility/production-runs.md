@@ -130,6 +130,7 @@ runs on the provider's. Only the scenes that remove the Bridge after the push ke
 | `addons-all` | the mods of the profiles from `extendedae` to `omnisequence` except AE All Pattern, plus AE2 Extras, MEGA Cells and Neo ECO Prototype | their groups, plus AE2 Extras' 1M crafting storage and 1M cell | 90/90 (2026-10-10) |
 | `useless-mod` | UselessMod 2.4.5.10 | crafting through an Advanced Alloy Furnace, which holds the pattern and crafts it itself with no Molecular Assembler, while UselessMod's mixins wrap the consumer CPU's pushes; the guide's build, the furnace alone on a network with no storage, whose recipe leaves and returns when its pattern is taken out and put back (2026-10-08) | 21/21 |
 | `useless-mod-addons` | the `addons-all` mods as of 2026-10-08 (Neo ECO AE Extension 21.2.0, no MEGA Cells or Neo ECO Prototype) plus AdvancedAE 1.6.12 and UselessMod 2.4.5.10, so its Advanced AE and ExtendedAE mixins apply; the only profile left on Neo ECO 21.2.0, whose `getRequestedAmount` bug the Federation fallback covers | their groups | 81/81 (2026-10-08) |
+| `recipe-viewers` | JEI 19.57.0.449, Jade 15.10.6, AE2 JEI Integration 1.2.1 | core only, with AE2 Federation's Jade plugin loaded on the server beside AE2's own (2026-10-13) | 19/19 |
 
 ## Modpack profiles
 

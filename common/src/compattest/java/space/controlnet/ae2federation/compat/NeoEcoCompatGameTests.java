@@ -63,13 +63,48 @@ public final class NeoEcoCompatGameTests {
                 test -> placeCraftingSystem(test, tier, start), start.offset(3, 2, 1));
     }
 
-    /**
-     * Neo ECO's computation system, with a flash array in one of its drives, is the consumer's only CPU and orders from
-     * the provider network's crafting system.
-     */
+    /** Two real jobs share one threading-core anchor without sharing a lifecycle. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void computationSharedAnchorLifecycle(GameTestHelper helper) {
+        CpuLifecycleAuditScene.sharedAnchor(helper);
+    }
+
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 600)
+    public static void computationCompletedLifecycle(GameTestHelper helper) {
+        CpuLifecycleAuditScene.completed(helper);
+    }
+
+    /** The consumer's real computation system orders from the provider's crafting system. */
     @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
     public static void computationSystemOrdering(GameTestHelper helper) {
         helper.succeedWhen(computationOrdering(helper, Tier.L4)::tick);
+    }
+
+    /** Real independent ECO CPU cancellation, with delayed output from the explicitly hand-run test machine. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemCancel(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().cancellingAfterPush();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Real independent ECO CPU waits for a separately delayed declared byproduct (test-operated machine). */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemDelayedByproduct(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().lateByproduct();
+        helper.succeedWhen(scene::tick);
+    }
+
+    /** Real ECO CPU keeps its return debt with the Federation link removed after dispatch. */
+    @GameTest(templateNamespace = "ae2federation_test", template = "harness_native_smoke", timeoutTicks = 900)
+    public static void computationSystemDisconnect(GameTestHelper helper) {
+        var scene = new AddonCraftingScene(helper, "ae2:pattern_provider", "minecraft:chest", List.of(), true)
+                .consumerCpuStructure(test -> placeComputationSystem(test, Tier.L4), () -> fitComputationCell(helper, Tier.L4))
+                .craftingOnly().disconnectingAfterPush();
+        helper.succeedWhen(scene::tick);
     }
 
     static AddonCraftingScene computationOrdering(GameTestHelper helper, Tier tier) {

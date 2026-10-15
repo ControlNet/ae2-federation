@@ -44,6 +44,7 @@ import space.controlnet.ae2federation.ae2.processing.NativeProviderLane;
 import space.controlnet.ae2federation.ae2.processing.NativeProviderOwnerLogic;
 import space.controlnet.ae2federation.domain.FederationDomainInvalidationReason;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -529,6 +530,21 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
         return endpointLevel != null && endpointLevel.isLoaded(binding.position);
     }
 
+    /** Filled pattern slots of all slots, and the Endpoint mappings they hold, as the Provider's screen counts them. */
+    public record PatternSummary(int used, int total, int mappings) {
+    }
+
+    public PatternSummary patternSummary() {
+        var inventory = provider.patternInventory();
+        int used = 0;
+        int mappings = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (!inventory.getStackInSlot(slot).isEmpty()) used++;
+            mappings += endpointsForSlot(slot).size();
+        }
+        return new PatternSummary(used, inventory.size(), mappings);
+    }
+
     @Override
     public Set<EndpointIdentity> endpointsForSlot(int slot) {
         var result = new java.util.LinkedHashSet<EndpointIdentity>();
@@ -869,7 +885,8 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             evidence.put(NATIVE_PORT, FederationDomainRegistryAccess.nativeEvidence(grid, new FederationDomainPortId(federationDomainNodeId,
                     NATIVE_PORT)));
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
+        return new FederationDomainNodeEvidence(federationDomainNodeId, FederationDomainNodeKind.PATTERN_PROVIDER,
+                evidence);
     }
 
     private @Nullable FederationPort federationPeer(ServerLevel serverLevel) {

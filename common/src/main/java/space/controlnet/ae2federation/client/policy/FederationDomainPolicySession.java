@@ -480,6 +480,7 @@ public final class FederationDomainPolicySession {
         choice.addProperty("z", runtime.position().getZ());
         choice.addProperty("dimension", FederationDomainRegistryAccess.dimension(endpoint.level()));
         choice.addProperty("nodeReady", endpoint.subnetNode().isActive() && endpoint.subnetNode().hasGridBooted());
+        choice.addProperty("nodePowered", endpoint.subnetNode().isPowered());
         choice.addProperty("subnetAlone", endpoint.subnetAlone());
         choice.addProperty("configuredMode", runtime.configuredMode().name());
         choice.addProperty("runtimeMode", runtime.mode().map(mode ->
@@ -574,8 +575,10 @@ public final class FederationDomainPolicySession {
                         .findFirst().ifPresent(position -> choice.addProperty("ownerPosition", position.toShortString()));
             });
             // The same order as the "networks" array, so the canvas names the Endpoint's network as the overview does.
-            choice.addProperty("networkIndex", FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid())
-                    .map(members::indexOf).orElse(-1));
+            var subnet = FederationDomainRegistryAccess.confirmedNetworkId(binding.subnetNode().getGrid());
+            choice.addProperty("networkIndex", subnet.map(members::indexOf).orElse(-1));
+            // The subnet is seldom a member, so the view names it by its identity, as the topology does.
+            subnet.ifPresent(network -> choice.addProperty("nativeNetwork", network.value().toString()));
         }
         return choice;
     }
@@ -1003,6 +1006,11 @@ public final class FederationDomainPolicySession {
                         .sorted(byId).toList()).orElse(List.of()));
         root.addProperty("relatedTotal", reach.networks().size());
         var domains = new java.util.LinkedHashSet<>(reach.domains());
+        // A domain over cable capacity has stopped as a whole: the canvas tints it.
+        root.addProperty("openedOverCapacity", registry.overCapacity(context.federationDomainId()));
+        var overCapacity = new com.google.gson.JsonArray();
+        domains.stream().filter(registry::overCapacity).forEach(domainId -> overCapacity.add(domainId.value()));
+        root.add("overCapacityDomains", overCapacity);
         var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
         var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
         var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);
@@ -1107,6 +1115,89 @@ public final class FederationDomainPolicySession {
         }
         flowText = out.toString();
         return flowText;
+    }
+
+    /**
+     * The statistics page's figures for this domain's member networks as {@code request} asks, up to the last second
+     * the server finished; an empty tag without a domain.
+     */
+    public net.minecraft.nbt.CompoundTag statistics(
+            space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Request request) {
+        if (context == null) return new net.minecraft.nbt.CompoundTag();
+        var members = statisticsMembers();
+        var memberSet = java.util.Set.copyOf(members);
+        var shared = java.util.EnumSet.noneOf(space.controlnet.ae2federation.policy.PolicyCapability.class);
+        space.controlnet.ae2federation.persistence.PolicySavedData.get(level).snapshot().entries().values().stream()
+                .filter(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::isInstance)
+                .map(space.controlnet.ae2federation.policy.PolicyRecord.Configured.class::cast)
+                .filter(record -> record.rule().enabled() && memberSet.contains(record.key().consumerNetworkId())
+                        && memberSet.contains(record.key().providerNetworkId())
+                        && !record.key().consumerNetworkId().equals(record.key().providerNetworkId()))
+                .forEach(record -> shared.add(record.key().capability()));
+        var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level).statistics();
+        var registries = level.registryAccess();
+        var pinned = new java.util.LinkedHashSet<appeng.api.stacks.AEKey>();
+        for (var member : members) pinned.addAll(statistics.book().pins(stockName(member)));
+        var cpus = new java.util.ArrayList<space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Cpu<appeng.api.stacks.AEKey>>();
+        if (request.metric().equals(space.controlnet.ae2federation.observability.statistics.StatisticsPayload.CRAFTING)
+                || request.metric().equals(space.controlnet.ae2federation.observability.statistics.StatisticsPayload.CPUS)) {
+            for (var member : members) {
+                for (var cpu : statistics.cpus(member)) {
+                    var output = cpu.output();
+                    cpus.add(new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Cpu<>(
+                            member.value().toString(), cpu.name(), cpu.coProcessors(), cpu.storage(),
+                            output == null ? null : output.what(), output == null ? 0 : output.amount(), cpu.total(),
+                            cpu.progress(), cpu.elapsedNanos()));
+                }
+            }
+        }
+        var catalog = new java.util.HashMap<appeng.api.stacks.AEKey, Long>();
+        if (request.catalog()) {
+            for (var member : members) {
+                for (var entry : statistics.stock(member)) catalog.merge(entry.getKey(), entry.getLongValue(), Long::sum);
+            }
+        }
+        return space.controlnet.ae2federation.observability.statistics.StatisticsPayload.encode(statistics.book(), members,
+                request, statistics.finishedSecond(),
+                shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.STORAGE),
+                shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING),
+                new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Extras<>(cpus, catalog, pinned,
+                        state.editingAllowed()),
+                key -> key.toTagGeneric(registries), key -> key.getType().getId().toString());
+    }
+
+    /**
+     * Pins the keys {@code tag} lists on every member network, replacing what was pinned there: the statistics page
+     * keeps their stock whether or not they are among the most held. Up to
+     * {@link space.controlnet.ae2federation.observability.statistics.StatisticsBook#PIN_CAP}; the last edit wins.
+     */
+    public boolean pinStatistics(net.minecraft.nbt.Tag tag) {
+        if (context == null || !state.editingAllowed() || !(tag instanceof net.minecraft.nbt.ListTag list)) return false;
+        var registries = level.registryAccess();
+        var keys = new java.util.LinkedHashSet<appeng.api.stacks.AEKey>();
+        for (var value : list) {
+            if (keys.size() == space.controlnet.ae2federation.observability.statistics.StatisticsBook.PIN_CAP) break;
+            if (!(value instanceof net.minecraft.nbt.CompoundTag compound)) continue;
+            try {
+                var key = appeng.api.stacks.AEKey.fromTagGeneric(registries, compound);
+                if (key != null) keys.add(key);
+            } catch (RuntimeException unreadable) {
+                // A key the server cannot read is not pinned.
+            }
+        }
+        var book = space.controlnet.ae2federation.observability.LevelObservabilityService.get(level).statistics().book();
+        for (var member : statisticsMembers()) book.pin(stockName(member), keys);
+        return true;
+    }
+
+    private List<NetworkId> statisticsMembers() {
+        return FederationDomainRegistryAccess.get(level).federationDomain(context.federationDomainId())
+                .map(domain -> List.copyOf(domain.memberships().keySet())).orElse(List.of());
+    }
+
+    private static String stockName(NetworkId network) {
+        return space.controlnet.ae2federation.observability.statistics.StatisticsNames.network(
+                space.controlnet.ae2federation.observability.statistics.StatisticsNames.STOCK, network);
     }
 
     /** Renames a member network whose identity is settled; an empty name clears it. */

@@ -1,7 +1,9 @@
 {
-  "variants": {
-    "": {
-      "model": "ae2federation:block/router"
+  "multipart": [
+    {
+      "apply": {
+        "model": "ae2federation:block/router"
+      }
     }
-  }
+  ]
 }

@@ -48,6 +48,13 @@
     "sha512": "e26167a302946012dc63da3bc78775daf98049c10053eb7f257ac3c08637d89b646366964f8481c8b2fa1cf5a3ee7cf34e6a02b72672a37ce6135afce9ae8b0f",
     "version": "0"
   },
+  "ae2jeiintegration@1.2.1": {
+    "name": "ae2jeiintegration",
+    "version": "1.2.1",
+    "file": "ae2jeiintegration-1.2.1.jar",
+    "url": "https://mediafilez.forgecdn.net/files/7727/898/ae2jeiintegration-1.2.1.jar",
+    "sha512": "5aa19cdf7c97c2d2a24d74f8b84379222aa34b5ce86b86c7fb799526e8f268dfa080a4f587c9c96704b40430c7c728aa1b5391ae67346d702e2fe31e691b8c48"
+  },
   "ae2wtlib@19.5.1": {
     "name": "applied-energistics-2-wireless-terminals",
     "version": "19.5.1",
@@ -159,6 +166,20 @@
     "file": "industrialforegoing-1.21-3.6.39.jar",
     "url": "https://cdn.modrinth.com/data/lWxpUd04/versions/7otXKx1D/industrialforegoing-1.21-3.6.39.jar",
     "sha512": "a8a52f0e79fe019d8b77cc50a8b04b36d5532c92f75dff51bc528e70fb23eb67f8a9bfd37551cf91636027086f0af4f3010cb07f1903b20fc31b4d11cb3e2a02"
+  },
+  "jade@15.10.6+neoforge": {
+    "name": "jade",
+    "version": "15.10.6+neoforge",
+    "file": "Jade-1.21.1-NeoForge-15.10.6.jar",
+    "url": "https://cdn.modrinth.com/data/nvQzSEkH/versions/eYz2YBGT/Jade-1.21.1-NeoForge-15.10.6.jar",
+    "sha512": "dad9755dce8d85d914fc4df2baa0211f13e5839a71c1925fdd01f69081a95e30a2934e6273f8b01f0169adebe7a9dae57a8d904de0c4cb36dc17369bb474f0f2"
+  },
+  "jei@19.57.0.449": {
+    "name": "jei",
+    "version": "19.57.0.449",
+    "file": "jei-1.21.1-neoforge-19.57.0.449.jar",
+    "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/TKsCmRlt/jei-1.21.1-neoforge-19.57.0.449.jar",
+    "sha512": "d7ebef36c1ded726702b3372fe3f573970188768bf78ce863d552af8b1ab701eb292cb5938618c6aa9d523fe5968857f226846a2003297aff8c8fd14b355c29e"
   },
   "ldlib2@2.2.34": {
     "name": "ldlib",

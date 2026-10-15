@@ -32,5 +32,5 @@ Recommend an optional integration bundled in Federation, isolating Jade referenc
 supported. Full server-derived status requires integration on both sides. Earlier suggestions for
 connection/binding diagnostics and detail panels were not adopted: the user wants a very lightweight HUD,
 with the initial candidate limited to a future cable network-count/limit line. See the
-[display idea](../../docs/ideas/jade-cable-capacity.md). Future capacity/power ideas must not be presented
+[display idea](../../docs/archive/ideas/jade-cable-capacity.md). Future capacity/power ideas must not be presented
 as already available fields. No dependencies or code changed.

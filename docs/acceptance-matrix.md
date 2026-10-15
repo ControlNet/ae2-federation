@@ -2,6 +2,11 @@
 
 Use this as a checklist, not a pass report. The numbered requirements are in [DESIGN section 19](../DESIGN.md); exact registered IDs and backends are in the [scenario manifest](../tests/scenarios/manifest.json). Run selected IDs with the [exact commands and evidence-consumption steps](testing/commands.md), then compare the new source-bound report with the requirement. Earlier task receipts are historical, not fresh current-worktree approval. In the table, **family coverage only; exact D case mapping unverified** means the listed scenarios relate to the entire stated range, not that each numbered requirement has an independently proven match. A range includes every number between its endpoints.
 
+The [2026-10-11 concentrated review](testing/concentrated-review-2026-10-11.md) adds source-bound regression and
+production-client evidence for crafting returns, global providers, priority refresh, P2P work, native storage order,
+orphan transit recovery and same-tick identity. Its limits are explicit; it does not supersede every historical
+DESIGN-case or large-factory acceptance gap in this checklist.
+
 | DESIGN cases | Registered scenario IDs (exact names) | Evidence and remaining boundary |
 |---|---|---|
 | T-P01..10 | `processing.native-differential`, `processing.shared-capacity`, `processing.lock-isolation`, `processing.disconnect-restart`, `processing.dismantle`, `processing.reject-false-replay`, `resources.item-fluid-components` | [Processing](../.omo/evidence/task-19/). Family coverage only; exact D case mapping unverified, including third-party handler divergence. |

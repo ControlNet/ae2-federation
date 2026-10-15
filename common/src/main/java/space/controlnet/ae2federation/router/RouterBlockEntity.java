@@ -24,6 +24,7 @@ import space.controlnet.ae2federation.domain.port.FederationPort;
 import space.controlnet.ae2federation.domain.port.RouterFacePort;
 import space.controlnet.ae2federation.domain.port.RouterPortBinding;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -43,7 +44,26 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         for (var face : Direction.values()) {
             var federationDomainPort = new FederationPort(position, face);
             federationDomainPorts.put(face, federationDomainPort);
-            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks));
+            facePorts.put(face, new RouterFacePort(position, face, federationDomainPort, attachesNetworks,
+                    () -> RouterBlock.formed(getBlockState())));
+        }
+    }
+
+    /** The body formed or broke: the faces link again, or stop linking, from the next tick. */
+    @Override
+    public void setBlockState(BlockState state) {
+        var previous = getBlockState();
+        var wasFormed = RouterBlock.formed(previous);
+        super.setBlockState(state);
+        if (wasFormed != RouterBlock.formed(state) && level instanceof ServerLevel) {
+            facePorts.values().forEach(RouterFacePort::markDirty);
+            federationDomainDirty = true;
+        }
+        if (previous != state && level instanceof ServerLevel serverLevel) {
+            // A bundled cable links only to a whole body: the cables beside it, and this block's own caches of them,
+            // judge the contact again. A body changes without neighbour updates, so nothing else would tell them.
+            serverLevel.invalidateCapabilities(worldPosition);
+            for (var face : Direction.values()) serverLevel.invalidateCapabilities(worldPosition.relative(face));
         }
     }
 
@@ -60,6 +80,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         initialized = true;
         federationDomainNodeId = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         facePorts.values().forEach(port -> port.initialize(serverLevel));
+        // A placed or loaded block checks the body it belongs to; one check settles every member asking this tick.
+        DeviceStructureUpdater.request(serverLevel, worldPosition);
     }
 
     public static void serverTick(Level level, BlockPos position, BlockState state, RouterBlockEntity router) {
@@ -107,6 +129,17 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
         var snapshot = new EnumMap<Direction, RouterPortBinding>(Direction.class);
         facePorts.forEach((face, port) -> snapshot.put(face, port.binding()));
         return Collections.unmodifiableMap(snapshot);
+    }
+
+    /** The settled networks this block's faces attach, as last published to the domain registry. */
+    public java.util.Set<space.controlnet.ae2federation.identity.NetworkId> attachedNetworks() {
+        var networks = new java.util.HashSet<space.controlnet.ae2federation.identity.NetworkId>();
+        if (publishedEvidence != null) {
+            publishedEvidence.ports().values().forEach(port -> {
+                if (port instanceof FederationDomainPortEvidence.Native attached) networks.add(attached.networkId());
+            });
+        }
+        return networks;
     }
 
     public Map<IGrid, List<Direction>> nativeFacesByGrid() {
@@ -187,6 +220,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, evidence);
+        var kind = getType() == RouterRegistration.SWITCH_BLOCK_ENTITY.get() ? FederationDomainNodeKind.SWITCH
+                : FederationDomainNodeKind.ROUTER;
+        return new FederationDomainNodeEvidence(federationDomainNodeId, kind, evidence);
     }
 }

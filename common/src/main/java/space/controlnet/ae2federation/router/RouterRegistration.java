@@ -51,6 +51,9 @@ public final class RouterRegistration {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(RouterRegistration::registerCapabilities);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(DeviceStructureUpdater::onLevelTick);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                space.controlnet.ae2federation.bundle.BundleInteraction::onRightClickBlock);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
@@ -60,6 +63,8 @@ public final class RouterRegistration {
         }
         event.registerBlock(FederationPortCapability.BLOCK,
                 (level, position, state, blockEntity, face) -> face == null
+                        || level instanceof net.minecraft.server.level.ServerLevel server
+                                && !space.controlnet.ae2federation.bundle.BundleContacts.open(server, position, face)
                         ? null
                         : new FederationPort(position, face),
                 FEDERATION_CABLE.get());

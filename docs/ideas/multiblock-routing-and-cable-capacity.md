@@ -1,9 +1,37 @@
 # Multiblock routers, switches, and cable capacity
 
-Discussion dates: 2026-10-09 through 2026-10-10.
-Status: gameplay idea with accepted layout tradeoffs and a candidate region-counting model. Cable multipliers,
-connection details and failure behavior still need evaluation. Router and switch multiblocks must be solid cuboids. Router capacity limits are out of scope for now;
-do not treat the original charger-rooted model as a requirement.
+Discussion dates: 2026-10-09 through 2026-10-13.
+Status: counting, the limit, the Jade line and bundled cables are implemented on `dev` (2026-10-13); see
+[implemented cable capacity](../features/cable-capacity.md). Still open: power versus capacity, progression and
+balancing (see [Questions to resolve](#questions-to-resolve-before-specification)). Router and switch multiblocks must be solid cuboids. Router
+capacity limits are out of scope for now; do not treat the original charger-rooted model as a requirement.
+
+On 2026-10-11 the user prioritized multiblock Switches and Routers while deferring bundled cables. On 2026-10-13 the
+limit shipped (default C = 8) and the bundled cable rules were confirmed; see
+[Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13).
+The connected appearance is accepted and the solid-cuboid devices are implemented on `dev`; see the
+[device assembly and appearance handoff](../archive/ideas/multiblock-device-assembly-and-appearance.md). That work did not select or
+implement the cable-capacity rules below.
+
+## Confirmed counting rules
+
+On 2026-10-13 the user ordered the work as counting first, limits afterwards, and settled the open counting choices:
+
+- **Units.** Each distinct ME network attached through a Federation Switch is one unit, and each Processing Endpoint
+  is one unit. A Federation Pattern Provider is one unit too, as a device (changed 2026-10-13 from "not counted", so a
+  network cannot reach the domain uncounted through a Provider alone); its own network is not counted for it. Policy never changes the count.
+- **Regions.** A region is a connected group of Federation Cables. A Switch does not split a region: cables on both
+  sides of a Switch body belong to one region, and the Switch's attached networks count in it. A Federation P2P
+  tunnel pair counts as cable: the regions at both ends are one region, and the tunnel's carrier network is not
+  counted. Only Routers bound regions.
+- **Router identity.** R(S) counts distinct Router bodies (one formed solid cuboid is one router), not blocks or faces.
+- **Demand.** A region touching no Router or exactly one Router is a **subdomain** and counts its own units |A(S)|;
+  a region touching two or more Routers counts the Federation domain's units |A(D)|.
+- **Names.** Players see "subdomain" / 「子域」 and "Federation domain" / 「联邦域」 (not "local" or "whole domain").
+- **Repeated networks.** One ME network attached in two regions counts once in each region and once in the domain.
+- **Display.** The count is shown on a Federation Cable through Jade (see [Jade cable capacity](../archive/ideas/jade-cable-capacity.md)).
+
+Implemented on `dev` as a read-only count; see [cable capacity counting](../architecture/cable-capacity-counting.md).
 
 ## Player experience
 
@@ -103,27 +131,62 @@ The user accepts Bridge daisy chains with re-export as legitimate play. Preventi
 or penalizing it is not a design objective. Switch interactions with this counting model remain open
 and are not specified by the separate preliminary switch idea.
 
+## Confirmed bundled cables (2026-10-13)
+
+After rejecting straight-only bundles, automatic merging of ordinary cables and a direction-free "narrowest point"
+rule, the user chose explicit bundles made with a wrench. The cross-section is defined by the player, so no shape or
+direction is ever inferred.
+
+- **Forming.** With an AE2 wrench, or any item tagged `c:tools/wrench`, the player right-clicks three Federation
+  Cables: the first is one corner of the cross-section, the second the opposite corner (M x N, each at most 3, area
+  at least 2: 1x2, 1x3, 2x2, 2x3, 3x3), the third a cable along the axis that sets the length L. The whole M x N x L
+  box turns into one bundled cable at once. Every position in the box must already hold an ordinary Federation Cable
+  that is not part of a bundle. A third click inside the cross-section's plane means L = 1, and the face it hits sets
+  the axis (two corners of a 1 x N line do not define a plane). Right-clicking air cancels. The selection box is
+  drawn like Create's super glue.
+- **Extending.** Right-clicking a bundle's end face with ordinary Federation Cables adds one layer, consuming M x N
+  cables (none in creative).
+- **Branching and turning.** A branch may leave any side of a bundle, at any point along it, wherever the same
+  cross-section fits: its cross-section has the same M x N, it covers that side's full width, and it occupies as many
+  layers of the bundle as its other dimension needs (a 2x2 branch takes two layers; a 2x3 bundle can branch from its
+  3-wide side over two layers or its 2-wide side over three). A turn is a branch at the end. A 1x2 branches from
+  its 1-wide side too, over two layers (user, 2026-10-13).
+- **Breaking.** Breaking a bundled block, or wrench Shift+right-click on it, removes that one block and drops one
+  ordinary cable; the rest of that layer's cross-section turns back into ordinary cable blocks, and the bundle splits
+  into two at that layer, as Create's fluid tanks split. Bundles of the same cross-section whose end faces meet,
+  aligned, merge into one, so a broken layer is repaired by placing cables back and converting that layer.
+- **Connections.** A bundle never connects to ordinary cables, and bundles side by side keep their own cross-sections.
+  An end face connects only when the whole M x N face lies against a device. A side connects to a device that covers
+  that side's full width (a 2x2's side accepts a 1x2 Router face, not a 1x1; a 1x2's 1-wide side accepts a 1x1).
+  Anything incomplete counts as not connected.
+- **Capacity.** A bundle carries the capacity of its cross-section, from the multipliers below (1x3 = 4C, user,
+  2026-10-13).
+- **Feedback.** Jade shows a bundle's cross-section, capacity and whether each end is connected. The selection box,
+  extension and branch previews and the Jade line are shown in the design canvas before any code.
+- **Appearance** (user, 2026-10-13): extend the ordinary cable's textures and rendering flexibly. A bundle has one
+  shell the size of its cross-section (a 2x3 bundle is one 2x3 shell, not six cable shells), and one beam per cell
+  runs inside it, so a 2x3 carries six beams. Each beam follows the bundle's capacity load like an ordinary cable's.
+
 ## Bundled cable capacity and multiblock connections
 
 The user proposed the following multipliers relative to a single cable capacity C. These supersede the
 older illustrative sizes/counts as the current balancing candidate; C and final balance are not fixed.
 
-| Cross-section | Proposed capacity | Example only, if C = 4 |
+| Cross-section | Proposed capacity | With the default C = 8 |
 |---|---|---|
-| 1x1 | C | 4 |
-| 1x2 | 3C | 12 |
-| 2x2 | 6C | 24 |
-| 2x3 | 9C | 36 |
+| 1x1 | C | 8 |
+| 1x2 | 3C | 24 |
+| 1x3 | 4C | 32 |
+| 2x2 | 6C | 48 |
+| 2x3 | 9C | 72 |
 | 3x3 | Unlimited | Unlimited |
 
-The working interpretation is adjacent, aligned cable blocks forming one continuous bundled cross-section.
-Do not infer automatic capacity addition for spatially separate routes. The finite bundled tiers yield
-1.5C per constituent block; 3x3 deliberately ends capacity progression if retained. Larger visual sizes
+Bundles are formed explicitly ([Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13)); spatially separate
+routes never add capacity. The finite bundled tiers yield
+1.5C per constituent block, except 1x3 at 4/3 C; 3x3 deliberately ends capacity progression. Larger visual sizes
 would need a purpose other than additional capacity. These are consequences to evaluate, not new requirements.
 
 Routers and switches can expand as solid cuboid multiblocks to provide physical space for large cable connections.
-A complete matching attachment face is an assistant suggestion, not a selected geometry requirement.
-Turns, orientation, partial cross-sections, size transitions, and multiblock separation need later design.
 Bundled cable textures and thicker, coherent beam rendering are future visual work; no assets or final
 material design are requested by this idea update.
 
@@ -177,9 +240,8 @@ proposal proceeds. No changes to their existing contracts are selected by this b
 3. **Power versus capacity:** specify outage behavior without making a charger the allocation/pathfinding origin.
 4. **Router and switch behavior:** distinguish their roles and counting-boundary behavior. Keep router
    capacity limits out of the current scope and preserve the accepted concentrated layouts.
-5. **Shape recognition:** solid cuboids are required for routers and switches. Size limits, separation of
-   neighboring structures, incomplete-structure behavior, cable axis/cross-section, turns, and forks remain
-   open. No detection algorithm is selected.
+5. **Shape recognition:** solid cuboids are required for routers and switches. Bundled cables are formed explicitly
+   with a wrench, which settles their axis, cross-section, turns and forks.
 6. **Usability:** saturated spans, power loss, obstructed remote links, and inactive policy rules should have
    distinguishable feedback. Rebuilding one segment should not silently change unrelated connection priorities.
 7. **Progression:** does an unlimited 3x3 trunk leave useful roles for smaller sizes and potential larger sizes?

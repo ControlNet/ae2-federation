@@ -6,6 +6,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainNodeId;
+import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainPortId;
 import space.controlnet.ae2federation.domain.FederationDomainRecomputeBudget;
 import space.controlnet.ae2federation.domain.FederationDomainRegistry;
 import space.controlnet.ae2federation.domain.FederationDomainSourceId;
@@ -69,6 +74,33 @@ final class PolicyActivationTest {
 
         // Then
         assertEquals(PolicyActivationState.DISCONNECTED, state);
+    }
+
+    @Test
+    void aSharedDomainOverCapacityStopsTheRuleWithItsOwnReason() {
+        var store = new PolicyStore();
+        store.edit(new PolicyEdit(KEY, PolicyRevision.NONE, PolicyRule.storageDefaults()));
+        var registry = new FederationDomainRegistry(FederationDomainRecomputeBudget.standard());
+        // One cable carries a Switch with nine networks, one more than the default capacity of eight.
+        var cable = new FederationDomainNodeId("test:dimension", 0);
+        var sw = new FederationDomainNodeId("test:dimension", 1);
+        var cablePorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
+        cablePorts.put("east", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(sw, "west")));
+        registry.upsertNode(new FederationDomainNodeEvidence(cable, FederationDomainNodeKind.CABLE, cablePorts));
+        var switchPorts = new java.util.LinkedHashMap<String, FederationDomainPortEvidence>();
+        switchPorts.put("west", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(cable, "east")));
+        var networks = new java.util.ArrayList<>(java.util.List.of(CONSUMER, PROVIDER));
+        for (int extra = 3; extra <= 9; extra++) networks.add(network(extra));
+        for (int index = 0; index < networks.size(); index++) {
+            switchPorts.put("native" + index, new FederationDomainPortEvidence.Native(
+                    FederationDomainSourceId.nativePort(new FederationDomainPortId(sw, "native" + index)), networks.get(index)));
+        }
+        registry.upsertNode(new FederationDomainNodeEvidence(sw, FederationDomainNodeKind.SWITCH, switchPorts));
+
+        assertEquals(PolicyActivationState.OVER_CAPACITY, PolicyActivation.classify(
+                request(store, registry, settled(CONSUMER), settled(PROVIDER), BackendStatus.READY)));
+        assertEquals(BindingDiagnostic.Reason.DOMAIN_OVER_CAPACITY,
+                BindingDiagnostic.inactiveReason(PolicyActivationState.OVER_CAPACITY));
     }
 
     private static PolicyActivationRequest request(PolicyStore store, FederationDomainRegistry registry,

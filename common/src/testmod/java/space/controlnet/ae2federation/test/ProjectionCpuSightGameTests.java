@@ -82,7 +82,7 @@ public final class ProjectionCpuSightGameTests {
     /**
      * Two jobs wait for stone from the same provider network: one on the consumer's overworld CPU, which is cancelled,
      * and one on its nether CPU, whose chunk unloads. Nothing on the consumer waits for stone now, yet the nether job's
-     * returns are kept; it finishes once loaded, and the cancelled job's late stone stays on the provider network.
+     * returns are kept; it finishes once loaded, then both jobs' outputs return to their consumer.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke", manualOnly = true,
             required = true, timeoutTicks = 1800)
@@ -146,10 +146,10 @@ public final class ProjectionCpuSightGameTests {
             helper.assertValueEqual(fixture.busyConsumerCpus(), 0L,
                     "Waiting for the nether job to finish; " + fixture.returns(stone()));
             helper.assertValueEqual(fixture.owed(stone()), 0L,
-                    "Waiting for the rest of the debt to be forgotten; " + fixture.returns(stone()));
-            assertSettled(helper, fixture, 2, 2);
+                    "Waiting for actual delivery to settle the remaining debt; " + fixture.returns(stone()));
+            assertSettled(helper, fixture, 4, 0);
             PolicyEvidence.write("projectioncpuoutofsightotherjob", 15, Map.of("jobs", "2", "cancelled", "1",
-                    "debtKeptOutOfSight", "4", "consumerStone", "2", "lateStoneOnProvider", "2"));
+                    "debtKeptOutOfSight", "4", "consumerStone", "4", "lateStoneOnConsumer", "2"));
             fixture.close();
         });
     }
@@ -253,7 +253,7 @@ public final class ProjectionCpuSightGameTests {
         helper.assertValueEqual(fixture.held(fixture.consumerChest(), stone()), consumerStone,
                 "The consumer stores its jobs' stone");
         helper.assertValueEqual(fixture.held(fixture.providerChest(), stone()), providerStone,
-                "The provider network keeps only late stone of a cancelled job");
+                "The provider network holds exactly the expected remaining stock");
         helper.assertValueEqual(fixture.owed(stone()), 0L, "Nothing is owed afterwards");
         helper.assertValueEqual(fixture.heldForConsumer(stone()), 0L, "Nothing is held afterwards");
         helper.assertValueEqual(fixture.transit(stone()), 0L, "Nothing is in transit afterwards");

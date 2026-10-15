@@ -3,6 +3,7 @@ package space.controlnet.ae2federation.neoforge;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -12,6 +13,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.config.FederationServerConfig;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
 import space.controlnet.ae2federation.material.MaterialRegistration;
@@ -36,7 +38,7 @@ public final class NeoForgeEntrypoint {
     public static final String MOD_ID = "ae2federation";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public NeoForgeEntrypoint(IEventBus modBus) {
+    public NeoForgeEntrypoint(IEventBus modBus, ModContainer container) {
         if (Boolean.getBoolean("ae2federation.artifactProof")) {
             try {
                 var path = ModList.get().getModFileById(MOD_ID).getFile().getFilePath().toRealPath();
@@ -48,6 +50,7 @@ public final class NeoForgeEntrypoint {
             NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onArtifactPlayerJoin);
         }
         CommonStartup.start(LOGGER);
+        FederationServerConfig.register(container, modBus);
         BridgeRegistration.register(modBus);
         FederationP2PRegistration.register(modBus);
         RouterRegistration.register(modBus);
@@ -56,6 +59,8 @@ public final class NeoForgeEntrypoint {
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
+        space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
@@ -63,6 +68,7 @@ public final class NeoForgeEntrypoint {
         // Before AE2's own end-of-tick Grid ticks (NORMAL priority), which draw energy from the shared pools: like
         // AE2's Grid services, Federation's work runs once per server tick, after every level has ticked.
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, NeoForgeEntrypoint::onServerTickBindings);
+        NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTickStart);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerTick);
     }
 
@@ -78,7 +84,13 @@ public final class NeoForgeEntrypoint {
         EnergySharingService.tickAll();
     }
 
+    private static void onServerTickStart(ServerTickEvent.Pre event) {
+        LevelObservabilityService.tickStartedAll();
+    }
+
     private static void onServerTick(ServerTickEvent.Post event) {
+        // Created on the first tick, not on first use, so the statistics count every second the server runs.
+        LevelObservabilityService.get(event.getServer().overworld());
         LevelObservabilityService.sweepAll();
     }
 
@@ -87,6 +99,7 @@ public final class NeoForgeEntrypoint {
             // The services serve the whole server: the level's nodes leave the registry, then the relationships that
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
+            space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             CraftingProjectionService.levelClosed(level);
             EnergySharingService.levelClosed(level);

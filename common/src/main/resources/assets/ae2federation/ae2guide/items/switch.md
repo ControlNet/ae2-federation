@@ -20,9 +20,8 @@ The Switch brings ME networks into a [Federation domain](../mechanics.md). Each 
 * touched by <ItemLink id="ae2federation:cable" />, a <ItemLink id="ae2federation:router" />, another Switch, a
   Pattern Provider front or an Endpoint front, the face links the domain onwards.
 
-Up to six different networks can meet at one Switch, and its faces never join them into one network. Two faces on the
-same network are fine and count once. Two Switches placed face to face link directly, just as if Federation Cable
-joined them.
+Up to six different networks can meet at one Switch block, and its faces never join them into one network. Two faces
+on the same network are fine and count once.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/switch_hub.snbt" />
@@ -56,5 +55,35 @@ through ME power:
 
 Right-click the Switch to open the Federation screen for its domain, where you switch sharing on. See
 [Getting Started](../getting-started.md).
+
+## Bigger Switches
+
+Switches placed against each other form one Switch when together they fill a solid box, with each edge at most 8
+blocks long: the same rules as for a [bigger Router](router.md). A Switch and a Router never form one block. Every outer
+face of a formed Switch still works on its own, so a bigger Switch has room for more networks, and they still stay
+separate.
+
+<GameScene zoom="5" interactive={true} background="transparent">
+  <ImportStructure src="../assets/switch_multiblock.snbt" />
+  <BoxAnnotation color="#dddddd" min="1 0 0" max="3 2 1">
+    One Switch, 2×2×1: each outer face joins the network it touches
+  </BoxAnnotation>
+  <BoxAnnotation color="#915dcd" min="3 0 0" max="4 2 1">
+    Network A: on two faces, counts once; its energy cell is the only power
+  </BoxAnnotation>
+  <BoxAnnotation color="#5CA7CD" min="0 0 0" max="1 1 1">
+    Network B
+  </BoxAnnotation>
+  <BoxAnnotation color="#5dcd70" min="1 2 0" max="2 3 1">
+    Network C
+  </BoxAnnotation>
+  <IsometricCamera yaw="195" pitch="30" />
+</GameScene>
+
+A group that is not a solid box does not form, and none of its faces connect: its networks leave the domain until you
+complete the box or take the extra blocks away. Right-click one of its blocks to see why on the action bar.
+
+However large, a Switch does not end a cable segment: the cable on all its sides counts as one segment (see
+[Network Capacity](../network-capacity.md)). Only a Router ends one.
 
 <RecipeFor id="ae2federation:switch" />
