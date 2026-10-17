@@ -1,7 +1,8 @@
 # Remote Federation connections
 
 Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate,
-with a line-of-sight beam-link proposal added on 2026-10-09 and a cube for bundled cables on 2026-10-17.
+with a line-of-sight beam-link proposal added on 2026-10-09 and a cube for bundled cables on 2026-10-17. The cube is
+implemented on `dev` (2026-10-17): [Quantum Cube](../features/quantum-cube.md).
 
 Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](README.md).
 

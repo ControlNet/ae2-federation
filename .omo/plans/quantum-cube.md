@@ -1,6 +1,7 @@
 # ME Federation Quantum Cube: implementation plan
 
-Date: 2026-10-17. Status: every decision answered by the owner (2026-10-17). Phase 1 done.
+Date: 2026-10-17. Status: every decision answered by the owner (2026-10-17). All phases done (2026-10-17); feature page
+[quantum-cube.md](../../docs/features/quantum-cube.md).
 Design source: [remote-federation-connections.md](../../docs/ideas/remote-federation-connections.md), section
 "Follow-up 2026-10-17: a wireless cube for bundled cables".
 
@@ -77,7 +78,7 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - Done: `QuantumCubeShapeTest`, `QuantumPairIndexTest`. A third loaded cube of one id (a copied structure) links
   none and reads "more than two cubes" in Jade.
 
-### 2. Block, body and card
+### 2. Block, body and card (done 2026-10-17)
 
 - Block, block entity, item, forming, face-centre ports, card copy and bind (D9), registration, creative tab, lang,
   recipe (D6), loot table, pickaxe tag, temporary textures (D5).
@@ -85,19 +86,21 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
   not; a 2x2 bundle inside a 4³ centre joins, one cell off does not; a 2x2 anywhere in a 5³ centre joins; card bind
   sets both bodies' id and a rebind drops the old partner.
 
-### 3. Link
+### 3. Link (done 2026-10-17)
 
 - `QuantumLinkService`, the mirrored `quantum:` ports, kind `QUANTUM_CUBE` in the counter, the Jade line (D10).
 - GameTests: a bound pair joins two networks' domain; another size does not link (D7); breaking one block unlinks
   and replacing it relinks; a pair over its tier stops the domain; a 3³ pair carries C. Cross-dimension and unloading
   cannot run as GameTests (one level, no unload); they are checked in game.
 
-### 4. Power
+### 4. Power (done 2026-10-17)
 
 - `perTick`, the statistics group, the converter match. Tests: `OperatingPowerCostsTest` for the cost; GameTest that
   a 5³ pair needs a 3x3 converter.
+- Phases 2-4 landed as one commit; the capacity tier ("a pair over its tier stops the domain", "a 3³ pair carries
+  C") is covered by `CableCapacityCounterTest.aQuantumCubePairCountsAsCable` rather than a GameTest.
 
-### 5. Docs and in-game check
+### 5. Docs and in-game check (done 2026-10-17)
 
 - `docs/features/quantum-cube.md`; guide item page en/zh with a hand-written scene; index entries;
   `GuidePagesContractTest.FEDERATION_ITEMS`; the operating power and capacity pages; the idea page's status; a

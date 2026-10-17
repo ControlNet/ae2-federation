@@ -41,9 +41,10 @@ item_ids:
 | <ItemLink id="ae2federation:cable" /> | 0.5 |
 | <ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:router" /> | 2 |
 | <ItemLink id="ae2federation:pattern_provider" />、<ItemLink id="ae2federation:processing_endpoint" /> | 2 |
+| 已成形的<ItemLink id="ae2federation:quantum_cube" /> | 44 |
 | <ItemLink id="ae2federation:federation_p2p_tunnel" />、光束转换器、<ItemLink id="ae2federation:beam_former" /> | 0 |
 
-更大的交换机或路由器按每个方块2计算， 粗线缆里的每根线缆按0.5计算。 服务器可以按比例调整所有消耗， 也可以关闭这项要求； 关闭后联邦域不需要转换器。 一对已连接的[光束成型器](beam_former.md)光束越长， 消耗越多， 详见它的页面。
+更大的交换机或路由器按每个方块2计算， 粗线缆里的每根线缆按0.5计算。 服务器可以按比例调整所有消耗， 也可以关闭这项要求； 关闭后联邦域不需要转换器。 一对已连接的[光束成型器](beam_former.md)光束越长， 消耗越多， 详见它的页面。 [量子立方](quantum_cube.md)成形后每个方块消耗44， 无论是否连接。
 
 ## 尺寸
 
@@ -55,7 +56,7 @@ item_ids:
 | 2×2粗线缆 | 2×2， 长4 |
 | 3×3粗线缆 | 3×3， 长6 |
 
-正面像交换机的面一样接入联邦域； 把转换器贴着线缆或任意联邦方块建造。 尺寸不对的转换器也会成形并接入联邦域， 但不供能。 一对已连接的光束成型器算作相同截面的线缆。 加入更大的[粗线缆](../bundled-cables.md)后， 要建一台与之匹配的转换器。 空手右键没有成形的方块， 动作栏会说明原因； 手持方块右键则照常放置。
+正面像交换机的面一样接入联邦域； 把转换器贴着线缆或任意联邦方块建造。 尺寸不对的转换器也会成形并接入联邦域， 但不供能。 一对已连接的光束成型器算作相同截面的线缆， 一对已连接的量子立方算作与其面中心相同截面的线缆。 加入更大的[粗线缆](../bundled-cables.md)后， 要建一台与之匹配的转换器。 空手右键没有成形的方块， 动作栏会说明原因； 手持方块右键则照常放置。
 
 成形后， 转换器的正面是长度方向的一端： 多数方块朝向的那一端， 否则是贴着联邦线缆的那一端。 用扳手右键已成形的转换器， 可以把它前后调转。
 

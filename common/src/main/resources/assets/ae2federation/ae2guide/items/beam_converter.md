@@ -44,11 +44,13 @@ storage, crafting, processing or power until it has FE again.
 | <ItemLink id="ae2federation:cable" /> | 0.5 |
 | <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:router" /> | 2 |
 | <ItemLink id="ae2federation:pattern_provider" />, <ItemLink id="ae2federation:processing_endpoint" /> | 2 |
+| <ItemLink id="ae2federation:quantum_cube" />, formed | 44 |
 | <ItemLink id="ae2federation:federation_p2p_tunnel" />, Beam Converter, <ItemLink id="ae2federation:beam_former" /> | 0 |
 
 A bigger Switch or Router uses 2 for each of its blocks, and each cable in a bundle uses 0.5. The server can scale
 every cost, or turn the requirement off; then no domain needs a converter. A linked pair of
-[Beam Formers](beam_former.md) costs more the longer its beam; see its page.
+[Beam Formers](beam_former.md) costs more the longer its beam; see its page. A
+[Quantum Cube](quantum_cube.md) uses 44 for each block of a formed cube, linked or not.
 
 ## Size
 
@@ -63,7 +65,7 @@ A converter is a solid box of converter blocks, placed any way round. Its front 
 
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of
 another size forms and joins the domain, but supplies nothing. A linked pair of Beam Formers counts as cable of its
-square. When you add a larger [bundle](../bundled-cables.md), build a
+square, and a linked pair of Quantum Cubes as cable of its face centre. When you add a larger [bundle](../bundled-cables.md), build a
 converter to match it. Right-click a block that does not form with an empty hand to see why on the action bar; with a block in hand you
 build on it as usual.
 
