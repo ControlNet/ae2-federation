@@ -138,8 +138,9 @@ def generate(profile, load, cycle, start=.5, end=LENGTH - .5):
         tube(lambda s, p: core, solid('core', hot))
 
         def sheath(base, lobes, speed, depth):
-            # Lobes twist round the axis and roll along it; the wave swells them as the pulses pass.
-            return lambda s, p: base * (1 + depth * math.sin(lobes * p + TAU * (s / 1.5 - speed * st.cycle))
+            # Lobes twist round the axis and roll along it, repeating every 2 blocks as the game's beam clock does;
+            # the wave swells them as the pulses pass.
+            return lambda s, p: base * (1 + depth * math.sin(lobes * p + TAU * (s / 2 - speed * st.cycle))
                                         + .6 * st.wave(s) * st.u * .3)
         tube(sheath(core * 1.6, 3, 1, .22), glow('inner sheath', pale, .40), sides=24)
         tube(sheath(.22 + .04 * st.u, 4, -1, .16), glow('sheath', shoulder_rgb, .32), sides=24)
@@ -218,12 +219,15 @@ STRAIGHT_ROW = 6
 GLASS = 6
 
 
-def texel(a, b, u0, u1, v0, v1):
-    """The core texel (column, row) of voxel a, b of a panel whose four edges are all closed."""
+def texel(a, b, u0, u1, v0, v1, closed=(True, True, True, True)):
+    """The core texel (column, row) of voxel a, b of a panel; `closed` says which of its edges u0, u1, v0, v1 end the
+    shell's face and so carry a rail."""
     best = RAIL
     corner_u = corner_v = -1
-    for across, at, low, u_edge in ((a, u0, True, True), (a, u1, False, True), (b, v0, True, False),
-                                    (b, v1, False, False)):
+    for across, at, low, u_edge, rail in ((a, u0, True, True, closed[0]), (a, u1, False, True, closed[1]),
+                                          (b, v0, True, False, closed[2]), (b, v1, False, False, closed[3])):
+        if not rail:
+            continue
         perp = across - at if low else at - (across + 1)
         if 0 <= perp < RAIL:
             best = min(best, perp)
@@ -281,9 +285,9 @@ def face_uv(face, rotation, fu, fv):
     return (u0 + (u1 - u0) * fu) / 32, (v0 + (v1 - v0) * fv) / 32
 
 
-def ring_quads(boundaries):
-    """Quads (positions in blocks, uvs) of the straight ring on each boundary, turned so its axis runs along X."""
-    project = json.loads(RING_PROJECT.read_text())
+def model_quads(project_path):
+    """The faces of a Blockbench project as quads in its 32-voxel frame, each with its texture UVs (0..1)."""
+    project = json.loads(Path(project_path).read_text())
     quads = []
     for element in project['elements']:
         low, high = element['from'], element['to']
@@ -297,16 +301,23 @@ def ring_quads(boundaries):
                 point[axis] = high[axis] if end else low[axis]
                 point[ua] = low[ua] + (high[ua] - low[ua]) * (fu if us > 0 else 1 - fu)
                 point[va] = low[va] + (high[va] - low[va]) * (fv if vs > 0 else 1 - fv)
-                corners.append((point, face_uv(face['uv'], face.get('rotation', 0), fu, fv)))
+                corners.append((tuple(point), face_uv(face['uv'], face.get('rotation', 0), fu, fv)))
             # Wind the quad to face outward.
             outward = (1 if end else -1)
             normal = cross(sub(corners[1][0], corners[0][0]), sub(corners[3][0], corners[0][0]))
             if normal[axis] * outward < 0:
                 corners = corners[::-1]
-            for boundary in boundaries:
-                # The model's Z (its axis) turns onto X; its X onto -Z; the frame's middle (16) sits on the boundary.
-                quads.append(([(boundary + (z - 16) / 16, y / 16, (32 - x) / 16) for (x, y, z), _ in corners],
-                              [uv for _, uv in corners]))
+            quads.append(([p for p, _ in corners], [uv for _, uv in corners]))
+    return quads
+
+
+def ring_quads(boundaries):
+    """Quads (positions in blocks, uvs) of the straight ring on each boundary, turned so its axis runs along X."""
+    quads = []
+    for points, uvs in model_quads(RING_PROJECT):
+        for boundary in boundaries:
+            # The model's Z (its axis) turns onto X; its X onto -Z; the frame's middle (16) sits on the boundary.
+            quads.append(([(boundary + (z - 16) / 16, y / 16, (32 - x) / 16) for x, y, z in points], uvs))
     return quads
 
 

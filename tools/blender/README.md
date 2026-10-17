@@ -414,3 +414,22 @@ Without `--soft` each glow layer is a shell of even light, as the game draws it:
 every shell's outline, so the nested shells show as hard bands, worst at full load where the steps are largest.
 `--soft` fades each layer as (1 - facing)^2, twice as bright face-on, so the layers blend into one soft volume. In game
 that needs view-dependent alpha (per-frame vertex alpha from the camera, or camera-facing gradient strips).
+
+## R / PLASMA at game precision
+
+The user chose R for the 2x2 middle beam. `plasma_beam.py` (stdlib) draws it as the game could: `ship_soft` uses 16
+sides and 16 samples per block (4096 quads per 2x2 layer against 4 x 1700 for four ordinary cells), `ship_six` six
+thinner hard-edged shells at 12 sides (no view-dependent alpha), `approved` the 24-side, 48-sample concept. Lobes
+repeat every 2 blocks, as the game's beam clock wraps. Branch and turn paths follow `CableBeamMesh.build` (straight
+arms through the joint; a rounded elbow of 3/16 of the 2x2x2 joint with the pulse phase faded across); the artist's
+corner rings sit in each joint, whose own shell is left out.
+
+```sh
+python3 -m unittest test_plasma_beam    # from tools/blender
+blender -b --factory-startup --python tools/blender/render_plasma_beam.py -- --animate
+python3 tools/blender/compose_plasma_beam.py
+```
+
+Expected: 8 tests pass, `PLASMA_BEAM_OK: 9 stills, 3 loops; assets unchanged`, `PLASMA_MEDIA_OK`. Output in the repo's
+ignored `build/bundle-beam-check/plasma/`: `sheet-approved-vs-shippable.png`, `sheet-shippable-loads.png` (0, 60, 100,
+125%), `sheet-junctions.png`, and a GIF and 4x MP4 loop of the run, the branch and the turn.

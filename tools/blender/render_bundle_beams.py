@@ -55,10 +55,10 @@ def beam_material(name, rgb, alpha, mode):
     emission.inputs['Color'].default_value = (*(linear(c) for c in rgb), 1)
     transparent = nodes.new('ShaderNodeBsdfTransparent')
     out = nodes.new('ShaderNodeOutputMaterial')
-    if mode == 'add':
+    if mode in ('add', 'soft'):
         # Additive like the game's glow pass: the light adds, nothing behind is hidden.
         emission.inputs['Strength'].default_value = alpha
-        if SOFT:
+        if SOFT or mode == 'soft':
             # Facing is 0 where the surface faces the camera and 1 at the outline.
             weight = nodes.new('ShaderNodeLayerWeight')
             inverse = nodes.new('ShaderNodeMath')
