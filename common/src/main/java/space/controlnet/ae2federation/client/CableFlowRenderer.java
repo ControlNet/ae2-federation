@@ -18,11 +18,15 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
@@ -104,16 +108,13 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
         int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
-        // A 2x2 bundle draws one beam down its middle: a cable's beam stretched over the box its corner cell names.
+        long tick = level.getGameTime();
+        // A 2x2 bundle draws one beam down its middle, over the box its corner cell names.
         var bundle = cable.bundleBeam();
         if (bundle != null) {
-            if (bundle.length() == 0) return;
-            mask = bundle.mask();
-            stack.pushPose();
-            stack.scale(bundle.extent(Direction.Axis.X), bundle.extent(Direction.Axis.Y),
-                    bundle.extent(Direction.Axis.Z));
+            if (bundle.length() > 0) renderBundle(cable, bundle, tick, partialTick, style, detail, stack, buffers);
+            return;
         }
-        long tick = level.getGameTime();
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
@@ -122,7 +123,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
             float[] layer = FRAME.layer(mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
-                    pass == 0, bundle != null);
+                    pass == 0);
             // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
             // values the chained calls in draw() would write.
             for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
@@ -133,10 +134,57 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                         LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
             }
         }
-        if (bundle != null) stack.popPose();
-        // A guidebook scene ends these buffers only after its terrain, once its camera is gone, so the beam came out
-        // with no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits
-        // in its shell as in the world.
+        endOutsideWorld(level, buffers);
+    }
+
+    /**
+     * The 2x2 beam, in blocks from the corner cell. Its sheaths and halo fade toward their outlines as they turn from
+     * the eye: the cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view.
+     */
+    private static void renderBundle(FederationCableBlockEntity cable, BundleBeam bundle, long tick, float partialTick,
+            CableBeamStyle style, int detail, PoseStack stack, MultiBufferSource buffers) {
+        var pos = cable.getBlockPos();
+        var pose = stack.last();
+        var matrix = pose.pose();
+        var normal = pose.transformNormal(0, 1, 0, new Vector3f());
+        // From the block to the eye's space: there the eye sits at the origin, or looks down -Z in an orthographic
+        // view, as a guidebook scene may use.
+        var view = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(matrix);
+        var turn = view.normal(new Matrix3f());
+        boolean orthographic = RenderSystem.getProjectionMatrix().m23() == 0;
+        var position = new Vector3f();
+        var eye = new Vector3f();
+        var facing = new Vector3f();
+        for (int pass = 0; pass < 2; pass++) {
+            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
+            float[] layer = FRAME.bundle(bundle, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
+                    pass == 0);
+            for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
+                float alpha = layer[i + 6];
+                if (pass == 0) {
+                    view.transformPosition(layer[i], layer[i + 1], layer[i + 2], eye);
+                    turn.transform(layer[i + 7], layer[i + 8], layer[i + 9], facing).normalize();
+                    if (orthographic) eye.set(0, 0, 1);
+                    else eye.negate().normalize();
+                    alpha = Math.min(1, alpha * BundleBeamMesh.fade(facing.x(), facing.y(), facing.z(), eye.x(),
+                            eye.y(), eye.z()));
+                }
+                matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
+                int color = FastColor.ARGB32.color((int) (alpha * 255), (int) (layer[i + 3] * 255),
+                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
+                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
+                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
+            }
+        }
+        endOutsideWorld(cable.getLevel(), buffers);
+    }
+
+    /**
+     * A guidebook scene ends these buffers only after its terrain, once its camera is gone, so the beam came out with
+     * no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits in its
+     * shell as in the world.
+     */
+    private static void endOutsideWorld(Level level, MultiBufferSource buffers) {
         if (!(level instanceof ClientLevel) && buffers instanceof MultiBufferSource.BufferSource source) {
             source.endBatch(GLOW);
             source.endBatch(CORE);
