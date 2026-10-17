@@ -65,7 +65,8 @@ A converter is a solid box of converter blocks, placed any way round. Its front 
 
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of
 another size forms and joins the domain, but supplies nothing. When you add a larger [bundle](../bundled-cables.md), build a
-converter to match it. Right-click a block that does not form to see why on the action bar.
+converter to match it. Right-click a block that does not form with an empty hand to see why on the action bar; with a block in hand you
+build on it as usual.
 
 Once formed, the converter's front is one end of its length: the end most of its blocks faced, or else the end touching
 a Federation cable. Right-click a formed converter with a wrench to turn it end for end.

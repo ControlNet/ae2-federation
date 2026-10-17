@@ -3,8 +3,11 @@ package space.controlnet.ae2federation.router;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -110,6 +113,17 @@ public final class RouterBlock extends BaseEntityBlock implements FormableDevice
     /** Whether {@code state} is a Switch, whose faces attach ME networks; a Router's do not. */
     static boolean attachesNetworks(BlockState state) {
         return state.is(RouterRegistration.SWITCH.get());
+    }
+
+    /**
+     * A block in hand builds on an unformed body as on any other block; only an empty hand asks why it has not formed
+     * ({@link #useWithoutItem}).
+     */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos position,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        return stack.isEmpty() || formed(state) ? ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+                : ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
     }
 
     @Override

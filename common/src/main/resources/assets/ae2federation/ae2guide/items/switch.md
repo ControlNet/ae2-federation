@@ -81,7 +81,7 @@ separate.
 </GameScene>
 
 A group that is not a solid box does not form, and none of its faces connect: its networks leave the domain until you
-complete the box or take the extra blocks away. Right-click one of its blocks to see why on the action bar.
+complete the box or take the extra blocks away. Right-click one of its blocks with an empty hand to see why on the action bar.
 
 However large, a Switch does not end a cable segment: the cable on all its sides counts as one segment (see
 [Network Capacity](../network-capacity.md)). Only a Router ends one.

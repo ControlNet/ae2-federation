@@ -80,8 +80,9 @@ two of its blocks still touches only one Router. Every outer face links like a s
 * A Router block that touches a finished box from the outside spoils it the same way; blocks that meet only at an
   edge or a corner stay separate Routers.
 * Routers and Switches never form one block, even when they touch; they just link to each other.
-* Right-click a block that is not formed, and the action bar says why. With Jade installed, looking at a Router shows
-  "Structure: 3×2×1" or the reason it is not formed.
+* Right-click a block that is not formed with an empty hand, and the action bar says why; with a block in hand you
+  build on it as usual. With Jade installed, looking at a Router shows "Structure: 3×2×1" or the reason it is not
+  formed.
 
 A formed Router is how a [bundled cable](../bundled-cables.md) meets ordinary cables: a bundle connects only to a
 Router or Switch face that covers its whole end or side, and the Router's other faces take ordinary Federation Cables.

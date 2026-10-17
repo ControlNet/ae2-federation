@@ -163,6 +163,7 @@
     {"id":"bundle.one-shell","backend":"gametest","testId":"bundleshowsoneshellclosedtoordinarycables","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"visual.device-occlusion","backend":"gametest","testId":"deviceocclusion","structure":"ae2federation_test:harness_native_smoke","assertions":10},
     {"id":"structure.device-lifecycle","backend":"gametest","testId":"devicestructurelifecycle","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"structure.device-places-on-unformed","backend":"gametest","testId":"devicestructureplacesonunformed","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"structure.device-shapes","backend":"gametest","testId":"devicestructureshapes","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"structure.device-keeps-ports","backend":"gametest","testId":"devicestructurekeepsports","structure":"ae2federation_test:harness_native_smoke","assertions":9},
     {"id":"structure.device-suspends-switch","backend":"gametest","testId":"devicestructuresuspendsswitch","structure":"ae2federation_test:harness_native_smoke","assertions":8},

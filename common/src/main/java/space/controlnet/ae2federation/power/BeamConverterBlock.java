@@ -126,12 +126,17 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
     /**
      * A wrench turns a formed body end for end. Every block is updated with its neighbours, so the cables at both ends
      * link again; the body forms again facing the new way, which all its blocks now vote for. An unformed block keeps
-     * its facing and tells the player why it has not formed.
+     * its facing. Anything else in hand builds on an unformed block as on any other; only an empty hand asks why it
+     * has not formed.
      */
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos position,
             Player player, InteractionHand hand, BlockHitResult hit) {
-        if (!stack.is(Tags.Items.TOOLS_WRENCH) || player.isSecondaryUseActive() || !RouterBlock.formed(state)) {
+        if (!RouterBlock.formed(state)) {
+            return stack.isEmpty() ? ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+                    : ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!stack.is(Tags.Items.TOOLS_WRENCH) || player.isSecondaryUseActive()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (level instanceof ServerLevel serverLevel

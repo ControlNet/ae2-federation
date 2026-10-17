@@ -19,8 +19,9 @@ same day (`1dd81c1d`). The former idea is preserved as an
   face links Federation ports only. Faces between members link the members through Federation.
 - **Capacity.** A formed Router counts as one Router, so it ends each cable segment once (see
   [cable capacity](cable-capacity.md)). A Switch of any size does not end a segment.
-- **Feedback.** Right-clicking a formed member opens the domain screen; right-clicking an unformed member shows the
-  reason on the action bar (`ae2federation.structure.*`). Jade shows "Structure: WxHxD" or the reason it is not
+- **Feedback.** Right-clicking a formed member opens the domain screen; right-clicking an unformed member with an empty
+  hand shows the reason on the action bar (`ae2federation.structure.*`); with anything in hand the click passes to the
+  item (`SKIP_DEFAULT_BLOCK_INTERACTION`), so a held block is placed on it. Jade shows "Structure: WxHxD" or the reason it is not
   formed.
 - **Unloaded chunks.** A body across unloaded chunks keeps its last validated state and is checked again when its
   chunks load; chunks are never force-loaded.
