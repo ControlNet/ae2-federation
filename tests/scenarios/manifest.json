@@ -192,6 +192,7 @@
     {"id":"beam.pair-links-and-debounces","backend":"gametest","testId":"beamformerpairlinksanddebounces","structure":"ae2federation_test:scale_36_empty","assertions":6},
     {"id":"beam.passes-glass-and-water","backend":"gametest","testId":"beamformerpassesglassandwater","structure":"ae2federation_test:scale_36_empty","assertions":1},
     {"id":"beam.pairs-the-nearest-of-its-size","backend":"gametest","testId":"beamformerpairsthenearestofitssize","structure":"ae2federation_test:scale_36_empty","assertions":4},
+    {"id":"beam.pair-needs-its-size-of-converter","backend":"gametest","testId":"beamformerpairneedsitssizeofconverter","structure":"ae2federation_test:scale_36_empty","assertions":4},
     {"id":"power.runs-a-domain","backend":"gametest","testId":"operatingpowerrunsadomain","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"power.needs-a-matching-converter","backend":"gametest","testId":"operatingpowerneedsamatchingconverter","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"power.converters-add-up","backend":"gametest","testId":"operatingpowerconvertersaddup","structure":"ae2federation_test:harness_native_smoke","assertions":4},

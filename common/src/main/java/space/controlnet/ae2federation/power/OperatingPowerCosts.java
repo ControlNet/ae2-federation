@@ -2,8 +2,12 @@ package space.controlnet.ae2federation.power;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
+import net.minecraft.core.BlockPos;
+import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 
 /**
  * What each Federation block costs to run, in FE per tick, calibrated on AE2 (1 AE = 2 FE; a default device draws
@@ -26,9 +30,49 @@ public final class OperatingPowerCosts {
         };
     }
 
-    /** How the statistics page groups a domain's use: bundle cells apart from plain cable, devices together. */
+    /**
+     * The cost of one linked Beam Former pair at multiplier 1, after Neeve's AE2 Beam Former: its square's blocks times
+     * max(2, L)^1.05 AE, L being the blocks between the fronts.
+     */
+    public static double beamLink(CableCrossSection section, int gap) {
+        return section.narrow() * section.wide() * Math.pow(Math.max(2, gap), 1.05) * 2;
+    }
+
+    /**
+     * The section and length of the beam a former's anchor names, counted once per pair: on the anchor of the lower node
+     * id. Empty for any other node. The anchors are the bodies' lowest corners on one line, so they differ along the beam
+     * only.
+     */
+    public static Optional<Beam> beam(FederationDomainNodeEvidence node) {
+        if (node.kind() != FederationDomainNodeKind.BEAM_FORMER) return Optional.empty();
+        for (var port : node.ports().entrySet()) {
+            if (!port.getKey().startsWith(BeamLinkRule.PORT)
+                    || !(port.getValue() instanceof FederationDomainPortEvidence.Federation federation)) {
+                continue;
+            }
+            var partner = federation.peer().node();
+            if (node.nodeId().compareTo(partner) > 0) return Optional.empty();
+            var section = CableCrossSection.ofCapacityFactor(node.capacityFactor());
+            if (section.isEmpty()) return Optional.empty();
+            var from = BlockPos.of(node.nodeId().blockPosition());
+            var to = BlockPos.of(partner.blockPosition());
+            int span = Math.abs(to.getX() - from.getX()) + Math.abs(to.getY() - from.getY())
+                    + Math.abs(to.getZ() - from.getZ());
+            return Optional.of(new Beam(section.get(), Math.max(0, span - 1)));
+        }
+        return Optional.empty();
+    }
+
+    /** A linked beam: its square and the blocks between the fronts. */
+    public record Beam(CableCrossSection section, int gap) {
+    }
+
+    /**
+     * How the statistics page groups a domain's use: bundle cells apart from plain cable, devices together, Beam Former
+     * links apart.
+     */
     public enum Group {
-        CABLES, BUNDLES, ROUTERS, SWITCHES, DEVICES;
+        CABLES, BUNDLES, ROUTERS, SWITCHES, DEVICES, BEAMS;
 
         public static java.util.Optional<Group> of(FederationDomainNodeEvidence node) {
             return switch (node.kind()) {
@@ -53,6 +97,12 @@ public final class OperatingPowerCosts {
         var multiplier = OperatingPowerRule.multiplier();
         var total = 0.0;
         for (var node : nodes) {
+            var beam = beam(node);
+            if (beam.isPresent()) {
+                var link = beamLink(beam.get().section(), beam.get().gap()) * multiplier;
+                byGroup.merge(Group.BEAMS, link, Double::sum);
+                total += link;
+            }
             var cost = perTick(node.kind()) * multiplier;
             if (cost == 0) continue;
             var group = Group.of(node);

@@ -9,10 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
+import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
+import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
+import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.domain.FederationDomainPortId;
 
 /** Each Federation block costs FE every tick, scaled by one server multiplier. */
 final class OperatingPowerCostsTest {
@@ -33,6 +37,49 @@ final class OperatingPowerCostsTest {
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.P2P_TUNNEL), "AE2 charges the tunnel");
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.OTHER));
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.CONVERTER), "the converter is the supply");
+        assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.BEAM_FORMER), "the beam pays instead");
+    }
+
+    @Test
+    void aLinkedBeamFormerPairPaysOnceByItsSquareAndLength() {
+        // Two 2x2 formers' anchors ten blocks apart along x: nine blocks between the fronts.
+        var west = beamFormer(new BlockPos(0, 64, 0), 6);
+        var east = beamFormer(new BlockPos(10, 64, 0), 6);
+        var nodes = List.of(link(west, east), link(east, west), beamFormer(new BlockPos(0, 65, 0), 6));
+        var use = OperatingPowerCosts.use(nodes);
+
+        var expected = 4 * Math.pow(9, 1.05) * 2;
+        assertEquals(expected, use.total(), 1e-9, "M*N x L^1.05 AE, in FE, once for the pair");
+        assertEquals(Map.of(OperatingPowerCosts.Group.BEAMS, expected), use.byGroup());
+        assertEquals(expected, OperatingPowerCosts.beamLink(CableCrossSection.TWO_BY_TWO, 9), 1e-9);
+    }
+
+    @Test
+    void aShortBeamPaysForTwoBlocksAndA3x3ForNine() {
+        assertEquals(Math.pow(2, 1.05) * 2, OperatingPowerCosts.beamLink(CableCrossSection.ONE_BY_ONE, 0), 1e-9,
+                "fronts touching cost as two blocks apart");
+        assertEquals(Math.pow(2, 1.05) * 2, OperatingPowerCosts.beamLink(CableCrossSection.ONE_BY_ONE, 1), 1e-9);
+        assertEquals(9 * Math.pow(100, 1.05) * 2, OperatingPowerCosts.beamLink(CableCrossSection.THREE_BY_THREE, 100),
+                1e-9);
+        var below = beamFormer(new BlockPos(0, 60, 0), FederationDomainNodeEvidence.UNLIMITED);
+        var above = beamFormer(new BlockPos(0, 64, 0), FederationDomainNodeEvidence.UNLIMITED);
+        OperatingPowerRule.set(true, 2.0);
+        assertEquals(2 * 9 * Math.pow(3, 1.05) * 2,
+                OperatingPowerCosts.use(List.of(link(below, above), link(above, below))).total(), 1e-9,
+                "a 3x3 pair, three blocks between, at multiplier 2");
+    }
+
+    private static FederationDomainNodeEvidence beamFormer(BlockPos anchor, int capacityFactor) {
+        return new FederationDomainNodeEvidence(new FederationDomainNodeId("test:dimension", anchor.asLong()),
+                FederationDomainNodeKind.BEAM_FORMER, Map.of(), capacityFactor);
+    }
+
+    private static FederationDomainNodeEvidence link(FederationDomainNodeEvidence anchor,
+            FederationDomainNodeEvidence partner) {
+        return new FederationDomainNodeEvidence(anchor.nodeId(), anchor.kind(), Map.of(
+                BeamLinkRule.PORT + partner.nodeId(), new FederationDomainPortEvidence.Federation(
+                        new FederationDomainPortId(partner.nodeId(), BeamLinkRule.PORT + anchor.nodeId()))),
+                anchor.capacityFactor());
     }
 
     @Test

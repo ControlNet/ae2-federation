@@ -109,10 +109,13 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - Done: rerun with the real `BeamObstruction`: glass 35.2 ns/block, so the 16384-block tick cap is at most about
   0.58 ms; numbers in `.omo/knowledges/beam-scan-cost-2026-10-17.md`.
 
-### 5. Power
+### 5. Power (done 2026-10-17)
 
 - Link cost, section match, statistics group. Tests: `OperatingPowerCostsTest` for the formula; GameTest that a 3x3
   pair needs a 3x3 converter.
+- Done: `OperatingPowerCosts.beam` reads a link from the lower anchor's `beam:` port (L from the anchors'
+  positions), `beamLink` prices it, group `BEAMS` ("Beam Former links") on the statistics page; the plan's `largest`
+  takes linked formers. GameTest `beamFormerPairNeedsItsSizeOfConverter`.
 
 ### 6. Client
 

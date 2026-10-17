@@ -473,6 +473,7 @@
   "ae2federation.ui.statistics.fedpower.group.routers": "Routers",
   "ae2federation.ui.statistics.fedpower.group.switches": "Switches",
   "ae2federation.ui.statistics.fedpower.group.devices": "Endpoints and Providers",
+  "ae2federation.ui.statistics.fedpower.group.beams": "Beam Former links",
   "ae2federation.ui.processing.summary": "Providers %s · Endpoints %s · Mappings %s",
   "ae2federation.ui.processing.column.providers": "Pattern Provider",
   "ae2federation.ui.processing.column.endpoints": "Processing Endpoint",

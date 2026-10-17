@@ -473,6 +473,7 @@
   "ae2federation.ui.statistics.fedpower.group.routers": "路由器",
   "ae2federation.ui.statistics.fedpower.group.switches": "交换机",
   "ae2federation.ui.statistics.fedpower.group.devices": "端点和供应器",
+  "ae2federation.ui.statistics.fedpower.group.beams": "光束成型器连接",
   "ae2federation.ui.processing.summary": "%s 个供应器 · %s 个端点 · %s 条映射",
   "ae2federation.ui.processing.column.providers": "样板供应器",
   "ae2federation.ui.processing.column.endpoints": "处理端点",

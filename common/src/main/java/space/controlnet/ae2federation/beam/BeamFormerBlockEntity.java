@@ -23,7 +23,6 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * remote link, which the partner names back.
  */
 public final class BeamFormerBlockEntity extends RouterBlockEntity {
-    private static final String BEAM_PORT = "beam:";
 
     /** The linked partner's lowest block, set on this body's lowest block only. */
     private @Nullable BlockPos beamPartner;
@@ -83,8 +82,8 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
         if (beamPartner == null || !(level instanceof ServerLevel serverLevel)) return Map.of();
         var self = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
         var partner = FederationDomainRegistryAccess.nodeId(serverLevel, beamPartner);
-        return Map.of(BEAM_PORT + partner, new FederationDomainPortEvidence.Federation(
-                new FederationDomainPortId(partner, BEAM_PORT + self)));
+        return Map.of(BeamLinkRule.PORT + partner, new FederationDomainPortEvidence.Federation(
+                new FederationDomainPortId(partner, BeamLinkRule.PORT + self)));
     }
 
     @Override

@@ -7,6 +7,8 @@ package space.controlnet.ae2federation.beam;
 public final class BeamLinkRule {
     public static final int DEFAULT_RANGE = 256;
     public static final int MAX_RANGE = 1024;
+    /** The prefix of the port a linked former's anchor names after its partner's anchor. */
+    public static final String PORT = "beam:";
 
     private static volatile int range = DEFAULT_RANGE;
 
