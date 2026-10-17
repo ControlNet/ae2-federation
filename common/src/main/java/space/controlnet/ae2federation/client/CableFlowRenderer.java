@@ -8,6 +8,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
@@ -133,6 +134,13 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             }
         }
         if (bundle != null) stack.popPose();
+        // A guidebook scene ends these buffers only after its terrain, once its camera is gone, so the beam came out
+        // with no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits
+        // in its shell as in the world.
+        if (!(level instanceof ClientLevel) && buffers instanceof MultiBufferSource.BufferSource source) {
+            source.endBatch(GLOW);
+            source.endBatch(CORE);
+        }
     }
 
     /** A 2x2 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */

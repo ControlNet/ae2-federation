@@ -18,7 +18,17 @@ the cherry-pick keeps dev's file. The PR's doc names a `large_cable_display` pro
   1 along; at a joint the low layer draws a 2x2x2 box (uniform scale) with the branch side in its mask, so the
   junction sits on the branch's beam. `CableFlowRenderer.getRenderBoundingBox` widens culling to that box.
 
+- Volume beam (owner disliked the two crossed ribbons, 2026-10-17): the 2x2 middle beam draws as an octagonal
+  full-bright tube that writes depth, capped where it stops inside a block, with three nested additive tubes for glow
+  (`CableBeamMesh.emitLayer(..., volume = true, ...)`). Ordinary cables keep the crossed ribbons.
+
 ## Pitfalls found
+
+- Guide scenes drew every beam over everything (pre-existing on dev): GuideME ends our fixed GLOW/CORE buffers only
+  in its final `endBatch()`, after its translucent pass and after restoring the GUI matrices, so the beam had no
+  valid depth. `CableFlowRenderer.render` now ends both buffers right away when the level is not a `ClientLevel`,
+  before GuideME flushes its terrain; beams then sit behind rings, rails and glass as in the world. Idle beams in
+  ordinary-cable guide scenes (e.g. `items/cable.md`) therefore look much fainter than before.
 
 - Opaque ring geometry in the translucent layer was mostly invisible: the shell panels, drawn first in the same
   layer and writing depth, hid it. Rings go in `RenderType.solid()` (`CableBakedModel.LARGE_LAYERS`).
