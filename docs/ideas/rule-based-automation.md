@@ -55,9 +55,14 @@ continues the Nexus Processor / Nexus Core material line; its component names fo
 - **Required.** Players must build one to use automation at all.
 - **Upgradable.** The structure holds installable "CPU" and "memory" components; more components host more automation.
 - **Two resources.** Each program has a known cost in two measures: one from its logic (for example its node count)
-  and one from its I/O (moving items, transferring energy, emitting redstone). The first is **CU** (Compute Unit,
-  算力) and the second **bandwidth** (带宽) (user, 2026-10-17). Both costs are inferred from the program itself when
-  it is compiled; how is later design.
+  and one from its I/O (moving items, transferring energy, emitting redstone). The first is **算力** (compute),
+  measured in **CU** (Compute Unit); the second is **带宽** (bandwidth), measured in bytes per second, written like a
+  network speed: B/s, KB/s, MB/s (user, 2026-10-17). A device reads, for example, "80/100 CU · 1.5/4 KB/s". Both
+  costs are inferred from the program itself when it is compiled; how is later design.
+- **Bytes from AE2.** AE2 already prices resources in bytes: every resource type (`AEKeyType`) has an amount per byte
+  (8 items, 8 buckets, and addon types their own), so item, fluid and addon-resource transfers convert to bytes
+  without per-type lists. Energy and redstone are not AE2 resource types and need their own conversion, later.
+  Steps of 1024, as AE2's 1k = 1024 bytes, are an assistant proposal.
 - **Reserved while enabled.** Enabling a program reserves its whole cost on the device, whatever work it actually
   does; disabling it releases the cost.
 - **Placement.** A domain may have several devices. Each program is installed on exactly one, chosen in a GUI, and
@@ -70,7 +75,7 @@ The user worries that "CPU" and "memory" would carry over AE2's meaning: there a
 at once and its storage is how many items a job holds. CU and bandwidth avoid that reading; "nodes" was rejected as
 the measure's name. AE2's crafting casing is the "Crafting Unit", so component names may want to avoid "... Unit".
 
-Open: the component names and the bandwidth unit; how node count, nested calls and declared I/O turn into costs;
+Open: the component names (tiering them 1k/4k like AE2 storage would invite the storage reading); how node count, nested calls and declared I/O turn into costs;
 how a device joins its domain; and what enabled programs do when the device loses power or its domain stops sharing.
 
 ## Reference: Videnoa
