@@ -39,6 +39,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private static final String CAPACITY_UNITS = "CapacityUnits";
     private static final String CAPACITY = "Capacity";
     private static final String CAPACITY_ENFORCED = "CapacityEnforced";
+    private static final String UNPOWERED = "Unpowered";
     private static final String BUNDLE_MIN = "BundleMin";
     private static final String BUNDLE_MAX = "BundleMax";
     private static final String BUNDLE_AXIS = "BundleAxis";
@@ -60,6 +61,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     /** Server only: the evidence revision last counted, and the earliest tick to count again. */
     private long capacityRevision = Long.MIN_VALUE;
     private long nextCapacityCheck;
+    /** Whether this cable's domain is unpowered, as the server last checked it; its beam then shows red and thin. */
+    private boolean unpowered;
+    private long nextPowerCheck;
     /**
      * The bundle segment holding this cable, null for an ordinary cable: on the server, as its registry last said; on a
      * client, as the server sent it. The model, outline and beam read it through {@link BundleView}.
@@ -88,7 +92,23 @@ public final class FederationCableBlockEntity extends BlockEntity {
         if (changed || cable.federationDomainDirty) {
             cable.publishFederationDomainTopology();
         }
-        if (level instanceof ServerLevel serverLevel) cable.syncCapacity(serverLevel);
+        if (level instanceof ServerLevel serverLevel) {
+            cable.syncCapacity(serverLevel);
+            cable.syncPower(serverLevel);
+        }
+    }
+
+    /** Looks again whether the cable's domain is unpowered, as often as the count, and tells clients of a change. */
+    private void syncPower(ServerLevel serverLevel) {
+        long now = serverLevel.getGameTime();
+        if (now < nextPowerCheck || federationDomainNodeId == null) return;
+        nextPowerCheck = now + CAPACITY_CHECK_TICKS;
+        var registry = FederationDomainRegistryAccess.get(serverLevel);
+        boolean stopped = registry.federationDomainOf(federationDomainNodeId)
+                .filter(domain -> registry.unpowered(domain.federationDomainId())).isPresent();
+        if (stopped == unpowered) return;
+        unpowered = stopped;
+        serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     /** Counts this cable again once its domain or the limit changed, and tells clients when the count differs. */
@@ -210,6 +230,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         tag.putInt(CAPACITY_UNITS, capacityUnits);
         tag.putInt(CAPACITY, capacity);
         tag.putBoolean(CAPACITY_ENFORCED, capacityEnforced);
+        tag.putBoolean(UNPOWERED, unpowered);
         if (level instanceof ServerLevel serverLevel) {
             BundledCables.get(serverLevel).at(worldPosition).ifPresent(membership -> {
                 tag.putLong(BUNDLE_MIN, membership.segment().min().asLong());
@@ -232,6 +253,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
         capacityUnits = tag.getInt(CAPACITY_UNITS);
         capacity = tag.getInt(CAPACITY);
         capacityEnforced = tag.getBoolean(CAPACITY_ENFORCED);
+        unpowered = tag.getBoolean(UNPOWERED);
         var axis = Direction.Axis.byName(tag.getString(BUNDLE_AXIS));
         var previous = bundleSegment;
         bundleSegment = tag.contains(BUNDLE_MIN) && axis != null
@@ -249,6 +271,11 @@ public final class FederationCableBlockEntity extends BlockEntity {
     }
 
     /** The load of this cable's capacity count, as {@link CableBeamStyle#loadOf} reads it. */
+    /** Whether the cable's domain is unpowered, as the server last sent it. */
+    public boolean unpowered() {
+        return unpowered;
+    }
+
     public double capacityLoad() {
         return CableBeamStyle.loadOf(capacityUnits, capacity, capacityEnforced);
     }

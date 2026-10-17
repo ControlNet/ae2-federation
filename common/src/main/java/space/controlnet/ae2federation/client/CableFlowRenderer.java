@@ -97,7 +97,9 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // The beam shows the cable's capacity count against its limit, as the server counted it; not traffic.
         // The count changes only with the domain, so the alarm follows it directly and needs no hysteresis.
         double target = cable.capacityLoad();
-        var style = CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
+        // An unpowered domain's beams alarm at the width of no load.
+        var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
+                : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
         int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
         long tick = level.getGameTime();
         var pose = stack.last();

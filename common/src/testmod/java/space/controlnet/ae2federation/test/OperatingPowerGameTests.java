@@ -20,6 +20,7 @@ import space.controlnet.ae2federation.power.OperatingPowerRule;
 import space.controlnet.ae2federation.power.OperatingPowerService;
 import space.controlnet.ae2federation.power.PowerLedger;
 import space.controlnet.ae2federation.power.PowerRegistration;
+import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
@@ -59,6 +60,7 @@ public final class OperatingPowerGameTests {
                 case 0 -> {
                     helper.assertTrue(scene.registry().unpowered(domain), "Waiting for the converterless domain to stop");
                     helper.assertTrue(!scene.running(), "a stopped domain links nothing");
+                    helper.assertTrue(scene.cable().unpowered(), "Waiting for the cable's beam to learn it");
                     scene.converter(front, Direction.WEST);
                     scene.converter(back, Direction.WEST);
                     phase[0] = 1;
@@ -75,6 +77,7 @@ public final class OperatingPowerGameTests {
                     helper.assertTrue(!scene.registry().unpowered(domain), "Waiting for power to hold 30 ticks");
                     if (waited[0] <= PowerLedger.RESTART_TICKS) early.append(" fed run after ").append(waited[0]);
                     helper.assertTrue(scene.running(), "A and B share a running domain again");
+                    helper.assertTrue(!scene.cable().unpowered(), "Waiting for the cable's beam to learn it runs");
                     var reading = scene.reading();
                     helper.assertValueEqual(reading.use().total(), USE, "the domain's use");
                     helper.assertValueEqual(reading.capacity(), 2 * BeamConverterBlockEntity.CAPACITY,
@@ -104,9 +107,10 @@ public final class OperatingPowerGameTests {
                     helper.assertTrue(!scene.registry().unpowered(domain) && scene.running(),
                             "with the requirement off, a domain without a converter runs");
                     helper.assertTrue(early.isEmpty(), "the domain ran too early:" + early);
-                    RouterEvidence.write("operatingpowerrunsadomain", 7, Map.of(
+                    RouterEvidence.write("operatingpowerrunsadomain", 8, Map.of(
                             "noConverter", "stopped", "fed", "running", "restart", "after 30 ticks", "use", "3 FE/t",
-                            "drained", "stopped", "keepsDrawing", "true", "requirementOff", "running"));
+                            "drained", "stopped", "keepsDrawing", "true", "requirementOff", "running",
+                            "beam", "unpowered then running"));
                     scene.close();
                 }
             }
@@ -286,6 +290,10 @@ public final class OperatingPowerGameTests {
             var storage = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(position),
                     side);
             return storage == null ? 0 : storage.receiveEnergy(amount, false);
+        }
+
+        FederationCableBlockEntity cable() {
+            return (FederationCableBlockEntity) helper.getBlockEntity(SWITCH.east());
         }
 
         FederationDomainRegistry registry() {
