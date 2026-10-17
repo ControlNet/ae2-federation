@@ -91,6 +91,46 @@ final class BundleLookTest {
     }
 
     @Test
+    void aStraight2x2RunHasARingAtEveryOtherLayerBoundary() {
+        var set = new BundleSet();
+        set.form(RUN);
+        // Boundaries at x = 2 and x = 4 fall on the spacing; x = 0 and x = 6 lie outside the run.
+        for (int x = 0; x <= 5; x++) {
+            var look = look(set, new BlockPos(x, 1, 0), NO_DEVICES);
+            assertTrue(look.large());
+            assertEquals(x == 2 || x == 4, look.ringBefore(), "ring before x=" + x);
+            assertEquals(x == 1 || x == 3, look.ringAfter(), "ring after x=" + x);
+        }
+    }
+
+    @Test
+    void otherCrossSectionsHaveNoRings() {
+        var set = new BundleSet();
+        set.form(new BundleSegment(new BlockPos(0, 0, 0), new BlockPos(5, 0, 1), Direction.Axis.X));
+        var look = look(set, new BlockPos(1, 0, 0), NO_DEVICES);
+        assertFalse(look.large());
+        assertFalse(look.ringAfter());
+    }
+
+    @Test
+    void aBranchMarksBothItsLayersAcrossTheWholeCrossSection() {
+        var set = new BundleSet();
+        set.form(RUN);
+        set.form(new BundleSegment(new BlockPos(2, 0, 2), new BlockPos(3, 1, 3), Direction.Axis.Z));
+        for (var cell : new BundleSegment(new BlockPos(2, 0, 0), new BlockPos(2, 1, 1), Direction.Axis.X).cells()) {
+            var look = look(set, cell, NO_DEVICES);
+            assertTrue(look.jointAfter(Direction.SOUTH) && !look.jointBefore(Direction.SOUTH), cell.toString());
+        }
+        var high = look(set, new BlockPos(3, 1, 0), NO_DEVICES);
+        assertTrue(high.jointBefore(Direction.SOUTH) && !high.jointAfter(Direction.SOUTH),
+                "the row away from the branch shares its corner rings");
+        assertFalse(look(set, new BlockPos(1, 0, 0), NO_DEVICES).ringAfter(), "no ring beside a branch");
+        assertFalse(look(set, new BlockPos(4, 0, 0), NO_DEVICES).ringBefore(), "no ring beside a branch");
+        var branch = look(set, new BlockPos(2, 0, 2), NO_DEVICES);
+        assertEquals(0, branch.jointsBefore() | branch.jointsAfter(), "the branch's own end is no joint");
+    }
+
+    @Test
     void anOrdinaryCableHasNoBundleLook() {
         var set = new BundleSet();
         set.form(RUN);

@@ -14,8 +14,10 @@ import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -101,6 +103,15 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var style = cable.unpowered() ? CableBeamStyle.fromLoad(0, true)
                 : CableBeamStyle.fromLoad(cable.beamLoad(target, Util.getNanos()), target > 1);
         int mask = cable.flowMask(), detail = CableBeamMesh.detail(distance);
+        // A 2x2 bundle draws one beam down its middle: a cable's beam stretched over the box its corner cell names.
+        var bundle = cable.bundleBeam();
+        if (bundle != null) {
+            if (bundle.length() == 0) return;
+            mask = bundle.mask();
+            stack.pushPose();
+            stack.scale(bundle.extent(Direction.Axis.X), bundle.extent(Direction.Axis.Y),
+                    bundle.extent(Direction.Axis.Z));
+        }
         long tick = level.getGameTime();
         var pose = stack.last();
         var matrix = pose.pose();
@@ -121,6 +132,17 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                         LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
             }
         }
+        if (bundle != null) stack.popPose();
+    }
+
+    /** A 2x2 bundle's middle beam reaches past its corner cell, over the box it is stretched to. */
+    @Override
+    public AABB getRenderBoundingBox(FederationCableBlockEntity cable) {
+        var box = new AABB(cable.getBlockPos());
+        var bundle = cable.bundleBeam();
+        if (bundle == null || bundle.length() == 0) return box;
+        return box.expandTowards(bundle.extent(Direction.Axis.X) - 1, bundle.extent(Direction.Axis.Y) - 1,
+                bundle.extent(Direction.Axis.Z) - 1);
     }
 
     /** The visual-input seam shared by world cables and native renderer previews; no gameplay effects. */

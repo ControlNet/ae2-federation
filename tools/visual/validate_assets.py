@@ -52,7 +52,8 @@ for ref, model in generated.items():
 # texture.
 CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connected_1', 'core_connected_2',
                                                            'core_connected_3', 'core_connected_4',
-                                                           'core_connected_2_straight', 'line', 'collar')}
+                                                           'core_connected_2_straight', 'line', 'collar')} \
+    | {NS + 'block/large_cable/large_cable'}
 # Shipped but not drawn yet: the artist's dense cable textures not wired up yet (the connector's machine cap went
 # when Provider and Endpoint fronts became dense connections), and the old cable's textures the artist still edits.
 NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'stream_u', 'stream_v')}
@@ -64,7 +65,8 @@ for path in (BASE / 'textures').rglob('*.png'):
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
     meta = path.with_suffix('.png.mcmeta')
-    assert im.width == 16
+    # The artist's 2x2 rings are modelled over two blocks, on a 32-pixel texture.
+    assert im.width == (32 if ref == NS + 'block/large_cable/large_cable' else 16), ref
     if meta.exists() and ref.startswith(NS + 'item/'):
         # The artist's animated item icons: every listed frame must exist in the strip.
         frames = [f if isinstance(f, int) else f['index'] for f in json.loads(meta.read_text())['animation']['frames']]
@@ -76,7 +78,7 @@ for path in (BASE / 'textures').rglob('*.png'):
         assert im.getextrema()[3] == (255, 255)
         assert im.crop((0, 0, 16, 16)).tobytes() != im.crop((0, 16, 16, 32)).tobytes()
     else:
-        assert im.height == (32 if path.name == 'cable_flow.png' else 16)
+        assert im.height == (32 if path.name in ('cable_flow.png', 'large_cable.png') else 16)
 
 for path in (BASE / 'blockstates').glob('*.json'):
     for variant in json.loads(path.read_text())['variants'].values():

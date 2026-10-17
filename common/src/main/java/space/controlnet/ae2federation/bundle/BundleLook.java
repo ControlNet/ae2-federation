@@ -18,8 +18,18 @@ import space.controlnet.ae2federation.router.CableVisualConnections;
  *
  * <p>Anything else stays closed: an ordinary cable, a bundle that does not link, or a device that covers a contact only
  * in part.
+ *
+ * <p>A 2x2 bundle ({@code large}) is drawn as one thick cable: the artist's ring stands at every
+ * {@link #RING_SPACING}th layer boundary along a straight stretch ({@code rings}: bit 0 the boundary before this cell,
+ * bit 1 the one after), and where a branch leaves, the two layers it covers carry the artist's corner rings instead.
+ * {@code jointsBefore} and {@code jointsAfter} name the sides with such a branch, for every cell of those layers, and
+ * whether the branch's other layer is the previous or the next one.
  */
-public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter) {
+public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, int joinsBefore, int joinsAfter,
+        boolean large, int rings, int jointsBefore, int jointsAfter) {
+    /** Layer boundaries between two rings of a straight 2x2 stretch, counted in world coordinates. */
+    public static final int RING_SPACING = 2;
+
     /** Whether a device body takes the whole contact that {@code face} of {@code pos} belongs to. */
     @FunctionalInterface
     public interface Contacts {
@@ -59,7 +69,31 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
                 dense |= bit(side);
             }
         }
-        return Optional.of(new BundleLook(axis, edges, joins, dense, before, after));
+        boolean large = segment.shape().filter(shape -> shape.narrow() == 2 && shape.wide() == 2).isPresent();
+        if (!large) return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, false, 0, 0, 0));
+        int jointsBefore = 0;
+        int jointsAfter = 0;
+        for (var side : Direction.values()) {
+            if (side.getAxis() == axis) continue;
+            var face = faceCell(segment, pos, side);
+            var branch = segments.apply(face.relative(side));
+            if (branch.isEmpty() || !BundleSet.linked(face, segment, face.relative(side), branch.get())) continue;
+            if (opensOnto(face.relative(Direction.fromAxisAndDirection(axis, Direction.AxisDirection.NEGATIVE)), side,
+                    segment, branch.get(), segments)) {
+                jointsBefore |= bit(side);
+            }
+            if (opensOnto(face.relative(Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE)), side,
+                    segment, branch.get(), segments)) {
+                jointsAfter |= bit(side);
+            }
+        }
+        int rings = 0;
+        int layer = pos.get(axis);
+        boolean joint = (jointsBefore | jointsAfter) != 0;
+        if (!joint && ringAt(segment, pos, layer, segments)) rings |= 1;
+        if (!joint && ringAt(segment, pos, layer + 1, segments)) rings |= 2;
+        return Optional.of(new BundleLook(axis, edges, joins, dense, before, after, true, rings, jointsBefore,
+                jointsAfter));
     }
 
     /** {@link #of(BlockPos, Function, Contacts)} as either side sees the level. */
@@ -113,8 +147,61 @@ public record BundleLook(Direction.Axis axis, int edges, int joins, int dense, i
         return mask;
     }
 
+    /** Whether a ring stands at the boundary before this cell's layer. */
+    public boolean ringBefore() {
+        return (rings & 1) != 0;
+    }
+
+    /** Whether a ring stands at the boundary after this cell's layer. */
+    public boolean ringAfter() {
+        return (rings & 2) != 0;
+    }
+
+    /** Whether a branch leaves toward {@code side} from this layer and the previous one. */
+    public boolean jointBefore(Direction side) {
+        return (jointsBefore & bit(side)) != 0;
+    }
+
+    /** Whether a branch leaves toward {@code side} from this layer and the next one. */
+    public boolean jointAfter(Direction side) {
+        return (jointsAfter & bit(side)) != 0;
+    }
+
     private static int bit(Direction side) {
         return 1 << side.get3DDataValue();
+    }
+
+    /** The cell of {@code pos}'s layer and row on the segment's outer side toward {@code side}. */
+    private static BlockPos faceCell(BundleSegment segment, BlockPos pos, Direction side) {
+        var axis = side.getAxis();
+        return BundleSegment.with(pos, axis, side.getAxisDirection() == Direction.AxisDirection.POSITIVE
+                ? segment.max().get(axis) : segment.min().get(axis));
+    }
+
+    /**
+     * Whether a ring stands at the boundary between layers {@code layer - 1} and {@code layer}: both lie in the segment,
+     * the boundary falls on the spacing in world coordinates, so a ring stays put when the bundle grows, and no branch
+     * leaves either layer.
+     */
+    private static boolean ringAt(BundleSegment segment, BlockPos pos, int layer,
+            Function<BlockPos, Optional<BundleSegment>> segments) {
+        var axis = segment.axis();
+        if (layer - 1 < segment.min().get(axis) || layer > segment.max().get(axis)) return false;
+        if (Math.floorMod(layer, RING_SPACING) != 0) return false;
+        return !branches(segment, BundleSegment.with(pos, axis, layer - 1), segments)
+                && !branches(segment, BundleSegment.with(pos, axis, layer), segments);
+    }
+
+    /** Whether a branch leaves any side of the layer holding {@code cell}. */
+    private static boolean branches(BundleSegment segment, BlockPos cell,
+            Function<BlockPos, Optional<BundleSegment>> segments) {
+        for (var side : Direction.values()) {
+            if (side.getAxis() == segment.axis()) continue;
+            var face = faceCell(segment, cell, side);
+            var other = segments.apply(face.relative(side));
+            if (other.isPresent() && BundleSet.linked(face, segment, face.relative(side), other.get())) return true;
+        }
+        return false;
     }
 
     private static boolean onEdge(BundleSegment segment, BlockPos pos, Direction side) {

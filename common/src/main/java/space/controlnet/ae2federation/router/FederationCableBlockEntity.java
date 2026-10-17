@@ -16,7 +16,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.bundle.BundleContacts;
+import space.controlnet.ae2federation.bundle.BundleLook;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundleSet;
 import space.controlnet.ae2federation.bundle.BundledCables;
@@ -50,8 +52,9 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
     private boolean unloading;
-    /** Client only: the flow renderer's neighbour mask and its game tick. */
+    /** Client only: the flow renderer's neighbour mask, a 2x2 bundle's middle beam, and their game tick. */
     private int flowMask;
+    private @Nullable BundleBeam bundleBeam;
     private long flowMaskTick = Long.MIN_VALUE;
     /**
      * The capacity count the flow renderer draws: computed on the server, sent to clients when it changes. Derived, so
@@ -297,11 +300,25 @@ public final class FederationCableBlockEntity extends BlockEntity {
      * every frame, and six block lookups per cable per frame add up across a base.
      */
     public int flowMask() {
-        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
-        if (level != null && flowMaskTick != gameTime) {
-            flowMask = CableVisualConnections.mask(level, worldPosition);
-            flowMaskTick = gameTime;
-        }
+        refreshFlow();
         return flowMask;
+    }
+
+    /** Where this cell draws its 2x2 bundle's middle beam, or null when it draws its own; read like {@link #flowMask}. */
+    public @Nullable BundleBeam bundleBeam() {
+        refreshFlow();
+        return bundleBeam;
+    }
+
+    private void refreshFlow() {
+        var gameTime = level == null ? Long.MIN_VALUE : level.getGameTime();
+        if (level == null || flowMaskTick == gameTime) return;
+        var look = BundleLook.of(level, worldPosition);
+        flowMask = look.isPresent() ? look.get().flowMask()
+                : CableVisualConnections.maskOf(CableVisualConnections.connections(level, worldPosition));
+        var segment = bundleSegment;
+        bundleBeam = look.isEmpty() || segment == null ? null : BundleBeam.of(worldPosition, segment, look.get(),
+                () -> BundleLook.of(level, worldPosition.relative(segment.axis(), 1))).orElse(null);
+        flowMaskTick = gameTime;
     }
 }
