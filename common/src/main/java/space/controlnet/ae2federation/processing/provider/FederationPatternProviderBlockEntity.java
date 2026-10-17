@@ -307,7 +307,7 @@ public final class FederationPatternProviderBlockEntity extends AENetworkedBlock
             runtime = null;
         }
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, removedFromWorld);
             reconcileServices(serverLevel);
         }
         federationCache = null;

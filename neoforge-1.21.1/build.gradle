@@ -358,6 +358,8 @@ neoForge {
             systemProperty('ae2federation.policyStateFile', providers.gradleProperty('federationPolicyStateFile').getOrElse(''))
             systemProperty('ae2federation.craftingPhase', providers.gradleProperty('federationCraftingPhase').getOrElse(''))
             systemProperty('ae2federation.craftingStateFile', providers.gradleProperty('federationCraftingStateFile').getOrElse(''))
+            systemProperty('ae2federation.domainIdPhase', providers.gradleProperty('federationDomainIdPhase').getOrElse(''))
+            systemProperty('ae2federation.domainIdStateFile', providers.gradleProperty('federationDomainIdStateFile').getOrElse(''))
             logLevel = org.slf4j.event.Level.INFO
         }
         appfluxGameTestServer {

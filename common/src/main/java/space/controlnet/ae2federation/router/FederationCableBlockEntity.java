@@ -47,6 +47,8 @@ public final class FederationCableBlockEntity extends BlockEntity {
     private boolean initialized;
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
     /** Client only: the flow renderer's neighbour mask and its game tick. */
     private int flowMask;
     private long flowMaskTick = Long.MIN_VALUE;
@@ -80,6 +82,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        unloading = false;
         GridHelper.onFirstTick(this, FederationCableBlockEntity::initialize);
     }
 
@@ -149,6 +152,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         destroyPorts();
         super.onChunkUnloaded();
     }
@@ -196,7 +200,7 @@ public final class FederationCableBlockEntity extends BlockEntity {
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;

@@ -31,9 +31,15 @@ import space.controlnet.ae2federation.policy.AuthorityEpoch;
  * capacity: it keeps its nodes, members and id, so nothing it counts changes, but the features that link networks treat
  * it as stopped. Only domains whose evidence changed, or every domain when the limit changes, are judged again, and only
  * a changed verdict advances the topology revision and the authority epoch.
+ *
+ * <p>Physical ids outlive the registry through {@link FederationDomainRecords}: after a restart, a record whose domain
+ * is not loaded is one more old domain a component can inherit from, matched by its anchor nodes, and new ids continue
+ * the saved sequence. An id that existed before its domain was last unloaded is restored, and a restored id wins over
+ * one handed out since, so the part of a domain that loads first claims its id and keeps it when the rest joins.
  */
 public final class FederationDomainRegistry {
-    private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::membersEqual).reversed()
+    private static final Comparator<Candidate> INHERITANCE_ORDER = Comparator.comparing(Candidate::restored).reversed()
+            .thenComparing(Comparator.comparing(Candidate::membersEqual).reversed())
             .thenComparing(Comparator.comparingInt(Candidate::memberOverlap).reversed())
             .thenComparing(Comparator.comparingInt(Candidate::nodeOverlap).reversed())
             .thenComparingLong(Candidate::sequence)
@@ -45,6 +51,10 @@ public final class FederationDomainRegistry {
     private final Map<FederationDomainNodeId, FederationDomainId> nodeToFederationDomain = new HashMap<>();
     private final Map<FederationDomainId, FederationDomainSnapshot> federationDomains = new HashMap<>();
     private final Map<FederationDomainId, Long> physicalSequences = new HashMap<>();
+    /** The anchors and sequence that outlive this registry. */
+    private final FederationDomainRecords records;
+    /** Live domains whose id came from a record, directly or by inheriting from one that did. */
+    private final Set<FederationDomainId> restored = new HashSet<>();
     private final Map<NetworkId, Set<FederationDomainId>> networkIndex = new HashMap<>();
     /** Diagnostic records of removed nodes kept at most; older ones are dropped first (every unloaded chunk adds some). */
     public static final int MAX_UNLOADED_INVALIDATIONS = 4096;
@@ -79,7 +89,13 @@ public final class FederationDomainRegistry {
     };
 
     public FederationDomainRegistry(FederationDomainRecomputeBudget budget) {
+        this(budget, new FederationDomainRecords());
+    }
+
+    public FederationDomainRegistry(FederationDomainRecomputeBudget budget, FederationDomainRecords records) {
         this.budget = budget;
+        this.records = records;
+        physicalSequence = records.sequence();
     }
 
     /**
@@ -163,6 +179,12 @@ public final class FederationDomainRegistry {
 
     public void removeNode(FederationDomainNodeId nodeId) {
         invalidateNode(nodeId, FederationDomainInvalidationReason.SOURCE_UNLOADED);
+    }
+
+    /** Removes a node whose block was broken: unlike an unloaded node, it no longer anchors its domain's id. */
+    public void removeBrokenNode(FederationDomainNodeId nodeId) {
+        records.drop(nodeId);
+        removeNode(nodeId);
     }
 
     /** What {@link #removeDimension} took out: the dimension's nodes and Bridges, and how many of its nodes are left. */
@@ -398,15 +420,19 @@ public final class FederationDomainRegistry {
                 .filter(Objects::nonNull).forEach(previous::add));
         var old = new LinkedHashMap<FederationDomainId, FederationDomainSnapshot>();
         previous.forEach(federationDomainId -> old.put(federationDomainId, federationDomains.get(federationDomainId)));
-        var inherited = inherit(components, old);
+        var dormant = new HashMap<FederationDomainId, Long>();
+        var inherited = inherit(components, old, dormant);
         if (!changes(components, inherited, old)) {
             components.forEach(this::recordDiagnostics);
             return;
         }
         topologyRevision++;
         AuthorityEpoch.advance();
-        var sequences = new HashMap<FederationDomainId, Long>();
+        var sequences = new HashMap<>(dormant);
         old.keySet().forEach(federationDomainId -> sequences.put(federationDomainId, physicalSequences.get(federationDomainId)));
+        var wasRestored = new HashSet<FederationDomainId>();
+        old.keySet().stream().filter(restored::contains).forEach(wasRestored::add);
+        var absorbed = absorbed(components, inherited, old);
         old.keySet().forEach(this::removeFederationDomain);
         for (var index = 0; index < components.size(); index++) {
             var component = components.get(index);
@@ -414,26 +440,97 @@ public final class FederationDomainRegistry {
             var before = federationDomainId == null ? null : old.get(federationDomainId);
             if (federationDomainId == null) {
                 federationDomainId = FederationDomainId.physical(++physicalSequence);
+                records.advanceSequence(physicalSequence);
             }
-            physicalSequences.put(federationDomainId, before == null ? physicalSequence : sequences.get(federationDomainId));
+            long sequence = sequences.getOrDefault(federationDomainId, physicalSequence);
+            physicalSequences.put(federationDomainId, sequence);
+            if (dormant.containsKey(federationDomainId) || wasRestored.contains(federationDomainId)) {
+                restored.add(federationDomainId);
+            }
             var generation = before != null && before.memberships().keySet().equals(component.memberships().keySet())
                     ? before.generation() : nextTopologyRevision();
             installPhysical(new FederationDomainSnapshot(federationDomainId, generation, component.nodes(),
                     component.memberships()));
+            var absorbedSequences = absorbed.getOrDefault(index, List.of()).stream().map(sequences::get).toList();
+            anchor(sequence, component, absorbedSequences);
+            absorbedSequences.forEach(records::remove);
             recordDiagnostics(component);
         }
     }
 
+    /** The old domains no component inherits, each under the first component that took some of its nodes. */
+    private static Map<Integer, List<FederationDomainId>> absorbed(List<Component> components,
+            Map<Integer, FederationDomainId> inherited, Map<FederationDomainId, FederationDomainSnapshot> old) {
+        var absorbed = new HashMap<Integer, List<FederationDomainId>>();
+        for (var before : old.values()) {
+            if (inherited.containsValue(before.federationDomainId())) {
+                continue;
+            }
+            for (var index = 0; index < components.size(); index++) {
+                if (!java.util.Collections.disjoint(components.get(index).nodes(), before.nodes())) {
+                    absorbed.computeIfAbsent(index, ignored -> new ArrayList<>()).add(before.federationDomainId());
+                    break;
+                }
+            }
+        }
+        return absorbed;
+    }
+
     /**
-     * Gives each component at most one old id and each old id to at most one component, preferring the old domain with
-     * the same member networks, then the most shared members, the most shared nodes and finally the older domain: a split
-     * leaves the id with the side that keeps the members, and a merge with the domain that already had most of them.
+     * Records the anchors of a domain just installed: its devices, or its smallest cables when it has none, together
+     * with the anchors that its record and the records of the domains it absorbed keep for nodes not loaded now.
+     */
+    private void anchor(long sequence, Component component, List<Long> absorbed) {
+        var devices = new TreeSet<FederationDomainNodeId>();
+        var cables = new TreeSet<FederationDomainNodeId>();
+        for (var node : component.nodes()) {
+            if (nodes.get(node).kind() != FederationDomainNodeKind.CABLE) {
+                devices.add(node);
+            }
+        }
+        var previous = new ArrayList<>(absorbed);
+        previous.add(sequence);
+        for (var record : previous) {
+            records.anchors(record).ifPresent(anchors -> {
+                anchors.devices().stream().filter(node -> !nodes.containsKey(node)).forEach(devices::add);
+                anchors.cables().stream().filter(node -> !nodes.containsKey(node)).forEach(cables::add);
+            });
+        }
+        if (devices.isEmpty()) {
+            // The component's nodes are sorted, so only its first ones can be among the smallest.
+            component.nodes().stream().limit(FederationDomainRecords.CABLE_ANCHORS).forEach(cables::add);
+            while (cables.size() > FederationDomainRecords.CABLE_ANCHORS) {
+                cables.pollLast();
+            }
+        } else {
+            cables.clear();
+        }
+        records.put(sequence, devices, cables);
+    }
+
+    /**
+     * Gives each component at most one old id and each old id to at most one component, preferring a restored id, then
+     * the old domain with the same member networks, then the most shared members, the most shared nodes and finally the
+     * older domain: a split leaves the id with the side that keeps the members, and a merge with the domain that already
+     * had most of them. A saved record whose domain is not loaded counts as an old domain with its anchors as nodes.
      */
     private Map<Integer, FederationDomainId> inherit(List<Component> components,
-            Map<FederationDomainId, FederationDomainSnapshot> old) {
+            Map<FederationDomainId, FederationDomainSnapshot> old, Map<FederationDomainId, Long> dormant) {
         var candidates = new ArrayList<Candidate>();
         for (var index = 0; index < components.size(); index++) {
             var component = components.get(index);
+            // A record whose domain is not loaded competes as an old domain that shares only its anchors.
+            var anchored = new HashMap<Long, Integer>();
+            component.nodes().forEach(node -> records.owner(node)
+                    .ifPresent(owner -> anchored.merge(owner, 1, Integer::sum)));
+            for (var entry : anchored.entrySet()) {
+                var federationDomainId = FederationDomainId.physical(entry.getKey());
+                if (!federationDomains.containsKey(federationDomainId)) {
+                    dormant.put(federationDomainId, entry.getKey());
+                    candidates.add(new Candidate(index, federationDomainId, true, false, 0, entry.getValue(),
+                            entry.getKey()));
+                }
+            }
             for (var before : old.values()) {
                 var nodeOverlap = (int) component.nodes().stream().filter(before.nodes()::contains).count();
                 if (nodeOverlap == 0) {
@@ -441,7 +538,7 @@ public final class FederationDomainRegistry {
                 }
                 var memberOverlap = (int) component.memberships().keySet().stream()
                         .filter(before.memberships()::containsKey).count();
-                candidates.add(new Candidate(index, before.federationDomainId(),
+                candidates.add(new Candidate(index, before.federationDomainId(), restored.contains(before.federationDomainId()),
                         component.memberships().keySet().equals(before.memberships().keySet()), memberOverlap, nodeOverlap,
                         physicalSequences.getOrDefault(before.federationDomainId(), Long.MAX_VALUE)));
             }
@@ -465,7 +562,7 @@ public final class FederationDomainRegistry {
         for (var index = 0; index < components.size(); index++) {
             var before = old.get(inherited.get(index));
             var component = components.get(index);
-            if (!before.nodes().equals(component.nodes()) || !before.memberships().equals(component.memberships())) {
+            if (before == null || !before.nodes().equals(component.nodes()) || !before.memberships().equals(component.memberships())) {
                 return true;
             }
         }
@@ -560,6 +657,7 @@ public final class FederationDomainRegistry {
             return null;
         }
         physicalSequences.remove(federationDomainId);
+        restored.remove(federationDomainId);
         // Judged again, so a stopped domain that is gone lets go of its verdict with a topology change.
         capacityDomains.add(federationDomainId);
         removed.nodes().forEach(node -> nodeToFederationDomain.remove(node, federationDomainId));
@@ -621,7 +719,7 @@ public final class FederationDomainRegistry {
             Set<FederationDomainNodeId> pending, Set<FederationDomainNodeId> unsettled) {
     }
 
-    private record Candidate(int component, FederationDomainId federationDomainId, boolean membersEqual, int memberOverlap,
-            int nodeOverlap, long sequence) {
+    private record Candidate(int component, FederationDomainId federationDomainId, boolean restored, boolean membersEqual,
+            int memberOverlap, int nodeOverlap, long sequence) {
     }
 }

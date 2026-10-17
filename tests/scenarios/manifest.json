@@ -174,6 +174,7 @@
     {"id":"domain.redundant-membership","backend":"gametest","testId":"federationdomainredundantmembership","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.partial-unload","backend":"gametest","testId":"federationdomainpartialunload","structure":"ae2federation_test:harness_native_smoke","assertions":8},
     {"id":"domain.reject-stale-route","backend":"gametest","testId":"federationdomainrejectstaleroute","structure":"ae2federation_test:harness_native_smoke","assertions":8},
+    {"id":"domain-id.restart","backend":"gametest-restart","testId":"domainidrestart","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"topology.placement-keeps-power","backend":"gametest","testId":"topologyplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"topology.player-placement-keeps-power","backend":"gametest","testId":"topologyplayerplacementkeepspower","structure":"ae2federation_test:harness_native_smoke","assertions":7},
     {"id":"topology.break-cuts-power","backend":"gametest","testId":"topologybreakcutspower","structure":"ae2federation_test:harness_native_smoke","assertions":5},

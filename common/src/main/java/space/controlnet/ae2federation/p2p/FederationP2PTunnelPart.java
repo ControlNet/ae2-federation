@@ -93,7 +93,10 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         }
         if (getLevel() instanceof ServerLevel serverLevel && nodeId != null) {
             P2PRefreshDiagnostics.removed(nodeId);
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, nodeId);
+            // A chunk unload takes the whole bus out of the world before its block entity is removed; a part removed
+            // alone leaves the bus in the world, and a broken bus block is removed first.
+            var broken = getBlockEntity().isRemoved() || getHost() != null && getHost().isInWorld();
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, nodeId, broken);
             FederationBindingRefresh.request(serverLevel);
         }
         nodeId = null;

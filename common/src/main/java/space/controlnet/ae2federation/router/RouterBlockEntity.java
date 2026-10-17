@@ -37,6 +37,8 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     private boolean federationDomainDirty = true;
     private @Nullable FederationDomainNodeId federationDomainNodeId;
     private @Nullable FederationDomainNodeEvidence publishedEvidence;
+    /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
+    private boolean unloading;
 
     public RouterBlockEntity(BlockPos position, BlockState state) {
         super(RouterBlock.blockEntityType(state), position, state);
@@ -70,6 +72,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
     @Override
     public void clearRemoved() {
         super.clearRemoved();
+        unloading = false;
         GridHelper.onFirstTick(this, RouterBlockEntity::initialize);
     }
 
@@ -168,6 +171,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
 
     @Override
     public void onChunkUnloaded() {
+        unloading = true;
         destroyPorts();
         super.onChunkUnloaded();
     }
@@ -180,7 +184,7 @@ public final class RouterBlockEntity extends BlockEntity implements IInWorldGrid
 
     private void destroyPorts() {
         if (level instanceof ServerLevel serverLevel && federationDomainNodeId != null) {
-            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId);
+            FederationDomainRegistryAccess.removeNodeIfPresent(serverLevel, federationDomainNodeId, !unloading);
             FederationBindingRefresh.request(serverLevel);
         }
         initialized = false;
