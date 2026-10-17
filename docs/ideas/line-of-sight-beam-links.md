@@ -1,8 +1,8 @@
 # Line-of-sight Federation beam links
 
 Discussion date: 2026-10-09.
-Status: user-proposed connection form; form, linking, topology and obstruction settled on 2026-10-17. Range and
-implementation remain open.
+Status: user-proposed connection form; form, linking, topology, obstruction and range checking settled on
+2026-10-17. Obstructing blocks and implementation remain open.
 
 ## Intent
 
@@ -44,8 +44,28 @@ size; range growing with cross-section (for example 16·min(M, N)); or a configu
 surveyed mods let glass pass. For unloaded chunks in the path, keeping the last result and checking again on load
 fits the user's rule that unloaded middle chunks do not break the link.
 
-Still open: the range rule; which blocks obstruct the beam; the nearest-partner rule when several transceivers line
-up; and relays.
+## Range and obstruction checking (user accepted 2026-10-17)
+
+The user wants long beams. Checking cost, not gameplay, was the concern; the accepted approach keeps it bounded:
+
+- **Range.** A configuration value, 256 blocks (16 chunks) by default, at most 1024. Operating energy grows with
+  cross-section x length, so long beams cost more. Range may still also grow with cross-section; not selected.
+- **Amortized scan.** Each beam checks a fixed number of blocks per tick in rotation (for example 64), so per-tick cost
+  does not grow with length; a longer beam only notices a new obstruction later.
+- **Air sections.** A 16-cubed chunk section that holds only air is skipped in O(1) from its non-air block count, so
+  beams through open sky cost almost nothing.
+- **Unloaded chunks.** Blocks in an unloaded chunk cannot change, so the last result stays valid and that part is
+  checked again when the chunk loads. Block states are never read from an unloaded chunk, which would load it.
+- **Events only as hints.** Public NeoForge block events may wake an early check of the changed block. They miss
+  fluids, pistons and many mods' writes, so the scan remains authoritative. No mixin.
+- **Debounce.** A beam disconnects only after it has stayed blocked for a while, and reconnects only after it has
+  stayed clear for a while (for example one second each), because each change recomputes the domain's topology and
+  capacity, which costs more than the scan. Entities never block a beam; only blocks do.
+
+Cost estimates behind this (tens of nanoseconds per block-state read; a 3x3 x 256 beam rescanned every tick is about
+2304 reads) are unmeasured. Measure one 3x3 x 1024 beam with the project's benchmarks before fixing the values.
+
+Still open: which blocks obstruct the beam; the nearest-partner rule when several transceivers line up; and relays.
 
 ## Relationship to other ideas
 
