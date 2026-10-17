@@ -9,6 +9,8 @@ Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](READ
 
 The user shaped the quantum-bridge-style candidate into a multiblock and set its purpose:
 
+- **Name (user, 2026-10-17).** ME Federation Quantum Cube, 「ME联邦量子立方」, `ae2federation:quantum_cube`. AE2's
+  own "ME Quantum Ring" (「ME量子环」) is only the outer part of its bridge, so "ring" was not reused.
 - **Why it exists.** Federation P2P carries only a 1x1 cable. This device carries bundled cross-sections remotely.
 - **P2P capacity.** A Federation P2P tunnel pair has the capacity of one ordinary cable (C); implemented 2026-10-17,
   see [cable capacity](../features/cable-capacity.md).
