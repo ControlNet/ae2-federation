@@ -1,7 +1,8 @@
 # Optional Federation operating power
 
 Discussion date: 2026-10-09.
-Status: user-proposed feature direction; detailed behavior and implementation remain open.
+Status: user-proposed feature direction; the Beam Charger's shape, scope, input and outage behavior were settled on
+2026-10-17. Costs and implementation remain open.
 
 ## Intent
 
@@ -21,6 +22,41 @@ operating expense. This is a separate idea from any particular remote-link devic
 - The separately proposed [line-of-sight beam link](line-of-sight-beam-links.md) also has increased operating cost.
 
 No numerical costs, conversion rates, or per-device configuration schema have been selected.
+
+## User decisions 2026-10-17: the Beam Charger
+
+The user named the device **联邦光束供能器** (Federation Beam Charger; working name) and settled its shape and role:
+
+- **Shape.** A solid-cuboid multiblock of exactly M x N x 2·max(M, N), where M x N is the largest Federation cable
+  cross-section in its domain. Exact, not a minimum: a domain that gains a larger bundle needs a rebuilt charger.
+- **Sizes.** Deliberately not ordered by capacity: a 1x3 domain needs 1x3x6 (18 blocks) while a 2x2 domain needs
+  2x2x4 (16 blocks), because finding two blocks of height may be no easier than a long run; the player chooses.
+
+  | Largest cross-section | Charger | Blocks |
+  |---|---|---|
+  | 1x1 (no bundle) | 1x1x2 | 2 |
+  | 1x2 | 1x2x4 | 8 |
+  | 1x3 | 1x3x6 | 18 |
+  | 2x2 | 2x2x4 | 16 |
+  | 2x3 | 2x3x6 | 36 |
+  | 3x3 | 3x3x6 | 54 |
+
+  The cross-sections are totally ordered by capacity and by area (1x1 < 1x2 < 1x3 < 2x2 < 2x3 < 3x3), so a domain
+  holding both a 1x3 and a 2x2 bundle needs a 2x2 charger (assistant reading, to confirm).
+- **Facing.** The charger is directional. Only its front face connects to Federation cable, and that face's cross-section
+  must equal the domain's largest cable cross-section.
+- **Scope.** One charger serves one whole Federation domain; another domain needs its own. Carrying beam energy
+  between domains through an ME network was mentioned as a possible later method, with no current plan.
+- **Input.** FE, and it may also connect directly to an ME network and draw AE from it.
+- **Insufficient energy.** As with capacity overload: the whole domain stops sharing, the world is not changed, and
+  sharing resumes when power returns.
+- **Default.** Required by default; the configuration can turn the requirement off, which means unlimited energy.
+- **Creative variant.** A creative charger is wanted, following other mods' creative energy blocks.
+- **Beam links.** A [line-of-sight beam](line-of-sight-beam-links.md) should cost more than the same number of cables.
+
+Open: whether several chargers on one domain add up and whether each must match the size; what happens while the
+largest cross-section changes; the costs per block type; and what the ME-network input does when that network's
+own power arrives only through the Federation (the cold-start question below).
 
 ## Relationship to existing features
 

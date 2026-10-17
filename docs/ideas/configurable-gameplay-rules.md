@@ -25,7 +25,8 @@ file reader. Saved network Policy settings and artifact-proof JVM flags are sepa
 | Base capacity of one cable | Used only while cable capacity enforcement is enabled; 8 by default (owner, 2026-10-13; first 4), `capacity.cableCapacity` | Multiblock and cable capacity |
 | Operating energy costs | Used only while operating-power requirements are enabled; values undecided | Operating power |
 
-Disabled parent rules make their numerical settings inactive; they do not require removing those settings
+Turning the power requirement off means unlimited energy (user, 2026-10-17); a creative Beam Charger is wanted as
+well. Disabled parent rules make their numerical settings inactive; they do not require removing those settings
 from the file. File format, option IDs, numerical defaults, cost granularity, and reload behavior remain
 implementation/design choices. Separate per-cross-section overrides are not confirmed requirements.
 

@@ -1,9 +1,24 @@
 # Remote Federation connections
 
 Status: multiple forms under exploration; quantum-bridge-style jumping is the user's first candidate,
-with a line-of-sight beam-link proposal added on 2026-10-09.
+with a line-of-sight beam-link proposal added on 2026-10-09 and a cube for bundled cables on 2026-10-17.
 
 Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](README.md).
+
+## Follow-up 2026-10-17: a wireless cube for bundled cables
+
+The user shaped the quantum-bridge-style candidate into a multiblock and set its purpose:
+
+- **Why it exists.** Federation P2P carries only a 1x1 cable. This device carries bundled cross-sections remotely.
+- **P2P capacity.** A Federation P2P tunnel pair should have the capacity of one ordinary cable (C). Today a pair joins
+  the regions at both ends and is not limited itself; this is a change to the shipped counting.
+- **Shape.** A solid cube; every face may connect Federation cable. Earlier sizes mentioned were 3x3x3 and 5x5x5.
+- **Linking.** Cross-dimensional, bound with a paired item. The user asked whether an AE2 Memory Card, as Federation
+  P2P uses, could replace the item; not yet decided.
+
+Open: which cube sizes exist and what capacity each carries (an edge-K cube carrying the K x K tier is an assistant
+proposal); whether it counts as cable-joined like P2P; its operating cost; and behavior when the far end is unloaded
+(chunks are not force-loaded).
 
 ## Follow-up 2026-10-09: operating power and beam links
 

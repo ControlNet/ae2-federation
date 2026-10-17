@@ -1,7 +1,8 @@
 # Line-of-sight Federation beam links
 
 Discussion date: 2026-10-09.
-Status: user-proposed connection form; detailed behavior and implementation remain open.
+Status: user-proposed connection form; form, linking, topology and obstruction settled on 2026-10-17. Range and
+implementation remain open.
 
 ## Intent
 
@@ -19,6 +20,27 @@ Players trade a clear beam path and increased operating energy consumption for r
 - This connection consumes more energy than ordinary wired connectivity when the proposed operating-power
   requirement is enabled. Exact cost and its relationship to other wireless devices remain open.
 
+## User decisions 2026-10-17
+
+The user settled the device's form and link semantics:
+
+- **Form.** A **联邦光束收发器** (Federation Beam Transceiver; working name) is a solid M x N x 1 multiblock, M x N from
+  1x1 to 3x3. Its back face takes a bundled cable of the same cross-section; a 1x1 transceiver takes ordinary cable.
+- **Linking.** No pairing item or tool. Two transceivers of the same cross-section, aligned on one axis and facing each
+  other, link automatically, and the link is drawn as a beam.
+- **Topology.** The link counts as cable joined directly, following the Federation P2P precedent: both ends belong to
+  one capacity region, and the span carries the capacity of its M x N cross-section (a 3x3 pair is unlimited).
+- **Obstruction.** The whole M x N beam volume must be clear, not only a centre ray.
+- **Loading.** Spans may cross chunks, and the link keeps working while chunks in between are unloaded.
+- **Dimensions.** Same dimension only.
+- **Energy.** Once operating power applies, a beam costs more than the same number of cables.
+- **Reference.** [ME Beam Former](https://www.curseforge.com/projects/1351545) (two parts facing each other, up to
+  32 blocks, auto-disconnect when blocked) is a useful functional reference. Its page also calls the mod "client-only
+  visuals", so whether it carries grid connections is unverified.
+
+Range follows a comparison with other mods' straight-line links. Still open: which blocks obstruct the beam; the
+nearest-partner rule when several transceivers line up; how obstruction inside unloaded chunks is judged; and relays.
+
 ## Relationship to other ideas
 
 This is a concrete new connection form within the broader [remote connection discussion](remote-federation-connections.md),
@@ -33,6 +55,8 @@ between endpoints relevant. It is not a player teleporter or a new resource-shar
 Federation P2P's existing behavior is documented [separately](../features/federation-p2p.md).
 
 ## Open design questions
+
+The 2026-10-17 decisions above answer pairing, one-to-one partners, dimensions and the topology relationship.
 
 - How do players align, pair, and recognize endpoints? Is alignment restricted to block axes or can it be diagonal?
 - What is the maximum span? Are intermediate relays supported?

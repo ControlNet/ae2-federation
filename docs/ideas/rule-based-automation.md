@@ -1,7 +1,8 @@
 # Rule-based automation
 
 Discussion date: 2026-10-10.
-Status: preliminary user-proposed direction; detailed behavior remains open.
+Status: preliminary user-proposed direction; the computing device's role was settled on 2026-10-17. Detailed
+behavior remains open.
 
 ## Intent
 
@@ -46,6 +47,28 @@ distinction. This is a proposed behavioral contract, not a selected type system 
 Output types, execution budgets, errors, unavailable observations, function-reference lifecycle, and
 update/sampling semantics need later design. A filter result is not by itself an atomic stock reservation.
 
+## Computing device (user decisions 2026-10-17)
+
+Automation runs on a Federation computing multiblock, a supercomputer-like structure. It belongs to this mod and
+continues the Nexus Processor / Nexus Core material line; its component names follow AE2's style.
+
+- **Required.** Players must build one to use automation at all.
+- **Upgradable.** The structure holds installable "CPU" and "memory" components; more components host more automation.
+- **Two resources.** Each program has a known cost in two measures: one from its logic (for example its node count)
+  and one from its I/O (moving items, transferring energy, emitting redstone). Names are open; the user floated FPU
+  ("Federation Processing Unit") for the first and "bandwidth" (带宽) for the second.
+- **Reserved while enabled.** Enabling a program reserves its whole cost on the device, whatever work it actually
+  does; disabling it releases the cost.
+- **Placement.** A domain may have several devices. Each program is installed on exactly one, chosen in a GUI, and
+  one program never combines resources from two devices: with A = 100 and B = 50, programs needing 80 and 60 cannot both
+  run. A distributed-computing block was mentioned as a possible later idea, with no current plan.
+- **Not crafting.** It has nothing to do with AE2 crafting CPUs. A program may call AE2 autocrafting, but the device
+  is not part of AE2's crafting system.
+
+Open: the names of the two measures and their units; how node count, nested calls and declared I/O turn into costs;
+which component provides which measure; how a device joins its domain; and what enabled programs do when the device
+loses power or its domain stops sharing.
+
 ## Reference: Videnoa
 
 The user's [Videnoa project](https://github.com/ControlNet/videnoa) is an explicit reference for graph-based
@@ -89,6 +112,6 @@ Two motivating uses are:
 - Retries, timeouts, manual cancellation, restart recovery, and overlapping scheduled invocations need later
   design. Whether a function finishes with resources in storage or delivers them to a target remains open.
 
-No particular interface entry point, new block/item, language, runtime, DAG executor, or backend architecture
-is selected. Detailed lifecycle, action targets, and permissions belong to this automation idea rather than
+Apart from the computing device above, no particular interface entry point, new block/item, language, runtime,
+DAG executor, or backend architecture is selected. Detailed lifecycle, action targets, and permissions belong to this automation idea rather than
 expanding the initial custom-policy output list. No implementation or runtime tests were performed.

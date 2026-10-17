@@ -7,12 +7,12 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
-| [Rule-based automation](rule-based-automation.md) | Shared function system proposed; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
+| [Rule-based automation](rule-based-automation.md) | Shared function system proposed; computing device role settled 2026-10-17; execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
-| [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
-| [Optional Federation operating power](federation-operating-power.md) | User-proposed direction; details open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
-| [Line-of-sight beam links](line-of-sight-beam-links.md) | User-proposed connection form; details open | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
+| [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration; wireless cube for bundles proposed 2026-10-17 | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
+| [Optional Federation operating power](federation-operating-power.md) | Beam Charger shape, scope and input settled 2026-10-17; costs open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
+| [Line-of-sight beam links](line-of-sight-beam-links.md) | Form, linking and topology settled 2026-10-17; range open | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
 | [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Counting, limits and bundled cables implemented on `dev`; power versus capacity, progression and balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.

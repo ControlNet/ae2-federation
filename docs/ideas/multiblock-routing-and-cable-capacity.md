@@ -181,6 +181,10 @@ older illustrative sizes/counts as the current balancing candidate; C and final 
 | 2x3 | 9C | 72 |
 | 3x3 | Unlimited | Unlimited |
 
+On 2026-10-17 the user set a Federation P2P tunnel pair's own capacity to one ordinary cable (C), because larger
+cross-sections are meant to travel through the [wireless cube](remote-federation-connections.md) and
+[beam transceivers](line-of-sight-beam-links.md). Today a pair is not limited itself.
+
 Bundles are formed explicitly ([Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13)); spatially separate
 routes never add capacity. The finite bundled tiers yield
 1.5C per constituent block, except 1x3 at 4/3 C; 3x3 deliberately ends capacity progression. Larger visual sizes
