@@ -73,20 +73,23 @@ device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all
 | Wireless cube | 44 per block per side | the Quantum Network Bridge's 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
 | Beam Charger | 0 | it is the supply |
 
-**GUI (2026-10-17; the statistics metric is liked; topology uses the corner gauge, no tooltips).** The user asked for the domain's power to show in the domain
-screen. The [design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能", proposes:
+**Buffer (user, 2026-10-17: follow AE2).** Chargers keep a small buffer, as an AE2 Controller keeps 8000 AE per block:
+proposed 16k FE per charger block, the domain's chargers adding up. Input fills it and use drains it every tick. The
+domain stops the tick the buffer cannot pay its use, and, as AE2's `EnergyService` does, runs again only after 30
+ticks in a row with power. Larger storage stays with other mods' batteries in front of the chargers.
 
-- **Stopped state, as capacity overload.** The topology canvas turns dark red and the header reads "no Federation power,
-  stopped" in the error colour. Rule rows blocked by it turn the same colour, as they do for capacity.
-- **Statistics, a seventh metric.** "Federation power" in FE/t beside "ME power" (AE/t). The chart stacks use by block
-  type with the chargers' input as a line, red behind spans where use is higher. The box below lists use by block type
-  and each charger with its input and whether it matches. It is domain-wide, so the network filter greys out. No stored
-  chart, since whether chargers buffer energy is still open.
-- **Topology, current state (user picked option B).** A small gauge in the canvas corner, on the legend's dark
-  background: "Power", a bar and "use/input FE/t". The bar is green, yellow when nearly full and red when short. No
-  tooltips (user: they are unnecessary): when stopped, the gauge itself names the cause in red, "no Beam Charger",
-  "chargers must be 2x2x4", or a red use/input figure. Options A (a header segment) and C (a toolbar button) were
-  not chosen.
+**GUI (2026-10-17).** The user asked for the domain's power to show in the domain screen. On the
+[design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能":
+
+- **Topology: a corner gauge (user picked option B).** On the legend's dark background: "Power", a bar and a percentage,
+  both the buffer's fill. Green normally, yellow while use is above input and the buffer falls, red when empty. When
+  stopped, the canvas turns dark red as for capacity overload, and the gauge names the cause in red: "no Beam
+  Charger", "chargers must be 2x2x4" or "out of power". No header text and no tooltips (user: unnecessary). Options A
+  (a header segment) and C (a toolbar button) were not chosen.
+- **Statistics: a seventh metric (user liked it).** "Federation power" in FE/t beside "ME power" (AE/t); its card turns
+  yellow while draining and red when stopped. The chart stacks use by block type with the chargers' input as a line,
+  red where stopped. Below: the buffer's stored % on the left, as under ME power; on the right each charger (input,
+  whether it matches) and use by block type. It is domain-wide, so the network filter greys out.
 
 ## Relationship to existing features
 
