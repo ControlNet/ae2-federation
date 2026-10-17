@@ -49,10 +49,15 @@ update/sampling semantics need later design. A filter result is not by itself an
 
 ## Computing device (user decisions 2026-10-17)
 
+Deferred (user, 2026-10-17): the device is designed after the automation program features themselves. The
+decisions below stay as its starting point.
+
 Automation runs on a Federation computing multiblock, a supercomputer-like structure. It belongs to this mod and
 continues the Nexus Processor / Nexus Core material line; its component names follow AE2's style.
 
 - **Required.** Players must build one to use automation at all.
+- **Optional limit.** The configuration can turn the computing limit off, giving unlimited automation
+  (user, 2026-10-17); like the other gameplay rules it is on by default. Whether a device is still needed then is open.
 - **Upgradable.** The structure holds installable "CPU" and "memory" components; more components host more automation.
 - **Two resources.** Each program has a known cost in two measures: one from its logic (for example its node count)
   and one from its I/O (moving items, transferring energy, emitting redstone). The first is **算力** (compute),
