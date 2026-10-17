@@ -6006,6 +6006,27 @@ def cleanupGameTest = tasks.register('federationCleanupGameTest') {
 }
 tasks.named('runGameTestServer').configure { finalizedBy(cleanupGameTest) }
 
+// Builds what runGameTestServer needs and writes its launch command, so tools/required_gametests.py --jobs can start
+// many GameTest servers at once, each in a directory of its own, without a Gradle run per test.
+tasks.register('federationWriteGameTestLaunch') {
+    notCompatibleWithConfigurationCache('Reads the GameTest run task to write its launch command.')
+    def run = tasks.named('runGameTestServer').get()
+    dependsOn(run.taskDependencies)
+    def output = layout.buildDirectory.file('gametest-launch.json')
+    doLast {
+        def classpath = run.classpathProvider.isEmpty() ? run.classpath : run.classpathProvider
+        def file = output.get().asFile
+        file.parentFile.mkdirs()
+        file.text = JsonOutput.prettyPrint(JsonOutput.toJson([
+                java       : run.javaLauncher.get().executablePath.asFile.absolutePath,
+                jvmArgs    : run.allJvmArgs,
+                classpath  : classpath.files.collect { it.absolutePath },
+                mainClass  : run.mainClass.get(),
+                args       : run.args,
+                environment: run.environmentProperty.getOrElse([:])]))
+    }
+}
+
 def executeHarness = { String kind, List<String> requestedCases, String profile, File evidenceRoot ->
     evidenceRoot = strictCanonicalPath(evidenceRoot)
     def manifest = new JsonSlurper().parse(manifestFile.asFile)

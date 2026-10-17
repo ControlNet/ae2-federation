@@ -41,7 +41,12 @@ Expected signal: one `PASS`, `FAIL`, `CRASH` or `MISSING` line per test, then `N
 every test passed. The combined log is written to `build/dev-gametest.log`. Level SavedData such as rules and identities
 outlives each test, so every batch failure runs again alone: `SHARED` means it passes alone, while `(also fails alone)`
 is a real failure. `--no-isolate` skips that rerun. This runner is for iteration only. The required gate is
-`python3 -B tools/required_gametests.py`, which runs one server per test.
+`python3 -B tools/required_gametests.py`, which runs one server per test. Locally, `--jobs N` runs N of those servers
+at once: one Gradle run builds and writes the launch command (`federationWriteGameTestLaunch`), then each test starts
+straight from it in its own directory under `neoforge-1.21.1/build/gametest-parallel/`. A test that fails among the
+others runs again alone; the gate fails only on a test that also fails alone, and names those that failed only under
+load. Each server spends about 90 CPU-seconds, mostly starting up: on a 60-core machine `--jobs 12` ran all 247 tests
+in 13 minutes using about 30 cores, against about 1.5 hours serially.
 
 The in-game guide pages under `assets/ae2federation/ae2guide/` join AE2's guide. To preview them, open a client at
 the title screen. GuideME compiles every page, logs any page errors, and reloads pages when you edit them:
