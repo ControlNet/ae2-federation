@@ -58,15 +58,15 @@ def main(directory):
                  '[0:v]split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a',
                  '-loop', '0', str(directory / f'{key}-loop.gif')])
         w, h = png_size(directory / key / 'frames/000.png')
-        cell = (480 + 6, round(h * 480 / w / 2) * 2 + 6)
+        cell = (720 + 6, round(h * 720 / w / 2) * 2 + 6)
         movie = directory / 'all-concepts.mp4'
-        run([*inputs, '-filter_complex', grid(titles, 480, cell, seconds=frames / 10), '-map', '[out]',
+        run([*inputs, '-filter_complex', grid(titles, 720, cell, columns=2, seconds=frames / 10), '-map', '[out]',
              '-frames:v', str(frames), '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p',
              '-movflags', '+faststart', str(movie)])
         # Loop the movie a few times so a short clip is easy to watch.
         run(['-stream_loop', '3', '-i', str(movie), '-c', 'copy', str(directory / 'all-concepts-x4.mp4')])
         run(['-i', str(movie), '-filter_complex',
-             '[0:v]scale=1200:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a',
+             '[0:v]scale=1000:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a',
              '-loop', '0', str(directory / 'all-concepts.gif')])
     print('BUNDLE_MEDIA_OK:', directory)
 

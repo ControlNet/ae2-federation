@@ -22,7 +22,8 @@ from build_scene import camera
 # View: (camera direction from the run's middle, in Blender axes; ortho scale; width; height; loads; open end)
 VIEWS = {
     'iso': ((-.55, -1, .8), 6.4, 1200, 760, ('idle', 'medium', 'full'), False),
-    'side': ((0, -1, .22), 6.9, 1500, 560, ('idle', 'medium'), False),
+    # Eye level, square to the run, as a player standing beside the cable sees it.
+    'level': ((0, -1, 0), 6.6, 1500, 540, ('idle', 'medium', 'full'), False),
     'end': ((1, 0, 0), 2.5, 760, 760, ('medium',), True),
 }
 CYCLE = .25
@@ -216,10 +217,10 @@ def scene_setup():
 
 
 def animate(scene, profiles, output, kept):
-    """One 64-tick loop (3.2 s) per concept at 60% load from the iso camera, as numbered frames."""
+    """One 64-tick loop (3.2 s) per concept at 60% load from the eye-level camera, as numbered frames."""
     for obj in kept.objects:
         obj.hide_render = True
-    scene.render.resolution_x, scene.render.resolution_y = 720, 456
+    scene.render.resolution_x, scene.render.resolution_y = 1200, 432
     scene.cycles.samples = 16
     for profile in profiles:
         title = PROFILES[profile][0]
@@ -281,7 +282,7 @@ def main(args):
         title, description = PROFILES[profile]
         report['profiles'][profile] = {'title': title, 'description': description, 'loads': {}}
         for load_name, load in LOADS.items():
-            views = [v for v, spec in VIEWS.items() if load_name in spec[4]]
+            views = [v for v, spec in VIEWS.items() if load_name in spec[4] and (not args.views or v in args.views)]
             if not views:
                 continue
             mesh = generate(profile, load, CYCLE)
@@ -310,12 +311,14 @@ def main(args):
                 bpy.data.objects.remove(beam)
     closed.hide_render = False
     cutaway.hide_render = marker.hide_render = True
-    scene.camera = cameras['iso']
     if args.animate:
+        scene.camera = cameras['level']
         animate(scene, profiles, output, kept)
+    scene.camera = cameras['iso']
     bpy.ops.wm.save_as_mainfile(filepath=str(output / 'bundle-beams.blend'))
     assert before == asset_hashes(), 'Production assets were modified'
-    report['views'] = {k: {'scale': v[1], 'size': v[2:4], 'loads': v[4], 'cutaway': v[5]} for k, v in VIEWS.items()}
+    report['views'] = {k: {'scale': v[1], 'size': v[2:4], 'loads': v[4], 'cutaway': v[5]} for k, v in VIEWS.items()
+                       if not args.views or k in args.views}
     (output / 'bundle-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print('BUNDLE_BEAMS_OK: %d concepts rendered; assets unchanged' % len(profiles), flush=True)
 
@@ -325,5 +328,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, default=HERE.parents[1] / 'build/bundle-beam-check')
     parser.add_argument('--only', nargs='*', help='render only these concept keys')
     parser.add_argument('--soft', action='store_true', help='fade each glow layer toward its outline')
+    parser.add_argument('--views', nargs='*', choices=tuple(VIEWS), help='render only these still views')
     parser.add_argument('--animate', action='store_true', help='also render one loop per concept at 60%% load')
     main(parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []))

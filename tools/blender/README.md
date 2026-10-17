@@ -405,9 +405,9 @@ python3 tools/blender/compose_bundle_beams.py
 ```
 
 Expected: 7 tests pass, `BUNDLE_BEAMS_OK: 7 concepts rendered; assets unchanged`, `BUNDLE_MEDIA_OK`. Renders, the
-labelled sheets (`sheet-<view>-<load>.png`: iso at 0/60/100%, side at 0/60%, an end-on cutaway at 60% with the ring
-bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. `--animate` adds one
-64-tick loop (32 frames, 3.2 s) per concept at 60% load: `<key>-loop.gif`, `all-concepts.mp4` (and `-x4`, looped) and
+labelled sheets (`sheet-<view>-<load>.png`: iso and eye level at 0/60/100%, an end-on cutaway at 60% with the ring
+bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. `--views` limits the stills.
+`--animate` adds one 64-tick loop (32 frames, 3.2 s) per concept at 60% load, seen at eye level: `<key>-loop.gif`, `all-concepts.mp4` (and `-x4`, looped) and
 `all-concepts.gif`. Loads are preview inputs; these are Blender prototypes, not a port.
 
 Without `--soft` each glow layer is a shell of even light, as the game draws it: seen through, the light steps up at
