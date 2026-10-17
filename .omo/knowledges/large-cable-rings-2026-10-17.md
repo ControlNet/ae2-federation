@@ -40,8 +40,9 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   `client/LargeCableRingModels.java`. Re-run when the artist edits the projects.
 - The corner model's two rings sit at y 5..9 and 22..26 of 32: not mirror-symmetric (7 vs 24 centres). Rendered as
   modelled; ask the artist if unintended.
-- `tools/visual/validate_assets.py` already fails on dev (unregistered `misc/bundle_selection_hatch`,
-  `block/router/router_side_ver`, ...); the ring texture is registered (32 px allowed) but the script is not green.
+- `tools/visual/validate_assets.py` is green again (2026-10-17): it counts textures the Java code binds by
+  `"textures/....png"` path and the Router/Switch connected-face tiles as drawn, skips the 16 px rule for `misc/`
+  overlays, and reads multipart blockstates (Router, Switch).
 
 ## Verification
 
