@@ -60,6 +60,11 @@ public final class FederationP2PTunnelPart extends P2PTunnelPart<FederationP2PTu
         super(partItem);
     }
 
+    /** The tunnel's node in the Federation domain, or null before it is in a world. */
+    public @Nullable FederationDomainNodeId nodeId() {
+        return nodeId;
+    }
+
     @PartModels
     public static List<IPartModel> getModels() {
         return MODELS.getModels();

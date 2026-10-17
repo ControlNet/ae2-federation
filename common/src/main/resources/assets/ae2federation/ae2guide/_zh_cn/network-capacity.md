@@ -51,7 +51,7 @@ navigation:
 
 ## 分段
 
-彼此相连的联邦线缆组成一段。 <ItemLink id="ae2federation:switch" />不会把线缆分段， 一对<ItemLink id="ae2federation:federation_p2p_tunnel" />也不会： 两边的线缆仍属于同一段。 只有<ItemLink id="ae2federation:router" />会分段； 由多个方块搭成的路由器算作一台。
+彼此相连的联邦线缆组成一段。 <ItemLink id="ae2federation:switch" />不会把线缆分段， 一对<ItemLink id="ae2federation:federation_p2p_tunnel" />也不会： 两边的线缆仍属于同一段。 不过一对隧道只能承载一根普通线缆的容量， 所以经它连起来的一段最多只能承载一根线缆的上限， 即使这一段用的是[粗线缆](bundled-cables.md)。 只有<ItemLink id="ae2federation:router" />会分段； 由多个方块搭成的路由器算作一台。
 
 * 一段线缆**没有碰到路由器或只碰到一台**时， 它连同它上面交换机接入的网络、接在它上面的处理端点和样板供应器， 组成一个**子域**： 联邦域里单独计算容量的一部分。 这段线缆只计它的子域。
 * 一段线缆**碰到两台或更多路由器**时， 它要在路由器之间转运， 所以计[联邦域](mechanics.md)里的全部数量。

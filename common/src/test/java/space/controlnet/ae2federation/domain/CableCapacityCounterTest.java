@@ -35,7 +35,7 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(first));
         assertEquals(new Demand(Scope.SUBDOMAIN, 3), demand.get(second));
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(away));
-        assertFalse(demand.containsKey(sw), "only cables have a demand");
+        assertFalse(demand.containsKey(sw), "only cables and P2P tunnels have a demand");
     }
 
     @Test
@@ -89,6 +89,7 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.DOMAIN, 2), demand.get(right));
     }
 
+    /** A pair joins the cable on both sides into one region and carries that region's demand itself. */
     @Test
     void aP2pTunnelPairCountsAsCable() {
         var graph = new Graph();
@@ -103,6 +104,8 @@ final class CableCapacityCounterTest {
         var demand = graph.count();
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(near));
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(far));
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(input), "the tunnels carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(output));
     }
 
     @Test

@@ -10,9 +10,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Counts the capacity each Federation Cable must carry, from one domain's evidence (see
- * {@code docs/ideas/multiblock-routing-and-cable-capacity.md}, "Confirmed counting rules"). It counts only; nothing
- * limits a cable yet.
+ * Counts the capacity each Federation Cable and Federation P2P tunnel must carry, from one domain's evidence (see
+ * {@code docs/ideas/multiblock-routing-and-cable-capacity.md}, "Confirmed counting rules"); the registry compares it
+ * with each node's capacity. A tunnel carries one cable's capacity, so a pair limits the region it joins as a single
+ * cable would.
  *
  * <p>A unit is a distinct ME network attached through a Switch, a Processing Endpoint or a Federation Pattern Provider;
  * a Provider is one device, whatever network stands behind it. Cables, Switches and P2P tunnels joined by links form a region; only Router bodies bound it. A
@@ -37,7 +38,7 @@ public final class CableCapacityCounter {
     private CableCapacityCounter() {
     }
 
-    /** The demand of every cable among {@code domain}, the evidence of one domain's nodes. */
+    /** The demand of every cable and P2P tunnel among {@code domain}, the evidence of one domain's nodes. */
     public static Map<FederationDomainNodeId, Demand> count(Collection<FederationDomainNodeEvidence> domain) {
         var nodes = new HashMap<FederationDomainNodeId, FederationDomainNodeEvidence>();
         domain.forEach(evidence -> nodes.put(evidence.nodeId(), evidence));
@@ -75,7 +76,10 @@ public final class CableCapacityCounter {
             var demand = routers.size() >= 2 ? new Demand(Scope.DOMAIN, domainUnits.size())
                     : new Demand(Scope.SUBDOMAIN, units.size());
             for (var member : region) {
-                if (nodes.get(member).kind() == FederationDomainNodeKind.CABLE) demands.put(member, demand);
+                var kind = nodes.get(member).kind();
+                if (kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.P2P_TUNNEL) {
+                    demands.put(member, demand);
+                }
             }
         }
         return demands;
