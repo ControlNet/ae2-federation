@@ -4,6 +4,8 @@ import snownee.jade.api.IWailaClientRegistration;
 import snownee.jade.api.IWailaCommonRegistration;
 import snownee.jade.api.IWailaPlugin;
 import snownee.jade.api.WailaPlugin;
+import space.controlnet.ae2federation.beam.BeamFormerBlock;
+import space.controlnet.ae2federation.beam.BeamFormerBlockEntity;
 import space.controlnet.ae2federation.power.BeamConverterBlock;
 import space.controlnet.ae2federation.power.BeamConverterBlockEntity;
 import space.controlnet.ae2federation.processing.endpoint.EndpointBlock;
@@ -25,6 +27,7 @@ public final class FederationJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(EndpointProvider.INSTANCE, EndpointBlockEntity.class);
         registration.registerBlockDataProvider(PatternProviderProvider.INSTANCE, FederationPatternProviderBlockEntity.class);
         registration.registerBlockDataProvider(BeamConverterProvider.INSTANCE, BeamConverterBlockEntity.class);
+        registration.registerBlockDataProvider(BeamFormerProvider.INSTANCE, BeamFormerBlockEntity.class);
     }
 
     @Override
@@ -35,5 +38,7 @@ public final class FederationJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(PatternProviderProvider.INSTANCE, FederationPatternProviderBlock.class);
         registration.registerBlockComponent(DeviceProvider.INSTANCE, BeamConverterBlock.class);
         registration.registerBlockComponent(BeamConverterProvider.INSTANCE, BeamConverterBlock.class);
+        registration.registerBlockComponent(DeviceProvider.INSTANCE, BeamFormerBlock.class);
+        registration.registerBlockComponent(BeamFormerProvider.INSTANCE, BeamFormerBlock.class);
     }
 }

@@ -90,12 +90,17 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - GameTests: forming 1x1, 2x2 and 3x3; a 1x2 does not form; mixed facings form; a 2x2 back takes a 2x2 bundle;
   wrench flips a 2x2 and turns a 1x1.
 
-### 3. Link
+### 3. Link (done 2026-10-17)
 
 - `BeamLinkService`, the mirrored beam ports, kind `BEAM_FORMER` in the counter, Jade line (D9).
 - GameTests: a pair links and joins two networks' domain; a stone block breaks it after the delay and removing it
   restores it; glass and water pass; nearest only; a third former in between; different sections do not link;
   a pair over capacity stops the domain; middle chunk unloaded keeps the link.
+- Done: GameTests cover linking, the 20-tick debounce both ways, the Jade status (linked, blocked at the stone,
+  no partner, another size), glass, panes, water and quartz glass passing, nearest only. The counter unit test
+  covers a pair carrying its region's demand. Not covered by a GameTest: range (the rule is server-wide and GameTests
+  run in parallel; `BeamPartnerIndexTest` covers it) and an unloaded middle chunk (the scan keeps the last blocker
+  and never loads chunks).
 
 ### 4. Benchmark
 

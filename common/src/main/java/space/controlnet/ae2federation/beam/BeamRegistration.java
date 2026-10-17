@@ -7,6 +7,8 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -37,6 +39,9 @@ public final class BeamRegistration {
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
         modBus.addListener(BeamRegistration::registerCapabilities);
+        // A hint only: the scan finds every change, including those no event reports.
+        NeoForge.EVENT_BUS.addListener(BlockEvent.NeighborNotifyEvent.class,
+                event -> BeamLinkService.hint(event.getLevel(), event.getPos()));
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

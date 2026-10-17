@@ -16,6 +16,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.beam.BeamFormerBlock;
+import space.controlnet.ae2federation.beam.BeamLinkService;
 import space.controlnet.ae2federation.beam.BeamRegistration;
 import space.controlnet.ae2federation.bundle.BundleSegment;
 import space.controlnet.ae2federation.bundle.BundledCables;
@@ -182,6 +183,122 @@ public final class BeamFormerGameTests {
             helper.assertTrue(linked(helper, CENTER.east(), former), "the cable at the new back links");
             RouterEvidence.write("beamformerturnswithawrench", 3, Map.of("square", "west", "single", "up",
                     "newBack", "linked"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * Two 1x1 formers facing each other 17 blocks apart link: the cables at their backs join one domain, and Jade reads
+     * the beam's length. A stone in the beam unlinks it only after the debounce; taken away, the beam links again,
+     * again only after the debounce.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void beamFormerPairLinksAndDebounces(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = new BlockPos(2, 2, 10);
+        var east = new BlockPos(20, 2, 10);
+        place(helper, west, Direction.EAST);
+        place(helper, east, Direction.WEST);
+        fixtures.placeFederationCable(west.west());
+        fixtures.placeFederationCable(east.east());
+        var stone = new BlockPos(11, 2, 10);
+        var level = helper.getLevel();
+        var farCable = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(east.east()));
+        var phase = new int[1];
+        var since = new long[1];
+        helper.succeedWhen(() -> {
+            long now = level.getGameTime();
+            if (phase[0] == 0) {
+                helper.assertTrue(linked(helper, west.west(), farCable), "Waiting for the beam to link");
+                var status = BeamLinkService.get(level).status(helper.absolutePos(west));
+                helper.assertValueEqual(status.kind(), BeamLinkService.Status.Kind.LINKED, "Jade reads the beam");
+                helper.assertValueEqual(status.value(), 17, "17 blocks between the fronts");
+                helper.setBlock(stone, Blocks.STONE);
+                since[0] = now;
+                phase[0] = 1;
+                throw new GameTestAssertException("Waiting for the stone to unlink the beam");
+            }
+            if (phase[0] == 1) {
+                if (now - since[0] < 10) {
+                    helper.assertTrue(linked(helper, west.west(), farCable), "the beam holds through the debounce");
+                    throw new GameTestAssertException("Waiting out the debounce");
+                }
+                helper.assertTrue(!linked(helper, west.west(), farCable), "Waiting for the stone to unlink the beam");
+                helper.assertTrue(now - since[0] >= 20, "unlinked only after 20 ticks blocked, not " + (now - since[0]));
+                var status = BeamLinkService.get(level).status(helper.absolutePos(west));
+                helper.assertValueEqual(status.kind(), BeamLinkService.Status.Kind.BLOCKED, "Jade reads the blocker");
+                helper.assertValueEqual(status.blocker(), helper.absolutePos(stone), "at the stone");
+                helper.setBlock(stone, Blocks.AIR);
+                since[0] = now;
+                phase[0] = 2;
+                throw new GameTestAssertException("Waiting for the beam to link again");
+            }
+            helper.assertTrue(linked(helper, west.west(), farCable), "Waiting for the beam to link again");
+            helper.assertTrue(now - since[0] >= 20, "linked again only after 20 ticks clear, not " + (now - since[0]));
+            RouterEvidence.write("beamformerpairlinksanddebounces", 6, Map.of("linked", "17 blocks", "held", "10 ticks",
+                    "unlinked", "after 20 ticks", "blocker", "reported", "relinked", "after 20 ticks", "jade", "linked"));
+            fixtures.close();
+        });
+    }
+
+    /** Glass, a glass pane, water and AE2 quartz glass in a 2x2 beam do not block it. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void beamFormerPassesGlassAndWater(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var west = box(new BlockPos(2, 2, 10), 1, 2, 2);
+        var east = box(new BlockPos(14, 2, 10), 1, 2, 2);
+        west.forEach(cell -> place(helper, cell, Direction.EAST));
+        east.forEach(cell -> place(helper, cell, Direction.WEST));
+        fixtures.placeFederationCable(new BlockPos(1, 2, 10));
+        fixtures.placeFederationCable(new BlockPos(15, 2, 10));
+        helper.setBlock(new BlockPos(5, 2, 10), Blocks.GLASS);
+        helper.setBlock(new BlockPos(6, 3, 11), Blocks.GLASS_PANE);
+        helper.setBlock(new BlockPos(8, 2, 11), Blocks.WATER);
+        helper.setBlock(new BlockPos(10, 3, 10), appeng.core.definitions.AEBlocks.QUARTZ_GLASS.block());
+        var level = helper.getLevel();
+        var farCable = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(new BlockPos(15, 2, 10)));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(linked(helper, new BlockPos(1, 2, 10), farCable), "the beam links through glass and water");
+            RouterEvidence.write("beamformerpassesglassandwater", 1, Map.of("glassPaneWaterQuartzGlass", "pass"));
+            fixtures.close();
+        });
+    }
+
+    /**
+     * Only the nearest former counts: of two facing back on one line, the nearer one links and the farther one has no
+     * partner. A 1x1 facing a 2x2 does not link and reads "another size".
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void beamFormerPairsTheNearestOfItsSize(GameTestHelper helper) {
+        var fixtures = new RouterFixtures(helper);
+        var a = new BlockPos(2, 2, 4);
+        var b = new BlockPos(10, 2, 4);
+        var c = new BlockPos(20, 2, 4);
+        place(helper, a, Direction.EAST);
+        place(helper, b, Direction.WEST);
+        place(helper, c, Direction.WEST);
+        fixtures.placeFederationCable(a.west());
+        fixtures.placeFederationCable(b.east());
+        fixtures.placeFederationCable(c.east());
+        var single = new BlockPos(2, 2, 14);
+        place(helper, single, Direction.EAST);
+        box(new BlockPos(12, 2, 14), 1, 2, 2).forEach(cell -> place(helper, cell, Direction.WEST));
+        var level = helper.getLevel();
+        var nodeB = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(b.east()));
+        var nodeC = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(c.east()));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(linked(helper, a.west(), nodeB), "the nearer former links");
+            helper.assertTrue(!linked(helper, a.west(), nodeC), "the farther one does not");
+            var service = BeamLinkService.get(level);
+            helper.assertValueEqual(service.status(helper.absolutePos(c)).kind(), BeamLinkService.Status.Kind.NO_PARTNER,
+                    "the farther one has no partner");
+            helper.assertValueEqual(service.status(helper.absolutePos(single)).kind(),
+                    BeamLinkService.Status.Kind.WRONG_SIZE, "a 1x1 facing a 2x2");
+            RouterEvidence.write("beamformerpairsthenearestofitssize", 4, Map.of("nearer", "linked",
+                    "farther", "unlinked", "fartherStatus", "no partner", "otherSize", "wrong size"));
             fixtures.close();
         });
     }

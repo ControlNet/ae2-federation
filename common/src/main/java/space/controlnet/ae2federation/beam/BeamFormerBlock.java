@@ -168,8 +168,10 @@ public final class BeamFormerBlock extends BaseEntityBlock implements FormableDe
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
             BlockEntityType<T> type) {
         return level.isClientSide() ? null : createTickerHelper(type, BeamRegistration.BEAM_FORMER_BLOCK_ENTITY.get(),
-                (tickLevel, position, tickState, former) -> RouterBlockEntity.serverTick(tickLevel, position,
-                        tickState, former));
+                (tickLevel, position, tickState, former) -> {
+                    RouterBlockEntity.serverTick(tickLevel, position, tickState, former);
+                    former.beamTick();
+                });
     }
 
     @Override

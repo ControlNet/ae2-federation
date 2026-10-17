@@ -4,8 +4,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 /**
- * The blocks a beam crosses: the former's square, {@code length} layers deep in front of it, up to the partner's front.
- * Positions are indexed in scan order, layer by layer away from the former, so a scan reads neighbouring blocks in turn.
+ * The blocks a beam crosses: the former's square, {@code length} layers deep in front of it, up to the partner's
+ * front. Positions are indexed in scan order, layer by layer away from the former, so a scan reads neighbouring blocks
+ * in turn.
  *
  * @param min the former's lowest corner
  * @param max the former's highest corner; the former is one block thick along {@code facing}

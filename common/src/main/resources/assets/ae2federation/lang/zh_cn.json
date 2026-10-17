@@ -561,6 +561,11 @@
   "ae2federation.ui.processing.release_blocked_send": "暂时不能释放：仍有发送到它的样板未完成。",
   "ae2federation.jade.cable_capacity.subdomain": "容量计数：%s（子域）",
   "ae2federation.jade.cable_capacity.domain": "容量计数：%s（联邦域）",
+  "ae2federation.jade.beam.linked": "光束：已连接，%s 格",
+  "ae2federation.jade.beam.blocked": "光束：被 %s, %s, %s 处的方块挡住",
+  "ae2federation.jade.beam.checking": "光束：正在检查路径",
+  "ae2federation.jade.beam.no_partner": "光束：%s 格内没有对端",
+  "ae2federation.jade.beam.wrong_size": "光束：前方的成型器尺寸不同",
   "config.jade.plugin_ae2federation.cable_capacity": "联邦线缆容量计数",
   "ae2federation.jade.bundle.title": "ME联邦粗线缆",
   "ae2federation.jade.bundle.shape": "%s×%s · 容量 %s",
@@ -619,5 +624,6 @@
   "config.jade.plugin_ae2federation.device": "联邦路由器、交换机与光束转换器",
   "config.jade.plugin_ae2federation.endpoint": "联邦处理端点模式",
   "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板",
-  "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存"
+  "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存",
+  "config.jade.plugin_ae2federation.beam_former": "联邦光束成型器光束"
 }

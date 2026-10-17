@@ -108,6 +108,24 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.SUBDOMAIN, 1), demand.get(output));
     }
 
+    /** A Beam Former pair and its beam join the regions at both ends as cable joined directly. */
+    @Test
+    void aBeamFormerPairCountsAsCable() {
+        var graph = new Graph();
+        var near = graph.node(FederationDomainNodeKind.CABLE);
+        var far = graph.node(FederationDomainNodeKind.CABLE);
+        var west = graph.node(FederationDomainNodeKind.BEAM_FORMER);
+        var east = graph.node(FederationDomainNodeKind.BEAM_FORMER);
+        graph.link(near, west).link(west, east).link(east, far);
+        graph.link(near, graph.node(FederationDomainNodeKind.SWITCH, A));
+        graph.link(far, graph.node(FederationDomainNodeKind.SWITCH, B));
+
+        var demand = graph.count();
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(near), "both ends' networks count in one region");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(west), "the formers carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(east));
+    }
+
     @Test
     void aPatternProviderCountsOneLikeAnEndpointWhateverItsNetwork() {
         var graph = new Graph();

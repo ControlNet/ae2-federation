@@ -38,6 +38,20 @@ final class FederationJadeText {
         return Component.translatable(PREFIX + "cable_capacity." + (domain ? "domain" : "subdomain"), count);
     }
 
+    /**
+     * A Beam Former's beam: linked and how long, blocked and where, checking its path, no partner within range, or a
+     * former of another size facing it. {@code kind} is the lower-case name of a beam status.
+     */
+    static Component beam(String kind, int value, int x, int y, int z) {
+        return switch (kind) {
+            case "linked" -> Component.translatable(PREFIX + "beam.linked", value);
+            case "blocked" -> Component.translatable(PREFIX + "beam.blocked", x, y, z)
+                    .withStyle(style -> style.withColor(OVER));
+            case "no_partner" -> Component.translatable(PREFIX + "beam.no_partner", value);
+            default -> Component.translatable(PREFIX + "beam." + kind);
+        };
+    }
+
     static Component bundleTitle() {
         return Component.translatable(PREFIX + "bundle.title");
     }

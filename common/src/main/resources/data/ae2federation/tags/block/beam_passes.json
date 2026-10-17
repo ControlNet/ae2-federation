@@ -1,0 +1,12 @@
+{
+  "values": [
+    {
+      "id": "ae2:quartz_glass",
+      "required": false
+    },
+    {
+      "id": "ae2:quartz_vibrant_glass",
+      "required": false
+    }
+  ]
+}
