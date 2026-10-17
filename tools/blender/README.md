@@ -387,3 +387,24 @@ The last command requires the earlier `build/load-beams` study. It checks matchi
 shell digests, placements, static frame and animation length before composing the
 two styles at 100% and 125% into `m-vs-helix.png` and `m-vs-helix.mp4`.
 M-only contact sheets and MP4/GIF are under ignored `build/m-load-beams/`.
+
+## 2x2 bundle middle-beam concepts
+
+`bundle_beams.py` (stdlib) builds concepts for the one beam in the middle of a 2x2 bundled cable, and the shell and
+rings they are judged in. The shell is a straight 6-layer run whose voxels take their texels from
+`textures/part/cable/dense/core.png` by `BundleShellLayout`'s rule (rails, frame corners, glass at 6,6 with its real
+alpha). The rings are the artist's `large_cable_straight.bbmodel` on `textures/block/large_cable/large_cable.png`,
+face UV rotations included, on every second layer boundary as in game. BASE is the shipped volume tube; Q to V are
+new. Glow layers render additively, as the game's glow pass does; layers that write depth in game must fit the ring
+bore, which the ring's 1-voxel flanges narrow to 10/32 voxels (radius .3125).
+
+```sh
+python3 -m unittest test_bundle_beams    # from tools/blender
+blender -b --factory-startup --python tools/blender/render_bundle_beams.py
+python3 tools/blender/compose_bundle_beams.py
+```
+
+Expected: 7 tests pass, `BUNDLE_BEAMS_OK: 7 concepts rendered; assets unchanged`, `BUNDLE_MEDIA_OK`. Renders, the
+labelled sheets (`sheet-<view>-<load>.png`: iso at 0/60/100%, side at 0/60%, an end-on cutaway at 60% with the ring
+bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. Loads are preview inputs;
+these are Blender prototypes, not a port.
