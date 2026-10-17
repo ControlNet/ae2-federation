@@ -65,7 +65,8 @@ The user wants long beams. Checking cost, not gameplay, was the concern; the acc
 Cost estimates behind this (tens of nanoseconds per block-state read; a 3x3 x 256 beam rescanned every tick is about
 2304 reads) are unmeasured. Measure one 3x3 x 1024 beam with the project's benchmarks before fixing the values.
 
-Still open: which blocks obstruct the beam; the nearest-partner rule when several transceivers line up; and relays.
+Settled the same day: glass does not block the beam; when several transceivers line up, each links only to the
+nearest; there is no relay device, since two transceivers placed back to back already act as one.
 
 ## Relationship to other ideas
 

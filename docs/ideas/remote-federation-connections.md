@@ -25,7 +25,8 @@ The user shaped the quantum-bridge-style candidate into a multiblock and set its
 - **Capacity.** A cube carries the largest tier it can connect: 3x3x3 is C, 4x4x4 is 6C, 5x5x5 is unlimited
   (user, 2026-10-17).
 
-Open: its operating cost; and behavior when the far end is unloaded (chunks are not force-loaded).
+- **Energy and unloading.** Both follow AE2's Quantum Network Bridge: a very large operating cost, and the bridge's
+  behavior when the far end is unloaded (user, 2026-10-17). Chunks are not force-loaded.
 
 ## Follow-up 2026-10-09: operating power and beam links
 

@@ -57,7 +57,7 @@ The user named the device **联邦光束供能器** (Federation Beam Charger; wo
 - **Creative variant.** A creative charger is wanted, following other mods' creative energy blocks.
 - **Beam links.** A [line-of-sight beam](line-of-sight-beam-links.md) should cost more than the same number of cables.
 
-Open: whether every one of several chargers must match the size; and the costs per block type.
+Every one of several chargers must match the size (user, 2026-10-17). Open: the costs per block type.
 
 ## Relationship to existing features
 
