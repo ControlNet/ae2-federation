@@ -65,6 +65,12 @@ The user wants long beams. Checking cost, not gameplay, was the concern; the acc
 Cost estimates behind this (tens of nanoseconds per block-state read; a 3x3 x 256 beam rescanned every tick is about
 2304 reads) are unmeasured. Measure one 3x3 x 1024 beam with the project's benchmarks before fixing the values.
 
+Plan answers (user, 2026-10-17; plan in `.omo/plans/beam-transceiver.md`): only square sections, 1x1, 2x2 and 3x3,
+since bundles are to keep square sections only later on; back to back is not built for now; a body faces along its
+thin axis and a wrench flips it (a 1x1 turns to the clicked face); blocks with a collision shape obstruct, glass
+excepted; the recipe follows ME Beam Former's (`CPC / CWC / CLC`: Federation Cable, fluix pearl, wireless receiver,
+Nexus Core); each beam checks up to 1024 blocks a tick, all beams 16384, with 20 ticks of debounce each way.
+
 Settled the same day: glass does not block the beam; when several transceivers line up, each links only to the
 nearest; there is no relay device, since two transceivers placed back to back already act as one.
 
