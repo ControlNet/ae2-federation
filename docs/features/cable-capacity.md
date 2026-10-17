@@ -8,10 +8,11 @@ balancing questions stay in the [multiblock and cable capacity idea](../ideas/mu
 ## Behavior
 
 - **Counting.** Every Federation Cable counts the ME networks on Switches, Processing Endpoints and Federation Pattern
-  Providers around it. Cable joined to cable, through Switches and Federation P2P tunnel pairs, forms one segment;
+  Providers around it. Cable joined to cable, through Switches, Federation P2P tunnel pairs and linked
+  [Beam Former](beam-former.md) pairs, forms one segment;
   only a Router (a formed body counts once) ends one. A segment touching at most one Router counts its own
   **subdomain**; a segment touching two or more counts the whole Federation domain.
-- **Limit.** One cable, and one Federation P2P frequency, carries 8 by default (`capacity.cableCapacity` in `config/ae2federation-server.toml`, 1 to
+- **Limit.** One cable, and one Federation P2P frequency or 1x1 Beam Former pair, carries 8 by default (`capacity.cableCapacity` in `config/ae2federation-server.toml`, 1 to
   1024; enforcement is `capacity.enforceCableCapacity`, on by default). When any cable is over, the whole domain
   stops sharing until the count fits again; the world is not changed.
 - **Display.** The beam inside each cable grows with its load and turns red only while it is over an enforced limit

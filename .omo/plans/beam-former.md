@@ -125,7 +125,9 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
   limit, unpowered) every 10 ticks. In-game: before (linked, nothing drawn), after unpowered (thin red), after with
   the power requirement off (cyan), `build/beam-former-check/compare.png`. Guide previews move to phase 7.
 
-### 7. Docs
+### 7. Docs (done 2026-10-17)
 
 - `docs/features/beam-former.md`; the guide item page with a hand-written scene, en and zh; the idea page's
   status; the operating power and capacity pages; a knowledge note.
+- Done: feature doc, guide page en/zh with a hand-written scene (the beam draws in it), index entries, converter
+  and capacity pages, idea page status, `.omo/knowledges/beam-former-2026-10-17.md`.

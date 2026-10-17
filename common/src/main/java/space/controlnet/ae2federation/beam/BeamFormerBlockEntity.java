@@ -173,6 +173,13 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
         readLook(packet.getTag());
     }
 
+    /** A guide scene's block loads its beam look from the scene; a saved world never holds one. */
+    @Override
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        if (tag.contains(LOOK_PARTNER)) readLook(tag);
+    }
+
     private void readLook(CompoundTag tag) {
         look = !tag.contains(LOOK_PARTNER) ? null : new BeamLook(BlockPos.of(tag.getLong(LOOK_PARTNER)),
                 tag.getInt(LOOK_SIDE), tag.getInt(LOOK_UNITS), tag.getInt(LOOK_CAPACITY), tag.getBoolean(LOOK_ENFORCED),

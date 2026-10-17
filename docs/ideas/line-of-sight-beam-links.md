@@ -1,8 +1,8 @@
 # Line-of-sight Federation beam links
 
 Discussion date: 2026-10-09.
-Status: user-proposed connection form; form, linking, topology, obstruction and range checking settled on
-2026-10-17. Obstructing blocks and implementation remain open.
+Status: implemented on `dev` 2026-10-17 as the ME Federation Beam Former
+([feature](../features/beam-former.md)). Back-to-back formers and non-square sections are not built.
 
 ## Intent
 
