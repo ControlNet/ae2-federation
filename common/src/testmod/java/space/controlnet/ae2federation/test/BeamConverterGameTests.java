@@ -109,12 +109,58 @@ public final class BeamConverterGameTests {
             helper.assertTrue(side != null, "a side takes FE");
             if (inserted[0] < 0) inserted[0] = side.receiveEnergy(1000, false);
             helper.assertValueEqual(inserted[0], 1000, "FE accepted by the side");
-            var converter = (BeamConverterBlockEntity) helper.getBlockEntity(front);
-            helper.assertValueEqual(converter.stored(), 1000.0, "the block holds what it took in");
+            var body = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(back), Direction.UP);
+            helper.assertValueEqual(body.getEnergyStored(), 1000, "the body holds what it took in");
             RouterEvidence.write("beamconverterlinksthroughitsfront", 6, Map.of(
                     "formed", "1x1x2", "front", "linked", "sideAndBack", "unlinked", "frontFe", "none",
                     "sideFe", "accepted", "stored", "1000"));
             fixtures.close();
+        });
+    }
+
+    /**
+     * A 1x2x4 converter is one buffer of eight blocks: FE through one block's side fills the whole body, every block reads
+     * the body's total, and each block keeps an equal share, which a block broken out of the body takes with it.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void beamConverterBodySharesOneBuffer(GameTestHelper helper) {
+        var section = CableCrossSection.ONE_BY_TWO;
+        var cells = box(new BlockPos(2, 2, 2), section.converterLength(), section.wide(), section.narrow());
+        cells.forEach(cell -> place(helper, cell, Direction.EAST));
+        var level = helper.getLevel();
+        var fed = cells.get(0);
+        var other = cells.get(cells.size() - 1);
+        var accepted = new int[] {-1, -1};
+        var capacity = (int) BeamConverterBlockEntity.CAPACITY;
+        helper.succeedWhen(() -> {
+            if (accepted[1] < 0) {
+                for (var cell : cells) {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(cell)), "Waiting for the converter to form");
+                }
+            }
+            var input = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(fed), Direction.UP);
+            var reader = level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(other), Direction.UP);
+            if (accepted[0] < 0) accepted[0] = input.receiveEnergy(100_000, false);
+            helper.assertValueEqual(accepted[0], 100_000, "one block takes in more than its own 16000 FE");
+            if (accepted[1] < 0) {
+                helper.assertValueEqual(reader.getEnergyStored(), 100_000, "another block reads the body's total");
+                helper.assertValueEqual(reader.getMaxEnergyStored(), 8 * capacity, "the body holds 16000 FE per block");
+                for (var cell : cells) {
+                    helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), 12_500.0,
+                            "each block keeps an equal share: " + cell);
+                }
+                accepted[1] = input.receiveEnergy(100_000, false);
+                helper.assertValueEqual(accepted[1], 8 * capacity - 100_000, "the body takes in up to its room");
+                helper.setBlock(other, Blocks.AIR);
+            }
+            for (var cell : cells.subList(0, cells.size() - 1)) {
+                helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), (double) capacity,
+                        "a block left from the body keeps its share: " + cell);
+            }
+            RouterEvidence.write("beamconverterbodysharesonebuffer", 6, Map.of(
+                    "accepted", "100000 through one block", "read", "100000 from another", "capacity", "128000",
+                    "share", "12500 each", "topUp", "28000", "broken", "16000 kept per block"));
         });
     }
 

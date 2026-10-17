@@ -16,8 +16,9 @@ D1-D10: `.omo/plans/beam-converter.md`.
   gauge's "input below use" rule would show a creative domain as draining (yellow).
 - **Topology showcase power.** `TaskThirtyThreeShowcaseFixture.placeConverter` stands a 1x1x2 converter on the middle
   showcase cable (front down), sets each block to 82.5 % and only then turns power on; a test-only
-  `ServerTickEvent.Pre` listener feeds `ceil(use)` each tick, so the gauge stays green around 82 %. Fractional uses
-  (0.5 per cable) make an exact integer feed alternate below use and flicker yellow, hence `ceil`.
+  `ServerTickEvent.Pre` listener feeds the front block `ceil(use)` each tick (the body shares one buffer), so the
+  gauge stays green around 82 %. Fractional uses (0.5 per cable) make an exact integer feed alternate below use and
+  flicker yellow, hence `ceil`.
 - **Gauge label width.** "Power" in the Minecraft font is 30 GUI pixels; a 25-pixel label hid the "r". The gauge is
   112 wide: name 31, bar from 38 (40 wide), value 26 right-aligned.
 - **dev_gametests `--match`** filters by GameTest id (`operatingpower...`), not by manifest id (`power.*`). Pass the
@@ -30,6 +31,12 @@ D1-D10: `.omo/plans/beam-converter.md`.
   one-off 8000 FE insert into the input (38 FE/t instead of 5), and `book.latest` kept returning that stale point.
   `operatingpowerfeedsstatistics` calls `finishSecond` itself, once after the insert and then once per tick, as
   `StatisticsGameTests` does.
+- **A body is one buffer (user decision 2026-10-17).** Each block keeps its own `stored` in NBT, but
+  `BeamConverterBlockEntity.body()` finds the formed cuboid by walking the connection bits to its corners (cached for
+  the tick); `receiveEnergy` takes up to the body's room and spreads it by each block's room, the capability reports
+  body totals, and `OperatingPowerService.settle` levels a body's blocks after the draw. Before this a pipe on one
+  block filled only that block, which then accepted just its share of the drain while the rest ran down: a 3x3x6
+  converter on one cable used about 1/54 of its buffer. Jade shows the body's buffer and summed input.
 - **Chinese guide wording.** Bundled cables are 「粗线缆」 in the Chinese guide, not 「捆束」.
 
 ## Evidence (not committed)

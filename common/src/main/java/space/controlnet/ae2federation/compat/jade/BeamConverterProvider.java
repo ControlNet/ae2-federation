@@ -15,14 +15,15 @@ import space.controlnet.ae2federation.power.BeamConverterBlockEntity;
 import space.controlnet.ae2federation.power.OperatingPowerService;
 
 /**
- * A Beam Converter block's buffer and, while its domain needs power, the FE it took in on the last tick and whether its
- * body matches the domain's largest cable cross-section.
+ * A Beam Converter's body buffer and, while its domain needs power, the FE the body took in on the last tick and whether
+ * it matches the domain's largest cable cross-section.
  */
 enum BeamConverterProvider implements IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
     INSTANCE;
 
     private static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("ae2federation", "beam_converter");
     private static final String STORED = "ConverterStored";
+    private static final String CAPACITY = "ConverterCapacity";
     private static final String INPUT = "ConverterInput";
     private static final String MATCHES = "ConverterMatches";
 
@@ -33,16 +34,20 @@ enum BeamConverterProvider implements IBlockComponentProvider, IServerDataProvid
             return;
         }
         var position = accessor.getPosition();
-        data.putInt(STORED, (int) converter.stored());
+        var body = converter.body();
+        data.putInt(STORED, (int) body.stream().mapToDouble(BeamConverterBlockEntity::stored).sum());
+        data.putInt(CAPACITY, (int) (body.size() * BeamConverterBlockEntity.CAPACITY));
         var dimension = level.dimension().location().toString();
+        var positions = body.stream().map(BeamConverterBlockEntity::getBlockPos).collect(java.util.stream.Collectors.toSet());
         FederationDomainRegistryAccess.get(level).federationDomainOf(FederationDomainRegistryAccess.nodeId(level, position))
                 .flatMap(domain -> OperatingPowerService.reading(level.getServer(), domain.federationDomainId()))
-                .flatMap(reading -> reading.converters().stream()
-                        .filter(entry -> entry.position().equals(position) && entry.dimension().equals(dimension))
-                        .findFirst())
-                .ifPresent(entry -> {
-                    data.putInt(INPUT, (int) entry.input());
-                    data.putBoolean(MATCHES, entry.matches());
+                .ifPresent(reading -> {
+                    var entries = reading.converters().stream()
+                            .filter(entry -> positions.contains(entry.position()) && entry.dimension().equals(dimension))
+                            .toList();
+                    if (entries.isEmpty()) return;
+                    data.putInt(INPUT, (int) entries.stream().mapToDouble(OperatingPowerService.ConverterReading::input).sum());
+                    data.putBoolean(MATCHES, entries.get(0).matches());
                 });
     }
 
@@ -50,7 +55,8 @@ enum BeamConverterProvider implements IBlockComponentProvider, IServerDataProvid
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
         var data = accessor.getServerData();
         if (!data.contains(STORED)) return;
-        tooltip.add(FederationJadeText.converter(data.getInt(STORED), (int) BeamConverterBlockEntity.CAPACITY,
+        tooltip.add(FederationJadeText.converter(data.getInt(STORED), data.contains(CAPACITY) ? data.getInt(CAPACITY)
+                        : (int) BeamConverterBlockEntity.CAPACITY,
                 data.contains(INPUT) ? OptionalInt.of(data.getInt(INPUT)) : OptionalInt.empty(),
                 data.contains(MATCHES) ? Optional.of(data.getBoolean(MATCHES)) : Optional.empty()));
     }

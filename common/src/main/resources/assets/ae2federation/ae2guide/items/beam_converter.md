@@ -69,8 +69,9 @@ converter to match it. Right-click a block that does not form to see why on the 
 
 ## Power
 
-Each converter block holds 16,000 FE. Pipe FE into any face but the front, with any mod's cables or generators. A
-domain adds up the buffers of all its matching converters and draws its use from them evenly.
+A converter is one buffer of 16,000 FE per block. Pipe FE into any face but the front, with any mod's cables or
+generators: one cable fills the whole converter. A domain adds up the buffers of all its matching converters and draws
+its use from them evenly.
 
 When they run dry, the domain stops, and keeps drawing what comes in. It runs again once it has had enough FE for more
 than 30 ticks in a row, as an AE2 network restarts after a power loss. A new domain runs at once if its converters can

@@ -152,8 +152,9 @@ public final class OperatingPowerGameTests {
                     helper.assertTrue(!reading.converters().isEmpty()
                             && reading.converters().stream().noneMatch(converter -> converter.matches()),
                             "the converter is listed as not matching");
-                    var stored = ((BeamConverterBlockEntity) helper.getBlockEntity(SWITCH.east(6))).stored();
-                    helper.assertValueEqual(stored, 16000.0, "a converter that does not match is not drawn on");
+                    var stored = helper.getLevel().getCapability(Capabilities.EnergyStorage.BLOCK,
+                            helper.absolutePos(SWITCH.east(3)), Direction.EAST).getEnergyStored();
+                    helper.assertValueEqual(stored, 16000, "a converter that does not match is not drawn on");
                     scene.creative(SWITCH.east(1).above(), Direction.DOWN);
                     scene.creative(SWITCH.east(1).above(2), Direction.DOWN);
                     phase[0] = 3;

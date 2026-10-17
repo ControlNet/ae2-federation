@@ -113,6 +113,7 @@ public final class OperatingPowerService {
 
     private void settle(FederationDomainRegistry registry, FederationDomainId id, Plan plan) {
         var matching = new ArrayList<BeamConverterBlockEntity>();
+        var matchingBodies = new ArrayList<BodySite>();
         var converters = new ArrayList<ConverterReading>();
         var input = 0.0;
         var creative = false;
@@ -128,6 +129,7 @@ public final class OperatingPowerService {
             gathered.bodies.merge(site.body(), taken, Double::sum);
             if (!site.matches()) continue;
             matching.add(converter);
+            matchingBodies.add(site.body());
             input += taken;
             creative |= converter.creative();
         }
@@ -141,6 +143,17 @@ public final class OperatingPowerService {
                 : ledger.settle(stored, plan.use().total());
         gathered.input += input;
         gathered.ticks++;
+        // A body is one buffer: its blocks keep equal shares of what it holds.
+        var shares = new HashMap<BodySite, double[]>();
+        for (var index = 0; index < stored.length; index++) {
+            var share = shares.computeIfAbsent(matchingBodies.get(index), ignored -> new double[2]);
+            share[0] += stored[index];
+            share[1]++;
+        }
+        for (var index = 0; index < stored.length; index++) {
+            var share = shares.get(matchingBodies.get(index));
+            stored[index] = share[0] / share[1];
+        }
         var left = 0.0;
         for (var index = 0; index < stored.length; index++) {
             if (!creative) matching.get(index).setStored(stored[index]);
