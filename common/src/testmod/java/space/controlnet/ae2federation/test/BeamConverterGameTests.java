@@ -1,5 +1,6 @@
 package space.controlnet.ae2federation.test;
 
+import appeng.core.definitions.AEItems;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
@@ -18,10 +23,12 @@ import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
 import space.controlnet.ae2federation.test.router.RouterFixtures;
+import space.controlnet.ae2federation.test.world.MockServerPlayers;
 
 /**
- * A Beam Converter forms only at a converter's size and facing one way; formed, it links Federation cable through its
- * front alone and takes FE through every other face.
+ * A Beam Converter forms only at a converter's size, whichever way its blocks face, and then faces one way along its
+ * length; a wrench turns a formed body end for end. Formed, it links Federation cable through its front alone and takes
+ * FE through every other face.
  */
 @PrefixGameTestTemplate(false)
 public final class BeamConverterGameTests {
@@ -31,8 +38,9 @@ public final class BeamConverterGameTests {
     }
 
     /**
-     * Each of the six sizes forms, facing east in a row of its own; a 2x2x3 body (a block short) and a 1x1x2 body whose
-     * blocks face opposite ways do not.
+     * Each of the six sizes forms, facing east in a row of its own; a 2x2x3 body (a block short) does not. Blocks need not
+     * face alike: a body faces along its length the way most of its blocks do, else toward the one end with Federation
+     * cable, else toward the axis's positive end.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
             timeoutTicks = 300, required = true, manualOnly = true)
@@ -51,6 +59,16 @@ public final class BeamConverterGameTests {
         var mixed = List.of(new BlockPos(20, 2, 8), new BlockPos(21, 2, 8));
         place(helper, mixed.get(0), Direction.EAST);
         place(helper, mixed.get(1), Direction.WEST);
+        var across = List.of(new BlockPos(20, 2, 11), new BlockPos(21, 2, 11));
+        place(helper, across.get(0), Direction.UP);
+        place(helper, across.get(1), Direction.NORTH);
+        var majority = box(new BlockPos(20, 2, 14), 4, 2, 1);
+        for (int index = 0; index < majority.size(); index++) {
+            place(helper, majority.get(index), index < 5 ? Direction.WEST : Direction.EAST);
+        }
+        var cabled = List.of(new BlockPos(20, 2, 17), new BlockPos(21, 2, 17));
+        cabled.forEach(cell -> place(helper, cell, Direction.UP));
+        new RouterFixtures(helper).placeFederationCable(new BlockPos(19, 2, 17));
         helper.succeedWhen(() -> {
             for (var cells : formed) {
                 for (var cell : cells) {
@@ -61,12 +79,16 @@ public final class BeamConverterGameTests {
                 helper.assertTrue(helper.getBlockState(cell).is(block) && !RouterBlock.formed(helper.getBlockState(cell)),
                         "a 2x2x3 body is not a converter: " + cell);
             }
-            for (var cell : mixed) {
-                helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), "a body facing two ways stays unformed");
-            }
-            RouterEvidence.write("beamconvertershapes", 8, Map.of(
-                    "1x1x2", "formed", "1x2x4", "formed", "1x3x6", "formed", "2x2x4", "formed", "2x3x6", "formed",
-                    "3x3x6", "formed", "2x2x3", "unformed", "mixedFacing", "unformed"));
+            assertFacing(helper, mixed, Direction.EAST, "blocks facing opposite ways, a tie: the positive end");
+            assertFacing(helper, across, Direction.EAST, "blocks facing across the length: the positive end");
+            assertFacing(helper, majority, Direction.WEST, "five of eight blocks face west");
+            assertFacing(helper, cabled, Direction.WEST, "no vote: toward the Federation cable");
+            RouterEvidence.write("beamconvertershapes", 11, Map.ofEntries(
+                    Map.entry("1x1x2", "formed"), Map.entry("1x2x4", "formed"), Map.entry("1x3x6", "formed"),
+                    Map.entry("2x2x4", "formed"), Map.entry("2x3x6", "formed"), Map.entry("3x3x6", "formed"),
+                    Map.entry("2x2x3", "unformed"), Map.entry("tie", "positive end"),
+                    Map.entry("across", "positive end"), Map.entry("majority", "west"),
+                    Map.entry("noVote", "toward the cable")));
         });
     }
 
@@ -116,6 +138,76 @@ public final class BeamConverterGameTests {
                     "sideFe", "accepted", "stored", "1000"));
             fixtures.close();
         });
+    }
+
+    /**
+     * A wrench turns a formed 1x1x2 converter end for end: its front, and so its link and the face that takes no FE, move
+     * to the other end. An unformed block keeps its facing.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 300, required = true, manualOnly = true)
+    public static void beamConverterTurnsWithAWrench(GameTestHelper helper) {
+        BlockPos.betweenClosed(CENTER.offset(-3, -1, -1), CENTER.offset(2, 1, 3))
+                .forEach(position -> helper.setBlock(position, Blocks.AIR));
+        var fixtures = new RouterFixtures(helper);
+        var east = CENTER;
+        var west = CENTER.west();
+        place(helper, east, Direction.EAST);
+        place(helper, west, Direction.EAST);
+        fixtures.placeFederationCable(east.east());
+        fixtures.placeFederationCable(west.west());
+        var single = CENTER.south(3);
+        place(helper, single, Direction.NORTH);
+        var level = helper.getLevel();
+        var registry = FederationDomainRegistryAccess.get(level);
+        var converterNode = FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(east));
+        var player = MockServerPlayers.inLevel(helper);
+        player.setItemInHand(InteractionHand.MAIN_HAND, AEItems.CERTUS_QUARTZ_WRENCH.stack());
+        var phase = new int[1];
+        helper.succeedWhen(() -> {
+            if (phase[0] == 0) {
+                helper.assertTrue(linked(helper, east.east(), converterNode), "Waiting for the east cable to link");
+                use(helper, player, west, Direction.UP);
+                use(helper, player, single, Direction.UP);
+                phase[0] = 1;
+                throw new net.minecraft.gametest.framework.GameTestAssertException("Waiting for the turned body to link");
+            }
+            assertFacing(helper, List.of(east, west), Direction.WEST, "the wrench turned the body");
+            helper.assertValueEqual(helper.getBlockState(single).getValue(BeamConverterBlock.FACING), Direction.NORTH,
+                    "an unformed block keeps its facing");
+            helper.assertTrue(linked(helper, west.west(), converterNode), "the west cable links the turned body");
+            helper.assertTrue(!linked(helper, east.east(), converterNode), "the east cable no longer links it");
+            helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(west),
+                    Direction.WEST) == null, "the new front takes no FE");
+            helper.assertTrue(level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(east),
+                    Direction.EAST) != null, "the old front takes FE");
+            RouterEvidence.write("beamconverterturnswithawrench", 5, Map.of(
+                    "turned", "west", "unformed", "kept", "westCable", "linked", "eastCable", "unlinked",
+                    "frontFe", "moved"));
+            fixtures.close();
+        });
+    }
+
+    private static boolean linked(GameTestHelper helper, BlockPos cable,
+            space.controlnet.ae2federation.domain.FederationDomainNodeId converter) {
+        var level = helper.getLevel();
+        var domain = FederationDomainRegistryAccess.get(level).federationDomainOf(
+                FederationDomainRegistryAccess.nodeId(level, helper.absolutePos(cable)));
+        return domain.isPresent() && domain.get().nodes().contains(converter);
+    }
+
+    private static void use(GameTestHelper helper, ServerPlayer player, BlockPos relative, Direction face) {
+        var absolute = helper.absolutePos(relative);
+        var hit = new BlockHitResult(Vec3.atCenterOf(absolute).relative(face, 0.5), face, absolute, false);
+        player.gameMode.useItemOn(player, helper.getLevel(), player.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+    }
+
+    private static void assertFacing(GameTestHelper helper, List<BlockPos> cells, Direction facing, String what) {
+        for (var cell : cells) {
+            var state = helper.getBlockState(cell);
+            helper.assertTrue(RouterBlock.formed(state), what + ": " + cell + " forms");
+            helper.assertValueEqual(state.getValue(BeamConverterBlock.FACING), facing, what + ": " + cell);
+        }
     }
 
     /**

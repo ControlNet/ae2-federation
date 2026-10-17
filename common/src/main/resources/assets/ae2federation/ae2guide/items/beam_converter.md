@@ -51,7 +51,7 @@ every cost, or turn the requirement off; then no domain needs a converter.
 
 ## Size
 
-A converter is a solid box of converter blocks that all face the same way. Its front must have the cross-section of the
+A converter is a solid box of converter blocks, placed any way round. Its front must have the cross-section of the
 **largest cable in its domain**, and the box is twice as long, toward the front, as the front's longer side:
 
 | Largest cable | Converter |
@@ -66,6 +66,9 @@ A converter is a solid box of converter blocks that all face the same way. Its f
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of
 another size forms and joins the domain, but supplies nothing. When you add a larger [bundle](../bundled-cables.md), build a
 converter to match it. Right-click a block that does not form to see why on the action bar.
+
+Once formed, the converter's front is one end of its length: the end most of its blocks faced, or else the end touching
+a Federation cable. Right-click a formed converter with a wrench to turn it end for end.
 
 ## Power
 

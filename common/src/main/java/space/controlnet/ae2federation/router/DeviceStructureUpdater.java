@@ -6,11 +6,13 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.UnaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
@@ -107,12 +109,13 @@ public final class DeviceStructureUpdater {
         var result = evaluate(level, start, block);
         switch (result) {
             case DeviceStructure.Valid valid -> {
+                var forming = ((FormableDevice) block).forming(level, valid);
                 for (var position : BlockPos.betweenClosed(valid.min(), valid.max())) {
                     int connections = 0;
                     for (var side : Direction.values()) {
                         if (valid.contains(position.relative(side))) connections |= 1 << side.get3DDataValue();
                     }
-                    set(level, position, true, connections);
+                    set(level, position, true, connections, forming);
                     settled.add(position.immutable());
                 }
             }
@@ -128,7 +131,7 @@ public final class DeviceStructureUpdater {
                         connections &= ~(1 << side.get3DDataValue());
                     }
                 }
-                set(level, start, RouterBlock.formed(state), connections);
+                set(level, start, RouterBlock.formed(state), connections, UnaryOperator.identity());
             }
         }
     }
@@ -144,7 +147,7 @@ public final class DeviceStructureUpdater {
             var state = level.getBlockState(position);
             if (!state.is(block)) continue;
             int connections = RouterBlock.connections(state);
-            set(level, position, false, 0);
+            set(level, position, false, 0, UnaryOperator.identity());
             settled.add(position);
             for (var side : Direction.values()) {
                 var neighbor = position.relative(side);
@@ -155,9 +158,10 @@ public final class DeviceStructureUpdater {
         }
     }
 
-    private static void set(ServerLevel level, BlockPos position, boolean formed, int connections) {
+    private static void set(ServerLevel level, BlockPos position, boolean formed, int connections,
+            UnaryOperator<BlockState> forming) {
         var state = level.getBlockState(position);
-        var updated = RouterBlock.withBody(state, formed, connections);
+        var updated = RouterBlock.withBody(forming.apply(state), formed, connections);
         if (updated != state) {
             level.setBlock(position, updated, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         }

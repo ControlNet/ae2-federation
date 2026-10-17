@@ -247,9 +247,7 @@ public final class OperatingPowerService {
             }
             var result = DeviceStructureUpdater.body(level, position);
             var section = result instanceof DeviceStructure.Valid valid
-                    ? BeamConverterShape.of(valid.min(), valid.max(),
-                            state.getValue(BeamConverterBlock.FACING))
-                    : Optional.<CableCrossSection>empty();
+                    ? BeamConverterShape.of(valid.min(), valid.max()) : Optional.<CableCrossSection>empty();
             return new Body(level, result, section);
         }
 

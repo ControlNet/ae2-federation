@@ -76,8 +76,8 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         var previous = getBlockState();
         var wasFormed = RouterBlock.formed(previous);
         super.setBlockState(state);
-        if ((wasFormed != RouterBlock.formed(state) || RouterBlock.connections(previous) != RouterBlock.connections(state))
-                && level instanceof ServerLevel) {
+        if ((wasFormed != RouterBlock.formed(state) || RouterBlock.connections(previous) != RouterBlock.connections(state)
+                || turned(previous, state)) && level instanceof ServerLevel) {
             facePorts.values().forEach(RouterFacePort::markDirty);
             federationDomainDirty = true;
         }
@@ -87,6 +87,12 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
             serverLevel.invalidateCapabilities(worldPosition);
             for (var face : Direction.values()) serverLevel.invalidateCapabilities(worldPosition.relative(face));
         }
+    }
+
+    /** A Beam Converter turned end for end: its front, the face it links through, moved. */
+    private static boolean turned(BlockState previous, BlockState state) {
+        var facing = net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING;
+        return previous.hasProperty(facing) && state.hasProperty(facing) && previous.getValue(facing) != state.getValue(facing);
     }
 
     @Override

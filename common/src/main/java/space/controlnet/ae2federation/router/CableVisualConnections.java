@@ -106,8 +106,8 @@ public final class CableVisualConnections {
             return BundleView.bundled(level, position.relative(direction)) ? NONE : CABLE;
         }
         if (block instanceof RouterBlock) return DENSE;
-        // A Beam Converter links through its front only.
-        if (block instanceof space.controlnet.ae2federation.power.BeamConverterBlock
+        // A Beam Converter links through its front only, and only once formed: an unformed block's facing means nothing.
+        if (block instanceof space.controlnet.ae2federation.power.BeamConverterBlock && RouterBlock.formed(neighbor)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
             return DENSE;
         }

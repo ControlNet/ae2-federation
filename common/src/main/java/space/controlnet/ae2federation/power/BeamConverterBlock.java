@@ -3,12 +3,16 @@ package space.controlnet.ae2federation.power;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.function.UnaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -22,18 +26,22 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 import space.controlnet.ae2federation.router.DeviceStructure;
 import space.controlnet.ae2federation.router.DeviceStructureUpdater;
+import space.controlnet.ae2federation.router.FederationCableBlock;
 import space.controlnet.ae2federation.router.FormableDevice;
 import space.controlnet.ae2federation.router.RouterBlock;
 import space.controlnet.ae2federation.router.RouterBlockEntity;
 
 /**
  * The ME Federation Beam Converter: FE goes in, and its domain runs on it. Touching converter blocks form one body as a
- * Router's do, and the body must also face one way and be exactly M x N across its front and 2·max(M, N) long, M x N
- * being a cable cross-section ({@link BeamConverterShape}). Only the front links to Federation cable; every other face
- * takes FE. The creative converter follows the same rules and never runs out.
+ * Router's do, and the body must be exactly M x N across its front and 2·max(M, N) long, M x N being a cable
+ * cross-section ({@link BeamConverterShape}), whichever way its blocks face. Formed, all its blocks face one end of its
+ * length ({@link #forming}), and a wrench turns it end for end; an unformed block's facing means nothing. Only the
+ * front links to Federation cable; every other face takes FE. The creative converter follows the same rules and never
+ * runs out.
  */
 public final class BeamConverterBlock extends BaseEntityBlock implements FormableDevice {
     public static final MapCodec<BeamConverterBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -61,8 +69,8 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
     }
 
     /**
-     * A block placed against a converter of the same kind takes its facing, so a body is built without turning each
-     * block; otherwise its front faces the player.
+     * A block placed against a converter of the same kind takes its facing, so it votes with the body it joins
+     * ({@link #forming}); otherwise its front faces the player.
      */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
@@ -71,17 +79,70 @@ public final class BeamConverterBlock extends BaseEntityBlock implements Formabl
         return defaultBlockState().setValue(FACING, facing);
     }
 
-    /** The cuboid must face one way and have a converter's size. */
+    /** The cuboid must have a converter's size; its blocks may face any way. */
     @Override
     public DeviceStructure.Result judge(BlockGetter level, DeviceStructure.Valid body) {
-        var facing = level.getBlockState(body.min()).getValue(FACING);
+        return BeamConverterShape.of(body.min(), body.max()).isPresent() ? body
+                : new DeviceStructure.Invalid(DeviceStructure.Reason.WRONG_SHAPE);
+    }
+
+    /**
+     * A forming body turns all its blocks toward one end of its length: the end most of them face, else the one end
+     * with Federation cable beside it, else the axis's positive end. Most blocks face the way the body last did, so a
+     * body turned by a wrench keeps that facing when it forms again.
+     */
+    @Override
+    public UnaryOperator<BlockState> forming(BlockGetter level, DeviceStructure.Valid body) {
+        var facing = facing(level, body);
+        return state -> state.is(this) ? state.setValue(FACING, facing) : state;
+    }
+
+    private Direction facing(BlockGetter level, DeviceStructure.Valid body) {
+        var axis = BeamConverterShape.axis(body.min(), body.max()).orElseThrow();
+        int votes = 0;
         for (var position : BlockPos.betweenClosed(body.min(), body.max())) {
-            if (level.getBlockState(position).getValue(FACING) != facing) {
-                return new DeviceStructure.Invalid(DeviceStructure.Reason.WRONG_SHAPE);
+            var facing = level.getBlockState(position).getValue(FACING);
+            if (facing.getAxis() == axis) votes += facing.getAxisDirection().getStep();
+        }
+        if (votes != 0) return Direction.fromAxisAndDirection(axis,
+                votes > 0 ? Direction.AxisDirection.POSITIVE : Direction.AxisDirection.NEGATIVE);
+        var positive = Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE);
+        boolean cableAhead = cableAt(level, body, positive);
+        return cableAhead == cableAt(level, body, positive.getOpposite()) || cableAhead ? positive : positive.getOpposite();
+    }
+
+    /** Whether Federation cable touches the body's end face toward {@code side}. */
+    private static boolean cableAt(BlockGetter level, DeviceStructure.Valid body, Direction side) {
+        int span = body.max().get(side.getAxis()) - body.min().get(side.getAxis());
+        boolean ahead = side.getAxisDirection() == Direction.AxisDirection.POSITIVE;
+        var min = ahead ? body.min().relative(side, span) : body.min();
+        var max = ahead ? body.max() : body.max().relative(side, span);
+        for (var position : BlockPos.betweenClosed(min, max)) {
+            if (level.getBlockState(position.relative(side)).getBlock() instanceof FederationCableBlock) return true;
+        }
+        return false;
+    }
+
+    /**
+     * A wrench turns a formed body end for end. Every block is updated with its neighbours, so the cables at both ends
+     * link again; the body forms again facing the new way, which all its blocks now vote for. An unformed block keeps
+     * its facing and tells the player why it has not formed.
+     */
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos position,
+            Player player, InteractionHand hand, BlockHitResult hit) {
+        if (!stack.is(Tags.Items.TOOLS_WRENCH) || player.isSecondaryUseActive() || !RouterBlock.formed(state)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (level instanceof ServerLevel serverLevel
+                && DeviceStructureUpdater.body(serverLevel, position) instanceof DeviceStructure.Valid body) {
+            var turned = state.getValue(FACING).getOpposite();
+            for (var member : BlockPos.betweenClosed(body.min(), body.max())) {
+                var memberState = level.getBlockState(member);
+                if (memberState.is(this)) level.setBlock(member, memberState.setValue(FACING, turned), Block.UPDATE_ALL);
             }
         }
-        return BeamConverterShape.of(body.min(), body.max(), facing).isPresent() ? body
-                : new DeviceStructure.Invalid(DeviceStructure.Reason.WRONG_SHAPE);
+        return ItemInteractionResult.sidedSuccess(level.isClientSide());
     }
 
     @Override

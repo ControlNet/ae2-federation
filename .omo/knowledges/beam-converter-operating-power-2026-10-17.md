@@ -52,3 +52,18 @@ D1-D10: `.omo/plans/beam-converter.md`.
   converter removed (dark red canvas, full red bar, 0 %); compared with the design boards TopologyFedPowerGauge and
   TopologyFedPowerStopped rendered with headless Chrome.
 - Guide page rendered with `runGuideClient` under Xvfb in English and Chinese; no PageCompiler warnings.
+
+## Facing-free forming and the wrench (2026-10-17)
+
+- User request: blocks merge whatever their facing; a wrench turns a formed body end for end; an unformed block's
+  facing is meaningless (the smallest converter is 1x1x2), so nothing turns a single block.
+- `BeamConverterShape.axis(min, max)`: only one axis of a box can be 2·max(M, N) long (x ≥ 2y and y ≥ 2x cannot both
+  hold), so the size alone gives the axis. `judge` checks only the size.
+- `FormableDevice.forming(level, body)` returns one `UnaryOperator<BlockState>` per body, computed before any member is
+  rewritten (a per-block vote would shift as members change). The converter's rule: majority of members' `FACING` on
+  the axis, else the one end face touching `FederationCableBlock`, else the positive end. Majority must come first: the
+  wrench's `UPDATE_ALL` triggers a re-judge, and a cable-first rule would turn the body back.
+- `RouterBlockEntity.setBlockState` marks face ports dirty on a `FACING` change too, or a turned body would not relink.
+- `CableVisualConnections` draws a dense joint to a converter only when it is formed.
+- GameTests: `beamconvertershapes` (tie, across, majority, toward cable), `beamconverterturnswithawrench` (AE2 Certus
+  Quartz Wrench through `gameMode.useItemOn`; links, FE faces and an unformed block's kept facing).
