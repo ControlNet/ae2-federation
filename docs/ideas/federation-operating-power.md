@@ -59,6 +59,18 @@ The user named the device **联邦光束供能器** (Federation Beam Charger; wo
 
 Every one of several chargers must match the size (user, 2026-10-17). Open: the costs per block type.
 
+**GUI (proposed 2026-10-17, awaiting the user's pick).** The user asked for the domain's power to show in the domain
+screen. The [design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能", proposes:
+
+- **Stopped state, as capacity overload.** The topology canvas turns dark red and the header reads "no Federation power,
+  stopped" in the error colour; its tooltip names one of three causes: no Beam Charger; a charger that does not match
+  the largest cable (and the size it needs); or use above what the chargers bring in. Rule rows blocked by it turn the
+  same colour, as they do for capacity. No live power figure in the header.
+- **Statistics, a seventh metric.** "Federation power" in FE/t beside "ME power" (AE/t). The chart stacks use by block
+  type with the chargers' input as a line, red behind spans where use is higher. The box below lists use by block type
+  and each charger with its input and whether it matches. It is domain-wide, so the network filter greys out. No stored
+  chart, since whether chargers buffer energy is still open.
+
 ## Relationship to existing features
 
 The later [configurable gameplay rules](configurable-gameplay-rules.md) discussion confirms independent
