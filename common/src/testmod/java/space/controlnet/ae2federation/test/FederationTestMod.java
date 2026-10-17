@@ -86,7 +86,7 @@ public final class FederationTestMod {
 							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
 							   ProjectionCpuSightGameTests.class,
 							   ProjectionHandBackGameTests.class,
-							   P2PRefreshBenchmarkGameTests.class,
+							   P2PRefreshBenchmarkGameTests.class, BeamScanBenchmarkGameTests.class,
 							   P2PTopologyGameTests.class,
 							   CrossDimensionCraftingGameTests.class,
 							   CrossDimensionProductionExportGameTests.class));
