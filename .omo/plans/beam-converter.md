@@ -14,7 +14,7 @@ exist yet, and each adds its own cost row when it is built.
 | D3 | Which faces take FE | Every face of every converter block except the front. |
 | D4 | Survival recipe (one block per craft, as Router and Switch) | `CEC / ELE / CEC`: C Federation Cable, E `ae2:energy_acceptor`, L Nexus Core. |
 | D5 | Textures before the artist delivers (owner, 2026-10-17) | Temporary: the Pattern Provider's textures recoloured, since they show a front; purple for the creative one. Listed as temporary in the commit and the art hand-off note. |
-| D6 | A domain seen for the first time (server start, split) | Starts powered if its pooled buffer can pay this tick, as AE2's `EnergyService` starts `hasPower = true`; only a domain that stopped waits, and runs again on its 31st powered tick (AE2: `ticksSinceHasPowerChange > 30`). |
+| D6 | A domain seen for the first time (server start, split) | Starts powered if its pooled buffer can pay this tick, as AE2's `EnergyService` starts `hasPower = true`; only a domain that stopped waits, and runs again once more than 30 ticks have passed with power, on its 32nd paid tick (AE2: the change tick counts 0, then `ticksSinceHasPowerChange > 30`). |
 | D7 | P2P tunnel nodes | Cost 0: AE2 already charges the tunnel itself. |
 | D8 | How an unpowered domain's beams look (owner, 2026-10-17) | Red, at the thinnest width, the width a beam has at 0 % load. |
 | D9 | When the requirement is configured off (owner, 2026-10-17) | The statistics card still shows but is disabled and cannot be opened; the topology draws nothing of Federation power. |
@@ -60,7 +60,7 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
   `capacityFactor` mapping), `PowerLedger` (pool, proportional drain, input above use, 30-tick restart, D6).
 - Config block and its docs in `docs/architecture/cable-capacity-counting.md` sibling page.
 - Tests: `OperatingPowerCostsTest`, `CrossSectionTest`, `PowerLedgerTest` (drain to zero stops on that tick; a stopped
-  domain keeps drawing; power returns on the 31st powered tick; fresh domain with stock starts powered).
+  domain keeps drawing; power returns on the 32nd paid tick; fresh domain with stock starts powered).
 
 ### 2. Second stop cause
 
@@ -96,7 +96,7 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - `OperatingPowerService` wired into the server tick, reading the registry and the converters, writing the `unpowered`
   set; testmod default off.
 - GameTests (each with a manifest entry): no converter stops the domain (sharing off, provider paused); a matching
-  converter with FE keeps it running; input below use drains then stops; restart on the 31st powered tick; a larger bundle
+  converter with FE keeps it running; input below use drains then stops; restart on the 32nd paid tick; a larger bundle
   added makes the old converter stop matching (D1); two converters add up; config off is unlimited; creative works;
   stored FE survives a save (`gametest-restart` backend).
 

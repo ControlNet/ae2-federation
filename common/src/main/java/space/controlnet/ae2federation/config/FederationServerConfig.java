@@ -6,6 +6,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import space.controlnet.ae2federation.domain.CableCapacityLimit;
+import space.controlnet.ae2federation.power.OperatingPowerRule;
 
 /**
  * The gameplay rules a server sets for its world, in {@code config/ae2federation-server.toml}; a world's
@@ -16,6 +17,8 @@ public final class FederationServerConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.BooleanValue ENFORCE_CABLE_CAPACITY;
     private static final ModConfigSpec.IntValue CABLE_CAPACITY;
+    private static final ModConfigSpec.BooleanValue REQUIRE_OPERATING_POWER;
+    private static final ModConfigSpec.DoubleValue OPERATING_COST_MULTIPLIER;
 
     static {
         var builder = new ModConfigSpec.Builder();
@@ -31,6 +34,19 @@ public final class FederationServerConfig {
                         "each Federation Pattern Provider counts 1. Used only while enforceCableCapacity is true.")
                 .defineInRange("cableCapacity", CableCapacityLimit.DEFAULT_CAPACITY, 1, CableCapacityLimit.MAX_CAPACITY);
         builder.pop();
+        builder.push("power");
+        REQUIRE_OPERATING_POWER = builder.comment(
+                        "Make Federation domains run on FE fed into an ME Federation Beam Converter. Every Federation",
+                        "block costs FE each tick; when a domain's converters cannot pay, the domain stops: its networks",
+                        "no longer share storage, crafting, processing or energy until power returns. When false, domains",
+                        "run on unlimited energy.")
+                .define("requireOperatingPower", true);
+        OPERATING_COST_MULTIPLIER = builder.comment(
+                        "Multiplies every Federation block's FE cost per tick. Used only while requireOperatingPower is",
+                        "true.")
+                .defineInRange("operatingCostMultiplier", OperatingPowerRule.DEFAULT_MULTIPLIER, 0.0,
+                        OperatingPowerRule.MAX_MULTIPLIER);
+        builder.pop();
         SPEC = builder.build();
     }
 
@@ -43,11 +59,15 @@ public final class FederationServerConfig {
         modBus.addListener(ModConfigEvent.Reloading.class, event -> apply(event.getConfig()));
         modBus.addListener(ModConfigEvent.Unloading.class, event -> {
             // The next world starts from the defaults until its own file loads.
-            if (event.getConfig().getSpec() == SPEC) CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+            if (event.getConfig().getSpec() != SPEC) return;
+            CableCapacityLimit.set(true, CableCapacityLimit.DEFAULT_CAPACITY);
+            OperatingPowerRule.set(true, OperatingPowerRule.DEFAULT_MULTIPLIER);
         });
     }
 
     private static void apply(ModConfig config) {
-        if (config.getSpec() == SPEC) CableCapacityLimit.set(ENFORCE_CABLE_CAPACITY.get(), CABLE_CAPACITY.get());
+        if (config.getSpec() != SPEC) return;
+        CableCapacityLimit.set(ENFORCE_CABLE_CAPACITY.get(), CABLE_CAPACITY.get());
+        OperatingPowerRule.set(REQUIRE_OPERATING_POWER.get(), OPERATING_COST_MULTIPLIER.get());
     }
 }
