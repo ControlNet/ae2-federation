@@ -30,11 +30,14 @@ import space.controlnet.ae2federation.router.DeviceStructureUpdater;
  */
 public final class OperatingPowerService {
     private static final Map<MinecraftServer, OperatingPowerService> SERVICES = new WeakHashMap<>();
+    /** How many ticks of input and use the gauge weighs before it calls a domain draining: five seconds. */
+    static final int FLOW_WINDOW_TICKS = 100;
 
     private final Map<FederationDomainId, PowerLedger> ledgers = new HashMap<>();
     private final Map<FederationDomainId, Reading> readings = new HashMap<>();
     /** What each domain took in and how many ticks it settled since the statistics last drained them. */
     private final Map<FederationDomainId, Gathered> gathered = new HashMap<>();
+    private final Map<FederationDomainId, Flow> flows = new HashMap<>();
     private Map<FederationDomainId, Plan> plans = Map.of();
     private FederationDomainRegistry plannedRegistry;
     private long plannedRevision = -1;
@@ -86,6 +89,7 @@ public final class OperatingPowerService {
             ledgers.clear();
             readings.clear();
             gathered.clear();
+            flows.clear();
             plans = Map.of();
             plannedRevision = -1;
             return;
@@ -109,6 +113,7 @@ public final class OperatingPowerService {
         ledgers.keySet().retainAll(live);
         readings.keySet().retainAll(live);
         gathered.keySet().retainAll(live);
+        flows.keySet().retainAll(live);
     }
 
     private void settle(FederationDomainRegistry registry, FederationDomainId id, Plan plan) {
@@ -160,8 +165,12 @@ public final class OperatingPowerService {
             left += matching.get(index).stored();
         }
         registry.setUnpowered(id, !running);
+        // A converter takes whole FE and a source may push in bursts, so one tick's input says little: the domain is
+        // draining once its buffers lost more over the window than that rounding (1 FE a block) explains.
+        var flow = flows.computeIfAbsent(id, ignored -> new Flow());
+        var draining = running && flow.add(input - plan.use().total()) < -Math.max(1, matching.size());
         readings.put(id, new Reading(plan.use(), input, left, matching.size() * BeamConverterBlockEntity.CAPACITY,
-                running, plan.section(), List.copyOf(converters)));
+                running, draining, plan.section(), List.copyOf(converters)));
     }
 
     private static Map<FederationDomainId, Plan> plan(MinecraftServer server, FederationDomainRegistry registry,
@@ -214,6 +223,21 @@ public final class OperatingPowerService {
         private int ticks;
     }
 
+    /** A domain's input less its use over the last {@link #FLOW_WINDOW_TICKS} ticks. */
+    private static final class Flow {
+        private final double[] net = new double[FLOW_WINDOW_TICKS];
+        private int next;
+
+        /** Records a tick's input less use and returns the window's total. */
+        double add(double tick) {
+            net[next] = tick;
+            next = (next + 1) % net.length;
+            var total = 0.0;
+            for (var value : net) total += value;
+            return total;
+        }
+    }
+
     /** A converter body as judged when planning, and the cross-section of its front if it is one. */
     private record Body(ServerLevel level, DeviceStructure.Result result, Optional<CableCrossSection> section) {
         static Body of(ServerLevel level, BlockPos position) {
@@ -248,10 +272,19 @@ public final class OperatingPowerService {
 
     /**
      * One tick of a domain's power: its use, the matching converters' input, what their buffers hold after the draw
-     * and can hold, whether it runs, the cross-section its converters must have, and each converter block's input.
+     * and can hold, whether it runs, whether it is draining (its buffers lost FE over the last five seconds), the
+     * cross-section its converters must have, and each converter block's input.
      */
     public record Reading(OperatingPowerCosts.Use use, double input, double stored, double capacity, boolean running,
-            CableCrossSection section, List<ConverterReading> converters) {
+            boolean draining, CableCrossSection section, List<ConverterReading> converters) {
+        /**
+         * The topology's corner gauge, "percent:state": the buffers' fill rounded to a whole percent, and stopped,
+         * draining or running.
+         */
+        public String gauge() {
+            int percent = capacity <= 0 ? 0 : (int) Math.round(100 * stored / capacity);
+            return percent + ":" + (!running ? "stopped" : draining ? "draining" : "running");
+        }
     }
 
     /**

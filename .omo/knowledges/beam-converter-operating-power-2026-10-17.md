@@ -13,7 +13,14 @@ D1-D10: `.omo/plans/beam-converter.md`.
 - **Restart timing.** AE2's `EnergyService` counts the change tick as 0 and restarts when `ticksSinceChange > 30`, so a
   stopped domain runs on its 32nd paid tick, not the 31st. A fresh ledger starts running (AE2 starts `hasPower = true`).
 - **Creative converter input.** It never drains, so its reported input is raised to the domain's use; otherwise the
-  gauge's "input below use" rule would show a creative domain as draining (yellow).
+  gauge would show a creative domain as draining (yellow).
+- **Gauge flicker (fixed).** The gauge once compared one tick's input with use and floored the percentage, so a full
+  buffer read 99 % and flicked yellow/green: a converter takes whole FE (`floor(room)`) against fractional use, and
+  bursty sources push every few ticks. Now `OperatingPowerService.Reading.gauge()` rounds the percentage and calls a
+  domain draining only when input less use over the last 100 ticks is below -1 FE a matching block
+  (GameTest `operatingpowergaugeholdssteady`, fed 6 FE every other tick against a use of 3).
+- **Input off the use chart.** The user asked (2026-10-17) to take the converters' input off the Federation power use
+  chart, a deliberate change from the StatsFedPower design board: it is in the buffer chart's tooltip and the body list.
 - **Topology showcase power.** `TaskThirtyThreeShowcaseFixture.placeConverter` stands a 1x1x2 converter on the middle
   showcase cable (front down), sets each block to 82.5 % and only then turns power on; a test-only
   `ServerTickEvent.Pre` listener feeds the front block `ceil(use)` each tick (the body shares one buffer), so the

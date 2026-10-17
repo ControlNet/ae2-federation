@@ -30,10 +30,11 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
   cause beside `overCapacity`, read through `stopped(id)` by activation (`UNPOWERED`), diagnostics
   (`domain_unpowered`), provider targets and energy sharing.
 - **Display.** Its cables draw red at the 0 %-load width. The topology turns dark red, and its corner gauge shows
-  "Power", the buffer's fill and a percentage: green while running, yellow while input is below use, a full red bar
+  "Power", the buffer's fill and a rounded percentage: green while running, yellow while draining (the buffers lost
+  more than 1 FE a block over the last 5 s, so whole-FE intake and bursty sources do not flicker it), a full red bar
   once stopped. Nothing of power is drawn while the rule is off. Jade on a converter block reads the body's "Buffer S / C FE ·
   input I FE/t", green when it matches and red when it does not. The statistics page's Federation power card charts
-  the use by block group, the input, stopped seconds, the buffer and each converter body
+  the use by block group, stopped seconds, the buffer with the input in its tooltip, and each converter body
   ([statistics dashboard](statistics-dashboard.md)); it is greyed out while the rule is off.
 
 ## Server

@@ -457,7 +457,6 @@
   "ae2federation.ui.statistics.title.fedpower": "联邦能量消耗",
   "ae2federation.ui.statistics.title.fedpower_stored": "联邦储能",
   "ae2federation.ui.statistics.unit.fedpower": "FE/t",
-  "ae2federation.ui.statistics.value.of": "%s / %s FE/t",
   "ae2federation.ui.statistics.tip.converters_in": "光束转换器输入 %s",
   "ae2federation.ui.statistics.tip.use": "消耗 %s",
   "ae2federation.ui.statistics.tip.use_stopped": "消耗 %s · 已停止",

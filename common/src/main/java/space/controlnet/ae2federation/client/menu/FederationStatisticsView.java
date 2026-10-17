@@ -567,7 +567,7 @@ public final class FederationStatisticsView {
         return figure;
     }
 
-    /** Federation power's buffer, beside its converters under the use chart. */
+    /** Federation power's buffer, beside its converters under the use chart; its tooltip gives their input too. */
     private Figure fedStoredFigure() {
         var figure = new Figure();
         figure.title = tr("title.fedpower_stored");
@@ -583,15 +583,19 @@ public final class FederationStatisticsView {
         figure.bottom = "0";
         var stored = scaled(data.domain().get(StatisticsNames.FEDPOWER_STORED), 1, n);
         var capacity = data.domain().get(StatisticsNames.FEDPOWER_CAPACITY);
+        var input = scaled(data.domain().get(StatisticsNames.FEDPOWER_INPUT), 1, n);
         var stopped = data.domain().get(StatisticsNames.FEDPOWER_STOPPED);
         stoppedSpans(figure, stopped, n);
         figure.layers.add(new Line(stored, FederationTheme.QUARTZ, 1.5f, 1, 1));
         figure.tip = index -> {
             boolean halted = stopped != null && stopped[index] > 0;
-            if (Float.isNaN(stored[index])) return List.of(new TipRow(FederationTheme.QUARTZ, tr("tip.no_buffer"), FederationTheme.DARK_MUTED));
+            var in = new TipRow(INPUT, tr("tip.converters_in", fmt(input[index]) + " FE/t"), FederationTheme.DARK_TITLE);
+            if (Float.isNaN(stored[index])) {
+                return List.of(new TipRow(FederationTheme.QUARTZ, tr("tip.no_buffer"), FederationTheme.DARK_MUTED), in);
+            }
             float size = capacity == null ? Float.NaN : capacity[index];
             return List.of(new TipRow(FederationTheme.QUARTZ, tr("tip.fedpower_stored", Math.round(stored[index]) + "%",
-                    fmt(size) + " FE"), halted ? FederationTheme.ERROR : FederationTheme.DARK_TEXT));
+                    fmt(size) + " FE"), halted ? FederationTheme.ERROR : FederationTheme.DARK_TEXT), in);
         };
         return figure;
     }
@@ -609,8 +613,8 @@ public final class FederationStatisticsView {
     }
 
     /**
-     * The domain's Federation power use, stacked by group, with its converters' input as a white line; red where the
-     * domain was stopped. Groups that used nothing over the range are left out.
+     * The domain's Federation power use, stacked by group; red where the domain was stopped. Groups that used nothing
+     * over the range are left out. The converters' input is with the buffer below, not here.
      */
     private void fedpower(Figure figure, StatisticsPayload.Snapshot<AEKey> data, int n) {
         figure.title = tr("title.fedpower");
@@ -640,24 +644,16 @@ public final class FederationStatisticsView {
         }
         var use = lo.clone();
         for (int index = 0; index < n; index++) if (!counted[index]) use[index] = Float.NaN;
-        var input = scaled(data.domain().get(StatisticsNames.FEDPOWER_INPUT), 1, n);
         var stopped = data.domain().get(StatisticsNames.FEDPOWER_STOPPED);
         stoppedSpans(figure, stopped, n);
-        figure.layers.add(new Line(input, INPUT, 1.5f, 1, 1));
-        figure.max = niceMax(Math.max(1, Math.max(peak(use), peak(input))) * 1.15);
+        figure.max = niceMax(Math.max(1, peak(use)) * 1.15);
         figure.top = fmt(figure.max);
         figure.bottom = "0";
-        float useNow = last(use);
-        float inputNow = last(input);
-        boolean stoppedNow = last(stopped) > 0;
-        figure.value = tr("value.of", fmt(useNow), fmt(inputNow));
-        figure.compact = Component.literal(fmt(useNow) + " FE/t");
-        figure.valueColor = stoppedNow ? FederationTheme.ERROR : useNow > inputNow ? FederationTheme.WARN : FederationTheme.DARK_TEXT;
+        figure.value = Component.literal(fmt(last(use)) + " FE/t");
+        figure.valueColor = last(stopped) > 0 ? FederationTheme.ERROR : FederationTheme.DARK_TEXT;
         figure.tip = index -> {
             boolean halted = stopped != null && stopped[index] > 0;
             var rows = new ArrayList<TipRow>();
-            rows.add(new TipRow(INPUT, tr("tip.converters_in", fmt(input[index]) + " FE/t"),
-                    halted ? FederationTheme.ERROR : FederationTheme.DARK_TITLE));
             for (int at = groups.size() - 1; at >= 0; at--) {
                 var group = OperatingPowerCosts.Group.values()[groups.get(at)];
                 rows.add(new TipRow(GROUP_COLORS[group.ordinal()], tr("fedpower.group." + group.key())

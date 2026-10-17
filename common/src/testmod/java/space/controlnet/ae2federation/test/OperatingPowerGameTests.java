@@ -303,6 +303,76 @@ public final class OperatingPowerGameTests {
         });
     }
 
+    /**
+     * The topology's corner gauge holds still while input keeps up with use, even when it comes in bursts: fed 6 FE
+     * every other tick against a use of 3, a full buffer reads "100:running" every tick. Once the feed stops it reads
+     * draining every tick, without flicking back to running.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void operatingPowerGaugeHoldsSteady(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        var front = SWITCH.east(3);
+        var back = SWITCH.east(4);
+        var phase = new int[1];
+        var ticks = new int[1];
+        var feeding = new boolean[] {true};
+        var seen = new java.util.ArrayList<String>();
+        helper.onEachTick(() -> {
+            if (phase[0] < 2) return;
+            ticks[0]++;
+            if (feeding[0] && ticks[0] % 2 == 0) scene.insert(back, Direction.EAST, 6);
+            if (phase[0] >= 3) OperatingPowerService.reading(helper.getLevel().getServer(), scene.domain())
+                    .ifPresent(reading -> seen.add(reading.gauge()));
+        });
+        helper.succeedWhen(() -> {
+            scene.awaitDomain();
+            var domain = scene.domain();
+            switch (phase[0]) {
+                case 0 -> {
+                    scene.converter(front, Direction.WEST);
+                    scene.converter(back, Direction.WEST);
+                    phase[0] = 1;
+                    throw new GameTestAssertException("Waiting for the converter to form");
+                }
+                case 1 -> {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(back)), "Waiting for the converter to form");
+                    var full = (int) (2 * BeamConverterBlockEntity.CAPACITY);
+                    helper.assertValueEqual(scene.insert(back, Direction.EAST, full), full, "a full buffer");
+                    phase[0] = 2;
+                    throw new GameTestAssertException("Waiting for the domain to run");
+                }
+                case 2 -> {
+                    helper.assertTrue(!scene.registry().unpowered(domain), "Waiting for the domain to run");
+                    // Past the gauge's window, so it judges only the bursts.
+                    helper.assertTrue(ticks[0] > 160, "Waiting for bursts to fill the gauge's window");
+                    phase[0] = 3;
+                    throw new GameTestAssertException("Watching the gauge while fed in bursts");
+                }
+                case 3 -> {
+                    helper.assertTrue(seen.size() >= 40, "Watching the gauge while fed in bursts");
+                    helper.assertTrue(seen.stream().allMatch("100:running"::equals),
+                            "fed in bursts, the gauge holds at 100:running: " + seen.subList(0, 12));
+                    feeding[0] = false;
+                    seen.clear();
+                    phase[0] = 4;
+                    throw new GameTestAssertException("Watching the gauge without a feed");
+                }
+                default -> {
+                    helper.assertTrue(seen.size() >= 40, "Watching the gauge without a feed");
+                    // The first ticks may still read running: the window has not lost a whole FE yet.
+                    var first = seen.indexOf("100:draining");
+                    helper.assertTrue(first >= 0 && first < 5, "the feed stopped, the gauge drains: " + seen.subList(0, 12));
+                    helper.assertTrue(seen.subList(first, seen.size()).stream().allMatch(gauge -> gauge.endsWith(":draining")),
+                            "draining holds without flicker: " + seen.subList(first, first + 12));
+                    RouterEvidence.write("operatingpowergaugeholdssteady", 3, Map.of(
+                            "bursts", "100:running", "noFeed", "draining", "flicker", "none"));
+                    scene.close();
+                }
+            }
+        });
+    }
+
     /** The Switch with A and B, its two cables, and the rule turned on until {@link #close()}. */
     private static final class Scene implements AutoCloseable {
         private final GameTestHelper helper;

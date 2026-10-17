@@ -18,7 +18,7 @@ The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`),
   | Metric | Large chart | Box below |
   | --- | --- | --- |
   | **ME power** | Power use (AE/t), stacked by network | Stored power: each network's %, plus the shared pool |
-  | **Federation power** | Operating use (FE/t) by block group, the converters' input as a line | The buffer's %, the Beam Converters, use by block |
+  | **Federation power** | Operating use (FE/t) by block group | The buffer's % (its tooltip adds the converters' input), the Beam Converters, use by block |
   | **Stored** | Each network's own storage, by item or by network | The items the chart draws: search, tick, pin |
   | **Moved** | What moved between networks, by network or by item | The keys that moved most, with their routes |
   | **Crafting** | Jobs the networks' CPUs started per minute | Each network's jobs, and the CPUs crafting now |
@@ -44,9 +44,9 @@ The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`),
 - **Power use.** AE2's average drain of each network. In a shared energy pool AE2 counts a drain on the network whose
   cells gave the power, so the page splits the pool's drain by each network's idle draw: an estimate.
 - **Federation power.** The domain's [operating power](operating-power.md), recorded per persistent domain id: use
-  stacked by cables, bundled cables, Routers, Switches and devices, the matching converters' input averaged over the
-  second, and seconds the domain was stopped hatched red. The box below charts the buffer's fill and lists each
-  converter body (size, place, input; red while it supplies nothing or does not match). While the server does not
+  stacked by cables, bundled cables, Routers, Switches and devices, and seconds the domain was stopped hatched red.
+  The box below charts the buffer's fill, its tooltip adding the matching converters' input averaged over the second,
+  and lists each converter body (size, place, input; red while it supplies nothing or does not match). While the server does not
   require operating power the card is shown greyed out and cannot be opened.
 - **Jobs started.** Counted from each member CPU, looked at every tick. A job that starts and ends within one tick is
   missed, and so is one in a network's first second (members are looked up once a second). When a local job ends is

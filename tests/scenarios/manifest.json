@@ -187,6 +187,7 @@
     {"id":"power.needs-a-matching-converter","backend":"gametest","testId":"operatingpowerneedsamatchingconverter","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"power.converters-add-up","backend":"gametest","testId":"operatingpowerconvertersaddup","structure":"ae2federation_test:harness_native_smoke","assertions":4},
     {"id":"power.statistics","backend":"gametest","testId":"operatingpowerfeedsstatistics","structure":"ae2federation_test:harness_native_smoke","assertions":6},
+    {"id":"power.gauge-holds-steady","backend":"gametest","testId":"operatingpowergaugeholdssteady","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"topology.unsettled-attach-keeps-domain","backend":"gametest","testId":"topologyunsettledattachkeepsdomain","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"policy.lifecycle-matrix","backend":"gametest-restart","testId":"policylifecyclematrix","structure":"ae2federation_test:harness_native_smoke","assertions":12},
     {"id":"policy.new-bridge-restore","backend":"gametest","testId":"policynewbridgerestore","structure":"ae2federation_test:harness_native_smoke","assertions":8},
