@@ -18,9 +18,9 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   1 along; at a joint the low layer draws a 2x2x2 box (uniform scale) with the branch side in its mask, so the
   junction sits on the branch's beam. `CableFlowRenderer.getRenderBoundingBox` widens culling to that box.
 
-- Volume beam (owner disliked the two crossed ribbons, 2026-10-17): the 2x2 middle beam draws as an octagonal
-  full-bright tube that writes depth, capped where it stops inside a block, with three nested additive tubes for glow
-  (`CableBeamMesh.emitLayer(..., volume = true, ...)`). Ordinary cables keep the crossed ribbons.
+- Beam look, superseded: first an octagonal volume tube (`CableBeamMesh` `volume` flag); since branch `beam-render`
+  the R plasma beam in `client/BundleBeamMesh` (see "Bigger middle beam" below). Ordinary cables keep the crossed
+  ribbons.
 
 ## Pitfalls found
 
@@ -79,3 +79,18 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   cannot merge sheath segments; soft edges can keep `CableBeamFrame`'s shared cache if the cache stores normals and
   the facing fade is applied per vertex at replay time. Sheaths cap their brightness at strength 1.15 and the inner
   sheath turns red when overloaded, else full load and the alarm clip to white.
+- Java port (branch `beam-render`): `BundleBeamMesh` emits R in blocks from the anchor cell over the `BundleBeam` box,
+  reusing `CableBeamMesh.build` centerlines scaled by the box (no PoseStack stretch any more, so pulses and lobes keep
+  their world phase through 2-layer joints). Core 8 sides (straight arms merged to one segment, capped inside the
+  box), 3 sheaths 16/12/0 sides at 16/8/2 samples per block (near/medium/distant), halo 8 sides. `CableBeamFrame`
+  caches bundle layers with normals (`BUNDLE_STRIDE` 10); `CableFlowRenderer.renderBundle` fades glow alpha by
+  `BundleBeamMesh.fade` = 2 (n.v)^2 in eye space (modelView x pose; orthographic projections, m23 == 0, look down -Z).
+  In-shell fog is not drawn for the 2x2 beam (R has its halo instead). The `volume` tube code is gone.
+- Verified in a real world (dedicated server, perspective camera): the glow fades evenly above and below the beam
+  from level, above and below views. In a GuideME scene the run looks paler above than below; that is the shell's
+  glass faces tinting the halves differently (the old beam shows the same split), not the fade: GuideME's camera is
+  orthographic (`CameraSettings.getProjectionMatrix` uses `setOrtho`), and a numeric check of the faded mesh at 30 and
+  60 degrees pitch gives equal weight on both sides.
+- In-world capture needs power for the cyan look: a domain without a paying Beam Converter is "unpowered" and its
+  beams alarm red (`FederationDomainRegistry.unpowered`); an energy cell does not help. For screenshots, set
+  `requireOperatingPower = false` in the server's `ae2federation-server.toml` (hot-reloaded) and restore it after.
