@@ -986,6 +986,21 @@ public final class FederationDomainPolicySession {
     }
 
     /**
+     * The opened domain's operating power for the topology's corner gauge, as "percent:state": the converters' buffer
+     * fill and running, draining (input below use) or stopped. Empty while power is not required, so no gauge is drawn.
+     */
+    public String powerGauge() {
+        if (context == null || !space.controlnet.ae2federation.power.OperatingPowerRule.required()) return "";
+        return space.controlnet.ae2federation.power.OperatingPowerService.reading(level.getServer(),
+                context.federationDomainId()).map(reading -> {
+                    int percent = reading.capacity() <= 0 ? 0 : (int) Math.floor(100 * reading.stored() / reading.capacity());
+                    var state = !reading.running() ? "stopped"
+                            : reading.input() < reading.use().total() ? "draining" : "running";
+                    return percent + ":" + state;
+                }).orElse("");
+    }
+
+    /**
      * Networks and rules of every other domain connected to this one through shared networks, however far (a domain
      * that shares a network with a connected domain is connected too). The workspace shows them read-only: editing
      * stays with the Router or Bridge of the domain that owns the pair. At most {@link #MAX_RELATED_NETWORKS} networks

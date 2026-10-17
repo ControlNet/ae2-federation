@@ -141,6 +141,11 @@ final class FederationDomainPolicyMenuHolder implements PlayerUIMenuType.PlayerU
                 }).build());
         choices.addClass("state-sync");
         ui.rootElement.addChild(choices);
+        var power = new BindableValue<String>("");
+        power.bind(DataBindingBuilder.stringS2C(() -> session == null ? "" : session.powerGauge())
+                .initialValue("").remoteSetter(graphState::acceptPower).build());
+        power.addClass("state-sync");
+        ui.rootElement.addChild(power);
 
         var state = new BindableValue<String>("");
         state.bind(DataBindingBuilder.stringS2C(this::statusCode)

@@ -47,8 +47,10 @@ public final class FederationTestMod {
         modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 space.controlnet.ae2federation.test.world.OtherDimensionSite::onServerStopped);
-        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestServer()) {
-            // The GameTests build domains without Beam Converters; the power tests turn the requirement on themselves.
+        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestServer()
+                || !System.getProperty("ldlib2.uitest.run", "").isEmpty()) {
+            // The GameTests and UI scenarios build domains without Beam Converters; the power tests and the topology
+            // showcase turn the requirement on themselves.
             // Set once the server configuration has loaded, which would set it back.
             net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                     (net.neoforged.neoforge.event.server.ServerStartedEvent event) -> space.controlnet.ae2federation.power

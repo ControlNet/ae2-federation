@@ -296,6 +296,7 @@
   "ae2federation.ui.location.highlight_network": "高亮此网络",
   "ae2federation.ui.location.highlight_endpoint": "高亮此端点",
   "ae2federation.ui.topology.over_capacity": "容量超限，已停止",
+  "ae2federation.ui.topology.power": "能量",
   "ae2federation.ui.topology.scope.domain": "当前域",
   "ae2federation.ui.topology.scope.related": "含所有相连的域（只读）",
   "ae2federation.ui.topology.scope.help": "同时显示通过共享网络与本域相连的所有域（不限层数）中的 %s 个网络，这里只读。",

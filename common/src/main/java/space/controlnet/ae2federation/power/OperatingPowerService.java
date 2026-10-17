@@ -103,6 +103,8 @@ public final class OperatingPowerService {
             input += taken;
             creative |= converter.creative();
         }
+        // A creative converter supplies whatever the domain uses.
+        if (creative) input = Math.max(input, plan.use().total());
         var stored = new double[matching.size()];
         for (var index = 0; index < stored.length; index++) stored[index] = matching.get(index).stored();
         var ledger = ledgers.computeIfAbsent(id, ignored -> new PowerLedger());

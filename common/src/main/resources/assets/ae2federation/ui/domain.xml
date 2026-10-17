@@ -56,6 +56,11 @@
                     <label id="graph_throughput" class="graph-throughput"/>
                     <label id="graph_search_empty" class="graph-search-empty"/>
                     <label id="graph_legend" class="graph-legend"/>
+                    <element id="graph_power" class="graph-power">
+                        <label class="graph-power-name"><lang key="ae2federation.ui.topology.power"/></label>
+                        <element class="graph-power-track"><element id="graph_power_fill" class="graph-power-fill"/></element>
+                        <label id="graph_power_value" class="graph-power-value"/>
+                    </element>
                 </element>
                 <scroller-view id="topology_aside" class="topology-aside">
                     <element id="network_detail" class="aside-section">

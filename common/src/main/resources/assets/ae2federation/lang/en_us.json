@@ -296,6 +296,7 @@
   "ae2federation.ui.location.highlight_network": "Highlight network",
   "ae2federation.ui.location.highlight_endpoint": "Highlight Endpoint",
   "ae2federation.ui.topology.over_capacity": "over capacity, stopped",
+  "ae2federation.ui.topology.power": "Power",
   "ae2federation.ui.topology.scope.domain": "this domain",
   "ae2federation.ui.topology.scope.related": "with connected domains (read-only)",
   "ae2federation.ui.topology.scope.help": "Also show %s networks of every domain connected to this one through shared networks, however far. They are read-only here.",

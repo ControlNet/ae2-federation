@@ -121,6 +121,11 @@ final class FederationTopologyView {
     /** Accepted deliveries per rule key over the last five seconds, from real transfers only. */
     private final Map<String, JsonObject> flows = new HashMap<>();
     private Label throughput;
+    /** The bar's full width in GUI pixels, as {@code .graph-power-track} draws it. */
+    private static final int POWER_BAR_WIDTH = 40;
+    private UIElement powerGauge;
+    private UIElement powerFill;
+    private Label powerValue;
     /** The domain's Router group or Bridge, as the server reports it. */
     private JsonObject via;
     private boolean showRelated;
@@ -258,6 +263,11 @@ final class FederationTopologyView {
         });
         showLegend.run();
         throughput = element(ui, "graph_throughput", Label.class);
+        powerGauge = element(ui, "graph_power", UIElement.class);
+        powerFill = element(ui, "graph_power_fill", UIElement.class);
+        powerValue = element(ui, "graph_power_value", Label.class);
+        powerGauge.setAllowHitTest(false);
+        powerGauge.setDisplay(false);
         throughput.setAllowHitTest(false);
         var flowToggle = element(ui, "graph_flow_toggle", Button.class);
         FederationIcons.apply(flowToggle, FederationIcons.FLOW);
@@ -371,6 +381,28 @@ final class FederationTopologyView {
             providersByMember.computeIfAbsent(edge.from(), key -> new ArrayList<>()).add(edge.to());
         }
         refresh();
+    }
+
+    /**
+     * The corner gauge: the domain's buffer fill as a bar and a percentage, green while it runs, yellow while use is
+     * above input, red at 0 % when stopped. Not drawn while operating power is not required ({@code ""}).
+     */
+    void acceptPower(String value) {
+        var parts = value.split(":");
+        powerGauge.setDisplay(parts.length == 2);
+        if (parts.length != 2) return;
+        int percent = Math.max(0, Math.min(100, Integer.parseInt(parts[0])));
+        int color = switch (parts[1]) {
+            case "stopped" -> FederationTheme.ERROR;
+            case "draining" -> FederationTheme.WARN;
+            default -> FederationTheme.OK;
+        };
+        // A stopped domain's bar is drawn full in red, whatever its buffer holds; the figure still gives the fill.
+        var stopped = parts[1].equals("stopped");
+        powerFill.layout(layout -> layout.width(stopped ? POWER_BAR_WIDTH : POWER_BAR_WIDTH * percent / 100f));
+        powerFill.style(style -> style.backgroundTexture(FederationTheme.solid(color)));
+        powerValue.setText(Component.literal(percent + "%").withStyle(Style.EMPTY.withColor(
+                (stopped ? FederationTheme.ERROR : FederationTheme.DARK_TEXT) & 0xffffff)));
     }
 
     void acceptChoices(JsonObject root) {
