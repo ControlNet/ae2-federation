@@ -35,7 +35,7 @@ Place ordinary Federation Cables to fill the box the bundle will take. Then, hol
 wrench), right-click three of them:
 
 1. one corner of the cross-section;
-2. the opposite corner, in the same plane: at most 3×3, and at least two cables;
+2. the opposite corner, in the same plane: a square of 2×2 or 3×3;
 3. a cable straight along the cross-section, which sets the length (at most 64).
 
 The whole box turns into one bundled cable at once. Every position in it must hold an ordinary Federation Cable that
@@ -49,10 +49,7 @@ limit is larger:
 
 | Cross-section | Cables' worth | With the default 8 |
 |---|---|---|
-| 1×2 | 3 | 24 |
-| 1×3 | 4 | 32 |
 | 2×2 | 6 | 48 |
-| 2×3 | 9 | 72 |
 | 3×3 | Unlimited | Unlimited |
 
 When the server changes a cable's capacity, every bundle's limit changes with it.
@@ -63,8 +60,7 @@ Hold Federation Cables and right-click the bundle. An outline shows where the ne
 
 * An **end face** adds one layer, using one cable for each cell of the cross-section: 4 for a 2×2.
 * A **side** starts a branch with the same cross-section. It covers the side's full width and takes as many layers of
-  the bundle as it needs: a 2×2 branch takes two layers, and a 2×3 bundle branches over two layers from its 3-wide
-  side or over three from its 2-wide side. The branch is centred where you click. Extend it from its end face.
+  the bundle as it needs: a 2×2 branch takes two layers, and a 3×3 branch three. The branch is centred where you click. Extend it from its end face.
 * A **turn** is a branch from the last layers.
 
 Sneak to place a single ordinary cable instead.

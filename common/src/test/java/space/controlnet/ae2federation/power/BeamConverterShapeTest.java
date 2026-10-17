@@ -13,10 +13,14 @@ import org.junit.jupiter.api.Test;
  */
 final class BeamConverterShapeTest {
     @Test
-    void everyCrossSectionHasItsConverter() {
+    void everyBuildableCrossSectionHasItsConverter() {
         for (var section : CableCrossSection.values()) {
             // Along x: y and z are the cross-section, in either order.
             var max = new BlockPos(section.converterLength() - 1, section.wide() - 1, section.narrow() - 1);
+            if (!section.buildable()) {
+                assertEquals(Optional.empty(), BeamConverterShape.of(BlockPos.ZERO, max), section + " is not built today");
+                continue;
+            }
             assertEquals(Optional.of(section), BeamConverterShape.of(BlockPos.ZERO, max), section.toString());
             assertEquals(Optional.of(Direction.Axis.X), BeamConverterShape.axis(BlockPos.ZERO, max), section + " axis");
             var alongZ = new BlockPos(section.narrow() - 1, section.wide() - 1, section.converterLength() - 1);
@@ -33,8 +37,8 @@ final class BeamConverterShapeTest {
                 "2x2 across needs a length of 4, not 3");
         assertEquals(Optional.empty(), BeamConverterShape.of(BlockPos.ZERO, new BlockPos(1, 1, 4)),
                 "2x2x5 is a block too long");
-        assertEquals(Optional.of(CableCrossSection.ONE_BY_TWO), BeamConverterShape.of(BlockPos.ZERO, new BlockPos(3, 1, 0)),
-                "a 1x2x4 converter");
+        assertEquals(Optional.empty(), BeamConverterShape.of(BlockPos.ZERO, new BlockPos(3, 1, 0)),
+                "no 1x2x4 converter while 1x2 bundles are not built");
         assertEquals(Optional.of(Direction.Axis.Y), BeamConverterShape.axis(BlockPos.ZERO, new BlockPos(0, 1, 0)),
                 "a 1x1x2 converter standing up runs along y");
     }

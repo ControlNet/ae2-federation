@@ -118,7 +118,7 @@ public final class OperatingPowerGameTests {
     }
 
     /**
-     * A 1x2x4 converter does not match a domain of plain cable and supplies nothing, however full; a creative 1x1x2
+     * A 2x2x4 converter does not match a domain of plain cable and supplies nothing, however full; a creative 1x1x2
      * converter added on the other cable runs the domain without FE and never empties.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
@@ -133,10 +133,12 @@ public final class OperatingPowerGameTests {
             switch (phase[0]) {
                 case 0 -> {
                     for (var x = 3; x <= 6; x++) {
-                        for (var y = 0; y <= 1; y++) scene.converter(SWITCH.offset(x, y, 0), Direction.WEST);
+                        for (var y = 0; y <= 1; y++) {
+                            for (var z = 0; z <= 1; z++) scene.converter(SWITCH.offset(x, y, z), Direction.WEST);
+                        }
                     }
                     phase[0] = 1;
-                    throw new GameTestAssertException("Waiting for the 1x2x4 converter to form");
+                    throw new GameTestAssertException("Waiting for the 2x2x4 converter to form");
                 }
                 case 1 -> {
                     helper.assertTrue(RouterBlock.formed(helper.getBlockState(SWITCH.east(6))), "Waiting for it to form");
@@ -147,7 +149,7 @@ public final class OperatingPowerGameTests {
                 case 2 -> {
                     // Longer than a matching converter would take to run the domain.
                     if (++waited[0] < 40) throw new GameTestAssertException("Waiting 40 ticks");
-                    helper.assertTrue(scene.registry().unpowered(domain), "a 1x2x4 converter does not power plain cable");
+                    helper.assertTrue(scene.registry().unpowered(domain), "a 2x2x4 converter does not power plain cable");
                     var reading = scene.reading();
                     helper.assertTrue(!reading.converters().isEmpty()
                             && reading.converters().stream().noneMatch(converter -> converter.matches()),

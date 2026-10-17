@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.bundle;
 
 import java.util.Optional;
 import java.util.OptionalInt;
+import space.controlnet.ae2federation.power.CableCrossSection;
 
 /**
  * A bundled cable's cross-section, narrow side first: 1x2, 1x3, 2x2, 2x3 or 3x3. Each carries a fixed multiple of one
@@ -37,6 +38,11 @@ public record BundleShape(int narrow, int wide) {
             case 6 -> OptionalInt.of(9);
             default -> OptionalInt.empty();
         };
+    }
+
+    /** Whether a wrench forms a bundle of this cross-section today; see {@link CableCrossSection#BUILDABLE}. */
+    public boolean buildable() {
+        return CableCrossSection.of(narrow, wide).filter(CableCrossSection::buildable).isPresent();
     }
 
     @Override

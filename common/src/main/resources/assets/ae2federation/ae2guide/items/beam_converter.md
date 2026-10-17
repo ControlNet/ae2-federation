@@ -58,10 +58,7 @@ A converter is a solid box of converter blocks, placed any way round. Its front 
 | Largest cable | Converter |
 |---|---|
 | single cable | 1×1, 2 long |
-| 1×2 bundle | 1×2, 4 long |
-| 1×3 bundle | 1×3, 6 long |
 | 2×2 bundle | 2×2, 4 long |
-| 2×3 bundle | 2×3, 6 long |
 | 3×3 bundle | 3×3, 6 long |
 
 The front joins the domain like a Switch face; build a converter against a cable or any Federation block. A converter of

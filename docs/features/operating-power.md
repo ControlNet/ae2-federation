@@ -15,8 +15,9 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
   ([Beam Former](beam-former.md)).
 - **Converter.** `beam_converter` and `creative_beam_converter`: solid-cuboid devices like Router and Switch
   (`FormableDevice`), its members facing any way. The front's M x N must be a cable cross-section and the body
-  2·max(M, N) long toward it (`BeamConverterShape`): 1x1x2, 1x2x4, 1x3x6, 2x2x4, 2x3x6, 3x3x6; the size alone gives
-  the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
+  2·max(M, N) long toward it (`BeamConverterShape`), of a cross-section players can build today
+  (`CableCrossSection.BUILDABLE`): 1x1x2, 2x2x4, 3x3x6. The 1x2x4, 1x3x6 and 2x3x6 sizes stay in the code but do
+  not form until their bundles are buildable again (2026-10-17). The size alone gives the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
   (`FormableDevice.forming`): the end most members face, else the one end touching Federation cable, else the positive
   end. A wrench (`c:tools/wrench`) on a formed body turns all members end for end with neighbour updates; they then
   vote for the new facing. An unformed block's facing is ignored, and a cable draws no joint to it. The front links Federation like a Switch face; FE enters every other face. A formed body is

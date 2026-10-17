@@ -589,6 +589,7 @@
   "ae2federation.bundle.problem.not_flat": "Both corners must lie in one plane",
   "ae2federation.bundle.problem.not_along": "Right-click a cable straight along the cross-section",
   "ae2federation.bundle.problem.face_along_line": "Right-click a face that points along the bundle",
+  "ae2federation.bundle.problem.not_buildable": "Bundled cables are 2×2 or 3×3",
   "ae2federation.bundle.problem.too_long": "A bundle forms at most %s long at once",
   "ae2federation.bundle.problem.too_far": "Too far from the selection",
   "ae2federation.bundle.problem.not_all_cables": "%s of %s positions have no Federation Cable",
