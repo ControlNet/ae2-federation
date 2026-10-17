@@ -83,7 +83,7 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
 - Debounce detail: a new pair whose first finished sweep is clear links at once, so a server start or a pair just
   built does not wait the delay; only a link that was blocked waits to return.
 
-### 2. Block and body
+### 2. Block and body (done 2026-10-17)
 
 - Block, block entity, item, forming with facing membership (D2), wrench (D3), ports, registration, creative tab,
   lang, recipe, loot table, pickaxe tag, temporary textures (D11), connected-face model.

@@ -20,8 +20,9 @@ public final class OperatingPowerCosts {
             case CABLE -> 0.5;
             // AE2's default device and crafting-CPU block.
             case ROUTER, SWITCH, ENDPOINT, PATTERN_PROVIDER -> 2.0;
-            // AE2 already charges the tunnel itself; a converter is the supply.
-            case P2P_TUNNEL, CONVERTER, OTHER -> 0.0;
+            // AE2 already charges the tunnel itself; a converter is the supply; a Beam Former's block is free and its
+            // domain pays for each linked beam instead.
+            case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> 0.0;
         };
     }
 
@@ -35,7 +36,7 @@ public final class OperatingPowerCosts {
                 case ROUTER -> java.util.Optional.of(ROUTERS);
                 case SWITCH -> java.util.Optional.of(SWITCHES);
                 case ENDPOINT, PATTERN_PROVIDER -> java.util.Optional.of(DEVICES);
-                case P2P_TUNNEL, CONVERTER, OTHER -> java.util.Optional.empty();
+                case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> java.util.Optional.empty();
             };
         }
 

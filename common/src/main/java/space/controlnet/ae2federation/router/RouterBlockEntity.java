@@ -70,6 +70,11 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
                 : FederationDomainNodeKind.ROUTER;
     }
 
+    /** How many cables' capacity this node carries: one, unless the block's shape says otherwise. */
+    protected int capacityFactor() {
+        return 1;
+    }
+
     /** The body formed, broke or reshaped: the faces link again, or stop linking, from the next tick. */
     @Override
     public void setBlockState(BlockState state) {
@@ -250,6 +255,6 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, kind(), evidence);
+        return new FederationDomainNodeEvidence(federationDomainNodeId, kind(), evidence, capacityFactor());
     }
 }

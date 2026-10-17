@@ -19,6 +19,10 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   Federation Pattern Provider's textures, recoloured amber and the creative purple; the models are plain cubes with the
   front to the south, as the Provider's. The converter is a solid-cuboid body facing one way (1x1x2 up to 3x3x6) and
   has no connected-face geometry yet. Replace the PNGs and models, then delete the script.
+- **Temporary: the ME Federation Beam Former.** The same script writes `textures/block/beam_former/` (front, side, back)
+  from the Provider's textures, recoloured cyan; the model is a plain cube with the front (the beam's face) to the
+  south and the back (the cable's face) to the north. A former is a square 1x1, 2x2 or 3x3 body one block thick and has
+  no connected-face geometry yet.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow/fontTools). The optional game
   inspection tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `tools/visual/build_canvas_font.py`: cuts the topology canvas's Chinese font, `font/canvas_cjk.ttf`, from Droid Sans

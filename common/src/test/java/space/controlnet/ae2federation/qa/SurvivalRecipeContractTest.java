@@ -44,6 +44,7 @@ final class SurvivalRecipeContractTest {
                 "cable", "ae2federation:cable x8", "pattern_provider", "ae2federation:pattern_provider x1"));
         expected.put("processing_endpoint", "ae2federation:processing_endpoint x1");
         expected.put("beam_converter", "ae2federation:beam_converter x1");
+        expected.put("beam_former", "ae2federation:beam_former x1");
         assertEquals(expected, results);
     }
 
@@ -145,6 +146,16 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},"
                 + "\"E\":{\"item\":\"ae2:energy_acceptor\"},\"L\":" + CORE + "}"), recipe);
         assertFalse(recipes().containsKey("creative_beam_converter"));
+    }
+
+    // After ME Beam Former's block: cable down both sides, a fluix pearl over AE2's wireless receiver, a Nexus Core below.
+    @Test
+    void beamFormerStacksAPearlAndAWirelessReceiverOnANexusCore() throws IOException {
+        var recipe = recipes().get("beam_former");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"CPC\",\"CWC\",\"CLC\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
+                + ",\"P\":{\"item\":\"ae2:fluix_pearl\"},\"W\":{\"item\":\"ae2:wireless_receiver\"}}"), recipe);
     }
 
     @Test

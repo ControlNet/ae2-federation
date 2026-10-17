@@ -13,6 +13,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.beam.BeamRegistration;
 import space.controlnet.ae2federation.config.FederationServerConfig;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
@@ -58,6 +59,7 @@ public final class NeoForgeEntrypoint {
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
         PowerRegistration.register(modBus);
+        BeamRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);

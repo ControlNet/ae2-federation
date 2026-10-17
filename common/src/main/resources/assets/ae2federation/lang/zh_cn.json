@@ -44,6 +44,7 @@
   "block.ae2federation.switch": "ME联邦交换机",
   "block.ae2federation.beam_converter": "ME联邦光束转换器",
   "block.ae2federation.creative_beam_converter": "创造ME联邦光束转换器",
+  "block.ae2federation.beam_former": "ME联邦光束成型器",
   "ae2federation.structure.forming": "该%s正在成形，请稍后再试。",
   "ae2federation.structure.unloaded": "该%s尚未成形：部分方块位于未加载的区块。",
   "ae2federation.structure.invalid.not_solid": "该%s未成形，不连接任何网络：同类方块必须填满一个实心长方体。",

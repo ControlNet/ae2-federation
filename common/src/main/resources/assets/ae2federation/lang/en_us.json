@@ -44,6 +44,7 @@
   "block.ae2federation.switch": "ME Federation Switch",
   "block.ae2federation.beam_converter": "ME Federation Beam Converter",
   "block.ae2federation.creative_beam_converter": "Creative ME Federation Beam Converter",
+  "block.ae2federation.beam_former": "ME Federation Beam Former",
   "ae2federation.structure.forming": "This %s is forming; use it again in a moment.",
   "ae2federation.structure.unloaded": "This %s is not formed yet: part of it is in unloaded chunks.",
   "ae2federation.structure.invalid.not_solid": "This %s is not formed and links nothing: its blocks must fill a solid box.",

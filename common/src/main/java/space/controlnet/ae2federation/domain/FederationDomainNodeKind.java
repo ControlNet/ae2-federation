@@ -10,6 +10,8 @@ public enum FederationDomainNodeKind {
     P2P_TUNNEL,
     /** A block of an ME Federation Beam Converter, which powers its domain. */
     CONVERTER,
+    /** A block of an ME Federation Beam Former, which links its domain across a beam. */
+    BEAM_FORMER,
     /** A node no structural rule treats specially, such as a test's synthetic node. */
     OTHER
 }

@@ -1,5 +1,6 @@
-"""Write the ME Federation Beam Converter's temporary textures: the Federation Pattern Provider's, recoloured, until the
-artist draws the converter. Amber for the converter, the creative purple for the creative one; greys stay as they are.
+"""Write the temporary textures of the ME Federation Beam Converter and Beam Former: the Federation Pattern Provider's,
+recoloured, until the artist draws them. Amber for the converter, the creative purple for the creative one, cyan for
+the former; greys stay as they are.
 """
 from pathlib import Path
 import colorsys
@@ -8,7 +9,7 @@ from PIL import Image
 REPO = Path(__file__).resolve().parents[2]
 TEXTURES = REPO / 'common/src/main/resources/assets/ae2federation/textures/block'
 SOURCES = {'front': 'pattern_provider', 'side': 'pattern_provider_side', 'back': 'pattern_provider_back'}
-HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360}
+HUES = {'beam_converter': 36 / 360, 'creative_beam_converter': 290 / 360, 'beam_former': 190 / 360}
 
 
 def recolour(image, hue):
@@ -31,4 +32,4 @@ for device, hue in HUES.items():
     for name, source in SOURCES.items():
         image = Image.open(TEXTURES / f'{source}.png').convert('RGBA')
         recolour(image, hue).save(folder / f'{device}_{name}.png')
-print('Wrote temporary Beam Converter textures from the Pattern Provider\'s.')
+print('Wrote temporary Beam Converter and Beam Former textures from the Pattern Provider\'s.')
