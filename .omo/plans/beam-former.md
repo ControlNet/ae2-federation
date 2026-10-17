@@ -75,12 +75,13 @@ keep the last result; about one second of debounce each way; cost M·N × max(2,
 
 Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are written first in each phase.
 
-### 1. Pure logic
+### 1. Pure logic (done 2026-10-17)
 
-- `BeamFormerShape`, `BeamVolume` (the positions between two fronts in scan order, section by section),
-  `BeamObstruction` (the D4 predicate over a block state and its collision shape), `BeamDebounce`, `BeamPartnerIndex`.
-- Tests: 1x1, 2x2 and 3x3 accepted, 1x2, 1x3, 2x3 and anything thicker refused; volume size M·N·L and order; nearest partner, wrong size,
-  out of range, body in between; debounce both ways.
+- `beam/BeamFormerShape`, `BeamVolume` (the positions between two fronts, layer by layer), `BeamDebounce`,
+  `BeamPartnerIndex`, with `BeamFormerShapeTest`, `BeamVolumeTest`, `BeamDebounceTest`, `BeamPartnerIndexTest`.
+- `BeamObstruction` (the D4 predicate) needs block states, so it moves to phase 3 and is covered by GameTests there.
+- Debounce detail: a new pair whose first finished sweep is clear links at once, so a server start or a pair just
+  built does not wait the delay; only a link that was blocked waits to return.
 
 ### 2. Block and body
 
