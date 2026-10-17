@@ -83,8 +83,8 @@ ticks in a row with power. Larger storage stays with other mods' batteries in fr
 
 - **Topology: a corner gauge (user picked option B).** On the legend's dark background: "Power", a bar and a percentage,
   both the buffer's fill. Green normally, yellow while use is above input and the buffer falls, red when empty. When
-  stopped, the canvas turns dark red as for capacity overload, and the gauge names the cause in red: "no Beam
-  Charger", "chargers must be 2x2x4" or "out of power". No header text and no tooltips (user: unnecessary). Options A
+  stopped, the canvas turns dark red as for capacity overload and the gauge reads a red 0 %. No cause text, no header
+  text and no tooltips (user: unnecessary). Options A
   (a header segment) and C (a toolbar button) were not chosen.
 - **Statistics: a seventh metric (user liked it).** "Federation power" in FE/t beside "ME power" (AE/t); its card turns
   yellow while draining and red when stopped. The chart stacks use by block type with the chargers' input as a line,
