@@ -226,7 +226,7 @@ have independent switches, both enabled by default. Base cable capacity applies 
 enabled; its numerical default remains open. Keeping construction features available without restrictions
 is an assistant recommendation.
 
-The [operating-power idea](federation-operating-power.md) supplies the working Beam Charger concept. Its role as
+The [operating-power idea](federation-operating-power.md) supplies the energy-input device, now named the ME Federation Beam Converter (2026-10-17). Its role as
 an allocation/pathfinding origin is set aside. Its configuration-optional power
 requirement does not automatically establish whether capacity restrictions are optional too.
 

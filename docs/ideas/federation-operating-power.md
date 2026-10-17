@@ -1,7 +1,7 @@
 # Optional Federation operating power
 
 Discussion date: 2026-10-09.
-Status: user-proposed feature direction; the Beam Charger's shape, scope, input and outage behavior were settled on
+Status: user-proposed feature direction; the Beam Converter's name, shape, scope, input and outage behavior were settled on
 2026-10-17. Costs and implementation remain open.
 
 ## Intent
@@ -23,16 +23,22 @@ operating expense. This is a separate idea from any particular remote-link devic
 
 No numerical costs, conversion rates, or per-device configuration schema have been selected.
 
-## User decisions 2026-10-17: the Beam Charger
+## User decisions 2026-10-17: the Beam Converter
 
-The user named the device **联邦光束供能器** (Federation Beam Charger; working name) and settled its shape and role:
+**Name (user, 2026-10-17).** **ME Federation Beam Converter** / **ME联邦光束转换器**, ID `ae2federation:beam_converter`;
+the creative variant is **Creative ME Federation Beam Converter** / **创造ME联邦光束转换器**, `creative_beam_converter`.
+It replaces the working names 光束充能器, 联邦光束供能器 and Beam Charger: AE2's Charger (充能器) charges items, and
+"光电" would wrongly call FE electricity. Like a real fiber media converter, it turns one form into the beam.
+The glow inside Federation cables stays "beam" (光束), not "laser", as the guide and the renderer already say.
+
+The user settled its shape and role:
 
 - **Shape.** A solid-cuboid multiblock of exactly M x N x 2·max(M, N), where M x N is the largest Federation cable
-  cross-section in its domain. Exact, not a minimum: a domain that gains a larger bundle needs a rebuilt charger.
+  cross-section in its domain. Exact, not a minimum: a domain that gains a larger bundle needs a rebuilt converter.
 - **Sizes.** Deliberately not ordered by capacity: a 1x3 domain needs 1x3x6 (18 blocks) while a 2x2 domain needs
   2x2x4 (16 blocks), because finding two blocks of height may be no easier than a long run; the player chooses.
 
-  | Largest cross-section | Charger | Blocks |
+  | Largest cross-section | Converter | Blocks |
   |---|---|---|
   | 1x1 (no bundle) | 1x1x2 | 2 |
   | 1x2 | 1x2x4 | 8 |
@@ -42,22 +48,22 @@ The user named the device **联邦光束供能器** (Federation Beam Charger; wo
   | 3x3 | 3x3x6 | 54 |
 
   "Largest" means the highest-capacity cross-section (1x1 < 1x2 < 1x3 < 2x2 < 2x3 < 3x3), so a domain holding both a
-  1x3 and a 2x2 bundle needs a 2x2 charger. If the largest cross-section changes, the old charger stops matching and
+  1x3 and a 2x2 bundle needs a 2x2 converter. If the largest cross-section changes, the old converter stops matching and
   the domain is unpowered until it is rebuilt (accepted).
-- **Facing.** The charger is directional. Only its front face connects to Federation cable, and that face's cross-section
+- **Facing.** The converter is directional. Only its front face connects to Federation cable, and that face's cross-section
   must equal the domain's largest cable cross-section.
-- **Scope.** One charger serves one whole Federation domain; another domain needs its own. Carrying beam energy
+- **Scope.** One converter serves one whole Federation domain; another domain needs its own. Carrying beam energy
   between domains through an ME network was mentioned as a possible later method, with no current plan.
-- **Several chargers.** Like AE2 Energy Acceptors: energy can enter at several places in a domain and adds up.
+- **Several converters.** Like AE2 Energy Acceptors: energy can enter at several places in a domain and adds up.
 - **Input.** FE. Drawing AE directly from an ME network was proposed and then deferred, because a network whose own
   power arrives only through the Federation could never restart it (the cold-start question below).
 - **Insufficient energy.** As with capacity overload: the whole domain stops sharing, the world is not changed, and
   sharing resumes when power returns.
 - **Default.** Required by default; the configuration can turn the requirement off, which means unlimited energy.
-- **Creative variant.** A creative charger is wanted, following other mods' creative energy blocks.
+- **Creative variant.** A creative converter is wanted, following other mods' creative energy blocks.
 - **Beam links.** A [line-of-sight beam](line-of-sight-beam-links.md) should cost more than the same number of cables.
 
-Every one of several chargers must match the size (user, 2026-10-17). Open: the costs per block type.
+Every one of several converters must match the size (user, 2026-10-17). Open: the costs per block type.
 
 **Costs (assistant proposal 2026-10-17, not selected).** Calibrated on the
 [AE2 and addon energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md) (1 AE = 2 FE; AE2's default
@@ -71,12 +77,12 @@ device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all
 | Endpoint, Federation Pattern Provider | 2 each | AE2's default device |
 | Beam Transceiver link | 1 per cell per block of span | twice the cables it replaces (user: a beam costs more than cables) |
 | Wireless cube | 44 per block per side | the Quantum Network Bridge's 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
-| Beam Charger | 0 | it is the supply |
+| Beam Converter | 0 | it is the supply |
 
-**Buffer (user, 2026-10-17: follow AE2).** Chargers keep a small buffer, as an AE2 Controller keeps 8000 AE per block:
-proposed 16k FE per charger block, the domain's chargers adding up. Input fills it and use drains it every tick. The
+**Buffer (user, 2026-10-17: follow AE2).** Converters keep a small buffer, as an AE2 Controller keeps 8000 AE per block:
+proposed 16k FE per converter block, the domain's converters adding up. Input fills it and use drains it every tick. The
 domain stops the tick the buffer cannot pay its use, and, as AE2's `EnergyService` does, runs again only after 30
-ticks in a row with power. Larger storage stays with other mods' batteries in front of the chargers.
+ticks in a row with power. Larger storage stays with other mods' batteries in front of the converters.
 
 **GUI (2026-10-17).** The user asked for the domain's power to show in the domain screen. On the
 [design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能":
@@ -87,8 +93,8 @@ ticks in a row with power. Larger storage stays with other mods' batteries in fr
   text and no tooltips (user: unnecessary). Options A
   (a header segment) and C (a toolbar button) were not chosen.
 - **Statistics: a seventh metric (user liked it).** "Federation power" in FE/t beside "ME power" (AE/t); its card turns
-  yellow while draining and red when stopped. The chart stacks use by block type with the chargers' input as a line,
-  red where stopped. Below: the buffer's stored % on the left, as under ME power; on the right each charger (position and
+  yellow while draining and red when stopped. The chart stacks use by block type with the converters' input as a line,
+  red where stopped. Below: the buffer's stored % on the left, as under ME power; on the right each converter (position and
   input, red at 0) and use by block type. No size or match text (user: unnecessary). It is domain-wide, so the network filter greys out.
 
 ## Relationship to existing features

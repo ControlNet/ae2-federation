@@ -26,7 +26,7 @@ file reader. Saved network Policy settings and artifact-proof JVM flags are sepa
 | Operating energy costs | Used only while operating-power requirements are enabled; values undecided | Operating power |
 | Enforce the automation computing limit | Enabled by default; off means unlimited automation (user, 2026-10-17) | [Rule-based automation](rule-based-automation.md) |
 
-Turning the power requirement off means unlimited energy (user, 2026-10-17); a creative Beam Charger is wanted as
+Turning the power requirement off means unlimited energy (user, 2026-10-17); a Creative ME Federation Beam Converter is wanted as
 well. Disabled parent rules make their numerical settings inactive; they do not require removing those settings
 from the file. File format, option IDs, numerical defaults, cost granularity, and reload behavior remain
 implementation/design choices. Separate per-cross-section overrides are not confirmed requirements.
