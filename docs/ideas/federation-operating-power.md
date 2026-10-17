@@ -88,8 +88,8 @@ ticks in a row with power. Larger storage stays with other mods' batteries in fr
   (a header segment) and C (a toolbar button) were not chosen.
 - **Statistics: a seventh metric (user liked it).** "Federation power" in FE/t beside "ME power" (AE/t); its card turns
   yellow while draining and red when stopped. The chart stacks use by block type with the chargers' input as a line,
-  red where stopped. Below: the buffer's stored % on the left, as under ME power; on the right each charger (input,
-  whether it matches) and use by block type. It is domain-wide, so the network filter greys out.
+  red where stopped. Below: the buffer's stored % on the left, as under ME power; on the right each charger (position and
+  input, red at 0) and use by block type. No size or match text (user: unnecessary). It is domain-wide, so the network filter greys out.
 
 ## Relationship to existing features
 
