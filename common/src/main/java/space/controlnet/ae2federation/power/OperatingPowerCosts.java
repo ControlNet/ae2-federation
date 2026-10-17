@@ -25,25 +25,46 @@ public final class OperatingPowerCosts {
         };
     }
 
+    /** How the statistics page groups a domain's use: bundle cells apart from plain cable, devices together. */
+    public enum Group {
+        CABLES, BUNDLES, ROUTERS, SWITCHES, DEVICES;
+
+        public static java.util.Optional<Group> of(FederationDomainNodeEvidence node) {
+            return switch (node.kind()) {
+                case CABLE -> java.util.Optional.of(node.capacityFactor() == 1 ? CABLES : BUNDLES);
+                case ROUTER -> java.util.Optional.of(ROUTERS);
+                case SWITCH -> java.util.Optional.of(SWITCHES);
+                case ENDPOINT, PATTERN_PROVIDER -> java.util.Optional.of(DEVICES);
+                case P2P_TUNNEL, CONVERTER, OTHER -> java.util.Optional.empty();
+            };
+        }
+
+        /** The group's name in statistics series. */
+        public String key() {
+            return name().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
     /** What a domain of {@code nodes} uses per tick under the current rule; nothing when power is not required. */
     public static Use use(Iterable<FederationDomainNodeEvidence> nodes) {
-        var byKind = new EnumMap<FederationDomainNodeKind, Double>(FederationDomainNodeKind.class);
-        if (!OperatingPowerRule.required()) return new Use(0, byKind);
+        var byGroup = new EnumMap<Group, Double>(Group.class);
+        if (!OperatingPowerRule.required()) return new Use(0, byGroup);
         var multiplier = OperatingPowerRule.multiplier();
         var total = 0.0;
         for (var node : nodes) {
             var cost = perTick(node.kind()) * multiplier;
             if (cost == 0) continue;
-            byKind.merge(node.kind(), cost, Double::sum);
+            var group = Group.of(node);
+            if (group.isPresent()) byGroup.merge(group.get(), cost, Double::sum);
             total += cost;
         }
-        return new Use(total, byKind);
+        return new Use(total, byGroup);
     }
 
-    /** A domain's use per tick, in total and by block kind. */
-    public record Use(double total, Map<FederationDomainNodeKind, Double> byKind) {
+    /** A domain's use per tick, in total and by group. */
+    public record Use(double total, Map<Group, Double> byGroup) {
         public Use {
-            byKind = Map.copyOf(byKind);
+            byGroup = Map.copyOf(byGroup);
         }
     }
 }

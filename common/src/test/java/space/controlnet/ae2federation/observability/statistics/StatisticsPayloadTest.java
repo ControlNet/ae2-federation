@@ -59,6 +59,41 @@ class StatisticsPayloadTest {
     }
 
     @Test
+    void theOpenedDomainsFederationPowerArrivesWithEveryMetricAndItsConvertersWithItsOwn() {
+        var book = new StatisticsBook<String>();
+        var prefix = StatisticsNames.fedpower("physical:3");
+        for (long second = 100; second < 110; second++) {
+            book.observe(second);
+            book.gauge(prefix + StatisticsNames.FEDPOWER_USE + "/cables", second, 1.5);
+            book.gauge(prefix + StatisticsNames.FEDPOWER_INPUT, second, 22);
+            book.gauge(prefix + StatisticsNames.FEDPOWER_STORED, second, 82);
+            book.gauge(prefix + StatisticsNames.FEDPOWER_STOPPED, second, second < 105 ? 1 : 0);
+            book.gauge(StatisticsNames.fedpower("physical:4") + StatisticsNames.FEDPOWER_INPUT, second, 99);
+        }
+        var converter = new StatisticsPayload.Converter("minecraft:overworld", 12, 64, -30, "2x2x4", 1700, true);
+        var power = new StatisticsPayload.Power("physical:3", true, List.of(converter));
+        var extras = new StatisticsPayload.Extras<String>(List.of(), java.util.Map.of(), java.util.Set.of(), false, power);
+
+        var moved = roundTrip(book, List.of(A), new StatisticsPayload.Request(StatisticsRange.SECONDS,
+                StatisticsPayload.MOVED, "ae2:i", false, false), 109, extras);
+        assertTrue(moved.powerRequired());
+        assertEquals(22f, moved.domain().get(StatisticsNames.FEDPOWER_INPUT)[119], "the card's sparkline needs it");
+        assertEquals(1.5f, moved.domain().get(StatisticsNames.FEDPOWER_USE + "/cables")[119]);
+        assertEquals(1f, moved.domain().get(StatisticsNames.FEDPOWER_STOPPED)[112]);
+        assertFalse(moved.domain().containsKey("physical:4/" + StatisticsNames.FEDPOWER_INPUT), "only this domain");
+        assertTrue(moved.converters().isEmpty(), "the converter list comes with its own metric only");
+
+        var shown = roundTrip(book, List.of(A), new StatisticsPayload.Request(StatisticsRange.SECONDS,
+                StatisticsPayload.FEDPOWER, "ae2:i", false, false), 109, extras);
+        assertEquals(List.of(converter), shown.converters());
+
+        var off = roundTrip(book, List.of(A), new StatisticsPayload.Request(StatisticsRange.SECONDS,
+                StatisticsPayload.FEDPOWER, "ae2:i", false, false), 109, StatisticsPayload.Extras.none());
+        assertFalse(off.powerRequired(), "without power required the card is disabled");
+        assertTrue(off.domain().isEmpty());
+    }
+
+    @Test
     void countersArriveAsSumsPerPointBetweenMembersOnly() {
         var book = new StatisticsBook<String>();
         for (long second = 600; second < 610; second++) book.observe(second);

@@ -33,6 +33,8 @@ public final class OperatingPowerService {
 
     private final Map<FederationDomainId, PowerLedger> ledgers = new HashMap<>();
     private final Map<FederationDomainId, Reading> readings = new HashMap<>();
+    /** What each domain took in and how many ticks it settled since the statistics last drained them. */
+    private final Map<FederationDomainId, Gathered> gathered = new HashMap<>();
     private Map<FederationDomainId, Plan> plans = Map.of();
     private FederationDomainRegistry plannedRegistry;
     private long plannedRevision = -1;
@@ -51,6 +53,28 @@ public final class OperatingPowerService {
         return service == null ? Optional.empty() : Optional.ofNullable(service.readings.get(federationDomainId));
     }
 
+    /**
+     * Each domain's power since the last call, for the statistics page, which records once a second: its input and its
+     * bodies' input averaged over the ticks it settled, and the rest as of the last tick. Empty while power is not
+     * required. Resets what it returns.
+     */
+    public static synchronized Map<FederationDomainId, Second> drainSecond(MinecraftServer server) {
+        var service = SERVICES.get(server);
+        if (service == null) return Map.of();
+        var out = new HashMap<FederationDomainId, Second>();
+        service.gathered.forEach((id, gathered) -> {
+            var reading = service.readings.get(id);
+            if (reading == null || gathered.ticks == 0) return;
+            var bodies = new ArrayList<ConverterBody>();
+            gathered.bodies.forEach((site, input) -> bodies.add(new ConverterBody(site.dimension(), site.origin(),
+                    site.size(), input / gathered.ticks, site.matches())));
+            out.put(id, new Second(reading.use(), gathered.input / gathered.ticks, reading.stored(), reading.capacity(),
+                    reading.running(), List.copyOf(bodies)));
+        });
+        service.gathered.clear();
+        return out;
+    }
+
     public static synchronized void closeServer(MinecraftServer server) {
         SERVICES.remove(server);
     }
@@ -61,6 +85,7 @@ public final class OperatingPowerService {
             registry.unpoweredDomains().forEach(id -> registry.setUnpowered(id, false));
             ledgers.clear();
             readings.clear();
+            gathered.clear();
             plans = Map.of();
             plannedRevision = -1;
             return;
@@ -83,6 +108,7 @@ public final class OperatingPowerService {
         }
         ledgers.keySet().retainAll(live);
         readings.keySet().retainAll(live);
+        gathered.keySet().retainAll(live);
     }
 
     private void settle(FederationDomainRegistry registry, FederationDomainId id, Plan plan) {
@@ -90,6 +116,7 @@ public final class OperatingPowerService {
         var converters = new ArrayList<ConverterReading>();
         var input = 0.0;
         var creative = false;
+        var gathered = this.gathered.computeIfAbsent(id, ignored -> new Gathered());
         for (var site : plan.converters()) {
             if (!site.level().isLoaded(site.position())
                     || !(site.level().getBlockEntity(site.position()) instanceof BeamConverterBlockEntity converter)) {
@@ -98,6 +125,7 @@ public final class OperatingPowerService {
             var taken = converter.takeInput();
             converters.add(new ConverterReading(site.level().dimension().location().toString(), site.position(), taken,
                     site.matches()));
+            gathered.bodies.merge(site.body(), taken, Double::sum);
             if (!site.matches()) continue;
             matching.add(converter);
             input += taken;
@@ -111,6 +139,8 @@ public final class OperatingPowerService {
         // A creative converter never runs out: the domain pays its use without drawing on the others.
         var running = creative ? ledger.settle(new double[] {plan.use().total()}, plan.use().total())
                 : ledger.settle(stored, plan.use().total());
+        gathered.input += input;
+        gathered.ticks++;
         var left = 0.0;
         for (var index = 0; index < stored.length; index++) {
             if (!creative) matching.get(index).setStored(stored[index]);
@@ -144,7 +174,9 @@ public final class OperatingPowerService {
                             bodies.add(judged);
                             return judged;
                         });
-                converters.add(new ConverterSite(level, position, body.section().filter(section::equals).isPresent()));
+                var matches = body.section().filter(section::equals).isPresent();
+                converters.add(new ConverterSite(level, position, matches, body.site(node.nodeId().dimension(), position,
+                        matches)));
             }
             plans.put(id, new Plan(OperatingPowerCosts.use(evidence), section, List.copyOf(converters)));
         }
@@ -155,7 +187,18 @@ public final class OperatingPowerService {
     private record Plan(OperatingPowerCosts.Use use, CableCrossSection section, List<ConverterSite> converters) {
     }
 
-    private record ConverterSite(ServerLevel level, BlockPos position, boolean matches) {
+    private record ConverterSite(ServerLevel level, BlockPos position, boolean matches, BodySite body) {
+    }
+
+    /** A converter body as the statistics page lists it: where it starts, its size, and whether it matches. */
+    private record BodySite(String dimension, BlockPos origin, String size, boolean matches) {
+    }
+
+    /** What one domain took in, in total and by body, over the ticks it settled since the last drain. */
+    private static final class Gathered {
+        private final Map<BodySite, Double> bodies = new java.util.LinkedHashMap<>();
+        private double input;
+        private int ticks;
     }
 
     /** A converter body as judged when planning, and the cross-section of its front if it is one. */
@@ -173,6 +216,18 @@ public final class OperatingPowerService {
             return new Body(level, result, section);
         }
 
+        /**
+         * The body as listed: from its lowest corner, sized across its front then along it (a converter's own shape)
+         * or by its extents along x, y and z when it is not one. An unformed block is listed on its own.
+         */
+        BodySite site(String dimension, BlockPos position, boolean matches) {
+            if (!(result instanceof DeviceStructure.Valid valid)) return new BodySite(dimension, position, "1x1x1", matches);
+            var size = valid.max().subtract(valid.min()).offset(1, 1, 1);
+            var label = section.map(cross -> cross.narrow() + "x" + cross.wide() + "x" + cross.converterLength())
+                    .orElse(size.getX() + "x" + size.getY() + "x" + size.getZ());
+            return new BodySite(dimension, valid.min(), label, matches);
+        }
+
         boolean contains(ServerLevel other, BlockPos position) {
             return other == level && result instanceof DeviceStructure.Valid valid && valid.contains(position);
         }
@@ -184,6 +239,18 @@ public final class OperatingPowerService {
      */
     public record Reading(OperatingPowerCosts.Use use, double input, double stored, double capacity, boolean running,
             CableCrossSection section, List<ConverterReading> converters) {
+    }
+
+    /**
+     * One second of a domain's power: its use, its matching converters' input per tick averaged over the second, what
+     * their buffers hold and can hold, whether it runs, and each converter body's average input.
+     */
+    public record Second(OperatingPowerCosts.Use use, double input, double stored, double capacity, boolean running,
+            List<ConverterBody> bodies) {
+    }
+
+    /** A converter body, from its lowest corner: its size, its input per tick and whether it matches its domain. */
+    public record ConverterBody(String dimension, BlockPos origin, String size, double input, boolean matches) {
     }
 
     /** One converter block's input this tick, and whether its body matches the domain's cross-section. */

@@ -47,8 +47,19 @@ final class OperatingPowerCostsTest {
         var use = OperatingPowerCosts.use(nodes);
 
         assertEquals(16 + 1.5 + 2 + 2, use.total());
-        assertEquals(Map.of(FederationDomainNodeKind.ROUTER, 16.0, FederationDomainNodeKind.CABLE, 1.5,
-                FederationDomainNodeKind.SWITCH, 2.0, FederationDomainNodeKind.ENDPOINT, 2.0), use.byKind());
+        // The statistics page's groups: bundle cells apart from plain cable, Endpoints and Providers together.
+        assertEquals(Map.of(OperatingPowerCosts.Group.ROUTERS, 16.0, OperatingPowerCosts.Group.BUNDLES, 1.0,
+                OperatingPowerCosts.Group.CABLES, 0.5, OperatingPowerCosts.Group.SWITCHES, 2.0,
+                OperatingPowerCosts.Group.DEVICES, 2.0), use.byGroup());
+    }
+
+    @Test
+    void anUnlimitedBundleCountsAsABundleAndAProviderAsADevice() {
+        var nodes = new ArrayList<FederationDomainNodeEvidence>();
+        add(nodes, FederationDomainNodeKind.CABLE, 2, FederationDomainNodeEvidence.UNLIMITED);
+        add(nodes, FederationDomainNodeKind.PATTERN_PROVIDER, 1, 1);
+        assertEquals(Map.of(OperatingPowerCosts.Group.BUNDLES, 1.0, OperatingPowerCosts.Group.DEVICES, 2.0),
+                OperatingPowerCosts.use(nodes).byGroup());
     }
 
     @Test

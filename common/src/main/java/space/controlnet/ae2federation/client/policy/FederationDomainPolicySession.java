@@ -1177,12 +1177,19 @@ public final class FederationDomainPolicySession {
                 for (var entry : statistics.stock(member)) catalog.merge(entry.getKey(), entry.getLongValue(), Long::sum);
             }
         }
+        var domain = context.federationDomainId().value();
+        var converters = statistics.converters(domain).stream().map(body ->
+                new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Converter(body.dimension(),
+                        body.origin().getX(), body.origin().getY(), body.origin().getZ(), body.size(), body.input(),
+                        body.matches())).toList();
+        var power = new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Power(domain,
+                space.controlnet.ae2federation.power.OperatingPowerRule.required(), converters);
         return space.controlnet.ae2federation.observability.statistics.StatisticsPayload.encode(statistics.book(), members,
                 request, statistics.finishedSecond(),
                 shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.STORAGE),
                 shared.contains(space.controlnet.ae2federation.policy.PolicyCapability.CRAFTING),
                 new space.controlnet.ae2federation.observability.statistics.StatisticsPayload.Extras<>(cpus, catalog, pinned,
-                        state.editingAllowed()),
+                        state.editingAllowed(), power),
                 key -> key.toTagGeneric(registries), key -> key.getType().getId().toString());
     }
 

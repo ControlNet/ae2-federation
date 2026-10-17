@@ -25,6 +25,11 @@ D1-D10: `.omo/plans/beam-converter.md`.
 - **Guide scene states.** A formed converter in an snbt needs `facing`, `formed` and the six connection booleans in the
   state string, and the same string in the palette (`everyStructureBlockStateIsInItsPalette`). The cable under a
   converter's front draws dense, as against a Router.
+- **Statistics GameTests finish seconds themselves.** `FederationStatistics` records a second once the wall clock
+  passes it, and a GameTest server ran about 1200 ticks in 5 real seconds: one recorded second then averaged the
+  one-off 8000 FE insert into the input (38 FE/t instead of 5), and `book.latest` kept returning that stale point.
+  `operatingpowerfeedsstatistics` calls `finishSecond` itself, once after the insert and then once per tick, as
+  `StatisticsGameTests` does.
 - **Chinese guide wording.** Bundled cables are 「粗线缆」 in the Chinese guide, not 「捆束」.
 
 ## Evidence (not committed)

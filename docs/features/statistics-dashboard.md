@@ -12,12 +12,13 @@ The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`),
 - **Where.** The third tab on the domain screen's left rail. It shows the domain's member networks only.
 - **Ranges.** 2 min (1 s points), 10 min (5 s), 1 h (1 min) and 24 h (10 min), picked at the top right. History
   uses wall-clock time and is saved with the world, so a restart keeps the last 24 hours.
-- **Metrics.** Six cards on the left. Each has a name, the newest figure and a sparkline. Clicking a card shows that
+- **Metrics.** Seven cards on the left. Each has a name, the newest figure and a sparkline. Clicking a card shows that
   metric in the large chart, and the box below it shows what that metric has besides:
 
   | Metric | Large chart | Box below |
   | --- | --- | --- |
   | **ME power** | Power use (AE/t), stacked by network | Stored power: each network's %, plus the shared pool |
+  | **Federation power** | Operating use (FE/t) by block group, the converters' input as a line | The buffer's %, the Beam Converters, use by block |
   | **Stored** | Each network's own storage, by item or by network | The items the chart draws: search, tick, pin |
   | **Moved** | What moved between networks, by network or by item | The keys that moved most, with their routes |
   | **Crafting** | Jobs the networks' CPUs started per minute | Each network's jobs, and the CPUs crafting now |
@@ -42,6 +43,11 @@ The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`),
   below. By item, the chart stacks the 6 items that moved most, with the rest in grey.
 - **Power use.** AE2's average drain of each network. In a shared energy pool AE2 counts a drain on the network whose
   cells gave the power, so the page splits the pool's drain by each network's idle draw: an estimate.
+- **Federation power.** The domain's [operating power](operating-power.md), recorded per persistent domain id: use
+  stacked by cables, bundled cables, Routers, Switches and devices, the matching converters' input averaged over the
+  second, and seconds the domain was stopped hatched red. The box below charts the buffer's fill and lists each
+  converter body (size, place, input; red while it supplies nothing or does not match). While the server does not
+  require operating power the card is shown greyed out and cannot be opened.
 - **Jobs started.** Counted from each member CPU, looked at every tick. A job that starts and ends within one tick is
   missed, and so is one in a network's first second (members are looked up once a second). When a local job ends is
   not observable without a mixin; jobs that used another network's patterns are counted as done or cancelled exactly,
@@ -83,7 +89,10 @@ The in-game guide explains it on its Statistics page (`ae2guide/statistics.md`),
 
 - Unit tests: `StatisticsBookTest`, `SecondClockTest`, `TimelineTest`, `TopKeysTest`, `StatisticsPayloadTest`.
   GameTests: `StatisticsGameTests` (real traffic, jobs started, stock by item; save and load of history and pins).
-- UI scenario `ui.mapping` (screenshots `ui-showcase-statistics*`, one per metric and view). It runs 75 s of scripted
+- GameTest `power.statistics` (`operatingpowerfeedsstatistics`): input, use by group, capacity, buffer and the
+  converter body recorded for a domain.
+- UI scenario `ui.mapping` (screenshots `ui-showcase-statistics*`, one per metric and view;
+  `ui-showcase-statistics-power-off` shows the greyed Federation power card with the rule off). It runs 75 s of scripted
   Storage-rule traffic in the eight-network test world. The routes and amounts are test-world activity, like the test
   world's names and rules.
 - Notes: `.omo/knowledges/statistics-dashboard-observables-2026-10-14.md`.

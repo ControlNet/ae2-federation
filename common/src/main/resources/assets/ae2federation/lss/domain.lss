@@ -202,6 +202,7 @@
 .domain-panel .network-chip { height: 13; flex-shrink: 0; padding-all: 0; padding-bottom: 1; base-background: built-in(federation:NETWORK_CHIP); hover-background: built-in(federation:NETWORK_CHIP_HOVER); pressed-background: built-in(federation:NETWORK_CHIP_HOVER); }
 .domain-panel .network-chip.selected { base-background: built-in(federation:NETWORK_CHIP_SELECTED); hover-background: built-in(federation:NETWORK_CHIP_SELECTED); }
 .domain-panel .network-chip.selected .__button_text__ { text-color: #ffefeaf8; }
+.domain-panel .network-chip.dim .__button_text__ { text-color: #ffa4a6b4; }
 .stats-body { flex: 1; min-height: 0; width: 100%; flex-direction: row; gap-all: 6; }
 .stats-metrics { width: 26%; min-width: 112; max-width: 220; height: 100%; flex-shrink: 0; gap-all: 3; }
 .stats-card { width: 100%; flex: 1; min-height: 18; }

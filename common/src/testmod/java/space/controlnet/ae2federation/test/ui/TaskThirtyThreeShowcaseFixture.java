@@ -499,6 +499,11 @@ final class TaskThirtyThreeShowcaseFixture {
                         .receiveEnergy((int) Math.ceil(reading.use().total()), false));
     }
 
+    /** Turns the power rule off, as a server without it runs. */
+    static void powerOff(ServerContext context) {
+        stopConverterFeed(context);
+    }
+
     private static void stopConverterFeed(ServerContext context) {
         feeding = null;
         space.controlnet.ae2federation.power.OperatingPowerRule.set(false,

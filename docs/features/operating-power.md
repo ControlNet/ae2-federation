@@ -1,7 +1,7 @@
 # Federation operating power
 
-Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade and the
-guide page are implemented on `dev` (2026-10-17). The statistics metric waits for persistent domain ids. Design
+Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade, the
+guide page and the statistics metric are implemented on `dev` (2026-10-17). Design
 decisions: [operating power idea](../ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
 The converter's textures are temporary (the Pattern Provider's, recoloured) until the artist delivers.
 
@@ -30,7 +30,9 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
 - **Display.** Its cables draw red at the 0 %-load width. The topology turns dark red, and its corner gauge shows
   "Power", the buffer's fill and a percentage: green while running, yellow while input is below use, a full red bar
   once stopped. Nothing of power is drawn while the rule is off. Jade on a converter block reads "Buffer S / 16000 FE ·
-  input I FE/t", green when it matches and red when it does not.
+  input I FE/t", green when it matches and red when it does not. The statistics page's Federation power card charts
+  the use by block group, the input, stopped seconds, the buffer and each converter body
+  ([statistics dashboard](statistics-dashboard.md)); it is greyed out while the rule is off.
 
 ## Server
 
@@ -38,8 +40,9 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
 services that link networks. It plans each domain (use, cross-section, converter sites and whether each body matches)
 again only when the registry's `evidenceRevision` or the multiplier changes; each tick then reads the converters'
 buffers and input, settles the ledger and writes the verdict. `OperatingPowerService.reading` exposes the last tick to
-the topology session and Jade. Ledgers are in memory, keyed by domain id; energy lives in the converter blocks, so
-merges and splits pool themselves.
+the topology session and Jade; `drainSecond` hands the statistics each domain's input and converter bodies averaged
+over the ticks since the last second it recorded. Ledgers are in memory, keyed by domain id; energy lives in the
+converter blocks, so merges and splits pool themselves.
 
 The GameTest server, the compat runner and the UI test client turn the rule off at start, so their domains need no
 converter; the power tests and the topology showcase turn it on themselves.
@@ -50,7 +53,8 @@ converter; the power tests and the topology showcase turn it on themselves.
   `PolicyActivationTest`, `RuleHealthTest`, `BeamConverterShapeTest`, `FederationJadeTextTest`,
   `SurvivalRecipeContractTest`, `GuidePagesContractTest`.
 - GameTests (manifest): `power.converter-shapes`, `power.converter-links-through-front`, `power.runs-a-domain`,
-  `power.needs-a-matching-converter`, `power.converters-add-up`.
+  `power.needs-a-matching-converter`, `power.converters-add-up`, `power.statistics`.
 - UI scenario `ui.mapping`: `ui-showcase-topology` (domain running on a 1x1x2 converter, gauge green) and
-  `ui-showcase-topology-unpowered` (converter removed, gauge red, canvas dark red).
+  `ui-showcase-topology-unpowered` (converter removed, gauge red, canvas dark red),
+  `ui-showcase-statistics-fedpower` and `ui-showcase-statistics-power-off` (rule off: no gauge, card greyed out).
 - Guide: the ME Federation Beam Converter page, linked from the index and Network Capacity.

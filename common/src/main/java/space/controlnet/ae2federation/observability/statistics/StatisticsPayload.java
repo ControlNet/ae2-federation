@@ -43,6 +43,7 @@ public final class StatisticsPayload {
     public static final String CRAFTING = "crafting";
     public static final String CPUS = "cpus";
     public static final String CHANNELS = "channels";
+    public static final String FEDPOWER = "fedpower";
 
     /**
      * What the open page asks for: its range, its metric, the resource kind the item views show, whether moved
@@ -83,10 +84,29 @@ public final class StatisticsPayload {
      * What the server knows besides the book: the members' crafting CPUs now (for the crafting metrics), what the
      * domain's networks hold of each key (to search), the keys pinned in the domain and whether this player may pin.
      */
-    public record Extras<K>(List<Cpu<K>> cpus, Map<K, Long> catalog, java.util.Set<K> pinned, boolean canPin) {
+    public record Extras<K>(List<Cpu<K>> cpus, Map<K, Long> catalog, java.util.Set<K> pinned, boolean canPin,
+            Power power) {
+        public Extras(List<Cpu<K>> cpus, Map<K, Long> catalog, java.util.Set<K> pinned, boolean canPin) {
+            this(cpus, catalog, pinned, canPin, Power.none());
+        }
+
         public static <K> Extras<K> none() {
             return new Extras<>(List.of(), Map.of(), java.util.Set.of(), false);
         }
+    }
+
+    /**
+     * The opened domain's Federation power: its id, whose series are sent with every metric (the card needs them),
+     * whether the server requires power at all, and its converter bodies now, sent with their own metric only.
+     */
+    public record Power(String domain, boolean required, List<Converter> converters) {
+        public static Power none() {
+            return new Power("", false, List.of());
+        }
+    }
+
+    /** A converter body: its dimension, lowest corner, size, input per tick and whether it matches its domain. */
+    public record Converter(String dimension, int x, int y, int z, String size, double input, boolean matches) {
     }
 
     /**
@@ -116,7 +136,8 @@ public final class StatisticsPayload {
     public record Snapshot<K>(StatisticsRange range, long now, int[] observed, Map<String, Map<String, float[]>> networks,
             List<Flow> moved, List<Flow> pushed, List<Ranked<K>> ranking, boolean storageRules, boolean craftingRules,
             String metric, String kind, List<KeySeries<K>> stock, java.util.Set<K> pinned, List<KeySeries<K>> movedKeys,
-            List<Cpu<K>> cpus, List<Amount<K>> catalog, boolean canPin) {
+            List<Cpu<K>> cpus, List<Amount<K>> catalog, boolean canPin, boolean powerRequired,
+            Map<String, float[]> domain, List<Converter> converters) {
     }
 
     /** Keys written once each, rows naming them by index. */
@@ -179,6 +200,29 @@ public final class StatisticsPayload {
             networks.add(network);
         }
         tag.put("networks", networks);
+        var power = extras.power();
+        tag.putBoolean("powerRequired", power.required());
+        if (power.required() && !power.domain().isEmpty()) {
+            var series = new CompoundTag();
+            var prefix = StatisticsNames.fedpower(power.domain());
+            for (var name : book.gaugeNames()) {
+                if (name.startsWith(prefix)) points(series, name.substring(prefix.length()), book.gauge(name, range, now));
+            }
+            tag.put("domain", series);
+            if (request.metric().equals(FEDPOWER)) {
+                var converters = new ListTag();
+                for (var converter : power.converters()) {
+                    var row = new CompoundTag();
+                    row.putString("dimension", converter.dimension());
+                    row.putIntArray("at", new int[] {converter.x(), converter.y(), converter.z()});
+                    row.putString("size", converter.size());
+                    row.putDouble("input", converter.input());
+                    row.putBoolean("matches", converter.matches());
+                    converters.add(row);
+                }
+                tag.put("converters", converters);
+            }
+        }
         var moved = new ListTag();
         var pushed = new ListTag();
         for (var name : book.counterNames()) {
@@ -433,13 +477,25 @@ public final class StatisticsPayload {
             var key = key(keys, row.getInt("key"));
             if (key != null) catalog.add(new Amount<>(key, row.getDouble("amount")));
         }
+        var domain = new HashMap<String, float[]>();
+        var domainTag = tag.getCompound("domain");
+        for (var name : domainTag.getAllKeys()) domain.put(name, decode(domainTag.getIntArray(name), size));
+        var converters = new ArrayList<Converter>();
+        for (var value : tag.getList("converters", Tag.TAG_COMPOUND)) {
+            var row = (CompoundTag) value;
+            var at = row.getIntArray("at");
+            if (at.length != 3) continue;
+            converters.add(new Converter(row.getString("dimension"), at[0], at[1], at[2], row.getString("size"),
+                    row.getDouble("input"), row.getBoolean("matches")));
+        }
         return new Snapshot<>(range, tag.getLong("now"), observed, Map.copyOf(networks),
                 flows(tag.getList("moved", Tag.TAG_COMPOUND), ids, size), flows(tag.getList("pushed", Tag.TAG_COMPOUND), ids, size),
                 List.copyOf(ranking), tag.getBoolean("storageRules"), tag.getBoolean("craftingRules"),
                 tag.getString("metric"), tag.getString("kind"), keySeries(tag.getList("stock", Tag.TAG_COMPOUND), keys, ids, size),
                 java.util.Collections.unmodifiableSet(pinned),
                 keySeries(tag.getList("movedKeys", Tag.TAG_COMPOUND), keys, ids, size), List.copyOf(cpus),
-                List.copyOf(catalog), tag.getBoolean("canPin"));
+                List.copyOf(catalog), tag.getBoolean("canPin"), tag.getBoolean("powerRequired"), Map.copyOf(domain),
+                List.copyOf(converters));
     }
 
     private static <K> List<KeySeries<K>> keySeries(ListTag list, List<@Nullable K> keys, List<String> ids, int size) {

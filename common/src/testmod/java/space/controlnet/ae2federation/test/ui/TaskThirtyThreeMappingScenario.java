@@ -504,6 +504,10 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .waitUntil("showcase: power figures arrive", context -> statisticsFor("power;"))
                 .hover("#stats_chart").frames(5)
                 .screenshot("ui-showcase-statistics-power")
+                .click("#stats_card_fedpower")
+                .waitUntil("showcase: Federation power figures arrive", context -> statisticsFor("fedpower;"))
+                .hover("#stats_chart").frames(5)
+                .screenshot("ui-showcase-statistics-fedpower")
                 .click("#stats_card_crafting")
                 .waitUntil("showcase: crafting figures arrive", context -> statisticsFor("crafting;"))
                 .hover("#domain_title").frames(5)
@@ -590,6 +594,25 @@ public final class TaskThirtyThreeMappingScenario implements UIScenario {
                 .click("#graph_fit").frames(3)
                 .hover("#domain_title").frames(5)
                 .screenshot("ui-showcase-topology-unpowered")
+                .closeScreen();
+        // With the rule off the topology draws nothing of power, and Federation power's card cannot be opened.
+        scenario.server("showcase: turn the power rule off", TaskThirtyThreeShowcaseFixture::powerOff)
+                .server("showcase: open the Router workspace without the power rule", TaskThirtyThreeWorldFixture::openRouter)
+                .awaitScreen(com.lowdragmc.lowdraglib2.gui.holder.ModularUIContainerScreen.class)
+                .awaitModularUI().awaitElement("#domain_graph")
+                .waitUntil("showcase: no corner gauge without the power rule", context -> !context.el("#graph_power").isVisible())
+                .click("#tab_statistics").frames(2)
+                .click("#stats_card_power")
+                .waitUntil("showcase: power figures arrive without the power rule", context -> statisticsFor("power;"))
+                .click("#stats_card_fedpower").frames(10)
+                .step("showcase: Federation power's card does not open", context -> {
+                    if (!statisticsFor("power;")) {
+                        throw new IllegalStateException("Federation power opened without the rule: "
+                                + space.controlnet.ae2federation.client.menu.FederationStatisticsView.shownRequest());
+                    }
+                })
+                .hover("#domain_title").frames(5)
+                .screenshot("ui-showcase-statistics-power-off")
                 .closeScreen();
     }
 

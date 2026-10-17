@@ -231,6 +231,77 @@ public final class OperatingPowerGameTests {
         });
     }
 
+    /**
+     * The statistics page's figures for a running domain: each second the book gets the domain's use by group, its
+     * converters' input averaged over the second, their buffer as a percentage and its size, and that it ran; the
+     * converter body is listed with its size, input and match.
+     */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 1200, required = true, manualOnly = true)
+    public static void operatingPowerFeedsStatistics(GameTestHelper helper) {
+        var scene = new Scene(helper);
+        var front = SWITCH.east(3);
+        var back = SWITCH.east(4);
+        var phase = new int[1];
+        var lastSecond = new long[1];
+        var statistics = space.controlnet.ae2federation.observability.LevelObservabilityService.get(helper.getLevel())
+                .statistics();
+        // Fed 5 FE every tick, above the domain's use of 3.
+        helper.onEachTick(() -> {
+            if (phase[0] >= 2) scene.insert(back, Direction.EAST, 5);
+        });
+        helper.succeedWhen(() -> {
+            scene.awaitDomain();
+            var domain = scene.domain();
+            switch (phase[0]) {
+                case 0 -> {
+                    scene.converter(front, Direction.WEST);
+                    scene.converter(back, Direction.WEST);
+                    phase[0] = 1;
+                    throw new GameTestAssertException("Waiting for the converter to form");
+                }
+                case 1 -> {
+                    helper.assertTrue(RouterBlock.formed(helper.getBlockState(back)), "Waiting for the converter to form");
+                    helper.assertValueEqual(scene.insert(back, Direction.EAST, 8000), 8000, "FE into the converter");
+                    phase[0] = 2;
+                    throw new GameTestAssertException("Waiting for the domain to run");
+                }
+                case 2 -> {
+                    helper.assertTrue(!scene.registry().unpowered(domain), "Waiting for the domain to run");
+                    // The service writes a second once the wall clock passes it, and a GameTest server runs its ticks
+                    // faster than that: the test writes each second itself, one tick apart. This one holds the 8000.
+                    lastSecond[0] = statistics.nowSecond();
+                    statistics.finishSecond(lastSecond[0]);
+                    phase[0] = 3;
+                    throw new GameTestAssertException("Waiting for a second fed every tick");
+                }
+                default -> {
+                    statistics.finishSecond(++lastSecond[0]);
+                    var book = statistics.book();
+                    var now = lastSecond[0];
+                    var prefix = space.controlnet.ae2federation.observability.statistics.StatisticsNames.fedpower(domain.value());
+                    var range = space.controlnet.ae2federation.observability.statistics.StatisticsRange.SECONDS;
+                    helper.assertValueEqual(book.latest(prefix + "stopped", range, now), 0.0, "the domain ran");
+                    var input = book.latest(prefix + "input", range, now);
+                    helper.assertTrue(Math.abs(input - 5) < 1e-6, "fed 5 FE every tick: " + input);
+                    helper.assertValueEqual(book.latest(prefix + "use/cables", range, now), 1.0, "two cables");
+                    helper.assertValueEqual(book.latest(prefix + "use/switches", range, now), 2.0, "one Switch");
+                    helper.assertValueEqual(book.latest(prefix + "capacity", range, now),
+                            2 * BeamConverterBlockEntity.CAPACITY, "two converter blocks");
+                    var stored = book.latest(prefix + "stored", range, now);
+                    helper.assertTrue(stored > 0 && stored < 100, "the buffer as a percentage: " + stored);
+                    var bodies = statistics.converters(domain.value());
+                    helper.assertTrue(bodies.size() == 1 && bodies.get(0).size().equals("1x1x2") && bodies.get(0).matches()
+                            && Math.abs(bodies.get(0).input() - 5) < 1e-6, "one 1x1x2 body listed: " + bodies);
+                    RouterEvidence.write("operatingpowerfeedsstatistics", 6, Map.of(
+                            "stopped", "0", "input", "5 FE/t", "use", "cables 1, switches 2", "capacity", "32000",
+                            "stored", "percent", "bodies", "1x1x2 matching"));
+                    scene.close();
+                }
+            }
+        });
+    }
+
     /** The Switch with A and B, its two cables, and the rule turned on until {@link #close()}. */
     private static final class Scene implements AutoCloseable {
         private final GameTestHelper helper;
