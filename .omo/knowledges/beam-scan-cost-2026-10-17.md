@@ -1,6 +1,6 @@
 # Beam path check cost (2026-10-17)
 
-Measured for the Beam Transceiver plan (`.omo/plans/beam-transceiver.md`, D12) with the manual GameTest
+Measured for the Beam Former plan (`.omo/plans/beam-former.md`, D12) with the manual GameTest
 `BeamScanBenchmarkGameTests.perfBeamScan` (`python3 tools/perf_benchmark.py --tests perfbeamscan --label <x>`), median
 of 3 runs on the development host. Reads go through `getChunkSource().getChunkNow` (never loads a chunk) and
 `LevelChunkSection.getBlockState`, skipping sections with `hasOnlyAir()`; the obstruction test is a test-only prototype

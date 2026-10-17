@@ -15,8 +15,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.test.perf.PerfMeasure;
 
 /**
- * TEST-ONLY, manual-only benchmark for the planned Beam Transceiver's path check (plan
- * {@code .omo/plans/beam-transceiver.md}, D12): the cost of checking a 3x3 x 1024 beam volume in a real level, read
+ * TEST-ONLY, manual-only benchmark for the planned Beam Former's path check (plan
+ * {@code .omo/plans/beam-former.md}, D12): the cost of checking a 3x3 x 1024 beam volume in a real level, read
  * the way the link service would read it (loaded chunks only, all-air sections skipped whole). The obstruction rule
  * here is a TEST-ONLY prototype of D4: a block with a collision shape blocks, unless it is glass.
  */

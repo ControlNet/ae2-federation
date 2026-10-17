@@ -76,7 +76,7 @@ device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all
 | Bundled cable | 0.5 per cell | assistant choice: the same per cell; a bundle saves capacity, not energy |
 | Router, Switch | 2 per block | AE2's default device and crafting-CPU block (1 AE/t); an 8x8x8 body costs 1024 |
 | Endpoint, Federation Pattern Provider | 2 each | AE2's Pattern Provider and Interface (1 AE/t) |
-| Beam Transceiver link | M·N × max(2, L)^1.05 × 2, L the span | NAE2's Beam Former, max(2, L)^1.05 AE/t, per cell; 1x1 x 32 is 76, 3x3 x 256 about 6100, 3x3 x 1024 about 26000 |
+| Beam Former link | M·N × max(2, L)^1.05 × 2, L the span | NAE2's Beam Former, max(2, L)^1.05 AE/t, per cell; 1x1 x 32 is 76, 3x3 x 256 about 6100, 3x3 x 1024 about 26000 |
 | Wireless cube | 44 per block per side | AE2's Quantum Network Bridge, 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
 | Beam Converter | 0 | it is the supply |
 
