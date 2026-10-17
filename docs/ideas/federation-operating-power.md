@@ -73,21 +73,20 @@ device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all
 | Wireless cube | 44 per block per side | the Quantum Network Bridge's 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
 | Beam Charger | 0 | it is the supply |
 
-**GUI (2026-10-17; the statistics metric is liked, the topology placement awaits a pick).** The user asked for the domain's power to show in the domain
+**GUI (2026-10-17; the statistics metric is liked; topology uses the corner gauge, no tooltips).** The user asked for the domain's power to show in the domain
 screen. The [design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能", proposes:
 
 - **Stopped state, as capacity overload.** The topology canvas turns dark red and the header reads "no Federation power,
-  stopped" in the error colour; its tooltip names one of three causes: no Beam Charger; a charger that does not match
-  the largest cable (and the size it needs); or use above what the chargers bring in. Rule rows blocked by it turn the
-  same colour, as they do for capacity. No live power figure in the header.
+  stopped" in the error colour. Rule rows blocked by it turn the same colour, as they do for capacity.
 - **Statistics, a seventh metric.** "Federation power" in FE/t beside "ME power" (AE/t). The chart stacks use by block
   type with the chargers' input as a line, red behind spans where use is higher. The box below lists use by block type
   and each charger with its input and whether it matches. It is domain-wide, so the network filter greys out. No stored
   chart, since whether chargers buffer energy is still open.
-- **Topology, current state.** The user also wants the current power on the topology page. Three placements are on the
-  canvas: A, one more segment in the header row ("Federation power 2.9k/3.3k FE/t", yellow above 90 %, replaced by the
-  stopped text when short; assistant recommendation); B, a small gauge in the canvas corner; C, a lightning button in
-  the graph toolbar, numbers on hover. Each shows the chargers on hover and opens the statistics metric on click.
+- **Topology, current state (user picked option B).** A small gauge in the canvas corner, on the legend's dark
+  background: "Power", a bar and "use/input FE/t". The bar is green, yellow when nearly full and red when short. No
+  tooltips (user: they are unnecessary): when stopped, the gauge itself names the cause in red, "no Beam Charger",
+  "chargers must be 2x2x4", or a red use/input figure. Options A (a header segment) and C (a toolbar button) were
+  not chosen.
 
 ## Relationship to existing features
 
