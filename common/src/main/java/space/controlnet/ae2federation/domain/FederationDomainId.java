@@ -14,7 +14,10 @@ public record FederationDomainId(String value) implements Comparable<FederationD
         return new FederationDomainId("direct:" + source.value());
     }
 
-    /** A physical domain keeps its id while it grows, shrinks or absorbs others; a registry never reuses a sequence. */
+    /**
+     * A physical domain keeps its id while it grows, shrinks or absorbs others, and across restarts; a sequence is never
+     * handed to a second domain.
+     */
     public static FederationDomainId physical(long sequence) {
         if (sequence < 1) {
             throw new IllegalArgumentException("Physical Federation Domain sequence must be positive");

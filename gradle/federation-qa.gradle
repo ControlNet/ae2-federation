@@ -6502,7 +6502,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
         if (restartCase != null) {
             def policyRestart = restartCase.id.startsWith('policy.')
             def craftingRestart = restartCase.id.startsWith('crafting.')
-            def restartFamily = policyRestart ? 'policy' : craftingRestart ? 'crafting' : 'identity'
+            def domainIdRestart = restartCase.id.startsWith('domain-id.')
+            def restartFamily = policyRestart ? 'policy' : craftingRestart ? 'crafting' : domainIdRestart ? 'domainId' : 'identity'
             def restartState = new File(attempt, "${restartFamily}-restart-state.properties")
             def phaseProperty = "federation${restartFamily.capitalize()}Phase"
             def stateProperty = "federation${restartFamily.capitalize()}StateFile"
@@ -6521,7 +6522,8 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
             if (verify.result.exit != 0) throw new GradleException("${restartFamily.capitalize()} restart verification process failed")
             verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: restartCase.testId,
                     structure: restartCase.structure, assertions: restartCase.assertions,
-                    operations: policyRestart || craftingRestart ? 1 : 2, allowZeroWork: policyRestart])
+                    operations: policyRestart || craftingRestart || domainIdRestart ? 1 : 2,
+                    allowZeroWork: policyRestart || domainIdRestart])
             childArtifacts.add(restartState); childArtifacts.add(nativeEvidence)
         }
         requestedCases.each { caseId ->
@@ -6940,6 +6942,7 @@ def executeHarness = { String kind, List<String> requestedCases, String profile,
                 case 'domain.redundant-membership':
                 case 'domain.partial-unload':
                 case 'domain.reject-stale-route':
+                case 'domain-id.restart':
                     def nativeEvidence = new File(attempt, "native-${testCase.testId}.properties")
                     def nativeResult = verifyNativeEvidence(nativeEvidence, [kind: 'verify', testId: testCase.testId,
                             structure: testCase.structure, assertions: testCase.assertions, operations: 1,
