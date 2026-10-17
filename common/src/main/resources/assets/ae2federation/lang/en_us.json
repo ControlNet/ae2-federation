@@ -44,6 +44,7 @@
   "block.ae2federation.switch": "ME Federation Switch",
   "block.ae2federation.beam_converter": "ME Federation Beam Converter",
   "block.ae2federation.creative_beam_converter": "Creative ME Federation Beam Converter",
+  "block.ae2federation.beam_former": "ME Federation Beam Former",
   "ae2federation.structure.forming": "This %s is forming; use it again in a moment.",
   "ae2federation.structure.unloaded": "This %s is not formed yet: part of it is in unloaded chunks.",
   "ae2federation.structure.invalid.not_solid": "This %s is not formed and links nothing: its blocks must fill a solid box.",
@@ -472,6 +473,7 @@
   "ae2federation.ui.statistics.fedpower.group.routers": "Routers",
   "ae2federation.ui.statistics.fedpower.group.switches": "Switches",
   "ae2federation.ui.statistics.fedpower.group.devices": "Endpoints and Providers",
+  "ae2federation.ui.statistics.fedpower.group.beams": "Beam Former links",
   "ae2federation.ui.processing.summary": "Providers %s · Endpoints %s · Mappings %s",
   "ae2federation.ui.processing.column.providers": "Pattern Provider",
   "ae2federation.ui.processing.column.endpoints": "Processing Endpoint",
@@ -560,6 +562,11 @@
   "ae2federation.ui.processing.release_blocked_send": "Cannot release yet: a send to it is still in progress.",
   "ae2federation.jade.cable_capacity.subdomain": "Capacity count: %s (subdomain)",
   "ae2federation.jade.cable_capacity.domain": "Capacity count: %s (Federation domain)",
+  "ae2federation.jade.beam.linked": "Beam: linked, %s blocks",
+  "ae2federation.jade.beam.blocked": "Beam: blocked at %s, %s, %s",
+  "ae2federation.jade.beam.checking": "Beam: checking its path",
+  "ae2federation.jade.beam.no_partner": "Beam: no partner within %s blocks",
+  "ae2federation.jade.beam.wrong_size": "Beam: the former ahead is another size",
   "config.jade.plugin_ae2federation.cable_capacity": "Federation Cable capacity count",
   "ae2federation.jade.bundle.title": "ME Bundled Federation Cable",
   "ae2federation.jade.bundle.shape": "%s×%s · capacity %s",
@@ -582,6 +589,7 @@
   "ae2federation.bundle.problem.not_flat": "Both corners must lie in one plane",
   "ae2federation.bundle.problem.not_along": "Right-click a cable straight along the cross-section",
   "ae2federation.bundle.problem.face_along_line": "Right-click a face that points along the bundle",
+  "ae2federation.bundle.problem.not_buildable": "Bundled cables are 2×2 or 3×3",
   "ae2federation.bundle.problem.too_long": "A bundle forms at most %s long at once",
   "ae2federation.bundle.problem.too_far": "Too far from the selection",
   "ae2federation.bundle.problem.not_all_cables": "%s of %s positions have no Federation Cable",
@@ -618,5 +626,6 @@
   "config.jade.plugin_ae2federation.device": "Federation Router, Switch and Beam Converter",
   "config.jade.plugin_ae2federation.endpoint": "Federation Processing Endpoint mode",
   "config.jade.plugin_ae2federation.pattern_provider": "Federation Pattern Provider patterns",
-  "config.jade.plugin_ae2federation.beam_converter": "Federation Beam Converter buffer"
+  "config.jade.plugin_ae2federation.beam_converter": "Federation Beam Converter buffer",
+  "config.jade.plugin_ae2federation.beam_former": "Federation Beam Former beam"
 }

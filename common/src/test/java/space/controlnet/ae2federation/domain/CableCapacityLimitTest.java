@@ -62,6 +62,18 @@ final class CableCapacityLimitTest {
     }
 
     @Test
+    void aP2pTunnelPairCarriesOneCable() {
+        var fits = registry();
+        tunnelWith(fits, 8);
+        assertFalse(fits.overCapacity(fits.federationDomainOf(node(0)).orElseThrow().federationDomainId()),
+                "eight networks fit through a pair");
+        var over = registry();
+        tunnelWith(over, 9);
+        assertTrue(over.overCapacity(over.federationDomainOf(node(0)).orElseThrow().federationDomainId()),
+                "a pair carries one cable's eight, though the 1x2 bundle before it carries 24");
+    }
+
+    @Test
     void aDomainAtTheLimitRuns() {
         var registry = registry();
         var networks = switchWith(registry, 8);
@@ -116,6 +128,30 @@ final class CableCapacityLimitTest {
                 capacityFactor));
         registry.upsertNode(switchEvidence(1, networks));
         return networks;
+    }
+
+    /**
+     * A 1x2 bundle (three cables' worth) linked through a Federation P2P tunnel to a Switch whose faces attach
+     * {@code count} networks: the tunnel joins one region.
+     */
+    private static void tunnelWith(FederationDomainRegistry registry, int count) {
+        var networks = new NetworkId[count];
+        for (int index = 0; index < count; index++) networks[index] = new NetworkId(new UUID(0, index + 1));
+        var cablePorts = new LinkedHashMap<String, FederationDomainPortEvidence>();
+        cablePorts.put("east", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(2), "cable")));
+        registry.upsertNode(new FederationDomainNodeEvidence(node(0), FederationDomainNodeKind.CABLE, cablePorts, 3));
+        var tunnelPorts = new LinkedHashMap<String, FederationDomainPortEvidence>();
+        tunnelPorts.put("cable", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(0), "east")));
+        tunnelPorts.put("switch", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(1), "west")));
+        registry.upsertNode(new FederationDomainNodeEvidence(node(2), FederationDomainNodeKind.P2P_TUNNEL, tunnelPorts));
+        var switchPorts = new LinkedHashMap<String, FederationDomainPortEvidence>();
+        switchPorts.put("west", new FederationDomainPortEvidence.Federation(new FederationDomainPortId(node(2), "switch")));
+        for (int index = 0; index < count; index++) {
+            var face = "native" + index;
+            switchPorts.put(face, new FederationDomainPortEvidence.Native(
+                    FederationDomainSourceId.nativePort(new FederationDomainPortId(node(1), face)), networks[index]));
+        }
+        registry.upsertNode(new FederationDomainNodeEvidence(node(1), FederationDomainNodeKind.SWITCH, switchPorts));
     }
 
     private static FederationDomainNodeEvidence switchEvidence(long position, NetworkId... networks) {

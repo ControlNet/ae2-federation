@@ -9,9 +9,11 @@ Discussion started: 2026-10-02. Research expanded: 2026-10-03. [Idea index](READ
 
 The user shaped the quantum-bridge-style candidate into a multiblock and set its purpose:
 
+- **Name (user, 2026-10-17).** ME Federation Quantum Cube, 「ME联邦量子立方」, `ae2federation:quantum_cube`. AE2's
+  own "ME Quantum Ring" (「ME量子环」) is only the outer part of its bridge, so "ring" was not reused.
 - **Why it exists.** Federation P2P carries only a 1x1 cable. This device carries bundled cross-sections remotely.
-- **P2P capacity.** A Federation P2P tunnel pair should have the capacity of one ordinary cable (C). Today a pair joins
-  the regions at both ends and is not limited itself; this is a change to the shipped counting.
+- **P2P capacity.** A Federation P2P tunnel pair has the capacity of one ordinary cable (C); implemented 2026-10-17,
+  see [cable capacity](../features/cable-capacity.md).
 - **Shape.** A solid cube; every face may connect Federation cable. 3x3x3 is the smallest and connects only 1x1
   cable; 4x4x4 connects up to 2x2; only 5x5x5 connects 3x3 (user, 2026-10-17). An edge-K cube thus takes cables up
   to (K-2) x (K-2), as if each face kept a one-block border.

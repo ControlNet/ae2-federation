@@ -76,7 +76,7 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, OperatingPowerGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, BeamFormerGameTests.class, OperatingPowerGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
 					   FederationDomainBridgeGameTests.class, DomainIdRestartGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,
@@ -86,7 +86,7 @@ public final class FederationTestMod {
 							   CrossDimensionGameTests.class, FederationP2PGameTests.class, ProjectionContainerGameTests.class,
 							   ProjectionCpuSightGameTests.class,
 							   ProjectionHandBackGameTests.class,
-							   P2PRefreshBenchmarkGameTests.class,
+							   P2PRefreshBenchmarkGameTests.class, BeamScanBenchmarkGameTests.class,
 							   P2PTopologyGameTests.class,
 							   CrossDimensionCraftingGameTests.class,
 							   CrossDimensionProductionExportGameTests.class));

@@ -10,14 +10,15 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Counts the capacity each Federation Cable must carry, from one domain's evidence (see
- * {@code docs/ideas/multiblock-routing-and-cable-capacity.md}, "Confirmed counting rules"). It counts only; nothing
- * limits a cable yet.
+ * Counts the capacity each Federation Cable, Federation P2P tunnel and Beam Former block must carry, from one domain's
+ * evidence (see {@code docs/ideas/multiblock-routing-and-cable-capacity.md}, "Confirmed counting rules"); the registry
+ * compares it with each node's capacity. A tunnel carries one cable's capacity, so a pair limits the region it joins as
+ * a single cable would. A Beam Former and its beam are cable of the former's square.
  *
  * <p>A unit is a distinct ME network attached through a Switch, a Processing Endpoint or a Federation Pattern Provider;
- * a Provider is one device, whatever network stands behind it. Cables, Switches and P2P tunnels joined by links form a region; only Router bodies bound it. A
- * region touching at most one Router body is a subdomain and carries its own units; one touching two or more carries
- * the whole Federation domain's.
+ * a Provider is one device, whatever network stands behind it. Cables, Switches, P2P tunnels and Beam Formers joined
+ * by links form a region; only Router bodies bound it. A region touching at most one Router body is a subdomain and
+ * carries its own units; one touching two or more carries the whole Federation domain's.
  * Only links both sides name count, as in the domain itself.
  */
 public final class CableCapacityCounter {
@@ -37,7 +38,7 @@ public final class CableCapacityCounter {
     private CableCapacityCounter() {
     }
 
-    /** The demand of every cable among {@code domain}, the evidence of one domain's nodes. */
+    /** The demand of every cable, P2P tunnel and Beam Former block among {@code domain}, one domain's evidence. */
     public static Map<FederationDomainNodeId, Demand> count(Collection<FederationDomainNodeEvidence> domain) {
         var nodes = new HashMap<FederationDomainNodeId, FederationDomainNodeEvidence>();
         domain.forEach(evidence -> nodes.put(evidence.nodeId(), evidence));
@@ -75,7 +76,11 @@ public final class CableCapacityCounter {
             var demand = routers.size() >= 2 ? new Demand(Scope.DOMAIN, domainUnits.size())
                     : new Demand(Scope.SUBDOMAIN, units.size());
             for (var member : region) {
-                if (nodes.get(member).kind() == FederationDomainNodeKind.CABLE) demands.put(member, demand);
+                var kind = nodes.get(member).kind();
+                if (kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.P2P_TUNNEL
+                        || kind == FederationDomainNodeKind.BEAM_FORMER) {
+                    demands.put(member, demand);
+                }
             }
         }
         return demands;
@@ -83,7 +88,7 @@ public final class CableCapacityCounter {
 
     private static boolean passable(FederationDomainNodeKind kind) {
         return kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.SWITCH
-                || kind == FederationDomainNodeKind.P2P_TUNNEL;
+                || kind == FederationDomainNodeKind.P2P_TUNNEL || kind == FederationDomainNodeKind.BEAM_FORMER;
     }
 
     /** Endpoints and Pattern Providers: one unit each, linked to a region from outside it. */

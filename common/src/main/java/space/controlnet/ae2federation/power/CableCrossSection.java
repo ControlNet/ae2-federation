@@ -1,6 +1,8 @@
 package space.controlnet.ae2federation.power;
 
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 
 /**
@@ -14,6 +16,13 @@ public enum CableCrossSection {
     TWO_BY_TWO(2, 2, 6),
     TWO_BY_THREE(2, 3, 9),
     THREE_BY_THREE(3, 3, FederationDomainNodeEvidence.UNLIMITED);
+
+    /**
+     * The cross-sections players can build today: a wrench forms bundles of these only, and only these converters form.
+     * The others stay supported throughout, so adding one back here brings it back.
+     */
+    public static final Set<CableCrossSection> BUILDABLE = Set.copyOf(EnumSet.of(ONE_BY_ONE, TWO_BY_TWO,
+            THREE_BY_THREE));
 
     private final int narrow;
     private final int wide;
@@ -51,6 +60,11 @@ public enum CableCrossSection {
             if (section != null && (largest == null || section.compareTo(largest) > 0)) largest = section;
         }
         return Optional.ofNullable(largest);
+    }
+
+    /** Whether players can build it today ({@link #BUILDABLE}). */
+    public boolean buildable() {
+        return BUILDABLE.contains(this);
     }
 
     public int narrow() {

@@ -57,7 +57,8 @@ public final class FederationStatisticsView {
     /** Items the stock chart draws when the player has not picked any. */
     private static final int TOP_PICK = 6;
     /** Federation power's groups on the charts, in {@link OperatingPowerCosts.Group} order, and its converters' input. */
-    private static final int[] GROUP_COLORS = {0xffe5c07b, 0xff98c379, 0xff56b6c2, 0xffb5a7ff, 0xfff4a6c6};
+    private static final int[] GROUP_COLORS = {0xffe5c07b, 0xff98c379, 0xff56b6c2, 0xffb5a7ff, 0xfff4a6c6,
+            0xff61afef};
     private static final int INPUT = FederationTheme.DARK_TITLE;
 
     /** Which items the stock chart draws: the most held, the pinned ones, none, or the ones the player ticked. */

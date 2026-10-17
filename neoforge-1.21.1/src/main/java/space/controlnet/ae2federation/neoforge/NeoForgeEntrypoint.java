@@ -13,6 +13,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import org.slf4j.Logger;
 import space.controlnet.ae2federation.CommonStartup;
+import space.controlnet.ae2federation.beam.BeamLinkService;
+import space.controlnet.ae2federation.beam.BeamRegistration;
 import space.controlnet.ae2federation.config.FederationServerConfig;
 import space.controlnet.ae2federation.FederationCreativeTab;
 import space.controlnet.ae2federation.bridge.BridgeRegistration;
@@ -58,6 +60,7 @@ public final class NeoForgeEntrypoint {
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
         PowerRegistration.register(modBus);
+        BeamRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
@@ -80,11 +83,12 @@ public final class NeoForgeEntrypoint {
     }
 
     /**
-     * Binding requests from the level ticks and from player actions or GameTests, then the domains' operating power,
-     * which may stop a domain, then each service's tick.
+     * Binding requests from the level ticks and from player actions or GameTests, then the beams, whose links change
+     * the domains, then the domains' operating power, which may stop a domain, then each service's tick.
      */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
+        BeamLinkService.tickAll(event.getServer());
         OperatingPowerService.tick(event.getServer());
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
@@ -107,6 +111,7 @@ public final class NeoForgeEntrypoint {
             // needed them end. Each service itself goes when the server stops.
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
+            BeamLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             CraftingProjectionService.levelClosed(level);
             EnergySharingService.levelClosed(level);

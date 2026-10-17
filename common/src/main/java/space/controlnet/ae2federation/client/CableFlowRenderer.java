@@ -115,6 +115,16 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
             if (bundle.length() > 0) renderBundle(cable, bundle, tick, partialTick, style, detail, stack, buffers);
             return;
         }
+        emitCell(stack, buffers, mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail, false);
+        endSceneBatch(level, buffers);
+    }
+
+    /**
+     * One cell's beam, glow then carrier, into the world's batched buffers: {@code x, y, z} place its pulses, the pose
+     * places and stretches its geometry.
+     */
+    static void emitCell(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z, long tick,
+            float partialTick, CableBeamStyle style, int detail, boolean volume) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
@@ -122,8 +132,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.layer(mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
-                    pass == 0);
+            float[] layer = FRAME.layer(mask, x, y, z, tick, partialTick, style, detail, pass == 0, volume);
             // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
             // values the chained calls in draw() would write.
             for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
@@ -134,7 +143,6 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                         LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
             }
         }
-        endOutsideWorld(level, buffers);
     }
 
     /**
@@ -176,15 +184,15 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                         LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
             }
         }
-        endOutsideWorld(cable.getLevel(), buffers);
+        endSceneBatch(cable.getLevel(), buffers);
     }
 
     /**
      * A guidebook scene ends these buffers only after its terrain, once its camera is gone, so the beam came out with
-     * no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits in its
-     * shell as in the world.
+     * no depth against the scene, over every ring and rail. Drawn now, before the scene's terrain, it sits in its shell
+     * as in the world.
      */
-    private static void endOutsideWorld(Level level, MultiBufferSource buffers) {
+    static void endSceneBatch(Level level, MultiBufferSource buffers) {
         if (!(level instanceof ClientLevel) && buffers instanceof MultiBufferSource.BufferSource source) {
             source.endBatch(GLOW);
             source.endBatch(CORE);

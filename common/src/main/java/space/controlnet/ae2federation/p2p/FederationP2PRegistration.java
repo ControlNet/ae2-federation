@@ -9,6 +9,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import space.controlnet.ae2federation.compat.jade.P2PCapacityTooltip;
 import space.controlnet.ae2federation.domain.port.FederationPortCapability;
 
 public final class FederationP2PRegistration {
@@ -22,6 +23,7 @@ public final class FederationP2PRegistration {
 
     public static void register(IEventBus modBus) {
         PartModels.registerModels(FederationP2PTunnelPart.FRONT_MODEL);
+        P2PCapacityTooltip.register();
         ITEMS.register(modBus);
         modBus.addListener(RegisterPartCapabilitiesEvent.class, event -> event.register(
                 FederationPortCapability.BLOCK, (part, side) -> part.federationPort(side),

@@ -38,7 +38,8 @@ public final class BeamConverterGameTests {
     }
 
     /**
-     * Each of the six sizes forms, facing east in a row of its own; a 2x2x3 body (a block short) does not. Blocks need not
+     * Each of the three buildable sizes forms, facing east in a row of its own; the three sizes of the bundles players
+     * cannot build today (1x2x4, 1x3x6, 2x3x6) and a 2x2x3 body (a block short) do not. Blocks need not
      * face alike: a body faces along its length the way most of its blocks do, else toward the one end with Federation
      * cable, else toward the axis's positive end.
      */
@@ -47,11 +48,12 @@ public final class BeamConverterGameTests {
     public static void beamConverterShapes(GameTestHelper helper) {
         var block = PowerRegistration.BEAM_CONVERTER.get();
         var formed = new ArrayList<List<BlockPos>>();
+        var unbuildable = new ArrayList<List<BlockPos>>();
         int z = 2;
         for (var section : CableCrossSection.values()) {
             var cells = box(new BlockPos(2, 2, z), section.converterLength(), section.wide(), section.narrow());
             cells.forEach(cell -> place(helper, cell, Direction.EAST));
-            formed.add(cells);
+            (section.buildable() ? formed : unbuildable).add(cells);
             z += section.narrow() + 1;
         }
         var short2x2 = box(new BlockPos(20, 2, 2), 3, 2, 2);
@@ -62,9 +64,9 @@ public final class BeamConverterGameTests {
         var across = List.of(new BlockPos(20, 2, 11), new BlockPos(21, 2, 11));
         place(helper, across.get(0), Direction.UP);
         place(helper, across.get(1), Direction.NORTH);
-        var majority = box(new BlockPos(20, 2, 14), 4, 2, 1);
+        var majority = box(new BlockPos(20, 2, 14), 4, 2, 2);
         for (int index = 0; index < majority.size(); index++) {
-            place(helper, majority.get(index), index < 5 ? Direction.WEST : Direction.EAST);
+            place(helper, majority.get(index), index < 9 ? Direction.WEST : Direction.EAST);
         }
         var cabled = List.of(new BlockPos(20, 2, 17), new BlockPos(21, 2, 17));
         cabled.forEach(cell -> place(helper, cell, Direction.UP));
@@ -75,17 +77,22 @@ public final class BeamConverterGameTests {
                     helper.assertTrue(RouterBlock.formed(helper.getBlockState(cell)), "converter member " + cell + " forms");
                 }
             }
+            for (var cells : unbuildable) {
+                for (var cell : cells) {
+                    helper.assertTrue(!RouterBlock.formed(helper.getBlockState(cell)), "not built today: " + cell);
+                }
+            }
             for (var cell : short2x2) {
                 helper.assertTrue(helper.getBlockState(cell).is(block) && !RouterBlock.formed(helper.getBlockState(cell)),
                         "a 2x2x3 body is not a converter: " + cell);
             }
             assertFacing(helper, mixed, Direction.EAST, "blocks facing opposite ways, a tie: the positive end");
             assertFacing(helper, across, Direction.EAST, "blocks facing across the length: the positive end");
-            assertFacing(helper, majority, Direction.WEST, "five of eight blocks face west");
+            assertFacing(helper, majority, Direction.WEST, "nine of sixteen blocks face west");
             assertFacing(helper, cabled, Direction.WEST, "no vote: toward the Federation cable");
             RouterEvidence.write("beamconvertershapes", 11, Map.ofEntries(
-                    Map.entry("1x1x2", "formed"), Map.entry("1x2x4", "formed"), Map.entry("1x3x6", "formed"),
-                    Map.entry("2x2x4", "formed"), Map.entry("2x3x6", "formed"), Map.entry("3x3x6", "formed"),
+                    Map.entry("1x1x2", "formed"), Map.entry("1x2x4", "unformed"), Map.entry("1x3x6", "unformed"),
+                    Map.entry("2x2x4", "formed"), Map.entry("2x3x6", "unformed"), Map.entry("3x3x6", "formed"),
                     Map.entry("2x2x3", "unformed"), Map.entry("tie", "positive end"),
                     Map.entry("across", "positive end"), Map.entry("majority", "west"),
                     Map.entry("noVote", "toward the cable")));
@@ -211,13 +218,13 @@ public final class BeamConverterGameTests {
     }
 
     /**
-     * A 1x2x4 converter is one buffer of eight blocks: FE through one block's side fills the whole body, every block reads
+     * A 2x2x4 converter is one buffer of sixteen blocks: FE through one block's side fills the whole body, every block reads
      * the body's total, and each block keeps an equal share, which a block broken out of the body takes with it.
      */
     @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "scale_36_empty",
             timeoutTicks = 300, required = true, manualOnly = true)
     public static void beamConverterBodySharesOneBuffer(GameTestHelper helper) {
-        var section = CableCrossSection.ONE_BY_TWO;
+        var section = CableCrossSection.TWO_BY_TWO;
         var cells = box(new BlockPos(2, 2, 2), section.converterLength(), section.wide(), section.narrow());
         cells.forEach(cell -> place(helper, cell, Direction.EAST));
         var level = helper.getLevel();
@@ -237,13 +244,13 @@ public final class BeamConverterGameTests {
             helper.assertValueEqual(accepted[0], 100_000, "one block takes in more than its own 16000 FE");
             if (accepted[1] < 0) {
                 helper.assertValueEqual(reader.getEnergyStored(), 100_000, "another block reads the body's total");
-                helper.assertValueEqual(reader.getMaxEnergyStored(), 8 * capacity, "the body holds 16000 FE per block");
+                helper.assertValueEqual(reader.getMaxEnergyStored(), 16 * capacity, "the body holds 16000 FE per block");
                 for (var cell : cells) {
-                    helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), 12_500.0,
+                    helper.assertValueEqual(((BeamConverterBlockEntity) helper.getBlockEntity(cell)).stored(), 6_250.0,
                             "each block keeps an equal share: " + cell);
                 }
-                accepted[1] = input.receiveEnergy(100_000, false);
-                helper.assertValueEqual(accepted[1], 8 * capacity - 100_000, "the body takes in up to its room");
+                accepted[1] = input.receiveEnergy(200_000, false);
+                helper.assertValueEqual(accepted[1], 16 * capacity - 100_000, "the body takes in up to its room");
                 helper.setBlock(other, Blocks.AIR);
             }
             for (var cell : cells.subList(0, cells.size() - 1)) {
@@ -251,8 +258,8 @@ public final class BeamConverterGameTests {
                         "a block left from the body keeps its share: " + cell);
             }
             RouterEvidence.write("beamconverterbodysharesonebuffer", 6, Map.of(
-                    "accepted", "100000 through one block", "read", "100000 from another", "capacity", "128000",
-                    "share", "12500 each", "topUp", "28000", "broken", "16000 kept per block"));
+                    "accepted", "100000 through one block", "read", "100000 from another", "capacity", "256000",
+                    "share", "6250 each", "topUp", "156000", "broken", "16000 kept per block"));
         });
     }
 

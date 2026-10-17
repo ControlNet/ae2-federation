@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 import itertools
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -53,17 +54,25 @@ for ref, model in generated.items():
 CODE_DRAWN = {NS + 'part/cable/dense/' + name for name in ('core', 'core_connected_1', 'core_connected_2',
                                                            'core_connected_3', 'core_connected_4',
                                                            'core_connected_2_straight', 'line', 'collar')} \
-    | {NS + 'block/large_cable/large_cable'}
+    | {NS + 'block/large_cable/large_cable'} \
+    | {NS + f'block/{device}/{device}_{tile}' for device in ('router', 'switch')
+       for tile in ('base', 'corner', 'side_hor', 'side_ver')}  # DeviceStructureGeometry's connected-face tiles
 # Shipped but not drawn yet: the artist's dense cable textures not wired up yet (the connector's machine cap went
 # when Provider and Endpoint fronts became dense connections), and the old cable's textures the artist still edits.
 NOT_DRAWN_YET = ({NS + 'part/cable/dense/' + name for name in ('connector', 'stream_u', 'stream_v')}
                  | {NS + 'block/' + name for name in ('glass', 'collar', 'stream_u', 'stream_v')})
+# Textures the client code binds by path, such as the bundle selection's hatch, are drawn too.
+JAVA = '\n'.join(path.read_text() for path in (REPO / 'common/src/main/java').rglob('*.java'))
+CODE_BOUND = {NS + ref for ref in re.findall(r'"textures/([a-z0-9_/]+)\.png"', JAVA)}
 used = {texture for model in models.values() for texture in model.get('textures', {}).values()} | CODE_DRAWN \
-    | NOT_DRAWN_YET
+    | CODE_BOUND | NOT_DRAWN_YET
 for path in (BASE / 'textures').rglob('*.png'):
     im = Image.open(path)
     ref = NS + path.relative_to(BASE / 'textures').as_posix()[:-4]
     assert ref in used or ref == NS + 'entity/cable_flow', ('unused texture', ref)
+    # Overlays the client code draws, such as the bundle selection's hatch, keep their own size.
+    if ref.startswith(NS + 'misc/'):
+        continue
     meta = path.with_suffix('.png.mcmeta')
     # The artist's 2x2 rings are modelled over two blocks, on a 32-pixel texture.
     assert im.width == (32 if ref == NS + 'block/large_cable/large_cable' else 16), ref
@@ -81,8 +90,13 @@ for path in (BASE / 'textures').rglob('*.png'):
         assert im.height == (32 if path.name in ('cable_flow.png', 'large_cable.png') else 16)
 
 for path in (BASE / 'blockstates').glob('*.json'):
-    for variant in json.loads(path.read_text())['variants'].values():
-        assert variant['model'] in models
+    blockstate = json.loads(path.read_text())
+    # Router and Switch use multipart blockstates; the others use variants.
+    variants = list(blockstate['variants'].values()) if 'variants' in blockstate \
+        else [part['apply'] for part in blockstate['multipart']]
+    for variant in variants:
+        for model in variant if isinstance(variant, list) else [variant]:
+            assert model['model'] in models, (path.name, model['model'])
 # The block model only gives the code-built model its transforms and particle; the item inherits it.
 assert models[NS+'block/cable'] == {'parent': 'minecraft:block/block', 'textures': {'particle': NS+'block/armor'}}
 assert models[NS+'item/cable'] == {'parent': NS+'block/cable'}

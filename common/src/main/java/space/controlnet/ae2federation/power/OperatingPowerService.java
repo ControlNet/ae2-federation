@@ -180,8 +180,10 @@ public final class OperatingPowerService {
         var plans = new HashMap<FederationDomainId, Plan>();
         for (var id : domains) {
             var evidence = registry.nodeEvidence(id);
+            // A linked Beam Former pair counts as cable of its square; its anchor names the link.
             var section = CableCrossSection.largest(evidence.stream()
-                    .filter(node -> node.kind() == FederationDomainNodeKind.CABLE)
+                    .filter(node -> node.kind() == FederationDomainNodeKind.CABLE
+                            || OperatingPowerCosts.beam(node).isPresent())
                     .map(FederationDomainNodeEvidence::capacityFactor).toList())
                     .orElse(CableCrossSection.ONE_BY_ONE);
             var bodies = new ArrayList<Body>();

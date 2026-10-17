@@ -28,13 +28,17 @@ public final class CableCapacity {
 
     /** The demand of the Federation Cable at {@code position}, or empty when no domain holds it yet. */
     public static Optional<CableCapacityCounter.Demand> demand(ServerLevel level, BlockPos position) {
+        return demand(level, FederationDomainRegistryAccess.nodeId(level, position));
+    }
+
+    /** The demand of the cable or P2P tunnel {@code node}, or empty when no domain holds it yet. */
+    public static Optional<CableCapacityCounter.Demand> demand(ServerLevel level, FederationDomainNodeId node) {
         var current = FederationDomainRegistryAccess.get(level);
         if (current != registry || current.evidenceRevision() != revision) {
             COUNTED.clear();
             registry = current;
             revision = current.evidenceRevision();
         }
-        var node = FederationDomainRegistryAccess.nodeId(level, position);
         return current.federationDomainOf(node).map(domain -> COUNTED.computeIfAbsent(domain.federationDomainId(),
                 id -> CableCapacityCounter.count(current.nodeEvidence(id))).get(node));
     }

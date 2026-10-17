@@ -22,6 +22,9 @@ display and so on) are not current requirements.
   - Internally the input links to each active output and each output to the input, a star: N outputs publish 2N
     links instead of N(N+1). The Domains are the same, because outputs reach one another through the input. The
     Policy screens and the topology view still show every network of a frequency related to every other, as before.
+- **Capacity:** a frequency carries one ordinary cable's capacity (C). Its tunnels count as cable in the segment they
+  join, so they have that segment's count and stop the domain when it is over C, as a cable would; Jade shows the
+  count on each tunnel ([cable capacity](cable-capacity.md)).
 - **When a link holds:** only while both ends and the frequency's input are active (powered, with a channel).
   Outputs reach each other only through a working input. A tunnel without a channel (for example the ninth on an
   ad-hoc network) gets no link until it has one.

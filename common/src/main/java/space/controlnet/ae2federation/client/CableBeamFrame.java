@@ -16,7 +16,7 @@ final class CableBeamFrame {
     /** Per vertex of a bundle's beam: as {@link #STRIDE}, then the normal, so the renderer can fade soft layers. */
     static final int BUNDLE_STRIDE = 10;
 
-    private record Key(int mask, int parity, int detail, boolean glow, CableBeamStyle style) {
+    private record Key(int mask, int parity, int detail, boolean glow, boolean volume, CableBeamStyle style) {
     }
 
     private record BundleKey(BundleBeam beam, int parity, int detail, boolean glow, CableBeamStyle style) {
@@ -31,13 +31,13 @@ final class CableBeamFrame {
 
     /** The vertices of one pass of the beam at {@code x, y, z}, {@link #STRIDE} floats each; do not modify. */
     float[] layer(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style, int detail,
-            boolean glow) {
+            boolean glow, boolean volume) {
         advance(tick, partialTick);
-        var key = new Key(mask, parity(x, y, z), detail, glow, style);
+        var key = new Key(mask, parity(x, y, z), detail, glow, volume, style);
         var layer = layers.get(key);
         if (layer == null) {
             size = 0;
-            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, glow, this::record);
+            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, glow, volume, this::record);
             layer = Arrays.copyOf(scratch, size);
             layers.put(key, layer);
         }

@@ -38,6 +38,7 @@ on, and each permission works in one direction.
 * <ItemLink id="ae2federation:router" />: ends cable segments, so that cables do not fill up
   ([Network Capacity](network-capacity.md)); several blocks form one larger Router.
 * <ItemLink id="ae2federation:cable" />: links Switches, Routers, Pattern Providers and Endpoints over a distance.
+* <ItemLink id="ae2federation:beam_former" />: links cable through the air to another Beam Former in a straight line.
 * <ItemLink id="ae2federation:beam_converter" />: takes in FE and powers the Federation domain it joins.
 * <ItemLink id="ae2federation:pattern_provider" /> and <ItemLink id="ae2federation:processing_endpoint" />: run
   processing patterns on machines that belong to another network.

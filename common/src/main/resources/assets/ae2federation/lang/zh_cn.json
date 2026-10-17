@@ -44,6 +44,7 @@
   "block.ae2federation.switch": "ME联邦交换机",
   "block.ae2federation.beam_converter": "ME联邦光束转换器",
   "block.ae2federation.creative_beam_converter": "创造ME联邦光束转换器",
+  "block.ae2federation.beam_former": "ME联邦光束成型器",
   "ae2federation.structure.forming": "该%s正在成形，请稍后再试。",
   "ae2federation.structure.unloaded": "该%s尚未成形：部分方块位于未加载的区块。",
   "ae2federation.structure.invalid.not_solid": "该%s未成形，不连接任何网络：同类方块必须填满一个实心长方体。",
@@ -472,6 +473,7 @@
   "ae2federation.ui.statistics.fedpower.group.routers": "路由器",
   "ae2federation.ui.statistics.fedpower.group.switches": "交换机",
   "ae2federation.ui.statistics.fedpower.group.devices": "端点和供应器",
+  "ae2federation.ui.statistics.fedpower.group.beams": "光束成型器连接",
   "ae2federation.ui.processing.summary": "%s 个供应器 · %s 个端点 · %s 条映射",
   "ae2federation.ui.processing.column.providers": "样板供应器",
   "ae2federation.ui.processing.column.endpoints": "处理端点",
@@ -560,6 +562,11 @@
   "ae2federation.ui.processing.release_blocked_send": "暂时不能释放：仍有发送到它的样板未完成。",
   "ae2federation.jade.cable_capacity.subdomain": "容量计数：%s（子域）",
   "ae2federation.jade.cable_capacity.domain": "容量计数：%s（联邦域）",
+  "ae2federation.jade.beam.linked": "光束：已连接，%s 格",
+  "ae2federation.jade.beam.blocked": "光束：被 %s, %s, %s 处的方块挡住",
+  "ae2federation.jade.beam.checking": "光束：正在检查路径",
+  "ae2federation.jade.beam.no_partner": "光束：%s 格内没有对端",
+  "ae2federation.jade.beam.wrong_size": "光束：前方的成型器尺寸不同",
   "config.jade.plugin_ae2federation.cable_capacity": "联邦线缆容量计数",
   "ae2federation.jade.bundle.title": "ME联邦粗线缆",
   "ae2federation.jade.bundle.shape": "%s×%s · 容量 %s",
@@ -582,6 +589,7 @@
   "ae2federation.bundle.problem.not_flat": "两个角必须在同一平面内",
   "ae2federation.bundle.problem.not_along": "请右键截面正前方或正后方的线缆",
   "ae2federation.bundle.problem.face_along_line": "请右键朝向粗线缆走向的那一面",
+  "ae2federation.bundle.problem.not_buildable": "粗线缆的截面只能是 2×2 或 3×3",
   "ae2federation.bundle.problem.too_long": "一次最多转换 %s 格长",
   "ae2federation.bundle.problem.too_far": "离选区太远",
   "ae2federation.bundle.problem.not_all_cables": "%s/%s 个位置没有联邦线缆",
@@ -618,5 +626,6 @@
   "config.jade.plugin_ae2federation.device": "联邦路由器、交换机与光束转换器",
   "config.jade.plugin_ae2federation.endpoint": "联邦处理端点模式",
   "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板",
-  "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存"
+  "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存",
+  "config.jade.plugin_ae2federation.beam_former": "联邦光束成型器光束"
 }

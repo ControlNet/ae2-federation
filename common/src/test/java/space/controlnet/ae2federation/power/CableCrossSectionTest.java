@@ -46,6 +46,17 @@ final class CableCrossSectionTest {
     }
 
     @Test
+    void playersBuildOnlySquareCrossSectionsToday() {
+        assertEquals(List.of(CableCrossSection.ONE_BY_ONE, CableCrossSection.TWO_BY_TWO, CableCrossSection.THREE_BY_THREE),
+                java.util.Arrays.stream(CableCrossSection.values()).filter(CableCrossSection::buildable).toList());
+        assertTrue(BundleShape.of(2, 2).orElseThrow().buildable());
+        assertTrue(BundleShape.of(3, 3).orElseThrow().buildable());
+        for (var shape : List.of(BundleShape.of(1, 2), BundleShape.of(1, 3), BundleShape.of(2, 3))) {
+            assertTrue(!shape.orElseThrow().buildable(), shape + " stays supported but is not built");
+        }
+    }
+
+    @Test
     void aConverterIsTwiceItsWiderSideLong() {
         assertEquals(2, CableCrossSection.ONE_BY_ONE.converterLength());
         assertEquals(6, CableCrossSection.ONE_BY_THREE.converterLength());

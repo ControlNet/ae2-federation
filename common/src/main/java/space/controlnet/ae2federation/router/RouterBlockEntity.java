@@ -70,6 +70,16 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
                 : FederationDomainNodeKind.ROUTER;
     }
 
+    /** Links to nodes that are not beside this block, named on both ends, such as a Beam Former's beam. */
+    protected Map<String, FederationDomainPortEvidence> remotePorts() {
+        return Map.of();
+    }
+
+    /** How many cables' capacity this node carries: one, unless the block's shape says otherwise. */
+    protected int capacityFactor() {
+        return 1;
+    }
+
     /** The body formed, broke or reshaped: the faces link again, or stop linking, from the next tick. */
     @Override
     public void setBlockState(BlockState state) {
@@ -226,7 +236,7 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
         }
     }
 
-    private void publishFederationDomainTopology() {
+    protected void publishFederationDomainTopology() {
         if (!(level instanceof ServerLevel serverLevel) || federationDomainNodeId == null) {
             return;
         }
@@ -250,6 +260,7 @@ public class RouterBlockEntity extends BlockEntity implements IInWorldGridNodeHo
                         new FederationDomainPortId(remoteNode, federationBinding.port().outwardFace().getSerializedName())));
             }
         }
-        return new FederationDomainNodeEvidence(federationDomainNodeId, kind(), evidence);
+        evidence.putAll(remotePorts());
+        return new FederationDomainNodeEvidence(federationDomainNodeId, kind(), evidence, capacityFactor());
     }
 }

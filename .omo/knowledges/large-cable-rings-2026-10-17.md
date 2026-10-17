@@ -40,8 +40,9 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   `client/LargeCableRingModels.java`. Re-run when the artist edits the projects.
 - The corner model's two rings sit at y 5..9 and 22..26 of 32: not mirror-symmetric (7 vs 24 centres). Rendered as
   modelled; ask the artist if unintended.
-- `tools/visual/validate_assets.py` already fails on dev (unregistered `misc/bundle_selection_hatch`,
-  `block/router/router_side_ver`, ...); the ring texture is registered (32 px allowed) but the script is not green.
+- `tools/visual/validate_assets.py` is green again (2026-10-17): it counts textures the Java code binds by
+  `"textures/....png"` path and the Router/Switch connected-face tiles as drawn, skips the 16 px rule for `misc/`
+  overlays, and reads multipart blockstates (Router, Switch).
 
 ## Verification
 
@@ -85,7 +86,9 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   box), 3 sheaths 16/12/0 sides at 16/8/2 samples per block (near/medium/distant), halo 8 sides. `CableBeamFrame`
   caches bundle layers with normals (`BUNDLE_STRIDE` 10); `CableFlowRenderer.renderBundle` fades glow alpha by
   `BundleBeamMesh.fade` = 2 (n.v)^2 in eye space (modelView x pose; orthographic projections, m23 == 0, look down -Z).
-  In-shell fog is not drawn for the 2x2 beam (R has its halo instead). The `volume` tube code is gone.
+  In-shell fog is not drawn for the 2x2 beam (R has its halo instead). The `volume` tube stays in `CableBeamMesh`:
+  dev's Beam Former draws pairs wider than 1x1 with it (`CableFlowRenderer.emitCell(..., volume)`); whether those
+  beams take R too is the owner's call.
 - Verified in a real world (dedicated server, perspective camera): the glow fades evenly above and below the beam
   from level, above and below views. In a GuideME scene the run looks paler above than below; that is the shell's
   glass faces tinting the halves differently (the old beam shows the same split), not the fade: GuideME's camera is

@@ -11,11 +11,13 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
   `config/ae2federation-server.toml`. With the rule off no domain needs a converter and nothing is drawn.
 - **Costs** (FE/t per block, times the multiplier, `OperatingPowerCosts`): Federation Cable 0.5; Router, Switch,
   Processing Endpoint and Federation Pattern Provider 2; Federation P2P tunnel and Beam Converter 0 (AE2 already
-  charges the tunnel).
+  charges the tunnel). A Beam Former block costs 0; each linked pair costs M·N × max(2, L)^1.05 AE/t once
+  ([Beam Former](beam-former.md)).
 - **Converter.** `beam_converter` and `creative_beam_converter`: solid-cuboid devices like Router and Switch
   (`FormableDevice`), its members facing any way. The front's M x N must be a cable cross-section and the body
-  2·max(M, N) long toward it (`BeamConverterShape`): 1x1x2, 1x2x4, 1x3x6, 2x2x4, 2x3x6, 3x3x6; the size alone gives
-  the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
+  2·max(M, N) long toward it (`BeamConverterShape`), of a cross-section players can build today
+  (`CableCrossSection.BUILDABLE`): 1x1x2, 2x2x4, 3x3x6. The 1x2x4, 1x3x6 and 2x3x6 sizes stay in the code but do
+  not form until their bundles are buildable again (2026-10-17). The size alone gives the axis. Other shapes do not form (`WRONG_SHAPE`). Forming turns every member toward one end of the axis
   (`FormableDevice.forming`): the end most members face, else the one end touching Federation cable, else the positive
   end. A wrench (`c:tools/wrench`) on a formed body turns all members end for end with neighbour updates; they then
   vote for the new facing. An unformed block's facing is ignored, and a cable draws no joint to it. The front links Federation like a Switch face; FE enters every other face. A formed body is
@@ -23,7 +25,7 @@ The converter's textures are temporary (the Pattern Provider's, recoloured) unti
   body's total, and each block saves an equal share in its NBT, so a block broken out takes its share. Recipe
   `CEC / ELE / CEC` (Federation Cable, Energy Acceptor, Nexus Core), one per craft.
 - **Matching.** A domain's converters must match its largest cable cross-section, read from its cable evidence's
-  `capacityFactor` (`CableCrossSection`; a domain without bundles is 1x1). A converter of another size joins the domain
+  `capacityFactor` (`CableCrossSection`; a domain without bundles is 1x1), and from linked Beam Former pairs. A converter of another size joins the domain
   and supplies nothing.
 - **Ledger.** Each tick a domain pools its matching converters' buffers and drains its use in proportion
   (`PowerLedger`). It stops when they cannot pay and keeps drawing. As AE2's `EnergyService`, a new domain runs at once
