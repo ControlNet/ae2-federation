@@ -65,7 +65,10 @@ continues the Nexus Processor / Nexus Core material line; its component names fo
 - **Not crafting.** It has nothing to do with AE2 crafting CPUs. A program may call AE2 autocrafting, but the device
   is not part of AE2's crafting system.
 
-Open: the names of the two measures and their units; how node count, nested calls and declared I/O turn into costs;
+The user worries that "CPU" and "memory" would carry over AE2's meaning: there a crafting CPU is how many jobs run
+at once and its storage is how many items a job holds. The final names should avoid that reading.
+
+Open: the names of the two measures, their components and their units; how node count, nested calls and declared I/O turn into costs;
 which component provides which measure; how a device joins its domain; and what enabled programs do when the device
 loses power or its domain stops sharing.
 

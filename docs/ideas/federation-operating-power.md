@@ -41,22 +41,23 @@ The user named the device **联邦光束供能器** (Federation Beam Charger; wo
   | 2x3 | 2x3x6 | 36 |
   | 3x3 | 3x3x6 | 54 |
 
-  The cross-sections are totally ordered by capacity and by area (1x1 < 1x2 < 1x3 < 2x2 < 2x3 < 3x3), so a domain
-  holding both a 1x3 and a 2x2 bundle needs a 2x2 charger (assistant reading, to confirm).
+  "Largest" means the highest-capacity cross-section (1x1 < 1x2 < 1x3 < 2x2 < 2x3 < 3x3), so a domain holding both a
+  1x3 and a 2x2 bundle needs a 2x2 charger. If the largest cross-section changes, the old charger stops matching and
+  the domain is unpowered until it is rebuilt (accepted).
 - **Facing.** The charger is directional. Only its front face connects to Federation cable, and that face's cross-section
   must equal the domain's largest cable cross-section.
 - **Scope.** One charger serves one whole Federation domain; another domain needs its own. Carrying beam energy
   between domains through an ME network was mentioned as a possible later method, with no current plan.
-- **Input.** FE, and it may also connect directly to an ME network and draw AE from it.
+- **Several chargers.** Like AE2 Energy Acceptors: energy can enter at several places in a domain and adds up.
+- **Input.** FE. Drawing AE directly from an ME network was proposed and then deferred, because a network whose own
+  power arrives only through the Federation could never restart it (the cold-start question below).
 - **Insufficient energy.** As with capacity overload: the whole domain stops sharing, the world is not changed, and
   sharing resumes when power returns.
 - **Default.** Required by default; the configuration can turn the requirement off, which means unlimited energy.
 - **Creative variant.** A creative charger is wanted, following other mods' creative energy blocks.
 - **Beam links.** A [line-of-sight beam](line-of-sight-beam-links.md) should cost more than the same number of cables.
 
-Open: whether several chargers on one domain add up and whether each must match the size; what happens while the
-largest cross-section changes; the costs per block type; and what the ME-network input does when that network's
-own power arrives only through the Federation (the cold-start question below).
+Open: whether every one of several chargers must match the size; and the costs per block type.
 
 ## Relationship to existing features
 

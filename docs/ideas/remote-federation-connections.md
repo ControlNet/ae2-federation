@@ -12,13 +12,17 @@ The user shaped the quantum-bridge-style candidate into a multiblock and set its
 - **Why it exists.** Federation P2P carries only a 1x1 cable. This device carries bundled cross-sections remotely.
 - **P2P capacity.** A Federation P2P tunnel pair should have the capacity of one ordinary cable (C). Today a pair joins
   the regions at both ends and is not limited itself; this is a change to the shipped counting.
-- **Shape.** A solid cube; every face may connect Federation cable. Earlier sizes mentioned were 3x3x3 and 5x5x5.
-- **Linking.** Cross-dimensional, bound with a paired item. The user asked whether an AE2 Memory Card, as Federation
-  P2P uses, could replace the item; not yet decided.
+- **Shape.** A solid cube; every face may connect Federation cable. 3x3x3 is the smallest and connects only 1x1
+  cable; 4x4x4 connects up to 2x2; only 5x5x5 connects 3x3 (user, 2026-10-17). An edge-K cube thus takes cables up
+  to (K-2) x (K-2), as if each face kept a one-block border.
+- **Linking.** Cross-dimensional, bound with an AE2 Memory Card as Federation P2P is (user accepted, 2026-10-17).
+- **Topology.** Counts as cable joined directly, as Federation P2P does: both ends are one capacity region
+  (user accepted, 2026-10-17).
 
-Open: which cube sizes exist and what capacity each carries (an edge-K cube carrying the K x K tier is an assistant
-proposal); whether it counts as cable-joined like P2P; its operating cost; and behavior when the far end is unloaded
-(chunks are not force-loaded).
+Open: whether a cable must sit inside the face's (K-2) x (K-2) centre or anywhere on the face; the capacity a cube
+carries (its largest connectable tier is the assistant proposal: C, 6C, unlimited); whether 1x2, 1x3 and 2x3 cables
+connect to the smallest cube that fits them; its operating cost; and behavior when the far end is unloaded (chunks
+are not force-loaded).
 
 ## Follow-up 2026-10-09: operating power and beam links
 
