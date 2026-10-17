@@ -67,3 +67,7 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   and U (glow fills the glass) are the two routes that read as a big beam. Porting V needs the pinch to follow
   `BundleLook.ringBefore/ringAfter` (rings skip next to branches), not world-x parity; U's squircle (.84) nearly touches
   the .875 interior and needs clipping at joints; S adds 8 tubes per cell (vertex budget).
+- Banding (owner noticed in `sheet-iso-full.png`): nested additive tubes of even alpha add a fixed step of light wherever
+  a ray crosses one more shell, so each shell's outline is a hard edge; larger alphas at full load make it worst. The
+  shipped game tube (3 nested additive tubes) has the same property. `render_bundle_beams.py --soft` fades each layer
+  toward its outline and removes it; the game needs view-dependent alpha for that.

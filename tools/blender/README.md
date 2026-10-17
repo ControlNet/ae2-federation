@@ -400,11 +400,17 @@ bore, which the ring's 1-voxel flanges narrow to 10/32 voxels (radius .3125).
 
 ```sh
 python3 -m unittest test_bundle_beams    # from tools/blender
-blender -b --factory-startup --python tools/blender/render_bundle_beams.py
+blender -b --factory-startup --python tools/blender/render_bundle_beams.py -- --soft --animate
 python3 tools/blender/compose_bundle_beams.py
 ```
 
 Expected: 7 tests pass, `BUNDLE_BEAMS_OK: 7 concepts rendered; assets unchanged`, `BUNDLE_MEDIA_OK`. Renders, the
 labelled sheets (`sheet-<view>-<load>.png`: iso at 0/60/100%, side at 0/60%, an end-on cutaway at 60% with the ring
-bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. Loads are preview inputs;
-these are Blender prototypes, not a port.
+bore in orange) and `bundle-beams.blend` go to the repo's ignored `build/bundle-beam-check/`. `--animate` adds one
+64-tick loop (32 frames, 3.2 s) per concept at 60% load: `<key>-loop.gif`, `all-concepts.mp4` (and `-x4`, looped) and
+`all-concepts.gif`. Loads are preview inputs; these are Blender prototypes, not a port.
+
+Without `--soft` each glow layer is a shell of even light, as the game draws it: seen through, the light steps up at
+every shell's outline, so the nested shells show as hard bands, worst at full load where the steps are largest.
+`--soft` fades each layer as (1 - facing)^2, twice as bright face-on, so the layers blend into one soft volume. In game
+that needs view-dependent alpha (per-frame vertex alpha from the camera, or camera-facing gradient strips).

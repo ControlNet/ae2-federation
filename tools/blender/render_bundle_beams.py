@@ -26,6 +26,9 @@ VIEWS = {
     'end': ((1, 0, 0), 2.5, 760, 760, ('medium',), True),
 }
 CYCLE = .25
+FRAMES = 32
+# With --soft, each glow layer fades out toward its outline, as a volume of light thins at its edge.
+SOFT = False
 
 
 def linear(value):
@@ -54,6 +57,23 @@ def beam_material(name, rgb, alpha, mode):
     if mode == 'add':
         # Additive like the game's glow pass: the light adds, nothing behind is hidden.
         emission.inputs['Strength'].default_value = alpha
+        if SOFT:
+            # Facing is 0 where the surface faces the camera and 1 at the outline.
+            weight = nodes.new('ShaderNodeLayerWeight')
+            inverse = nodes.new('ShaderNodeMath')
+            inverse.operation = 'SUBTRACT'
+            inverse.inputs[0].default_value = 1
+            links.new(weight.outputs['Facing'], inverse.inputs[1])
+            fade = nodes.new('ShaderNodeMath')
+            fade.operation = 'POWER'
+            fade.inputs[1].default_value = 2
+            links.new(inverse.outputs[0], fade.inputs[0])
+            scaled = nodes.new('ShaderNodeMath')
+            scaled.operation = 'MULTIPLY'
+            # Twice the light at the middle, so the layer gives about as much in all as a flat one.
+            scaled.inputs[1].default_value = 2 * alpha
+            links.new(fade.outputs[0], scaled.inputs[0])
+            links.new(scaled.outputs[0], emission.inputs['Strength'])
         add = nodes.new('ShaderNodeAddShader')
         links.new(transparent.outputs[0], add.inputs[0])
         links.new(emission.outputs[0], add.inputs[1])
@@ -195,7 +215,34 @@ def scene_setup():
     return scene
 
 
+def animate(scene, profiles, output, kept):
+    """One 64-tick loop (3.2 s) per concept at 60% load from the iso camera, as numbered frames."""
+    for obj in kept.objects:
+        obj.hide_render = True
+    scene.render.resolution_x, scene.render.resolution_y = 720, 456
+    scene.cycles.samples = 16
+    for profile in profiles:
+        title = PROFILES[profile][0]
+        frames = output / profile / 'frames'
+        frames.mkdir(parents=True, exist_ok=True)
+        first = generate(profile, LOADS['medium'], 0)
+        materials = [beam_material('%s loop %s' % (profile, m[0]), *m[1:]) for m in first.materials]
+        for index in range(FRAMES):
+            mesh = generate(profile, LOADS['medium'], index / FRAMES)
+            assert mesh.faces == first.faces and mesh.materials == first.materials, (profile, index)
+            beam = build_object('%s / loop' % title, [[mesh.vertices[i] for i in f] for f in mesh.faces],
+                                scene.collection, materials, mesh.indices)
+            scene.render.filepath = str(frames / ('%03d.png' % index))
+            bpy.ops.render.render(write_still=True, scene=scene.name)
+            data = beam.data
+            bpy.data.objects.remove(beam)
+            bpy.data.meshes.remove(data)
+        print('BUNDLE_BEAM_ANIMATED %s' % profile, flush=True)
+
+
 def main(args):
+    global SOFT
+    SOFT = args.soft
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     asset_root = bundle_beams.ASSETS
@@ -227,7 +274,7 @@ def main(args):
         cameras[key] = camera(scene, 'Camera / ' + key, tuple(position), tuple(middle if key != 'end'
                                                                                 else to_blender((0, 1, 1))), scale)
 
-    report = {'cycle': CYCLE, 'loads': LOADS, 'ring_opening': RING_OPENING, 'views': {}, 'profiles': {}}
+    report = {'cycle': CYCLE, 'soft': SOFT, 'animation_frames': FRAMES if args.animate else 0, 'loads': LOADS, 'ring_opening': RING_OPENING, 'views': {}, 'profiles': {}}
     kept = bpy.data.collections.new('Beam concepts at 60% load')
     scene.collection.children.link(kept)
     for profile in profiles:
@@ -264,6 +311,8 @@ def main(args):
     closed.hide_render = False
     cutaway.hide_render = marker.hide_render = True
     scene.camera = cameras['iso']
+    if args.animate:
+        animate(scene, profiles, output, kept)
     bpy.ops.wm.save_as_mainfile(filepath=str(output / 'bundle-beams.blend'))
     assert before == asset_hashes(), 'Production assets were modified'
     report['views'] = {k: {'scale': v[1], 'size': v[2:4], 'loads': v[4], 'cutaway': v[5]} for k, v in VIEWS.items()}
@@ -275,4 +324,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=HERE.parents[1] / 'build/bundle-beam-check')
     parser.add_argument('--only', nargs='*', help='render only these concept keys')
+    parser.add_argument('--soft', action='store_true', help='fade each glow layer toward its outline')
+    parser.add_argument('--animate', action='store_true', help='also render one loop per concept at 60%% load')
     main(parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []))
