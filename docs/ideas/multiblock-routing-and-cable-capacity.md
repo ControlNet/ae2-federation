@@ -183,7 +183,7 @@ older illustrative sizes/counts as the current balancing candidate; C and final 
 
 On 2026-10-17 the user set a Federation P2P tunnel pair's own capacity to one ordinary cable (C), because larger
 cross-sections are meant to travel through the [wireless cube](remote-federation-connections.md) and
-[beam transceivers](line-of-sight-beam-links.md). Today a pair is not limited itself.
+[beam transceivers](line-of-sight-beam-links.md). Implemented the same day: tunnels count as cable in their region.
 
 Bundles are formed explicitly ([Confirmed bundled cables](#confirmed-bundled-cables-2026-10-13)); spatially separate
 routes never add capacity. The finite bundled tiers yield
