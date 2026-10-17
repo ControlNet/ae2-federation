@@ -15,3 +15,9 @@ of 3 runs on the development host. Reads go through `getChunkSource().getChunkNo
 A Federation topology change costs far more than the scan: toggling one cable in a 901-node domain raised the tick
 from 1.08 ms to 1.33 ms (`perftopologyplane`), so debounce, not the scan budget, is what protects the server from a
 flickering obstruction.
+
+Rerun with the real `BeamObstruction` (adds the `ae2federation:beam_passes` tag check), same day: open sky 11.8 µs
+(1.3 ns/block), air 159 µs (17.3 ns), glass 324 µs (35.2 ns). The service's per-tick cap of 16384 blocks therefore
+costs at most about 0.58 ms in the worst case (every beam full of glass, all sweeping); a typical air-filled 3x3 beam
+reads its 1024-block share in about 18 µs per tick. The bookkeeping outside the reads (pairing, debounce) is not
+measured separately; it does no world reads.

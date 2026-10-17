@@ -4,30 +4,22 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.TagKey;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import space.controlnet.ae2federation.beam.BeamObstruction;
 import space.controlnet.ae2federation.test.perf.PerfMeasure;
 
 /**
  * TEST-ONLY, manual-only benchmark for the planned Beam Former's path check (plan
  * {@code .omo/plans/beam-former.md}, D12): the cost of checking a 3x3 x 1024 beam volume in a real level, read
- * the way the link service would read it (loaded chunks only, all-air sections skipped whole). The obstruction rule
- * here is a TEST-ONLY prototype of D4: a block with a collision shape blocks, unless it is glass.
+ * the way the link service reads it (loaded chunks only, all-air sections skipped whole), with the real
+ * {@link BeamObstruction} rule (D4).
  */
 @PrefixGameTestTemplate(false)
 public final class BeamScanBenchmarkGameTests {
     private static final int LENGTH = Integer.getInteger("ae2federation.perf.beamLength", 1024);
     private static final int SIDE = 3;
-    private static final TagKey<Block> GLASS_BLOCKS = TagKey.create(Registries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath("c", "glass_blocks"));
-    private static final TagKey<Block> GLASS_PANES = TagKey.create(Registries.BLOCK,
-            ResourceLocation.fromNamespaceAndPath("c", "glass_panes"));
 
     private BeamScanBenchmarkGameTests() {
     }
@@ -103,17 +95,12 @@ public final class BeamScanBenchmarkGameTests {
                     }
                     for (var z = start.getZ(); z < start.getZ() + SIDE; z++) {
                         var state = section.getBlockState(x & 15, y & 15, z & 15);
-                        if (blocks(chunk, state, pos.set(x, y, z))) return index;
+                        if (BeamObstruction.blocks(state, chunk, pos.set(x, y, z))) return index;
                         index++;
                     }
                 }
             }
         }
         return -1;
-    }
-
-    private static boolean blocks(LevelChunk chunk, BlockState state, BlockPos pos) {
-        if (state.isAir() || state.is(GLASS_BLOCKS) || state.is(GLASS_PANES)) return false;
-        return !state.getCollisionShape(chunk, pos).isEmpty();
     }
 }

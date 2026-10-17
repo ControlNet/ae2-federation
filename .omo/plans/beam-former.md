@@ -102,10 +102,12 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
   run in parallel; `BeamPartnerIndexTest` covers it) and an unloaded middle chunk (the scan keeps the last blocker
   and never loads chunks).
 
-### 4. Benchmark
+### 4. Benchmark (done 2026-10-17)
 
 - `BeamScanBenchmarkGameTests.perfBeamScan` (added 2026-10-17 with a test-only D4 predicate) measured the read cost
   for D12. Rerun it against the real `BeamObstruction` and the service's tick cost once phase 3 lands.
+- Done: rerun with the real `BeamObstruction`: glass 35.2 ns/block, so the 16384-block tick cap is at most about
+  0.58 ms; numbers in `.omo/knowledges/beam-scan-cost-2026-10-17.md`.
 
 ### 5. Power
 
