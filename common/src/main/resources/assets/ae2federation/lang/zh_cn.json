@@ -590,11 +590,14 @@
   "ae2federation.jade.structure.wrong_shape": "未成形：尺寸或朝向不符合转换器",
   "ae2federation.jade.structure.unloaded": "未成形：部分位于未加载区块",
   "ae2federation.jade.switch_networks": "接入网络：%s",
+  "ae2federation.jade.converter": "缓存 %s / %s FE · 输入 %s FE/t",
+  "ae2federation.jade.converter.idle": "缓存 %s / %s FE",
   "ae2federation.jade.endpoint.local": "本地模式",
   "ae2federation.jade.endpoint.claimed": "联邦模式 · 已归属",
   "ae2federation.jade.endpoint.unclaimed": "联邦模式 · 尚无归属",
   "ae2federation.jade.pattern_provider": "样板 %s/%s · 映射 %s",
-  "config.jade.plugin_ae2federation.device": "联邦路由器与交换机",
+  "config.jade.plugin_ae2federation.device": "联邦路由器、交换机与光束转换器",
   "config.jade.plugin_ae2federation.endpoint": "联邦处理端点模式",
-  "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板"
+  "config.jade.plugin_ae2federation.pattern_provider": "联邦样板供应器样板",
+  "config.jade.plugin_ae2federation.beam_converter": "联邦光束转换器缓存"
 }

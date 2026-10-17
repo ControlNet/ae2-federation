@@ -590,11 +590,14 @@
   "ae2federation.jade.structure.wrong_shape": "Not formed: not a converter's size or facing",
   "ae2federation.jade.structure.unloaded": "Not formed: partly in unloaded chunks",
   "ae2federation.jade.switch_networks": "Networks attached: %s",
+  "ae2federation.jade.converter": "Buffer %s / %s FE · input %s FE/t",
+  "ae2federation.jade.converter.idle": "Buffer %s / %s FE",
   "ae2federation.jade.endpoint.local": "Local mode",
   "ae2federation.jade.endpoint.claimed": "Federated mode · claimed",
   "ae2federation.jade.endpoint.unclaimed": "Federated mode · unclaimed",
   "ae2federation.jade.pattern_provider": "Patterns %s/%s · mappings %s",
-  "config.jade.plugin_ae2federation.device": "Federation Router and Switch",
+  "config.jade.plugin_ae2federation.device": "Federation Router, Switch and Beam Converter",
   "config.jade.plugin_ae2federation.endpoint": "Federation Processing Endpoint mode",
-  "config.jade.plugin_ae2federation.pattern_provider": "Federation Pattern Provider patterns"
+  "config.jade.plugin_ae2federation.pattern_provider": "Federation Pattern Provider patterns",
+  "config.jade.plugin_ae2federation.beam_converter": "Federation Beam Converter buffer"
 }
