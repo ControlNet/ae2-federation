@@ -19,7 +19,7 @@ final class CableBeamFrameTest {
     private static List<Float> cached(CableBeamFrame frame, int mask, int x, int y, int z, long tick, float partial,
             CableBeamStyle style, int detail, boolean glow) {
         var out = new ArrayList<Float>();
-        float[] layer = frame.layer(mask, x, y, z, tick, partial, style, detail, glow);
+        float[] layer = frame.layer(mask, x, y, z, tick, partial, style, detail, glow, false);
         for (float value : layer) out.add(value);
         return out;
     }
@@ -48,9 +48,9 @@ final class CableBeamFrameTest {
         }
         // Cells two blocks apart on every axis carry the same pulses, so the second is a lookup.
         var style = CableBeamStyle.fromLoad(.6);
-        float[] first = frame.layer(3, 10, 64, 10, 9, .25f, style, 0, true);
-        assertSame(first, frame.layer(3, 12, 66, -4, 9, .25f, style, 0, true));
-        assertNotSame(first, frame.layer(3, 11, 64, 10, 9, .25f, style, 0, true), "the pulses are half a cycle on");
-        assertNotSame(first, frame.layer(3, 10, 64, 10, 9, .5f, style, 0, true), "a new frame computes again");
+        float[] first = frame.layer(3, 10, 64, 10, 9, .25f, style, 0, true, false);
+        assertSame(first, frame.layer(3, 12, 66, -4, 9, .25f, style, 0, true, false));
+        assertNotSame(first, frame.layer(3, 11, 64, 10, 9, .25f, style, 0, true, false), "the pulses are half a cycle on");
+        assertNotSame(first, frame.layer(3, 10, 64, 10, 9, .5f, style, 0, true, false), "a new frame computes again");
     }
 }

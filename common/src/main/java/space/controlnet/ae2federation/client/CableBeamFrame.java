@@ -13,7 +13,7 @@ final class CableBeamFrame {
     /** Per vertex: x, y, z within the block, red, green, blue, alpha. */
     static final int STRIDE = 7;
 
-    private record Key(int mask, int parity, int detail, boolean glow, CableBeamStyle style) {
+    private record Key(int mask, int parity, int detail, boolean glow, boolean volume, CableBeamStyle style) {
     }
 
     private final Map<Key, float[]> layers = new HashMap<>();
@@ -24,18 +24,18 @@ final class CableBeamFrame {
 
     /** The vertices of one pass of the beam at {@code x, y, z}, {@link #STRIDE} floats each; do not modify. */
     float[] layer(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style, int detail,
-            boolean glow) {
+            boolean glow, boolean volume) {
         if (tick != this.tick || Float.floatToIntBits(partialTick) != Float.floatToIntBits(this.partialTick)) {
             layers.clear();
             this.tick = tick;
             this.partialTick = partialTick;
         }
         int parity = Math.floorMod(x, 2) | Math.floorMod(y, 2) << 1 | Math.floorMod(z, 2) << 2;
-        var key = new Key(mask, parity, detail, glow, style);
+        var key = new Key(mask, parity, detail, glow, volume, style);
         var layer = layers.get(key);
         if (layer == null) {
             size = 0;
-            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, glow, this::record);
+            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, glow, volume, this::record);
             layer = Arrays.copyOf(scratch, size);
             layers.put(key, layer);
         }

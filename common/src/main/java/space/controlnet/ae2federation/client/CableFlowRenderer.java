@@ -121,7 +121,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
             float[] layer = FRAME.layer(mask, pos.getX(), pos.getY(), pos.getZ(), tick, partialTick, style, detail,
-                    pass == 0);
+                    pass == 0, bundle != null);
             // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
             // values the chained calls in draw() would write.
             for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
