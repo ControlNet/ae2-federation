@@ -71,3 +71,11 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
   a ray crosses one more shell, so each shell's outline is a hard edge; larger alphas at full load make it worst. The
   shipped game tube (3 nested additive tubes) has the same property. `render_bundle_beams.py --soft` fades each layer
   toward its outline and removes it; the game needs view-dependent alpha for that.
+- Owner chose R (2026-10-17). `plasma_beam.py` / `render_plasma_beam.py` check it at game precision: 16 sides, 16
+  samples per block, 3 soft sheaths = 4096 quads per 2x2 layer (budget argument: one beam per layer where four
+  ordinary cells would each spend up to 1700). Looks the same as the 24-side approved render. Junction paths copy
+  `CableBeamMesh.build` (T = straight arms; turn = elbow radius .1875 of the joint, phase faded by `mix`).
+- Port notes: sheath radius depends on the angle round the tube, so `tube()` needs a per-vertex radius and `reach()`
+  cannot merge sheath segments; soft edges can keep `CableBeamFrame`'s shared cache if the cache stores normals and
+  the facing fade is applied per vertex at replay time. Sheaths cap their brightness at strength 1.15 and the inner
+  sheath turns red when overloaded, else full load and the alarm clip to white.
