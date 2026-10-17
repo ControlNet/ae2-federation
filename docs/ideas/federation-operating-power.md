@@ -59,6 +59,20 @@ The user named the device **联邦光束供能器** (Federation Beam Charger; wo
 
 Every one of several chargers must match the size (user, 2026-10-17). Open: the costs per block type.
 
+**Costs (assistant proposal 2026-10-17, not selected).** Calibrated on the
+[AE2 and addon energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md) (1 AE = 2 FE; AE2's default
+device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all scaled by one configuration multiplier:
+
+| Block | Proposed cost | Reasoning |
+|---|---|---|
+| Federation Cable | 0.5 per block | cheap, but not free like AE2 cable, since the beam is the energy's look |
+| Bundled cable | 0.5 per cell | the same per cell; a bundle saves capacity, not energy |
+| Router, Switch | 2 per block | AE2's default device, per block like CPU multiblocks |
+| Endpoint, Federation Pattern Provider | 2 each | AE2's default device |
+| Beam Transceiver link | 1 per cell per block of span | twice the cables it replaces (user: a beam costs more than cables) |
+| Wireless cube | 44 per block per side | the Quantum Network Bridge's 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
+| Beam Charger | 0 | it is the supply |
+
 **GUI (proposed 2026-10-17, awaiting the user's pick).** The user asked for the domain's power to show in the domain
 screen. The [design canvas](https://claude.ai/artifact/RjetUoACLghDXje7FNzjfd), row "联邦供能", proposes:
 

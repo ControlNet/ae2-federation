@@ -27,6 +27,9 @@ The user shaped the quantum-bridge-style candidate into a multiblock and set its
 
 - **Energy and unloading.** Both follow AE2's Quantum Network Bridge: a very large operating cost, and the bridge's
   behavior when the far end is unloaded (user, 2026-10-17). Chunks are not force-loaded.
+  In AE2 19.2.17 the bridge costs 22 AE/t per block (198 per formed side) with no distance or dimension term; when
+  either side's chunk unloads the link breaks, and it reconnects when the chunk loads again
+  ([energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md)).
 
 ## Follow-up 2026-10-09: operating power and beam links
 
