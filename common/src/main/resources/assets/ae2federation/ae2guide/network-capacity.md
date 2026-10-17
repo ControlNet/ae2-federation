@@ -56,8 +56,8 @@ Neither rules nor power play a part: a network counts as soon as it joins the do
 
 Federation Cables joined to each other form a segment. A <ItemLink id="ae2federation:switch" /> does not end a segment,
 and neither does a pair of <ItemLink id="ae2federation:federation_p2p_tunnel" />s: the cable on both sides belongs to
-the same segment. The pair carries only as much as one ordinary cable, though, so a segment joined through it
-holds no more than one cable's limit, even when it is built of [bundled cables](bundled-cables.md). Only a <ItemLink id="ae2federation:router" /> ends one, and a Router built from several blocks counts
+the same segment. The pair itself counts as cable, though: it carries the segment's count and holds no more
+than one cable's limit, even when it links two Routers with no cable between them. Only a <ItemLink id="ae2federation:router" /> ends one, and a Router built from several blocks counts
 as one Router.
 
 * A segment that touches **no Router or one Router**, together with the networks on its Switches and the Endpoints
