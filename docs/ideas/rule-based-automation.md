@@ -55,8 +55,9 @@ continues the Nexus Processor / Nexus Core material line; its component names fo
 - **Required.** Players must build one to use automation at all.
 - **Upgradable.** The structure holds installable "CPU" and "memory" components; more components host more automation.
 - **Two resources.** Each program has a known cost in two measures: one from its logic (for example its node count)
-  and one from its I/O (moving items, transferring energy, emitting redstone). Names are open; the user floated FPU
-  ("Federation Processing Unit") for the first and "bandwidth" (带宽) for the second.
+  and one from its I/O (moving items, transferring energy, emitting redstone). The first is **CU** (Compute Unit,
+  算力) and the second **bandwidth** (带宽) (user, 2026-10-17). Both costs are inferred from the program itself when
+  it is compiled; how is later design.
 - **Reserved while enabled.** Enabling a program reserves its whole cost on the device, whatever work it actually
   does; disabling it releases the cost.
 - **Placement.** A domain may have several devices. Each program is installed on exactly one, chosen in a GUI, and
@@ -66,11 +67,11 @@ continues the Nexus Processor / Nexus Core material line; its component names fo
   is not part of AE2's crafting system.
 
 The user worries that "CPU" and "memory" would carry over AE2's meaning: there a crafting CPU is how many jobs run
-at once and its storage is how many items a job holds. The final names should avoid that reading.
+at once and its storage is how many items a job holds. CU and bandwidth avoid that reading; "nodes" was rejected as
+the measure's name. AE2's crafting casing is the "Crafting Unit", so component names may want to avoid "... Unit".
 
-Open: the names of the two measures, their components and their units; how node count, nested calls and declared I/O turn into costs;
-which component provides which measure; how a device joins its domain; and what enabled programs do when the device
-loses power or its domain stops sharing.
+Open: the component names and the bandwidth unit; how node count, nested calls and declared I/O turn into costs;
+how a device joins its domain; and what enabled programs do when the device loses power or its domain stops sharing.
 
 ## Reference: Videnoa
 
