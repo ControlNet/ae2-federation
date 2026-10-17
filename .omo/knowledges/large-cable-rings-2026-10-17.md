@@ -50,3 +50,20 @@ deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The
 - In game: `runGuideClient -PguidePage=ae2federation:bundled-cables.md` under a private Xvfb; the page's scene is a 2x2
   run with a branch and a turn. A loaded variant was shot by hot-editing `CapacityUnits` in `bundled_cables.snbt`
   (reverted); the "before" ran from a detached worktree of dev.
+
+## Bigger middle beam: Blender concepts (2026-10-17, branch `beam-render`)
+
+- Owner found the 2x2 middle beam too thin ("太小家子气"). Concepts BASE (shipped tube) and Q-V live in
+  `tools/blender/bundle_beams.py` (stdlib geometry + shell/ring proxy), rendered by `render_bundle_beams.py`, sheets by
+  `compose_bundle_beams.py`; README section "2x2 bundle middle-beam concepts" has the commands and sentinels
+  (`BUNDLE_BEAMS_OK`, `BUNDLE_MEDIA_OK`). Output: repo `build/bundle-beam-check/` (ignored).
+- The proxy is rebuilt from real assets: shell voxels from `part/cable/dense/core.png` by BundleShellLayout's texel rule,
+  rings from `large_cable_straight.bbmodel` with Minecraft face-UV rotation (vertex i takes UV corner (i + r/90) % 4,
+  i.e. the image turns clockwise on the face). Glow renders additively (Add Transparent + Emission), like the glow pass.
+- The ring bore is not 12/32 voxels: 1-voxel flanges (model x 12-13 and 19-20, and their turned copies) narrow it to
+  10/32, radius .3125 block. Anything that writes depth must fit it: `SOLID_LIMIT = .30`. Additive glow may pass it;
+  rings occlude it.
+- Consequence: fattening the solid core alone (Q, R, T) stays tube-like; V (bulge between rings, pinched through each)
+  and U (glow fills the glass) are the two routes that read as a big beam. Porting V needs the pinch to follow
+  `BundleLook.ringBefore/ringAfter` (rings skip next to branches), not world-x parity; U's squircle (.84) nearly touches
+  the .875 interior and needs clipping at joints; S adds 8 tubes per cell (vertex budget).
