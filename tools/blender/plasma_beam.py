@@ -134,10 +134,11 @@ def generate(variant, load, cycle, paths):
     mode = 'soft' if soft else 'add'
     hot = st.tint((.96, 1, 1), (1, .9, .82))
     halo_rgb = st.tint((.15, .68, 1), (1, .025, .012))
-    core = (.08 + .06 * st.u) * st.breath
+    core = (.10 + .05 * st.u) * st.breath
     solid = mesh.material('core', hot, min(1, st.strength), 'solid')
-    # The sheaths stop brightening past 1.15 so full load keeps its colour instead of clipping to white.
-    opacity = (.12 + .88 * st.u) * min(st.strength, 1.15)
+    # Even idle, the sheaths keep a third of their light, so an idle 2x2 still reads as one broad beam; past 1.15 they
+    # stop brightening, so full load keeps its colour instead of clipping to white.
+    opacity = (.35 + .65 * st.u) * min(max(st.strength, .8), 1.15)
     layers = [(spec, mesh.material('sheath %d' % i, spec[4], min(1, spec[5] * opacity), mode))
               for i, spec in enumerate(sheaths(st, core, shells))]
     halo = mesh.material('halo', halo_rgb, min(1, .10 * opacity), mode)
