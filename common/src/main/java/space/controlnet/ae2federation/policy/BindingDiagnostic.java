@@ -11,6 +11,8 @@ public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, lo
         NETWORK_PAIR_DISCONNECTED,
         /** The two networks' shared domain is over cable capacity and stopped as a whole. */
         DOMAIN_OVER_CAPACITY,
+        /** The two networks' shared domain is unpowered and stopped as a whole. */
+        DOMAIN_UNPOWERED,
         BACKEND_UNREADY,
         DOMAIN_REFERENCE_MISSING,
         ENERGY_CONNECTION_MISSING,
@@ -28,6 +30,7 @@ public record BindingDiagnostic(Reason reason, PolicyRevision policyRevision, lo
             case OFF -> Reason.POLICY_DISABLED;
             case DISCONNECTED -> Reason.NETWORK_PAIR_DISCONNECTED;
             case OVER_CAPACITY -> Reason.DOMAIN_OVER_CAPACITY;
+            case UNPOWERED -> Reason.DOMAIN_UNPOWERED;
             case BACKEND_UNREADY -> Reason.BACKEND_UNREADY;
             case ACTIVE -> throw new IllegalArgumentException("Active relationships have no inactive reason");
         };

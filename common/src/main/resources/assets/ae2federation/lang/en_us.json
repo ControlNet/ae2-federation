@@ -187,6 +187,7 @@
   "ae2federation.ui.domain.runtime.backend.policy_disabled": "Rule was disabled.",
   "ae2federation.ui.domain.runtime.backend.network_pair_disconnected": "Network identities or their shared domain no longer match.",
   "ae2federation.ui.domain.runtime.backend.domain_over_capacity": "A Federation Cable in this domain carries more than its capacity, so this Federation domain has stopped.",
+  "ae2federation.ui.domain.runtime.backend.domain_unpowered": "This Federation domain has too little FE in its ME Federation Beam Converters, so this Federation domain has stopped.",
   "ae2federation.ui.domain.runtime.backend.backend_unready": "Native backend was not ready.",
   "ae2federation.ui.domain.runtime.backend.domain_reference_missing": "No valid shared domain reference.",
   "ae2federation.ui.domain.runtime.backend.energy_connection_missing": "No Federation node on one of the two networks can join the shared energy pool.",

@@ -65,6 +65,8 @@ public final class FederationDomainRegistry {
     private final Set<FederationDomainNodeId> pendingRemovals = new HashSet<>();
     /** Domains whose cables exceed the capacity limit; they stop as a whole. */
     private final Set<FederationDomainId> overCapacity = new HashSet<>();
+    /** Domains whose Beam Converters cannot pay their use; the operating power service sets them. They stop as a whole. */
+    private final Set<FederationDomainId> unpowered = new HashSet<>();
     /** Nodes whose evidence changed since their domains were last judged against the capacity limit. */
     private final Set<FederationDomainNodeId> capacityNodes = new HashSet<>();
     /** Domains installed since they were last judged against the capacity limit. */
@@ -202,15 +204,25 @@ public final class FederationDomainRegistry {
     }
 
     /**
-     * Whether two networks share a Federation domain that runs: one that is not over capacity. The features that link
-     * networks ask this; {@link #shareFederationDomain} answers for the topology alone.
+     * Whether two networks share a Federation domain that runs: one neither over capacity nor unpowered. The features
+     * that link networks ask this; {@link #shareFederationDomain} answers for the topology alone.
      */
     public boolean shareRunningFederationDomain(NetworkId first, NetworkId second) {
         flush();
         var firstDomains = networkIndex.getOrDefault(first, Set.of());
         var secondDomains = networkIndex.getOrDefault(second, Set.of());
         for (var domain : firstDomains) {
-            if (!overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
+            if (!overCapacity.contains(domain) && !unpowered.contains(domain) && secondDomains.contains(domain)) return true;
+        }
+        return false;
+    }
+
+    /** Whether two networks share a domain over capacity: the cause named when they share no running one. */
+    public boolean shareOverCapacityFederationDomain(NetworkId first, NetworkId second) {
+        flush();
+        var secondDomains = networkIndex.getOrDefault(second, Set.of());
+        for (var domain : networkIndex.getOrDefault(first, Set.of())) {
+            if (overCapacity.contains(domain) && secondDomains.contains(domain)) return true;
         }
         return false;
     }
@@ -219,6 +231,37 @@ public final class FederationDomainRegistry {
     public boolean overCapacity(FederationDomainId federationDomainId) {
         flush();
         return overCapacity.contains(federationDomainId);
+    }
+
+    /** Whether a domain's Beam Converters cannot pay its use, and so it stops as a whole. */
+    public boolean unpowered(FederationDomainId federationDomainId) {
+        flush();
+        return unpowered.contains(federationDomainId);
+    }
+
+    /** Whether a domain has stopped as a whole, over capacity or unpowered. */
+    public boolean stopped(FederationDomainId federationDomainId) {
+        flush();
+        return overCapacity.contains(federationDomainId) || unpowered.contains(federationDomainId);
+    }
+
+    public Set<FederationDomainId> unpoweredDomains() {
+        flush();
+        return Set.copyOf(unpowered);
+    }
+
+    /**
+     * Records the operating power service's verdict for a domain. Like a capacity verdict, only a change advances the
+     * topology and the authority, so the services that link networks notice it; a domain the registry does not know is
+     * ignored.
+     */
+    public void setUnpowered(FederationDomainId federationDomainId, boolean value) {
+        flush();
+        if (value && !federationDomains.containsKey(federationDomainId)) return;
+        if (value ? unpowered.add(federationDomainId) : unpowered.remove(federationDomainId)) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
     }
 
     /** Whether two networks are members of a common Federation Domain, without copying either membership set. */
@@ -314,6 +357,11 @@ public final class FederationDomainRegistry {
             recomputeNanos += System.nanoTime() - started;
         }
         judgeCapacity();
+        // A domain that is gone lets go of its power verdict; one that inherited the id keeps it.
+        if (unpowered.removeIf(federationDomainId -> !federationDomains.containsKey(federationDomainId))) {
+            topologyRevision++;
+            AuthorityEpoch.advance();
+        }
     }
 
     /**

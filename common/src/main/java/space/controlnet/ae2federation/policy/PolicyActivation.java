@@ -24,7 +24,8 @@ final class PolicyActivation {
         }
         if (!request.federationDomainRegistry().shareRunningFederationDomain(request.key().consumerNetworkId(),
                 request.key().providerNetworkId())) {
-            return PolicyActivationState.OVER_CAPACITY;
+            return request.federationDomainRegistry().shareOverCapacityFederationDomain(request.key().consumerNetworkId(),
+                    request.key().providerNetworkId()) ? PolicyActivationState.OVER_CAPACITY : PolicyActivationState.UNPOWERED;
         }
         return switch (request.backendStatus()) {
             case UNREADY -> PolicyActivationState.BACKEND_UNREADY;

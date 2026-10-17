@@ -1011,6 +1011,11 @@ public final class FederationDomainPolicySession {
         var overCapacity = new com.google.gson.JsonArray();
         domains.stream().filter(registry::overCapacity).forEach(domainId -> overCapacity.add(domainId.value()));
         root.add("overCapacityDomains", overCapacity);
+        // An unpowered domain has stopped too: the canvas tints it the same, with no caption.
+        root.addProperty("openedUnpowered", registry.unpowered(context.federationDomainId()));
+        var unpowered = new com.google.gson.JsonArray();
+        domains.stream().filter(registry::unpowered).forEach(domainId -> unpowered.add(domainId.value()));
+        root.add("unpoweredDomains", unpowered);
         var seen = new java.util.LinkedHashSet<space.controlnet.ae2federation.identity.NetworkId>();
         var ruleKeys = new java.util.HashSet<space.controlnet.ae2federation.policy.PolicyKey>();
         var names = space.controlnet.ae2federation.persistence.NetworkNames.get(level);

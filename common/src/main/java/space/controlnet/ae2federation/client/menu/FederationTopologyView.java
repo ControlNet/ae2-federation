@@ -124,9 +124,12 @@ final class FederationTopologyView {
     /** The domain's Router group or Bridge, as the server reports it. */
     private JsonObject via;
     private boolean showRelated;
-    /** Whether the opened domain is over cable capacity, and which shown related domains are. */
+    /** Whether the opened domain has stopped, over cable capacity or unpowered, and which shown related domains have. */
     private boolean openedStopped;
     private final java.util.Set<String> stoppedDomains = new java.util.HashSet<>();
+    /** The stopped domains whose cause is cable capacity, which their captions name. */
+    private boolean openedOverCapacity;
+    private final java.util.Set<String> overCapacityDomains = new java.util.HashSet<>();
     private int canvasColor = FederationTheme.CANVAS;
     private final Button scopeButton;
     private final Button domainScopeButton;
@@ -375,9 +378,14 @@ final class FederationTopologyView {
         if (!root.has("networks") && !networks.isEmpty()) return;
         scope = root.has("scope") ? root.get("scope").getAsString() : "domain";
         via = root.has("via") ? root.getAsJsonObject("via") : null;
-        openedStopped = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
-        stoppedDomains.clear();
+        openedOverCapacity = root.has("openedOverCapacity") && root.get("openedOverCapacity").getAsBoolean();
+        openedStopped = openedOverCapacity || root.has("openedUnpowered") && root.get("openedUnpowered").getAsBoolean();
+        overCapacityDomains.clear();
         if (root.has("overCapacityDomains")) root.getAsJsonArray("overCapacityDomains")
+                .forEach(value -> overCapacityDomains.add(value.getAsString()));
+        stoppedDomains.clear();
+        stoppedDomains.addAll(overCapacityDomains);
+        if (root.has("unpoweredDomains")) root.getAsJsonArray("unpoweredDomains")
                 .forEach(value -> stoppedDomains.add(value.getAsString()));
         networks.clear();
         networkDomains.clear();
@@ -534,10 +542,10 @@ final class FederationTopologyView {
         var caption = Component.literal("· ").append(tr(showRelated ? "scope.related" : "scope.domain"));
         boolean truncated = relatedTotal > related.size();
         if (showRelated && truncated) caption.append(" · ").append(tr("scope.truncated", related.size(), relatedTotal));
-        if (openedStopped) caption.append(" · ").append(tr("over_capacity")
+        if (openedOverCapacity) caption.append(" · ").append(tr("over_capacity")
                 .withStyle(Style.EMPTY.withColor(FederationTheme.ERROR & 0xffffff)));
         scopeCaption.setText(caption);
-        scopeCaption.style(style -> style.tooltips(openedStopped
+        scopeCaption.style(style -> style.tooltips(openedOverCapacity
                 ? Component.translatable("ae2federation.ui.domain.runtime.backend.domain_over_capacity") : Component.empty()));
         scopeButton.style(style -> style.tooltips(truncated
                 ? tr("scope.help_truncated", related.size(), relatedTotal) : tr("scope.help", related.size())));
@@ -2526,7 +2534,9 @@ final class FederationTopologyView {
                 float left = (float) plate.outline().stream().filter(point -> point[1] <= top + 1)
                         .mapToDouble(point -> point[0]).min().orElse(0);
                 var name = opened ? tr("plate_opened") : domainName(plate.domain());
-                if (stopped) name = name.copy().append(" · ").append(tr("over_capacity"));
+                if (opened ? openedOverCapacity : overCapacityDomains.contains(plate.domain())) {
+                    name = name.copy().append(" · ").append(tr("over_capacity"));
+                }
                 int x = Math.round(left - plate.padding() + 8);
                 int y = Math.round(top - PLATE_NAME_HEIGHT);
                 long spot = (long) x << 32 | (y & 0xffffffffL);
