@@ -63,6 +63,15 @@ public final class QuantumPairIndex {
         return changed;
     }
 
+    /** Removes every cube of a dimension that unloads; returns the pair ids whose links may have changed. */
+    public Set<Long> removeDimension(String dimension) {
+        var changed = new LinkedHashSet<Long>();
+        for (var key : List.copyOf(cubes.keySet())) {
+            if (key.dimension().equals(dimension)) changed.addAll(remove(key.dimension(), key.min()));
+        }
+        return changed;
+    }
+
     private void detach(Cube cube, Set<Long> changed) {
         if (cube.pairId() == 0) return;
         var members = pairs.get(cube.pairId());

@@ -17,6 +17,7 @@ import space.controlnet.ae2federation.domain.FederationDomainNodeId;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
+import space.controlnet.ae2federation.quantum.QuantumLinkService;
 
 /** Each Federation block costs FE every tick, scaled by one server multiplier. */
 final class OperatingPowerCostsTest {
@@ -38,6 +39,31 @@ final class OperatingPowerCostsTest {
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.OTHER));
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.CONVERTER), "the converter is the supply");
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.BEAM_FORMER), "the beam pays instead");
+        assertEquals(44.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.QUANTUM_CUBE), "AE2's bridge, 22 AE/t");
+    }
+
+    @Test
+    void aFormedQuantumCubePaysPerBlockLinkedOrNot() {
+        // A formed 3x3x3 cube: every member has ports toward the rest of its body; one loose block has none.
+        var nodes = new ArrayList<FederationDomainNodeEvidence>();
+        for (int i = 0; i < 27; i++) nodes.add(quantumCube(new BlockPos(i, 64, 0), Map.of("east",
+                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(
+                        new FederationDomainNodeId("test:dimension", new BlockPos(i + 1, 64, 0).asLong()), "west")))));
+        nodes.add(quantumCube(new BlockPos(0, 80, 0), Map.of()));
+        var use = OperatingPowerCosts.use(nodes);
+
+        assertEquals(27 * 44.0, use.total(), 1e-9, "594 AE/t, in FE; the unformed block is free");
+        assertEquals(Map.of(OperatingPowerCosts.Group.QUANTUM_CUBES, 27 * 44.0), use.byGroup());
+        assertFalse(OperatingPowerCosts.quantumLinked(nodes.get(0)), "ports in its body only: not linked");
+        var partner = new FederationDomainNodeId("test:nether", BlockPos.ZERO.asLong());
+        assertTrue(OperatingPowerCosts.quantumLinked(quantumCube(BlockPos.ZERO, Map.of(QuantumLinkService.PORT + partner,
+                new FederationDomainPortEvidence.Federation(new FederationDomainPortId(partner, "x"))))));
+    }
+
+    private static FederationDomainNodeEvidence quantumCube(BlockPos position,
+            Map<String, FederationDomainPortEvidence> ports) {
+        return new FederationDomainNodeEvidence(new FederationDomainNodeId("test:dimension", position.asLong()),
+                FederationDomainNodeKind.QUANTUM_CUBE, ports, 1);
     }
 
     @Test

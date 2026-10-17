@@ -73,4 +73,16 @@ final class QuantumPairIndexTest {
         assertEquals(Set.of(), index.put(rebound), "the same cube again changes nothing");
         assertEquals(Set.of(), index.remove("minecraft:overworld", new BlockPos(99, 64, 0)), "unknown cube");
     }
+
+    @Test
+    void aDimensionThatUnloadsTakesItsCubesAlong() {
+        var index = new QuantumPairIndex();
+        var here = cube("minecraft:overworld", 0, CableCrossSection.ONE_BY_ONE, 4);
+        var there = cube("minecraft:the_nether", 0, CableCrossSection.ONE_BY_ONE, 4);
+        index.put(here);
+        index.put(there);
+        assertEquals(Set.of(4L), index.removeDimension("minecraft:the_nether"));
+        assertEquals(new Status(Status.Kind.PARTNER_NOT_LOADED, null), index.status(here));
+        assertEquals(Set.of(), index.removeDimension("minecraft:the_end"));
+    }
 }

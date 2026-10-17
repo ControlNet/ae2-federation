@@ -28,6 +28,8 @@ public final class FederationJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(PatternProviderProvider.INSTANCE, FederationPatternProviderBlockEntity.class);
         registration.registerBlockDataProvider(BeamConverterProvider.INSTANCE, BeamConverterBlockEntity.class);
         registration.registerBlockDataProvider(BeamFormerProvider.INSTANCE, BeamFormerBlockEntity.class);
+        registration.registerBlockDataProvider(QuantumCubeProvider.INSTANCE,
+                space.controlnet.ae2federation.quantum.QuantumCubeBlockEntity.class);
     }
 
     @Override
@@ -40,5 +42,9 @@ public final class FederationJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(BeamConverterProvider.INSTANCE, BeamConverterBlock.class);
         registration.registerBlockComponent(DeviceProvider.INSTANCE, BeamFormerBlock.class);
         registration.registerBlockComponent(BeamFormerProvider.INSTANCE, BeamFormerBlock.class);
+        registration.registerBlockComponent(DeviceProvider.INSTANCE,
+                space.controlnet.ae2federation.quantum.QuantumCubeBlock.class);
+        registration.registerBlockComponent(QuantumCubeProvider.INSTANCE,
+                space.controlnet.ae2federation.quantum.QuantumCubeBlock.class);
     }
 }

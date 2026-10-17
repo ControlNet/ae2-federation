@@ -61,6 +61,7 @@ public final class NeoForgeEntrypoint {
         ProcessingRegistration.register(modBus);
         PowerRegistration.register(modBus);
         BeamRegistration.register(modBus);
+        space.controlnet.ae2federation.quantum.QuantumRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
@@ -83,12 +84,14 @@ public final class NeoForgeEntrypoint {
     }
 
     /**
-     * Binding requests from the level ticks and from player actions or GameTests, then the beams, whose links change
-     * the domains, then the domains' operating power, which may stop a domain, then each service's tick.
+     * Binding requests from the level ticks and from player actions or GameTests, then the beams and Quantum Cubes,
+     * whose links change the domains, then the domains' operating power, which may stop a domain, then each service's
+     * tick.
      */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
         BeamLinkService.tickAll(event.getServer());
+        space.controlnet.ae2federation.quantum.QuantumLinkService.tickAll(event.getServer());
         OperatingPowerService.tick(event.getServer());
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
@@ -112,6 +115,7 @@ public final class NeoForgeEntrypoint {
             FederationBindingRefresh.closeLevel(level);
             space.controlnet.ae2federation.router.DeviceStructureUpdater.closeLevel(level);
             BeamLinkService.closeLevel(level);
+            space.controlnet.ae2federation.quantum.QuantumLinkService.closeLevel(level);
             var receipt = StorageLevelLifecycle.close(level);
             CraftingProjectionService.levelClosed(level);
             EnergySharingService.levelClosed(level);
@@ -132,6 +136,7 @@ public final class NeoForgeEntrypoint {
         CraftingProjectionService.closeServer(server);
         EnergySharingService.closeServer(server);
         OperatingPowerService.closeServer(server);
+        space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);

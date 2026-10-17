@@ -22,8 +22,9 @@ import space.controlnet.ae2federation.client.DeviceStructureGeometry.Quad;
 import space.controlnet.ae2federation.client.DeviceStructureGeometry.Side;
 
 /**
- * The Minecraft geometry must equal the accepted offline prototype for every connection set of both devices, each
- * composed from its connected-face tiles. The
+ * The Minecraft geometry must equal the accepted offline prototype for every connection set of both artist devices,
+ * each composed from its connected-face tiles; the Quantum Cube's temporary tiles, the Router's recoloured, must shape
+ * like the Router's. The
  * fixture comes from {@code tools/multiblock/export_runtime_parity.py}; on a mismatch, dump the prototype's lines
  * with its {@code --dump} option and compare them with the lines this test prints.
  */
@@ -81,7 +82,7 @@ final class DeviceStructureGeometryTest {
         for (var side : Side.values()) {
             assertEquals(side.name().toLowerCase(java.util.Locale.ROOT), order.get(side.ordinal()).getAsString());
         }
-        for (var device : Device.values()) {
+        for (var device : List.of(Device.ROUTER, Device.SWITCH)) {
             var geometry = geometry(device);
             var expected = fixture.getAsJsonObject("devices").getAsJsonArray(device.name().toLowerCase(java.util.Locale.ROOT));
             assertEquals(64, expected.size());
@@ -97,6 +98,18 @@ final class DeviceStructureGeometryTest {
                 assertEquals(entry.getAsJsonObject().get("quads").getAsInt(), lines.size(), message);
                 assertEquals(entry.getAsJsonObject().get("sha256").getAsString(), digest, message);
             }
+        }
+    }
+
+    /** Until the artist draws the Quantum Cube, its tiles are the Router's recoloured, so its geometry is the Router's. */
+    @Test
+    void theTemporaryQuantumCubeShapesLikeTheRouter() throws Exception {
+        var cube = geometry(Device.QUANTUM_CUBE);
+        var router = geometry(Device.ROUTER);
+        for (int mask = 0; mask < 64; mask++) {
+            var renamed = canonical(cube.build(sides(mask))).stream()
+                    .map(line -> line.replace("quantum_cube/quantum_cube_", "router/router_")).sorted().toList();
+            assertEquals(canonical(router.build(sides(mask))), renamed, "mask " + mask);
         }
     }
 

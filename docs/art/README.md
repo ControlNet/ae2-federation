@@ -23,6 +23,12 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   from the Provider's textures, recoloured cyan; the model is a plain cube with the front (the beam's face) to the
   south and the back (the cable's face) to the north. A former is a square 1x1, 2x2 or 3x3 body one block thick and has
   no connected-face geometry yet.
+- **Temporary: the ME Federation Quantum Cube.** The same script writes `textures/block/quantum_cube/` from the
+  Router's standalone texture and its four connected-face tiles, recoloured violet; the standalone model is the Router's
+  with that texture, and a formed cube uses the Router's connected-face geometry from those tiles. A cube is a solid
+  3x3x3, 4x4x4 or 5x5x5 body that links cable only inside each face's centre, so the art may mark the centre apart from
+  the one-block border. `DeviceStructureGeometryTest` checks that the temporary tiles shape like the Router's; replace
+  that check with the prototype's parity once the artist's tiles arrive.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow/fontTools). The optional game
   inspection tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `tools/visual/build_canvas_font.py`: cuts the topology canvas's Chinese font, `font/canvas_cjk.ttf`, from Droid Sans

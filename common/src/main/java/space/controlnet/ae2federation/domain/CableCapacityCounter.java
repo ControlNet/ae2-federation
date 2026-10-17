@@ -78,7 +78,8 @@ public final class CableCapacityCounter {
             for (var member : region) {
                 var kind = nodes.get(member).kind();
                 if (kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.P2P_TUNNEL
-                        || kind == FederationDomainNodeKind.BEAM_FORMER) {
+                        || kind == FederationDomainNodeKind.BEAM_FORMER
+                        || kind == FederationDomainNodeKind.QUANTUM_CUBE) {
                     demands.put(member, demand);
                 }
             }
@@ -88,7 +89,8 @@ public final class CableCapacityCounter {
 
     private static boolean passable(FederationDomainNodeKind kind) {
         return kind == FederationDomainNodeKind.CABLE || kind == FederationDomainNodeKind.SWITCH
-                || kind == FederationDomainNodeKind.P2P_TUNNEL || kind == FederationDomainNodeKind.BEAM_FORMER;
+                || kind == FederationDomainNodeKind.P2P_TUNNEL || kind == FederationDomainNodeKind.BEAM_FORMER
+                || kind == FederationDomainNodeKind.QUANTUM_CUBE;
     }
 
     /** Endpoints and Pattern Providers: one unit each, linked to a region from outside it. */

@@ -111,6 +111,11 @@ public final class CableVisualConnections {
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
             return DENSE;
         }
+        // A Quantum Cube links inside each face's centre only, once formed.
+        if (block instanceof space.controlnet.ae2federation.quantum.QuantumCubeBlock
+                && space.controlnet.ae2federation.quantum.QuantumCubeBlock.links(neighbor, direction.getOpposite())) {
+            return DENSE;
+        }
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {

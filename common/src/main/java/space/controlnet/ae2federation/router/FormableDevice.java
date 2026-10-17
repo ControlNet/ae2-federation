@@ -1,6 +1,7 @@
 package space.controlnet.ae2federation.router;
 
 import java.util.function.UnaryOperator;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -23,5 +24,13 @@ public interface FormableDevice {
      */
     default UnaryOperator<BlockState> forming(BlockGetter level, DeviceStructure.Valid body) {
         return UnaryOperator.identity();
+    }
+
+    /**
+     * Whether a bundle may count {@code face} of a formed member as covering it: a Quantum Cube's border covers
+     * nothing, so a bundle pressed partly on it is only partly covered and does not link.
+     */
+    default boolean covers(BlockState state, Direction face) {
+        return true;
     }
 }

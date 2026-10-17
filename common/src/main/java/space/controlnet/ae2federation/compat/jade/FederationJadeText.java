@@ -52,6 +52,19 @@ final class FederationJadeText {
         };
     }
 
+    /**
+     * A Quantum Cube's link: linked and to where, not bound, its partner not loaded (and where it was bound), a partner
+     * of another size, or more than two cubes of one binding. {@code kind} is the lower-case name of a link status.
+     */
+    static Component quantumLink(String kind, String dimension, @org.jetbrains.annotations.Nullable
+            net.minecraft.core.BlockPos at) {
+        if (at != null && (kind.equals("linked") || kind.equals("partner_not_loaded"))) {
+            return Component.translatable(PREFIX + "quantum." + kind + ".at", at.getX(), at.getY(), at.getZ(), dimension);
+        }
+        var line = Component.translatable(PREFIX + "quantum." + kind);
+        return kind.equals("linked") ? line : line.withStyle(style -> style.withColor(OVER));
+    }
+
     static Component bundleTitle() {
         return Component.translatable(PREFIX + "bundle.title");
     }

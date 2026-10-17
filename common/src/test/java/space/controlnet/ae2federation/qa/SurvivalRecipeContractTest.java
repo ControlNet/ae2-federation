@@ -45,6 +45,7 @@ final class SurvivalRecipeContractTest {
         expected.put("processing_endpoint", "ae2federation:processing_endpoint x1");
         expected.put("beam_converter", "ae2federation:beam_converter x1");
         expected.put("beam_former", "ae2federation:beam_former x1");
+        expected.put("quantum_cube", "ae2federation:quantum_cube x8");
         assertEquals(expected, results);
     }
 
@@ -156,6 +157,17 @@ final class SurvivalRecipeContractTest {
         assertTrue(recipe.contains("\"pattern\":[\"CPC\",\"CWC\",\"CLC\"]"), recipe);
         assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
                 + ",\"P\":{\"item\":\"ae2:fluix_pearl\"},\"W\":{\"item\":\"ae2:wireless_receiver\"}}"), recipe);
+    }
+
+    // On AE2's quantum bridge: ME Quantum Rings around an ME Quantum Link Chamber, a Nexus Core below, eight at a time
+    // since a cube takes 27 to 125 blocks.
+    @Test
+    void quantumCubeRingsALinkChamberOverANexusCore() throws IOException {
+        var recipe = recipes().get("quantum_cube");
+        assertTrue(recipe.contains("\"type\":\"minecraft:crafting_shaped\""));
+        assertTrue(recipe.contains("\"pattern\":[\"CRC\",\"RQR\",\"CLC\"]"), recipe);
+        assertTrue(recipe.contains("\"key\":{\"C\":{\"item\":\"ae2federation:cable\"},\"L\":" + CORE
+                + ",\"Q\":{\"item\":\"ae2:quantum_link\"},\"R\":{\"item\":\"ae2:quantum_ring\"}}"), recipe);
     }
 
     @Test

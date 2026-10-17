@@ -8,6 +8,7 @@ import space.controlnet.ae2federation.beam.BeamLinkRule;
 import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
+import space.controlnet.ae2federation.quantum.QuantumLinkService;
 
 /**
  * What each Federation block costs to run, in FE per tick, calibrated on AE2 (1 AE = 2 FE; a default device draws
@@ -24,6 +25,8 @@ public final class OperatingPowerCosts {
             case CABLE -> 0.5;
             // AE2's default device and crafting-CPU block.
             case ROUTER, SWITCH, ENDPOINT, PATTERN_PROVIDER -> 2.0;
+            // AE2's Quantum Network Bridge: 22 AE/t per block, wherever the other end is.
+            case QUANTUM_CUBE -> 44.0;
             // AE2 already charges the tunnel itself; a converter is the supply; a Beam Former's block is free and its
             // domain pays for each linked beam instead.
             case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> 0.0;
@@ -63,16 +66,22 @@ public final class OperatingPowerCosts {
         return Optional.empty();
     }
 
+    /** Whether a Quantum Cube's node names a linked partner: only a linked body's lowest block does. */
+    public static boolean quantumLinked(FederationDomainNodeEvidence node) {
+        return node.kind() == FederationDomainNodeKind.QUANTUM_CUBE
+                && node.ports().keySet().stream().anyMatch(port -> port.startsWith(QuantumLinkService.PORT));
+    }
+
     /** A linked beam: its square and the blocks between the fronts. */
     public record Beam(CableCrossSection section, int gap) {
     }
 
     /**
      * How the statistics page groups a domain's use: bundle cells apart from plain cable, devices together, Beam Former
-     * links apart.
+     * links and Quantum Cubes apart.
      */
     public enum Group {
-        CABLES, BUNDLES, ROUTERS, SWITCHES, DEVICES, BEAMS;
+        CABLES, BUNDLES, ROUTERS, SWITCHES, DEVICES, BEAMS, QUANTUM_CUBES;
 
         public static java.util.Optional<Group> of(FederationDomainNodeEvidence node) {
             return switch (node.kind()) {
@@ -80,6 +89,7 @@ public final class OperatingPowerCosts {
                 case ROUTER -> java.util.Optional.of(ROUTERS);
                 case SWITCH -> java.util.Optional.of(SWITCHES);
                 case ENDPOINT, PATTERN_PROVIDER -> java.util.Optional.of(DEVICES);
+                case QUANTUM_CUBE -> java.util.Optional.of(QUANTUM_CUBES);
                 case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> java.util.Optional.empty();
             };
         }
@@ -104,6 +114,8 @@ public final class OperatingPowerCosts {
                 total += link;
             }
             var cost = perTick(node.kind()) * multiplier;
+            // An unformed cube block links nothing and, as AE2's unformed bridge, costs nothing.
+            if (node.kind() == FederationDomainNodeKind.QUANTUM_CUBE && node.ports().isEmpty()) cost = 0;
             if (cost == 0) continue;
             var group = Group.of(node);
             if (group.isPresent()) byGroup.merge(group.get(), cost, Double::sum);

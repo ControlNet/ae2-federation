@@ -126,6 +126,25 @@ final class CableCapacityCounterTest {
         assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(east));
     }
 
+    /** A Quantum Cube pair joins the regions at both ends as cable joined directly, wherever the cubes are. */
+    @Test
+    void aQuantumCubePairCountsAsCable() {
+        var graph = new Graph();
+        var near = graph.node(FederationDomainNodeKind.CABLE);
+        var far = graph.node(FederationDomainNodeKind.CABLE);
+        var here = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        var inside = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        var there = graph.node(FederationDomainNodeKind.QUANTUM_CUBE);
+        graph.link(near, here).link(here, inside).link(inside, there).link(there, far);
+        graph.link(near, graph.node(FederationDomainNodeKind.SWITCH, A));
+        graph.link(far, graph.node(FederationDomainNodeKind.SWITCH, B));
+
+        var demand = graph.count();
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(near), "both ends' networks count in one region");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(here), "the cubes carry the region's demand");
+        assertEquals(new Demand(Scope.SUBDOMAIN, 2), demand.get(there));
+    }
+
     @Test
     void aPatternProviderCountsOneLikeAnEndpointWhateverItsNetwork() {
         var graph = new Graph();
