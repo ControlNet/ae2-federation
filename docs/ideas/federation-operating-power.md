@@ -2,7 +2,7 @@
 
 Discussion date: 2026-10-09.
 Status: user-proposed feature direction; the Beam Converter's name, shape, scope, input and outage behavior were settled on
-2026-10-17. Costs and implementation remain open.
+2026-10-17, and the costs the same day. Implementation remains open.
 
 ## Intent
 
@@ -63,21 +63,25 @@ The user settled its shape and role:
 - **Creative variant.** A creative converter is wanted, following other mods' creative energy blocks.
 - **Beam links.** A [line-of-sight beam](line-of-sight-beam-links.md) should cost more than the same number of cables.
 
-Every one of several converters must match the size (user, 2026-10-17). Open: the costs per block type.
+Every one of several converters must match the size (user, 2026-10-17).
 
-**Costs (assistant proposal 2026-10-17, not selected).** Calibrated on the
+**Costs (user confirmed 2026-10-17).** Calibrated on the
 [AE2 and addon energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md) (1 AE = 2 FE; AE2's default
-device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all scaled by one configuration multiplier:
+device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all scaled by one configuration multiplier
+(default 1):
 
-| Block | Proposed cost | Reasoning |
+| Block | Cost | Source |
 |---|---|---|
-| Federation Cable | 0.5 per block | cheap, but not free like AE2 cable, since the beam is the energy's look |
-| Bundled cable | 0.5 per cell | the same per cell; a bundle saves capacity, not energy |
-| Router, Switch | 2 per block | AE2's default device, per block like CPU multiblocks |
-| Endpoint, Federation Pattern Provider | 2 each | AE2's default device |
-| Beam Transceiver link | 1 per cell per block of span | twice the cables it replaces (user: a beam costs more than cables) |
-| Wireless cube | 44 per block per side | the Quantum Network Bridge's 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
+| Federation Cable | 0.5 per block | assistant choice: AE2 cable is free, but here the beam is the energy's look |
+| Bundled cable | 0.5 per cell | assistant choice: the same per cell; a bundle saves capacity, not energy |
+| Router, Switch | 2 per block | AE2's default device and crafting-CPU block (1 AE/t); an 8x8x8 body costs 1024 |
+| Endpoint, Federation Pattern Provider | 2 each | AE2's Pattern Provider and Interface (1 AE/t) |
+| Beam Transceiver link | M·N × max(2, L)^1.05 × 2, L the span | NAE2's Beam Former, max(2, L)^1.05 AE/t, per cell; 1x1 x 32 is 76, 3x3 x 256 about 6100, 3x3 x 1024 about 26000 |
+| Wireless cube | 44 per block per side | AE2's Quantum Network Bridge, 22 AE/t per block; 3x3x3 is 1188 per side, 5x5x5 5500 |
 | Beam Converter | 0 | it is the supply |
+
+A stopped domain keeps drawing its use each tick, as an unpowered AE2 network does, so the buffer stays empty and
+the only way back is input above use.
 
 **Buffer (user, 2026-10-17: follow AE2).** Converters keep a small buffer, as an AE2 Controller keeps 8000 AE per block:
 proposed 16k FE per converter block, the domain's converters adding up. Input fills it and use drains it every tick. The

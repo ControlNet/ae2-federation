@@ -23,7 +23,7 @@ file reader. Saved network Policy settings and artifact-proof JVM flags are sepa
 | Require Federation operating power | Enabled by default; independently disableable | Operating power |
 | Enforce Federation cable capacity | Enabled by default; independently disableable | Multiblock and cable capacity |
 | Base capacity of one cable | Used only while cable capacity enforcement is enabled; 8 by default (owner, 2026-10-13; first 4), `capacity.cableCapacity` | Multiblock and cable capacity |
-| Operating energy costs | Used only while operating-power requirements are enabled; values undecided | Operating power |
+| Operating energy costs | Used only while operating-power requirements are enabled; one multiplier (default 1) over the per-block costs confirmed 2026-10-17 | Operating power |
 | Enforce the automation computing limit | Enabled by default; off means unlimited automation (user, 2026-10-17) | [Rule-based automation](rule-based-automation.md) |
 
 Turning the power requirement off means unlimited energy (user, 2026-10-17); a Creative ME Federation Beam Converter is wanted as
