@@ -15,7 +15,8 @@ balancing questions stay in the [multiblock and cable capacity idea](../ideas/mu
   1024; enforcement is `capacity.enforceCableCapacity`, on by default). When any cable is over, the whole domain
   stops sharing until the count fits again; the world is not changed.
 - **Display.** The beam inside each cable grows with its load and turns red only while it is over an enforced limit
-  ([the M renderer](../art/cable-m-renderer.md)). The topology screen turns the stopped domain dark red. With Jade on
+  ([the M renderer](../art/cable-m-renderer.md)); a domain stopped for lack of power draws red at the thinnest width
+  ([operating power](operating-power.md)). The topology screen turns the stopped domain dark red. With Jade on
   both sides, a cable reads "Capacity count: N/C (subdomain)" or "(Federation domain)", N red when over.
 - **Bundled cables.** A wrench turns a box of ordinary cables (cross-section 1x2 up to 3x3, length up to 64) into one
   bundled cable with one shell and one beam per cell. Its limit is a multiple of one cable's: 1x2 3C, 1x3 4C, 2x2 6C,

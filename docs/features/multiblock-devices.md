@@ -9,6 +9,8 @@ same day (`1dd81c1d`). The former idea is preserved as an
 - **Forming.** Same-type blocks that share a face are judged together, by AE2's crafting-CPU rules. They form one
   device when they fill a solid box with every edge at most 8 blocks (`DeviceStructure.MAX_EDGE`); 1x1x1 is a device
   too. Blocks that meet only at an edge or a corner stay separate, and a Router and a Switch never form one device.
+  ME Federation Beam Converters form by the same rules plus an exact size and one facing
+  ([operating power](operating-power.md)).
 - **Invalid groups.** A hollow, L- or T-shaped, protruding or oversized group, or a finished box with one more block
   of its type against it, forms nothing: all its faces disconnect and its networks leave the domain. No smaller part
   forms on its own. Rules, processing ownership and configuration are untouched.

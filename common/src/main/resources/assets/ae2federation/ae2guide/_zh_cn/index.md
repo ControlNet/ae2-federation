@@ -32,4 +32,5 @@ AE2 联邦组网把彼此独立的ME网络连接起来， 让它们共享存储�
 * <ItemLink id="ae2federation:switch" />： 把网络接入联邦域， 每个面接一个； 多个方块可以组成一台更大的交换机。
 * <ItemLink id="ae2federation:router" />： 给线缆分段， 让线缆不至于满载（[网络容量](network-capacity.md)）； 多个方块可以组成一台更大的路由器。
 * <ItemLink id="ae2federation:cable" />： 远距离连接交换机、路由器、联邦样板供应器和处理端点。
+* <ItemLink id="ae2federation:beam_converter" />： 输入FE， 为它接入的联邦域供能。
 * <ItemLink id="ae2federation:pattern_provider" />和<ItemLink id="ae2federation:processing_endpoint" />： 在属于其他网络的机器上执行处理样板。
