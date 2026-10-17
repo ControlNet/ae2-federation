@@ -47,6 +47,13 @@ public final class FederationTestMod {
         modBus.addListener(space.controlnet.ae2federation.test.world.OtherDimensionSite::register);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
                 space.controlnet.ae2federation.test.world.OtherDimensionSite::onServerStopped);
+        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestServer()) {
+            // The GameTests build domains without Beam Converters; the power tests turn the requirement on themselves.
+            // Set once the server configuration has loaded, which would set it back.
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                    (net.neoforged.neoforge.event.server.ServerStartedEvent event) -> space.controlnet.ae2federation.power
+                            .OperatingPowerRule.set(false, space.controlnet.ae2federation.power.OperatingPowerRule.DEFAULT_MULTIPLIER));
+        }
     }
 
     private void registerGameTests(RegisterGameTestsEvent event) {
@@ -67,7 +74,7 @@ public final class FederationTestMod {
 					 NativeCraftingGameTests.class, NativeCraftingFailureGameTests.class, NativeEnergyGameTests.class,
 					 SharedEnergyGameTests.class,
 					 ObservabilityGameTests.class,
-					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
+					   MultipartBridgeGameTests.class, RouterGameTests.class, CableCapacityGameTests.class, BeamConverterGameTests.class, OperatingPowerGameTests.class, BundledCableGameTests.class, FederationDomainGameTests.class, TopologyContinuityGameTests.class,
 					   FederationDomainBridgeGameTests.class, PolicyLifecycleGameTests.class, PolicyRevisionGameTests.class, RuleLinkGameTests.class, PatternProjectionGameTests.class, StatisticsGameTests.class, SurvivalRecipeGameTests.class,
 					   ProviderLifecycleGameTests.class, ProviderClaimGameTests.class,
 						   ProcessingRegressionGameTests.class, ProcessingLockGameTests.class,

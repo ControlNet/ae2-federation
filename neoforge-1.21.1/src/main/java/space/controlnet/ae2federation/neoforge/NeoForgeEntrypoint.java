@@ -22,6 +22,7 @@ import space.controlnet.ae2federation.crafting.projection.CraftingProjectionServ
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.power.OperatingPowerService;
 import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.energy.EnergySharingService;
@@ -78,9 +79,13 @@ public final class NeoForgeEntrypoint {
         LOGGER.info("AE2F_ARTIFACT_SERVER_JOIN player={}", event.getEntity().getGameProfile().getName());
     }
 
-    /** Binding requests from the level ticks and from player actions or GameTests, then each service's tick. */
+    /**
+     * Binding requests from the level ticks and from player actions or GameTests, then the domains' operating power,
+     * which may stop a domain, then each service's tick.
+     */
     private static void onServerTickBindings(ServerTickEvent.Post event) {
         FederationBindingRefresh.flushAll();
+        OperatingPowerService.tick(event.getServer());
         StorageMountService.tick(event.getServer());
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
@@ -121,6 +126,7 @@ public final class NeoForgeEntrypoint {
         StorageMountService.closeServer(server);
         CraftingProjectionService.closeServer(server);
         EnergySharingService.closeServer(server);
+        OperatingPowerService.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);
