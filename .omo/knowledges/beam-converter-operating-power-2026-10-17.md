@@ -67,3 +67,13 @@ D1-D10: `.omo/plans/beam-converter.md`.
 - `CableVisualConnections` draws a dense joint to a converter only when it is formed.
 - GameTests: `beamconvertershapes` (tie, across, majority, toward cable), `beamconverterturnswithawrench` (AE2 Certus
   Quartz Wrench through `gameMode.useItemOn`; links, FE faces and an unformed block's kept facing).
+
+## In-game FE source for captures (2026-10-17)
+
+- `build/visual-v07` has no FE generator. A test-only Mekanism 10.7.19 jar (from `neoforge-1.21.1/build/compat/runs/
+  mekanism/mods`) in both `mods` folders gives one; remove it afterwards. A `setblock`-placed
+  `mekanism:creative_energy_cube` is empty and ejects nothing; fill it and make every energy side output with
+  `data merge block X Y Z {energy_containers:[{container:0b,stored:1000000000000L}],component_config:{eject0:1b,config0:[I;4,4,4,4,4,4]}}`
+  (`config0` is energy, `4` is `DataType.OUTPUT`; `config3` is items). Beside a full 2x2x4 converter it reproduced the
+  old gauge's 99 % and yellow/green flicker (input 40-42 FE/t against a fractional use).
+- `tools/visual/game_input.py close` closes the client window, not a screen; tap Escape through Xlib XTEST instead.
