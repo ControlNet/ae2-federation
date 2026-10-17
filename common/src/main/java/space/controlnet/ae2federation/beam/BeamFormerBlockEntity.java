@@ -4,9 +4,21 @@ import java.util.Map;
 import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import space.controlnet.ae2federation.client.CableBeamStyle;
+import space.controlnet.ae2federation.domain.CableCapacity;
+import space.controlnet.ae2federation.domain.CableCapacityCounter;
+import space.controlnet.ae2federation.domain.CableCapacityLimit;
+import space.controlnet.ae2federation.domain.FederationDomainNodeEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainNodeKind;
 import space.controlnet.ae2federation.domain.FederationDomainPortEvidence;
 import space.controlnet.ae2federation.domain.FederationDomainPortId;
@@ -23,9 +35,22 @@ import space.controlnet.ae2federation.router.RouterBlockEntity;
  * remote link, which the partner names back.
  */
 public final class BeamFormerBlockEntity extends RouterBlockEntity {
+    /** How often the lowest block looks again at its beam's count and power, as a cable does. */
+    private static final int LOOK_TICKS = 10;
+    private static final String LOOK_PARTNER = "beam_partner";
+    private static final String LOOK_SIDE = "beam_side";
+    private static final String LOOK_UNITS = "beam_units";
+    private static final String LOOK_CAPACITY = "beam_capacity";
+    private static final String LOOK_ENFORCED = "beam_enforced";
+    private static final String LOOK_UNPOWERED = "beam_unpowered";
 
     /** The linked partner's lowest block, set on this body's lowest block only. */
     private @Nullable BlockPos beamPartner;
+    /** What clients draw of the linked beam, on the body's lowest block; null while unlinked. */
+    private @Nullable BeamLook look;
+    private long nextLook;
+    private double beamLoad = Double.NaN;
+    private long beamNanos;
     /** The body or facing may have changed since this block last reported it. */
     private boolean bodyDirty = true;
     private boolean tracked;
@@ -42,7 +67,9 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
 
     /** Reports this block's body to the beam service when it changed, if this is the body's lowest block. */
     void beamTick() {
-        if (!bodyDirty || !(level instanceof ServerLevel serverLevel)) return;
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        syncLook(serverLevel);
+        if (!bodyDirty) return;
         bodyDirty = false;
         var service = BeamLinkService.get(serverLevel);
         if (RouterBlock.formed(getBlockState())) {
@@ -74,7 +101,92 @@ public final class BeamFormerBlockEntity extends RouterBlockEntity {
     void setBeamPartner(@Nullable BlockPos partner) {
         if (Objects.equals(partner, beamPartner)) return;
         beamPartner = partner == null ? null : partner.immutable();
+        nextLook = 0;
         publishFederationDomainTopology();
+    }
+
+    /** Looks again at the beam as clients draw it, as often as a cable's count, and tells them of a change. */
+    private void syncLook(ServerLevel serverLevel) {
+        long now = serverLevel.getGameTime();
+        if (now < nextLook) return;
+        nextLook = now + LOOK_TICKS;
+        BeamLook next = null;
+        if (beamPartner != null) {
+            int factor = capacityFactor();
+            int side = space.controlnet.ae2federation.power.CableCrossSection.ofCapacityFactor(factor)
+                    .map(section -> section.wide()).orElse(1);
+            int capacity = CableCapacityLimit.capacity()
+                    * (factor == FederationDomainNodeEvidence.UNLIMITED ? CableBeamStyle.UNLIMITED_SCALE : factor);
+            var node = FederationDomainRegistryAccess.nodeId(serverLevel, worldPosition);
+            int units = CableCapacity.demand(serverLevel, node).map(CableCapacityCounter.Demand::units).orElse(0);
+            var registry = FederationDomainRegistryAccess.get(serverLevel);
+            boolean unpowered = registry.federationDomainOf(node)
+                    .filter(domain -> registry.unpowered(domain.federationDomainId())).isPresent();
+            next = new BeamLook(beamPartner, side, units, capacity, CableCapacityLimit.current(factor).isPresent(),
+                    unpowered);
+        }
+        if (Objects.equals(next, look)) return;
+        look = next;
+        serverLevel.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    /** What clients draw of the linked beam, as the server last sent it; null while unlinked or on other blocks. */
+    public @Nullable BeamLook look() {
+        return look;
+    }
+
+    /** Client only: eases the drawn load towards {@code target}, frame-rate independent, as a cable does. */
+    public double beamLoad(double target, long nanos) {
+        beamLoad = Double.isNaN(beamLoad) ? target
+                : CableBeamStyle.smooth(beamLoad, target, Math.max(0, nanos - beamNanos) / 1e9);
+        beamNanos = nanos;
+        return beamLoad;
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        var tag = new CompoundTag();
+        if (look == null) return tag;
+        tag.putLong(LOOK_PARTNER, look.partner().asLong());
+        tag.putInt(LOOK_SIDE, look.side());
+        tag.putInt(LOOK_UNITS, look.units());
+        tag.putInt(LOOK_CAPACITY, look.capacity());
+        tag.putBoolean(LOOK_ENFORCED, look.enforced());
+        tag.putBoolean(LOOK_UNPOWERED, look.unpowered());
+        return tag;
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    /** The update tag holds the beam look only, not the saved grid nodes the default would load from it. */
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        readLook(tag);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ClientboundBlockEntityDataPacket packet,
+            HolderLookup.Provider registries) {
+        readLook(packet.getTag());
+    }
+
+    private void readLook(CompoundTag tag) {
+        look = !tag.contains(LOOK_PARTNER) ? null : new BeamLook(BlockPos.of(tag.getLong(LOOK_PARTNER)),
+                tag.getInt(LOOK_SIDE), tag.getInt(LOOK_UNITS), tag.getInt(LOOK_CAPACITY), tag.getBoolean(LOOK_ENFORCED),
+                tag.getBoolean(LOOK_UNPOWERED));
+    }
+
+    /**
+     * A linked beam as clients draw it: the partner's lowest block, the square's side, the capacity count against its
+     * limit, and whether the domain is unpowered.
+     */
+    public record BeamLook(BlockPos partner, int side, int units, int capacity, boolean enforced, boolean unpowered) {
+        public double load() {
+            return CableBeamStyle.loadOf(units, capacity, enforced);
+        }
     }
 
     @Override

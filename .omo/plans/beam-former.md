@@ -117,9 +117,13 @@ Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are wri
   positions), `beamLink` prices it, group `BEAMS` ("Beam Former links") on the statistics page; the plan's `largest`
   takes linked formers. GameTest `beamFormerPairNeedsItsSizeOfConverter`.
 
-### 6. Client
+### 6. Client (done 2026-10-17)
 
 - Beam renderer and its previews; in-game before/after images under `build/beam-former-check/`.
+- Done: `BeamFormerRenderer` on the positive-facing anchor draws the cable's light one block at a time along the
+  beam, stretched across the square (a volume tube above 1x1); the anchor syncs a `BeamLook` (partner, side, count,
+  limit, unpowered) every 10 ticks. In-game: before (linked, nothing drawn), after unpowered (thin red), after with
+  the power requirement off (cyan), `build/beam-former-check/compare.png`. Guide previews move to phase 7.
 
 ### 7. Docs
 
