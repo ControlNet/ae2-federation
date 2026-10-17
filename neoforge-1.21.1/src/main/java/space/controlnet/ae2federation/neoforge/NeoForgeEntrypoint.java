@@ -22,6 +22,7 @@ import space.controlnet.ae2federation.crafting.projection.CraftingProjectionServ
 import space.controlnet.ae2federation.storage.mount.StorageMountService;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.processing.ProcessingRegistration;
+import space.controlnet.ae2federation.power.PowerRegistration;
 import space.controlnet.ae2federation.storage.mount.StorageLevelLifecycle;
 import space.controlnet.ae2federation.energy.EnergySharingService;
 import space.controlnet.ae2federation.observability.LevelObservabilityService;
@@ -55,6 +56,7 @@ public final class NeoForgeEntrypoint {
         FederationP2PRegistration.register(modBus);
         RouterRegistration.register(modBus);
         ProcessingRegistration.register(modBus);
+        PowerRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);

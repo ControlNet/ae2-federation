@@ -106,6 +106,11 @@ public final class CableVisualConnections {
             return BundleView.bundled(level, position.relative(direction)) ? NONE : CABLE;
         }
         if (block instanceof RouterBlock) return DENSE;
+        // A Beam Converter links through its front only.
+        if (block instanceof space.controlnet.ae2federation.power.BeamConverterBlock
+                && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {
+            return DENSE;
+        }
         // Provider and Endpoint expose FederationPortCapability on their front only; the Bridge exposes none.
         if ((block instanceof FederationPatternProviderBlock || block instanceof EndpointBlock)
                 && neighbor.getValue(BlockStateProperties.FACING) == direction.getOpposite()) {

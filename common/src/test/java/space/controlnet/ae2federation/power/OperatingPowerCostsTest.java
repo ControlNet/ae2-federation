@@ -32,6 +32,7 @@ final class OperatingPowerCostsTest {
         assertEquals(2.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.PATTERN_PROVIDER));
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.P2P_TUNNEL), "AE2 charges the tunnel");
         assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.OTHER));
+        assertEquals(0.0, OperatingPowerCosts.perTick(FederationDomainNodeKind.CONVERTER), "the converter is the supply");
     }
 
     @Test

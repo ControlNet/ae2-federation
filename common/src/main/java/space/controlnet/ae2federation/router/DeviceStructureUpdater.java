@@ -14,10 +14,10 @@ import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
- * Keeps each Router's and Switch's formed and connection properties equal to its validated body, as AE2's crafting
- * blocks keep their formed state: a block that loads, or whose neighbour joins or leaves its body, asks for a check,
- * and the level checks each asked-for body once when its tick ends. A formed member's connections name exactly its
- * neighbours inside the same cuboid; every block of an invalid candidate is unformed and links nothing until the shape
+ * Keeps each device block's formed and connection properties (Router, Switch, Beam Converter) equal to its validated
+ * body, as AE2's crafting blocks keep their formed state: a block that loads, or whose neighbour joins or leaves its
+ * body, asks for a check, and the level checks each asked-for body once when its tick ends. A formed member's
+ * connections name exactly its neighbours inside the same cuboid; every block of an invalid candidate is unformed and links nothing until the shape
  * is fixed. Only blockstates change, sent to clients without neighbour updates, so the check never triggers itself and
  * the client redraws the chunk from the new state.
  *
@@ -73,15 +73,17 @@ public final class DeviceStructureUpdater {
 
     private static DeviceStructure.Result evaluate(ServerLevel level, BlockPos start, Block block) {
         var cursor = new BlockPos.MutableBlockPos();
-        return DeviceStructure.evaluate(start, (x, y, z) -> {
+        var result = DeviceStructure.evaluate(start, (x, y, z) -> {
             cursor.set(x, y, z);
             if (level.isOutsideBuildHeight(cursor)) return DeviceStructure.Cell.OTHER;
             if (!level.isLoaded(cursor)) return DeviceStructure.Cell.UNLOADED;
             return level.getBlockState(cursor).is(block) ? DeviceStructure.Cell.MEMBER : DeviceStructure.Cell.OTHER;
         }, DeviceStructure.MAX_EDGE);
+        return result instanceof DeviceStructure.Valid valid && block instanceof FormableDevice device
+                ? device.judge(level, valid) : result;
     }
 
-    /** The body the Router or Switch at {@code position} belongs to, judged now. */
+    /** The body the device block at {@code position} belongs to, judged now. */
     public static DeviceStructure.Result body(ServerLevel level, BlockPos position) {
         return evaluate(level, position, level.getBlockState(position).getBlock());
     }
@@ -101,7 +103,7 @@ public final class DeviceStructureUpdater {
     private static void update(ServerLevel level, BlockPos start, Set<BlockPos> settled) {
         if (!level.isLoaded(start)) return;
         var block = level.getBlockState(start).getBlock();
-        if (!(block instanceof RouterBlock)) return;
+        if (!(block instanceof FormableDevice)) return;
         var result = evaluate(level, start, block);
         switch (result) {
             case DeviceStructure.Valid valid -> {

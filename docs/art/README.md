@@ -14,6 +14,11 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   edit the approved source/version selection or the generator, then regenerate. The Router, Pattern Provider, Processing
   Endpoint and Bridge models and textures are drawn by hand in Blockbench (artist update, 2026-10-07) and edited
   directly; the generator no longer writes them. Language files are independently maintained.
+- **Temporary: the ME Federation Beam Converter.** Until the artist draws it, `tools/visual/build_converter_placeholder.py`
+  writes `textures/block/beam_converter/` and `textures/block/creative_beam_converter/` (front, side, back) from the
+  Federation Pattern Provider's textures, recoloured amber and the creative purple; the models are plain cubes with the
+  front to the south, as the Provider's. The converter is a solid-cuboid body facing one way (1x1x2 up to 3x3x6) and
+  has no connected-face geometry yet. Replace the PNGs and models, then delete the script.
 - `tools/visual/pixi.toml` and `pixi.lock`: approved development environment (Python/Pillow/fontTools). The optional game
   inspection tools use PortableMC and python-xlib in the same environment. None is a runtime mod dependency.
 - `tools/visual/build_canvas_font.py`: cuts the topology canvas's Chinese font, `font/canvas_cjk.ttf`, from Droid Sans
@@ -21,8 +26,8 @@ validator in `tools/visual` are adapted from the supplied website v07 `scripts/b
   else from the default font. Rerun it when `zh_cn.json` gains a character outside GB2312; `CanvasFontContractTest`
   fails until then.
 - `CableVisualConnections`: read-only projection of current port registrations from neighbor blockstates, as one of
-  two connection kinds per side. Cable and Router accept all sides (dense); Provider and Endpoint only their facing
-  (dense); a Federation P2P tunnel only its front (covered); vanilla AE2 blocks and Bridge are excluded.
+  two connection kinds per side. Cable and Router accept all sides (dense); Provider, Endpoint and Beam Converter only
+  their facing (dense); a Federation P2P tunnel only its front (covered); vanilla AE2 blocks and Bridge are excluded.
   This matches `RouterRegistration`, `ProcessingRegistration`, `FederationPort.connectsTo` and `CableFacePort.resolve`.
   If port registrations change in future, update this projection and its in-game placement checks together.
 - `CableBakedModel` and `FederationCableBuilder`: AE2's dense cable geometry, built in code with AE2's `CubeBuilder` the

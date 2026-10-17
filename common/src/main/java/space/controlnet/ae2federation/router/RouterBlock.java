@@ -30,10 +30,10 @@ import space.controlnet.ae2federation.client.menu.FederationDomainPolicyMenu;
  * neighbours in that body ({@link DeviceStructureUpdater}); the client draws the connected model from them. A block
  * that is not formed, part of an incomplete, hollow, branched, protruding or oversized candidate, links nothing.
  */
-public final class RouterBlock extends BaseEntityBlock {
+public final class RouterBlock extends BaseEntityBlock implements FormableDevice {
     public static final MapCodec<RouterBlock> CODEC = simpleCodec(RouterBlock::new);
     /** Indexed by {@link net.minecraft.core.Direction#get3DDataValue()}. */
-    private static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
+    public static final BooleanProperty[] CONNECTED = {BlockStateProperties.DOWN, BlockStateProperties.UP,
             BlockStateProperties.NORTH, BlockStateProperties.SOUTH, BlockStateProperties.WEST, BlockStateProperties.EAST};
     /** Whether the block belongs to a validated body; a placed block becomes formed when its body is checked. */
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
@@ -50,14 +50,14 @@ public final class RouterBlock extends BaseEntityBlock {
         builder.add(CONNECTED).add(FORMED);
     }
 
-    /** Whether {@code state} is a Router or Switch of a validated body, whose faces link. */
+    /** Whether {@code state} is a device block ({@link FormableDevice}) of a validated body, whose faces link. */
     public static boolean formed(BlockState state) {
-        return state.getBlock() instanceof RouterBlock && state.getValue(FORMED);
+        return state.getBlock() instanceof FormableDevice && state.getValue(FORMED);
     }
 
     /** The sides on which {@code state}'s neighbour belongs to the same formed body, one bit per 3D data value. */
     public static int connections(BlockState state) {
-        if (!(state.getBlock() instanceof RouterBlock)) return 0;
+        if (!(state.getBlock() instanceof FormableDevice)) return 0;
         int connections = 0;
         for (int i = 0; i < CONNECTED.length; i++) {
             if (state.getValue(CONNECTED[i])) connections |= 1 << i;

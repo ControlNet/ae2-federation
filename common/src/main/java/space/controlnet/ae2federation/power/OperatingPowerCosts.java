@@ -20,8 +20,8 @@ public final class OperatingPowerCosts {
             case CABLE -> 0.5;
             // AE2's default device and crafting-CPU block.
             case ROUTER, SWITCH, ENDPOINT, PATTERN_PROVIDER -> 2.0;
-            // AE2 already charges the tunnel itself.
-            case P2P_TUNNEL, OTHER -> 0.0;
+            // AE2 already charges the tunnel itself; a converter is the supply.
+            case P2P_TUNNEL, CONVERTER, OTHER -> 0.0;
         };
     }
 
