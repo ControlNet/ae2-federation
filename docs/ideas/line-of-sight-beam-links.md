@@ -35,11 +35,17 @@ The user settled the device's form and link semantics:
 - **Dimensions.** Same dimension only.
 - **Energy.** Once operating power applies, a beam costs more than the same number of cables.
 - **Reference.** [ME Beam Former](https://www.curseforge.com/projects/1351545) (two parts facing each other, up to
-  32 blocks, auto-disconnect when blocked) is a useful functional reference. Its page also calls the mod "client-only
-  visuals", so whether it carries grid connections is unverified.
+  32 blocks, auto-disconnect when blocked) is a useful functional reference. Its source confirms a real AE2 grid
+  connection; the page's "client-only visuals" note refers to the beam's look.
 
-Range follows a comparison with other mods' straight-line links. Still open: which blocks obstruct the beam; the
-nearest-partner rule when several transceivers line up; how obstruction inside unloaded chunks is judged; and relays.
+The [range survey](../../.omo/knowledges/beam-link-range-survey-2026-10-17.md) found that every AE2 straight-beam
+mod uses 32 blocks and none scales range with beam width. Assistant options, none selected: a fixed 32 for every
+size; range growing with cross-section (for example 16·min(M, N)); or a configurable cap defaulting to 32. Most
+surveyed mods let glass pass. For unloaded chunks in the path, keeping the last result and checking again on load
+fits the user's rule that unloaded middle chunks do not break the link.
+
+Still open: the range rule; which blocks obstruct the beam; the nearest-partner rule when several transceivers line
+up; and relays.
 
 ## Relationship to other ideas
 
