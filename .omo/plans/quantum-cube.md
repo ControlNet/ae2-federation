@@ -1,6 +1,6 @@
 # ME Federation Quantum Cube: implementation plan
 
-Date: 2026-10-17. Status: D1-D5 answered by the owner (2026-10-17); D6-D10 proposed, waiting for the owner.
+Date: 2026-10-17. Status: every decision answered by the owner (2026-10-17). Phase 1 done.
 Design source: [remote-federation-connections.md](../../docs/ideas/remote-federation-connections.md), section
 "Follow-up 2026-10-17: a wireless cube for bundled cables".
 
@@ -20,11 +20,11 @@ and chunks are never force-loaded.
 | D3 | Energy (owner, 2026-10-17) | AE2's bridge copied: 22 AE/t per block, no dimension or distance term. `perTick(QUANTUM_CUBE)` = 44 FE/t at multiplier 1 (1 AE = 2 FE). Per cube: 3³ 594 AE/t (1188 FE/t), 4³ 1408 AE/t (2816 FE/t), 5³ 2750 AE/t (5500 FE/t). Both ends pay, as both sides of a bridge do. |
 | D4 | Recipe base (owner, 2026-10-17) | Built on AE2's `ae2:quantum_ring` and `ae2:quantum_link` plus a Nexus Core; the exact pattern is D6. |
 | D5 | Textures before the artist delivers (owner, 2026-10-17) | Temporary: an existing Federation device texture recoloured; listed as temporary in the commit and the art hand-off note. |
-| D6 | Recipe and yield | AE2 ring is `aba/cde/aba` (iron, logic processor, engineering processor, energy cell, smart dense cable); chamber is `aba/b b/aba` (quartz glass, fluix pearl). Proposal: `CRC / RQR / CLC` → **8** cubes; C Federation Cable, R `ae2:quantum_ring`, Q `ae2:quantum_link`, L Nexus Core. A 3³ pair (54 blocks) is 7 crafts, 21 rings, close to an AE2 bridge pair's 16; a 5³ pair (250 blocks) is 32 crafts, 96 rings. Yield 4 doubles that. |
-| D7 | Ends of different sizes | Proposal: no link, Jade "another size", as the Beam Former refuses a partner of another section. |
-| D8 | Cost while not linked | Proposal: every formed block pays whether linked or not, as AE2 charges a formed bridge's idle power. An unformed block costs nothing. |
-| D9 | Card use and rebinding | Proposal, as on AE2 machines: sneak + use on a formed cube copies it to the card ("cube at dimension x, y, z"); use on another formed cube binds the two with a new pair id, and both drop whatever pair they had before, so a third cube cannot join a pair. Use on the same cube, or with a card holding something else, does nothing but say why. |
-| D10 | Player feedback | No renderer (nothing lies between the ends). One Jade line: "Quantum link: linked to dimension x, y, z", "not bound", "partner not loaded", "another size" (D7), "not formed". |
+| D6 | Recipe and yield (owner, 2026-10-17) | AE2 ring is `aba/cde/aba` (iron, logic processor, engineering processor, energy cell, smart dense cable); chamber is `aba/b b/aba` (quartz glass, fluix pearl). Proposal: `CRC / RQR / CLC` → **8** cubes; C Federation Cable, R `ae2:quantum_ring`, Q `ae2:quantum_link`, L Nexus Core. A 3³ pair (54 blocks) is 7 crafts, 21 rings, close to an AE2 bridge pair's 16; a 5³ pair (250 blocks) is 32 crafts, 96 rings. Yield 4 doubles that. |
+| D7 | Ends of different sizes (owner, 2026-10-17) | Proposal: no link, Jade "another size", as the Beam Former refuses a partner of another section. |
+| D8 | Cost while not linked (owner, 2026-10-17) | Proposal: every formed block pays whether linked or not, as AE2 charges a formed bridge's idle power. An unformed block costs nothing. |
+| D9 | Card use and rebinding (owner, 2026-10-17) | Proposal, as on AE2 machines: sneak + use on a formed cube copies it to the card ("cube at dimension x, y, z"); use on another formed cube binds the two with a new pair id, and both drop whatever pair they had before, so a third cube cannot join a pair. Use on the same cube, or with a card holding something else, does nothing but say why. |
+| D10 | Player feedback (owner, 2026-10-17) | No renderer (nothing lies between the ends). One Jade line: "Quantum link: linked to dimension x, y, z", "not bound", "partner not loaded", "another size" (D7), "not formed". |
 
 ## Architecture
 
@@ -70,10 +70,12 @@ and chunks are never force-loaded.
 
 Each phase is a commit on `dev`, pushed once its checks pass. TDD: tests are written first in each phase.
 
-### 1. Pure logic
+### 1. Pure logic (done 2026-10-17)
 
 - `QuantumCubeShape` (edge to section, the face-centre predicate), the pair index (two of one id link, one or three
   do not, sizes must match), with unit tests.
+- Done: `QuantumCubeShapeTest`, `QuantumPairIndexTest`. A third loaded cube of one id (a copied structure) links
+  none and reads "more than two cubes" in Jade.
 
 ### 2. Block, body and card
 
