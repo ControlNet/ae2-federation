@@ -19,10 +19,13 @@ The user shaped the quantum-bridge-style candidate into a multiblock and set its
 - **Topology.** Counts as cable joined directly, as Federation P2P does: both ends are one capacity region
   (user accepted, 2026-10-17).
 
-Open: whether a cable must sit inside the face's (K-2) x (K-2) centre or anywhere on the face; the capacity a cube
-carries (its largest connectable tier is the assistant proposal: C, 6C, unlimited); whether 1x2, 1x3 and 2x3 cables
-connect to the smallest cube that fits them; its operating cost; and behavior when the far end is unloaded (chunks
-are not force-loaded).
+- **Connections.** A cable must lie inside a face's (K-2) x (K-2) centre; the border ring connects nothing. The
+  smallest cube a cross-section needs is the one whose centre fits it: 1x1 needs 3x3x3, 1x2 and 2x2 need 4x4x4, and
+  1x3, 2x3 and 3x3 need 5x5x5 (user, 2026-10-17).
+- **Capacity.** A cube carries the largest tier it can connect: 3x3x3 is C, 4x4x4 is 6C, 5x5x5 is unlimited
+  (user, 2026-10-17).
+
+Open: its operating cost; and behavior when the far end is unloaded (chunks are not force-loaded).
 
 ## Follow-up 2026-10-09: operating power and beam links
 
