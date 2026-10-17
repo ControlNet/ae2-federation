@@ -1,9 +1,9 @@
 # 2x2 bundled cable: artist rings and one middle beam (2026-10-17)
 
 Artist PR #4 ("添加2*2截面线缆模型") brought `large_cable_straight.bbmodel`, `large_cable_corner.bbmodel` and the
-32-pixel texture `textures/block/large_cable/large_cable.png`. Wired up on branch `artist-pr4-large-cable` (worktree
-only, not on dev). The PR itself is based 193 commits behind dev and deletes `tools/blockbench/docs/cable_design.md`;
-the cherry-pick keeps dev's file. The PR's doc names a `large_cable_display` project that the PR does not contain.
+32-pixel texture `textures/block/large_cable/large_cable.png`. PR #4 is merged into dev as itself (merge `d05df6a2`,
+second parent the artist's `370256b3`), with the wiring commits on top. The PR is based 193 commits behind dev and
+deletes `tools/blockbench/docs/cable_design.md`; the merge keeps dev's file. The PR's doc names a `large_cable_display` project that the PR does not contain.
 
 ## What draws what
 
