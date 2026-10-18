@@ -182,8 +182,18 @@ Assistant proposal:
 - **Checks span the library.** Types and capabilities are inferred across files. When a function's signature
   changes, the files calling it are re-checked and show the errors; whether running installations see the change
   belongs to the installation version question above.
-- **Installation is per function.** Installing on a device picks an entry function of a file, its arguments and a
-  trigger; everything it calls comes along. A Policy binding likewise picks one function.
+- **No main function; entry points are marked** (asked by the user 2026-10-18: which functions are for other
+  functions to call, and which can be started by Federation automation?). A file may hold any number of functions,
+  and any number of them may be entry points. Two independent marks:
+  - Calls: a plain name can be called from any file, `_name` only from its own file.
+  - Entry: a decorator, valid Python, says what a host may start: `@automation` (installable on a computing device)
+    or `@policy` (bindable to a policy slot). Without one a function is a helper only and never appears in the
+    install or binding lists, which keeps those lists short.
+  - The checker validates a marked function while it is edited, not when it is installed: `@policy` must only read,
+    never wait, and return `bool` or a filter; capabilities are still inferred, the mark only states the purpose.
+  - An entry's parameters are filled in when it is installed or bound (an item picker for an `Item`, a number field
+    for an `int`), so `keep_stock(item: Item, min: int)` can be installed many times with different arguments.
+  - Everything an entry calls comes along with it.
 - **Several at once.** The editor opens several files in tabs, possibly side by side. In the graph view each function
   is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
   view.
