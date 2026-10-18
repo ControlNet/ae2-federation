@@ -680,7 +680,31 @@ every step that can take time is its own node:
   the view merges nodes (`x = call()`) or hides temporaries.
 
 Status: the interpreter part of item 1 is decided (compile to a graph, as above), which also drops item 1's
-statement-only rule for effects. Items 2 to 10 are with the user.
+statement-only rule for effects.
+
+**User's picks** (2026-10-18):
+
+- 1: the rest agreed: runs in progress are not saved; after a restart installations start from the beginning.
+- 2: simplified. The graph is always laid out automatically; no stored positions, no layout sidecar, no reconciler
+  keeping node IDs across script edits.
+- 3: not simplified. Graph editing must cover everything the language has, because some players do not write code.
+- 4: explained again to the user (below); open.
+- 5: simplified. Block names and capability warnings come from the dry run; nothing is synced ahead.
+- 6: live refresh kept: while editing, the dry run refreshes continuously; the cost is accepted for ease of use.
+  Simulating effects (rather than assuming they succeed) stays as proposed.
+- 7: simplified. References across files by name, as in Python; a broken one is a check error.
+- 8: agreed. Last write wins everywhere; no version bases, no conflict copies.
+- 9: Python fidelity up to a practical balance: match Python where it is cheap and reliable, never contort the
+  implementation for it.
+- 10: compile-time evaluation and type checking are required. Assistant reading: full static types stay, constants
+  are evaluated at check time (a constant reach of 5, a constant interface that does not exist), and definite
+  assignment stays too (simple once programs compile to a control-flow graph); only the `unavailable` value is
+  dropped.
+- Item 4 in detail: a "record" would be a value with named parts, such as a stack from `mc.contents(chest)` with
+  `stack.resource` and `stack.amount`. It needs record types in the checker, attribute reads, and "break apart"
+  nodes in the graph. Without records, `mc.contents(chest)` returns the resources present (`list[Resource]`) and
+  `mc.count(chest, r)` gives an amount; two reads instead of one, both free of ticks. Methods on lists and strings
+  are unaffected.
 
 Items 1 (its cost), 2, 3 and 6 touch user decisions or requests; 4, 5, 7, 8 and 10 were only ever assistant
 proposals.
