@@ -386,8 +386,18 @@ Programs need a way to act on the world: an interaction interface that moves ite
 and places blocks, and more (user, 2026-10-18). Designed after B2 and before B3, since the types and effects it adds
 feed the checker and the interpreter.
 
+Decided (user, 2026-10-18):
+
+- **One interface block.** It acts only on what is in front of it. Its other five faces connect ME Glass Cable or ME
+  Federation Cable; once it is in a Federation domain, any computing device in the same domain can call it.
+- **Reach beyond the adjacent block** is worth considering (user idea): for example acting two blocks away, past a
+  gap.
+
 Assistant proposals, to discuss:
 
+- **Reach** (proposal for the user idea above): a distance setting on the interface, one row in its GUI, from 1 (the
+  adjacent block, the default) up to a small maximum such as 4, along the facing direction only. Open: whether the
+  blocks in between must be air, and whether a longer reach costs more compute or needs an upgrade card.
 - **Where a program reaches the world.** A block placed in the world and joined to the Federation (as Endpoints
   are) acts on the block it faces. Because the Federation spans networks and dimensions, one program on one
   computing device can drive interfaces anywhere in the domain.
@@ -410,7 +420,8 @@ Assistant proposals, to discuss:
 - **Range and cost.** Each call costs compute on the device that runs it; whether distance or another dimension
   costs more is open.
 
-Open: one block with cards or one block per ability; full block or cable part; the full first function list; reading
+Open: whether the one block gains its abilities from cards (option 1 below the decision) or has them all; the reach
+rules; the full first function list; reading
 inventories and block states beyond redstone; entity interactions (later).
 
 ## Layers (assistant proposal)
