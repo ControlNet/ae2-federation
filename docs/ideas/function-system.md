@@ -160,8 +160,15 @@ Python's names and meaning (`str()`, `int()`, `range()` ...); everything about t
   installation's arguments or values typed for the dry run. Reads need the server, so the server runs it and sends
   back the value per node, refreshed while the graph is open. Open: whether the script view shows the same values
   inline.
-- List and string methods (`xs.append(x)`, `s.startswith(p)`) parse already as calls; supporting them is a later
-  step with the type checker.
+- **List and string methods are needed** (user, 2026-10-18). Assistant proposals:
+  - Lists: `append`, `extend`, `insert`, `pop`, `remove`, `index`, `count`, `reverse`, `sort` (no `key=`, no
+    lambdas), `clear`, `copy`. Strings: `startswith`, `endswith`, `lower`, `upper`, `strip`, `split`, `join`,
+    `replace`, `find`, `count`. Same behaviour as Python, typed (`list[T].append(T) -> None`, `str.split(str) ->
+    list[str]`). Changing a list is the program's own state, not an effect: no tick.
+  - What they bring with them, all plain Python syntax: indexing `xs[0]` (and slices `s[1:3]`), membership `x in xs`
+    and `not in` outside `for`, and calls on any value, chained (`name.strip().lower()`). The parser would gain a
+    method call on an expression, replacing today's `qualifier` string for those cases; namespaces and other files
+    stay as they are.
 
 ### Standard library discussion (started 2026-10-18)
 
