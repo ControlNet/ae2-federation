@@ -33,8 +33,7 @@ final class EvaluatorTest {
             return switch (namespace + "." + name) {
                 case "ae2.amount" -> 640L;
                 case "ae2.energy" -> 1.5e6;
-                case "ae2.storage" -> new ListValue(List.of(new RecordValue("Stack",
-                        Map.of("resource", "minecraft:iron_ingot", "amount", 640L), true)));
+                case "ae2.storage" -> new ListValue(List.of(RunnerTest.stack("minecraft:iron_ingot", 640)));
                 default -> throw new RunError("RuntimeError", "the fake host has no " + namespace + "." + name);
             };
         }

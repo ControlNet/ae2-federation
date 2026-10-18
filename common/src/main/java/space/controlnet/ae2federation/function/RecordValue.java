@@ -5,7 +5,8 @@ import java.util.Map;
 
 /**
  * A record: a player's class instance, shared by reference with writable fields, or a built-in record such as
- * {@code Stack} whose fields cannot be written. Equal to another record of the same type with equal fields.
+ * {@code Stack} whose fields cannot be written. Equal to another record of the same type with equal fields. The
+ * fields keep the order of the map given, which must be the declared order, as the repr shows them in it.
  */
 public final class RecordValue {
     final String type;

@@ -28,8 +28,19 @@ public final class Evaluator {
         this.host = host;
     }
 
-    /** The value of {@code e}, written in {@code file}, with the frame's {@code locals}. */
+    /**
+     * The value of {@code e}, written in {@code file}, with the frame's {@code locals}. An error carries the innermost
+     * expression that raised it.
+     */
     public Object eval(String file, Expr e, Map<String, Object> locals) {
+        try {
+            return evaluate(file, e, locals);
+        } catch (RunError error) {
+            throw error.at(e.id());
+        }
+    }
+
+    private Object evaluate(String file, Expr e, Map<String, Object> locals) {
         return switch (e) {
             case Expr.IntLit l -> l.value();
             case Expr.FloatLit l -> l.value();
@@ -87,6 +98,14 @@ public final class Evaluator {
 
     /** {@code target = value}; the target's own parts are evaluated here, after the value, as in Python. */
     public void store(String file, Expr target, Object value, Map<String, Object> locals) {
+        try {
+            storeInto(file, target, value, locals);
+        } catch (RunError error) {
+            throw error.at(target.id());
+        }
+    }
+
+    private void storeInto(String file, Expr target, Object value, Map<String, Object> locals) {
         switch (target) {
             case Expr.Name n -> locals.put(n.name(), value);
             case Expr.Attribute a -> setField(eval(file, a.target(), locals), a.name(), value);
@@ -102,6 +121,14 @@ public final class Evaluator {
      * and {@code *=}, as in Python.
      */
     public void augment(String file, Expr target, BinaryOp op, Expr valueExpr, Map<String, Object> locals) {
+        try {
+            augmentInto(file, target, op, valueExpr, locals);
+        } catch (RunError error) {
+            throw error.at(target.id());
+        }
+    }
+
+    private void augmentInto(String file, Expr target, BinaryOp op, Expr valueExpr, Map<String, Object> locals) {
         switch (target) {
             case Expr.Name n -> {
                 var current = eval(file, n, locals);
