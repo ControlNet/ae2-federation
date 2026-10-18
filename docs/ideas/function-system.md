@@ -618,6 +618,48 @@ Assistant proposals on how:
 Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
 
+## Simplification review (asked by the user 2026-10-18)
+
+The user wants a very simplified Python and asked what in the design makes the interpreter, maintenance or debugging
+harder than needed. Assistant review, ranked by what drives the difficulty; all proposals, for the user to pick.
+
+1. **Suspension anywhere** is what makes the interpreter hard: one effect per tick plus a carried-over step budget
+   means a run must pause in the middle of an expression (inside a nested call that loops).
+   - Rules that bound the pause points: an effectful call only as a statement or the whole right side of an
+     assignment (already the graph's rule), and no recursion (Phase 0's rule, not restated since). Cost: with actions
+     returning `bool`, `if mc.move(...):` is not allowed; it is `ok = mc.move(...)` then `if ok:`.
+   - Build a small bytecode VM rather than a tree-walking interpreter: compile the tree to instructions and step
+     them; pausing keeps the instruction pointer and the stack; the budget is an instruction count. More code at
+     first, each part trivial, state inspectable and testable step by step; the dry run's per-node values come from
+     the same machine.
+   - Runs in progress are not saved: after a server restart every installation starts again from the beginning. No
+     VM state to serialise.
+2. **Graph identity.** Node IDs that survive script edits need the heuristic reconciler, a layout sidecar and stored
+   positions. Simpler: the graph is always laid out automatically, nothing stored. Lost: arranging nodes by hand.
+   With the dry run showing values on nodes, a live, auto-laid-out graph may be enough.
+3. **Graph editing multiplies every language feature.** Each addition (keyword arguments, methods, indexing,
+   defaults) needs a graph form and graph edit operations. Simpler: the graph is mainly a view (with dry-run values)
+   plus a few edits, and the script is where code is written. Slices are subset scope worth dropping.
+4. **Record values.** With `Job` gone, only `Stack` would remain (from `mc.contents`, `ae2.stored`). Simpler:
+   `list[Resource]` plus `count` functions; no records, no attribute access on values at all.
+5. **Edit-time block knowledge** (interfaces reporting blocks at reach 1 to 4, synced to clients) duplicates what the
+   server-side dry run reads anyway. Simpler: block names and capability warnings come from the dry run.
+6. **Dry run depth.** Simpler: run on demand (a button) instead of refreshing live; reads are real, effects are not
+   simulated but shown as "would do X" and assumed to succeed. Lost: exact "would move 64" answers.
+7. **References by ID across files**, rename propagation, re-checking dependants, refusing deletes, and alias renames
+   rewriting programs. Simpler, as Python: references by name; a broken one is a check error.
+8. **Sync.** Within local-first editing and outside editors: last write wins everywhere, no version bases, no
+   conflict copies.
+9. **Python fidelity, stated not chased.** Integers are 64-bit and an overflow stops the run (Python's are unbounded:
+   a deliberate difference); `//` and `%` tested against CPython; `str()` of a float need not format exactly as
+   Python does; built-in and method lists stay small.
+10. **Checker scope.** No definite-assignment analysis (Python has none; an unbound name stops the run). No
+    `unavailable` value (Phase 0): reads on an unloaded or paused network return plain values and the run log says
+    why. Capability inference stays (cheap; graph colours and the tick rule need it).
+
+Items 1 (its cost), 2, 3 and 6 touch user decisions or requests; 4, 5, 7, 8 and 10 were only ever assistant
+proposals.
+
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
