@@ -72,6 +72,16 @@ final class ScriptTest {
             # trailing note
             """;
 
+    /** Default parameter values and keyword arguments, as Python writes them. */
+    static final String DEFAULTS = """
+            def refill(name: Item, min: int = 64, network: Network = None) -> bool:
+                return ae2.craft(name, min, network=network)
+
+            def caller() -> None:
+                refill("minecraft:iron_ingot", network="main_base")
+                refill(name="minecraft:gold_ingot", min=-1)
+            """;
+
     @Test
     void theCanvasSampleRoundTrips() {
         assertRoundTrip(SAMPLE);
@@ -80,6 +90,28 @@ final class ScriptTest {
     @Test
     void loopsOperatorsAndCommentsRoundTrip() {
         assertRoundTrip(LOOPS);
+    }
+
+    @Test
+    void defaultsAndKeywordArgumentsRoundTrip() {
+        assertRoundTrip(DEFAULTS);
+    }
+
+    @Test
+    void defaultsAndKeywordArgumentsParse() {
+        var program = parseClean(DEFAULTS);
+        var refill = program.functions().get(0);
+        assertNull(refill.params().get(0).defaultValue());
+        assertEquals(64L, assertInstanceOf(Expr.IntLit.class, refill.params().get(1).defaultValue()).value());
+        assertInstanceOf(Expr.NoneLit.class, refill.params().get(2).defaultValue());
+
+        var craft = assertInstanceOf(Expr.Call.class, ((Stmt.Return) refill.body().get(0)).value());
+        assertEquals(2, craft.args().size());
+        assertEquals(List.of("network"), craft.keywords().stream().map(Expr.Keyword::name).toList());
+
+        var second = ((Stmt.CallStmt) program.functions().get(1).body().get(1)).call();
+        assertEquals(List.of(), second.args());
+        assertEquals(List.of("name", "min"), second.keywords().stream().map(Expr.Keyword::name).toList());
     }
 
     @Test
@@ -140,6 +172,7 @@ final class ScriptTest {
                     y = (not a) == b
                     mc.redstone(15)
                     z = [1, 2]
+                    g(1, b=2)
                 """, print("""
                 def f( xs :list[ int ],)->None :
                     s = 'it\\'s'
@@ -153,7 +186,9 @@ final class ScriptTest {
                         15,
                     )
                     z = [1, 2,]
+                    g(1, b = 2,)
                 """));
+        assertEquals("def f(x: int = 1) -> None:\n    pass\n", print("def f(x:int=1)->None:\n    pass\n"));
     }
 
     @Test
@@ -200,7 +235,6 @@ final class ScriptTest {
                 // signatures
                 Arguments.of("def f(x) -> None:\n    pass\n", 1, "parameter 'x' needs a type hint"),
                 Arguments.of("def f(x: int):\n    pass\n", 1, "function 'f' needs a return type hint"),
-                Arguments.of("def f(x: int = 1) -> None:\n    pass\n", 1, "default values are not supported"),
                 Arguments.of("def f(*xs: int) -> None:\n    pass\n", 1, "*args"),
                 Arguments.of("def f(x: int | None) -> None:\n    pass\n", 1, "union types"),
                 Arguments.of("def f(x: \"int\") -> None:\n    pass\n", 1, "string annotations"),
@@ -241,7 +275,7 @@ final class ScriptTest {
                 Arguments.of(body("y = {1: 2}"), 2, "dicts and sets are not supported"),
                 Arguments.of(body("y = lambda: 0"), 2, "'lambda' is not supported"),
                 Arguments.of(body("y = xs[0]"), 2, "indexing is not supported"),
-                Arguments.of(body("mc.say(x, end=\"\")"), 2, "keyword arguments are not supported"),
+                Arguments.of(body("f(**x)"), 2, "unpacking arguments with '**'"),
                 Arguments.of(body("y = ae2.stock"), 2, "attribute access is not supported"),
                 Arguments.of(body("y = a.b.c(1)"), 2, "at most one qualifier"),
                 Arguments.of(body("f(x)(1)"), 2, "calling the result of a call"),
@@ -254,6 +288,21 @@ final class ScriptTest {
                 Arguments.of(body("y = 1j"), 2, "complex numbers"),
                 Arguments.of(body("y = \"\\x41\""), 2, "escape"),
                 Arguments.of(body("y = 99999999999999999999"), 2, "64-bit"));
+    }
+
+    /** Mistakes CPython's own parser rejects too, with the same message. */
+    static Stream<Arguments> pythonSyntaxErrors() {
+        return Stream.of(
+                Arguments.of("def f(x: int = 1, y: int) -> None:\n    pass\n", 1,
+                        "parameter without a default follows parameter with a default"),
+                Arguments.of(body("f(x=1, 2)"), 2, "positional argument follows keyword argument"),
+                Arguments.of(body("f(x=1, x=2)"), 2, "keyword argument repeated: x"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("pythonSyntaxErrors")
+    void pythonsOwnSyntaxErrorsAreReportedAsPythonDoes(String source, int line, String message) {
+        eachUnsupportedConstructIsNamedAtItsLine(source, line, message);
     }
 
     private static String body(String statement) {
@@ -345,17 +394,21 @@ final class ScriptTest {
         assertEquals(2, result.program().functions().get(0).body().size());
     }
 
-    /** The subset stays valid Python: CPython's own parser accepts every sample and every rejected construct. */
+    /** The subset stays valid Python: CPython's compiler accepts every sample and every rejected construct. */
     @Test
     void pythonAcceptsTheSamplesAndTheRejectedConstructs() throws Exception {
         Assumptions.assumeTrue(pythonAvailable(), "python3 is not on PATH");
         assertPythonParses(SAMPLE);
         assertPythonParses(LOOPS);
         assertPythonParses(CONTINUATION);
+        assertPythonParses(DEFAULTS);
         assertPythonParses(print(SAMPLE));
         assertPythonParses(print(LOOPS));
         for (var arguments : unsupported().toList()) {
             assertPythonParses((String) arguments.get()[0]);
+        }
+        for (var arguments : pythonSyntaxErrors().toList()) {
+            assertPythonRejects((String) arguments.get()[0], (String) arguments.get()[2]);
         }
     }
 
@@ -384,13 +437,28 @@ final class ScriptTest {
     }
 
     private static void assertPythonParses(String source) throws Exception {
-        var process = new ProcessBuilder("python3", "-I", "-c", "import ast, sys; ast.parse(sys.stdin.read())")
+        var output = pythonParse(source);
+        assertEquals(0, output.exit(), "Python rejects:\n" + source + "\n" + output.text());
+    }
+
+    private static void assertPythonRejects(String source, String message) throws Exception {
+        var output = pythonParse(source);
+        assertNotEquals(0, output.exit(), "Python accepts:\n" + source);
+        assertTrue(output.text().contains(message), "Python says otherwise:\n" + output.text());
+    }
+
+    private record PythonOutput(int exit, String text) {
+    }
+
+    private static PythonOutput pythonParse(String source) throws Exception {
+        var process = new ProcessBuilder("python3", "-I", "-c",
+                "import sys; compile(sys.stdin.read(), '<script>', 'exec')")
                 .redirectErrorStream(true).start();
         try (var in = process.getOutputStream()) {
             in.write(source.getBytes(StandardCharsets.UTF_8));
         }
         assertTrue(process.waitFor(30, TimeUnit.SECONDS));
         var output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        assertEquals(0, process.exitValue(), "Python rejects:\n" + source + "\n" + output);
+        return new PythonOutput(process.exitValue(), output);
     }
 }

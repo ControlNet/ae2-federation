@@ -99,6 +99,7 @@ public final class ScriptParser {
         advance();
         var nameToken = name("a function name");
         var params = new ArrayList<Param>();
+        boolean defaults = false;
         expect("(");
         while (!checkOp(")")) {
             var token = peek();
@@ -115,10 +116,14 @@ public final class ScriptParser {
             }
             advance();
             var type = type();
-            if (checkOp("=")) {
-                throw fail(peek(), "default values are not supported");
+            Expr defaultValue = null;
+            if (matchOp("=")) {
+                defaultValue = expr();
+                defaults = true;
+            } else if (defaults) {
+                throw fail(paramName, "parameter without a default follows parameter with a default");
             }
-            params.add(new Param(id(paramName), paramName.text(), type));
+            params.add(new Param(id(paramName), paramName.text(), type, defaultValue));
             if (!checkOp(")")) {
                 expect(",");
             }
@@ -613,15 +618,24 @@ public final class ScriptParser {
         }
         advance();
         var args = new ArrayList<Expr>();
+        var keywords = new ArrayList<Expr.Keyword>();
         while (!checkOp(")")) {
             var arg = peek();
-            if (arg.kind() == Kind.NAME && peekAt(1).is(Kind.OP, "=")) {
-                throw fail(arg, "keyword arguments are not supported");
-            }
             if (arg.is(Kind.OP, "*") || arg.is(Kind.OP, "**")) {
                 throw fail(arg, "unpacking arguments with '" + arg.text() + "' is not supported");
             }
-            args.add(expr());
+            if (arg.kind() == Kind.NAME && peekAt(1).is(Kind.OP, "=")) {
+                var keyword = name("an argument name").text();
+                advance();
+                if (keywords.stream().anyMatch(k -> k.name().equals(keyword))) {
+                    throw fail(arg, "keyword argument repeated: " + keyword);
+                }
+                keywords.add(new Expr.Keyword(keyword, expr()));
+            } else if (!keywords.isEmpty()) {
+                throw fail(arg, "positional argument follows keyword argument");
+            } else {
+                args.add(expr());
+            }
             if (isKeyword(peek(), "for")) {
                 throw fail(peek(), "comprehensions are not supported");
             }
@@ -630,7 +644,7 @@ public final class ScriptParser {
             }
         }
         advance();
-        return new Expr.Call(id(token), qualifier, name, args);
+        return new Expr.Call(id(token), qualifier, name, args, keywords);
     }
 
     private Expr bracket(Token token) {

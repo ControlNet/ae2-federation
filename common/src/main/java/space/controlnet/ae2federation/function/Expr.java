@@ -30,11 +30,19 @@ public sealed interface Expr {
     record Name(String id, String name) implements Expr {
     }
 
-    /** {@code name(args)}, or {@code qualifier.name(args)} for a standard namespace or another file. */
-    record Call(String id, String qualifier, String name, List<Expr> args) implements Expr {
+    /**
+     * {@code name(args)}, or {@code qualifier.name(args)} for a standard namespace or another file. Keyword
+     * arguments follow the positional ones, as Python requires.
+     */
+    record Call(String id, String qualifier, String name, List<Expr> args, List<Keyword> keywords) implements Expr {
         public Call {
             args = List.copyOf(args);
+            keywords = List.copyOf(keywords);
         }
+    }
+
+    /** {@code name=value} in a call. */
+    record Keyword(String name, Expr value) {
     }
 
     record Unary(String id, UnaryOp op, Expr operand) implements Expr {

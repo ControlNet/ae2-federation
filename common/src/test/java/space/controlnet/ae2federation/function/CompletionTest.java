@@ -132,6 +132,26 @@ final class CompletionTest {
     }
 
     @Test
+    void aKeywordArgumentExpectsItsParametersType() {
+        var c = at("""
+                def refill(name: Item, min: int = 64) -> None:
+                    pass
+
+                def f() -> None:
+                    refill(min=1, name="minecraft:g|
+                """);
+        assertEquals(t("Item"), c.expected());
+        assertEquals(List.of("minecraft:gold_ingot"), labels(c));
+    }
+
+    @Test
+    void aSignatureShowsDefaults() {
+        var refill = ScriptParser.parse("def refill(name: Item, min: int = 64) -> None:\n    pass\n").program()
+                .functions().get(0);
+        assertEquals("(name: Item, min: int = 64) -> None", Signature.of(refill).display());
+    }
+
+    @Test
     void aResourceStringOffersRegistryValues() {
         var c = at("""
                 def f() -> None:

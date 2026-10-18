@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.function;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Prints a {@link Program} as canonical script text: four-space indentation, one blank line between functions, double
@@ -37,7 +38,7 @@ public final class ScriptPrinter {
     private void function(FunctionDef function) {
         comments(function.notes().above(), 0);
         out.append("def ").append(function.name()).append('(')
-                .append(function.params().stream().map(p -> p.name() + ": " + p.type()).collect(Collectors.joining(", ")))
+                .append(function.params().stream().map(ScriptPrinter::param).collect(Collectors.joining(", ")))
                 .append(") -> ").append(function.result()).append(':');
         lineEnd(function.notes());
         if (function.docstring() != null) {
@@ -46,6 +47,11 @@ public final class ScriptPrinter {
         if (function.docstring() == null || !function.body().isEmpty()) {
             body(function.body(), 1);
         }
+    }
+
+    private static String param(Param param) {
+        var text = param.name() + ": " + param.type();
+        return param.defaultValue() == null ? text : text + " = " + expr(param.defaultValue());
     }
 
     private static String docstring(String text) {
@@ -160,7 +166,9 @@ public final class ScriptPrinter {
             case Expr.ListLit l -> l.items().stream().map(ScriptPrinter::expr).collect(Collectors.joining(", ", "[", "]"));
             case Expr.Name n -> n.name();
             case Expr.Call c -> (c.qualifier() == null ? "" : c.qualifier() + ".") + c.name()
-                    + c.args().stream().map(ScriptPrinter::expr).collect(Collectors.joining(", ", "(", ")"));
+                    + Stream.concat(c.args().stream().map(ScriptPrinter::expr),
+                            c.keywords().stream().map(k -> k.name() + "=" + expr(k.value())))
+                    .collect(Collectors.joining(", ", "(", ")"));
             case Expr.Unary u -> u.op().symbol + expr(u.operand(), u.op().precedence());
             case Expr.Binary b -> {
                 int p = b.op().precedence;

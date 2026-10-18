@@ -228,7 +228,9 @@ public final class Completion {
                 && context.get(open - 3).kind() == Kind.NAME ? context.get(open - 3).text() : null;
         int index = 0;
         int depth = 0;
-        for (var token : context.subList(open + 1, context.size())) {
+        int argumentStart = open + 1;
+        for (int i = open + 1; i < context.size(); i++) {
+            var token = context.get(i);
             if (token.kind() != Kind.OP) {
                 continue;
             }
@@ -238,15 +240,22 @@ public final class Completion {
                 case "," -> {
                     if (depth == 0) {
                         index++;
+                        argumentStart = i + 1;
                     }
                 }
                 default -> {
                 }
             }
         }
+        var signature = signature(qualifier, context.get(open - 1).text());
+        if (argumentStart + 1 < context.size() && context.get(argumentStart).kind() == Kind.NAME
+                && context.get(argumentStart + 1).is(Kind.OP, "=")) {
+            var keyword = context.get(argumentStart).text();
+            return signature.flatMap(s -> s.args().stream().filter(a -> a.name().equals(keyword)).findFirst())
+                    .map(Signature.Arg::type).orElse(null);
+        }
         int argument = index;
-        return signature(qualifier, context.get(open - 1).text())
-                .filter(s -> argument < s.args().size())
+        return signature.filter(s -> argument < s.args().size())
                 .map(s -> s.args().get(argument).type())
                 .orElse(null);
     }
