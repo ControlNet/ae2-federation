@@ -31,3 +31,18 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
 - Java text blocks: write a docstring's quotes as `\"""`, and double every backslash meant for the script.
 - Run: `timeout 1200 ./gradlew test --tests '*function.*' -q` in the worktree, then read
   `neoforge-1.21.1/build/test-results/test/TEST-*function*.xml` (quiet mode prints nothing on success).
+
+## Completion (B2)
+
+- `Completion.complete(source, line, column, workspace)`. The cursor's logical line is read from
+  `Lexer.lexPartial(text before the cursor)`: no end-of-input tokens, so the open line, an open bracket and an
+  unclosed string (an ERROR token with `Lexer.UNCLOSED_STRING`) are seen as the cursor sees them.
+- Scope comes from parsing the whole file with the cursor's logical line replaced by `pass` at its indentation: the
+  half-typed line can never break the parse of what surrounds it. Variables are those assigned in statements that
+  start before that line (params first); types come from annotations or a small inference over literals, calls and
+  operators. B3's checker replaces that inference.
+- The expected type comes from the innermost open `(` (callee signature, argument index by commas at depth 0), an
+  annotated assignment, assignment to a typed variable, or `return`. Inside a string with an expected type, the
+  catalogue supplies values (items, interface aliases).
+- Mutation check done: with the lexer's bracket rule disabled, only the parser test fails; completion stays right
+  because of the `pass` substitution.

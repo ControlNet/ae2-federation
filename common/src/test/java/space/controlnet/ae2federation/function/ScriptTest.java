@@ -307,6 +307,29 @@ final class ScriptTest {
         assertEquals(1, ((Stmt.If) broken.get(1)).body().size());
     }
 
+    @Test
+    void anUnclosedBracketEndsAtTheNextLineThatIsNotIndentedFurther() {
+        var result = ScriptParser.parse("""
+                def f(gate: Interface) -> None:
+                    ae2.craft(
+                    mc.redstone(gate, 1)
+                    x = [1,
+                         2]
+                    y = sum(
+                        x,
+                    )
+
+                def g() -> None:
+                    pass
+                """);
+        assertEquals(1, result.errors().size(), result.errors().toString());
+        var error = result.errors().get(0);
+        assertEquals(new Position(2, 14), new Position(error.line(), error.column()));
+        assertTrue(error.message().contains("'(' is never closed"), error.toString());
+        assertEquals(List.of("f", "g"), result.program().functions().stream().map(FunctionDef::name).toList());
+        assertEquals(3, result.program().functions().get(0).body().size(), "redstone, x and y still parse");
+    }
+
     /** The subset stays valid Python: CPython's own parser accepts every sample and every rejected construct. */
     @Test
     void pythonAcceptsTheSamplesAndTheRejectedConstructs() throws Exception {

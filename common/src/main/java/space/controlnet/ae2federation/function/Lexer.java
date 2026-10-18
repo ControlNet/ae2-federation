@@ -25,6 +25,7 @@ final class Lexer {
             "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "@=",
             "+", "-", "*", "/", "%", "<", ">", "=", "(", ")", "[", "]", "{", "}", ",", ":", ".", ";", "@", "&", "|",
             "^", "~");
+    static final String UNCLOSED_STRING = "this string is never closed";
     private static final Set<String> STRING_PREFIXES = Set.of("f", "r", "b", "u", "rb", "br", "fr", "rf");
 
     private final String src;
@@ -32,10 +33,15 @@ final class Lexer {
     private final List<Token> tokens = new ArrayList<>();
     private final List<Token> comments = new ArrayList<>();
     private final List<Integer> indents = new ArrayList<>(List.of(0));
+    /** Open brackets, outermost first: line, column and the bracket character. */
+    private final List<int[]> brackets = new ArrayList<>();
     private int pos;
     private int line = 1;
     private int lineStart;
-    private int depth;
+    /** The indentation of the line the current logical line started on. */
+    private int logicalIndent;
+    /** Where the end-of-input tokens start; a partial lex leaves them out. */
+    private int tail;
 
     private Lexer(String src, List<ScriptError> errors) {
         this.src = src;
@@ -48,10 +54,20 @@ final class Lexer {
         return lexer.tokens;
     }
 
+    /**
+     * The tokens of a script cut off at a cursor, without the line ends, dedents and end marker the end of input would
+     * add: the last logical line stays open, as the cursor sees it.
+     */
+    static List<Token> lexPartial(String src) {
+        var lexer = new Lexer(src, new ArrayList<>());
+        lexer.run();
+        return lexer.tokens.subList(0, lexer.tail);
+    }
+
     private void run() {
         boolean atLineStart = true;
         while (pos < src.length()) {
-            if (atLineStart && depth == 0) {
+            if (atLineStart && brackets.isEmpty()) {
                 if (!indentation()) {
                     continue;
                 }
@@ -59,7 +75,10 @@ final class Lexer {
             }
             char c = src.charAt(pos);
             if (c == '\n' || c == '\r') {
-                if (depth == 0) {
+                if (!brackets.isEmpty() && nextLineLeavesBrackets()) {
+                    unclosed();
+                }
+                if (brackets.isEmpty()) {
                     add(Kind.NEWLINE, "\n", null, pos);
                     atLineStart = true;
                 }
@@ -69,7 +88,7 @@ final class Lexer {
             } else if (c == '#') {
                 int start = pos;
                 String text = restOfLine();
-                if (depth > 0) {
+                if (!brackets.isEmpty()) {
                     error(start, "comments inside brackets are not supported");
                 } else {
                     add(Kind.END_COMMENT, "#" + text, text, start);
@@ -90,8 +109,9 @@ final class Lexer {
                 operator();
             }
         }
-        if (depth > 0) {
-            error(pos, "a bracket is never closed");
+        tail = tokens.size();
+        if (!brackets.isEmpty()) {
+            unclosed();
         }
         if (!tokens.isEmpty() && tokens.get(tokens.size() - 1).kind() != Kind.NEWLINE
                 && tokens.get(tokens.size() - 1).kind() != Kind.COMMENT) {
@@ -140,6 +160,7 @@ final class Lexer {
             error(pos, "indent with spaces, not tabs");
         }
         pos = p;
+        logicalIndent = width;
         int top = indents.get(indents.size() - 1);
         if (width > top) {
             indents.add(width);
@@ -247,7 +268,7 @@ final class Lexer {
         String error = null;
         while (true) {
             if (pos >= src.length() || !triple && (src.charAt(pos) == '\n' || src.charAt(pos) == '\r')) {
-                error = "this string is never closed";
+                error = UNCLOSED_STRING;
                 break;
             }
             char c = src.charAt(pos);
@@ -291,8 +312,12 @@ final class Lexer {
         for (var op : OPERATORS) {
             if (src.startsWith(op, pos)) {
                 switch (op) {
-                    case "(", "[", "{" -> depth++;
-                    case ")", "]", "}" -> depth = Math.max(0, depth - 1);
+                    case "(", "[", "{" -> brackets.add(new int[] {line, pos - lineStart + 1, op.charAt(0)});
+                    case ")", "]", "}" -> {
+                        if (!brackets.isEmpty()) {
+                            brackets.remove(brackets.size() - 1);
+                        }
+                    }
                     default -> {
                     }
                 }
@@ -304,6 +329,48 @@ final class Lexer {
         int start = pos;
         pos++;
         fail(start, "unexpected character '" + src.charAt(start) + "'");
+    }
+
+    /**
+     * Inside brackets at a line break: true when the next line with code is indented no further than the line that
+     * opened them and does not start by closing one. Python would read on to the end of the file; ending here keeps
+     * one forgotten bracket from swallowing the rest, which matters most while a line is half typed.
+     */
+    private boolean nextLineLeavesBrackets() {
+        int p = pos;
+        while (p < src.length()) {
+            p = src.charAt(p) == '\r' && p + 1 < src.length() && src.charAt(p + 1) == '\n' ? p + 2 : p + 1;
+            int width = 0;
+            while (p < src.length() && (src.charAt(p) == ' ' || src.charAt(p) == '\t')) {
+                width = src.charAt(p) == '\t' ? (width / 8 + 1) * 8 : width + 1;
+                p++;
+            }
+            if (p >= src.length()) {
+                return false;
+            }
+            char c = src.charAt(p);
+            if (c == '\n' || c == '\r') {
+                continue;
+            }
+            if (c == '#') {
+                while (p < src.length() && src.charAt(p) != '\n' && src.charAt(p) != '\r') {
+                    p++;
+                }
+                if (p >= src.length()) {
+                    return false;
+                }
+                continue;
+            }
+            return width <= logicalIndent && c != ')' && c != ']' && c != '}';
+        }
+        return false;
+    }
+
+    private void unclosed() {
+        var open = brackets.get(0);
+        errors.add(new ScriptError(open[0], open[1], "'" + (char) open[2]
+                + "' is never closed (a line that continues it must be indented further)"));
+        brackets.clear();
     }
 
     private String restOfLine() {

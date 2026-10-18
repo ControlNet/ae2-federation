@@ -56,6 +56,9 @@ Choices made while writing the parser, where the user decisions left them open:
   continuation, tabs. Every rejected example is still valid Python (a test checks with CPython's parser), so the
   message says "not supported", never "syntax error". Indexing and keyword arguments are the likeliest to be added.
 - **A missing type hint is a parse error** naming the parameter or function.
+- **A line that continues an open bracket must be indented further** than the line that opened it (a closing
+  bracket may sit at the same indentation). Python would read on to the end of the file; here a forgotten bracket
+  ends at the next line that is not indented further, so it costs one error instead of the rest of the file.
 - **Errors do not stop parsing:** a failed statement or function is skipped, the rest parses, and every error is
   listed (one per line). The completion engine can work on the part that parsed.
 - **The script text is what is saved.** Printing happens only when the graph changes a program; the printed form is
