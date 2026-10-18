@@ -1,23 +1,17 @@
 package space.controlnet.ae2federation.function;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A callable function's signature: a built-in from the catalogue, or a player function. A library function is also
- * its descriptor: {@code access} says what calling it does and {@code example} is a whole function using it, checked
- * by a test. A player function's are empty; the checker infers what it does.
+ * A callable function's signature: a built-in from the catalogue, or a player function. {@code effect} marks a
+ * library function that acts on the world and so takes a tick; a player function's is inferred by the checker.
+ * {@code example} is a whole function using a library function, checked by a test; empty for a player function.
  */
-public record Signature(String name, List<Arg> args, TypeRef result, String summary, Set<Access> access,
+public record Signature(String name, List<Arg> args, TypeRef result, String summary, boolean effect,
         String example) {
     public Signature(String name, List<Arg> args, TypeRef result, String summary) {
-        this(name, args, result, summary, Set.of(), "");
-    }
-
-    /** Whether it acts on the world, and so takes a tick. */
-    public boolean effect() {
-        return access.stream().anyMatch(Access::acts);
+        this(name, args, result, summary, false, "");
     }
 
     /**
@@ -44,7 +38,6 @@ public record Signature(String name, List<Arg> args, TypeRef result, String summ
 
     public Signature {
         args = List.copyOf(args);
-        access = Set.copyOf(access);
     }
 
     static Signature of(FunctionDef function) {

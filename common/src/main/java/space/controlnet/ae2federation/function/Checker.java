@@ -20,19 +20,11 @@ public final class Checker {
     }
 
     /**
-     * Every problem found; the type of every expression that has one, by node ID; what each of this file's functions
-     * does, by name; the functions that act on the world, directly or through what they call; and the call nodes
-     * that do.
+     * Every problem found; the type of every expression that has one, by node ID; this file's functions that act on
+     * the world, directly or through what they call; and the call nodes that do.
      */
-    public record Result(List<Problem> problems, Map<String, TypeRef> types,
-            Map<String, Map<Access, Cause>> access, Set<String> effectfulFunctions, Set<String> effectfulCalls) {
-    }
-
-    /**
-     * Why a function has an access: the first call in it that brings it, and the player function that call runs
-     * ({@code file.name} in another file), or {@code null} when it calls the library function itself.
-     */
-    public record Cause(String call, String through) {
+    public record Result(List<Problem> problems, Map<String, TypeRef> types, Set<String> effectfulFunctions,
+            Set<String> effectfulCalls) {
     }
 
     /** Longer constant texts are left to run time rather than built while checking. */
@@ -105,8 +97,8 @@ public final class Checker {
         var checker = new Checker(program, workspace);
         checker.run();
         var effects = Effects.of(program, workspace);
-        return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types), effects.access(),
-                effects.functions(), effects.calls());
+        return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types), effects.functions(),
+                effects.calls());
     }
 
     // ---- definitions ----

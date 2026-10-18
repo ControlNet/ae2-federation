@@ -40,26 +40,6 @@ final class StandardLibraryTest {
                 "mc.move_fe"), actions);
     }
 
-    @Test
-    void everyFunctionSaysWhatItDoes() {
-        var byAccess = new java.util.TreeMap<Access, java.util.Set<String>>();
-        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.forEach(s -> s.access().forEach(
-                a -> byAccess.computeIfAbsent(a, k -> new java.util.TreeSet<>()).add(namespace + "." + s.name()))));
-        assertEquals(java.util.Map.of(
-                Access.READS_NETWORK, java.util.Set.of("ae2.amount", "ae2.storage", "ae2.craftable", "ae2.crafting",
-                        "ae2.patterns", "ae2.free_cpus", "ae2.energy", "ae2f.networks", "ae2f.online", "ae2f.rule"),
-                Access.READS_WORLD, java.util.Set.of("mc.amount", "mc.storage", "mc.block_id", "mc.state",
-                        "mc.redstone", "mc.fe", "mc.time"),
-                Access.CRAFTS, java.util.Set.of("ae2.craft", "ae2.cancel"),
-                Access.MOVES_RESOURCES, java.util.Set.of("ae2.import_from", "ae2.export_to", "mc.move", "mc.move_fe"),
-                Access.EMITS_REDSTONE, java.util.Set.of("mc.set_redstone"),
-                Access.CHANGES_WORLD, java.util.Set.of("mc.break_block", "mc.place_block"),
-                Access.CHANGES_RULES, java.util.Set.of("ae2f.set_rule", "ae2f.set_filter"),
-                Access.WAITS, java.util.Set.of("mc.wait")), byAccess);
-        StandardLibrary.NAMESPACES.values().stream().flatMap(java.util.List::stream).forEach(s -> assertEquals(
-                s.access().stream().anyMatch(Access::acts), s.effect(), s.name() + ": an action is what takes a tick"));
-    }
-
     /** Every example is a whole function that checks against the real library and calls the function it shows. */
     @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
     @org.junit.jupiter.params.provider.MethodSource("functions")

@@ -404,58 +404,6 @@ final class CheckerTest {
     }
 
     @Test
-    void whatAFunctionDoesIsTracedToTheCallThatBringsIt() {
-        var parsed = ScriptParser.parse("""
-                def low() -> bool:
-                    return ae2.amount("minecraft:iron_ingot") < 64
-
-                def refill() -> None:
-                    if low():
-                        ae2.craft("minecraft:iron_ingot", 64)
-
-                def tick(port: Interface) -> None:
-                    refill()
-                    iron_tools.pulse(port)
-                    mc.wait(1)
-                    refill()
-
-                def up(n: int) -> None:
-                    if n > 0:
-                        down(n - 1)
-
-                def down(n: int) -> None:
-                    up(n)
-                    mc.wait(1)
-
-                def plain(n: int) -> int:
-                    return abs(n) + len([n])
-                """);
-        var result = Checker.check(parsed.program(), WORKSPACE);
-        assertEquals(List.of(), result.problems());
-        var calls = new java.util.HashMap<String, List<String>>();
-        for (var function : parsed.program().functions()) {
-            var ids = new java.util.ArrayList<String>();
-            Effects.calls(function.body(), c -> ids.add(c.id()));
-            calls.put(function.name(), ids);
-        }
-        assertEquals(Map.of(Access.READS_NETWORK, new Checker.Cause(calls.get("low").get(0), null)),
-                result.access().get("low"));
-        assertEquals(Map.of(Access.READS_NETWORK, new Checker.Cause(calls.get("refill").get(0), "low"),
-                Access.CRAFTS, new Checker.Cause(calls.get("refill").get(1), null)), result.access().get("refill"));
-        var tick = calls.get("tick");
-        assertEquals(Map.of(Access.READS_NETWORK, new Checker.Cause(tick.get(0), "refill"),
-                Access.CRAFTS, new Checker.Cause(tick.get(0), "refill"),
-                Access.EMITS_REDSTONE, new Checker.Cause(tick.get(1), "iron_tools.pulse"),
-                Access.WAITS, new Checker.Cause(tick.get(2), null)), result.access().get("tick"),
-                "the first call that brings each, through a function in another file too");
-        assertEquals(Map.of(Access.WAITS, new Checker.Cause(calls.get("up").get(0), "down")),
-                result.access().get("up"), "through recursion");
-        assertEquals(Map.of(), result.access().get("plain"));
-        assertEquals(java.util.Set.of("refill", "tick", "up", "down"), result.effectfulFunctions(),
-                "acting is any access other than reading");
-    }
-
-    @Test
     void effectsAreInferredThroughCallsAndFiles() {
         var parsed = ScriptParser.parse("""
                 def a() -> None:

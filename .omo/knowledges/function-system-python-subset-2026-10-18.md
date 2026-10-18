@@ -183,10 +183,8 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
 
 ## Descriptors
 
-- `Signature` carries `access` (a set of `Access`) and `example`; `effect()` is derived (any access that acts).
-  The Java enum is `Access` because the script type `Capability` already means what a Federation rule shares.
-- Examples are whole `def`s checked by `StandardLibraryTest` against `CompletionTest.CATALOG` (test-only stand-in):
-  only its item IDs (`minecraft:iron_ingot`, `iron_block`, `gold_ingot`, `water`) may appear as literals; take
+- `Signature.example` holds a whole `def` per library function; `effect` stays the only description of what a
+  function does (the user dropped kinds of access on 2026-10-18).
+- Examples are checked by `StandardLibraryTest` against `CompletionTest.CATALOG` (test-only stand-in): only its item
+  IDs (`minecraft:iron_ingot`, `iron_block`, `gold_ingot`, `water`) may appear as literals; take
   interfaces/networks/other items as parameters. Examples must equal their printed form.
-- `Effects` keeps call targets in a `LinkedHashMap` in evaluation order, so the first call bringing an access is
-  its `Checker.Cause`. A file-qualified call to a missing function has no target (it would have no reached set).

@@ -228,7 +228,11 @@ How it could work (assistant proposal):
 - **Both views show it.** The graph can badge nodes and functions with their capabilities; the script editor can show
   them beside each `def`.
 
-Descriptors (assistant proposal 2026-10-18; built, see "Descriptors as built" below):
+Superseded in part (user, 2026-10-18): there are no kinds of capability. Static analysis infers only whether a
+function acts on the world (directly or through what it calls); the uses above that need kinds are dropped.
+
+Descriptors (assistant proposal 2026-10-18; the kinds of access were dropped by the user, see "Descriptors as
+built" below):
 
 - **One capability per library function**, from a short list: reads storage, reads the world, emits redstone,
   starts crafting, moves resources, changes the world (break, place), changes policies, waits. A player function's
@@ -245,26 +249,16 @@ Descriptors (assistant proposal 2026-10-18; built, see "Descriptors as built" be
 - **Rule:** a test parses and checks every example against the real standard library, so documentation cannot drift
   from the functions it describes.
 
-Descriptors as built (2026-10-18, after the user chose to build them; the access list, its mapping and the examples
-are assistant proposals):
+Descriptors as built (2026-10-18):
 
-- **Code name `Access`**, not `Capability`: the script type `Capability` (`storage`, `crafting`, `power`) already
-  names what a Federation rule shares. In prose these stay "what a function does".
-- **Eight accesses**, two that read and six that act: reads the network (`ae2` reads, and `ae2f.networks`, `online`,
-  `rule`), reads the world (every `mc` read, `mc.time` included), starts or cancels crafting, moves resources (items,
-  fluids and FE), emits redstone, changes the world (break, place), changes Federation rules, waits. `ae2f.select`
-  has none: choosing a block reads nothing yet. The first list's "reads storage" became "reads the network" so that
-  the `ae2f` reads have a home; "changes policies" became "changes Federation rules".
-- **The descriptor is the signature**: `Signature` gained `access` and `example`, so an addon describes its
-  functions the same way. Whether a call acts (exec chain, one tick) is now derived: it has an access that acts.
-- **Examples are whole functions**, not bare lines, so each checks as written with no hidden wrapper and reads as a
-  program a player could keep. They take interfaces, networks and items as parameters where a literal would have to
-  name something in the player's world. The test checks each against the real library (with the test catalogue's
-  item IDs), requires it to call the function it shows, and requires it to be written as the printer writes it.
-- **Inferred for player functions**: the checker gives each function its accesses, each traced to the first call
-  that brings it and the player function it goes through (`file.name` in another file), so a message can say "starts
-  or cancels crafting, line 7, through `refill`". Recursion is solved over the call graph. Nothing shows this yet; the
-  editor screens will.
+- **No kinds of access** (user, 2026-10-18): a library function only says whether it acts on the world (takes a tick,
+  sits on the exec chain), as before; the list of kinds above and the per-call explanation were built and then
+  removed at the user's request, as unnecessary.
+- **An example per library function**, written as a whole function (user, 2026-10-18), not bare lines: it checks as
+  written with no hidden wrapper and reads as a program a player could keep. Examples take interfaces, networks and
+  items as parameters where a literal would have to name something in the player's world. A test checks each against
+  the real library (with the test catalogue's item IDs), requires it to call the function it shows, and requires it
+  to be written as the printer writes it. `Signature.example` holds it, so an addon can give one too.
 
 ## Standard library (user direction 2026-10-18)
 

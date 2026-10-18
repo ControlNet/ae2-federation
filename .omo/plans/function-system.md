@@ -167,8 +167,8 @@ storage. Next: B6.
 B6 storage done 2026-10-18: `Library` (`.ae2f` files read and written as text; atomic writes; byte-for-byte round
 trip; edited definitions spliced in place; checks against the other files; text-preserving renames of functions and
 files; delete refused while called). A broken cross-file name was already a check error (B3), now tested for a
-missing file too. Descriptors done 2026-10-18 after the standard library rounds closed: `Access` per library
-function, a checked example per function, accesses inferred per player function with the call that brings each.
+missing file too. Descriptors done 2026-10-18 after the standard library rounds closed: a checked example per
+library function; kinds of access dropped by the user (acting or not stays the only distinction).
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
