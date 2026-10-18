@@ -73,8 +73,9 @@ public final class ProgramRun {
             throw new IllegalArgumentException("there is no program " + file);
         }
         if (!parsed.ok()) {
-            throw new IllegalArgumentException(file + " has " + parsed.errors().size() + " syntax error(s), first: line "
-                    + parsed.errors().get(0).line() + ": " + parsed.errors().get(0).message());
+            throw new IllegalArgumentException(file + " has " + parsed.errors().size()
+                    + " syntax error(s), first: line " + parsed.errors().get(0).line() + ": "
+                    + parsed.errors().get(0).message());
         }
         var others = new LinkedHashMap<>(prepared.files);
         others.remove(file);

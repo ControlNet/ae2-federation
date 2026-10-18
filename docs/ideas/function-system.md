@@ -1114,6 +1114,34 @@ Assistant choices, to review:
 - **Arguments typed in commands** are converted by the parameter types (`int`, `float`, `bool`, text for `str` and the
   typed strings); list parameters cannot be typed in yet.
 
+### The tab's traffic as built (H5, 2026-10-18)
+
+`ProgramSync` (server) and `ClientPrograms` (client) carry what the Automation tab needs; `ProgramPayloads` registers
+the seven messages. Nothing uses them on the client until the tab exists (G1).
+
+- **Index.** Opening the tab subscribes the player: the server sends the library index (each program's version,
+  whether its devices run that version, whether it was ever pushed, its problem count, its public functions with
+  their parameters, result and whether they act), the computing devices with their domains, and the installations
+  (arguments as Python prints them, trigger as text, interval, overlap, running runs). Every change (a save, push,
+  install, setting, reload, or one of the commands) sends a new index to the subscribers.
+- **Texts and uploads.** A program's text is fetched by name and arrives in chunks; an edit is uploaded in chunks with
+  the version it started from.
+
+Assistant choices, to review:
+
+- **Limits.** Serverbound payloads are capped at 32 KiB, so text travels in 8,000-character chunks; a program holds
+  at most 64,000 characters. One upload per player and file at a time; a newer one replaces it, and an unfinished one
+  is forgotten after 30 seconds.
+- **Versions** are the first 16 hex digits of the SHA-256 of the text, so they need no saved counter and survive a
+  restart.
+- **Last write wins**: a save always happens; its answer says when it replaced a version other than the one the edit
+  started from, so the client can keep the other version beside it.
+- **Requests** are one message with an action and words: `push`, `install`, `uninstall`, `trigger` (the trigger as
+  text, as the command takes it), `interval`, `overlap`, `run`, `delete`. Each gets an answer with its request number.
+- **Deleting a program that is installed is refused**, naming the installations (the pushed version would keep
+  running, so the program would vanish from the list while still in use).
+- **No permissions** (user, 2026-10-18): any player may do all of this.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

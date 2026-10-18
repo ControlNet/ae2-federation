@@ -69,6 +69,7 @@ public final class NeoForgeEntrypoint {
         FederationDomainPolicyActionPayloads.register(modBus);
         space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
         space.controlnet.ae2federation.neoforge.network.AutomationInterfacePayloads.register(modBus);
+        space.controlnet.ae2federation.neoforge.network.ProgramPayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.automation.ProgramCommands::register);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
@@ -101,6 +102,7 @@ public final class NeoForgeEntrypoint {
         EnergySharingService.tickAll();
         space.controlnet.ae2federation.automation.ProgramCrafting.tickAll(event.getServer());
         space.controlnet.ae2federation.automation.ProgramScheduler.tickAll(event.getServer());
+        space.controlnet.ae2federation.automation.ProgramSync.tickAll(event.getServer());
     }
 
     private static void onServerTickStart(ServerTickEvent.Pre event) {
@@ -145,6 +147,7 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.automation.ProgramStore.closeServer(server);
         space.controlnet.ae2federation.automation.ProgramCrafting.closeServer(server);
         space.controlnet.ae2federation.automation.ProgramScheduler.closeServer(server);
+        space.controlnet.ae2federation.automation.ProgramSync.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);

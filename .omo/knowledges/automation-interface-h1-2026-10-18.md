@@ -69,3 +69,12 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - In-game check `build/automation-run-check/compare.png`: H2 jar (no device, `install` unknown, lamp dark) vs H4 jar
   (device placed, `install`, `run`, `log` in chat, lamp lit). IDs come from `/ae2federation programs devices` and
   `interfaces` typed into the server console.
+
+## H5: the tab's traffic
+
+- A payload record's static `type(...)` helper clashes with `CustomPacketPayload.type()`: name it `payloadType`.
+- Common unit tests run in the NeoForge project, so they can reach NeoForge-module classes in the same package
+  (`ProgramPayloadsTest` round-trips the index through a `FriendlyByteBuf(Unpooled.buffer())`).
+- Keep "compute the answer" apart from "send it" (`ProgramSync.receive`/`handle` vs `upload`/`request`): GameTests
+  then drive the server side without a network connection.
+- zsh does not split `$ids` into words: `${=ids}` passes a list of GameTest ids.

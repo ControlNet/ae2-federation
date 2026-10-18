@@ -84,7 +84,8 @@ public final class ProgramEvents {
         GridHelper.addEventHandler(GridSpatialEvent.class, (grid, event) -> grid(grid, "spatial_io"));
         NeoForge.EVENT_BUS.addListener((BlockEvent.NeighborNotifyEvent event) ->
                 block(event.getLevel(), event.getPos(), "block_changed"));
-        NeoForge.EVENT_BUS.addListener((CropGrowEvent.Post event) -> block(event.getLevel(), event.getPos(), "crop_grew"));
+        NeoForge.EVENT_BUS.addListener((CropGrowEvent.Post event) ->
+                block(event.getLevel(), event.getPos(), "crop_grew"));
         NeoForge.EVENT_BUS.addListener((PlayerInteractEvent.RightClickBlock event) ->
                 block(event.getLevel(), event.getPos(), "right_clicked"));
     }

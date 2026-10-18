@@ -157,7 +157,8 @@ public final class ProgramScheduler {
                 throw new IllegalArgumentException(condition.function() + " does not give a bool");
             }
             if (acts(installation.file(), condition.function())) {
-                throw new IllegalArgumentException(condition.function() + " acts on the world; a condition may only read");
+                throw new IllegalArgumentException(condition.function()
+                        + " acts on the world; a condition may only read");
             }
             trigger = new Installation.Trigger.Condition(condition.function(),
                     arguments(definition, condition.args().stream().map(String::valueOf).toList()));

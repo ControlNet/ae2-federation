@@ -5,7 +5,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
@@ -21,9 +20,9 @@ import space.controlnet.ae2federation.function.Ops;
  * {@code /ae2federation programs reload} reads the programs folder again; {@code list} shows each program with its
  * problems. Both report what a player would otherwise only see in the editor. Until the Automation tab exists, the
  * other commands install and run functions on computing devices: {@code push}, {@code devices}, {@code interfaces},
- * {@code install},
- * {@code installations}, {@code uninstall}, {@code trigger} (manual, redstone, every, when, on), {@code interval}, {@code overlap}, {@code run} and
- * {@code log}. The tab will call the same {@link ProgramScheduler} methods.
+ * {@code install}, {@code installations}, {@code uninstall}, {@code trigger} (manual, redstone, every, when, on),
+ * {@code interval}, {@code overlap}, {@code run} and {@code log}. The tab calls the same {@link ProgramScheduler}
+ * methods through {@link ProgramSync}.
  */
 public final class ProgramCommands {
     private ProgramCommands() {
@@ -38,6 +37,7 @@ public final class ProgramCommands {
                             var source = context.getSource();
                             try {
                                 var library = ProgramStore.get(source.getServer()).reload();
+                                ProgramSync.get(source.getServer()).changed();
                                 source.sendSuccess(() -> Component.literal("Loaded " + library.names().size()
                                         + " program(s)" + (library.skipped().isEmpty() ? ""
                                                 : ", skipped " + library.skipped().size())), true);
@@ -87,8 +87,8 @@ public final class ProgramCommands {
                                         .then(Commands.argument("args", StringArgumentType.greedyString())
                                                 .executes(context -> trigger(context, new Installation.Trigger.Event(
                                                         StringArgumentType.getString(context, "event"),
-                                                        List.copyOf(words(StringArgumentType.getString(context,
-                                                                "args")))))))))
+                                                        List.copyOf(TriggerText.words(
+                                                                StringArgumentType.getString(context, "args")))))))))
                                 .then(Commands.literal("when").then(Commands.argument("function",
                                         StringArgumentType.word()).executes(context -> trigger(context,
                                         new Installation.Trigger.Condition(
@@ -96,8 +96,8 @@ public final class ProgramCommands {
                                         .then(Commands.argument("args", StringArgumentType.greedyString())
                                                 .executes(context -> trigger(context, new Installation.Trigger
                                                         .Condition(StringArgumentType.getString(context, "function"),
-                                                        List.copyOf(words(StringArgumentType.getString(context,
-                                                                "args")))))))))))
+                                                        List.copyOf(TriggerText.words(
+                                                                StringArgumentType.getString(context, "args")))))))))))
                         .then(Commands.literal("interval").then(Commands.argument("id", StringArgumentType.word())
                                 .then(Commands.argument("ticks", IntegerArgumentType.integer(1))
                                         .executes(context -> act(context, scheduler -> describe(scheduler.setInterval(
@@ -122,6 +122,7 @@ public final class ProgramCommands {
         var source = context.getSource();
         try {
             var message = call.apply(ProgramScheduler.get(source.getServer()));
+            ProgramSync.get(source.getServer()).changed();
             source.sendSuccess(() -> Component.literal(message), true);
             return 1;
         } catch (IllegalArgumentException | UncheckedIOException e) {
@@ -133,7 +134,7 @@ public final class ProgramCommands {
     private static int install(CommandContext<CommandSourceStack> context, String args) {
         return act(context, scheduler -> "Installed " + describe(scheduler.install(
                 StringArgumentType.getString(context, "device"), StringArgumentType.getString(context, "file"),
-                StringArgumentType.getString(context, "function"), words(args))));
+                StringArgumentType.getString(context, "function"), TriggerText.words(args))));
     }
 
     private static int trigger(CommandContext<CommandSourceStack> context, Installation.Trigger trigger) {
@@ -145,46 +146,10 @@ public final class ProgramCommands {
                 id(context), Installation.Overlap.valueOf(mode.toUpperCase(Locale.ROOT))))));
     }
 
-    /** Words split at spaces; a word in double quotes may hold spaces, as an alias can. */
-    static List<String> words(String text) {
-        var words = new ArrayList<String>();
-        var word = new StringBuilder();
-        var quoted = false;
-        var any = false;
-        for (var c : text.toCharArray()) {
-            if (c == '"') {
-                quoted = !quoted;
-                any = true;
-            } else if (c == ' ' && !quoted) {
-                if (any) {
-                    words.add(word.toString());
-                }
-                word.setLength(0);
-                any = false;
-            } else {
-                word.append(c);
-                any = true;
-            }
-        }
-        if (any) {
-            words.add(word.toString());
-        }
-        return words;
-    }
-
-    private static String describe(Installation installation) {
-        var trigger = switch (installation.trigger()) {
-            case Installation.Trigger.Manual manual -> "manual";
-            case Installation.Trigger.Redstone redstone -> "redstone";
-            case Installation.Trigger.Schedule schedule -> "every " + schedule.ticks() + " ticks";
-            case Installation.Trigger.Condition condition -> "when " + condition.function()
-                    + Ops.repr(new ListValue(condition.args()));
-            case Installation.Trigger.Event event -> "on " + event.name()
-                    + (event.args().isEmpty() ? "" : Ops.repr(new ListValue(event.args())));
-        };
+    static String describe(Installation installation) {
         return installation.id() + ": " + installation.file() + "." + installation.function()
-                + Ops.repr(new ListValue(installation.args()))
-                + " on " + installation.device() + ", " + trigger + ", at most every " + installation.interval()
+                + Ops.repr(new ListValue(installation.args())) + " on " + installation.device() + ", "
+                + TriggerText.format(installation.trigger()) + ", at most every " + installation.interval()
                 + " ticks, " + installation.overlap().name().toLowerCase(Locale.ROOT);
     }
 
@@ -246,7 +211,8 @@ public final class ProgramCommands {
             var problems = parsed.ok() ? library.check(name).problems().stream().map(problem -> {
                 var at = parsed.positions().get(problem.node());
                 return (at == null ? "" : "line " + at.line() + ": ") + problem.message();
-            }).toList() : parsed.errors().stream().map(error -> "line " + error.line() + ": " + error.message()).toList();
+            }).toList() : parsed.errors().stream()
+                    .map(error -> "line " + error.line() + ": " + error.message()).toList();
             source.sendSuccess(() -> Component.literal(name + ": " + (problems.isEmpty() ? "ok"
                     : problems.size() + " problem(s)")), false);
             problems.forEach(problem -> source.sendSuccess(() -> Component.literal("  " + problem), false));

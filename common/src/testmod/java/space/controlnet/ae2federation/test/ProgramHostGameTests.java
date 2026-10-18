@@ -16,6 +16,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
@@ -187,7 +188,7 @@ public final class ProgramHostGameTests {
      * Chest to the north with its own cell (two networks; the cells must not touch), cable at the centre, interface
      * east of it facing the {@code target} block.
      */
-    private static RouterFixtures build(GameTestHelper helper, net.minecraft.world.level.block.state.BlockState target) {
+    private static RouterFixtures build(GameTestHelper helper, BlockState target) {
         BlockPos.betweenClosed(CENTER.offset(-3, -1, -2), CENTER.offset(3, 3, 2))
                 .forEach(position -> helper.setBlock(position, Blocks.AIR));
         helper.setBlock(TARGET.below(), Blocks.STONE);
@@ -242,7 +243,8 @@ public final class ProgramHostGameTests {
                     write(store, file, text);
                     store.reload();
                     AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(interfaceAt);
-                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id()).orElseThrow();
+                    var domain = AutomationInterfaces.get(level).domainOf(level, automationInterface.id())
+                            .orElseThrow();
                     var host = new ProgramHost(server, domain, "gametest:" + file);
                     var args = text.contains("def run(port: Interface)")
                             ? List.<Object>of(automationInterface.id()) : List.<Object>of();

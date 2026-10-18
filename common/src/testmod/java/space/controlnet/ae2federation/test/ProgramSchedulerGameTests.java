@@ -31,10 +31,12 @@ import space.controlnet.ae2federation.automation.AutomationInterfaceBlockEntity;
 import space.controlnet.ae2federation.automation.AutomationInterfaces;
 import space.controlnet.ae2federation.automation.AutomationRegistration;
 import space.controlnet.ae2federation.automation.ComputingDeviceBlockEntity;
+import space.controlnet.ae2federation.automation.ChunkAssembler;
 import space.controlnet.ae2federation.automation.ComputingDevices;
 import space.controlnet.ae2federation.automation.Installation;
 import space.controlnet.ae2federation.automation.ProgramScheduler;
 import space.controlnet.ae2federation.automation.ProgramStore;
+import space.controlnet.ae2federation.automation.ProgramSync;
 import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 import space.controlnet.ae2federation.router.RouterRegistration;
 import space.controlnet.ae2federation.test.router.RouterEvidence;
@@ -80,7 +82,8 @@ public final class ProgramSchedulerGameTests {
             scene.scheduler().trigger(installation.id());
         }).then(10, () -> {
             helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true);
-            helper.assertValueEqual(scene.log(0), List.of("started", "done: 'minecraft:redstone_lamp true'"), "Ran once");
+            helper.assertValueEqual(scene.log(0), List.of("started", "done: 'minecraft:redstone_lamp true'"),
+                    "Ran once");
         }).finish(() -> {
             AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
             automationInterface.setRedstone(0);
@@ -309,6 +312,68 @@ public final class ProgramSchedulerGameTests {
                     AEItemKey.of(Items.IRON_INGOT), 5, Actionable.MODULATE, IActionSource.empty()), 5L, "Stocked");
         }).then(20, () -> helper.assertValueEqual(scene.log(0), List.of("started", "done: 'ping'"),
                 "The stock changed once")).finish(fixtures::close);
+    }
+
+    /** The Automation tab's traffic, without the network: uploads in chunks, push, install, run, the index. */
+    @GameTest(templateNamespace = FederationTestMod.MOD_ID, template = "harness_native_smoke",
+            timeoutTicks = 400, required = true, manualOnly = true)
+    public static void theTabsTrafficUploadsInstallsAndRuns(GameTestHelper helper) {
+        var first = """
+                def light(port: Interface) -> bool:
+                    return False
+                """;
+        var scene = Scene.build(helper, "sched_sync", first);
+        helper.setBlock(TARGET, Blocks.REDSTONE_LAMP);
+        var edited = "# " + "a long comment to need two chunks ".repeat(300) + """
+
+                def light(port: Interface) -> bool:
+                    return mc.set_redstone(port, 15)
+                """;
+        var sender = java.util.UUID.randomUUID();
+        scene.whenReady(() -> {
+            var sync = ProgramSync.get(helper.getLevel().getServer());
+            var chunks = ChunkAssembler.split(edited);
+            helper.assertValueEqual(chunks.size(), 2, "Two chunks");
+            helper.assertValueEqual(sync.receive(sender, 1, "sched_sync", ProgramSync.version(first), 1, 2,
+                    chunks.get(1)), java.util.Optional.empty(), "Waiting for the first chunk");
+            helper.assertValueEqual(sync.receive(sender, 1, "sched_sync", ProgramSync.version(first), 0, 2,
+                    chunks.get(0)), java.util.Optional.of(new ProgramSync.Answer(1, true, "saved sched_sync")),
+                    "Saved once whole");
+            helper.assertValueEqual(sync.receive(sender, 2, "sched_sync", ProgramSync.version(first), 0, 1, edited
+                    .substring(0, 10)), java.util.Optional.of(new ProgramSync.Answer(2, true,
+                    "saved sched_sync; it replaced a version saved meanwhile")), "The last write wins, and says so");
+            sync.receive(sender, 3, "sched_sync", ProgramSync.version(first), 0, 2, chunks.get(0));
+            helper.assertValueEqual(sync.receive(sender, 3, "sched_sync", ProgramSync.version(first), 1, 2,
+                    chunks.get(1)), java.util.Optional.of(new ProgramSync.Answer(3, true,
+                    "saved sched_sync; it replaced a version saved meanwhile")), "Back to the edit");
+            helper.assertFalse(sync.receive(sender, 9, "sched_sync", "", 0, 1, edited).orElseThrow().ok(),
+                    "A chunk over the limit is refused");
+            helper.assertFalse(sync.receive(sender, 4, "bad name", "", 0, 1, edited).orElseThrow().ok(),
+                    "A file name must be a Python name");
+            helper.assertTrue(sync.handle(5, "push", List.of("sched_sync")).ok(), "Pushed");
+            var file = sync.index().files().stream().filter(info -> info.name().equals("sched_sync")).findFirst()
+                    .orElseThrow();
+            helper.assertTrue(file.current() && file.pushed() && file.problems() == 0, "Pushed and clean: " + file);
+            helper.assertValueEqual(file.version(), ProgramSync.version(edited), "Version");
+            helper.assertValueEqual(file.functions().get(0), new ProgramSync.FunctionInfo("light",
+                    List.of("port: Interface"), "bool", true), "Signature");
+            var installed = sync.handle(6, "install", List.of(scene.device(), "sched_sync", "light",
+                    scene.interfaceId()));
+            helper.assertTrue(installed.ok(), installed.message());
+            var id = installed.message().substring("installed ".length());
+            scene.installed(ComputingDevices.get(helper.getLevel()).installation(id).orElseThrow());
+            helper.assertValueEqual(sync.handle(7, "trigger", List.of(id, "every 400")),
+                    new ProgramSync.Answer(7, true, "every 400"), "Trigger set from its text");
+            helper.assertFalse(sync.handle(8, "delete", List.of("sched_sync")).ok(), "Installed files stay");
+            var listed = sync.index().installations().stream().filter(info -> info.id().equals(id)).findFirst()
+                    .orElseThrow();
+            helper.assertValueEqual(listed.args(), "['" + scene.interfaceId() + "']", "Arguments as Python prints");
+            helper.assertTrue(sync.index().devices().stream().anyMatch(device -> device.id().equals(scene.device())
+                    && !device.domain().isEmpty()), "The device and its domain are listed");
+        }).then(10, () -> helper.assertBlockProperty(TARGET, BlockStateProperties.LIT, true)).finish(() -> {
+            AutomationInterfaceBlockEntity automationInterface = helper.getBlockEntity(INTERFACE);
+            automationInterface.setRedstone(0);
+        });
     }
 
     private static String assertRefused(Runnable call) {

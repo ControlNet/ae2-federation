@@ -25,7 +25,8 @@ import space.controlnet.ae2federation.domain.FederationDomainRegistryAccess;
 public final class ComputingDevices extends SavedData {
     public static final String PREFIX = "device";
     private static final String DATA_NAME = "ae2federation_computing_devices";
-    private static final Factory<ComputingDevices> FACTORY = new Factory<>(ComputingDevices::new, ComputingDevices::load);
+    private static final Factory<ComputingDevices> FACTORY =
+            new Factory<>(ComputingDevices::new, ComputingDevices::load);
 
     private final AutomationInterfaceBook book = new AutomationInterfaceBook(PREFIX);
     private final Map<String, Installation> installations = new LinkedHashMap<>();
@@ -157,7 +158,8 @@ public final class ComputingDevices extends SavedData {
         for (var file : versions.getAllKeys()) {
             var saved = versions.getCompound(file);
             var texts = new LinkedHashMap<String, String>();
-            new ArrayList<>(saved.getAllKeys()).stream().sorted().forEach(name -> texts.put(name, saved.getString(name)));
+            new ArrayList<>(saved.getAllKeys()).stream().sorted()
+                    .forEach(name -> texts.put(name, saved.getString(name)));
             if (texts.containsKey(file)) {
                 loaded.pushed.put(file, Collections.unmodifiableMap(texts));
             }
