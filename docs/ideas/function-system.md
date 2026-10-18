@@ -153,15 +153,16 @@ How it could work (assistant proposal):
 - **What the client needs from the server is cached.** Opening the tab sends the library index (files, function
   signatures, capabilities, versions) and the devices; the server pushes changes. Live values (stock in completion,
   device usage) arrive when they arrive and are left out until then; nothing waits for them.
-- **Saving is asynchronous and debounced:** after a pause in typing, on switching file and on closing the screen, the
-  client sends the file (text and graph layout) with the version it was based on. A file with errors is still saved as
+- **Saving is automatic and silent** (user, 2026-10-18): no save button and no sync indicator ("saving…", "saved",
+  pending marks). After a pause in typing, on switching file and on closing the screen, the client sends the file
+  (text and graph layout) with the version it was based on. A file with errors is still saved as
   a draft, so nothing is lost; only a file that checks clean becomes the version installations can use.
 - **The server stays authoritative.** It parses and checks again and never trusts the client's result; the client's
   check is for instant feedback. Same code on both sides means they agree.
-- **Conflicts.** If the server's version moved on (another player saved), the save is refused and the client keeps
-  the local text and shows both; or a file is edited by one player at a time. Depends on the visibility question.
-- **Installing optimistically.** A drawn wire appears at once as pending and is confirmed or taken back by the server
-  (for example when the device lacks compute).
+- **Conflicts**, without any sync prompt: the last save wins, and an open editor without unsent changes simply
+  updates when another player saves. Revisit with the visibility question if shared editing needs more.
+- **Installing optimistically.** A drawn wire appears at once like any other; in the rare case the server refuses it
+  (the device lacked compute, which the drag colours already showed) it is simply gone.
 - **Unsent edits survive a disconnect**, kept on the client until the next save succeeds.
 - **Payload size.** Serverbound custom payloads are size-limited; long files are sent in chunks or as diffs. The
   exact NeoForge limit needs checking before the protocol is designed.
