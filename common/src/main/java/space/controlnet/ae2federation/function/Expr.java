@@ -31,10 +31,11 @@ public sealed interface Expr {
     }
 
     /**
-     * {@code name(args)}, or {@code qualifier.name(args)} for a standard namespace or another file. Keyword
-     * arguments follow the positional ones, as Python requires.
+     * {@code name(args)} when {@code receiver} is {@code null}, else {@code receiver.name(args)}: a function of a
+     * standard namespace or another file ({@code ae2.craft}), or a method ({@code xs.append}). Which one is the
+     * checker's concern. Keyword arguments follow the positional ones, as Python requires.
      */
-    record Call(String id, String qualifier, String name, List<Expr> args, List<Keyword> keywords) implements Expr {
+    record Call(String id, Expr receiver, String name, List<Expr> args, List<Keyword> keywords) implements Expr {
         public Call {
             args = List.copyOf(args);
             keywords = List.copyOf(keywords);
@@ -43,6 +44,18 @@ public sealed interface Expr {
 
     /** {@code name=value} in a call. */
     record Keyword(String name, Expr value) {
+    }
+
+    /** {@code target.name}: a field. */
+    record Attribute(String id, Expr target, String name) implements Expr {
+    }
+
+    /** {@code target[index]}. */
+    record Index(String id, Expr target, Expr index) implements Expr {
+    }
+
+    /** {@code target[lower:upper:step]}; each part is {@code null} when left out. */
+    record Slice(String id, Expr target, Expr lower, Expr upper, Expr step) implements Expr {
     }
 
     record Unary(String id, UnaryOp op, Expr operand) implements Expr {

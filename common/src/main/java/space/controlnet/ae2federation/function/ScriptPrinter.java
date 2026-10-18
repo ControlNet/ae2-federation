@@ -11,6 +11,8 @@ import java.util.stream.Stream;
  */
 public final class ScriptPrinter {
     private static final String INDENT = "    ";
+    /** Atoms, calls, fields and items bind tighter than any operator. */
+    private static final int POSTFIX = 8;
 
     private final StringBuilder out = new StringBuilder();
 
@@ -85,13 +87,13 @@ public final class ScriptPrinter {
         indent(depth);
         switch (statement) {
             case Stmt.Assign s -> {
-                out.append(s.target());
+                out.append(expr(s.target()));
                 if (s.type() != null) {
                     out.append(": ").append(s.type());
                 }
                 out.append(" = ").append(expr(s.value()));
             }
-            case Stmt.AugAssign s -> out.append(s.target()).append(' ').append(s.op().symbol).append("= ")
+            case Stmt.AugAssign s -> out.append(expr(s.target())).append(' ').append(s.op().symbol).append("= ")
                     .append(expr(s.value()));
             case Stmt.CallStmt s -> out.append(expr(s.call()));
             case Stmt.If s -> {
@@ -165,10 +167,14 @@ public final class ScriptPrinter {
             case Expr.NoneLit l -> "None";
             case Expr.ListLit l -> l.items().stream().map(ScriptPrinter::expr).collect(Collectors.joining(", ", "[", "]"));
             case Expr.Name n -> n.name();
-            case Expr.Call c -> (c.qualifier() == null ? "" : c.qualifier() + ".") + c.name()
+            case Expr.Call c -> (c.receiver() == null ? "" : receiver(c.receiver()) + ".") + c.name()
                     + Stream.concat(c.args().stream().map(ScriptPrinter::expr),
                             c.keywords().stream().map(k -> k.name() + "=" + expr(k.value())))
                     .collect(Collectors.joining(", ", "(", ")"));
+            case Expr.Attribute a -> receiver(a.target()) + "." + a.name();
+            case Expr.Index i -> receiver(i.target()) + "[" + expr(i.index()) + "]";
+            case Expr.Slice s -> receiver(s.target()) + "[" + (s.lower() == null ? "" : expr(s.lower())) + ":"
+                    + (s.upper() == null ? "" : expr(s.upper())) + (s.step() == null ? "" : ":" + expr(s.step())) + "]";
             case Expr.Unary u -> u.op().symbol + expr(u.operand(), u.op().precedence());
             case Expr.Binary b -> {
                 int p = b.op().precedence;
@@ -180,11 +186,16 @@ public final class ScriptPrinter {
         return precedence(e) < min ? "(" + text + ")" : text;
     }
 
+    /** What a field, item or method is taken from; an int literal needs parentheses ({@code 1.x} is a float). */
+    private static String receiver(Expr e) {
+        return e instanceof Expr.IntLit ? "(" + expr(e) + ")" : expr(e, POSTFIX);
+    }
+
     private static int precedence(Expr e) {
         return switch (e) {
             case Expr.Binary b -> b.op().precedence;
             case Expr.Unary u -> u.op().precedence();
-            default -> 8;
+            default -> POSTFIX;
         };
     }
 

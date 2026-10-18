@@ -132,6 +132,29 @@ final class CompletionTest {
     }
 
     @Test
+    void anItemOfAListHasTheListsElementType() {
+        var c = at("""
+                def f(items: list[Item]) -> None:
+                    first = items[0]
+                    some = items[1:]
+                    ae2.craft(|)
+                """);
+        var details = c.candidates().stream().filter(x -> x.kind() == Candidate.Kind.VARIABLE)
+                .collect(java.util.stream.Collectors.toMap(Candidate::label, Candidate::detail));
+        assertEquals("Item", details.get("first"));
+        assertEquals("list[Item]", details.get("some"));
+    }
+
+    @Test
+    void aVariableIsNotTakenForANamespace() {
+        var c = at("""
+                def f(ae2: list[int]) -> None:
+                    ae2.craft(|)
+                """);
+        assertNull(c.expected(), "ae2 is a list here, not the namespace");
+    }
+
+    @Test
     void aKeywordArgumentExpectsItsParametersType() {
         var c = at("""
                 def refill(name: Item, min: int = 64) -> None:

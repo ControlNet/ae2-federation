@@ -82,6 +82,26 @@ final class ScriptTest {
                 refill(name="minecraft:gold_ingot", min=-1)
             """;
 
+    /** Fields, items, slices and methods, chained in any order, and assignments to fields and items. */
+    static final String POSTFIX = """
+            def chains(xs: list[int], name: str, order: Order) -> None:
+                first = xs[0]
+                middle = xs[1:-1]
+                every_other = xs[::2]
+                tail = xs[2:]
+                head = xs[:2]
+                xs.append(first)
+                xs[0] = xs[-1] + 1
+                xs[1:3] = [4, 5]
+                xs[0] += 1
+                lowered = name.strip().lower()
+                parts = "a,b".split(",")
+                amount = ae2.storage()[0].amount
+                order.amount += 1
+                order.item = "minecraft:iron_ingot"
+                total = iron_tools.helper(1).total
+            """;
+
     @Test
     void theCanvasSampleRoundTrips() {
         assertRoundTrip(SAMPLE);
@@ -115,6 +135,37 @@ final class ScriptTest {
     }
 
     @Test
+    void postfixChainsRoundTrip() {
+        assertRoundTrip(POSTFIX);
+    }
+
+    @Test
+    void postfixChainsParse() {
+        var body = parseClean(POSTFIX).functions().get(0).body();
+        var first = (Stmt.Assign) body.get(0);
+        assertEquals(new Expr.Name(first.target().id(), "first"), first.target());
+        assertInstanceOf(Expr.Index.class, first.value());
+        var tail = assertInstanceOf(Expr.Slice.class, ((Stmt.Assign) body.get(3)).value());
+        assertNotNull(tail.lower());
+        assertNull(tail.upper());
+        assertNull(tail.step());
+
+        var append = ((Stmt.CallStmt) body.get(5)).call();
+        assertEquals("xs", assertInstanceOf(Expr.Name.class, append.receiver()).name());
+        assertEquals("append", append.name());
+        assertInstanceOf(Expr.Index.class, ((Stmt.Assign) body.get(6)).target());
+        assertInstanceOf(Expr.Slice.class, ((Stmt.Assign) body.get(7)).target());
+
+        var amount = assertInstanceOf(Expr.Attribute.class, ((Stmt.Assign) body.get(11)).value());
+        assertEquals("amount", amount.name());
+        var storage = assertInstanceOf(Expr.Call.class, assertInstanceOf(Expr.Index.class, amount.target()).target());
+        assertEquals("ae2", assertInstanceOf(Expr.Name.class, storage.receiver()).name());
+
+        var increment = assertInstanceOf(Stmt.AugAssign.class, body.get(12));
+        assertEquals("amount", assertInstanceOf(Expr.Attribute.class, increment.target()).name());
+    }
+
+    @Test
     void theSampleParsesToTheExpectedProgram() {
         var program = parseClean(SAMPLE);
         assertEquals(List.of("_low", "refill", "low_iron_alarm"), program.functions().stream().map(FunctionDef::name).toList());
@@ -129,13 +180,13 @@ final class ScriptTest {
         assertEquals("Craft more when the stock runs low.", refill.docstring());
         var branch = assertInstanceOf(Stmt.If.class, refill.body().get(0));
         var craft = assertInstanceOf(Stmt.CallStmt.class, branch.body().get(0)).call();
-        assertEquals("ae2", craft.qualifier());
+        assertEquals("ae2", assertInstanceOf(Expr.Name.class, craft.receiver()).name());
         assertEquals("craft", craft.name());
         assertNotNull(branch.orElse());
 
         var alarm = program.functions().get(2);
         var iron = assertInstanceOf(Stmt.Assign.class, alarm.body().get(0));
-        assertEquals("iron", iron.target());
+        assertEquals("iron", assertInstanceOf(Expr.Name.class, iron.target()).name());
         assertEquals("Item", iron.type().name());
         assertEquals("minecraft:iron_ingot", assertInstanceOf(Expr.StrLit.class, iron.value()).value());
         var now = assertInstanceOf(Stmt.Assign.class, alarm.body().get(1));
@@ -189,6 +240,8 @@ final class ScriptTest {
                     g(1, b = 2,)
                 """));
         assertEquals("def f(x: int = 1) -> None:\n    pass\n", print("def f(x:int=1)->None:\n    pass\n"));
+        assertEquals(body("y = (-x).real + (1).real + xs[1:2] + a.b[0]"),
+                print(body("y = ( - x ) . real + (1).real + xs[ 1 : 2 : ] + (a.b)[0]")));
     }
 
     @Test
@@ -274,10 +327,9 @@ final class ScriptTest {
                 Arguments.of(body("y = [x for x in xs]"), 2, "comprehensions are not supported"),
                 Arguments.of(body("y = {1: 2}"), 2, "dicts and sets are not supported"),
                 Arguments.of(body("y = lambda: 0"), 2, "'lambda' is not supported"),
-                Arguments.of(body("y = xs[0]"), 2, "indexing is not supported"),
+                Arguments.of(body("xs[0](1)"), 2, "only a function name can be called"),
+                Arguments.of(body("y = xs[1, 2]"), 2, "tuples are not supported"),
                 Arguments.of(body("f(**x)"), 2, "unpacking arguments with '**'"),
-                Arguments.of(body("y = ae2.stock"), 2, "attribute access is not supported"),
-                Arguments.of(body("y = a.b.c(1)"), 2, "at most one qualifier"),
                 Arguments.of(body("f(x)(1)"), 2, "calling the result of a call"),
                 Arguments.of(body("y = (x := 1)"), 2, "':=' is not supported"),
                 Arguments.of(body("y = ..."), 2, "'...' is not supported"),
@@ -402,6 +454,7 @@ final class ScriptTest {
         assertPythonParses(LOOPS);
         assertPythonParses(CONTINUATION);
         assertPythonParses(DEFAULTS);
+        assertPythonParses(POSTFIX);
         assertPythonParses(print(SAMPLE));
         assertPythonParses(print(LOOPS));
         for (var arguments : unsupported().toList()) {

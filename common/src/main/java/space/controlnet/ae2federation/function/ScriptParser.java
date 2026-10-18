@@ -317,8 +317,8 @@ public final class ScriptParser {
             advance();
             var type = type();
             if (!checkOp("=")) {
-                throw fail(peek(), "a variable annotated with a type needs a value, as in " + name + ": "
-                        + type + " = ...");
+                throw fail(peek(), "a variable annotated with a type needs a value, as in "
+                        + ScriptPrinter.expr(name) + ": " + type + " = ...");
             }
             advance();
             var value = expr();
@@ -342,11 +342,12 @@ public final class ScriptParser {
         return new Stmt.CallStmt(id(first), new Notes(above, endLine()), call);
     }
 
-    private String assignable(Expr target, Token first, String what) {
-        if (!(target instanceof Expr.Name name)) {
-            throw fail(first, "only a variable can be " + what);
+    private Expr assignable(Expr target, Token first, String what) {
+        if (!(target instanceof Expr.Name || target instanceof Expr.Attribute || target instanceof Expr.Index
+                || target instanceof Expr.Slice)) {
+            throw fail(first, "only a variable, a field or an item can be " + what);
         }
-        return name.name();
+        return target;
     }
 
     private Stmt ifStatement() {
@@ -538,20 +539,48 @@ public final class ScriptParser {
         return postfix();
     }
 
+    /** An atom followed by fields, items, slices and method calls, in any order. */
     private Expr postfix() {
+        var start = peek();
         var e = atom();
-        var token = peek();
-        if (token.is(Kind.OP, "(")) {
-            throw fail(token, e instanceof Expr.Call ? "calling the result of a call is not supported"
-                    : "only a function name can be called");
+        while (true) {
+            var token = peek();
+            if (token.is(Kind.OP, "(")) {
+                // Functions are not values: only a name or a method is called.
+                throw fail(token, e instanceof Expr.Call ? "calling the result of a call is not supported"
+                        : "only a function name can be called");
+            }
+            if (matchOp(".")) {
+                var name = name("a name after '.'").text();
+                e = checkOp("(") ? call(start, e, name) : new Expr.Attribute(id(start), e, name);
+            } else if (matchOp("[")) {
+                e = subscript(start, e);
+            } else {
+                return e;
+            }
         }
-        if (token.is(Kind.OP, "[")) {
-            throw fail(token, "indexing is not supported");
+    }
+
+    /** After {@code [}: an index or a slice, up to the closing {@code ]}. */
+    private Expr subscript(Token start, Expr target) {
+        Expr lower = null;
+        if (!checkOp(":")) {
+            lower = expr();
+            if (checkOp(",")) {
+                throw fail(peek(), "tuples are not supported");
+            }
+            if (matchOp("]")) {
+                return new Expr.Index(id(start), target, lower);
+            }
         }
-        if (token.is(Kind.OP, ".")) {
-            throw fail(token, "attribute access is not supported; only calls such as ns.fn(...)");
+        expect(":");
+        Expr upper = checkOp(":") || checkOp("]") ? null : expr();
+        Expr step = null;
+        if (matchOp(":") && !checkOp("]")) {
+            step = expr();
         }
-        return e;
+        expect("]");
+        return new Expr.Slice(id(start), target, lower, upper, step);
     }
 
     private Expr atom() {
@@ -600,23 +629,12 @@ public final class ScriptParser {
                     throw fail(token, "unexpected '" + token.text() + "'");
                 }
         }
-        String qualifier = null;
-        String name = token.text();
-        if (checkOp(".")) {
-            advance();
-            qualifier = name;
-            name = name("a function name after '.'").text();
-            if (checkOp(".")) {
-                throw fail(peek(), "calls take at most one qualifier, as in ns.fn(...)");
-            }
-            if (!checkOp("(")) {
-                throw fail(token, "attribute access is not supported; only calls such as ns.fn(...)");
-            }
-        }
-        if (!checkOp("(")) {
-            return new Expr.Name(id(token), name);
-        }
-        advance();
+        return checkOp("(") ? call(token, null, token.text()) : new Expr.Name(id(token), token.text());
+    }
+
+    /** {@code name(...)} or {@code receiver.name(...)}, from its {@code (}. */
+    private Expr.Call call(Token start, Expr receiver, String name) {
+        expect("(");
         var args = new ArrayList<Expr>();
         var keywords = new ArrayList<Expr.Keyword>();
         while (!checkOp(")")) {
@@ -644,7 +662,7 @@ public final class ScriptParser {
             }
         }
         advance();
-        return new Expr.Call(id(token), qualifier, name, args, keywords);
+        return new Expr.Call(id(start), receiver, name, args, keywords);
     }
 
     private Expr bracket(Token token) {

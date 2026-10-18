@@ -8,12 +8,15 @@ public sealed interface Stmt {
 
     Notes notes();
 
-    /** {@code target = value}, or {@code target: type = value} when {@code type} is not {@code null}. */
-    record Assign(String id, Notes notes, String target, TypeRef type, Expr value) implements Stmt {
+    /**
+     * {@code target = value}, or {@code target: type = value} when {@code type} is not {@code null}. The target is a
+     * {@link Expr.Name}, {@link Expr.Attribute}, {@link Expr.Index} or {@link Expr.Slice}.
+     */
+    record Assign(String id, Notes notes, Expr target, TypeRef type, Expr value) implements Stmt {
     }
 
-    /** {@code target += value} and the other arithmetic forms. */
-    record AugAssign(String id, Notes notes, String target, BinaryOp op, Expr value) implements Stmt {
+    /** {@code target += value} and the other arithmetic forms; targets as for {@link Assign}. */
+    record AugAssign(String id, Notes notes, Expr target, BinaryOp op, Expr value) implements Stmt {
     }
 
     record CallStmt(String id, Notes notes, Expr.Call call) implements Stmt {

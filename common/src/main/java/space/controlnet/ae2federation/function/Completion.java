@@ -224,8 +224,15 @@ public final class Completion {
         if (open < 1 || context.get(open - 1).kind() != Kind.NAME) {
             return null;
         }
-        String qualifier = open >= 3 && context.get(open - 2).is(Kind.OP, ".")
-                && context.get(open - 3).kind() == Kind.NAME ? context.get(open - 3).text() : null;
+        String qualifier = null;
+        if (open >= 2 && context.get(open - 2).is(Kind.OP, ".")) {
+            boolean plain = open >= 3 && context.get(open - 3).kind() == Kind.NAME
+                    && !(open >= 4 && context.get(open - 4).is(Kind.OP, "."));
+            if (!plain) {
+                return null;
+            }
+            qualifier = context.get(open - 3).text();
+        }
         int index = 0;
         int depth = 0;
         int argumentStart = open + 1;
@@ -295,7 +302,11 @@ public final class Completion {
                 return;
             }
             switch (statement) {
-                case Stmt.Assign s -> declare(s.target(), s.type() != null ? s.type() : infer(s.value()));
+                case Stmt.Assign s -> {
+                    if (s.target() instanceof Expr.Name name) {
+                        declare(name.name(), s.type() != null ? s.type() : infer(s.value()));
+                    }
+                }
                 case Stmt.For s -> {
                     var iterable = infer(s.iterable());
                     declare(s.variable(), iterable != null && iterable.name().equals("list") && iterable.args().size() == 1
@@ -335,7 +346,19 @@ public final class Completion {
                 yield element == null ? simple("list") : new TypeRef("list", List.of(element));
             }
             case Expr.Name n -> variables.get(n.name());
-            case Expr.Call c -> signature(c.qualifier(), c.name()).map(Signature::result).orElse(null);
+            case Expr.Call c -> {
+                if (c.receiver() == null) {
+                    yield signature(null, c.name()).map(Signature::result).orElse(null);
+                }
+                yield c.receiver() instanceof Expr.Name n
+                        ? signature(n.name(), c.name()).map(Signature::result).orElse(null) : null;
+            }
+            case Expr.Attribute a -> null;
+            case Expr.Index i -> {
+                var list = infer(i.target());
+                yield list != null && list.name().equals("list") && list.args().size() == 1 ? list.args().get(0) : null;
+            }
+            case Expr.Slice s -> infer(s.target());
             case Expr.Unary u -> u.op() == UnaryOp.NOT ? simple("bool") : infer(u.operand());
             case Expr.Binary b -> {
                 if (b.op().precedence <= BinaryOp.COMPARISON) {
@@ -357,6 +380,10 @@ public final class Completion {
     private Optional<Signature> signature(String qualifier, String name) {
         if (qualifier == null) {
             return ownFunctions.stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of);
+        }
+        if (variables.containsKey(qualifier)) {
+            // A local shadows a namespace or file of the same name, as in Python; its methods come with B3.
+            return Optional.empty();
         }
         var builtIns = workspace.catalog().namespaces().get(qualifier);
         if (builtIns != null) {
