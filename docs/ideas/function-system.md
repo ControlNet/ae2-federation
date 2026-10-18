@@ -56,10 +56,17 @@ Choices made while writing the parser, where the user decisions left them open:
   continuation, tabs. Every rejected example is still valid Python (a test checks with CPython's parser), so the
   message says "not supported", never "syntax error". Indexing and keyword arguments are the likeliest to be added.
 - **Paradigms left out** (user, 2026-10-18): no exception handling (`try`, `except`, `raise`), no object-oriented
-  programming (`class`), no functional programming (functions as values, higher-order functions, `lambda`,
+  programming beyond fields-only records (below), no functional programming (functions as values, higher-order functions, `lambda`,
   `map`/`filter`, comprehensions, generators, closures: no nested functions, no `nonlocal`/`global`). Functions are
   only defined and called; a name of a function is not a
   value that can be stored or passed. The language is plain procedural Python.
+- **Player records** (user, 2026-10-18: the first tier of the class assessment): a player may define a
+  fields-only record, written as Python writes one, `@dataclass` then `class Order:` with typed fields (defaults
+  allowed). It behaves as a Python dataclass: constructed by position or keyword (`Order(item, 64)`), fields read
+  and written (`o.amount += 1`), shared by reference, equal when all fields are equal. No methods, no inheritance;
+  `@dataclass` is the only decorator and needs no import. Usable across files as `file.Order`. Built-in records
+  (a stack) use the same mechanism, described by descriptors. In the graph: a constructor node, field read and write
+  nodes, and defining a record in the graph editor.
 - **Language additions decided since B1** (user, 2026-10-18), to build next in the parser: keyword arguments,
   natively, in every call (built-ins and the player's functions alike); list and string methods with what they bring
   (indexing and slices, `in`/`not in`, method calls on any value, chained); read-only fields on built-in values
@@ -702,7 +709,7 @@ statement-only rule for effects.
   are evaluated at check time (a constant reach of 5, a constant interface that does not exist), and definite
   assignment stays too (simple once programs compile to a control-flow graph); only the `unavailable` value is
   dropped.
-- User-defined classes, assessed at the user's request (not planned): a fields-only record
+- User-defined classes, assessed at the user's request (first tier adopted, see Player records): a fields-only record
   (`@dataclass class Order:` with typed fields, constructed as `Order(item, 64)`, fields read and written) costs
   moderately on top of built-in records: new named types in the checker (also across files), objects shared by
   reference as in Python, constructor and field nodes in the graph, and a way to define the type in the graph
