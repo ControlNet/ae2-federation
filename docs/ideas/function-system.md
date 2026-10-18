@@ -141,7 +141,7 @@ AE2-only lists.
 
 **Python's built-ins at the top level** (user, 2026-10-18): functions without a namespace are Python's own, with
 Python's names and meaning (`str()`, `int()`, `range()` ...); everything about the game stays in `ae2`, `ae2f` and
-`mc`. Assistant proposals:
+`mc`. Assistant proposals, accepted by the user (2026-10-18):
 
 - A first set: `int`, `float`, `str`, `bool` (conversions), `range` (1 to 3 arguments), `len`, `abs`, `min`, `max`,
   `sum`, `round`, `any`, `all`, `print`. Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
