@@ -61,10 +61,10 @@ Choices made while writing the parser, where the user decisions left them open:
   only defined and called; a name of a function is not a
   value that can be stored or passed. The language is plain procedural Python.
 - **Player records** (user, 2026-10-18: the first tier of the class assessment): a player may define a
-  fields-only record, written as Python writes one, `@dataclass` then `class Order:` with typed fields (defaults
-  allowed). It behaves as a Python dataclass: constructed by position or keyword (`Order(item, 64)`), fields read
-  and written (`o.amount += 1`), shared by reference, equal when all fields are equal. No methods, no inheritance;
-  `@dataclass` is the only decorator and needs no import. Usable across files as `file.Order`. Built-in records
+  fields-only record, written as a plain `class Order:` with typed fields (defaults allowed); no `@dataclass`
+  decorator (user, 2026-10-18: unnecessary), so decorators stay unsupported. Still valid Python syntax; unlike
+  CPython, the class gets a dataclass's behaviour without the decorator. It behaves as a Python dataclass: constructed by position or keyword (`Order(item, 64)`), fields read
+  and written (`o.amount += 1`), shared by reference, equal when all fields are equal. No methods, no inheritance. Usable across files as `file.Order`. Built-in records
   (a stack) use the same mechanism, described by descriptors. In the graph: a constructor node, field read and write
   nodes, and defining a record in the graph editor.
 - **Language additions decided since B1** (user, 2026-10-18), to build next in the parser: keyword arguments,

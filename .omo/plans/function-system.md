@@ -138,7 +138,7 @@ library is still being designed.
 
 B1 follow-up (decided 2026-10-18, before B3): keyword arguments in every call; list and string methods with
 indexing, slices, `in`/`not in` and chained method calls; read-only fields on built-in values; default
-values in `def`s as in Python; player records (`@dataclass` fields-only classes, no methods or inheritance). Test against CPython as B1 does.
+values in `def`s as in Python; player records (plain fields-only `class`, no decorator, no methods or inheritance). Test against CPython as B1 does.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
