@@ -219,6 +219,34 @@ Assistant proposal:
   is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
   view.
 
+## Policies changed by automation (user proposal 2026-10-18)
+
+Instead of policies calling functions, an automation calls a built-in such as `federation.set_policy(...)` and so
+changes policies over time. Policies stay what they are today: plain settings, edited in the GUI or by a program.
+
+Assistant assessment: a large simplification, recommended.
+
+- **One host instead of two.** No function runs inside AE2's storage and crafting checks, so there is no policy-slot
+  binding, no read-only requirement for it, no caching or sampling design and no "what does a policy do with an
+  unavailable answer". The entry-decorator question disappears with it.
+- **The existing path does the rest.** A policy change already advances `AuthorityEpoch`, so everything downstream
+  invalidates as it does for a GUI edit today.
+- **Same expressiveness in practice.** The earlier design would also have sampled and cached answers; an automation
+  on a trigger or a schedule computing a filter list and setting it is equivalent, and its timing is visible.
+- **Natural failure mode.** When the device stops (no power, unloaded), the policy keeps its last setting, as other
+  devices keep their last state.
+- **Progression.** Dynamic policies need a computing device, like all automation.
+
+Points to settle:
+
+- **Setting an unchanged value is a no-op**, so a loop that sets the same filter every tick does not churn the
+  epoch; a rate limit may still be needed.
+- **Conflicts.** A player's GUI edit and an automation, or two automations, can set the same policy; the last write
+  wins, and the policy GUI should show which automation controls it (within the minimal-GUI rule).
+- **Rights.** An automation may only change policies its owner may edit.
+- **What `set_policy` addresses**: which domain relationship and which rule (Storage, Crafting) are independent
+  today, so the built-in follows the existing policy model.
+
 ## Graph conversion for the Python subset (assistant proposal 2026-10-18)
 
 The spike's rules carry over (one program representation, stable node IDs, exec wires for order, data wires for
