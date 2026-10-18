@@ -771,13 +771,14 @@ the file's highest. Only the edited definition changes in the program. A variabl
 in the function, including a namespace or file it calls into. Renaming a function does not yet update its callers
 (that needs the workspace, with storage in B6).
 
-Automatic layout, waiting for the user's pick (2026-10-18): the GUI design canvas row "图的自动布局" draws three
+Automatic layout (user picked A, 2026-10-18; built as `Layout`): the GUI design canvas row "图的自动布局" draws three
 real functions (checked against the standard library, projected by `Canvas`) under two conventions. A, Blueprint
 style: the exec line runs left to right without breaks, each statement's values hang below-left of it, bodies and arms
 hang below-right, and the statement after a loop or `if` continues on the same line. B, code style: statements run top
 to bottom indented as in the script, values sit left on the statement's line, `next` runs down a straight line on the
 left, and arms leave from the right side into the indented blocks. Both keep option A's chips and the merged
-`x = call()` node.
+`x = call()` node. `Layout.cards` applies the drawing rules (an assignment of one call, and a call statement, are one
+card with the call's ports); `Layout.of` places the cards from sizes the GUI measures, recomputed on every change.
 
 Assistant proposals (2026-10-18), open for the user:
 

@@ -158,10 +158,11 @@ capped at 100,000 items), `Evaluator` (expressions without suspension points; li
 innermost expression, a trace by program node). Checker additions: `range` type, `list()`, `Iterable` parameters,
 list ordering, constant-only defaults. Decisions in the idea page, "Execution as built". Next: B5.
 
-B5 in progress 2026-10-18: `Canvas` (a function projected to nodes, ports and exec links, and back unchanged) and
-`Edits` (graph edits checked through the printed script; IDs kept, new IDs after the file's highest; only the
-edited definition changes). Left: the automatic layout, after a design board of 1-2 layout conventions drawn from
-real canvases for the user to pick; renaming a function's callers waits for B6 storage.
+B5 done 2026-10-18: `Canvas` (a function projected to nodes, ports and exec links, and back unchanged), `Edits`
+(graph edits checked through the printed script; IDs kept, new IDs after the file's highest; only the edited
+definition changes), `Layout` (layout A picked by the user on the design board "图的自动布局": exec line left to right,
+values below-left, bodies below-right; sizes from the GUI's `Metrics`). Renaming a function's callers waits for B6
+storage. Next: B6.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 

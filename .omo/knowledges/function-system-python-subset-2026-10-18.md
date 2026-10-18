@@ -158,3 +158,6 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   a board to check it.
 - Problems the renders caught: exec wires of several arms stacked on one vertical line (A: start arms further right;
   B: one lane per output, routed right of every node in between), the variables strip wider than the graph.
+- `Layout` (Java) follows the board generator's layout A step for step; tests use a stand-in `Metrics`
+  (`LayoutTest.METRICS`) with sizes varying by rows and kind. Nothing is placed left of or above the entry card, so
+  no normalisation is needed (a mutation run showed it was dead code).
