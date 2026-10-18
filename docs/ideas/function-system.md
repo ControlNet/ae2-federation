@@ -181,9 +181,9 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
 
 - **Drafts.** A script being typed often has syntax errors; a graph being built has unconnected nodes. The custom
   policy requirements already ask that an incomplete or invalid script is shown without discarding the draft or
-  showing an unrelated graph. Proposal: the program representation stays the one source of truth; unconnected graph
-  nodes live in the graph document as a draft beside it; a script with a syntax error keeps its text and cannot switch
-  to the graph until fixed, with the error's line shown.
+  showing an unrelated graph. A script with a syntax error keeps its text and cannot switch to the graph until fixed,
+  with the error's line shown (user, 2026-10-18). Proposal for the graph side: the program representation stays the
+  one source of truth, and unconnected graph nodes live in the graph document as a draft beside it.
 - **Graph edit operations.** Add a node, connect and disconnect, delete, change a value on a port: each a pure
   operation on the program representation, each with tests.
 - **Script editing support.** An error-tolerant parser, a completion engine (cursor context, expected type, candidates
@@ -196,7 +196,7 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
 | # | Question | Assistant proposal |
 |---|---|---|
 | 1 | ~~Script language~~ | Decided: a Python subset (above). |
-| 2 | Draft policy: may a script with a syntax error be shown as a graph? | No; keep the text and show the error line until it parses (see Drafts). |
+| 2 | ~~Draft policy~~ | Decided (user, 2026-10-18): a script with a syntax error cannot switch to the graph; its text is kept and the error shown until it parses. |
 | 3 | Where programs are stored: an item that can be copied and handed over (like a pattern or a disk), or a library on the network? | Not urgent; it shapes layer 3's format. |
 
 Deferred with the world interactions: the first host use (a storage policy's filter list proposed), the first
