@@ -657,7 +657,7 @@ harder than needed. Assistant review, ranked by what drives the difficulty; all 
     `unavailable` value (Phase 0): reads on an unloaded or paused network return plain values and the run log says
     why. Capability inference stays (cheap; graph colours and the tick rule need it).
 
-**User idea: compile to a graph and run the graph** (2026-10-18). Assistant assessment: yes, this is the simplest
+**User idea: compile to a graph and run the graph** (2026-10-18; accepted with the details below the same day). Assistant assessment: yes, this is the simplest
 interpreter, and it replaces the bytecode VM of item 1, provided the executed graph is a control-flow graph in which
 every step that can take time is its own node:
 
@@ -678,6 +678,9 @@ every step that can take time is its own node:
   source; the executed graph is compiled from it (at Push) and is never edited or stored. Whether the graph the
   player sees is drawn from the program tree or from the executed graph is an open detail; they differ only where
   the view merges nodes (`x = call()`) or hides temporaries.
+
+Status: the interpreter part of item 1 is decided (compile to a graph, as above), which also drops item 1's
+statement-only rule for effects. Items 2 to 10 are with the user.
 
 Items 1 (its cost), 2, 3 and 6 touch user decisions or requests; 4, 5, 7, 8 and 10 were only ever assistant
 proposals.
