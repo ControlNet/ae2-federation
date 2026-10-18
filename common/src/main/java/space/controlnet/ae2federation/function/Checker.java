@@ -157,6 +157,7 @@ public final class Checker {
         currentResult = annotation(function.result(), function.id());
         collectAssigned(function.body());
         statements(function.body());
+        Flow.check(function, currentResult, assignedInFunction, this::problem);
     }
 
     /** Names assigned anywhere in the body are local to it, as in Python. */

@@ -210,6 +210,76 @@ final class CheckerTest {
         assertEquals(List.of(), result.problems());
     }
 
+    static Stream<Arguments> flow() {
+        var unbound = "cannot access local variable 'y' where it is not associated with a value";
+        return Stream.of(
+                Arguments.of("if n > 0:\n        y = 1\n    z = y", 3, unbound),
+                Arguments.of("for x in xs:\n        y = x\n    z = y", 3, unbound),
+                Arguments.of("while n > 0:\n        y = 1\n        n -= 1\n    z = y", 4, unbound),
+                Arguments.of("for x in xs:\n        if x > 0:\n            y = 1\n        z = y", 4, unbound),
+                Arguments.of("y += 1\n    y = 0", 1, unbound),
+                Arguments.of("z = y\n    y = 1", 1, unbound),
+                Arguments.of("if n > 0:\n        y = 1\n    elif n < 0:\n        y = 2\n    z = y", 5, unbound),
+                Arguments.of("for x in xs:\n        if x > 0:\n            continue\n        y = x\n    z = y + y", 5, unbound));
+    }
+
+    @ParameterizedTest
+    @MethodSource("flow")
+    void aVariableMustBeAssignedOnEveryPathBeforeItIsRead(String body, int line, String message) {
+        assertEquals(List.of((BODY_LINE + line - 1) + ": " + message), problems(PRELUDE + "    " + body + "\n"));
+    }
+
+    @Test
+    void assignedOnEveryPathIsFine() {
+        assertEquals(List.of(), problems(PRELUDE + """
+                    if n > 0:
+                        y = 1
+                    elif n < 0:
+                        y = 2
+                    else:
+                        y = 3
+                    z = y
+                    for x in xs:
+                        w = x
+                        z = w
+                    if n > 0:
+                        return
+                    v = 1
+                    while True:
+                        u = 1
+                        break
+                """));
+    }
+
+    @Test
+    void aFunctionWithAResultMustReturnOnEveryPath() {
+        assertEquals(List.of(
+                "1: a() can end without returning int",
+                "15: d() can end without returning int"), problems("""
+                def a(n: int) -> int:
+                    if n > 0:
+                        return 1
+
+                def b(n: int) -> int:
+                    if n > 0:
+                        return 1
+                    else:
+                        return 2
+
+                def c() -> int:
+                    while True:
+                        return 1
+
+                def d() -> int:
+                    while True:
+                        break
+
+                def e(n: int) -> None:
+                    if n > 0:
+                        return
+                """));
+    }
+
     @Test
     void expressionsHaveTypes() {
         var parsed = ScriptParser.parse(PRELUDE + """
