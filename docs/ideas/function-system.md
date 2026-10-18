@@ -198,6 +198,13 @@ How it could work (assistant proposal):
   pause in typing, on switching file and on closing the screen, carrying the version the edit was based on; opening a
   file whose local copy holds edits that never reached the server uploads them if the server's version is still the
   one they were based on, otherwise opens the server's version and keeps the local edits beside it as a copy.
+- **Editing in an outside editor** (user, 2026-10-18): while the Automation window is open in game, the player can
+  edit the same local files in their own editor (VS Code or any other), and the changes reach the game and the
+  server as if typed in game. Assistant proposal: the client watches the local folder while the window is open; a
+  change to a file open in a tab reloads that tab (the graph keeps its layout through the reconciler) and uploads
+  under the same rules; the in-game editor and the outside editor write the same file, so the last write wins. A file
+  created in the folder shows in the program list and uploads once opened. The subset stays valid Python, so outside
+  editors highlight it (with the file type set to Python for `.ae2f`).
 - **Saving is automatic and silent** (user, 2026-10-18): no save button and no sync indicator ("saving…", "saved",
   pending marks). A file with errors is still saved as a draft, so nothing is lost; devices only receive a version
   through Push, and only a file that checks clean can be pushed (proposal).
