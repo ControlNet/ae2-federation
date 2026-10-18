@@ -19,24 +19,24 @@ final class ScriptTest {
     static final String SAMPLE = """
             # Keep the workshop stocked.
             def _low(name: Item, min: int) -> bool:
-                return ae2.stock(name) < min
+                return ae2.amount(name) < min
 
-            def refill(name: Item, min: int) -> None:
+            def refill(name: Item, min: int, lamp: Interface) -> None:
                 \"""Craft more when the stock runs low.\"""
                 if _low(name, min):
-                    ae2.craft(name, min - ae2.stock(name))
-                    mc.redstone(15)
+                    ae2.craft(name, min - ae2.amount(name))
+                    mc.set_redstone(lamp, 15)
                 else:
-                    mc.redstone(0)
+                    mc.set_redstone(lamp, 0)
 
             def low_iron_alarm() -> None:
                 iron: Item = "minecraft:iron_ingot"
-                now = ae2.stock(iron)
+                now = ae2.amount(iron)
                 if now < 64:
                     ae2.craft(iron, 64 - now)
-                    mc.redstone(15)
+                    mc.set_redstone("north_gate", 15)
                 else:
-                    mc.redstone(0)
+                    mc.set_redstone("north_gate", 0)
             """;
 
     /** Loops, every operator, literals of every kind, and comments in every place they can belong. */
@@ -48,16 +48,16 @@ final class ScriptTest {
                 for item in items:  # in list order
                     if not ae2.craftable(item):
                         break
-                    elif ae2.stock(item) >= each:
+                    elif ae2.amount(item) >= each:
                         continue
                     # one request per item
-                    ae2.craft(item, each - ae2.stock(item))
+                    ae2.craft(item, each - ae2.amount(item))
                     done += 1
                 return done
 
             def wait_for_power(limit: float) -> None:
                 ticks = 0
-                while ae2.stored_power() < limit * 0.5 and ticks % 20 != 0 or ticks // 2 > 100:
+                while ae2.energy() < limit * 0.5 and ticks % 20 != 0 or ticks // 2 > 100:
                     ticks = ticks + 1
                     mc.wait(1)
                 else_value: bool = False

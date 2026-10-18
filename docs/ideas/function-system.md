@@ -118,6 +118,9 @@ Details (assistant proposal):
 - **Other key types.** In a `Resource` place a bare ID means an item; another type is named with a prefix:
   `"fluid:minecraft:water"`, and for addon types their key type ID or a short name the addon registers. Completion
   inserts the right form, so players rarely type a prefix.
+  Superseded (2026-10-18, standard library round 1, question 3): no prefixes. A bare ID in a `Resource` place names
+  whatever kind it is; an ID that is several kinds at once (rare) is a check error suggesting an `Item` or `Fluid`
+  annotation.
 - **Literals only.** A computed `str` (joined at run time) is not turned into an item silently; an explicit
   conversion is needed, so every resource error shows up while editing.
 - **Locals** (user, 2026-10-18). `iron = "minecraft:iron_ingot"` alone is a `str`; `iron: Item =
