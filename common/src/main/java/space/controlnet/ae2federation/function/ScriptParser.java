@@ -32,6 +32,8 @@ public final class ScriptParser {
     private final Ids ids = new Ids("n");
     private final List<String> pending = new ArrayList<>();
     private int pos;
+    /** How many loops the statement being parsed is inside. */
+    private int loops;
 
     private ScriptParser(List<Token> tokens, List<ScriptError> errors) {
         this.tokens = tokens;
@@ -361,11 +363,17 @@ public final class ScriptParser {
                     return new Stmt.Return(id(token), new Notes(above, endLine()), value);
                 }
                 case "break": {
+                    if (loops == 0) {
+                        throw fail(token, "'break' outside loop");
+                    }
                     var above = takePending();
                     advance();
                     return new Stmt.Break(id(token), new Notes(above, endLine()));
                 }
                 case "continue": {
+                    if (loops == 0) {
+                        throw fail(token, "'continue' not properly in loop");
+                    }
                     var above = takePending();
                     advance();
                     return new Stmt.Continue(id(token), new Notes(above, endLine()));
@@ -482,7 +490,7 @@ public final class ScriptParser {
         var condition = expr();
         expect(":");
         var end = endComment();
-        var body = block("while");
+        var body = loopBody("while");
         rejectLoopElse();
         return new Stmt.While(id(token), new Notes(above, end), condition, body);
     }
@@ -501,9 +509,18 @@ public final class ScriptParser {
         var iterable = expr();
         expect(":");
         var end = endComment();
-        var body = block("for");
+        var body = loopBody("for");
         rejectLoopElse();
         return new Stmt.For(id(token), new Notes(above, end), variable.text(), iterable, body);
+    }
+
+    private List<Stmt> loopBody(String keyword) {
+        loops++;
+        try {
+            return block(keyword);
+        } finally {
+            loops--;
+        }
     }
 
     private void rejectLoopElse() {

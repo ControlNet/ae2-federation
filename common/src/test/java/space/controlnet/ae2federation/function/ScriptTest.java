@@ -429,7 +429,9 @@ final class ScriptTest {
                 Arguments.of("def f(x: int = 1, y: int) -> None:\n    pass\n", 1,
                         "parameter without a default follows parameter with a default"),
                 Arguments.of(body("f(x=1, 2)"), 2, "positional argument follows keyword argument"),
-                Arguments.of(body("f(x=1, x=2)"), 2, "keyword argument repeated: x"));
+                Arguments.of(body("f(x=1, x=2)"), 2, "keyword argument repeated: x"),
+                Arguments.of(body("break"), 2, "'break' outside loop"),
+                Arguments.of(body("if x:\n        continue"), 3, "'continue' not properly in loop"));
     }
 
     @ParameterizedTest
