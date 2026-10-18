@@ -84,7 +84,9 @@ This is explicit on-demand reload, not a background filesystem watcher.
 - Read `.png.mcmeta` frame sequences, per-frame durations, frame dimensions, and RGB
   interpolation. Minecraft keeps the current frame's alpha during interpolation.
 - Resolve AE2 parent models and textures from the exact `ae2_version` in
-  `gradle.properties`, using its local Gradle cache. If absent, supply a resource jar:
+  `gradle.properties`, and vanilla ones such as `minecraft:block/cube` from the Minecraft client jar of its
+  `minecraft_version` that NeoForm caches (`~/.gradle/caches/neoformruntime/artifacts/minecraft_<version>_client.jar`),
+  both found in the local Gradle cache after a build. If absent, supply a resource jar:
 
 ```sh
 blender --background --factory-startup --python-exit-code 1 \
@@ -452,14 +454,14 @@ with two sheaths of 8 sides. Light outside the glass would fall behind the rails
 python3 -m unittest test_cable_beams    # from tools/blender
 python3 tools/blender/export_cable.py --output tools/blender/build/cable-r/cable.json
 blender --background --factory-startup --python-exit-code 1 --python tools/blender/build_scene.py -- \
-  --output tools/blender/build/cable-r --resource-pack /path/to/minecraft-1.21.1-client.jar
+  --output tools/blender/build/cable-r
 blender --background tools/blender/build/cable-r/federation.blend --python-exit-code 1 \
   --python tools/blender/render_cable_beams.py -- --animate
 python3 tools/blender/compose_cable_beams.py
 ```
 
-The vanilla client jar supplies `minecraft:block/cube` and the like, which some block models now inherit; NeoForm's
-cache keeps one as `minecraft_1.21.1_client.jar`. Expected: 5 tests pass, `FEDERATION_IMPORT_OK`,
+The cached vanilla client jar supplies `minecraft:block/cube` and the like, which some block models now inherit.
+Expected: 5 tests pass, `FEDERATION_IMPORT_OK`,
 `CABLE_BEAMS_OK: 32 stills, 4 loops; assets unchanged`, `CABLE_BEAM_MEDIA_OK`. Output in the repo's ignored
 `build/cable-beam-concepts/`: `sheet-concepts-{medium,overload}-{level,close}.png`, `sheet-<concept>-loads.png` (0,
 60, 100, 125%), a GIF loop of each concept and `all-concepts-loop.gif` / `-x4.mp4` with all four at once.
