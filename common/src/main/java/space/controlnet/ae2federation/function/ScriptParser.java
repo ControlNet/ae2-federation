@@ -115,6 +115,9 @@ public final class ScriptParser {
                 throw fail(token, "'/' in parameters is not supported");
             }
             var paramName = name("a parameter name");
+            if (params.stream().anyMatch(p -> p.name().equals(paramName.text()))) {
+                throw fail(paramName, "duplicate argument '" + paramName.text() + "' in function definition");
+            }
             if (!checkOp(":")) {
                 throw fail(paramName, "parameter '" + paramName.text() + "' needs a type hint, as in "
                         + paramName.text() + ": int");
