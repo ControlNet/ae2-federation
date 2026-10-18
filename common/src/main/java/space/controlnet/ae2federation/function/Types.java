@@ -103,6 +103,10 @@ final class Types {
         if (target.name().equals("Resource") && (value.name().equals("Item") || value.name().equals("Fluid"))) {
             return true;
         }
+        // An interface is a block: the interface's own block, as in mc.redstone(port) (user, 2026-10-18).
+        if (target.name().equals("Block") && value.name().equals("Interface")) {
+            return true;
+        }
         if (target.equals(STR) && isTypedString(value)) {
             return true;
         }

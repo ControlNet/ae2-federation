@@ -72,6 +72,25 @@ final class CheckerTest {
         }
     }
 
+    @Test
+    void anInterfaceIsABlockButABlockIsNoInterface() {
+        assertEquals(List.of(), problems("""
+                def h(port: Interface, b: Block) -> None:
+                    level = mc.redstone(port)
+                    ahead = mc.redstone(ae2f.select(port))
+                    name = mc.block_id(port)
+                    age: Optional[str] = mc.state(b, "age")
+                    ripe = int(mc.state(b, "age")) == 7
+                    made: list[Resource] = ae2.patterns()
+                    mc.set_redstone(port, 15)
+                """));
+        assertEquals(List.of("2: argument 'interface' of mc.set_redstone() must be Interface, not Block"),
+                problems("""
+                        def h(b: Block) -> None:
+                            mc.set_redstone(b, 15)
+                        """));
+    }
+
     static Stream<Arguments> rules() {
         return Stream.of(
                 // names

@@ -16,7 +16,8 @@ final class StandardLibraryTest {
                 signatures.stream().map(Signature::result)).toList();
         for (var type : types) {
             var inner = type.args().isEmpty() ? type : type.args().get(0);
-            assertTrue(Completion.TYPES.contains(type.name()), type.toString());
+            // Optional wraps a type, as list does; the checker knows it apart from the plain type names.
+            assertTrue(Completion.TYPES.contains(type.name()) || type.name().equals("Optional"), type.toString());
             assertTrue(Completion.TYPES.contains(inner.name()), type.toString());
         }
     }

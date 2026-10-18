@@ -16,6 +16,9 @@ public final class Evaluator {
         /**
          * {@code namespace.name(args)}: arguments in parameter order with defaults filled in, already checked
          * against the signature's ranges and for {@code None}. Throws {@link RunError} for a call the game refuses.
+         * An interface is a block, so a {@code Block} argument is either a block the host made or an interface's ID
+         * or alias (a {@code String}), meaning the interface's own block; where the interface's own block means
+         * nothing (it holds nothing and must not break itself), the call does nothing and gives False or 0.
          */
         Object call(String namespace, String name, List<Object> args);
     }

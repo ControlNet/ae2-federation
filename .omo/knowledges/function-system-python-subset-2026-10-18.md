@@ -172,3 +172,11 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
 - Line starts for offsets must break lines as the lexer does (CRLF as one break, lone CR as a break).
 - A bug the mutation tests found: comparing a `FunctionDef` from one parse with one from another parse with `==`
   is always false; compare names (or the records with `equals`).
+
+## Standard library round 4
+
+- `Interface` is a subtype of `Block` in `Types.assignable` (one direction only): `mc.redstone(port)` reads what
+  the interface receives, `mc.redstone(ae2f.select(port))` the block in front. The host gets the interface's
+  ID/alias string where a `Block` is expected and does nothing (False/0) where the interface means nothing.
+- `Optional[...]` in a signature is not a `Completion.TYPES` name; the checker and
+  `StandardLibraryTest.everyTypeInASignatureIsKnown` accept it as a wrapper, like `list`.

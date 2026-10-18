@@ -515,6 +515,7 @@ ae2.amount(resource, network=None) -> int
 ae2.storage(network=None) -> list[Stack]
 ae2.craftable(resource, network=None) -> bool
 ae2.crafting(resource, network=None) -> int
+ae2.patterns(network=None) -> list[Resource]
 ae2.craft(resource, amount, network=None) -> bool            # action
 ae2.cancel(resource, network=None) -> bool                   # action
 ae2.import_from(block, resource, amount, network=None) -> bool  # action
@@ -533,7 +534,8 @@ mc.move(source, target, resource, amount) -> bool    # action
 mc.amount(block, resource) -> int
 mc.storage(block) -> list[Stack]
 mc.block_id(block) -> str
-mc.redstone(block) -> int
+mc.state(block, property) -> Optional[str]
+mc.redstone(block) -> int                            # an Interface is a Block
 mc.set_redstone(interface, level) -> bool            # action
 mc.break_block(block) -> bool                        # action
 mc.place_block(block, item) -> bool                  # action
@@ -576,6 +578,11 @@ properties with values (a crop's `age` 0-7, a furnace's `lit`, a lever's `powere
 each placed block as one of those combinations. Every mod's blocks use the same system, so one generic reader
 covers all of them. What it does not cover is data a mod keeps in its block entity (a machine's progress, its
 energy, its contents); there is no common way to read that.
+
+Decided (user, 2026-10-18): 2, `Interface` is a subtype of `Block` (`Types.assignable`; the reverse is still an
+error, so `mc.set_redstone` keeps asking for the interface); 3, both added: `mc.state(block, property) ->
+Optional[str]` and `ae2.patterns(network=None) -> list[Resource]`. The listing above shows the library with these
+applied. Round 4 is closed.
 
 ## A smart script editor (user requirement 2026-10-18)
 
