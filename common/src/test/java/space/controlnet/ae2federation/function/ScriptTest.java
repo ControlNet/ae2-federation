@@ -62,7 +62,7 @@ final class ScriptTest {
                     mc.wait(1)
                 else_value: bool = False
                 names: list[str] = ["a", "it's \\"quoted\\"", "tab\\there"]
-                nothing = None
+                nothing: Optional[int] = None
                 if -ticks < -(1 + 2) * 3 - (4 - 5):
                     pass
                 # before else

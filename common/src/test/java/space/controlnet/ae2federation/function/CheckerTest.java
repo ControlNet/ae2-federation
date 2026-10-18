@@ -117,7 +117,9 @@ final class CheckerTest {
                 Arguments.of("y = n < s", 1, "'<' not supported between instances of 'int' and 'str'"),
                 Arguments.of("y = n in n", 1, "argument of type 'int' is not iterable"),
                 Arguments.of("y = n in s", 1, "'in <string>' requires string as left operand, not int"),
-                Arguments.of("y = n and s", 1, "'and' needs both sides of one type, here int and str"),
+                Arguments.of("y = n and s", 1, "'and' needs bool on both sides, here int and str; compare first, as in n > 0"),
+                Arguments.of("y = n > 0 or s", 1, "'or' needs bool on both sides, here bool and str; compare first, as in n > 0"),
+                Arguments.of("y = None", 1, "y cannot start as None; give it a type, as in y: Optional[int] = None"),
                 Arguments.of("y = -s", 1, "bad operand type for unary -: 'str'"),
                 Arguments.of("n += 0.5", 1, "n is int; it cannot hold float"),
                 Arguments.of("for c in n:\n        pass", 1, "'int' object is not iterable"),
@@ -231,12 +233,12 @@ final class CheckerTest {
     }
 
     @Test
-    void aLocalFirstAssignedNoneTakesTheTypeAssignedNext() {
+    void aLocalStartingAsNoneNeedsItsType() {
         var result = check(PRELUDE + """
-                    best = None
+                    best: Optional[int] = None
                     for x in xs:
                         best = x
-                    y = best + 1
+                    ok = n > 0 and best is not None
                 """);
         assertEquals(List.of(), result.problems());
     }

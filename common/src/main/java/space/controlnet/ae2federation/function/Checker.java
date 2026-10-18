@@ -80,15 +80,8 @@ public final class Checker {
     private final Map<String, Local> locals = new HashMap<>();
     private final Set<String> assignedInFunction = new HashSet<>();
 
-    /** A local variable: its type, and whether it has only held {@code None} so far. */
-    private static final class Local {
-        TypeRef type;
-        boolean onlyNone;
-
-        Local(TypeRef type, boolean onlyNone) {
-            this.type = type;
-            this.onlyNone = onlyNone;
-        }
+    /** A local variable and its type, fixed by its first assignment. */
+    private record Local(TypeRef type) {
     }
 
     /** A record type's fields, with types as seen from this file. */
@@ -182,7 +175,7 @@ public final class Checker {
                     type = Types.optional(type);
                 }
             }
-            locals.put(param.name(), new Local(type, false));
+            locals.put(param.name(), new Local(type));
         }
         currentResult = annotation(function.result(), function.id());
         collectAssigned(function.body());
@@ -303,15 +296,15 @@ public final class Checker {
             case Expr.Name n -> {
                 var annotated = s.type() == null ? null : annotation(s.type(), s.id());
                 var local = locals.get(n.name());
-                var expected = annotated != null ? annotated : local == null || local.onlyNone ? null : local.type;
+                var expected = annotated != null ? annotated : local == null ? null : local.type();
                 var value = expr(s.value(), expected);
                 if (s.type() != null && annotated == null) {
                     declare(n.name(), null, s.id());
                     return;
                 }
                 if (annotated != null) {
-                    if (local != null && !local.onlyNone && local.type != null && !local.type.equals(annotated)) {
-                        problem(s.id(), n.name() + " is " + local.type + "; it cannot be annotated " + annotated);
+                    if (local != null && local.type() != null && !local.type().equals(annotated)) {
+                        problem(s.id(), n.name() + " is " + local.type() + "; it cannot be annotated " + annotated);
                         return;
                     }
                     // An annotation turns a str into a typed string; the value is checked when the program runs.
@@ -319,7 +312,7 @@ public final class Checker {
                     if (!converts && !Types.assignable(annotated, value)) {
                         problem(s.id(), n.name() + " is " + annotated + "; it cannot hold " + value);
                     }
-                    locals.put(n.name(), new Local(annotated, false));
+                    locals.put(n.name(), new Local(annotated));
                     return;
                 }
                 if (local == null && Types.EMPTY_LIST.equals(value)) {
@@ -367,25 +360,22 @@ public final class Checker {
     }
 
     /**
-     * Gives a local its first type, or checks a later value against it. A local that has only held {@code None}
-     * takes {@code Optional} of the type assigned next, so {@code best = None} then {@code best = x} works.
+     * Gives a local its first type, or checks a later value against it. A local may not start as {@code None}
+     * without an annotation (user decision, stricter than Python): its type would only be known later.
      */
     private void declare(String name, TypeRef value, String node) {
         var local = locals.get(name);
         if (local == null) {
-            boolean none = Types.NONE.equals(value);
-            locals.put(name, new Local(value, none));
-            return;
-        }
-        if (local.onlyNone) {
-            if (value != null && !Types.NONE.equals(value)) {
-                local.type = Types.optional(value);
-                local.onlyNone = false;
+            if (Types.NONE.equals(value)) {
+                problem(node, name + " cannot start as None; give it a type, as in " + name
+                        + ": Optional[int] = None");
+                value = null;
             }
+            locals.put(name, new Local(value));
             return;
         }
-        if (local.type != null && !Types.assignable(local.type, value)) {
-            problem(node, name + " is " + local.type + "; it cannot hold " + value);
+        if (local.type() != null && !Types.assignable(local.type(), value)) {
+            problem(node, name + " is " + local.type() + "; it cannot hold " + value);
         }
     }
 
@@ -601,7 +591,7 @@ public final class Checker {
     private TypeRef name(Expr.Name n) {
         var local = locals.get(n.name());
         if (local != null) {
-            return local.onlyNone ? Types.NONE : local.type;
+            return local.type();
         }
         if (assignedInFunction.contains(n.name())) {
             return null;
@@ -1139,12 +1129,12 @@ public final class Checker {
         var right = Types.unwrap(rightType);
         switch (op) {
             case AND, OR -> {
-                var common = Types.common(leftType, rightType);
-                if (common == null) {
-                    problem(node, "'" + op.symbol + "' needs both sides of one type, here " + leftType + " and "
-                            + rightType);
+                // Stricter than Python (user decision): both sides are bool, so the result is a bool too.
+                if (!Types.BOOL.equals(leftType) || !Types.BOOL.equals(rightType)) {
+                    problem(node, "'" + op.symbol + "' needs bool on both sides, here " + leftType + " and "
+                            + rightType + "; compare first, as in n > 0");
                 }
-                return common;
+                return Types.BOOL;
             }
             case EQ, NE, IS, IS_NOT -> {
                 return Types.BOOL;
