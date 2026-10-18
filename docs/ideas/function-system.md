@@ -139,6 +139,23 @@ Namespaces become the graph palette's categories, and addon mods can add
 their own (`mekanism....`) through the same descriptors, as the mod already handles addon resource types without
 AE2-only lists.
 
+**Python's built-ins at the top level** (user, 2026-10-18): functions without a namespace are Python's own, with
+Python's names and meaning (`str()`, `int()`, `range()` ...); everything about the game stays in `ae2`, `ae2f` and
+`mc`. Assistant proposals:
+
+- A first set: `int`, `float`, `str`, `bool` (conversions), `range` (1 to 3 arguments), `len`, `abs`, `min`, `max`,
+  `sum`, `round`, `any`, `all`, `print`. Left out while the subset has no tuples: `enumerate`, `zip`, `dict`;
+  `isinstance` and `type` are not needed with static types.
+- Results behave exactly as in Python: `int(3.7)` is 3, `round(2.5)` is 2, `-7 // 2` is -4, `-7 % 2` is 1, and a
+  failing conversion (`int("abc")`) stops the run with Python's message. B4 can test this against CPython, as B1 tests
+  syntax against CPython's parser.
+- Typed for the checker: `range(...)` is iterable as `list[int]` but produced lazily, so `range(10**9)` costs nothing
+  until used; `min`/`max`/`sum` take a list or two numbers.
+- `print` writes to the installation's run log in the Automation tab (for debugging); it acts on nothing, so it is
+  not an effect and takes no tick.
+- List and string methods (`xs.append(x)`, `s.startswith(p)`) parse already as calls; supporting them is a later
+  step with the type checker.
+
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
 the real list.
