@@ -121,3 +121,10 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   augmented read after the call 1. A mutation run also exposed the `Map.of` field-order flake above.
 - **Timing (test JVM, slow):** sorting 10,000 strings about 5 ms, 100,000 about 60 ms; plain Java is close.
 
+## Completion of members (after B4)
+
+- After a `.`, `Completion.receiver` walks back over the tokens of a postfix chain (names, strings, `(...)`/`[...]`
+  groups applied to what precedes them, joined by dots; Python keywords stop it), the text is reparsed as
+  `completion_value = <text>` and typed by `infer`. A single non-variable name keeps the namespace/file path.
+- `Checker.substitute` and the method tables are shared with completion so signatures shown match what is checked.
+
