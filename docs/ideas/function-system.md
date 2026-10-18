@@ -288,14 +288,14 @@ ae2.craftable(resource, network=None) -> bool  # a pattern exists
 ae2.crafting(resource, network=None) -> int  # amount on its way in running jobs
 ae2.craft(resource, amount: int, network=None) -> bool  # start a job
 ae2.cancel(resource, network=None) -> bool  # cancel the jobs making it
-ae2.import_from(resource, amount: int, network=None) -> bool  # into the network
-ae2.export_to(resource, amount: int, network=None) -> bool  # out of the network
+ae2.import_from(block, resource, amount: int, network=None) -> bool  # from the block into the network
+ae2.export_to(block, resource, amount: int, network=None) -> bool  # from the network into the block
 ae2.free_cpus(network=None) -> int  # idle crafting CPUs
 ae2.energy(network=None) -> int  # AE stored, rounded down
 ```
 
-Open: `import_from`/`export_to` as written take no block, so where the resource comes from or goes to is not
-named (asked the user).
+`import_from`/`export_to` take the selected block first (user, 2026-10-18). The four open questions below were
+adopted as proposed, the user raising no objection when asked twice (2026-10-18).
 
 Open questions in this round:
 
