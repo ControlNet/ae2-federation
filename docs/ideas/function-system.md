@@ -125,6 +125,14 @@ What completion should cover (assistant proposal):
 This puts a demand on the bottom layer: completion runs on code that is half typed, so the parser must recover from
 errors and still tell the cursor's context and expected type.
 
+## Automation tab (user direction 2026-10-18)
+
+The Federation domain GUI gains a fourth tab on its left strip, Automation, where players edit programs and install
+them on a computing device. A first impression (assistant proposal, sample data) is on the GUI design canvas, row
+"自动化页签": a program list (files and their functions) and the domain's computing devices with their compute and
+bandwidth use and installed functions on the left; the editor with file tabs and a Script / Graph switch on the
+right; an install dialog with the function's parameters, a trigger and a device.
+
 ## Open: actions as calls or as return values (raised by the user 2026-10-18)
 
 Should a function perform actions by calling them in its body, or return the actions as its value and leave
