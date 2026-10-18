@@ -194,6 +194,13 @@ Assistant proposal:
   - An entry's parameters are filled in when it is installed or bound (an item picker for an `Item`, a number field
     for an `int`), so `keep_stock(item: Item, min: int)` can be installed many times with different arguments.
   - Everything an entry calls comes along with it.
+  - Reconsidered (user asked how much `@policy` is worth, 2026-10-18; assistant view): little. Whether a function
+    fits a policy slot already follows from inference (reads only, never waits, returns `bool` or a filter), and the
+    run-time guard holds whatever the mark says. What a mark adds is a shorter picker list and an early error; both
+    can come without it: pickers list the public functions that fit, grouped by file and searchable (others greyed
+    with the reason on request), and the editor knows where a function is bound or installed, so it warns while
+    editing ("bound to a policy on Domain A; emitting redstone makes it unfit"). The same holds for `@automation`.
+    Proposal: no entry decorators; every public function is a candidate, `_name` never is. Open.
   - One `_helper` serves any number of entries in its file: privacy is per file, not per caller. Entries in
     different files that share helpers either use a public helper file, or, if wanted later, folders as packages: a
     file named `_common` is callable only from files in its own folder (Python's own convention for internal
