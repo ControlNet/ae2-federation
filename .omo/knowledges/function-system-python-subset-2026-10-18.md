@@ -146,3 +146,15 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   in `positions`.
 - Mutation script for edits: scratchpad `mut/edits.py` pattern (exact-string replacements, run one test class,
   restore the file).
+
+## B5: layout board from real canvases
+
+- The layout board (design canvas row "图的自动布局") was generated, not hand-placed: a scratch Java `DumpCanvas`
+  (compiled against `neoforge-1.21.1/build/classes/java/main`; the function package needs no game classes) checks
+  sample scripts with a board-only stand-in catalog and prints each `Canvas` as JSON; a stdlib Python script lays
+  out both conventions and writes static `.dc.html` matching the `AutoGraph` board's node style (VT323 10 px ≈ 4.2
+  GUI px per character, header 11 px, rows 12 px, scale 1.75).
+- Headless Chrome `--headless=new` cuts about 90 px off the bottom of `--window-size`; add that much when rendering
+  a board to check it.
+- Problems the renders caught: exec wires of several arms stacked on one vertical line (A: start arms further right;
+  B: one lane per output, routed right of every node in between), the variables strip wider than the graph.
