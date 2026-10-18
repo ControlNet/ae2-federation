@@ -975,6 +975,12 @@ Decided (user, 2026-10-18):
 - **Identity and alias.** Every interface gets an ID automatically, so a program can always name it. Right-clicking it
   with a wrench turns it; any other right-click opens its GUI, where the player sets an alias.
 
+Changed (user, 2026-10-18, building H1): the interface connects **only ME Federation Cable**, on its five non-front
+faces, and takes **one capacity unit** of its domain as an Endpoint does; it is **not drawn in the topology view**.
+Recipe (user): shapeless, Nexus Core + ME Interface + Redstone (the Endpoint is Nexus Core + ME Interface). Assistant
+choices: its operating power follows the other devices (2 AE/t at multiplier 1); its ID is drawn by the server and
+kept in a server-wide index, and a copied interface (same ID at another position) draws a new one.
+
 Assistant proposals, to discuss:
 
 - **Reach argument details.** Left out, it is the adjacent block (1); the checker allows that optional trailing
