@@ -50,3 +50,28 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   it lex again with recovery from that bracket's offset (`recoverFrom`), ending it at the next line indented no
   further. Valid Python is never affected (user: syntax must follow Python). Message as CPython's: "'(' was never
   closed".
+
+## B1 follow-up: Python additions
+
+- **One call shape.** `ae2.craft(x)`, `iron_tools.refill(x)` and `xs.append(x)` all look like `NAME . NAME (`, so the
+  parser cannot tell a namespace from a variable. `Expr.Call` carries a receiver expression; completion (and later the
+  checker) resolves it, a local variable shadowing a namespace or file of the same name, as in Python.
+- **Postfix loop.** `postfix()` takes an atom and then any mix of `.name`, `.name(...)`, `[i]` and `[a:b:c]`; every
+  node in a chain takes the position of the chain's first token, as CPython's `col_offset` does. Calling a call's
+  result or an item (`f(x)(1)`, `xs[0]()`) stays an error: functions are not values.
+- **Printer:** postfix nodes have precedence 8, so an operator operand gets parentheses (`(-x).real`); an int literal
+  receiver is always parenthesised, since `1.real` lexes as a float.
+- **`not in`** is two tokens; `comparisonOperator()` peeks both and `comparison()` advances twice.
+- **Classes** are top-level `Definition`s beside functions (`Program.definitions()`, with `functions()`/`classes()`
+  views), so files with both round-trip in order. A class body allows a docstring, `name: type [= default]` and
+  `pass`; comments above a `pass` move on to the next field. A required field after one with a default gets the
+  dataclass message ("non-default argument 'y' follows default argument"). Type hints may be dotted
+  (`iron_tools.Order`); `TypeRef.name` then holds the dotted text.
+- **Completion and classes:** `enclosing()` returns no function when the last definition before the cursor is a
+  class; classes are offered as types and constructors (`Signature.of(ClassDef)`), and a field read takes the
+  field's type.
+- **CPython check uses `compile()`, not `ast.parse()`:** some errors (a repeated keyword argument) are raised only by
+  the compiler. `pythonSyntaxErrors()` lists mistakes CPython rejects too, and the test asserts CPython's message
+  matches ours.
+- **Java text blocks inside a Python generator script:** writing `\"""` from a Python `'''...'''` string drops the
+  backslash; write `\\"""` there.
