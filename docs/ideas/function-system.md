@@ -1,8 +1,8 @@
 # Function system architecture
 
 Discussion date: 2026-10-18. [Idea index](README.md).
-Status: layering and vocabulary proposed by the assistant, not yet accepted; the first batch's scope is the user's
-decision (2026-10-18). Phase 0 spike on branch `feature/function-system`, see the
+Status: layering and vocabulary proposed by the assistant, not yet accepted; the first batch's scope and the script
+language are the user's decisions (2026-10-18); the overall design is being revisited. Phase 0 spike on branch `feature/function-system`, see the
 [plan](../../.omo/plans/function-system.md).
 
 This page holds the architecture shared by [custom policies](custom-policies.md) and
@@ -18,6 +18,25 @@ Everything above it waits until that layer is solid.
 Earlier user decisions this page builds on: one general function system edited in the automation GUI, Policy as a
 specialised use of it, interchangeable graph and script editors, redstone output as an automation action, and the
 computing device's role (see the two idea pages).
+
+## Script language (user decisions 2026-10-18)
+
+- **A subset of Python.** The interpreter is not expected to cover all of Python; scripts in the subset should stay
+  valid Python syntax, so outside editors can highlight and format them. Consequence: resources are written as calls,
+  for example `item("minecraft:iron_ingot")`, not with the spike's `@minecraft:iron_ingot`.
+- **Numbers as in Python:** `int` (64-bit, matching AE2 amounts) and `float`; `/` gives a float, `//` an int, and an
+  int widens to a float where a float is expected.
+- **Loops are in:** `for x in xs` and `while`. Both are easy to draw as graph nodes (a loop node with a body chain and
+  a next chain; for-each also gives the current element as a value output).
+
+Consequences of loops (assistant notes, not decisions): a run's length is no longer bounded by the program's size,
+so the spike's static step bound goes; every run needs a step budget at run time. A query that runs out of budget
+needs a defined answer (unavailable is the obvious candidate). For actions, a budget per tick that lets a long run
+continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
+computing device's CU.
+
+Still open, to be revisited with the overall design (user, 2026-10-18): how queries and actions are told apart, or
+whether that split stays at all.
 
 ## Layers (assistant proposal)
 
@@ -65,7 +84,7 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
 
 | # | Question | Assistant proposal |
 |---|---|---|
-| 1 | Script language: the custom Lua-like subset from the spike, or embedded Lua? | The subset: it maps one to one onto the graph, has no loops so a run's steps are bounded in advance, and needs no sandbox. |
+| 1 | ~~Script language~~ | Decided: a Python subset (above). |
 | 2 | Draft policy: may a script with a syntax error be shown as a graph? | No; keep the text and show the error line until it parses (see Drafts). |
 | 3 | Where programs are stored: an item that can be copied and handed over (like a pattern or a disk), or a library on the network? | Not urgent; it shapes layer 3's format. |
 

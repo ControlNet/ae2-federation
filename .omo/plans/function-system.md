@@ -104,7 +104,7 @@ query/action split; those parts are this design's own.
 | # | Question | Proposal |
 |---|---|---|
 | Q1 | First use: a storage policy's filter list? | Yes: a filter-returning query plugs into the existing `PolicyFilter` and shows the whole path (edit, check, cache, epoch) with the least new gameplay. |
-| Q2 | Script language: this custom Lua-like subset, or embedded Lua (LuaJ/Cobalt)? | The subset: it maps one to one onto the graph, has no loops, so steps are bounded statically, and needs no sandboxing. Embedded Lua would need a translation layer for the graph and an instruction-count sandbox. |
+| Q2 | Script language | Decided (user, 2026-10-18): a Python subset with `int`/`float` and loops (`for x in xs`, `while`); see the [idea page](../../docs/ideas/function-system.md). The spike's Lua-like syntax and its static step bound are superseded. |
 | Q3 | First action: redstone output? | Yes: owner-confirmed as a direction, needs no item movement, easy to see in game. |
 
 Also open: what a policy does with an unavailable answer; sampling period; trigger kinds; where functions are stored
