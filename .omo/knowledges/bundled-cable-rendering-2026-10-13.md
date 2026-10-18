@@ -24,6 +24,14 @@ a beam per cell), 1a34a908 (rails open at joints), then the guide page `bundled-
   into rectangles; each quad samples its texel's centre so mipmaps never bleed.
 - Quads: NeoForge `QuadBakingVertexConsumer`, counter-clockwise seen from outside (translucent culls), shade and AO on.
 - Concave corners use the straight-rail colours, not the artist's `core_connected_4` corner, to avoid shade seams.
+- End caps (2026-10-18): a branch carrying the cap on opens that edge only between the branch's walls, i.e. 2..14 at
+  the cross-section's ends (`Opening` bounded like `joints`), not the whole edge. The rail end left outside the cap is
+  what `texel`'s Chebyshev `beyond` turns into an L; with unbounded openings, two branches leaving one end layer (a
+  2x2 cube with arms toward three sides, run = cube + one arm) left the cap's concave corner as glass. Only cap cells
+  had it; side panels were right. `BundleShellLayoutTest` checks every concave corner of that shape in all 48 axis
+  orientations and all 3 choices of run. In game: `build/bundle-bend-corner-check/`; segments were added offline to
+  `hero-world/data/ae2federation_bundled_cables.dat` (gzip NBT `data.segments[{min, max, axis}]`) with the server
+  stopped, which forms bundles without wrench clicks.
 
 ## Guide scenes with bundles
 

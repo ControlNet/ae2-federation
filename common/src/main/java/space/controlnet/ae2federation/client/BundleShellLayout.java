@@ -65,12 +65,15 @@ final class BundleShellLayout {
                 // An end that neither runs on nor joins a branch closes, with a dense arm beyond it or not.
                 if (look.open(side)) continue;
                 var across = others(normal);
-                // A branch whose last layer is this one carries the end on in its wall: no rail along that edge.
+                // A branch whose last layer is this one carries the end on in its wall: no rail along that edge, between
+                // the branch's walls, which lie where the cross-section ends. Where two such branches meet at a corner,
+                // the rails turn it.
                 var openings = new ArrayList<Opening>();
                 for (var edge : Direction.values()) {
                     if (edge.getAxis() == axis || !look.join(edge)) continue;
                     if (!(positive ? look.joinsAfter(edge) : look.joinsBefore(edge))) {
-                        openings.add(new Opening(edge, -OPEN, OPEN));
+                        var wide = span(look, third(axis, edge.getAxis()));
+                        openings.add(new Opening(edge, wide.lowClosed() ? 2 : -OPEN, wide.highClosed() ? 14 : OPEN));
                     }
                 }
                 panels.add(new Panel(side, plane, across[0], span(look, across[0]), across[1], span(look, across[1]),
