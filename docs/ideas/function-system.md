@@ -291,7 +291,7 @@ ae2.cancel(resource, network=None) -> bool  # cancel the jobs making it
 ae2.import_from(block, resource, amount: int, network=None) -> bool  # from the block into the network
 ae2.export_to(block, resource, amount: int, network=None) -> bool  # from the network into the block
 ae2.free_cpus(network=None) -> int  # idle crafting CPUs
-ae2.energy(network=None) -> int  # AE stored, rounded down
+ae2.energy(network=None) -> float  # AE stored (user: float after all)
 ```
 
 `import_from`/`export_to` take the selected block first (user, 2026-10-18). The four open questions below were
@@ -308,6 +308,24 @@ Open questions in this round:
    annotating the variable as `Item` or `Fluid`.
 4. **`cancel` by resource** cancels every job of that resource, including jobs players started. Proposal: only
    jobs started by programs.
+
+**Round 2: `ae2f`** (assistant proposals, 2026-10-18, awaiting the user). The rule model today: a rule is keyed by
+(consumer network, provider network, capability `STORAGE`/`CRAFTING`/`ME_POWER`), has a mode
+(disabled / enabled / re-export) and a filter (all / allow list / deny list of resources). New typed strings with
+completion: `Capability` (`"storage"`, `"crafting"`, `"power"`), `RuleMode` (`"off"`, `"on"`, `"reexport"`),
+`FilterMode` (`"all"`, `"allow"`, `"deny"`).
+
+```python
+ae2f.select(interface, reach: int = 1) -> Block  # decided earlier
+ae2f.networks() -> list[Network]  # networks of the domain
+ae2f.online(network) -> bool  # usable now (not paused by a merge/split/copy)
+ae2f.rule(provider, consumer, capability) -> RuleMode  # read a rule
+ae2f.set_rule(provider, consumer, capability, mode) -> bool  # same linked changes as the GUI
+ae2f.set_filter(provider, consumer, capability, mode: FilterMode, resources: list[Resource]) -> bool
+```
+
+Points for the user: argument order provider then consumer ("provider shares with consumer"); statistics reads
+(the dashboard's metrics) left out of the first version; no listing of interfaces.
 
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
