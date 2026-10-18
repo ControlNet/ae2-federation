@@ -657,6 +657,28 @@ harder than needed. Assistant review, ranked by what drives the difficulty; all 
     `unavailable` value (Phase 0): reads on an unloaded or paused network return plain values and the run log says
     why. Capability inference stays (cheap; graph colours and the tick rule need it).
 
+**User idea: compile to a graph and run the graph** (2026-10-18). Assistant assessment: yes, this is the simplest
+interpreter, and it replaces the bytecode VM of item 1, provided the executed graph is a control-flow graph in which
+every step that can take time is its own node:
+
+- **Compiling.** The program (parsed and checked) becomes, per function, a graph of exec nodes joined by `next`
+  edges, as the graph view already draws them: an assignment, a call, a branch (`if`, `while`, `for`), `return`.
+  Every call that may take time (an effect, or a call to a player function, which may loop) becomes its own exec
+  node in Python's left-to-right order, its result in a temporary; operators and built-in reads stay data inputs,
+  evaluated when their exec node runs. `if mc.move(...):` compiles to a call node then a branch node, so the
+  "effects only as statements" rule of item 1 is no longer needed; `and`/`or` around such a call compile to branches
+  (short-circuit as in Python).
+- **Running.** A run is a stack of frames, each holding its function's graph, the current node and the variables.
+  One step: run the current node, follow its `next`. Pausing is "keep the current node"; an effect pauses until the
+  next tick; the budget counts nodes. Calls push a frame, `return` pops one, so recursion needs nothing special
+  (a depth limit stops a run that goes too deep, as Python's does).
+- **Dry run for free.** Each exec node keeps the ID of the program node it came from, so the values it produces map
+  straight onto the nodes the player sees.
+- **What stays.** Parser, printer, checker and completion as built. The program tree from the script remains the
+  source; the executed graph is compiled from it (at Push) and is never edited or stored. Whether the graph the
+  player sees is drawn from the program tree or from the executed graph is an open detail; they differ only where
+  the view merges nodes (`x = call()`) or hides temporaries.
+
 Items 1 (its cost), 2, 3 and 6 touch user decisions or requests; 4, 5, 7, 8 and 10 were only ever assistant
 proposals.
 
