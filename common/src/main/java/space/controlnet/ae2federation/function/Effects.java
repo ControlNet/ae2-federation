@@ -1,68 +1,73 @@
 package space.controlnet.ae2federation.function;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Which functions act on the world. A library function says so in its signature; a player function does if it calls
- * one that does, in any file, however indirectly (recursion included). Methods, built-ins and constructors never do.
- * The graph view draws effectful calls on the exec chain, and the interpreter gives each a tick.
+ * What each function does to the game ({@link Access}), and so which ones act on the world. A library function says so
+ * in its signature; a player function does what everything it calls does, in any file, however indirectly (recursion
+ * included). Methods, built-ins and constructors do nothing. The graph view draws acting calls on the exec chain, and
+ * the interpreter gives each a tick.
  */
-record Effects(Set<String> functions, Set<String> calls) {
-    /** A function's calls, each resolved to the key of the function it calls, or {@code null} if none. */
-    private record Calls(boolean direct, Map<String, String> targets) {
+record Effects(Map<String, Map<Access, Checker.Cause>> access, Set<String> functions, Set<String> calls) {
+    /** What a call runs: a player function by key, or a library function with its access. */
+    private record Target(String function, Set<Access> access) {
     }
 
-    /** Effects of {@code program}'s functions; keys are names in it and {@code file.name} in the other files. */
+    /**
+     * Effects of {@code program}'s functions; keys are names in it and {@code file.name} in the other files. Each
+     * access of a function is traced to the first call, in evaluation order, that brings it.
+     */
     static Effects of(Program program, Workspace workspace) {
-        var functions = new HashMap<String, Calls>();
+        var functions = new HashMap<String, Map<String, Target>>();
         collect(program, null, workspace, functions);
         workspace.files().forEach((name, file) -> collect(file, name, workspace, functions));
 
-        var effectful = new HashSet<String>();
-        functions.forEach((key, calls) -> {
-            if (calls.direct()) {
-                effectful.add(key);
-            }
-        });
+        var reached = new HashMap<String, Set<Access>>();
+        functions.keySet().forEach(key -> reached.put(key, EnumSet.noneOf(Access.class)));
         boolean changed = true;
         while (changed) {
             changed = false;
             for (var entry : functions.entrySet()) {
-                if (!effectful.contains(entry.getKey())
-                        && entry.getValue().targets().values().stream().anyMatch(effectful::contains)) {
-                    effectful.add(entry.getKey());
-                    changed = true;
+                for (var target : entry.getValue().values()) {
+                    changed |= reached.get(entry.getKey()).addAll(brings(target, reached));
                 }
             }
         }
 
+        var access = new HashMap<String, Map<Access, Checker.Cause>>();
         var ownFunctions = new HashSet<String>();
         var ownCalls = new HashSet<String>();
         for (var function : program.functions()) {
-            if (effectful.contains(function.name())) {
-                ownFunctions.add(function.name());
-            }
             var calls = functions.get(function.name());
-            if (calls == null) {
-                continue;
-            }
-            calls.targets().forEach((call, target) -> {
-                if (target != null && (effectful.contains(target) || target.equals(LIBRARY_EFFECT))) {
+            var causes = new EnumMap<Access, Checker.Cause>(Access.class);
+            calls.forEach((call, target) -> {
+                var brought = brings(target, reached);
+                brought.forEach(a -> causes.putIfAbsent(a, new Checker.Cause(call, target.function())));
+                if (brought.stream().anyMatch(Access::acts)) {
                     ownCalls.add(call);
                 }
             });
+            access.putIfAbsent(function.name(), Map.copyOf(causes));
+            if (causes.keySet().stream().anyMatch(Access::acts)) {
+                ownFunctions.add(function.name());
+            }
         }
-        return new Effects(Set.copyOf(ownFunctions), Set.copyOf(ownCalls));
+        return new Effects(Map.copyOf(access), Set.copyOf(ownFunctions), Set.copyOf(ownCalls));
     }
 
-    /** Stands for "a library function that acts on the world" among call targets. */
-    private static final String LIBRARY_EFFECT = "<library effect>";
+    private static Set<Access> brings(Target target, Map<String, Set<Access>> reached) {
+        return target.function() == null ? target.access() : reached.get(target.function());
+    }
 
-    private static void collect(Program program, String fileName, Workspace workspace, Map<String, Calls> out) {
+    private static void collect(Program program, String fileName, Workspace workspace,
+            Map<String, Map<String, Target>> out) {
         var names = new HashSet<String>();
         program.functions().forEach(f -> names.add(f.name()));
         for (var function : program.functions()) {
@@ -73,36 +78,37 @@ record Effects(Set<String> functions, Set<String> calls) {
             var locals = new HashSet<String>();
             function.params().forEach(p -> locals.add(p.name()));
             locals(function.body(), locals);
-            var targets = new HashMap<String, String>();
-            boolean[] direct = {false};
+            var targets = new LinkedHashMap<String, Target>();
             calls(function.body(), call -> {
                 var target = target(call, fileName, names, locals, workspace);
-                targets.put(call.id(), target);
-                if (LIBRARY_EFFECT.equals(target)) {
-                    direct[0] = true;
+                if (target != null) {
+                    targets.put(call.id(), target);
                 }
             });
-            out.put(key, new Calls(direct[0], targets));
+            out.put(key, targets);
         }
     }
 
-    /** The key of the function a call runs; {@link #LIBRARY_EFFECT} for an effectful library function. */
-    private static String target(Expr.Call call, String fileName, Set<String> names, Set<String> locals,
+    /** What a call runs; {@code null} for a method, built-in or constructor, and for a name that is not defined. */
+    private static Target target(Expr.Call call, String fileName, Set<String> names, Set<String> locals,
             Workspace workspace) {
         if (call.receiver() == null) {
             if (locals.contains(call.name()) || !names.contains(call.name())) {
                 return null;
             }
-            return fileName == null ? call.name() : fileName + "." + call.name();
+            return new Target(fileName == null ? call.name() : fileName + "." + call.name(), Set.of());
         }
         if (!(call.receiver() instanceof Expr.Name qualifier) || locals.contains(qualifier.name())) {
             return null;
         }
         var namespace = workspace.catalog().namespaces().get(qualifier.name());
         if (namespace != null) {
-            return namespace.stream().anyMatch(s -> s.name().equals(call.name()) && s.effect()) ? LIBRARY_EFFECT : null;
+            return namespace.stream().filter(s -> s.name().equals(call.name())).findFirst()
+                    .map(s -> new Target(null, s.access())).orElse(null);
         }
-        return workspace.files().containsKey(qualifier.name()) ? qualifier.name() + "." + call.name() : null;
+        var file = workspace.files().get(qualifier.name());
+        return file != null && file.functions().stream().anyMatch(f -> f.name().equals(call.name()))
+                ? new Target(qualifier.name() + "." + call.name(), Set.of()) : null;
     }
 
     private static void locals(List<Stmt> body, Set<String> out) {
