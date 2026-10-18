@@ -429,7 +429,7 @@ Assistant proposals, to discuss:
   `mc.block_at(port) -> str`. Each effectful call is one tick, as decided. Transfer works on any AE2 key type (items,
   fluids, addon types such as Mekanism chemicals), not an item-only list.
 
-Open: the location type's name; the full list of library
+Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
 
 ## Layers (assistant proposal)
