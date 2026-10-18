@@ -200,11 +200,11 @@ rounds; nothing here is decided.
    the run with a message in the run log, as a Python exception would.
    Decided (user, 2026-10-18): this split, and every action returns a `bool`, whether it succeeded. No exception
    handling: `try`/`except`/`raise` stay out of the subset (too much for this design). Assistant
-   proposals to make that work: an action with an amount is all or nothing (it simulates first, then acts only if
-   the whole amount fits, so `True` always means "done as asked" and nothing is left half done); `ae2.craft`
+   An action with an amount does as much as it can (user, 2026-10-18): `True` if it did anything, `False` if it did
+   nothing; partial work is kept. Assistant proposals: the amount actually done is read afterwards (`mc.count`) when
+   it matters; `ae2.craft`
    returns `True` once the job has started, and progress is read with reads such as `ae2.crafting(resource) -> int`
-   (the amount on its way) instead of a job value; to move "as much as possible", a program reads first
-   (`mc.count`, and a `mc.space(block, resource) -> int`) and asks for that amount.
+   (the amount on its way) instead of a job value.
 4. **Where each function lives.** Proposal: `ae2` is what AE2 itself has, on one network or the domain (storage,
    crafting, energy, CPUs); `ae2f` is the Federation's own concepts (selecting blocks through interfaces, networks
    of the domain, policies, statistics); `mc` is the vanilla world at a selected block (inventories, redstone,
