@@ -192,6 +192,28 @@ rounds; nothing here is decided.
    of the domain, policies, statistics); `mc` is the vanilla world at a selected block (inventories, redstone,
    breaking and placing, time, waiting).
 
+**Decided: networks** (user, 2026-10-18). The computing device sits directly on Federation cable and belongs to no
+ME network, so it sees the whole domain. Every `ae2` function takes an optional network as its last parameter,
+`None` by default, meaning the whole domain; passing a network's ID narrows the call to that network. A network is
+named by an ID, as interfaces are.
+
+Assistant proposals on top:
+
+- **Network IDs.** Networks already have a stable identity (`NetworkId`, a UUID) and a name players set in the
+  topology view. In programs: a typed string `Network`, holding the name (as an alias) or a short ID derived from
+  the identity (`network-p3x9ka`, same alphabet as interface IDs); completion lists both, as for interfaces. A
+  network whose identity is paused (merged, split or copied) is not usable until it settles; a call naming it
+  returns nothing and the run log says why.
+- **Optional arguments in calls.** `ae2.stock("minecraft:iron_ingot")` for the domain and
+  `ae2.stock("minecraft:iron_ingot", "main_base")` for one network. Python would also allow
+  `network="main_base"`; supporting keyword arguments (for built-ins at least) keeps longer calls readable.
+- **Domain-wide meaning per function.** `stock`: the sum over the domain's networks. `craft`: wherever the
+  federation can craft it (as pattern projection already decides). `insert`/`extract`: through the domain's storage
+  as the federation routes it today.
+- **Policies and automation (question).** Storage and Crafting rules govern what one network shares with another.
+  Does a domain-level program obey them (it can only reach what is shared), or does it reach every network in the
+  domain directly, with the rules only applying between networks?
+
 **First draft of the lists** (types: `Resource` and `Item` are typed strings, `Block` from `ae2f.select`, `Stack` and
 `Job` records):
 
