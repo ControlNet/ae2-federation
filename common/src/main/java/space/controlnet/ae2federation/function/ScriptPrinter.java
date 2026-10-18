@@ -21,15 +21,18 @@ public final class ScriptPrinter {
 
     public static String print(Program program) {
         var printer = new ScriptPrinter();
-        var functions = program.functions();
-        for (int i = 0; i < functions.size(); i++) {
+        var definitions = program.definitions();
+        for (int i = 0; i < definitions.size(); i++) {
             if (i > 0) {
                 printer.out.append('\n');
             }
-            printer.function(functions.get(i));
+            switch (definitions.get(i)) {
+                case FunctionDef function -> printer.function(function);
+                case ClassDef record -> printer.classDef(record);
+            }
         }
         if (!program.endComments().isEmpty()) {
-            if (!functions.isEmpty()) {
+            if (!definitions.isEmpty()) {
                 printer.out.append('\n');
             }
             printer.comments(program.endComments(), 0);
@@ -48,6 +51,25 @@ public final class ScriptPrinter {
         }
         if (function.docstring() == null || !function.body().isEmpty()) {
             body(function.body(), 1);
+        }
+    }
+
+    private void classDef(ClassDef record) {
+        comments(record.notes().above(), 0);
+        out.append("class ").append(record.name()).append(':');
+        lineEnd(record.notes());
+        if (record.docstring() != null) {
+            out.append(INDENT).append(docstring(record.docstring())).append('\n');
+        } else if (record.fields().isEmpty()) {
+            out.append(INDENT).append("pass\n");
+        }
+        for (var field : record.fields()) {
+            comments(field.notes().above(), 1);
+            indent(1).append(field.name()).append(": ").append(field.type());
+            if (field.defaultValue() != null) {
+                out.append(" = ").append(expr(field.defaultValue()));
+            }
+            lineEnd(field.notes());
         }
     }
 

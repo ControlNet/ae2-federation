@@ -25,11 +25,13 @@ public final class Completion {
 
     private final Workspace workspace;
     private final List<FunctionDef> ownFunctions;
+    private final List<ClassDef> ownClasses;
     private final Map<String, TypeRef> variables = new LinkedHashMap<>();
 
-    private Completion(Workspace workspace, List<FunctionDef> ownFunctions) {
+    private Completion(Workspace workspace, Program program) {
         this.workspace = workspace;
-        this.ownFunctions = ownFunctions;
+        this.ownFunctions = program.functions();
+        this.ownClasses = program.classes();
     }
 
     /** {@code line} and {@code column} count from 1; the cursor sits before the character at that column. */
@@ -79,7 +81,7 @@ public final class Completion {
         }
 
         var parsed = ScriptParser.parse(neutralize(source, logicalLine, line));
-        var completion = new Completion(workspace, parsed.program().functions());
+        var completion = new Completion(workspace, parsed.program());
         var function = completion.enclosing(parsed, logicalLine);
         if (function != null) {
             for (var param : function.params()) {
@@ -131,6 +133,8 @@ public final class Completion {
         }
         ownFunctions.stream().sorted(Comparator.comparing(FunctionDef::name))
                 .forEach(f -> out.add(new Candidate(f.name(), Candidate.Kind.FUNCTION, Signature.of(f).display())));
+        ownClasses.stream().sorted(Comparator.comparing(ClassDef::name))
+                .forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
         workspace.files().keySet().stream().sorted()
                 .forEach(file -> out.add(new Candidate(file, Candidate.Kind.FILE, "file")));
         workspace.catalog().namespaces().keySet().stream().sorted()
@@ -143,21 +147,27 @@ public final class Completion {
 
     private List<Candidate> members(String qualifier, String prefix) {
         var builtIns = workspace.catalog().namespaces().get(qualifier);
-        List<Signature> signatures;
+        var out = new ArrayList<Candidate>();
         if (builtIns != null) {
-            signatures = builtIns;
+            builtIns.forEach(s -> out.add(new Candidate(s.name(), Candidate.Kind.FUNCTION, s.display())));
         } else if (workspace.files().containsKey(qualifier)) {
-            signatures = workspace.files().get(qualifier).functions().stream()
-                    .filter(f -> !f.name().startsWith("_")).map(Signature::of).toList();
+            var file = workspace.files().get(qualifier);
+            file.functions().stream().filter(f -> !f.name().startsWith("_")).map(Signature::of)
+                    .forEach(s -> out.add(new Candidate(s.name(), Candidate.Kind.FUNCTION, s.display())));
+            file.classes().stream().filter(c -> !c.name().startsWith("_"))
+                    .forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
         } else {
             return List.of();
         }
-        return filter(signatures.stream().sorted(Comparator.comparing(Signature::name))
-                .map(s -> new Candidate(s.name(), Candidate.Kind.FUNCTION, s.display())).toList(), prefix);
+        out.sort(Comparator.comparing(Candidate::label));
+        return filter(out, prefix);
     }
 
-    private static List<Candidate> types(String prefix) {
-        return filter(TYPES.stream().map(t -> new Candidate(t, Candidate.Kind.TYPE, "")).toList(), prefix);
+    private List<Candidate> types(String prefix) {
+        var out = new ArrayList<Candidate>();
+        TYPES.forEach(t -> out.add(new Candidate(t, Candidate.Kind.TYPE, "")));
+        ownClasses.forEach(c -> out.add(new Candidate(c.name(), Candidate.Kind.TYPE, Signature.of(c).display())));
+        return filter(out, prefix);
     }
 
     /** Case-insensitive prefix match; the first candidate of a label wins. */
@@ -284,15 +294,18 @@ public final class Completion {
 
     // ---- what is in scope ----
 
-    /** The last function starting at or before the line: the cursor is in its header or body. */
+    /**
+     * The last function starting at or before the line: the cursor is in its header or body. {@code null} when the
+     * last definition there is a class, or there is none.
+     */
     private FunctionDef enclosing(ParseResult parsed, int line) {
-        FunctionDef found = null;
-        for (var function : parsed.program().functions()) {
-            if (parsed.positions().get(function.id()).line() <= line) {
-                found = function;
+        Definition found = null;
+        for (var definition : parsed.program().definitions()) {
+            if (parsed.positions().get(definition.id()).line() <= line) {
+                found = definition;
             }
         }
-        return found;
+        return found instanceof FunctionDef function ? function : null;
     }
 
     /** Variables assigned in statements that start before the line, with the type they were given or hold. */
@@ -353,7 +366,11 @@ public final class Completion {
                 yield c.receiver() instanceof Expr.Name n
                         ? signature(n.name(), c.name()).map(Signature::result).orElse(null) : null;
             }
-            case Expr.Attribute a -> null;
+            case Expr.Attribute a -> {
+                var type = infer(a.target());
+                yield type == null ? null : record(type.name()).flatMap(c -> c.fields().stream()
+                        .filter(f -> f.name().equals(a.name())).findFirst()).map(Field::type).orElse(null);
+            }
             case Expr.Index i -> {
                 var list = infer(i.target());
                 yield list != null && list.name().equals("list") && list.args().size() == 1 ? list.args().get(0) : null;
@@ -377,9 +394,19 @@ public final class Completion {
         };
     }
 
+    /** A record type by name: one of this file's classes, or {@code file.Name} for another file's. */
+    private Optional<ClassDef> record(String name) {
+        int dot = name.indexOf('.');
+        var classes = dot < 0 ? ownClasses
+                : Optional.ofNullable(workspace.files().get(name.substring(0, dot))).map(Program::classes).orElse(List.of());
+        var simple = name.substring(dot + 1);
+        return classes.stream().filter(c -> c.name().equals(simple)).findFirst();
+    }
+
     private Optional<Signature> signature(String qualifier, String name) {
         if (qualifier == null) {
-            return ownFunctions.stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of);
+            return ownFunctions.stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of)
+                    .or(() -> record(name).map(Signature::of));
         }
         if (variables.containsKey(qualifier)) {
             // A local shadows a namespace or file of the same name, as in Python; its methods come with B3.
@@ -390,8 +417,12 @@ public final class Completion {
             return builtIns.stream().filter(s -> s.name().equals(name)).findFirst();
         }
         var file = workspace.files().get(qualifier);
-        return file == null ? Optional.empty()
-                : file.functions().stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of);
+        if (file == null) {
+            return Optional.empty();
+        }
+        return file.functions().stream().filter(f -> f.name().equals(name)).findFirst().map(Signature::of)
+                .or(() -> record(qualifier + "." + name).map(Signature::of).map(s -> new Signature(s.name(), s.args(),
+                        new TypeRef(qualifier + "." + name, List.of()), s.summary())));
     }
 
     // ---- text helpers ----

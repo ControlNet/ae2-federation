@@ -23,6 +23,14 @@ public record Signature(String name, List<Arg> args, TypeRef result, String summ
                 function.result(), function.docstring() == null ? "" : function.docstring());
     }
 
+    /** A record's constructor: its fields in order, returning the record. */
+    static Signature of(ClassDef record) {
+        return new Signature(record.name(),
+                record.fields().stream().map(f -> new Arg(f.name(), f.type(),
+                        f.defaultValue() == null ? null : ScriptPrinter.expr(f.defaultValue()))).toList(),
+                new TypeRef(record.name(), List.of()), record.docstring() == null ? "" : record.docstring());
+    }
+
     /** {@code (name: Item, min: int = 64) -> bool}, as completion shows it. */
     public String display() {
         return args.stream().map(a -> a.name() + ": " + a.type() + (a.defaultValue() == null ? "" : " = " + a.defaultValue()))

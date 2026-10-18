@@ -22,7 +22,7 @@ public final class ScriptParser {
             "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from",
             "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try",
             "while", "with", "yield");
-    private static final Set<String> UNSUPPORTED_KEYWORDS = Set.of("as", "assert", "async", "await", "class", "del",
+    private static final Set<String> UNSUPPORTED_KEYWORDS = Set.of("as", "assert", "async", "await", "del",
             "except", "finally", "from", "global", "import", "lambda", "nonlocal", "raise", "try", "with", "yield");
     private static final Set<String> UNSUPPORTED_OPERATORS = Set.of("**", "&", "|", "^", "<<", ">>", "@");
 
@@ -65,7 +65,7 @@ public final class ScriptParser {
     // ---- file and functions ----
 
     private Program file() {
-        var functions = new ArrayList<FunctionDef>();
+        var definitions = new ArrayList<Definition>();
         while (true) {
             takeComments();
             if (check(Kind.EOF)) {
@@ -73,15 +73,15 @@ public final class ScriptParser {
             }
             int start = pos;
             try {
-                functions.add(function());
+                definitions.add(definition());
             } catch (Failure failure) {
                 recover(failure, start);
             }
         }
-        return new Program(functions, takePending());
+        return new Program(definitions, takePending());
     }
 
-    private FunctionDef function() {
+    private Definition definition() {
         var first = peek();
         if (first.is(Kind.OP, "@")) {
             throw fail(first, "decorators are not supported");
@@ -89,11 +89,14 @@ public final class ScriptParser {
         if (first.kind() == Kind.INDENT) {
             throw fail(first, "unexpected indentation");
         }
+        if (isKeyword(first, "class")) {
+            return classDef();
+        }
         if (!isKeyword(first, "def")) {
             if (first.kind() == Kind.NAME && UNSUPPORTED_KEYWORDS.contains(first.text())) {
                 throw unsupportedKeyword(first);
             }
-            throw fail(first, "only function definitions may appear at the top level of a file");
+            throw fail(first, "only function and class definitions may appear at the top level of a file");
         }
         var above = takePending();
         advance();
@@ -138,11 +141,19 @@ public final class ScriptParser {
         expect(":");
         var end = endComment();
         openBlock("def");
-        // Comments above the docstring move below it, to the first statement.
+        var docstring = docstring();
+        var body = statements();
+        var id = ids.next();
+        positions.put(id, new Position(first.line(), first.column()));
+        return new FunctionDef(id, new Notes(above, end), nameToken.text(), params, result, docstring, body);
+    }
+
+    /** At the start of an opened block: its docstring, or {@code null}. Comments above it move below it. */
+    private String docstring() {
         takeComments();
         String docstring = null;
         if (check(Kind.STRING) && peekAt(1).kind() == Kind.END_COMMENT) {
-            // Recorded without abandoning the function: the block is already open.
+            // Recorded without abandoning the definition: the block is already open.
             errors.add(fail(peekAt(1), "a comment after a docstring is not supported; put it on its own line").error);
             docstring = cleanDocstring((String) advance().value());
             advance();
@@ -153,10 +164,86 @@ public final class ScriptParser {
         if (docstring != null) {
             advance();
         }
-        var body = statements();
+        return docstring;
+    }
+
+    /** A record: typed fields only, as a dataclass without the decorator. */
+    private ClassDef classDef() {
+        var first = advance();
+        var above = takePending();
+        var nameToken = name("a class name");
+        if (matchOp("(")) {
+            if (!checkOp(")")) {
+                throw fail(peek(), "inheritance is not supported; a class holds only fields");
+            }
+            advance();
+        }
+        expect(":");
+        var end = endComment();
+        openBlock("class");
+        var docstring = docstring();
+        var fields = new ArrayList<Field>();
+        boolean defaults = false;
+        while (true) {
+            takeComments();
+            if (check(Kind.DEDENT)) {
+                advance();
+                break;
+            }
+            if (check(Kind.EOF)) {
+                break;
+            }
+            int start = pos;
+            try {
+                var field = field();
+                if (field == null) {
+                    continue;
+                }
+                if (field.defaultValue() != null) {
+                    defaults = true;
+                } else if (defaults) {
+                    throw fail(tokens.get(start), "non-default argument '" + field.name()
+                            + "' follows default argument");
+                }
+                fields.add(field);
+            } catch (Failure failure) {
+                recover(failure, start);
+            }
+        }
         var id = ids.next();
         positions.put(id, new Position(first.line(), first.column()));
-        return new FunctionDef(id, new Notes(above, end), nameToken.text(), params, result, docstring, body);
+        return new ClassDef(id, new Notes(above, end), nameToken.text(), docstring, fields);
+    }
+
+    /** One line of a class body: a field, or {@code null} for {@code pass}, whose comments go to what follows. */
+    private Field field() {
+        var token = peek();
+        if (token.is(Kind.OP, "@")) {
+            throw fail(token, "decorators are not supported");
+        }
+        if (token.kind() == Kind.INDENT) {
+            throw fail(token, "unexpected indentation");
+        }
+        if (isKeyword(token, "def")) {
+            throw fail(token, "methods are not supported; a class holds only fields");
+        }
+        if (isKeyword(token, "pass")) {
+            advance();
+            endLine();
+            return null;
+        }
+        if (token.kind() == Kind.NAME && !KEYWORDS.contains(token.text()) && peekAt(1).is(Kind.OP, "=")) {
+            throw fail(token, "field '" + token.text() + "' needs a type hint, as in " + token.text() + ": int = ...");
+        }
+        if (token.kind() != Kind.NAME || KEYWORDS.contains(token.text()) || !peekAt(1).is(Kind.OP, ":")) {
+            throw fail(token, "a class holds only fields, written as name: type");
+        }
+        var above = takePending();
+        advance();
+        advance();
+        var type = type();
+        Expr defaultValue = matchOp("=") ? expr() : null;
+        return new Field(id(token), new Notes(above, endLine()), token.text(), type, defaultValue);
     }
 
     /** Python's {@code inspect.cleandoc}: drop the common indentation of the continuation lines and blank ends. */
@@ -192,6 +279,11 @@ public final class ScriptParser {
             throw fail(token, "expected a type");
         }
         advance();
+        var name = token.text();
+        if (matchOp(".")) {
+            // A class of another file.
+            name += "." + name("a class name after '.'").text();
+        }
         var args = new ArrayList<TypeRef>();
         if (checkOp("[")) {
             advance();
@@ -203,7 +295,7 @@ public final class ScriptParser {
         if (checkOp("|")) {
             throw fail(peek(), "union types (A | B) are not supported");
         }
-        return new TypeRef(token.text(), args);
+        return new TypeRef(name, args);
     }
 
     // ---- statements ----
@@ -285,6 +377,8 @@ public final class ScriptParser {
                 }
                 case "def":
                     throw fail(token, "nested functions are not supported; define it at the top level");
+                case "class":
+                    throw fail(token, "nested classes are not supported; define it at the top level");
                 case "elif", "else":
                     throw fail(token, "'" + token.text() + "' without a matching 'if'");
                 default:

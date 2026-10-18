@@ -57,6 +57,13 @@ final class CompletionTest {
 
             def refill(name: Item, min: int) -> None:
                 pass
+
+            class Order:
+                item: Item
+                amount: int = 1
+
+            class _Draft:
+                note: str
             """).program());
 
     static final Workspace WORKSPACE = new Workspace(FILES, CATALOG);
@@ -93,7 +100,7 @@ final class CompletionTest {
                 def f() -> None:
                     iron_tools.|
                 """);
-        assertEquals(List.of("refill"), labels(c));
+        assertEquals(List.of("Order", "refill"), labels(c));
     }
 
     @Test
@@ -152,6 +159,59 @@ final class CompletionTest {
                     ae2.craft(|)
                 """);
         assertNull(c.expected(), "ae2 is a list here, not the namespace");
+    }
+
+    /** A file with a record type, for the class tests. */
+    private static final String ORDERS = """
+            class Order:
+                item: Item
+                amount: int = 1
+
+            def f(secret: int) -> None:
+                o = Order("minecraft:iron_ingot")
+                n = o.amount
+                %s
+            """;
+
+    @Test
+    void aConstructorExpectsItsFieldsTypes() {
+        assertEquals(t("Item"), at(ORDERS.formatted("Order(|")).expected());
+        assertEquals(t("int"), at(ORDERS.formatted("Order(amount=|")).expected());
+        assertEquals(t("int"), at(ORDERS.formatted("iron_tools.Order(\"x\", |")).expected());
+    }
+
+    @Test
+    void aRecordAndItsFieldsGiveVariablesTheirTypes() {
+        var c = at(ORDERS.formatted("|"));
+        var details = c.candidates().stream().collect(
+                java.util.stream.Collectors.toMap(Candidate::label, Candidate::detail, (a, b) -> a));
+        assertEquals("Order", details.get("o"));
+        assertEquals("int", details.get("n"));
+        assertTrue(details.containsKey("Order"), "a constructor is offered: " + details);
+    }
+
+    @Test
+    void ownClassesAreTypes() {
+        var c = at("""
+                class Order:
+                    item: Item
+
+                def f(o: Or|
+                """);
+        assertEquals(List.of("Order"), labels(c));
+    }
+
+    @Test
+    void aClassBodyIsNotInsideTheFunctionAboveIt() {
+        var c = at("""
+                def f(secret: int) -> None:
+                    pass
+
+                class A:
+                    x: int = |
+                """);
+        assertEquals(t("int"), c.expected());
+        assertFalse(labels(c).contains("secret"), labels(c).toString());
     }
 
     @Test

@@ -110,6 +110,29 @@ final class ScriptTest {
                 return False
             """;
 
+    /** Player records: classes with typed fields only, used across files. */
+    static final String RECORDS = """
+            # A crafting order.
+            class Order:
+                \"""What to craft and how much.\"""
+                item: Item
+                # at least one
+                amount: int = 1  # per request
+                network: Network = None
+
+            class Empty:
+                pass
+
+            def place(o: Order) -> bool:
+                o.amount += 1
+                return ae2.craft(o.item, o.amount, network=o.network)
+
+            def make() -> Order:
+                first = Order("minecraft:iron_ingot", 64)
+                other: iron_tools.Order = iron_tools.Order(item="minecraft:gold_ingot")
+                return first
+            """;
+
     @Test
     void theCanvasSampleRoundTrips() {
         assertRoundTrip(SAMPLE);
@@ -182,6 +205,32 @@ final class ScriptTest {
         assertEquals(BinaryOp.NOT_IN, ((Expr.Binary) both.right()).op());
         var negated = assertInstanceOf(Expr.Unary.class, ((Stmt.Return) branch.body().get(0)).value());
         assertEquals(BinaryOp.IN, ((Expr.Binary) negated.operand()).op(), "not binds looser than in, as in Python");
+    }
+
+    @Test
+    void recordsRoundTrip() {
+        assertRoundTrip(RECORDS);
+    }
+
+    @Test
+    void recordsParse() {
+        var program = parseClean(RECORDS);
+        assertEquals(List.of("Order", "Empty", "place", "make"),
+                program.definitions().stream().map(Definition::name).toList());
+        assertEquals(List.of("place", "make"), program.functions().stream().map(FunctionDef::name).toList());
+        var order = program.classes().get(0);
+        assertEquals(List.of(" A crafting order."), order.notes().above());
+        assertEquals("What to craft and how much.", order.docstring());
+        assertEquals(List.of("item", "amount", "network"), order.fields().stream().map(Field::name).toList());
+        var amount = order.fields().get(1);
+        assertEquals(new TypeRef("int", List.of()), amount.type());
+        assertEquals(1L, assertInstanceOf(Expr.IntLit.class, amount.defaultValue()).value());
+        assertEquals(new Notes(List.of(" at least one"), " per request"), amount.notes());
+        assertNull(order.fields().get(0).defaultValue());
+        assertEquals(List.of(), program.classes().get(1).fields());
+
+        var other = (Stmt.Assign) program.functions().get(1).body().get(1);
+        assertEquals("iron_tools.Order", other.type().name(), "a class of another file");
     }
 
     @Test
@@ -259,6 +308,7 @@ final class ScriptTest {
                     g(1, b = 2,)
                 """));
         assertEquals("def f(x: int = 1) -> None:\n    pass\n", print("def f(x:int=1)->None:\n    pass\n"));
+        assertEquals("class A:\n    x: int\n", print("class A():\n    x : int\n    pass\n"));
         assertEquals(body("y = (-x).real + (1).real + xs[1:2] + a.b[0]"),
                 print(body("y = ( - x ) . real + (1).real + xs[ 1 : 2 : ] + (a.b)[0]")));
     }
@@ -300,10 +350,18 @@ final class ScriptTest {
                 // whole-file constructs
                 Arguments.of("import math\n", 1, "'import' is not supported"),
                 Arguments.of("from math import pi\n", 1, "'from' is not supported"),
-                Arguments.of("class A:\n    pass\n", 1, "'class' is not supported"),
-                Arguments.of("x = 1\n", 1, "only function definitions"),
+                Arguments.of("x = 1\n", 1, "only function and class definitions"),
                 Arguments.of("@cache\ndef f() -> None:\n    pass\n", 1, "decorators are not supported"),
                 Arguments.of("async def f() -> None:\n    pass\n", 1, "'async' is not supported"),
+                // classes
+                Arguments.of("class A(B):\n    x: int\n", 1, "inheritance is not supported"),
+                Arguments.of("class A:\n    def f(self) -> None:\n        pass\n", 2, "methods are not supported"),
+                Arguments.of("class A:\n    x = 1\n", 2, "field 'x' needs a type hint"),
+                Arguments.of("class A:\n    x: int = 1\n    y: int\n", 3,
+                        "non-default argument 'y' follows default argument"),
+                Arguments.of("class A:\n    \"\"\"Doc.\"\"\"\n    x: int\n    f()\n", 4, "a class holds only fields"),
+                Arguments.of("@dataclass\nclass A:\n    x: int\n", 1, "decorators are not supported"),
+                Arguments.of(body("class A:\n        pass"), 2, "nested classes are not supported"),
                 // signatures
                 Arguments.of("def f(x) -> None:\n    pass\n", 1, "parameter 'x' needs a type hint"),
                 Arguments.of("def f(x: int):\n    pass\n", 1, "function 'f' needs a return type hint"),
@@ -474,6 +532,7 @@ final class ScriptTest {
         assertPythonParses(DEFAULTS);
         assertPythonParses(POSTFIX);
         assertPythonParses(MEMBERSHIP);
+        assertPythonParses(RECORDS);
         assertPythonParses(print(SAMPLE));
         assertPythonParses(print(LOOPS));
         for (var arguments : unsupported().toList()) {
