@@ -58,8 +58,9 @@ Choices made while writing the parser, where the user decisions left them open:
 - **Language additions decided since B1** (user, 2026-10-18), to build next in the parser: keyword arguments,
   natively, in every call (built-ins and the player's functions alike); list and string methods with what they bring
   (indexing and slices, `in`/`not in`, method calls on any value, chained); read-only fields on built-in values
-  (proposal). Proposal to go with keyword arguments: default values in the player's own `def`s, limited to constants,
-  so optional parameters work the same for built-ins and player functions.
+  (proposal); default parameter values in the player's own `def`s. Rule (user, 2026-10-18): standard Python syntax
+  and behaviour are adopted as Python has them, without a separate decision each time; defaults, for instance, are
+  evaluated once when the file loads, as Python does at `def` time.
 - **A missing type hint is a parse error** naming the parameter or function.
 - **Syntax follows Python exactly** (user, 2026-10-18: the subset is Python, so its syntax rules are Python's):
   inside brackets indentation does not matter. Only error recovery goes further than Python: for a bracket Python

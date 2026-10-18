@@ -137,8 +137,8 @@ too), the lexer resumes at the next line not indented further; valid Python is l
 library is still being designed.
 
 B1 follow-up (decided 2026-10-18, before B3): keyword arguments in every call; list and string methods with
-indexing, slices, `in`/`not in` and chained method calls; read-only fields on built-in values; constant default
-values in `def`s (proposal). Test against CPython as B1 does.
+indexing, slices, `in`/`not in` and chained method calls; read-only fields on built-in values; default
+values in `def`s as in Python. Test against CPython as B1 does.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
