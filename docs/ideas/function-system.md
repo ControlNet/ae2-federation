@@ -105,21 +105,25 @@ widens to `float`; a parameter whose default is `None` also accepts `None` (as P
 missing attributes are reported with CPython's own messages; `break`/`continue` outside a loop and repeated
 parameter names are parse errors, as in CPython.
 
-Assistant proposals, built so the checker is complete; the user may change any of them:
+User review (2026-10-18): stricter than Python is fine where it makes the implementation simpler or less
+bug-prone. The rules below were proposed by the assistant and are now decided by the user unless marked otherwise.
 
 - A `str` value becomes a typed string only as a literal in a typed place or through an annotation
   (`x: Item = "minecraft:" + metal`); passing a plain `str` variable where `Item` is expected is an error whose
   message shows the annotation.
-- A local takes the type of its first value; a local first set to `None` takes `Optional` of the next type
-  assigned (`best = None` then `best = x`). An `Optional` value is accepted where a plain one is expected and checked
-  when the program runs, as Python would fail then.
+- A local takes the type of its first value. A local may not start as `None` (user); the assistant allows an
+  annotated start, `best: Optional[int] = None`, since its type is then written. An `Optional` value is accepted where
+  a plain one is expected and checked when the program runs, as Python would fail then.
 - `[]` needs an annotation (`xs: list[int] = []`); list items share one type (`Item` and `Fluid` items make a
   `list[Resource]`); a `list[Item]` is accepted where `list[Resource]` is expected.
-- `and`/`or` need both sides of one type (their result is one of the operands, as in Python).
+- `and`/`or` take `bool` on both sides and give `bool` (user; stricter than Python, where any values work and the
+  result is one of them). Conditions of `if`/`while` and `not` still take any value.
 - `%` on strings (Python's old formatting) is left out; text is built with `+` and `str()`.
-- Two definitions with one name in a file are an error (Python lets the second replace the first); a class may not
+- Two definitions with one name in a file are an error (user; Python lets the second replace the first); a class may not
   take a built-in type's name; another file's `_name` is private to it.
-- Built-ins take positional arguments only; list methods: `append extend insert pop remove index count reverse sort
+- Built-ins take keyword arguments where CPython does (user: relax): `round(number, ndigits)`, `str(object)`,
+  `sum(iterable, start)` and `default` of `min`/`max`, with CPython's messages. Stricter than Python: `key=` is not
+  supported (functions are not values) and `sum`'s `start` must be a number. List methods: `append extend insert pop remove index count reverse sort
   clear copy` (`sort(reverse=...)` only); str methods: `startswith endswith lower upper strip split join replace find
   count`; range methods `index count` and fields `start stop step`. `list(...)` was added with B4, as standard Python.
 - Constants are evaluated while checking: arithmetic and string joins fold as Python computes them (64-bit integer
@@ -141,7 +145,7 @@ CPython 3.12's results and error messages (382 expressions are compared against 
 whole programs with their library calls in `RunnerTest`), lists and records are shared by reference, `+=` changes a
 list in place, floats print as Python prints them.
 
-Assistant proposals; the user may change any of them:
+Decided by the user (2026-10-18) unless marked otherwise:
 
 - Integers are 64-bit: a result that does not fit stops the run with "integers are 64-bit; this result is too large"
   (Python's integers have no limit).
@@ -151,8 +155,8 @@ Assistant proposals; the user may change any of them:
   a list (`xs: list[int] = range(3)` is an error; `list(range(3))` makes a list).
 - Lists compare item by item (`[1, 2] < [1, 3]`), as in Python.
 - Defaults of parameters and fields must be constants: a number, a string, `True`, `False` or `None`, or arithmetic
-  over them (stricter than Python, which evaluates any expression once when the `def` runs; this keeps one shared
-  mutable default from surprising the player). A list default for a field gets the dataclass error.
+  over them (stricter than Python, which evaluates any expression once when the `def` runs; user: whatever suits the
+  compilation to graphs). A list default for a field gets the dataclass error.
 - `str()` of a list or record uses Python's repr form: `[1, 'a']`, `Order(item='minecraft:iron_ingot', amount=1)`.
 - A sort of items that cannot be compared fails with CPython's message; the list is left as it was (CPython may leave
   it partly sorted).
