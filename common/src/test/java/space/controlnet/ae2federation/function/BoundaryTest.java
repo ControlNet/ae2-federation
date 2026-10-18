@@ -27,7 +27,7 @@ final class BoundaryTest {
                     throw new RuntimeException(e);
                 }
             });
-            assertTrue(count[0] >= 1, "found " + count[0]);
+            assertTrue(count[0] >= 10, "found " + count[0]);
         }
     }
 }

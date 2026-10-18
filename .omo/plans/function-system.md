@@ -128,7 +128,7 @@ is replaced step by step; what it proved (round-trip, identity reconciliation, b
 | B6 | Built-in descriptors (`ae2`, `ae2f`, `mc`; capabilities, docs, examples) and `.ae2f` storage with a layout sidecar | Files round-trip; outside edits keep layout through the reconciler |
 
 B1 done 2026-10-18: `Lexer`, `ScriptParser`, `ScriptPrinter` and the IR (`Program`, `FunctionDef`, `Stmt`, `Expr`,
-...) in `common/.../function/`; `ScriptTest` (69 cases with the parameterised ones). The Phase 0 prototype classes
+...) in `common/.../function/`; `ScriptTest` (71 cases with the parameterised ones). The Phase 0 prototype classes
 were removed first (7496a7d0); git history keeps them for B3-B5 to reuse.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.

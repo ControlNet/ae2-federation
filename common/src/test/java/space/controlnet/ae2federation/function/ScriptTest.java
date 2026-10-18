@@ -157,6 +157,21 @@ final class ScriptTest {
     }
 
     @Test
+    void aCommentAboveTheDocstringMovesBelowIt() {
+        assertEquals("""
+                def f() -> None:
+                    \"""Doc.\"""
+                    # note
+                    mc.redstone(1)
+                """, print("""
+                def f() -> None:
+                    # note
+                    \"""Doc.\"""
+                    mc.redstone(1)
+                """));
+    }
+
+    @Test
     void anEmptyBodyPrintsPass() {
         var f = new FunctionDef("f1", Notes.NONE, "noop", List.of(), new TypeRef("None", List.of()), null, List.of());
         assertEquals("def noop() -> None:\n    pass\n", ScriptPrinter.print(new Program(List.of(f), List.of())));
@@ -190,6 +205,7 @@ final class ScriptTest {
                 Arguments.of("def f(x: int | None) -> None:\n    pass\n", 1, "union types"),
                 Arguments.of("def f(x: \"int\") -> None:\n    pass\n", 1, "string annotations"),
                 Arguments.of("def f() -> None: pass\n", 1, "own indented lines"),
+                Arguments.of("def f() -> None:\n    \"\"\"Doc.\"\"\"  # note\n", 2, "comment after a docstring"),
                 // statements
                 Arguments.of(body("def g() -> None:\n        pass"), 2, "nested functions are not supported"),
                 Arguments.of(body("try:\n        pass\n    except:\n        pass"), 2, "'try' is not supported"),

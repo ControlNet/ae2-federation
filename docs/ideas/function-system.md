@@ -45,7 +45,8 @@ Choices made while writing the parser, where the user decisions left them open:
   calls as `f(...)` or `ns.f(...)`; `not`, unary `-`, `+ - * / // %`, comparisons, `and`, `or`; a line break inside
   brackets, so a long call can wrap.
 - **Comments are kept:** a whole-line comment belongs to the next statement, `elif`, `else` or `def`; a comment at the
-  end of a line belongs to that line. Both survive a trip through the graph.
+  end of a line belongs to that line. Both survive a trip through the graph. A comment above a docstring moves
+  below it; a comment after a docstring on the same line is an error.
 - **Out, each with an error naming it at its line:** imports, classes, decorators, `async`, nested functions,
   default values, `*args`, union and string type hints, `try`, `with`, `global`, `assert`, `raise`, `del`, `yield`,
   `lambda`, `else` after a loop, one-line bodies (`if x: f()`), semicolons, tuples, chained assignment and

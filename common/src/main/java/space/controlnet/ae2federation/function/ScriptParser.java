@@ -133,9 +133,19 @@ public final class ScriptParser {
         expect(":");
         var end = endComment();
         openBlock("def");
+        // Comments above the docstring move below it, to the first statement.
+        takeComments();
         String docstring = null;
+        if (check(Kind.STRING) && peekAt(1).kind() == Kind.END_COMMENT) {
+            // Recorded without abandoning the function: the block is already open.
+            errors.add(fail(peekAt(1), "a comment after a docstring is not supported; put it on its own line").error);
+            docstring = cleanDocstring((String) advance().value());
+            advance();
+        }
         if (check(Kind.STRING) && peekAt(1).kind() == Kind.NEWLINE) {
             docstring = cleanDocstring((String) advance().value());
+        }
+        if (docstring != null) {
             advance();
         }
         var body = statements();
