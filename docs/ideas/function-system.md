@@ -295,7 +295,10 @@ values, literals on ports, positions by node ID). What the new decisions add:
   the whole right side of an assignment (`job = ae2.craft(...)`), never inside a larger expression. Because
   capabilities are inferred, editing a called function can turn a pure call effectful; the checker then reports where
   it must move.
-- **Values used twice.** Parameters, loop elements and variable reads may feed any number of ports. A computed
+- **Variables.** An assignment (`now = ...`, `iron: Item = ...`) is a node on the exec chain with the value as its
+  input; each read of a variable is a small rounded getter node with the variable's name, placed where it is used
+  (as Unreal Blueprints draw them), so reassignment in loops stays unambiguous.
+- **Values used twice.** Parameters, loop elements and variable getters may feed any number of ports. A computed
   output feeds one port; dragging a second wire from it offers "extract to variable", which inserts an assignment.
   This keeps the script and the graph one to one.
 - **Typed strings on ports.** A resource port shows the icon and opens the searchable picker; a list port takes a
