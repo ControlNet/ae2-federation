@@ -380,49 +380,43 @@ values, literals on ports, positions by node ID). What the new decisions add:
   parentheses. A function whose graph was not edited keeps its original text.
 - **Drafts.** A script with a syntax error does not switch (decided above); unconnected nodes stay as a graph draft.
 
-## Interaction blocks (user direction 2026-10-18)
+## Interaction interface (user decisions 2026-10-18)
 
-Programs need a way to act on the world: an interaction interface that moves items, sends and reads redstone, breaks
-and places blocks, and more (user, 2026-10-18). Designed after B2 and before B3, since the types and effects it adds
-feed the checker and the interpreter.
+Programs act on the world through the standard library: moving items, sending and reading redstone, breaking and
+placing blocks, and more. Those functions need a place in the world to act at; the interaction interface is that
+place. Designed after B2 and before B3, since the location type it adds feeds the checker and the interpreter.
 
 Decided (user, 2026-10-18):
 
-- **One interface block.** It acts only on what is in front of it. Its other five faces connect ME Glass Cable or ME
-  Federation Cable; once it is in a Federation domain, any computing device in the same domain can call it.
-- **Reach beyond the adjacent block** is worth considering (user idea): for example acting two blocks away, past a
-  gap.
+- **The interface is a locator, not a machine.** It has no abilities of its own and no cards: it gives a program's
+  functions a position to act at. Everything it does comes from the program running on a computing device, through
+  standard library functions that take an interface as their location. The question is therefore never "what can
+  the interface do" but "which library functions take a location".
+- **One full block, acting in front of it.** Its other five faces connect ME Glass Cable or ME Federation Cable; once
+  it is in a Federation domain, every computing device in that domain can use it. The domain spans networks and
+  dimensions, so one program can act anywhere the domain reaches.
+- **Reach beyond the adjacent block**, straight ahead: blocks in between do not matter (it acts through them), and a
+  longer reach costs nothing extra.
 
 Assistant proposals, to discuss:
 
-- **Reach** (proposal for the user idea above): a distance setting on the interface, one row in its GUI, from 1 (the
-  adjacent block, the default) up to a small maximum such as 4, along the facing direction only. Open: whether the
-  blocks in between must be air, and whether a longer reach costs more compute or needs an upgrade card.
-- **Where a program reaches the world.** A block placed in the world and joined to the Federation (as Endpoints
-  are) acts on the block it faces. Because the Federation spans networks and dimensions, one program on one
-  computing device can drive interfaces anywhere in the domain.
-- **One block or several.**
-  - Option 1: one interface block whose abilities come from cards in its upgrade slots (redstone, transfer, break,
-    place), as AE2 cards add abilities. One thing to name, place and address; the slots show what it can do.
-  - Option 2: one block per ability, after AE2's own parts (import/export buses for transfer, the Annihilation and
-    Formation Planes for breaking and placing, the Level Emitter and Toggle Bus for redstone). Familiar to AE2 players,
-    more blocks to make and draw.
-- **Addressing.** The player names an interface (in its GUI, as Endpoints are named); in a program it is a typed
-  string, `Port`, completed from the names in the domain, as `Item` strings are completed from the registry; or a
-  parameter filled in at installation from a picker. The name is a stable ID underneath, so renaming breaks nothing.
-- **First functions it would give** (names and namespaces open):
+- **Reach in the call, not on the block.** Since the interface is only a location, the distance can be an argument of
+  the function (`mc.break_block(door, 2)` acts two blocks ahead), defaulting to the adjacent block when left out (the
+  checker would allow an optional trailing argument for built-ins only). The alternative is a distance setting in the
+  interface's GUI. A maximum (such as 8) keeps the target within loaded range of the interface; open.
+- **Addressing.** The player names an interface in its GUI, as Endpoints are named; in a program it is a typed
+  string, `Port` (name open), completed from the names in the domain, as `Item` strings are completed from the
+  registry. A stable ID underneath, so renaming breaks nothing. Alternatively an installation argument chosen from a
+  picker.
+- **Library functions that take a location** (names and namespaces open; part of the standard library design):
   `mc.redstone(port, level)`, `mc.redstone_in(port) -> int`, `ae2.export(port, item, amount) -> int` and
-  `ae2.import_from(port, item, amount) -> int` (move between the network and the faced inventory; amounts moved come
-  back), `mc.break_block(port) -> bool` (drops go into the network), `mc.place_block(port, item) -> bool`,
-  `mc.block_at(port) -> Block`. Each effectful call is one tick, as decided.
-- **Generic resources.** Transfer works on any AE2 key type (items, fluids, addon types such as Mekanism chemicals),
-  not an item-only list; see generic addon support.
-- **Range and cost.** Each call costs compute on the device that runs it; whether distance or another dimension
-  costs more is open.
+  `ae2.import_from(port, item, amount) -> int` (between the network and the inventory at the target; the amount
+  moved comes back), `mc.break_block(port) -> bool` (drops go into the network), `mc.place_block(port, item) -> bool`,
+  `mc.block_at(port) -> str`. Each effectful call is one tick, as decided. Transfer works on any AE2 key type (items,
+  fluids, addon types such as Mekanism chemicals), not an item-only list.
 
-Open: whether the one block gains its abilities from cards (option 1 below the decision) or has them all; the reach
-rules; the full first function list; reading
-inventories and block states beyond redstone; entity interactions (later).
+Open: reach as an argument or a block setting, and its maximum; the location type's name; the full list of library
+functions that take a location (with the standard library design); entity interactions (later).
 
 ## Layers (assistant proposal)
 
