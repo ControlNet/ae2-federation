@@ -199,9 +199,11 @@ named by an ID, as interfaces are.
 
 Assistant proposals on top:
 
-- **Network IDs.** Networks already have a stable identity (`NetworkId`, a UUID) and a name players set in the
-  topology view. In programs: a typed string `Network`, holding the name (as an alias) or a short ID derived from
-  the identity (`network-p3x9ka`, same alphabet as interface IDs); completion lists both, as for interfaces. A
+- **Network IDs** (accepted by the user 2026-10-18): a typed string `Network`, completed in the editor, holding
+  either the network's ID or the alias (name) given to it in the Federation GUI. The ID can be looked up in the
+  Federation GUI. Proposal: the ID is short, derived from the network's stable identity (`NetworkId`, a UUID), as
+  `network-p3x9ka` with the interface IDs' alphabet, and the topology view's network details show it with a copy
+  button (one row, minimal GUI). A
   network whose identity is paused (merged, split or copied) is not usable until it settles; a call naming it
   returns nothing and the run log says why.
 - **Optional arguments in calls.** `ae2.stock("minecraft:iron_ingot")` for the domain and
