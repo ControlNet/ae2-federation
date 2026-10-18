@@ -29,6 +29,9 @@ redstone output or introduce a new output block as an already selected requireme
 
 ## Shared function system and unified authoring
 
+Layers, vocabulary (function, program, binding, automation, trigger) and the bottom-up order are on the
+[function system architecture](function-system.md) page.
+
 The user refined the direction: build a general, powerful, flexible base system for both automation and
 [custom policies](custom-policies.md). Policy customization can be a specialized application of that system:
 for example, a predicate returns a boolean, or a function returns resource-filter criteria. Players edit

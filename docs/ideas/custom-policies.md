@@ -57,6 +57,9 @@ No language, runtime, full Python/Lua compatibility promise, editor component or
 
 ### Unified function authoring and Policy bindings
 
+Layers, vocabulary (function, program, binding, automation, trigger) and the bottom-up order are on the
+[function system architecture](function-system.md) page.
+
 The later 2026-10-10 proposal makes Policy customization a specialized use of the same general function
 system as [automation](rule-based-automation.md). Players author and edit functions in the automation GUI,
 using the interchangeable graph/script experience above. A Policy can use a predicate returning a boolean

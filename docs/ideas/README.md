@@ -7,6 +7,7 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
+| [Function system architecture](function-system.md) | Layers and vocabulary proposed 2026-10-18; first batch is the bottom layer (user) | Script and graph editing and conversion first; hosts (Policy, automation) and editor screens later |
 | [Rule-based automation](rule-based-automation.md) | Shared function system proposed; computing device role settled 2026-10-17; Phase 0 spike 2026-10-18 ([plan](../../.omo/plans/function-system.md)); execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; Phase 0 spike 2026-10-18 shared with automation; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |

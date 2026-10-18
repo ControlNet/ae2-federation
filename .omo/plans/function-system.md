@@ -110,9 +110,14 @@ query/action split; those parts are this design's own.
 Also open: what a policy does with an unavailable answer; sampling period; trigger kinds; where functions are stored
 (per network, per device) and who may edit them; the measure-to-CU scale.
 
-## Next phases (proposal)
+## Next phases
 
-1. Phase 1: Q1 path. Store programs on the network, the policy adapter (filter -> `PolicyFilter`, predicate ->
-   allow/deny), cached evaluation with `AuthorityEpoch.advance()`, a script editor screen, node descriptors.
-2. Phase 2: graph editor over the same IR and layout.
-3. Phase 3: actions on the computing device (Q3 redstone first), triggers, compute limit.
+The user decided on 2026-10-18 to build bottom-up, world interactions last; layers and vocabulary are on the
+[function system architecture](../../docs/ideas/function-system.md) idea page.
+
+1. Bottom layer (next): drafts (unconnected graph nodes, scripts with syntax errors), graph edit operations, script
+   editing support (error positions, completion data), serialisation with a version, built-in descriptors. Pure Java,
+   test first.
+2. Editor screens over that layer (script, then graph), GUI design canvases first.
+3. Hosts: the Policy adapter with cached evaluation and `AuthorityEpoch.advance()` (Q1), then actions on the computing
+   device with triggers and the compute limit (Q3).
