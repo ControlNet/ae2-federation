@@ -399,8 +399,10 @@ Decided (user, 2026-10-18):
   longer reach costs nothing extra. At most 4 blocks for now (user, 2026-10-18).
 - **Name** (user, 2026-10-18): ME Federation Automation Interface (「ME联邦自动化接口」). "Automation" keeps it apart
   from AE2's ME Interface, which it does not resemble: it stores and moves nothing by itself. Registry ID
-  `automation_interface`; in programs the type is `Interface` (unambiguous inside a script); the automatic ID reads
-  `interface-12`, numbered per server (assistant proposals, accepted by the user 2026-10-18). Below, "interface" means this block.
+  `automation_interface`; in programs the type is `Interface` (unambiguous inside a script) (assistant proposals,
+  accepted by the user 2026-10-18). The automatic ID is random, not a counter (user, 2026-10-18: a running number
+  looks off); proposal: six characters from a lowercase alphabet without look-alikes (no 0/o, 1/l/i), as in
+  `interface-k7m2qx`, drawn again on a clash with any ID on the server. Below, "interface" means this block.
 - **Identity and alias.** Every interface gets an ID automatically, so a program can always name it. Right-clicking it
   with a wrench turns it; any other right-click opens its GUI, where the player sets an alias.
 
@@ -413,7 +415,7 @@ Assistant proposals, to discuss:
   with a reach row).
 - **Addressing** (proposal on top of the decision above). In a program an interface is a typed string (type
   `Interface`) holding either its alias or its ID; completion lists both, with the alias first. The
-  automatic ID is short and readable (for example `interface-12`, numbered per server) and never changes; an alias is
+  automatic ID (random, see Name) never changes; an alias is
   unique within its domain (a duplicate is refused in the GUI). The editor shows the other half beside the string,
   as item icons sit beside item strings: the ID beside an alias, the alias beside an ID. The GUI shows the ID (copy
   button) and the alias field, nothing else. Renaming an alias: programs that use the old alias report it at once
