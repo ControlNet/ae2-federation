@@ -34,3 +34,12 @@ Branch `feature/function-system`. Decisions are in `docs/ideas/function-system.m
 from `build/visual-v07` of the main checkout (port 25583, display :87, flat world), the branch jar from
 `./gradlew :neoforge-1.21.1:jar`. Typing into a screen: XTEST key events per character (shift for upper rows).
 Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other sessions feed servers that way).
+
+## H2: programs on the server
+
+- Network membership of a domain (`FederationDomainSnapshot.memberships`) comes from Switch native evidence, which
+  settles some ticks after the Federation links: a GameTest must wait for it, not only for the domain.
+- `AEKeyType.loadKeyFromTag(registries, {"id": ...})` logs at debug level only, while `AEKey.fromTagGeneric` warns on
+  every failure: use the former for "is this ID a resource" checks, and compare `key.getId()` with the input.
+- In-game check `build/programs-check/compare.png`: the H1 jar has no `programs` command, the H2 jar lists a program
+  with its one problem. Swap the jar in both `server/mods` and `client/mods`, then restart both.

@@ -51,6 +51,11 @@ public final class AutomationInterfaces extends SavedData {
         return book.entry(id);
     }
 
+    /** Every interface on the server, loaded or not. */
+    public java.util.Map<String, AutomationInterfaceBook.Entry> entries() {
+        return book.entries();
+    }
+
     public String alias(String id) {
         return book.entry(id).map(AutomationInterfaceBook.Entry::alias).orElse("");
     }

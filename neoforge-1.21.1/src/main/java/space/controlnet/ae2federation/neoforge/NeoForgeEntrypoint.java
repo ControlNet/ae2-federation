@@ -70,6 +70,7 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
         space.controlnet.ae2federation.neoforge.network.AutomationInterfacePayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
+        NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.automation.ProgramCommands::register);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onPlayerLoggedOut);
@@ -139,6 +140,7 @@ public final class NeoForgeEntrypoint {
         EnergySharingService.closeServer(server);
         OperatingPowerService.closeServer(server);
         space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
+        space.controlnet.ae2federation.automation.ProgramStore.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);

@@ -161,6 +161,8 @@
     {"id":"automation-interface.front-links-no-cable","backend":"gametest","testId":"automationinterfacefrontlinksnocable","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"automation-interface.releases-id","backend":"gametest","testId":"automationinterfacereleasesitsidwhenbroken","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"automation-interface.turned-links-cable","backend":"gametest","testId":"automationinterfaceturnedlinksthecable","structure":"ae2federation_test:harness_native_smoke","assertions":3},
+    {"id":"programs.checked-against-server","backend":"gametest","testId":"programsarecheckedagainsttheserver","structure":"ae2federation_test:harness_native_smoke","assertions":9},
+    {"id":"programs.reload-command","backend":"gametest","testId":"programsreloadcommandreadsthefolder","structure":"ae2federation_test:harness_native_smoke","assertions":3},
     {"id":"bundle.whole-end-faces","backend":"gametest","testId":"bundlelinksthroughwholeendfaces","structure":"ae2federation_test:harness_native_smoke","assertions":6},
     {"id":"bundle.side-full-width","backend":"gametest","testId":"bundlesidesneedtheirfullwidth","structure":"ae2federation_test:harness_native_smoke","assertions":5},
     {"id":"bundle.player-interaction","backend":"gametest","testId":"bundleplayerextendsbranchesanddismantles","structure":"ae2federation_test:harness_native_smoke","assertions":8},

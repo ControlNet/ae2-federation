@@ -995,6 +995,27 @@ kept in a server-wide index, and a copied interface (same ID at another position
   the alias field. The alias is sent on Enter or when the screen closes.
 - Textures are temporary: the Processing Endpoint's, recoloured green by `tools/visual/build_converter_placeholder.py`.
 
+### Programs on the server (H2, 2026-10-18)
+
+Assistant choices, to review:
+
+- **Folder.** `<world>/ae2federation/programs/*.ae2f`, one `Library` per server, loaded on first use and again by
+  `/ae2federation programs reload` (op level 2). `/ae2federation programs list` prints each program with its
+  problems and their lines. Files edited outside the game are seen only after a reload.
+- **Checked server-wide.** Programs are global, so the library checks names against every interface and network on
+  the server; an installation (H4) checks again against its own domain. The catalog reads the interface index and
+  the domain registry on every query, since `Library.check` runs on demand and aliases change while it is loaded.
+- **Network IDs.** A network's `network-xxxxxx` ID is drawn the first time a catalog lists it and kept in the
+  overworld (`NetworkShortIds`), keyed by its persistent `NetworkId`; a network that comes back keeps it. A network's
+  name is its player-given name from the Federation screen.
+- **An ID-shaped string is only ever an ID**, even when an alias or network name looks like one. Network names are
+  not unique: a name two networks share names both (`GameCatalog.matches` returns both IDs); what a call does with
+  that is H3's to decide.
+- **Resource kinds** come from AE2's key types: an ID is a resource of every key type that reads it back as itself,
+  so addon types count without a list. Items and fluids are `Item` and `Fluid`; an addon's type is named after its
+  key type's path (`Chemical`). Completion offers items and fluids only for now; addon types have no generic way to
+  list their IDs.
+
 Assistant proposals, to discuss:
 
 - **Reach argument details.** Left out, it is the adjacent block (1); the checker allows that optional trailing
