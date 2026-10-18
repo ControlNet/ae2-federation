@@ -61,6 +61,38 @@ How it could work (assistant proposal):
 - **Both views show it.** The graph can badge nodes and functions with their capabilities; the script editor can show
   them beside each `def`.
 
+## Standard library (user direction 2026-10-18)
+
+The system ships a set of ready functions players call directly: AE2 ones (stock, craftability, crafting status,
+storage, energy and the like) and Minecraft ones (reading and emitting redstone and the like). Lists are not fixed.
+
+Assistant proposal: group them by namespace, already available without imports, as `ae2.stock(...)`,
+`mc.redstone(...)`, `federation.online()`. Namespaces become the graph palette's categories, and addon mods can add
+their own (`mekanism....`) through the same descriptors, as the mod already handles addon resource types without
+AE2-only lists.
+
+## Open: actions as calls or as return values (raised by the user 2026-10-18)
+
+Should a function perform actions by calling them in its body, or return the actions as its value and leave
+running them to the system?
+
+| | Calls in the body | Actions as the return value |
+|---|---|---|
+| Purity | The function has effects | The function is pure; the system runs what it returns |
+| Reacting to a result (job refused, how much actually moved) | Directly, on the next line | Only in a later run, with state kept between runs |
+| Multi-step and waiting (`while stock < 64: wait()`) | An ordinary loop | A state machine over several runs |
+| Scheduling, batching, bandwidth limits | Harder: effects happen mid-run | Easy: the system sees all actions first |
+| Preview / dry run, testing | Needs stand-in results | Natural: show the returned list |
+| All-or-nothing over several actions | No | Possible |
+
+A middle way (assistant proposal): players write calls, the system runs them as requests. Calling `craft(...)` does
+not touch the world from inside the interpreter; the run pauses, hands the request to its host, and resumes with
+the result when the host has carried it out (a coroutine, as Python generators work, but without `yield` in the
+script). The function itself stays free of side effects; the host decides when and whether each request runs, can
+throttle by bandwidth, answer with simulated results for a preview, and refuse every request in a policy. What it
+gives up against pure return values: the host cannot see all of a run's actions before the first runs, so
+all-or-nothing batches need a separate construct if wanted.
+
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
