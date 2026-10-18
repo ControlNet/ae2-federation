@@ -102,11 +102,13 @@ final class ScriptTest {
                 total = iron_tools.helper(1).total
             """;
 
-    /** Membership tests. */
+    /** Membership and identity tests. */
     static final String MEMBERSHIP = """
-            def has(xs: list[int], name: str) -> bool:
+            def has(xs: list[int], name: str, network: Network = None) -> bool:
                 if 3 in xs and "a" not in name:
                     return not 4 in xs
+                if network is None or xs is not None:
+                    return True
                 return False
             """;
 
@@ -205,6 +207,9 @@ final class ScriptTest {
         assertEquals(BinaryOp.NOT_IN, ((Expr.Binary) both.right()).op());
         var negated = assertInstanceOf(Expr.Unary.class, ((Stmt.Return) branch.body().get(0)).value());
         assertEquals(BinaryOp.IN, ((Expr.Binary) negated.operand()).op(), "not binds looser than in, as in Python");
+        var identity = (Expr.Binary) ((Stmt.If) parseClean(MEMBERSHIP).functions().get(0).body().get(1)).condition();
+        assertEquals(BinaryOp.IS, ((Expr.Binary) identity.left()).op());
+        assertEquals(BinaryOp.IS_NOT, ((Expr.Binary) identity.right()).op());
     }
 
     @Test
@@ -394,7 +399,7 @@ final class ScriptTest {
                 Arguments.of(body("y = x if x else 0"), 2, "conditional expressions"),
                 Arguments.of(body("y = 0 < x < 9"), 2, "chained comparisons"),
                 Arguments.of(body("y = x in xs not in [xs]"), 2, "chained comparisons"),
-                Arguments.of(body("y = x is None"), 2, "'is' is not supported"),
+                Arguments.of(body("y = x is None is None"), 2, "chained comparisons"),
                 Arguments.of(body("y = x ** 2"), 2, "'**' is not supported"),
                 Arguments.of(body("y = x & 1"), 2, "'&' is not supported"),
                 Arguments.of(body("y = x << 1"), 2, "'<<' is not supported"),

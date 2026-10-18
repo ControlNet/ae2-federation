@@ -567,7 +567,7 @@ public final class ScriptParser {
             return left;
         }
         advance();
-        if (op == BinaryOp.NOT_IN) {
+        if (op == BinaryOp.NOT_IN || op == BinaryOp.IS_NOT) {
             advance();
         }
         var result = new Expr.Binary(id(start), op, left, sum());
@@ -587,7 +587,7 @@ public final class ScriptParser {
             return BinaryOp.NOT_IN;
         }
         if (isKeyword(token, "is")) {
-            throw fail(token, "'is' is not supported; use == or !=");
+            return isKeyword(peekAt(1), "not") ? BinaryOp.IS_NOT : BinaryOp.IS;
         }
         if (token.kind() != Kind.OP) {
             return null;

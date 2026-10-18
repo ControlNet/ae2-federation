@@ -45,14 +45,15 @@ Choices made while writing the parser, where the user decisions left them open:
   calls as `f(...)` or `ns.f(...)`; `not`, unary `-`, `+ - * / // %`, comparisons, `and`, `or`; a line break inside
   brackets, so a long call can wrap. Added by the B1 follow-up: keyword arguments and default values; fields
   (`o.amount`), items (`xs[0]`) and slices with a step (`xs[1:-1]`, `xs[::2]`), methods on any value, all chained in
-  any order and assignable (`o.amount += 1`, `xs[0] = 1`); `in` and `not in`; fields-only classes (below).
+  any order and assignable (`o.amount += 1`, `xs[0] = 1`); `in`, `not in`, `is` and `is not`; fields-only classes
+  (below).
 - **Comments are kept:** a whole-line comment belongs to the next statement, `elif`, `else` or `def`; a comment at the
   end of a line belongs to that line. Both survive a trip through the graph. A comment above a docstring moves
   below it; a comment after a docstring on the same line is an error.
 - **Out, each with an error naming it at its line:** imports, class methods, base classes and nested classes,
   decorators, `async`, nested functions, `*args`, union and string type hints, `try`, `with`, `global`, `assert`,
   `raise`, `del`, `yield`, `lambda`, `else` after a loop, one-line bodies (`if x: f()`), semicolons, tuples, chained
-  assignment and comparisons, conditional expressions, `is`, `**` and bitwise operators, unary `+`, comprehensions,
+  assignment and comparisons, conditional expressions, `**` and bitwise operators, unary `+`, comprehensions,
   dicts and sets, calling anything but a name or a method (`f(x)(1)`: functions are not values), `:=`, `...`,
   adjacent strings, string prefixes (`f"..."`), hexadecimal, `1_000`, complex numbers, other escapes, `\`
   continuation, tabs. Every rejected example is still valid Python (a test compiles each with CPython), so the

@@ -15,6 +15,8 @@ public enum BinaryOp {
     GE(">=", 4),
     IN("in", 4),
     NOT_IN("not in", 4),
+    IS("is", 4),
+    IS_NOT("is not", 4),
     ADD("+", 5),
     SUB("-", 5),
     MUL("*", 6),
