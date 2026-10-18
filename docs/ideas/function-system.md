@@ -222,8 +222,8 @@ Follow-ups (assistant proposal, open):
   - Installations, devices and other state stay in the world's `SavedData`, not in the code files.
   - Writes are atomic (a temporary file, then a rename), UTF-8 with LF. File names from clients are checked against
     the identifier rule, so no path can leave the folder.
-  - Files edited outside the game (another editor, git) are picked up when they change on disk or on a reload
-    command; which of the two is open.
+  - Files edited outside the game (another editor, git) are picked up by a reload command (user agreed, 2026-10-18),
+    not by watching the folder.
 
 ## Files, multiple functions and calls between them (user ideas 2026-10-18)
 
