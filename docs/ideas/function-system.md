@@ -128,10 +128,17 @@ errors and still tell the cursor's context and expected type.
 ## Automation tab (user direction 2026-10-18)
 
 The Federation domain GUI gains a fourth tab on its left strip, Automation, where players edit programs and install
-them on a computing device. A first impression (assistant proposal, sample data) is on the GUI design canvas, row
-"自动化页签": a program list (files and their functions) and the domain's computing devices with their compute and
-bandwidth use and installed functions on the left; the editor with file tabs and a Script / Graph switch on the
-right; an install dialog with the function's parameters, a trigger and a device.
+them on a computing device. Boards on the GUI design canvas, row "自动化页签" (sample data):
+
+- **Edit view:** the program list (files and their functions) on the left; the editor with file tabs and a Script /
+  Graph switch on the right.
+- **Installing by drawing wires** (user, 2026-10-18), as the processing mapping links Pattern Provider rows to
+  Endpoints, not through a dialog. Left: program files with their public functions, each with a port. Right: the
+  computing devices with compute and bandwidth meters, one row per installation. Dragging a function onto a device
+  adds an installation; while dragging, devices colour by whether its cost still fits (assistant proposal). Selecting
+  an installation shows its arguments, trigger and cost beside the canvas.
+- **Item icons wherever an item is named** (user, 2026-10-18): before a resource string in the script, in the
+  resource-string completion, on resource ports in the graph and in installation arguments.
 
 ## Open: actions as calls or as return values (raised by the user 2026-10-18)
 
