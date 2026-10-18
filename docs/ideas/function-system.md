@@ -468,6 +468,20 @@ How it could work (assistant proposal):
 - **Everything interactive runs on the client.** The language core (parser, checker, completion, graph conversion,
   layout) is plain Java in `common`, so the client runs the same code as the server. Item completion uses the client's
   own registries.
+- **Threads** (asked by the user, 2026-10-18; assistant proposal). Nothing in the language core may run on the
+  client's render thread or the server's tick thread except what must touch the world:
+  - The core is built for this: parse, check, complete, compile to a graph and lay out are functions of immutable
+    inputs (the text, the other files' parsed programs, a catalogue snapshot) with no shared mutable state, so any
+    thread can run them.
+  - Client: each edit hands the text to one background worker; a newer edit makes an older result stale (a version
+    number), so results are dropped rather than shown late. The render thread only takes finished results. The
+    catalogue the worker reads is an immutable snapshot taken on the main thread (registry IDs once, domain aliases
+    when they change).
+  - Server: Push checks and compiles on a worker, then hands the compiled graph to the tick thread in one step.
+  - World access stays on the tick thread: a running program executes a bounded number of graph nodes per tick
+    (the step budget), and a dry run's reads do the same, so neither can stall a tick however long the program.
+  - Measured cost decides how much more is needed: if checking a large file stays well under a millisecond the
+    worker is a safety margin, not a necessity; a benchmark comes with B3's end.
 - **What the client needs from the server is cached.** Opening the tab sends the library index (files, function
   signatures, capabilities, versions) and the devices; the server pushes changes. Live values (stock in completion,
   device usage) arrive when they arrive and are left out until then; nothing waits for them.
