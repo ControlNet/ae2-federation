@@ -132,8 +132,8 @@ B1 done 2026-10-18: `Lexer`, `ScriptParser`, `ScriptPrinter` and the IR (`Progra
 were removed first (7496a7d0); git history keeps them for B3-B5 to reuse.
 
 B2 done 2026-10-18: `Completion` with `Catalog` (the game's registries and namespaces, an interface), `Workspace`
-(the other files), `Signature`, `Candidate`, `Completions`; the lexer ends an unclosed bracket at the next line that
-is not indented further. `CompletionTest` (12) uses a test-only catalogue with made-up built-ins, since the standard
+(the other files), `Signature`, `Candidate`, `Completions`; for a bracket that is never closed (an error in Python
+too), the lexer resumes at the next line not indented further; valid Python is lexed exactly as Python does. `CompletionTest` (12) uses a test-only catalogue with made-up built-ins, since the standard
 library is still being designed.
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.

@@ -33,7 +33,7 @@ final class Lexer {
     private final List<Token> tokens = new ArrayList<>();
     private final List<Token> comments = new ArrayList<>();
     private final List<Integer> indents = new ArrayList<>(List.of(0));
-    /** Open brackets, outermost first: line, column and the bracket character. */
+    /** Open brackets, outermost first: line, column, the bracket character and its offset. */
     private final List<int[]> brackets = new ArrayList<>();
     private int pos;
     private int line = 1;
@@ -42,15 +42,29 @@ final class Lexer {
     private int logicalIndent;
     /** Where the end-of-input tokens start; a partial lex leaves them out. */
     private int tail;
+    /** The offset of the outermost bracket still open at the end, or -1. */
+    private int unclosedAt = -1;
+    /** Brackets opened at or after this offset may be ended early (see {@link #nextLineLeavesBrackets}). */
+    private final int recoverFrom;
 
-    private Lexer(String src, List<ScriptError> errors) {
+    private Lexer(String src, List<ScriptError> errors, int recoverFrom) {
         this.src = src;
         this.errors = errors;
+        this.recoverFrom = recoverFrom;
     }
 
+    /**
+     * Lexes exactly as Python does. Only when a bracket is never closed (an error in Python too) is the script lexed
+     * again with recovery from that bracket on, so the error costs that statement and not the rest of the file.
+     */
     static List<Token> lex(String src, List<ScriptError> errors) {
-        var lexer = new Lexer(src, errors);
+        var lexer = new Lexer(src, new ArrayList<>(), Integer.MAX_VALUE);
         lexer.run();
+        if (lexer.unclosedAt >= 0) {
+            lexer = new Lexer(src, new ArrayList<>(), lexer.unclosedAt);
+            lexer.run();
+        }
+        errors.addAll(lexer.errors);
         return lexer.tokens;
     }
 
@@ -59,7 +73,7 @@ final class Lexer {
      * add: the last logical line stays open, as the cursor sees it.
      */
     static List<Token> lexPartial(String src) {
-        var lexer = new Lexer(src, new ArrayList<>());
+        var lexer = new Lexer(src, new ArrayList<>(), Integer.MAX_VALUE);
         lexer.run();
         return lexer.tokens.subList(0, lexer.tail);
     }
@@ -75,7 +89,7 @@ final class Lexer {
             }
             char c = src.charAt(pos);
             if (c == '\n' || c == '\r') {
-                if (!brackets.isEmpty() && nextLineLeavesBrackets()) {
+                if (!brackets.isEmpty() && brackets.get(0)[3] >= recoverFrom && nextLineLeavesBrackets()) {
                     unclosed();
                 }
                 if (brackets.isEmpty()) {
@@ -111,6 +125,7 @@ final class Lexer {
         }
         tail = tokens.size();
         if (!brackets.isEmpty()) {
+            unclosedAt = brackets.get(0)[3];
             unclosed();
         }
         if (!tokens.isEmpty() && tokens.get(tokens.size() - 1).kind() != Kind.NEWLINE
@@ -312,7 +327,7 @@ final class Lexer {
         for (var op : OPERATORS) {
             if (src.startsWith(op, pos)) {
                 switch (op) {
-                    case "(", "[", "{" -> brackets.add(new int[] {line, pos - lineStart + 1, op.charAt(0)});
+                    case "(", "[", "{" -> brackets.add(new int[] {line, pos - lineStart + 1, op.charAt(0), pos});
                     case ")", "]", "}" -> {
                         if (!brackets.isEmpty()) {
                             brackets.remove(brackets.size() - 1);
@@ -332,9 +347,9 @@ final class Lexer {
     }
 
     /**
-     * Inside brackets at a line break: true when the next line with code is indented no further than the line that
-     * opened them and does not start by closing one. Python would read on to the end of the file; ending here keeps
-     * one forgotten bracket from swallowing the rest, which matters most while a line is half typed.
+     * Recovery only, for a bracket Python reports as never closed: true at a line break when the next line with code
+     * is indented no further than the line that opened the bracket and does not start by closing one. Python reads on
+     * to the end of the file and reports the bracket; ending it here as well lets everything after it parse.
      */
     private boolean nextLineLeavesBrackets() {
         int p = pos;
@@ -368,8 +383,7 @@ final class Lexer {
 
     private void unclosed() {
         var open = brackets.get(0);
-        errors.add(new ScriptError(open[0], open[1], "'" + (char) open[2]
-                + "' is never closed (a line that continues it must be indented further)"));
+        errors.add(new ScriptError(open[0], open[1], "'" + (char) open[2] + "' was never closed"));
         brackets.clear();
     }
 

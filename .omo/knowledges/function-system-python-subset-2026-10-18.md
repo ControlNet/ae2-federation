@@ -46,3 +46,7 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   catalogue supplies values (items, interface aliases).
 - Mutation check done: with the lexer's bracket rule disabled, only the parser test fails; completion stays right
   because of the `pass` substitution.
+- Never-closed brackets: `Lexer.lex` first lexes exactly as Python; only if a bracket is still open at the end does
+  it lex again with recovery from that bracket's offset (`recoverFrom`), ending it at the next line indented no
+  further. Valid Python is never affected (user: syntax must follow Python). Message as CPython's: "'(' was never
+  closed".

@@ -308,7 +308,7 @@ final class ScriptTest {
     }
 
     @Test
-    void anUnclosedBracketEndsAtTheNextLineThatIsNotIndentedFurther() {
+    void anUnclosedBracketCostsOnlyItsOwnStatement() {
         var result = ScriptParser.parse("""
                 def f(gate: Interface) -> None:
                     ae2.craft(
@@ -325,9 +325,24 @@ final class ScriptTest {
         assertEquals(1, result.errors().size(), result.errors().toString());
         var error = result.errors().get(0);
         assertEquals(new Position(2, 14), new Position(error.line(), error.column()));
-        assertTrue(error.message().contains("'(' is never closed"), error.toString());
+        assertTrue(error.message().contains("'(' was never closed"), error.toString());
         assertEquals(List.of("f", "g"), result.program().functions().stream().map(FunctionDef::name).toList());
         assertEquals(3, result.program().functions().get(0).body().size(), "redstone, x and y still parse");
+    }
+
+    /** Inside brackets indentation does not matter, as in Python; recovery applies only to a bracket never closed. */
+    static final String CONTINUATION = """
+            def f(x: int) -> None:
+                y = foo(x,
+            1)
+                mc.redstone(y)
+            """;
+
+    @Test
+    void continuationLinesMayHaveAnyIndentation() {
+        var result = ScriptParser.parse(CONTINUATION);
+        assertEquals(List.of(), result.errors());
+        assertEquals(2, result.program().functions().get(0).body().size());
     }
 
     /** The subset stays valid Python: CPython's own parser accepts every sample and every rejected construct. */
@@ -336,6 +351,7 @@ final class ScriptTest {
         Assumptions.assumeTrue(pythonAvailable(), "python3 is not on PATH");
         assertPythonParses(SAMPLE);
         assertPythonParses(LOOPS);
+        assertPythonParses(CONTINUATION);
         assertPythonParses(print(SAMPLE));
         assertPythonParses(print(LOOPS));
         for (var arguments : unsupported().toList()) {
