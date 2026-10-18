@@ -1,8 +1,9 @@
 # Custom policies
 
 Status: future direction established; detailed behavior and scope under discussion.
-Phase 0 design spike of the shared function system (2026-10-18, branch `feature/function-system`, no game code):
-[plan](../../.omo/plans/function-system.md); a filter-returning query feeding `PolicyFilter` is the proposed first use.
+Decision 2026-10-18 (user): policies stay plain settings; dynamic policies come from automation programs that change
+them through a built-in such as `federation.set_policy(...)`. No function runs inside policy checks. See the
+[function system architecture](function-system.md).
 
 Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. Baseline updated: 2026-10-10. [Idea index](README.md).
 
@@ -57,8 +58,9 @@ No language, runtime, full Python/Lua compatibility promise, editor component or
 
 ### Unified function authoring and Policy bindings
 
-Layers, vocabulary (function, program, binding, automation, trigger) and the bottom-up order are on the
-[function system architecture](function-system.md) page.
+Superseded 2026-10-18 (user): a Policy no longer binds or calls a function. An automation changes policy settings
+through `federation.set_policy(...)`; see [policies changed by automation](function-system.md). The text below is
+kept as the record of the earlier direction.
 
 The later 2026-10-10 proposal makes Policy customization a specialized use of the same general function
 system as [automation](rule-based-automation.md). Players author and edit functions in the automation GUI,

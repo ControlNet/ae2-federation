@@ -1,9 +1,9 @@
 # Function system architecture
 
 Discussion date: 2026-10-18. [Idea index](README.md).
-Status: layering and vocabulary proposed by the assistant, not yet accepted; the first batch's scope and the script
-language and generic functions are the user's decisions (2026-10-18). Phase 0 spike on branch `feature/function-system`, see the
-[plan](../../.omo/plans/function-system.md).
+Status: the first batch's scope, the script language, generic functions, server-wide storage and policies changed
+by automation are the user's decisions (2026-10-18); the rest is assistant proposal. Phase 0 prototype on branch
+`feature/function-system`, see the [plan](../../.omo/plans/function-system.md).
 
 This page holds the architecture shared by [custom policies](custom-policies.md) and
 [rule-based automation](rule-based-automation.md): how programs, functions and automation are defined, and which
@@ -15,23 +15,23 @@ The first batch leaves world and content interactions aside (policy hookup, the 
 network) and starts at the lowest layer: editing a program as a script, as a graph, and converting between the two.
 Everything above it waits until that layer is solid.
 
-Earlier user decisions this page builds on: one general function system edited in the automation GUI, Policy as a
-specialised use of it, interchangeable graph and script editors, redstone output as an automation action, and the
+Earlier user decisions this page builds on: one general function system edited in the automation GUI (Policy as a
+specialised use of it was later replaced by policies changed by automation, below), interchangeable graph and script
+editors, redstone output as an automation action, and the
 computing device's role (see the two idea pages).
 
 ## Script language (user decisions 2026-10-18)
 
 - **A subset of Python.** The interpreter is not expected to cover all of Python; scripts in the subset should stay
   valid Python syntax, so outside editors can highlight and format them. Resources are plain strings (below), not
-  the spike's `@minecraft:iron_ingot`.
+  the Phase 0 prototype's `@minecraft:iron_ingot`.
 - **Numbers as in Python:** `int` (64-bit, matching AE2 amounts) and `float`; `/` gives a float, `//` an int, and an
   int widens to a float where a float is expected.
 - **Loops are in:** `for x in xs` and `while`. Both are easy to draw as graph nodes (a loop node with a body chain and
   a next chain; for-each also gives the current element as a value output).
 
 Consequences of loops (assistant notes, not decisions): a run's length is no longer bounded by the program's size,
-so the spike's static step bound goes; every run needs a step budget at run time. A policy evaluation that runs out of
-budget needs a defined answer (unavailable is the obvious candidate). For automation, a budget per tick that lets a long run
+so the Phase 0 prototype's static step bound goes; every run needs a step budget at run time. A budget per tick that lets a long run
 continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
 computing device's CU.
 
@@ -75,8 +75,8 @@ Details (assistant proposal):
 ## Generic functions, capabilities by static analysis (user decision 2026-10-18)
 
 A function is just a piece of program, fully generic: there is no declared query or action kind. Static analysis
-works out what a function can do, so the system knows where it may be used. This replaces the spike's declared
-query/action split.
+works out what a function can do, so the system knows where it may be used. This replaces the Phase 0 prototype's
+declared query/action split.
 
 How it could work (assistant proposal):
 
@@ -86,15 +86,13 @@ How it could work (assistant proposal):
 - **Inferred per function.** A function's capabilities are the union of those of every built-in it can reach,
   through any call chain, solved over the call graph so recursion is no obstacle. The analysis is conservative: a
   call that sits on a branch that never runs still counts, which keeps it simple and easy to explain.
-- **Hosts state requirements.** A policy slot accepts a function that only reads, never waits and returns `bool` (a
-  predicate) or a filter; automation accepts anything. A refusal says why and where, e.g. "emits redstone (line 12,
-  through `signal`)".
-- **More than a yes/no.** The same analysis can report which observations a function reads (a cached policy answer
-  then only needs recomputing when those change), whether it may loop without end (`while`, recursion), and its I/O
-  for the computing device's bandwidth cost, which the device decisions already expect to be inferred from the
-  program.
-- **Guarantee at run time too.** A host passes in only the capabilities it allows, so a policy evaluation physically
-  cannot act even if the analysis had a bug.
+- **What it is used for.** With policies changed by automation there is one host, so inference no longer gates a
+  policy slot. It separates pure from effectful calls in the graph (below), reports whether a function may loop
+  without end (`while`, recursion), and gives its I/O for the computing device's bandwidth cost, which the device
+  decisions already expect to be inferred from the program. Messages say why and where, e.g. "emits redstone
+  (line 12, through `signal`)".
+- **Guarantee at run time too.** A run gets only the capabilities its host allows; a preview gets none, so it
+  physically cannot act even if the analysis had a bug.
 - **Both views show it.** The graph can badge nodes and functions with their capabilities; the script editor can show
   them beside each `def`.
 
@@ -145,7 +143,7 @@ A middle way (assistant proposal): players write calls, the system runs them as 
 not touch the world from inside the interpreter; the run pauses, hands the request to its host, and resumes with
 the result when the host has carried it out (a coroutine, as Python generators work, but without `yield` in the
 script). The function itself stays free of side effects; the host decides when and whether each request runs, can
-throttle by bandwidth, answer with simulated results for a preview, and refuse every request in a policy. What it
+throttle by bandwidth, and answer with simulated results for a preview. What it
 gives up against pure return values: the host cannot see all of a run's actions before the first runs, so
 all-or-nothing batches need a separate construct if wanted.
 
@@ -156,7 +154,7 @@ where it runs; storage and execution are separate.
 
 Follow-ups (assistant proposal, open):
 
-- **Identity.** Each program has a stable ID; installations and Policy bindings refer to that ID and a function name,
+- **Identity.** Each program has a stable ID; installations refer to that ID and a function name,
   so renaming a program breaks nothing.
 - **Visibility and editing rights** on a multiplayer server: per player, per team, or everyone. Open.
 - **Editing an installed program.** Either installations follow the latest saved version (simple, but a mistake
@@ -182,25 +180,13 @@ Assistant proposal:
 - **Checks span the library.** Types and capabilities are inferred across files. When a function's signature
   changes, the files calling it are re-checked and show the errors; whether running installations see the change
   belongs to the installation version question above.
-- **No main function; entry points are marked** (asked by the user 2026-10-18: which functions are for other
-  functions to call, and which can be started by Federation automation?). A file may hold any number of functions,
-  and any number of them may be entry points. Two independent marks:
-  - Calls: a plain name can be called from any file, `_name` only from its own file.
-  - Entry: a decorator, valid Python, says what a host may start: `@automation` (installable on a computing device)
-    or `@policy` (bindable to a policy slot). Without one a function is a helper only and never appears in the
-    install or binding lists, which keeps those lists short.
-  - The checker validates a marked function while it is edited, not when it is installed: `@policy` must only read,
-    never wait, and return `bool` or a filter; capabilities are still inferred, the mark only states the purpose.
-  - An entry's parameters are filled in when it is installed or bound (an item picker for an `Item`, a number field
+- **No main function and no entry decorators** (user, 2026-10-18). A file may hold any number of functions; any
+  public one can be installed on a computing device, `_name` never. Entry decorators (`@automation`, `@policy`) were
+  proposed and dropped: with policies changed by automation there is one host, and an installation list grouped by
+  file and searchable stays usable.
+  - An installed function's parameters are filled in at installation (an item picker for an `Item`, a number field
     for an `int`), so `keep_stock(item: Item, min: int)` can be installed many times with different arguments.
-  - Everything an entry calls comes along with it.
-  - Reconsidered (user asked how much `@policy` is worth, 2026-10-18; assistant view): little. Whether a function
-    fits a policy slot already follows from inference (reads only, never waits, returns `bool` or a filter), and the
-    run-time guard holds whatever the mark says. What a mark adds is a shorter picker list and an early error; both
-    can come without it: pickers list the public functions that fit, grouped by file and searchable (others greyed
-    with the reason on request), and the editor knows where a function is bound or installed, so it warns while
-    editing ("bound to a policy on Domain A; emitting redstone makes it unfit"). The same holds for `@automation`.
-    Proposal: no entry decorators; every public function is a candidate, `_name` never is. Open.
+  - Everything it calls comes along with it.
   - One `_helper` serves any number of entries in its file: privacy is per file, not per caller. Entries in
     different files that share helpers either use a public helper file, or, if wanted later, folders as packages: a
     file named `_common` is callable only from files in its own folder (Python's own convention for internal
@@ -219,7 +205,7 @@ Assistant proposal:
   is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
   view.
 
-## Policies changed by automation (user proposal 2026-10-18)
+## Policies changed by automation (user decision 2026-10-18)
 
 Instead of policies calling functions, an automation calls a built-in such as `federation.set_policy(...)` and so
 changes policies over time. Policies stay what they are today: plain settings, edited in the GUI or by a program.
@@ -249,14 +235,14 @@ Points to settle:
 
 ## Graph conversion for the Python subset (assistant proposal 2026-10-18)
 
-The spike's rules carry over (one program representation, stable node IDs, exec wires for order, data wires for
+The Phase 0 prototype's rules carry over (one program representation, stable node IDs, exec wires for order, data wires for
 values, literals on ports, positions by node ID). What the new decisions add:
 
 - **One canvas per function.** A file is a list of function canvases. The function list beside the canvas shows each
-  function's decorators and privacy; file-level text (order of `def`s, comments between them) is kept on the function
+  function's privacy and capabilities; file-level text (order of `def`s, comments between them) is kept on the function
   nodes.
-- **Entry node** per canvas: the signature, with each parameter as a typed output port, the docstring as its
-  description, and the decorator as a badge. `return` nodes end a chain.
+- **Entry node** per canvas: the signature, with each parameter as a typed output port, and the docstring as its
+  description. `return` nodes end a chain.
 - **Statements on the exec chain:** assignment (`x = e`, `x: Item = e`; reassignment is allowed, as loops need it),
   `if/elif/else` (a branch node with one exec output per arm), `while` (condition port; outputs `body` and `next`),
   `for x in xs` (list port; outputs `body`, `next` and the element `x`), `break`, `continue`, `return`, and a call on
@@ -285,7 +271,7 @@ values, literals on ports, positions by node ID). What the new decisions add:
 | 1. Language core | Types, the program representation, script syntax, graph model, conversion both ways, keeping node identity across edits, static checks, interpreter | None |
 | 2. Function descriptors | Each built-in function declared by name, parameters, types, capabilities, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
 | 3. Program storage | Serialising a program with its graph layout and comments, with a format version; the server-wide library | Only the save format |
-| 4. Hosts | Who calls functions: the Policy host asks read-only functions; the automation host (computing device) runs functions on triggers. A host states which capabilities it allows, supplies them and a budget | Yes |
+| 4. Host | The computing device runs installed functions on triggers, supplying effects and a budget. Policies are plain settings an automation may change through `federation.set_policy` | Yes |
 | 5. Editors | Script editor and graph editor screens, working only on layers 1 and 3 | Yes |
 
 The first batch covers layers 1 to 3.
@@ -294,20 +280,18 @@ The first batch covers layers 1 to 3.
 
 - **Function**: a generic piece of program with parameters and an optional result; what it can do is inferred
   (above), not declared.
-- **Program** (file): a set of functions plus their graph layout; the unit that is edited and saved server-wide. One of
-  its functions is installed on a computing device or bound to a policy.
-- **Binding**: one use of a function at one place, with its arguments. A Policy binding is a policy slot, a read-only
-  function and its arguments.
-- **Automation**: a binding with a trigger. It says when to run (trigger), what to run (a function call) and where
-  (the computing device, which supplies the budget and the effects).
+- **Program** (file): a set of functions plus their graph layout; the unit that is edited and saved server-wide.
+- **Automation** (an installation): a public function with its arguments, a trigger and a computing device. It says
+  when to run (trigger), what to run (a function call) and where (the device, which supplies the budget and the
+  effects).
 - **Trigger**: a redstone change, a schedule, a manual press, or "a function's answer turned true".
 
-"Automation" is a host-level idea, not a language feature: the language has only functions, and policies and
-automation differ in where and when they call one. That is what lets layer 1 be built and tested alone.
+"Automation" is a host-level idea, not a language feature: the language has only functions. Policies are not part
+of the language either; an automation changes them through a built-in. That is what lets layer 1 be built and tested alone.
 
 ## What the bottom layer still needs
 
-The Phase 0 spike handles complete, valid programs only. Real editing passes through invalid states.
+The Phase 0 prototype handles complete, valid programs only. Real editing passes through invalid states.
 
 - **Drafts.** A script being typed often has syntax errors; a graph being built has unconnected nodes. The custom
   policy requirements already ask that an incomplete or invalid script is shown without discarding the draft or
@@ -329,13 +313,13 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
 | 2 | ~~Draft policy~~ | Decided (user, 2026-10-18): a script with a syntax error cannot switch to the graph; its text is kept and the error shown until it parses. |
 | 3 | ~~Where programs are stored~~ | Decided (user, 2026-10-18): server-wide; see Program storage and installation. |
 
-Deferred with the world interactions: the first host use (a storage policy's filter list proposed), the first
-action (redstone output proposed), what a policy does with an unavailable answer, sampling period, trigger kinds,
-who may edit programs.
+Deferred with the world interactions: the first built-ins to implement (`federation.set_policy` for a storage filter
+list and redstone output proposed), trigger kinds, who may see and edit programs, and whether installations follow
+the latest version of a program.
 
 ## Related
 
-- [Phase 0 plan and spike results](../../.omo/plans/function-system.md)
+- [Phase 0 plan and prototype results](../../.omo/plans/function-system.md)
 - [Videnoa reference](../../.omo/knowledges/videnoa-function-system-reference-2026-10-10.md): port-named wires,
   positions by node ID, inline port values and node descriptors are adopted; its pure data flow is not.
 - [Custom policies](custom-policies.md), [Rule-based automation](rule-based-automation.md)

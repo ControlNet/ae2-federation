@@ -7,10 +7,10 @@ what the feature should do; it does not mean implementation has started or a rel
 
 | Idea | Discussion status | Scope |
 |---|---|---|
-| [Function system architecture](function-system.md) | Layers and vocabulary proposed 2026-10-18; first batch is the bottom layer (user) | Script and graph editing and conversion first; hosts (Policy, automation) and editor screens later |
-| [Rule-based automation](rule-based-automation.md) | Shared function system proposed; computing device role settled 2026-10-17; Phase 0 spike 2026-10-18 ([plan](../../.omo/plans/function-system.md)); execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
+| [Function system architecture](function-system.md) | Python subset, generic functions, server-wide programs, policies changed by automation (user, 2026-10-18); first batch is the bottom layer | Script and graph editing and conversion first; hosts (Policy, automation) and editor screens later |
+| [Rule-based automation](rule-based-automation.md) | Shared function system proposed; computing device role settled 2026-10-17; Phase 0 prototype 2026-10-18 ([plan](../../.omo/plans/function-system.md)); execution details open | Unified function editing in the automation GUI; Policy uses predicates/filters, automation performs actions |
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
-| [Custom policies](custom-policies.md) | Direction established; Phase 0 spike 2026-10-18 shared with automation; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
+| [Custom policies](custom-policies.md) | Policies stay settings; dynamic policies come from automation via `set_policy` (user, 2026-10-18) | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration; wireless cube for bundles implemented on `dev` 2026-10-17 as the Quantum Cube ([feature](../features/quantum-cube.md)) | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
 | [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Counting, limits and bundled cables implemented on `dev`; power versus capacity, progression and balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 

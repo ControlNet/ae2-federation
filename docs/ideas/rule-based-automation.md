@@ -3,7 +3,7 @@
 Discussion date: 2026-10-10.
 Status: preliminary user-proposed direction; the computing device's role was settled on 2026-10-17. Detailed
 behavior remains open.
-Phase 0 design spike (2026-10-18, branch `feature/function-system`, no game code): shared IR with graph and script
+Phase 0 prototype (2026-10-18, branch `feature/function-system`, no game code): shared IR with graph and script
 views, query/action split, checks, evaluator and compute measure; see the
 [plan](../../.omo/plans/function-system.md). Open: first use, script language, first action.
 
@@ -29,8 +29,10 @@ redstone output or introduce a new output block as an already selected requireme
 
 ## Shared function system and unified authoring
 
-Layers, vocabulary (function, program, binding, automation, trigger) and the bottom-up order are on the
-[function system architecture](function-system.md) page.
+Layers, vocabulary and the bottom-up order are on the [function system architecture](function-system.md) page.
+Decision 2026-10-18 (user): policies are not bound to functions; an automation changes them through a built-in such
+as `federation.set_policy(...)`, so this automation system is the only place programs run. The paragraphs below
+about Policy bindings and read-only queries are kept as the record of the earlier direction.
 
 The user refined the direction: build a general, powerful, flexible base system for both automation and
 [custom policies](custom-policies.md). Policy customization can be a specialized application of that system:
