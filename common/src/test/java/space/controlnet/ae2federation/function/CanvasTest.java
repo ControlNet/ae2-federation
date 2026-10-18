@@ -35,7 +35,7 @@ final class CanvasTest {
         }
     }
 
-    private static Canvas canvas(String source) {
+    static Canvas canvas(String source) {
         var parsed = ScriptParser.parse(source);
         assertEquals(List.of(), parsed.errors());
         var result = Checker.check(parsed.program(), WORKSPACE);

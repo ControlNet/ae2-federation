@@ -761,8 +761,23 @@ are the program's node IDs.
 - A call's namespace or file (`ae2.`, `iron_tools.`) is part of the node's title, not a port; a method's receiver is a
   port. A call that is an action is marked.
 
+Graph edits (`Edits`) change the canvas by node ID and port or exec output, and give the canvas of the edited
+function: put a literal, variable or new value on a port (adding or removing call arguments, keywords and list
+items); connect a value to another port; rename a function, call, field, loop variable or operator; rename a variable
+everywhere; insert, remove and move statements; extract a value to a variable; add and remove `elif` and `else` arms;
+set the signature, docstring, annotations and comments. Every edit is checked by printing the function and parsing
+it again, so the canvas is always a program the script view can show. Nodes keep their IDs; new nodes take IDs after
+the file's highest. Only the edited definition changes in the program. A variable rename refuses a name already used
+in the function, including a namespace or file it calls into. Renaming a function does not yet update its callers
+(that needs the workspace, with storage in B6).
+
 Assistant proposals (2026-10-18), open for the user:
 
+- **Extracting to a variable** puts the new assignment just before the statement that uses the value. It is refused
+  where the value would then run a different number of times: in a `while` or `elif` condition and on the right of
+  `and`/`or`.
+- **Removing a statement** removes everything inside it (an `if` with its arms). Removing the last statement of an
+  arm leaves the arm empty, shown as `pass` in the script.
 - **No empty required ports.** Edits never leave a hole: disconnecting a value puts the type's default literal (or the
   variable it came from) back on the port, so every canvas is still a valid program. A hole would need a new kind of
   expression in the program and a draft state everywhere.

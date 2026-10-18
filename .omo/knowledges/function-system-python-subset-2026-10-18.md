@@ -128,3 +128,21 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   `completion_value = <text>` and typed by `infer`. A single non-variable name keeps the namespace/file path.
 - `Checker.substitute` and the method tables are shared with completion so signatures shown match what is checked.
 
+
+## B5: canvas and graph edits
+
+- `Canvas.of(function, result)` projects one function; `toFunction()` inverts it exactly (tested on every parser
+  and runner sample). Elif arms are numbered (`condition1`, `arm1`); whether an `if` has an `else` is read from
+  `armNotes` (elif notes, then the else's), not from an exec link, because an emptied `else` has no link.
+- A call's receiver is a namespace or file (node title, no port) when the name is no variable of the function
+  (`Canvas.locals`: parameters, assigned names, loop variables). Using checker types for this broke on
+  unchecked programs and on nodes added by edits.
+- `Edits` work on a mutable `Draft`, then `done()` turns it into a function, prints it, parses it again and
+  re-projects. That guard makes several explicit checks redundant (assignment targets, augmented comparison
+  operators, argument renumbering); mutation runs showed them surviving, so they were removed. Keep checks only
+  where the guard cannot see the problem: names (`Edits.isName` parses `name = 0`), one-line comments, cycles,
+  exec outputs, ID collisions.
+- New IDs: `new Ids("n", parseResult.positions().keySet())` continues after the highest; every parsed ID is
+  in `positions`.
+- Mutation script for edits: scratchpad `mut/edits.py` pattern (exact-string replacements, run one test class,
+  restore the file).

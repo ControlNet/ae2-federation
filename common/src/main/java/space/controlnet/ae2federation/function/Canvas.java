@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The graph view of one function, projected from the program: the program stays the source, and every edit changes
@@ -85,7 +87,12 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
     // ---- program to canvas ----
 
     public static Canvas of(FunctionDef function, Checker.Result result) {
-        var builder = new Builder(result);
+        return of(function, result.types(), result.effectfulCalls());
+    }
+
+    /** The canvas of {@code function}, with the types and the actions found by checking it. */
+    static Canvas of(FunctionDef function, Map<String, TypeRef> types, Set<String> effectfulCalls) {
+        var builder = new Builder(locals(function), effectfulCalls);
         var params = new ArrayList<Param>();
         for (var param : function.params()) {
             params.add(new Param(param.id(), param.name(), param.type(),
@@ -99,16 +106,57 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
         builder.nodes.forEach(n -> order.put(n.id(), order.size()));
         var links = new ArrayList<>(builder.links);
         links.sort(Comparator.comparing(l -> order.get(l.from())));
-        return new Canvas(builder.nodes, links, result.types());
+        return new Canvas(builder.nodes, links, types);
     }
 
-    private static final class Builder {
-        final Checker.Result result;
+    /** The calls marked as actions. */
+    Set<String> effectfulCalls() {
+        var calls = new HashSet<String>();
+        nodes.stream().filter(Node::effect).forEach(n -> calls.add(n.id()));
+        return calls;
+    }
+
+    /** The function's variables: its parameters and every name it assigns or loops over, as Python scopes them. */
+    static Set<String> locals(FunctionDef function) {
+        var names = new HashSet<String>();
+        function.params().forEach(p -> names.add(p.name()));
+        addLocals(function.body(), names);
+        return names;
+    }
+
+    private static void addLocals(List<Stmt> body, Set<String> names) {
+        for (var statement : body) {
+            switch (statement) {
+                case Stmt.Assign s when s.target() instanceof Expr.Name n -> names.add(n.name());
+                case Stmt.AugAssign s when s.target() instanceof Expr.Name n -> names.add(n.name());
+                case Stmt.If s -> {
+                    addLocals(s.body(), names);
+                    s.elifs().forEach(e -> addLocals(e.body(), names));
+                    if (s.orElse() != null) {
+                        addLocals(s.orElse().body(), names);
+                    }
+                }
+                case Stmt.While s -> addLocals(s.body(), names);
+                case Stmt.For s -> {
+                    names.add(s.variable());
+                    addLocals(s.body(), names);
+                }
+                default -> {
+                }
+            }
+        }
+    }
+
+    /** Projects statements and values into nodes and links; {@link Edits} uses it for the parts it adds. */
+    static final class Builder {
+        final Set<String> locals;
+        final Set<String> effectfulCalls;
         final List<Node> nodes = new ArrayList<>();
         final List<Link> links = new ArrayList<>();
 
-        Builder(Checker.Result result) {
-            this.result = result;
+        Builder(Set<String> locals, Set<String> effectfulCalls) {
+            this.locals = locals;
+            this.effectfulCalls = effectfulCalls;
         }
 
         void link(String from, String output, String to) {
@@ -244,8 +292,8 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
                 case Expr.Call c -> {
                     kind = Kind.CALL;
                     name = c.name();
-                    // A namespace or file has no type; a value the method is called on does.
-                    if (c.receiver() instanceof Expr.Name n && !result.types().containsKey(n.id())) {
+                    // A name that is no variable of the function is a namespace or a file.
+                    if (c.receiver() instanceof Expr.Name n && !locals.contains(n.name())) {
                         namespace = n;
                     } else if (c.receiver() != null) {
                         inputs.put("receiver", input(c.receiver()));
@@ -254,7 +302,7 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
                         inputs.put("arg" + i, input(c.args().get(i)));
                     }
                     c.keywords().forEach(k -> inputs.put("kw:" + k.name(), input(k.value())));
-                    effect = result.effectfulCalls().contains(c.id());
+                    effect = effectfulCalls.contains(c.id());
                 }
                 case Expr.Binary b -> {
                     kind = Kind.BINARY;
@@ -343,7 +391,8 @@ public record Canvas(List<Node> nodes, List<Link> links, Map<String, TypeRef> ty
                         elifs.add(new Stmt.Elif(n.armNotes().get(i - 1), expr(in.get("condition" + i)),
                                 block(n.id(), "arm" + i)));
                     }
-                    var orElse = target(n.id(), "else") == null ? null
+                    // The else's notes follow the elifs'; an else may have an empty body.
+                    var orElse = n.armNotes().size() < arms ? null
                             : new Stmt.Else(n.armNotes().get(arms - 1), block(n.id(), "else"));
                     yield new Stmt.If(n.id(), n.notes(), expr(in.get("condition")), block(n.id(), "arm0"), elifs, orElse);
                 }
