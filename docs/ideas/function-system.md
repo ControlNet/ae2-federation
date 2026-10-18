@@ -131,12 +131,17 @@ errors and still tell the cursor's context and expected type.
 The Federation domain GUI gains a fourth tab on its left strip, Automation, where players edit programs and install
 them on a computing device. Boards on the GUI design canvas, row "自动化页签" (sample data):
 
+- **Two views, switched** (user, 2026-10-18): Edit and Install are two pages of the one tab, switched at the top.
 - **Edit view:** the program list (files and their functions) on the left; the editor with file tabs and a Script /
   Graph switch on the right.
+- **Push** (user, 2026-10-18): a button at the top right of the edit view sends the file's current version to the
+  computing devices that run its functions. Saving never reaches a device by itself; installations keep running the
+  version last pushed. Assistant proposal: only a file that checks clean can be pushed, the button is inactive while
+  the devices already run the current version, and a new installation takes the current version.
 - **Installing by drawing wires** (user, 2026-10-18), as the processing mapping links Pattern Provider rows to
   Endpoints, not through a dialog. Left: program files with their public functions, each with a port. Right: the
-  computing devices with compute and bandwidth meters, one row per installation. Dragging a function onto a device
-  adds an installation; while dragging, devices colour by whether its cost still fits (assistant proposal). Selecting
+  computing devices with compute and bandwidth meters, each with one port (user, 2026-10-18); the functions installed
+  on it are listed below the meters, not as ports. Dragging a function onto a device adds an installation; while dragging, devices colour by whether its cost still fits (assistant proposal). Selecting
   an installation shows its arguments, trigger and cost beside the canvas.
 - **A function library beside the programs** (user, 2026-10-18): every built-in function, by namespace. Clicking one
   opens its documentation and an example; in the graph view it can also be dragged onto the canvas as a node. The
@@ -166,7 +171,7 @@ How it could work (assistant proposal):
 - **The server stays authoritative.** It parses and checks again and never trusts the client's result; the client's
   check is for instant feedback. Same code on both sides means they agree.
 - **Conflicts**, without any sync prompt: the last save wins, and an open editor without unsent changes simply
-  updates when another player saves. Revisit with the visibility question if shared editing needs more.
+  updates when another player saves. Programs are global (user, 2026-10-18), so this applies to every player.
 - **Installing optimistically.** A drawn wire appears at once like any other; in the rare case the server refuses it
   (the device lacked compute, which the drag colours already showed) it is simply gone.
 - **Unsent edits survive a disconnect**, kept on the client until the next save succeeds.
@@ -206,9 +211,10 @@ Follow-ups (assistant proposal, open):
 
 - **Identity.** Each program has a stable ID; installations refer to that ID and a function name,
   so renaming a program breaks nothing.
-- **Visibility and editing rights** on a multiplayer server: per player, per team, or everyone. Open.
-- **Editing an installed program.** Either installations follow the latest saved version (simple, but a mistake
-  reaches every device at once), or each installation pins a version and is updated on request. Open.
+- **Visibility and editing rights** (user, 2026-10-18): no permissions for now; every program is global, seen and
+  edited by every player.
+- **Editing an installed program** (user, 2026-10-18): installations run the version last pushed; the Push button in
+  the edit view (see the Automation tab) sends the current version to the devices.
 - **Deleting a program in use** is refused, or its installations stop with a visible reason.
 - **Sharing between servers** needs no item: the script text is a complete export format; pasting it imports a copy.
   Graph layout can travel along as an optional block.
@@ -258,7 +264,7 @@ Assistant proposal:
   - References are stored by ID. The library keeps programs in the program representation, where a call to another
     file's function holds that file's and function's IDs; the script shows their current names. Renaming a file or
     a function therefore updates every caller, as an IDE rename does, with nothing to fix by hand.
-  - File names are unique within what one player can see (see the visibility question).
+  - File names are unique on the server (programs are global).
   - A dependency graph between files: saving a file re-checks the files that call it, and their errors appear at
     once. Files may call each other in both directions.
   - Deleting a file or a public function that others call is refused, listing the callers.
@@ -384,8 +390,8 @@ The Phase 0 prototype handles complete, valid programs only. Real editing passes
 | 3 | ~~Where programs are stored~~ | Decided (user, 2026-10-18): server-wide; see Program storage and installation. |
 
 Deferred with the world interactions: the first built-ins to implement (`ae2f.set_policy` for a storage filter
-list and redstone output proposed), trigger kinds, who may see and edit programs, and whether installations follow
-the latest version of a program.
+list and redstone output proposed) and trigger kinds. Decided (user, 2026-10-18): programs are global with no
+permissions for now; installations run the pushed version; Edit and Install are two switched pages.
 
 ## Related
 

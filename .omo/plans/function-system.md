@@ -129,5 +129,6 @@ is replaced step by step; what it proved (round-trip, identity reconciliation, b
 
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
-Open (user): program visibility and editing rights; installations following the latest version or pinned; Edit and
-Install as two views of one tab or two tabs.
+Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last
+pushed with a Push button at the top right of the edit view; Edit and Install are two switched pages; a computing
+device has one port in the install view and lists its installed functions below.
