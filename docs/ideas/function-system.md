@@ -210,7 +210,20 @@ Follow-ups (assistant proposal, open):
 - **Deleting a program in use** is refused, or its installations stop with a visible reason.
 - **Sharing between servers** needs no item: the script text is a complete export format; pasting it imports a copy.
   Graph layout can travel along as an optional block.
-- Kept as a world `SavedData`, so it saves with the world and works the same in single player.
+- **Plain-text files in the world save** (user, 2026-10-18): every program is saved as a readable code file with the
+  extension `.ae2f`, for example `<world>/ae2federation/programs/iron_tools.ae2f` (the folder is an assistant
+  proposal). Proposals that follow from it:
+  - The text is the source of truth. The graph's layout lives beside it (a sidecar keyed by node ID, or the world's
+    `SavedData`); IDs are recovered by parsing, and if the text was changed outside the game, the Reconciler maps the
+    old IDs onto the new parse, so positions survive outside edits too.
+  - References between files are by name in the text. Renaming in the editor rewrites the callers' text, as an IDE
+    rename does; renaming a file by hand outside the game makes its callers report errors.
+  - A file with errors is simply saved as text; installations keep using the last version that checked clean.
+  - Installations, devices and other state stay in the world's `SavedData`, not in the code files.
+  - Writes are atomic (a temporary file, then a rename), UTF-8 with LF. File names from clients are checked against
+    the identifier rule, so no path can leave the folder.
+  - Files edited outside the game (another editor, git) are picked up when they change on disk or on a reload
+    command; which of the two is open.
 
 ## Files, multiple functions and calls between them (user ideas 2026-10-18)
 
