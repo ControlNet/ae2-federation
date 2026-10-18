@@ -388,6 +388,16 @@ Sides and other mods' blocks (asked by the user, 2026-10-18). Assistant proposal
   capability at the cost of per-mod upkeep. Our face route covers every mod's machine that pipes can reach and
   none of those; we accept and document that. Worth reusing: simulate every insertion before doing any, and back
   off retries per target.
+- Compared with Data Energistics (source at 4766d9c5, 2026-10-17; AE2 19.2.18): plain transfers go through a face,
+  with a generic chain for any block (the block's own ME storage, AE2's generic inventory, then one composite view
+  built from every registered AE2 storage strategy, so addon types such as chemicals need no own code); only recipe
+  automation (altars, rituals) uses 32 per-machine adapters writing slots through mixins, with no fallback. FE is
+  moved through per-mod strategies plus NeoForge's energy capability, scanning every face and dropping duplicate
+  buffers. Every transfer simulates first, then extracts, inserts, and returns a remainder instead of deleting it;
+  fixed per-tick budgets with round-robin cursors. Lessons for us: one resolution path for both directions (its pull
+  side skips AE2's strategies, so chemicals cannot be pulled); store the target block's own face; check a face by
+  creating the storage view and testing for none, since the strategy map always has an entry per type; a face-level
+  design cannot hold back a machine's outputs, which stays out of scope.
 
 Points for the user: one `move` for every resource type (addon types work without new functions) instead of
 `move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
