@@ -166,6 +166,28 @@ Follow-ups (assistant proposal, open):
   Graph layout can travel along as an optional block.
 - Kept as a world `SavedData`, so it saves with the world and works the same in single player.
 
+## Files, multiple functions and calls between them (user ideas 2026-10-18)
+
+The user wants functions to call other functions, including ones the player wrote elsewhere, and asked whether a
+player should be able to edit several functions at once, or write several `def`s in one "file" or window.
+
+Assistant proposal:
+
+- **A file is the unit.** A program is a file holding any number of `def`s, edited as one script, saved in the
+  server-wide library. The file name is a Python identifier and doubles as its namespace.
+- **Calls across files without imports**, as the standard library: `iron_tools.keep_iron(64)` calls `keep_iron` from
+  the file `iron_tools`; inside the same file the bare name is enough. Completion lists files and their functions as
+  it lists `ae2.`. Names of the standard namespaces (`ae2`, `mc`, `federation`, addon ones) are reserved.
+- **Private helpers** follow Python's convention: a name starting with `_` cannot be called from other files.
+- **Checks span the library.** Types and capabilities are inferred across files. When a function's signature
+  changes, the files calling it are re-checked and show the errors; whether running installations see the change
+  belongs to the installation version question above.
+- **Installation is per function.** Installing on a device picks an entry function of a file, its arguments and a
+  trigger; everything it calls comes along. A Policy binding likewise picks one function.
+- **Several at once.** The editor opens several files in tabs, possibly side by side. In the graph view each function
+  is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
+  view.
+
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
@@ -182,8 +204,8 @@ The first batch covers layers 1 to 3.
 
 - **Function**: a generic piece of program with parameters and an optional result; what it can do is inferred
   (above), not declared.
-- **Program**: a set of functions plus their graph layout; the unit that is edited, saved server-wide and installed
-  on a computing device.
+- **Program** (file): a set of functions plus their graph layout; the unit that is edited and saved server-wide. One of
+  its functions is installed on a computing device or bound to a policy.
 - **Binding**: one use of a function at one place, with its arguments. A Policy binding is a policy slot, a read-only
   function and its arguments.
 - **Automation**: a binding with a trigger. It says when to run (trigger), what to run (a function call) and where
