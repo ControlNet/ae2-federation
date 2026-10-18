@@ -135,6 +135,10 @@ Namespaces become the graph palette's categories, and addon mods can add
 their own (`mekanism....`) through the same descriptors, as the mod already handles addon resource types without
 AE2-only lists.
 
+Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
+location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
+the real list.
+
 ## A smart script editor (user requirement 2026-10-18)
 
 The script editor must be genuinely smart, completion above all; without it players forget names and signatures.
