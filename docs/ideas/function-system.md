@@ -193,7 +193,8 @@ rounds; nothing here is decided.
 3. **Failure.** The subset has no `try`. Proposal: an outcome the world decides (nothing to move, target full, chest
    gone) is a return value (`moved == 0`, `False`); a mistake in the program (an unknown interface, reach 5) stops
    the run with a message in the run log, as a Python exception would.
-   Decided (user, 2026-10-18): this split, and every action returns a `bool`, whether it succeeded. Assistant
+   Decided (user, 2026-10-18): this split, and every action returns a `bool`, whether it succeeded. No exception
+   handling: `try`/`except`/`raise` stay out of the subset (too much for this design). Assistant
    proposals to make that work: an action with an amount is all or nothing (it simulates first, then acts only if
    the whole amount fits, so `True` always means "done as asked" and nothing is left half done); `ae2.craft`
    returns `True` once the job has started, and progress is read with reads such as `ae2.crafting(resource) -> int`
