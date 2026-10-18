@@ -458,6 +458,45 @@ Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assist
 - **Which side of the target is used**: the side facing the interface, as a hopper or an AE2 bus uses the side it
   touches. Machines with sided inventories (a furnace's top, side and bottom) may need the side as an option.
 
+### Select the block first (user idea 2026-10-18)
+
+The user's shape, preferred over passing interfaces and reaches to every call:
+
+```python
+chest_a = ae2f.select("interface_a6dz", 1)  # the block just in front of the interface
+chest_b = ae2f.select("interface_7azh", 2)  # two blocks ahead
+mc.move_item("minecraft:diamond", 64, chest_a, chest_b)  # 64 diamonds from chest_a to chest_b
+```
+
+Selecting is a step of its own, and the selected block is a value the other functions take. The user's aim: when the
+selection is known while editing, the editor can check it and show what block it is, for vanilla inventories and
+other mods' machines alike.
+
+Assistant proposals on how:
+
+- **A `Block` value.** `ae2f.select(interface, reach)` returns a `Block`: the position, and the side facing the
+  interface (the side a hopper or AE2 bus would use). Selecting only reads, so it is not an effect and takes no
+  tick; `mc.move_item` is the effect.
+- **Knowing the block while editing.** Every interface reports what is at reach 1 to 4 in front of it: the block's ID
+  and what it offers (items, fluids, energy, other resource types). The server keeps this with the interface list it
+  already sends for completion, updated when those blocks change, so the client knows it even for interfaces in
+  unloaded or other-dimension areas of the domain. With constant arguments, the checker then knows the block:
+  - the editor shows it beside the variable, as item icons are shown (`chest_a` with a chest icon, "Chest, 27
+    slots");
+  - a call that needs something the block does not offer gets a warning (`mc.move_item` on a block without items).
+- **Warnings, not errors.** The world changes after the check: the chest may be broken or replaced. At run time each
+  call checks again and fails softly (moves 0 and the run goes on, or reports the reason; open). With a selection
+  that is not constant (an installation argument, a parameter), the check happens when the installation's arguments
+  are known: at installation and at Push.
+- **Compatibility through AE2's own mechanism.** AE2's buses already reach any block through per-resource-type
+  strategies in its public API (`appeng.api.behaviors.ExternalStorageStrategy`, `StackImportStrategy`,
+  `StackExportStrategy`), built on NeoForge's block capabilities. Vanilla chests, furnaces and hoppers, other mods'
+  machines, and addon resource types (Mekanism chemicals through their AE2 addon) all work wherever an AE2 Storage
+  or Import/Export Bus works, with no list of supported blocks.
+- **Sided machines.** The default side is the one facing the interface; choosing another side (a furnace's top for
+  input, bottom for output) could be an optional argument of `select`. Open.
+- The user's sample writes IDs as `interface_a6dz` (four characters); either form works as a random ID.
+
 Open: the full list of library
 functions that take a location (with the standard library design); entity interactions (later).
 
