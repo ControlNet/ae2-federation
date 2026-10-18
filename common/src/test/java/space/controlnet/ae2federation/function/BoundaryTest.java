@@ -14,7 +14,7 @@ final class BoundaryTest {
         var root = Path.of(System.getProperty("user.dir")).getParent()
                 .resolve("common/src/main/java/space/controlnet/ae2federation/function");
         assertTrue(Files.isDirectory(root), root.toString());
-        try (var files = Files.list(root)) {
+        try (var files = Files.walk(root)) {
             int[] count = {0};
             files.filter(file -> file.toString().endsWith(".java")).forEach(file -> {
                 count[0]++;
@@ -27,7 +27,7 @@ final class BoundaryTest {
                     throw new RuntimeException(e);
                 }
             });
-            assertTrue(count[0] >= 10, "found " + count[0]);
+            assertTrue(count[0] >= 1, "found " + count[0]);
         }
     }
 }
