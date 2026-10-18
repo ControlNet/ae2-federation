@@ -144,6 +144,13 @@ Done 2026-10-18 (parser, printer and completion; no checking yet, that is B3): k
 assignment targets are expressions; `BinaryOp.IN`/`NOT_IN`/`IS`/`IS_NOT`; `Program.definitions()` holds `FunctionDef` and
 `ClassDef` (with `Field`s) in file order. Method tables and field checks wait for B3's catalogue.
 
+B3 done 2026-10-18: `StandardLibrary` (the settled `ae2`/`ae2f`/`mc` signatures with effect flags and integer
+ranges, typed strings, closed sets, `Stack`, `Block`); `Catalog` reduced to host facts (`values`, `kinds`, `exists`);
+`Checker` (names, types, Python call binding, fields, items, slices, operators, built-ins, list/str methods, returns,
+definitions; problems by node ID; a type per expression), `Flow` (unbound locals, missing returns), constant folding
+and typed-string validation, `Effects` (effect inference across files). Rules are listed in the idea page, "Checking
+rules as built". Next: B4, compile to the execution graph and run it with a frame stack.
+
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last

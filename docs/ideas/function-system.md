@@ -97,6 +97,42 @@ when it returns nothing). A missing hint is an error, not an inferred `Any`, so 
 fits before a program runs. Locals take the type of the value assigned to them; an annotation such as `x: Item = ...`
 gives them another one (see below).
 
+### Checking rules as built (B3, 2026-10-18)
+
+Following Python (no decision needed): conditions take any value (truthiness); `bool` counts as `int` and `int`
+widens to `float`; a parameter whose default is `None` also accepts `None` (as PEP 484 first had it), and
+`Optional[T]` may be written, without an import; call binding, unbound locals, zero division, wrong operands and
+missing attributes are reported with CPython's own messages; `break`/`continue` outside a loop and repeated
+parameter names are parse errors, as in CPython.
+
+Assistant proposals, built so the checker is complete; the user may change any of them:
+
+- A `str` value becomes a typed string only as a literal in a typed place or through an annotation
+  (`x: Item = "minecraft:" + metal`); passing a plain `str` variable where `Item` is expected is an error whose
+  message shows the annotation.
+- A local takes the type of its first value; a local first set to `None` takes `Optional` of the next type
+  assigned (`best = None` then `best = x`). An `Optional` value is accepted where a plain one is expected and checked
+  when the program runs, as Python would fail then.
+- `[]` needs an annotation (`xs: list[int] = []`); list items share one type (`Item` and `Fluid` items make a
+  `list[Resource]`); a `list[Item]` is accepted where `list[Resource]` is expected.
+- `and`/`or` need both sides of one type (their result is one of the operands, as in Python).
+- `%` on strings (Python's old formatting) is left out; text is built with `+` and `str()`.
+- Two definitions with one name in a file are an error (Python lets the second replace the first); a class may not
+  take a built-in type's name; another file's `_name` is private to it.
+- Built-ins take positional arguments only; list methods: `append extend insert pop remove index count reverse sort
+  clear copy` (`sort(reverse=...)` only); str methods: `startswith endswith lower upper strip split join replace find
+  count`.
+- Constants are evaluated while checking: arithmetic and string joins fold as Python computes them (64-bit integer
+  overflow is an error); a constant typed string is checked against its closed set (`Side`, `Capability`,
+  `RuleMode`, `FilterMode`) or the catalogue (an unknown item, an ID of another kind, an ID that is both an item and a
+  fluid in a `Resource` place, an interface or network not in the domain). Library ranges: `reach` 1 to 4,
+  redstone level 0 to 15, amounts and ticks not negative.
+- Effects: library actions are marked in their signatures (`ae2.craft cancel import_from export_to`,
+  `ae2f.set_rule set_filter`, `mc.move set_redstone break_block place_block wait move_fe`); a player function acts if
+  it calls one, through any file and recursion.
+- Measured (2026-10-18): parsing a 1,020-line file takes about 3.6 ms and checking it about 2 ms after warm-up, a
+  third of a 60 fps frame, so the "Threads" proposal's background worker is needed, not only a margin.
+
 ## Resources as typed strings (user direction 2026-10-18)
 
 No `item("...")` wrapper and no special symbol: a resource is written as a plain string, and the static type says

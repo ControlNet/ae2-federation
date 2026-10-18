@@ -75,3 +75,23 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   matches ours.
 - **Java text blocks inside a Python generator script:** writing `\"""` from a Python `'''...'''` string drops the
   backslash; write `\\"""` there.
+
+## B3: checker
+
+- **Shape.** `Checker.check(program, workspace)` returns problems keyed by node ID (map to lines through
+  `ParseResult.positions()` only in the script view), a type per expression ID, and the effect sets. `null` as a type
+  means "already reported": it fits everywhere, so one mistake gives one problem.
+- **Locals are Python's:** a name assigned anywhere in a function is local to all of it (`collectAssigned`). A read
+  before its first assignment in source order gets no type in the type pass; `Flow` reports it with CPython's
+  UnboundLocalError text. Keep the two passes separate: types in source order, paths in `Flow`.
+- **Other files' types are qualified** when a signature or field is read from them (`qualify`): `Order` in
+  `iron_tools` becomes `iron_tools.Order` here, so it never clashes with a local `Order`.
+- **Constants** live in a map by node ID filled as `expr()` returns, so folding is linear and each zero division is
+  reported once. Typed strings are validated where the expected type is known, which covers arguments, annotated
+  assignments, returns, list items, defaults and constructor fields with one check in `expr()`.
+- **CPython's messages** were taken from `python3 -I -c` (runtime TypeErrors, ZeroDivisionError, UnboundLocalError);
+  `max` says `'>'`, `min` says `'<'`; only the string-index message quotes the type.
+- **Mutation checks done:** dropping the Item-to-Resource rule fails 2 tests, an `if` without `else` treated as
+  never falling through fails 4, skipping typed-string validation fails 8.
+- **Cost:** 1,020 lines parse in about 3.6 ms and check in about 2 ms (warm JVM, test machine), so run the core off
+  the render thread.
