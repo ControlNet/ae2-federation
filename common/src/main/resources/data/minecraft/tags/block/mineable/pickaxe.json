@@ -6,6 +6,7 @@
     "ae2federation:pattern_provider",
     "ae2federation:processing_endpoint",
     "ae2federation:automation_interface",
+    "ae2federation:creative_computing_device",
     "ae2federation:beam_converter",
     "ae2federation:creative_beam_converter",
     "ae2federation:beam_former",

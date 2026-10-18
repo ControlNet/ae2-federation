@@ -29,7 +29,8 @@ public final class OperatingPowerCosts {
             case QUANTUM_CUBE -> 44.0;
             // AE2 already charges the tunnel itself; a converter is the supply; a Beam Former's block is free and its
             // domain pays for each linked beam instead.
-            case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> 0.0;
+            // The creative computing device is a placeholder with unlimited compute, so it is free as well.
+            case P2P_TUNNEL, CONVERTER, BEAM_FORMER, COMPUTING_DEVICE, OTHER -> 0.0;
         };
     }
 
@@ -88,7 +89,8 @@ public final class OperatingPowerCosts {
                 case CABLE -> java.util.Optional.of(node.capacityFactor() == 1 ? CABLES : BUNDLES);
                 case ROUTER -> java.util.Optional.of(ROUTERS);
                 case SWITCH -> java.util.Optional.of(SWITCHES);
-                case ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE -> java.util.Optional.of(DEVICES);
+                case ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE, COMPUTING_DEVICE ->
+                        java.util.Optional.of(DEVICES);
                 case QUANTUM_CUBE -> java.util.Optional.of(QUANTUM_CUBES);
                 case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> java.util.Optional.empty();
             };

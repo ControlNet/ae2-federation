@@ -1071,6 +1071,49 @@ Assistant choices, to review:
 - **Resources are named by ID only**, so moving an item with components (a named or enchanted item) moves whichever
   stack of that ID comes first.
 
+### Installations as built (H4, 2026-10-18)
+
+- **Creative ME Federation Computing Device** (「创造ME联邦计算设备」, `creative_computing_device`): the placeholder
+  the user asked for, creative tab only, no recipe, temporary magenta texture. It links ME Federation Cable on all six
+  faces, counts 1 toward the cable's capacity like an Endpoint, has a `device-xxxxxx` ID, and no screen yet.
+- `ComputingDevices` (overworld `SavedData`) keeps the devices, the installations and the pushed versions;
+  `ProgramScheduler` runs them each server tick; `ProgramEvents` holds the curated events; `TriggerGate` is the rate
+  limit and the overlap modes as a state machine (unit-tested). The Automation interface and the device share
+  `DomainDeviceBlockEntity` (cable ports, ID claim, domain node).
+- Until the Automation tab exists, operators use `/ae2federation programs push | devices | interfaces | install |
+  installations | uninstall | trigger | interval | overlap | run | log` (op level 2). The tab will call the same
+  scheduler methods.
+
+Assistant choices, to review:
+
+- **Push carries the file and everything it calls.** A pushed version is the text of the file and of every file it
+  calls, directly or not, all checked clean; the next run of its installations uses it. Installing from a file that
+  was never pushed pushes it; otherwise an installation runs the version last pushed, even when the library has a
+  newer one. Each start checks the pushed version again against the device's domain, since aliases and interfaces
+  change; a start that fails is logged, not retried.
+- **Runs live in memory.** A server restart, an unloaded device or a broken device stops its runs; triggers start new
+  ones later. Breaking the device frees its ID and removes its installations.
+- **Compute.** The creative device is unlimited, but a run takes at most 10,000 steps per tick so a loop without
+  effects cannot stall the server. The device uses no power.
+- **Triggers.** A manual start goes through the rate limit and the overlap mode like any trigger. Redstone means a
+  signal arriving at the device itself (a rising edge); a signal at an interface could be added. A schedule asks for
+  a start every N ticks from installation; the rate limit still applies. A condition is a `bool` function of the same
+  file that does not act (checked, through every function it calls); it is called once per interval and starts a run
+  when it turns true, being false before its first answer, so a condition already true when installed starts once.
+- **Events.** Network events (`network_boot`, `power_changed`, `controller_changed`, `cpus_changed`, `spatial_io`)
+  count when any network of the device's domain posts them. Resource events (`stock_changed`, `crafting_changed`,
+  `craftable_changed`) read the value once per interval and count when it changed; the first reading only sets the
+  baseline. Block events (`block_changed`, `crop_grew`, `right_clicked`) take an interface and a reach (1 to 4) and
+  count at the block it points at then. `block_changed` is NeoForge's neighbour notification, so a change made without
+  notifying neighbours (a crop growing) is `crop_grew`'s. Network and block events are recorded only while some
+  installation waits for one, and forgotten every tick.
+- **Overlap.** Restart drops the running coroutines; what they did stays done, and crafting jobs they started keep
+  going and stay theirs: an installation, not a run, owns its jobs, so the next run can `ae2.cancel` them.
+- **Run log.** The last 20 entries per installation (started, done with the result, failed with the error and line,
+  not started with the reason, stopped), in memory.
+- **Arguments typed in commands** are converted by the parameter types (`int`, `float`, `bool`, text for `str` and the
+  typed strings); list parameters cannot be typed in yet.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

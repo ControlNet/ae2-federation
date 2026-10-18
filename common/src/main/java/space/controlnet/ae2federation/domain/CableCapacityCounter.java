@@ -93,10 +93,14 @@ public final class CableCapacityCounter {
                 || kind == FederationDomainNodeKind.QUANTUM_CUBE;
     }
 
-    /** Endpoints, Pattern Providers and Automation Interfaces: one unit each, linked to a region from outside it. */
+    /**
+     * Endpoints, Pattern Providers, Automation Interfaces and computing devices: one unit each, linked to a region
+     * from outside it.
+     */
     private static boolean device(FederationDomainNodeKind kind) {
         return kind == FederationDomainNodeKind.ENDPOINT || kind == FederationDomainNodeKind.PATTERN_PROVIDER
-                || kind == FederationDomainNodeKind.AUTOMATION_INTERFACE;
+                || kind == FederationDomainNodeKind.AUTOMATION_INTERFACE
+                || kind == FederationDomainNodeKind.COMPUTING_DEVICE;
     }
 
     /** Switch networks by id (settled native evidence only), and the other devices by node. */
@@ -105,7 +109,7 @@ public final class CableCapacityCounter {
             case SWITCH -> evidence.ports().values().forEach(port -> {
                 if (port instanceof FederationDomainPortEvidence.Native attached) units.add(attached.networkId());
             });
-            case ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE -> units.add(evidence.nodeId());
+            case ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE, COMPUTING_DEVICE -> units.add(evidence.nodeId());
             default -> {
             }
         }

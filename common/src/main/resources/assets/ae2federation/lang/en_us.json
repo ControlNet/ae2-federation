@@ -46,6 +46,7 @@
   "block.ae2federation.creative_beam_converter": "Creative ME Federation Beam Converter",
   "block.ae2federation.beam_former": "ME Federation Beam Former",
   "block.ae2federation.automation_interface": "ME Federation Automation Interface",
+  "block.ae2federation.creative_computing_device": "Creative ME Federation Computing Device",
   "block.ae2federation.quantum_cube": "ME Federation Quantum Cube",
   "ae2federation.structure.forming": "This %s is forming; use it again in a moment.",
   "ae2federation.structure.unloaded": "This %s is not formed yet: part of it is in unloaded chunks.",

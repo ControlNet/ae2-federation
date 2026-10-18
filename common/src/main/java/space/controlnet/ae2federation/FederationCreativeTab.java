@@ -33,6 +33,7 @@ public final class FederationCreativeTab {
                         output.accept(BeamRegistration.BEAM_FORMER_ITEM.get());
                         output.accept(space.controlnet.ae2federation.quantum.QuantumRegistration.QUANTUM_CUBE_ITEM.get());
                         output.accept(space.controlnet.ae2federation.automation.AutomationRegistration.INTERFACE_ITEM.get());
+                        output.accept(space.controlnet.ae2federation.automation.AutomationRegistration.DEVICE_ITEM.get());
                         output.accept(BridgeRegistration.BRIDGE.get());
                         output.accept(MaterialRegistration.NEXUS_PROCESSOR_PRESS.get());
                         output.accept(MaterialRegistration.PRINTED_NEXUS_CIRCUIT.get());

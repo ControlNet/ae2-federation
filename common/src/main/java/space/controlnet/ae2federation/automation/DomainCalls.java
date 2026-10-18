@@ -132,6 +132,11 @@ final class DomainCalls {
     }
 
     /** The domain's networks in the order of their IDs, or the one named; loaded and settled ones only. */
+    /** The networks of the domain, in the order of their IDs. */
+    List<IGrid> domainGrids() {
+        return grids(null);
+    }
+
     private List<IGrid> grids(@Nullable Object network) {
         var live = live();
         if (network != null) {

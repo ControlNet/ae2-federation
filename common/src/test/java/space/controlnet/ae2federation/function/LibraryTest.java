@@ -52,6 +52,21 @@ final class LibraryTest {
     }
 
     @Test
+    void listsTheOtherFilesAProgramCalls() throws IOException {
+        write("iron_tools.ae2f", IRON_TOOLS);
+        write("smelting.ae2f", SMELTING);
+        write("shadowed.ae2f", """
+                def run() -> int:
+                    iron_tools = [1]
+                    return len(iron_tools) + smelting.smelt(3)
+                """);
+        var library = library();
+        assertEquals(Set.of(), library.calledFiles("iron_tools"), "its own bare calls and ae2 are not files");
+        assertEquals(Set.of("iron_tools"), library.calledFiles("smelting"));
+        assertEquals(Set.of("smelting"), library.calledFiles("shadowed"), "a local of that name is not the file");
+    }
+
+    @Test
     void loadsEveryProgramFileAndReportsTheOnesItCannotUse() throws IOException {
         write("iron_tools.ae2f", IRON_TOOLS);
         write("smelting.ae2f", SMELTING);

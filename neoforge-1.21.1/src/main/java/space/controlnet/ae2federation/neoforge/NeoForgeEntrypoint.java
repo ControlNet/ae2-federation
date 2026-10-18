@@ -100,6 +100,7 @@ public final class NeoForgeEntrypoint {
         CraftingProjectionService.tick(event.getServer());
         EnergySharingService.tickAll();
         space.controlnet.ae2federation.automation.ProgramCrafting.tickAll(event.getServer());
+        space.controlnet.ae2federation.automation.ProgramScheduler.tickAll(event.getServer());
     }
 
     private static void onServerTickStart(ServerTickEvent.Pre event) {
@@ -143,6 +144,7 @@ public final class NeoForgeEntrypoint {
         space.controlnet.ae2federation.quantum.QuantumLinkService.closeServer(server);
         space.controlnet.ae2federation.automation.ProgramStore.closeServer(server);
         space.controlnet.ae2federation.automation.ProgramCrafting.closeServer(server);
+        space.controlnet.ae2federation.automation.ProgramScheduler.closeServer(server);
         LevelObservabilityService.closeServer(server);
         space.controlnet.ae2federation.policy.PolicyService.closeServer(server);
         FederationDomainRegistryAccess.closeServer(server);

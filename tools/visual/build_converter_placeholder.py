@@ -2,7 +2,8 @@
 recoloured, until the artist draws them. Amber for the converter, the creative purple for the creative one, cyan for
 the former; greys stay as they are. The ME Federation Quantum Cube takes the Router's standalone texture and its
 connected-face tiles, recoloured violet. The ME Federation Automation Interface takes the Processing Endpoint's,
-recoloured green.
+recoloured green. The Creative Computing Device, itself a placeholder for testing, takes the Router's standalone
+texture, recoloured magenta.
 """
 from pathlib import Path
 import colorsys
@@ -46,4 +47,9 @@ folder.mkdir(exist_ok=True)
 for name in ['', '_side', '_back']:
     image = Image.open(TEXTURES / f'processing_endpoint{name}.png').convert('RGBA')
     recolour(image, AUTOMATION_HUE).save(folder / f'automation_interface{name}.png')
-print('Wrote temporary Beam Converter, Beam Former, Quantum Cube and Automation Interface textures.')
+DEVICE_HUE = 320 / 360
+folder = TEXTURES / 'creative_computing_device'
+folder.mkdir(exist_ok=True)
+image = Image.open(TEXTURES / 'router' / 'router.png').convert('RGBA')
+recolour(image, DEVICE_HUE).save(folder / 'creative_computing_device.png')
+print('Wrote temporary Beam Converter, Beam Former, Quantum Cube, Automation Interface and Computing Device textures.')

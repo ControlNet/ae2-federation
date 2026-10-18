@@ -177,7 +177,7 @@ Next (user, 2026-10-18: the host and the editor screens both): assistant phasing
 | H1 (done) | ME Federation Automation Interface block: acts in front, cable on the other faces, random `interface-xxxxxx` ID, alias GUI (ID + copy), wrench turns / sneak-wrench picks up; joins the domain; temporary textures |
 | H2 (done) | Programs in the world save (`<world>/ae2federation/programs/*.ae2f` through `Library`), reload command; server `Catalog` (registries, domain interfaces and networks, `network-xxxxxx` IDs) |
 | H3 (done) | `Evaluator.Host` for the 30 library functions through AE2's strategies and NeoForge capabilities, outside `function/`; GameTests through a dev-only runner |
-| H4 | Creative Computing Device (placeholder, unlimited); installations in `SavedData`; scheduler with the step budget; triggers, events, rate limit and overlap modes; Push |
+| H4 (done) | Creative Computing Device (placeholder, unlimited); installations in `SavedData`; scheduler with the step budget; triggers, events, rate limit and overlap modes; Push |
 | H5 | Packets: library index, chunked upload, last write wins, install/uninstall/push |
 | G0 | Render the design row "自动化页签" and check it covers the Edit view controls; add boards for what is missing and get the user's nod |
 | G1+ | Automation tab: Edit view (program list, file tabs, script editor with completion, errors, item icons), Graph view from `Canvas`/`Layout`, library panel with the examples, Install view |

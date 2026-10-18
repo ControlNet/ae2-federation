@@ -16,6 +16,8 @@ public enum FederationDomainNodeKind {
     QUANTUM_CUBE,
     /** An ME Federation Automation Interface, a place in the world where programs act; a device, as an Endpoint. */
     AUTOMATION_INTERFACE,
+    /** A computing device, which runs the functions installed on it; a device, as an Endpoint. */
+    COMPUTING_DEVICE,
     /** A node no structural rule treats specially, such as a test's synthetic node. */
     OTHER
 }

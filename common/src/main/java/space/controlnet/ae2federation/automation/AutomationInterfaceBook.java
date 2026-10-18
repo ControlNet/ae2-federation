@@ -14,6 +14,7 @@ import space.controlnet.ae2federation.persistence.NetworkNameBook;
 /**
  * Every Automation Interface on the server: its ID, unique on the server and drawn by it, where it stands, and the
  * alias a player gave it, unique within its domain. An unloaded interface keeps its entry; a broken one gives it up.
+ * Computing devices keep their IDs in a book of their own, with their prefix.
  */
 public final class AutomationInterfaceBook {
     public static final String PREFIX = "interface";
@@ -29,21 +30,30 @@ public final class AutomationInterfaceBook {
         SET, UNCHANGED, TAKEN, INVALID
     }
 
+    private final String prefix;
     private final Map<String, Entry> entries = new LinkedHashMap<>();
+
+    public AutomationInterfaceBook() {
+        this(PREFIX);
+    }
+
+    public AutomationInterfaceBook(String prefix) {
+        this.prefix = prefix;
+    }
 
     /**
      * The ID of the interface at a place: the one it stored, while that is valid and not another interface's;
      * otherwise a new one. A copy of an interface (a structure carrying its ID elsewhere) therefore draws a new ID.
      */
     public String claim(@Nullable String stored, String dimension, BlockPos position, RandomGenerator random) {
-        if (stored != null && ShortId.valid(PREFIX, stored)) {
+        if (stored != null && ShortId.valid(prefix, stored)) {
             var entry = entries.get(stored);
             if (entry == null || entry.dimension().equals(dimension) && entry.position().equals(position)) {
                 entries.put(stored, new Entry(dimension, position, entry == null ? "" : entry.alias()));
                 return stored;
             }
         }
-        var id = ShortId.draw(PREFIX, random, entries::containsKey);
+        var id = ShortId.draw(prefix, random, entries::containsKey);
         entries.put(id, new Entry(dimension, position, ""));
         return id;
     }
@@ -68,7 +78,7 @@ public final class AutomationInterfaceBook {
     public AliasResult setAlias(String id, String alias, Set<String> domain) {
         var entry = entries.get(id);
         var sanitized = NetworkNameBook.sanitize(alias).orElse(null);
-        if (entry == null || sanitized == null || ShortId.valid(PREFIX, sanitized)) {
+        if (entry == null || sanitized == null || ShortId.valid(prefix, sanitized)) {
             return AliasResult.INVALID;
         }
         if (sanitized.equals(entry.alias())) {

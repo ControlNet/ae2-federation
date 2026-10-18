@@ -108,6 +108,21 @@ public final class Library {
         return Checker.check(parse(name).program(), workspace(name));
     }
 
+    /** The other programs a program calls directly, as {@code file.function(...)}. */
+    public Set<String> calledFiles(String name) {
+        var called = new TreeSet<String>();
+        for (var f : parse(name).program().functions()) {
+            var locals = Canvas.locals(f);
+            Effects.calls(f.body(), call -> {
+                if (call.receiver() instanceof Expr.Name n && !n.name().equals(name) && texts.containsKey(n.name())
+                        && !locals.contains(n.name())) {
+                    called.add(n.name());
+                }
+            });
+        }
+        return called;
+    }
+
     /** Stores a program's text as given, creating or replacing its file. */
     public void save(String name, String text) throws IOException {
         var problem = nameProblem(name);

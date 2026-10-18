@@ -32,6 +32,20 @@ public final class AutomationRegistration {
                 return type;
             });
 
+    /** The Creative Computing Device, a placeholder for testing automation (user, 2026-10-18). */
+    public static final DeferredBlock<ComputingDeviceBlock> DEVICE = BLOCKS.registerBlock(
+            "creative_computing_device", ComputingDeviceBlock::new,
+            BlockBehaviour.Properties.of().strength(2.2F, 11.0F).sound(SoundType.METAL).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> DEVICE_ITEM = ITEMS.registerSimpleBlockItem(DEVICE,
+            new Item.Properties());
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ComputingDeviceBlockEntity>>
+            DEVICE_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register("creative_computing_device", () -> {
+                var type = BlockEntityType.Builder.of(ComputingDeviceBlockEntity::new, DEVICE.get()).build(null);
+                DEVICE.get().setBlockEntity(ComputingDeviceBlockEntity.class, type, null,
+                        ComputingDeviceBlockEntity::serverTick);
+                return type;
+            });
+
     private AutomationRegistration() {
     }
 
@@ -45,5 +59,7 @@ public final class AutomationRegistration {
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(FederationPortCapability.BLOCK, INTERFACE_BLOCK_ENTITY.get(),
                 AutomationInterfaceBlockEntity::federationPort);
+        event.registerBlockEntity(FederationPortCapability.BLOCK, DEVICE_BLOCK_ENTITY.get(),
+                ComputingDeviceBlockEntity::federationPort);
     }
 }

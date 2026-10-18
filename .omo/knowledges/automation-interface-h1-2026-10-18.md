@@ -54,3 +54,18 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
 - The checker wants one item type per list literal: build a test result with `" ".join([str(...), ...])`.
 - H3 has no player-reachable surface (programs run only from GameTests until H4's installations), so its in-game
   check comes with H4.
+
+## H4: installations and the scheduler
+
+- `DomainDeviceBlockEntity` holds what a cable-linked domain device needs (ports, ID claim/release, node evidence,
+  unload vs break); a new device overrides `kind`, `claim`, `release` and `links`. Add the node kind to the switches
+  listed above.
+- Checker.Result.effectfulFunctions() tells whether a function acts, through every function it calls: use it to keep
+  conditions read-only.
+- Brigadier: lambdas cannot be passed as `Object...`; GameTest step lists need a small builder. Count parentheses per
+  `.then(` branch when nesting command trees (a depth trace per line found two extra closers).
+- Block events from tests: `NeoForge.EVENT_BUS.post(new CropGrowEvent.Post(...))` and
+  `new PlayerInteractEvent.RightClickBlock(mockPlayer, hand, pos, hit)` reach the listeners as the game's do.
+- In-game check `build/automation-run-check/compare.png`: H2 jar (no device, `install` unknown, lamp dark) vs H4 jar
+  (device placed, `install`, `run`, `log` in chat, lamp lit). IDs come from `/ae2federation programs devices` and
+  `interfaces` typed into the server console.

@@ -1,15 +1,29 @@
 package space.controlnet.ae2federation.automation;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.Function;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import space.controlnet.ae2federation.function.Library;
+import space.controlnet.ae2federation.function.ListValue;
+import space.controlnet.ae2federation.function.Ops;
 
 /**
  * {@code /ae2federation programs reload} reads the programs folder again; {@code list} shows each program with its
- * problems. Both report what a player would otherwise only see in the editor.
+ * problems. Both report what a player would otherwise only see in the editor. Until the Automation tab exists, the
+ * other commands install and run functions on computing devices: {@code push}, {@code devices}, {@code interfaces},
+ * {@code install},
+ * {@code installations}, {@code uninstall}, {@code trigger} (manual, redstone, every, when, on), {@code interval}, {@code overlap}, {@code run} and
+ * {@code log}. The tab will call the same {@link ProgramScheduler} methods.
  */
 public final class ProgramCommands {
     private ProgramCommands() {
@@ -35,7 +49,185 @@ public final class ProgramCommands {
                                 return 0;
                             }
                         }))
-                        .then(Commands.literal("list").executes(context -> list(context.getSource())))));
+                        .then(Commands.literal("list").executes(context -> list(context.getSource())))
+                        .then(Commands.literal("push").then(Commands.argument("file", StringArgumentType.word())
+                                .executes(context -> act(context, scheduler -> {
+                                    var texts = scheduler.push(StringArgumentType.getString(context, "file"));
+                                    return "Pushed " + String.join(", ", texts.keySet());
+                                }))))
+                        .then(Commands.literal("devices").executes(context -> devices(context.getSource())))
+                        .then(Commands.literal("interfaces").executes(context -> interfaces(context.getSource())))
+                        .then(Commands.literal("install").then(Commands.argument("device", StringArgumentType.word())
+                                .then(Commands.argument("file", StringArgumentType.word())
+                                        .then(Commands.argument("function", StringArgumentType.word())
+                                                .executes(context -> install(context, ""))
+                                                .then(Commands.argument("args", StringArgumentType.greedyString())
+                                                        .executes(context -> install(context,
+                                                                StringArgumentType.getString(context, "args"))))))))
+                        .then(Commands.literal("installations")
+                                .executes(context -> installations(context.getSource())))
+                        .then(Commands.literal("uninstall").then(Commands.argument("id", StringArgumentType.word())
+                                .executes(context -> act(context, scheduler -> scheduler.uninstall(id(context))
+                                        ? "Uninstalled " + id(context) : "There is no installation " + id(context)))))
+                        .then(Commands.literal("trigger").then(Commands.argument("id", StringArgumentType.word())
+                                .then(Commands.literal("manual").executes(context -> trigger(context,
+                                        new Installation.Trigger.Manual())))
+                                .then(Commands.literal("redstone").executes(context -> trigger(context,
+                                        new Installation.Trigger.Redstone())))
+                                .then(Commands.literal("every").then(Commands.argument("ticks",
+                                        IntegerArgumentType.integer(1)).executes(context -> trigger(context,
+                                        new Installation.Trigger.Schedule(
+                                                IntegerArgumentType.getInteger(context, "ticks"))))))
+                                .then(Commands.literal("on").then(Commands.argument("event",
+                                        StringArgumentType.word()).suggests((context, builder) -> {
+                                            ProgramEvents.EVENTS.keySet().forEach(builder::suggest);
+                                            return builder.buildFuture();
+                                        }).executes(context -> trigger(context, new Installation.Trigger.Event(
+                                                StringArgumentType.getString(context, "event"), List.of())))
+                                        .then(Commands.argument("args", StringArgumentType.greedyString())
+                                                .executes(context -> trigger(context, new Installation.Trigger.Event(
+                                                        StringArgumentType.getString(context, "event"),
+                                                        List.copyOf(words(StringArgumentType.getString(context,
+                                                                "args")))))))))
+                                .then(Commands.literal("when").then(Commands.argument("function",
+                                        StringArgumentType.word()).executes(context -> trigger(context,
+                                        new Installation.Trigger.Condition(
+                                                StringArgumentType.getString(context, "function"), List.of())))
+                                        .then(Commands.argument("args", StringArgumentType.greedyString())
+                                                .executes(context -> trigger(context, new Installation.Trigger
+                                                        .Condition(StringArgumentType.getString(context, "function"),
+                                                        List.copyOf(words(StringArgumentType.getString(context,
+                                                                "args")))))))))))
+                        .then(Commands.literal("interval").then(Commands.argument("id", StringArgumentType.word())
+                                .then(Commands.argument("ticks", IntegerArgumentType.integer(1))
+                                        .executes(context -> act(context, scheduler -> describe(scheduler.setInterval(
+                                                id(context), IntegerArgumentType.getInteger(context, "ticks"))))))))
+                        .then(Commands.literal("overlap").then(Commands.argument("id", StringArgumentType.word())
+                                .then(overlap("ignore")).then(overlap("restart")).then(overlap("parallel"))))
+                        .then(Commands.literal("run").then(Commands.argument("id", StringArgumentType.word())
+                                .executes(context -> act(context, scheduler -> {
+                                    scheduler.trigger(id(context));
+                                    return "Triggered " + id(context);
+                                }))))
+                        .then(Commands.literal("log").then(Commands.argument("id", StringArgumentType.word())
+                                .executes(context -> log(context.getSource(), id(context)))))));
+    }
+
+    private static String id(CommandContext<CommandSourceStack> context) {
+        return StringArgumentType.getString(context, "id");
+    }
+
+    /** Runs a scheduler call and reports its message, or the reason it was refused. */
+    private static int act(CommandContext<CommandSourceStack> context, Function<ProgramScheduler, String> call) {
+        var source = context.getSource();
+        try {
+            var message = call.apply(ProgramScheduler.get(source.getServer()));
+            source.sendSuccess(() -> Component.literal(message), true);
+            return 1;
+        } catch (IllegalArgumentException | UncheckedIOException e) {
+            source.sendFailure(Component.literal(e.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int install(CommandContext<CommandSourceStack> context, String args) {
+        return act(context, scheduler -> "Installed " + describe(scheduler.install(
+                StringArgumentType.getString(context, "device"), StringArgumentType.getString(context, "file"),
+                StringArgumentType.getString(context, "function"), words(args))));
+    }
+
+    private static int trigger(CommandContext<CommandSourceStack> context, Installation.Trigger trigger) {
+        return act(context, scheduler -> describe(scheduler.setTrigger(id(context), trigger)));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> overlap(String mode) {
+        return Commands.literal(mode).executes(context -> act(context, scheduler -> describe(scheduler.setOverlap(
+                id(context), Installation.Overlap.valueOf(mode.toUpperCase(Locale.ROOT))))));
+    }
+
+    /** Words split at spaces; a word in double quotes may hold spaces, as an alias can. */
+    static List<String> words(String text) {
+        var words = new ArrayList<String>();
+        var word = new StringBuilder();
+        var quoted = false;
+        var any = false;
+        for (var c : text.toCharArray()) {
+            if (c == '"') {
+                quoted = !quoted;
+                any = true;
+            } else if (c == ' ' && !quoted) {
+                if (any) {
+                    words.add(word.toString());
+                }
+                word.setLength(0);
+                any = false;
+            } else {
+                word.append(c);
+                any = true;
+            }
+        }
+        if (any) {
+            words.add(word.toString());
+        }
+        return words;
+    }
+
+    private static String describe(Installation installation) {
+        var trigger = switch (installation.trigger()) {
+            case Installation.Trigger.Manual manual -> "manual";
+            case Installation.Trigger.Redstone redstone -> "redstone";
+            case Installation.Trigger.Schedule schedule -> "every " + schedule.ticks() + " ticks";
+            case Installation.Trigger.Condition condition -> "when " + condition.function()
+                    + Ops.repr(new ListValue(condition.args()));
+            case Installation.Trigger.Event event -> "on " + event.name()
+                    + (event.args().isEmpty() ? "" : Ops.repr(new ListValue(event.args())));
+        };
+        return installation.id() + ": " + installation.file() + "." + installation.function()
+                + Ops.repr(new ListValue(installation.args()))
+                + " on " + installation.device() + ", " + trigger + ", at most every " + installation.interval()
+                + " ticks, " + installation.overlap().name().toLowerCase(Locale.ROOT);
+    }
+
+    private static int devices(CommandSourceStack source) {
+        var devices = ComputingDevices.get(source.getServer().overworld()).entries();
+        if (devices.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No computing devices"), false);
+        }
+        devices.forEach((id, entry) -> source.sendSuccess(() -> Component.literal(id + " at "
+                + entry.position().toShortString() + " in " + entry.dimension()), false));
+        return devices.size();
+    }
+
+    private static int interfaces(CommandSourceStack source) {
+        var interfaces = AutomationInterfaces.get(source.getServer().overworld()).entries();
+        if (interfaces.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No automation interfaces"), false);
+        }
+        interfaces.forEach((id, entry) -> source.sendSuccess(() -> Component.literal(id
+                + (entry.alias().isEmpty() ? "" : " (" + entry.alias() + ")") + " at "
+                + entry.position().toShortString() + " in " + entry.dimension()), false));
+        return interfaces.size();
+    }
+
+    private static int installations(CommandSourceStack source) {
+        var scheduler = ProgramScheduler.get(source.getServer());
+        var installations = ComputingDevices.get(source.getServer().overworld()).installations();
+        if (installations.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No installations"), false);
+        }
+        installations.forEach(installation -> source.sendSuccess(() -> Component.literal(describe(installation)
+                + (scheduler.running(installation.id()) > 0 ? ", running" : "")), false));
+        return installations.size();
+    }
+
+    private static int log(CommandSourceStack source, String id) {
+        var log = ProgramScheduler.get(source.getServer()).log(id);
+        if (log.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("Nothing logged for " + id), false);
+        }
+        log.forEach(entry -> source.sendSuccess(() -> Component.literal("[" + entry.tick() + "] " + entry.text()),
+                false));
+        return log.size();
     }
 
     private static int list(CommandSourceStack source) {

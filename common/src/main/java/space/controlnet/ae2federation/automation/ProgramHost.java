@@ -65,6 +65,11 @@ public final class ProgramHost implements Evaluator.Host {
         return catalog;
     }
 
+    /** The domain's networks now, for the scheduler's network events. */
+    List<appeng.api.networking.IGrid> grids() {
+        return domainCalls.domainGrids();
+    }
+
     @Override
     public Object call(String namespace, String name, List<Object> args) {
         return switch (namespace + "." + name) {
