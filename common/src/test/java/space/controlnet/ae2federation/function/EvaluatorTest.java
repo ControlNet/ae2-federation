@@ -454,6 +454,22 @@ final class EvaluatorTest {
                 Arguments.of("sum(None)", "TypeError: 'NoneType' object is not iterable"),
                 Arguments.of("None[0]", "TypeError: 'NoneType' object is not subscriptable"),
                 Arguments.of("None.x", "AttributeError: 'NoneType' object has no attribute 'x'"),
+                Arguments.of("sum(range(10, 0, -3))", "22"),
+                Arguments.of("sum(range(-5, 6))", "0"),
+                Arguments.of("min(range(5, 0, -2))", "1"),
+                Arguments.of("max(range(5, 0, -2))", "5"),
+                Arguments.of("max(range(0, 10, 3))", "9"),
+                Arguments.of("any(range(0, 1))", "False"),
+                Arguments.of("any(range(0, 2))", "True"),
+                Arguments.of("all(range(1, 5))", "True"),
+                Arguments.of("all(range(-3, 3, 2))", "True"),
+                Arguments.of("all(range(-4, 4, 2))", "False"),
+                Arguments.of("all(range(0))", "True"),
+                Arguments.of("min(range(0))", "ValueError: min() iterable argument is empty"),
+                Arguments.of("sum(range(0))", "0"),
+                // Python orders by code point; Java's UTF-16 order would put the emoji first.
+                Arguments.of("'\uD83D\uDE00' > '\uFFFD'", "True"),
+                Arguments.of("min(['\uD83D\uDE00', '\uFFFD'])", "'\uFFFD'"),
                 Arguments.of("1", "1"));
     }
 
@@ -478,7 +494,47 @@ final class EvaluatorTest {
                 Arguments.of("round(1e20)", tooLarge),
                 Arguments.of("sum([9223372036854775807, 1])", tooLarge),
                 Arguments.of("int(-9.2e18)", "-9200000000000000000"),
-                Arguments.of("'ab' * 100000000", "MemoryError: the result would be too large"));
+                Arguments.of("sum(range(0, 9223372036854775807))", tooLarge),
+                Arguments.of("max(range(0, 9223372036854775807, 2))", "9223372036854775806"),
+                Arguments.of("9223372036854775806 in range(0, 9223372036854775807, 2)", "True"),
+                Arguments.of("len(range(-9000000000000000000, 9000000000000000000, 3))", "6000000000000000000"),
+                Arguments.of("range(-9000000000000000000, 9000000000000000000, 3)[-1]", "8999999999999999997"),
+                Arguments.of("len(range(-9223372036854775807, 9223372036854775807))", tooLarge));
+    }
+
+    /** Lists and strings stop growing at a cap, so one step stays short; CPython has no such limit. */
+    static Stream<Arguments> sequenceCap() {
+        var tooMany = "MemoryError: lists and strings hold at most 100000 items";
+        return Stream.of(
+                Arguments.of("'ab' * 100000000", tooMany),
+                Arguments.of("'a' * 100001", tooMany),
+                Arguments.of("len('a' * 100000)", "100000"),
+                Arguments.of("[0] * 100001", tooMany),
+                Arguments.of("list(range(100001))", tooMany),
+                Arguments.of("len(list(range(100000)))", "100000"),
+                Arguments.of("'a' * 60000 + 'b' * 60000", tooMany),
+                Arguments.of("[0] * 60000 + [1] * 60000", tooMany),
+                Arguments.of("('a' * 50000).replace('a', 'bbb')", tooMany),
+                Arguments.of("('a' * 50000).replace('', '-')", tooMany),
+                Arguments.of("'--'.join(['a'] * 40000)", tooMany),
+                Arguments.of("sum(range(1000000000))", "499999999500000000"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource
+    void sequenceCap(String expression, String expected) {
+        assertEquals(expected, run(expression));
+    }
+
+    @Test
+    void growingInPlaceStopsAtTheCap() {
+        var tooMany = "MemoryError: lists and strings hold at most 100000 items";
+        assertEquals(tooMany, exec("xs", "xs = [0] * 100000", "xs.append(1)"));
+        assertEquals(tooMany, exec("xs", "xs = [0] * 100000", "xs.insert(0, 1)"));
+        assertEquals(tooMany, exec("xs", "xs = [0] * 60000", "xs.extend(xs)"));
+        assertEquals(tooMany, exec("xs", "xs = [0] * 60000", "xs += xs"));
+        assertEquals(tooMany, exec("xs", "xs = [0] * 60000", "xs[0:0] = xs"));
+        assertEquals(tooMany, exec("xs", "xs = [0]", "xs.extend(range(100000))"));
     }
 
     @ParameterizedTest(name = "{0}")

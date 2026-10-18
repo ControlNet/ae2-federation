@@ -17,8 +17,11 @@ import java.util.regex.Pattern;
  */
 public final class Ops {
     static final String TOO_LARGE = "integers are 64-bit; this result is too large";
-    /** Longer texts and lists from {@code *} are refused rather than built. */
-    private static final long MAX_REPEAT = 10_000_000;
+    /**
+     * The most items a list, or characters a string, may grow to. It bounds memory, and how long one step can take:
+     * measured 2026-10-18 in the test JVM, sorting 10,000 strings takes about 5 ms and 100,000 about 60 ms.
+     */
+    static final long MAX_SEQUENCE = 100_000;
     private static final Pattern INT = Pattern.compile("[+-]?\\d(?:_?\\d)*");
     private static final Pattern FLOAT = Pattern.compile(
             "[+-]?(?:(?:\\d(?:_?\\d)*(?:\\.(?:\\d(?:_?\\d)*)?)?|\\.\\d(?:_?\\d)*)(?:[eE][+-]?\\d(?:_?\\d)*)?"
@@ -187,18 +190,19 @@ public final class Ops {
 
     /** By code point, as Python orders strings. */
     private static int compareText(String a, String b) {
-        int i = 0;
-        int j = 0;
-        while (i < a.length() && j < b.length()) {
-            int x = a.codePointAt(i);
-            int y = b.codePointAt(j);
+        int n = Math.min(a.length(), b.length());
+        for (int i = 0; i < n; i++) {
+            char x = a.charAt(i);
+            char y = b.charAt(i);
             if (x != y) {
-                return Integer.compare(x, y);
+                // UTF-16 order is code point order except where a surrogate meets a character above it.
+                if (Character.isSurrogate(x) || Character.isSurrogate(y)) {
+                    return Integer.compare(a.codePointAt(i), b.codePointAt(i));
+                }
+                return Character.compare(x, y);
             }
-            i += Character.charCount(x);
-            j += Character.charCount(y);
         }
-        return Boolean.compare(i < a.length(), j < b.length());
+        return Integer.compare(a.length(), b.length());
     }
 
     // ---- operators ----
@@ -302,9 +306,11 @@ public final class Ops {
             };
         }
         if (op == BinaryOp.ADD && a instanceof String x && b instanceof String y) {
+            grow((long) x.length() + y.length());
             return x + y;
         }
         if (op == BinaryOp.ADD && a instanceof ListValue x && b instanceof ListValue y) {
+            grow((long) x.items.size() + y.items.size());
             var items = new ArrayList<>(x.items);
             items.addAll(y.items);
             return new ListValue(items);
@@ -332,8 +338,8 @@ public final class Ops {
     private static Object repeat(Object sequence, long times) {
         long n = Math.max(0, times);
         long size = sequence instanceof String s ? s.length() : ((ListValue) sequence).items.size();
-        if (size != 0 && n > MAX_REPEAT / size) {
-            throw new RunError("MemoryError", "the result would be too large");
+        if (size != 0) {
+            grow(n > MAX_SEQUENCE ? n : n * size);
         }
         if (sequence instanceof String s) {
             return s.repeat((int) n);
@@ -348,7 +354,9 @@ public final class Ops {
     /** {@code current op= value}: {@code +=} and {@code *=} change a list in place, as in Python. */
     static Object inPlace(BinaryOp op, Object current, Object value) {
         if (current instanceof ListValue list && op == BinaryOp.ADD) {
-            list.items.addAll(items(value));
+            var added = items(value);
+            grow((long) list.items.size() + added.size());
+            list.items.addAll(added);
             return list;
         }
         if (current instanceof ListValue list && op == BinaryOp.MUL && isInt(value)) {
@@ -417,8 +425,18 @@ public final class Ops {
         };
     }
 
+    /** Stops a list or string from growing past {@link #MAX_SEQUENCE}. */
+    static void grow(long size) {
+        if (size > MAX_SEQUENCE) {
+            throw new RunError("MemoryError", "lists and strings hold at most " + MAX_SEQUENCE + " items");
+        }
+    }
+
     private static List<Object> items(Object iterable) {
         long n = length(iterable);
+        if (iterable instanceof RangeValue) {
+            grow(n);
+        }
         var out = new ArrayList<>();
         for (long i = 0; i < n; i++) {
             out.add(item(iterable, i));
@@ -535,6 +553,7 @@ public final class Ops {
         var b = bounds(list.items.size(), lower, upper, step);
         if (b.step == 1) {
             long stop = Math.max(b.start, b.stop);
+            grow(list.items.size() - (stop - b.start) + values.size());
             list.items.subList((int) b.start, (int) stop).clear();
             list.items.addAll((int) b.start, values);
             return;
@@ -710,11 +729,15 @@ public final class Ops {
                 }
                 throw typeError("bad operand type for abs(): '" + typeName(v) + "'");
             }
-            case "min", "max" -> extreme(name, args);
-            case "sum" -> sum(items(args.get(0)));
+            case "min", "max" -> args.size() == 1 && args.get(0) instanceof RangeValue r ? rangeExtreme(name, r)
+                    : extreme(name, args);
+            case "sum" -> args.get(0) instanceof RangeValue r ? rangeSum(r) : sum(items(args.get(0)));
             case "round" -> round(args.get(0), args.size() > 1 ? args.get(1) : null);
-            case "any" -> items(args.get(0)).stream().anyMatch(Ops::truthy);
-            case "all" -> items(args.get(0)).stream().allMatch(Ops::truthy);
+            case "any" -> args.get(0) instanceof RangeValue r
+                    ? r.length() > 1 || r.length() == 1 && r.start() != 0
+                    : items(args.get(0)).stream().anyMatch(Ops::truthy);
+            case "all" -> args.get(0) instanceof RangeValue r ? !contains(r, 0L)
+                    : items(args.get(0)).stream().allMatch(Ops::truthy);
             default -> throw new IllegalArgumentException(name);
         };
     }
@@ -798,6 +821,32 @@ public final class Ops {
             }
         }
         return best;
+    }
+
+    /** {@code min}/{@code max} of a range without walking it. */
+    private static Object rangeExtreme(String name, RangeValue r) {
+        long n = r.length();
+        if (n == 0) {
+            throw valueError(name + "() iterable argument is empty");
+        }
+        long first = r.start();
+        long last = r.get(n - 1);
+        return name.equals("min") == r.step() > 0 ? first : last;
+    }
+
+    /** The sum of a range without walking it: n * (first + last) / 2. */
+    private static Object rangeSum(RangeValue r) {
+        long n = r.length();
+        if (n == 0) {
+            return 0L;
+        }
+        var total = java.math.BigInteger.valueOf(n)
+                .multiply(java.math.BigInteger.valueOf(r.start()).add(java.math.BigInteger.valueOf(r.get(n - 1))))
+                .shiftRight(1);
+        if (total.bitLength() > 63) {
+            throw overflow();
+        }
+        return total.longValue();
     }
 
     /** Python 3.12's {@code sum}: exact for ints, compensated (Neumaier) once a float appears. */
@@ -925,9 +974,17 @@ public final class Ops {
     private static Object listMethod(ListValue list, String name, Object[] a) {
         var items = list.items;
         switch (name) {
-            case "append" -> items.add(a[0]);
-            case "extend" -> items.addAll(items(a[0]));
+            case "append" -> {
+                grow(items.size() + 1L);
+                items.add(a[0]);
+            }
+            case "extend" -> {
+                var added = items(a[0]);
+                grow((long) items.size() + added.size());
+                items.addAll(added);
+            }
             case "insert" -> {
+                grow(items.size() + 1L);
                 long i = integer(a[0]);
                 long n = items.size();
                 if (i < 0) {
@@ -977,7 +1034,7 @@ public final class Ops {
                 if (reverse) {
                     Collections.reverse(sorted);
                 }
-                sorted = mergeSort(sorted);
+                sorted = sort(sorted);
                 if (reverse) {
                     Collections.reverse(sorted);
                 }
@@ -991,6 +1048,26 @@ public final class Ops {
             default -> throw new IllegalArgumentException(name);
         }
         return null;
+    }
+
+    /**
+     * Python's stable sort. Numbers without NaN, or strings, use Java's stable sort with the same order; anything
+     * else goes through {@link #mergeSort}, which fails as CPython does.
+     */
+    private static ArrayList<Object> sort(ArrayList<Object> items) {
+        boolean numbers = items.stream().allMatch(v -> isNumber(v) && !(v instanceof Double d && d.isNaN()));
+        if (numbers) {
+            items.sort(Ops::compareNumbers);
+            return items;
+        }
+        if (items.stream().allMatch(String.class::isInstance)) {
+            // Without surrogates UTF-16 order is code point order, and Java's own comparison is much faster.
+            boolean plain = items.stream().noneMatch(v -> ((String) v).chars().anyMatch(c -> Character.isSurrogate((char) c)));
+            items.sort(plain ? (x, y) -> ((String) x).compareTo((String) y)
+                    : (x, y) -> compareText((String) x, (String) y));
+            return items;
+        }
+        return mergeSort(items);
     }
 
     /**
@@ -1046,6 +1123,11 @@ public final class Ops {
                                 + " found");
                     }
                 }
+                long size = (long) s.length() * Math.max(0, parts.size() - 1);
+                for (var part : parts) {
+                    size += ((String) part).length();
+                }
+                grow(size);
                 yield String.join(s, parts.stream().map(String.class::cast).toList());
             }
             case "replace" -> {
@@ -1054,7 +1136,14 @@ public final class Ops {
                         throw typeError("replace() argument " + (i + 1) + " must be str, not " + typeName(a[i]));
                     }
                 }
-                yield s.replace((String) a[0], (String) a[1]);
+                var old = (String) a[0];
+                var replacement = (String) a[1];
+                long matches = old.isEmpty() ? s.length() + 1L : 0;
+                for (int at = old.isEmpty() ? -1 : s.indexOf(old); at >= 0; at = s.indexOf(old, at + old.length())) {
+                    matches++;
+                }
+                grow(s.length() + matches * (replacement.length() - old.length()));
+                yield s.replace(old, replacement);
             }
             case "find" -> {
                 int at = s.indexOf(text(a[0]));

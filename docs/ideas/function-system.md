@@ -121,7 +121,7 @@ Assistant proposals, built so the checker is complete; the user may change any o
   take a built-in type's name; another file's `_name` is private to it.
 - Built-ins take positional arguments only; list methods: `append extend insert pop remove index count reverse sort
   clear copy` (`sort(reverse=...)` only); str methods: `startswith endswith lower upper strip split join replace find
-  count`.
+  count`; range methods `index count` and fields `start stop step`. `list(...)` was added with B4, as standard Python.
 - Constants are evaluated while checking: arithmetic and string joins fold as Python computes them (64-bit integer
   overflow is an error); a constant typed string is checked against its closed set (`Side`, `Capability`,
   `RuleMode`, `FilterMode`) or the catalogue (an unknown item, an ID of another kind, an ID that is both an item and a
@@ -132,6 +132,39 @@ Assistant proposals, built so the checker is complete; the user may change any o
   it calls one, through any file and recursion.
 - Measured (2026-10-18): parsing a 1,020-line file takes about 3.6 ms and checking it about 2 ms after warm-up, a
   third of a 60 fps frame, so the "Threads" proposal's background worker is needed, not only a margin.
+
+### Execution as built (B4, 2026-10-18)
+
+A checked program is compiled to a graph per function, and the graph runs on the server tick; Python code is never
+interpreted directly. Following Python (no decision needed): operators, conversions, built-ins and methods give
+CPython 3.12's results and error messages (380 expressions are compared against CPython in `EvaluatorTest`), lists
+and records are shared by reference, `+=` changes a list in place, floats print as Python prints them.
+
+Assistant proposals; the user may change any of them:
+
+- Integers are 64-bit: a result that does not fit stops the run with "integers are 64-bit; this result is too large"
+  (Python's integers have no limit).
+- `is` compares lists, records and blocks by identity, and None, numbers and strings by value (CPython's answer for
+  small numbers and short strings depends on caching; this one does not).
+- `range(...)` has its own type, as in Python: it can be walked, indexed, sliced, measured and searched, but it is not
+  a list (`xs: list[int] = range(3)` is an error; `list(range(3))` makes a list).
+- Lists compare item by item (`[1, 2] < [1, 3]`), as in Python.
+- Defaults of parameters and fields must be constants: a number, a string, `True`, `False` or `None`, or arithmetic
+  over them (stricter than Python, which evaluates any expression once when the `def` runs; this keeps one shared
+  mutable default from surprising the player). A list default for a field gets the dataclass error.
+- `str()` of a list or record uses Python's repr form: `[1, 'a']`, `Order(item='minecraft:iron_ingot', amount=1)`.
+- A sort of items that cannot be compared fails with CPython's message; the list is left as it was (CPython may leave
+  it partly sorted).
+- A NaN inside a list is never equal to itself (CPython's lists compare the same object as equal first).
+- A list or string holds at most 100,000 items; growing past that stops the run with a `MemoryError`. Built-ins
+  over a `range` (`sum min max any all len in index count`) are computed without walking it. One step may still
+  run past the tick's budget: sorting 100,000 strings took about 60 ms in the test JVM (10,000 about 5 ms).
+  Charging steps by the items they touch is the follow-up if playtesting shows slow ticks.
+- Runner: each graph node costs one step of the tick's budget; library actions run one per tick; `mc.wait(n)`
+  resumes the run after n ticks, and `mc.wait(0)` does not pause; recursion deeper than 1000 calls stops the run with
+  "maximum recursion depth exceeded", counted on the runner's own frames; the implicit `return None` at a function's
+  end belongs to the `def`; an error points at the innermost expression that failed; the compiler's temporaries
+  never show in the trace.
 
 ## Resources as typed strings (user direction 2026-10-18)
 
