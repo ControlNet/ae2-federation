@@ -352,6 +352,13 @@ mc.time() -> int  # game time in ticks
 mc.wait(ticks: int) -> None  # pause the run
 ```
 
+`mc.move(source, target, resource, amount)` accepted (user, 2026-10-18). FE energy (asked by the user) is not a
+resource: base AE2 has no FE key type and the AE2 strategies `move` uses do not carry it; blocks expose it through
+NeoForge's energy capability. Assistant proposal: two functions over that capability,
+`mc.energy(block) -> int` (FE stored) and `mc.move_energy(source, target, amount: int) -> bool` (as much as it
+can, `True` if any moved); no FE from the network to a block in the first version (Providers already feed FE to
+Endpoint machines).
+
 Points for the user: one `move` for every resource type (addon types work without new functions) instead of
 `move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
 the first version; redstone is emitted by the interface itself, so `set_redstone` takes the interface; messages to
