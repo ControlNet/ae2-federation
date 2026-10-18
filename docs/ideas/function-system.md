@@ -57,7 +57,8 @@ Choices made while writing the parser, where the user decisions left them open:
   message says "not supported", never "syntax error". Indexing and keyword arguments are the likeliest to be added.
 - **Paradigms left out** (user, 2026-10-18): no exception handling (`try`, `except`, `raise`), no object-oriented
   programming (`class`), no functional programming (functions as values, higher-order functions, `lambda`,
-  `map`/`filter`, comprehensions, generators). Functions are only defined and called; a name of a function is not a
+  `map`/`filter`, comprehensions, generators, closures: no nested functions, no `nonlocal`/`global`). Functions are
+  only defined and called; a name of a function is not a
   value that can be stored or passed. The language is plain procedural Python.
 - **Language additions decided since B1** (user, 2026-10-18), to build next in the parser: keyword arguments,
   natively, in every call (built-ins and the player's functions alike); list and string methods with what they bring
