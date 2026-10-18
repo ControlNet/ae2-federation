@@ -137,6 +137,11 @@ them on a computing device. Boards on the GUI design canvas, row "自动化页�
   computing devices with compute and bandwidth meters, one row per installation. Dragging a function onto a device
   adds an installation; while dragging, devices colour by whether its cost still fits (assistant proposal). Selecting
   an installation shows its arguments, trigger and cost beside the canvas.
+- **A function library beside the programs** (user, 2026-10-18): every built-in function, by namespace. Clicking one
+  opens its documentation and an example; in the graph view it can also be dragged onto the canvas as a node. The
+  script view has no drag, but clicking still shows what exists. Assistant proposal: the documentation opens in the
+  library panel itself, with a back button, and effectful functions carry a small purple mark matching the graph's
+  effect colour.
 - **Item icons wherever an item is named** (user, 2026-10-18): before a resource string in the script, in the
   resource-string completion, on resource ports in the graph and in installation arguments.
 
