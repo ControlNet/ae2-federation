@@ -506,6 +506,77 @@ Status (user, 2026-10-18): the standard library's design, including which functi
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
 the real list.
 
+**Round 4: the dedicated look** (started 2026-10-18, after B1-B6; assistant proposals awaiting the user). The
+library as it stands in `StandardLibrary`, all three rounds above applied:
+
+```python
+# ae2: the domain's ME storage and crafting; network=None means the whole domain
+ae2.amount(resource, network=None) -> int
+ae2.storage(network=None) -> list[Stack]
+ae2.craftable(resource, network=None) -> bool
+ae2.crafting(resource, network=None) -> int
+ae2.craft(resource, amount, network=None) -> bool            # action
+ae2.cancel(resource, network=None) -> bool                   # action
+ae2.import_from(block, resource, amount, network=None) -> bool  # action
+ae2.export_to(block, resource, amount, network=None) -> bool    # action
+ae2.free_cpus(network=None) -> int
+ae2.energy(network=None) -> float
+# ae2f: the Federation's own things
+ae2f.select(interface, reach=1, side=None) -> Block
+ae2f.networks() -> list[Network]
+ae2f.online(network) -> bool
+ae2f.rule(provider, consumer, capability) -> RuleMode
+ae2f.set_rule(provider, consumer, capability, mode) -> bool             # action
+ae2f.set_filter(provider, consumer, capability, mode, resources) -> bool  # action
+# mc: the world at a selected block
+mc.move(source, target, resource, amount) -> bool    # action
+mc.amount(block, resource) -> int
+mc.storage(block) -> list[Stack]
+mc.block_id(block) -> str
+mc.redstone(block) -> int
+mc.set_redstone(interface, level) -> bool            # action
+mc.break_block(block) -> bool                        # action
+mc.place_block(block, item) -> bool                  # action
+mc.fe(block) -> int
+mc.move_fe(source, target, amount) -> bool           # action
+mc.time() -> int
+mc.wait(ticks) -> None                               # action (pauses)
+```
+
+Questions of this round:
+
+1. **Where a function acts.** Rule as it stands: every world function takes a `Block` from `ae2f.select`; only
+   `mc.set_redstone` takes the `Interface`, because the interface itself emits from its front face. Alternative:
+   `mc.set_redstone(block, level)` with a block at reach 1, so every world function takes a `Block`; the check can
+   only see the reach when it is written as a constant. Proposal: keep the rule as it stands.
+2. **Reading redstone.** `mc.redstone(block)` reads the signal the selected block receives. Alternative: the signal
+   the interface itself receives, `mc.redstone(interface)`, matching `set_redstone`. Proposal: keep the block (a
+   lever or a daylight sensor beside the target is read where it is).
+3. **Additions** (each optional):
+   - `mc.state(block, property) -> str`: a block state property such as a crop's `"age"` or a furnace's `"lit"`
+     (`None` when the block has no such property), for farms and machines without an inventory to read.
+   - `ae2.patterns(network=None) -> list[Resource]`: everything the domain can craft, for "keep all of it stocked"
+     programs.
+4. **Names.** `mc.block(block)` returns the block's ID; `mc.block_id(block)` reads more clearly beside the `Block`
+   type. Proposal: rename to `mc.block_id`.
+
+Decided (user, 2026-10-18): 1 as it stands (`set_redstone` takes the interface, everything else a `Block`); 4,
+`mc.block_id` (renamed in `StandardLibrary`).
+
+On 2 the user asked whether an interface could count as a block, so that an `Interface` satisfies a `Block`
+parameter. Assistant analysis: it can, as a subtype (`Interface` is a `Block`, not the reverse), the way
+`class Interface(Block)` would in Python. `mc.redstone(port)` then reads what the interface receives and
+`mc.redstone(ae2f.select(port))` what the block in front receives, with one function. The check accepts an
+`Interface` wherever a `Block` is asked; at run time the host turns the interface's ID into its block. Functions
+where the interface itself means nothing (it has no inventory, no FE, and must not break itself) do nothing and
+give `False` or `0`.
+
+On 3 the user asked what a block state is. It is Minecraft's own mechanism: every block declares a fixed set of
+properties with values (a crop's `age` 0-7, a furnace's `lit`, a lever's `powered`, `facing`), and the game stores
+each placed block as one of those combinations. Every mod's blocks use the same system, so one generic reader
+covers all of them. What it does not cover is data a mod keeps in its block entity (a machine's progress, its
+energy, its contents); there is no common way to read that.
+
 ## A smart script editor (user requirement 2026-10-18)
 
 The script editor must be genuinely smart, completion above all; without it players forget names and signatures.

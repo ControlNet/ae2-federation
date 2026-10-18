@@ -66,7 +66,7 @@ public final class StandardLibrary {
                     fn("amount", "int", "How much of the resource the block holds.", arg("block", "Block"),
                             arg("resource", "Resource")),
                     fn("storage", "list[Stack]", "What the block holds.", arg("block", "Block")),
-                    fn("block", "str", "The block's ID.", arg("block", "Block")),
+                    fn("block_id", "str", "The block's ID, such as \"minecraft:chest\".", arg("block", "Block")),
                     fn("redstone", "int", "The redstone signal the block receives, 0 to 15.", arg("block", "Block")),
                     act("set_redstone", "bool", "Emits redstone from the interface's front face.",
                             arg("interface", "Interface"),
