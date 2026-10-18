@@ -398,9 +398,9 @@ Decided (user, 2026-10-18):
 - **Reach beyond the adjacent block**, straight ahead: blocks in between do not matter (it acts through them), and a
   longer reach costs nothing extra.
 - **Name** (user, 2026-10-18): ME Federation Automation Interface (「ME联邦自动化接口」). "Automation" keeps it apart
-  from AE2's ME Interface, which it does not resemble: it stores and moves nothing by itself. Assistant proposal:
-  registry ID `automation_interface`; in programs the type is `Interface` (unambiguous inside a script) and the
-  automatic ID reads `interface-12`. Below, "interface" means this block.
+  from AE2's ME Interface, which it does not resemble: it stores and moves nothing by itself. Registry ID
+  `automation_interface`; in programs the type is `Interface` (unambiguous inside a script); the automatic ID reads
+  `interface-12`, numbered per server (assistant proposals, accepted by the user 2026-10-18). Below, "interface" means this block.
 - **Identity and alias.** Every interface gets an ID automatically, so a program can always name it. Right-clicking it
   with a wrench turns it; any other right-click opens its GUI, where the player sets an alias.
 
@@ -410,8 +410,8 @@ Assistant proposals, to discuss:
   the function (`mc.break_block(door, 2)` acts two blocks ahead), defaulting to the adjacent block when left out (the
   checker would allow an optional trailing argument for built-ins only). The alternative is a distance setting in the
   interface's GUI. A maximum (such as 8) keeps the target within loaded range of the interface; open.
-- **Addressing** (proposal on top of the decision above). In a program an interface is a typed string (type name
-  open, `Interface` proposed) holding either its alias or its ID; completion lists both, with the alias first. The
+- **Addressing** (proposal on top of the decision above). In a program an interface is a typed string (type
+  `Interface`) holding either its alias or its ID; completion lists both, with the alias first. The
   automatic ID is short and readable (for example `interface-12`, numbered per server) and never changes; an alias is
   unique within its domain (a duplicate is refused in the GUI). The editor shows the other half beside the string,
   as item icons sit beside item strings: the ID beside an alias, the alias beside an ID. The GUI shows the ID (copy
