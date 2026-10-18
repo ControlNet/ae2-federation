@@ -16,6 +16,10 @@ import space.controlnet.ae2federation.bundle.BundleBeam;
  * sheaths and halo are additive, and fade toward their outlines as they turn from the eye ({@link #fade}), so the
  * nested tubes read as one soft volume rather than bands; the renderer applies that per vertex, by view, from the
  * normals this mesh carries.
+ *
+ * <p>An ordinary 1x1 cell draws R / LITE ({@code tools/blender/cable_beams.py}): the same beam over its own block, its
+ * radii scaled until the halo, breathing at an alarm, meets the shell's glass 3/16 block from the axis, with the inner
+ * and outer sheaths of eight sides only. Its geometry still reaches the block's faces; only the radii shrink.
  */
 public final class BundleBeamMesh {
     @FunctionalInterface
@@ -36,6 +40,12 @@ public final class BundleBeamMesh {
     private static final float[] DEPTH = {.22f, .16f, .10f};
     private static final float[] SHEATH_ALPHA = {.40f, .32f, .22f};
     private static final float HALO_ALPHA = .10f;
+    private static final int[] BUNDLE_SHEATHS = {0, 1, 2};
+    /** R / LITE: radii scaled so that a halo of .44 breathing by a tenth reaches the 1x1 glass at 3/16 block. */
+    private static final float CELL_SCALE = (3 / 16f) / (.44f * 1.1f);
+    private static final int[] CELL_SHEATHS = {0, 2};
+    private static final int[] CELL_SHEATH_SIDES = {8, 8, 0};
+    private static final float[] CELL_EXTENT = {1, 1, 1};
     /** Paths by detail, then box length (1 or 2 layers), then mask. */
     private static final List<List<List<List<CableBeamMesh.Path>>>> PATHS = buildPaths();
     private static final ThreadLocal<float[]> RADII =
@@ -62,15 +72,32 @@ public final class BundleBeamMesh {
         if (detail < 0 || detail > 2 || beam.length() < 1 || beam.length() > 2) {
             throw new IllegalArgumentException("Invalid bundle beam");
         }
+        float[] extent = {beam.extent(Direction.Axis.X), beam.extent(Direction.Axis.Y), beam.extent(Direction.Axis.Z)};
+        emit(paths(beam, detail), extent, 1, BUNDLE_SHEATHS, SHEATH_SIDES[detail], x, y, z, tick, partialTick, style,
+                glow, sink);
+    }
+
+    /**
+     * The glow or the core of an ordinary cell's beam (R / LITE) with connections {@code mask}, in blocks from the
+     * cell's low corner.
+     */
+    public static void emitCell(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style,
+            int detail, boolean glow, Sink sink) {
+        if (detail < 0 || detail > 2 || mask < 0 || mask > 63) throw new IllegalArgumentException("Invalid cell beam");
+        emit(PATHS.get(detail).get(0).get(mask), CELL_EXTENT, CELL_SCALE, CELL_SHEATHS, CELL_SHEATH_SIDES[detail], x,
+                y, z, tick, partialTick, style, glow, sink);
+    }
+
+    private static void emit(List<CableBeamMesh.Path> paths, float[] extent, float scale, int[] sheaths, int sides,
+            int x, int y, int z, long tick, float partialTick, CableBeamStyle style, boolean glow, Sink sink) {
         float u = (float) Math.min(style.load(), 1);
         float strength = style.strength(tick, partialTick);
         float breath = style.breath(tick, partialTick);
         boolean red = style.overloaded();
-        float core = (.10f + .05f * u) * breath;
+        float core = (.10f + .05f * u) * breath * scale;
         int[] world = {x, y, z};
-        float[] extent = {beam.extent(Direction.Axis.X), beam.extent(Direction.Axis.Y), beam.extent(Direction.Axis.Z)};
         double time = (Math.floorMod(tick, 64) + partialTick) / 64.0;
-        for (var path : paths(beam, detail)) {
+        for (var path : paths) {
             var samples = path.samples();
             float[] points = POINTS.get();
             for (int i = 0; i < samples.length; i++) {
@@ -91,12 +118,12 @@ public final class BundleBeamMesh {
             // Even idle the sheaths keep a third of their light, so an idle bundle still reads as one broad beam;
             // past 1.15 they stop brightening, so full load keeps its colour rather than clipping to white.
             float opacity = (.35f + .65f * u) * Math.min(Math.max(strength, .8f), 1.15f);
-            int sides = SHEATH_SIDES[detail];
-            for (int sheath = 0; sheath < (sides == 0 ? 0 : LOBES.length); sheath++) {
+            for (int index = 0; sides > 0 && index < sheaths.length; index++) {
+                int sheath = sheaths[index];
                 float base = switch (sheath) {
                     case 0 -> core * 1.6f;
-                    case 1 -> .22f + .04f * u;
-                    default -> .31f + .02f * u;
+                    case 1 -> (.22f + .04f * u) * scale;
+                    default -> (.31f + .02f * u) * scale;
                 };
                 float[] radii = RADII.get();
                 for (int i = 0; i < samples.length; i++) {
@@ -116,7 +143,7 @@ public final class BundleBeamMesh {
                 }
                 lobed(sink, samples, points, radii, sides, r, g, b, Math.min(1, SHEATH_ALPHA[sheath] * opacity));
             }
-            even(sink, samples, points, straight, .44f * breath, HALO_SIDES, red ? 1 : .15f, red ? .025f : .68f,
+            even(sink, samples, points, straight, .44f * breath * scale, HALO_SIDES, red ? 1 : .15f, red ? .025f : .68f,
                     red ? .012f : 1, Math.min(1, HALO_ALPHA * opacity));
         }
     }

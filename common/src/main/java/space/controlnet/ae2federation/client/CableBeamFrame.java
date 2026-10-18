@@ -24,6 +24,7 @@ final class CableBeamFrame {
 
     private final Map<Key, float[]> layers = new HashMap<>();
     private final Map<BundleKey, float[]> bundles = new HashMap<>();
+    private final Map<Key, float[]> cells = new HashMap<>();
     private long tick = Long.MIN_VALUE;
     private float partialTick = Float.NaN;
     private float[] scratch = new float[STRIDE * 1024];
@@ -62,10 +63,29 @@ final class CableBeamFrame {
         return layer;
     }
 
+    /**
+     * The vertices of one pass of the ordinary cell's plasma beam at {@code x, y, z}, {@link #BUNDLE_STRIDE} floats
+     * each; do not modify.
+     */
+    float[] cell(int mask, int x, int y, int z, long tick, float partialTick, CableBeamStyle style, int detail,
+            boolean glow) {
+        advance(tick, partialTick);
+        var key = new Key(mask, parity(x, y, z), detail, glow, style);
+        var layer = cells.get(key);
+        if (layer == null) {
+            size = 0;
+            BundleBeamMesh.emitCell(mask, x, y, z, tick, partialTick, style, detail, glow, this::record);
+            layer = Arrays.copyOf(scratch, size);
+            cells.put(key, layer);
+        }
+        return layer;
+    }
+
     private void advance(long tick, float partialTick) {
         if (tick != this.tick || Float.floatToIntBits(partialTick) != Float.floatToIntBits(this.partialTick)) {
             layers.clear();
             bundles.clear();
+            cells.clear();
             this.tick = tick;
             this.partialTick = partialTick;
         }

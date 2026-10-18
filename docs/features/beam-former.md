@@ -39,7 +39,7 @@ artist delivers.
   "Beam Former links" ([operating power](operating-power.md)).
 - **Display.** Jade shows one status line (linked and length, blocked at a position, checking, no partner within
   range, another size ahead) and the capacity count. The positive-facing anchor draws the beam one block at a time
-  (`BeamFormerRenderer`): a 1x1 pair with the cable's light, a 2x2 or 3x3 pair with the 2x2 bundle's plasma beam
+  (`BeamFormerRenderer`): a 1x1 pair with the cable's own beam (R / LITE), a 2x2 or 3x3 pair with the 2x2 bundle's plasma beam
   (`BundleBeamMesh`, Blender study R; owner, 2026-10-18), its two-block box scaled to the square; load, over-capacity
   red and unpowered red follow the cable's rules. The anchor syncs a `BeamLook` (partner, side, count, limit, unpowered) every 10 ticks.
 

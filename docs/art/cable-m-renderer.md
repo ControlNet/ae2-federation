@@ -1,5 +1,8 @@
 # M optical cable renderer
 
+> Since 2026-10-18 ordinary cables draw R / LITE (`BundleBeamMesh.emitCell`) instead of M's carrier, shoulders and
+> fog. The visual input, alarm and distance LOD below still apply; the geometry sections describe M.
+
 The approved M design is a continuous pale cyan carrier, moving axial pulse envelopes and soft cyan shoulders.
 It replaces the previous `CableFlowRenderer` interior without changing cable shells, textures, items, connectivity,
 capacity accounting or network packets. It is always enabled in world rendering. Inventory items retain their

@@ -392,6 +392,14 @@ public final class CableBeamMesh {
             float tx = after.x - before.x, ty = after.y - before.y, tz = after.z - before.z;
             float length = (float) Math.sqrt(tx * tx + ty * ty + tz * tz);
             tx /= length; ty /= length; tz /= length;
+            // Each end leaves along its own arm, square to the face, however coarsely an elbow is sampled.
+            if (i == 0 || i == samples.length - 1) {
+                int axis = i == 0 ? first : second;
+                float along = axis == 0 ? tx : axis == 1 ? ty : tz;
+                tx = axis == 0 ? Math.signum(along) : 0;
+                ty = axis == 1 ? Math.signum(along) : 0;
+                tz = axis == 2 ? Math.signum(along) : 0;
+            }
             // A fixed reference normal across each planar elbow avoids twisting.
             int normal = first == second ? (first + 1) % 3 : 3 - first - second;
             float nx = normal == 0 ? 1 : 0, ny = normal == 1 ? 1 : 0, nz = normal == 2 ? 1 : 0;

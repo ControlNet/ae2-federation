@@ -30,7 +30,10 @@ import space.controlnet.ae2federation.bundle.BundleBeam;
 import space.controlnet.ae2federation.router.FederationCableBlockEntity;
 import space.controlnet.ae2federation.router.RouterRegistration;
 
-/** Default M coherent optical carrier, soft moving packets, depth-tested light shoulders and in-shell fog. */
+/**
+ * Cable beams: R / PLASMA, a depth-tested core inside soft lobed sheaths, down every cable (R / LITE in a 1x1 cell) and
+ * down a 2x2 bundle's middle.
+ */
 public final class CableFlowRenderer implements BlockEntityRenderer<FederationCableBlockEntity> {
     private static final ResourceLocation WHITE = ResourceLocation.withDefaultNamespace("textures/misc/white.png");
     // Entity translucent emissive still calls minecraft_mix_light and dims optical carriers.
@@ -124,38 +127,33 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
     }
 
     /**
-     * One cell's beam, glow then carrier, into the world's batched buffers: {@code x, y, z} place its pulses, the pose
-     * places and stretches its geometry.
+     * One cell's beam (R / LITE), glow then core, into the world's batched buffers: {@code x, y, z} place its pulses
+     * and lobes, the pose places its geometry.
      */
     static void emitCell(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z, long tick,
             float partialTick, CableBeamStyle style, int detail) {
-        var pose = stack.last();
-        var matrix = pose.pose();
-        var normal = pose.transformNormal(0, 1, 0, new Vector3f());
-        var position = new Vector3f();
-        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
-        for (int pass = 0; pass < 2; pass++) {
-            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.layer(mask, x, y, z, tick, partialTick, style, detail, pass == 0);
-            // The whole vertex in one call, which a block-format BufferBuilder writes straight to memory; the same
-            // values the chained calls in draw() would write.
-            for (int i = 0; i < layer.length; i += CableBeamFrame.STRIDE) {
-                matrix.transformPosition(layer[i], layer[i + 1], layer[i + 2], position);
-                int color = FastColor.ARGB32.color((int) (layer[i + 6] * 255), (int) (layer[i + 3] * 255),
-                        (int) (layer[i + 4] * 255), (int) (layer[i + 5] * 255));
-                out.addVertex(position.x(), position.y(), position.z(), color, .5f, .5f, OverlayTexture.NO_OVERLAY,
-                        LightTexture.FULL_BRIGHT, normal.x(), normal.y(), normal.z());
-            }
-        }
+        emitPlasma(stack, buffers, glow -> FRAME.cell(mask, x, y, z, tick, partialTick, style, detail, glow));
     }
 
     /**
      * The 2x2 beam, in blocks from the corner cell at {@code x, y, z}, into the world's batched buffers; the pose places
-     * and stretches it. Its sheaths and halo fade toward their outlines as they turn from the eye: the cached mesh
-     * carries normals, and the fade is taken here per vertex, since it depends on the view.
+     * and stretches it.
      */
     static void emitBundle(PoseStack stack, MultiBufferSource buffers, BundleBeam bundle, int x, int y, int z,
             long tick, float partialTick, CableBeamStyle style, int detail) {
+        emitPlasma(stack, buffers, glow -> FRAME.bundle(bundle, x, y, z, tick, partialTick, style, detail, glow));
+    }
+
+    private interface PlasmaLayer {
+        /** One pass of a cached plasma beam, {@link CableBeamFrame#BUNDLE_STRIDE} floats per vertex. */
+        float[] get(boolean glow);
+    }
+
+    /**
+     * A plasma beam, glow then core. Its sheaths and halo fade toward their outlines as they turn from the eye: the
+     * cached mesh carries normals, and the fade is taken here per vertex, since it depends on the view.
+     */
+    private static void emitPlasma(PoseStack stack, MultiBufferSource buffers, PlasmaLayer layers) {
         var pose = stack.last();
         var matrix = pose.pose();
         var normal = pose.transformNormal(0, 1, 0, new Vector3f());
@@ -169,7 +167,7 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
         var facing = new Vector3f();
         for (int pass = 0; pass < 2; pass++) {
             var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            float[] layer = FRAME.bundle(bundle, x, y, z, tick, partialTick, style, detail, pass == 0);
+            float[] layer = layers.get(pass == 0);
             for (int i = 0; i < layer.length; i += CableBeamFrame.BUNDLE_STRIDE) {
                 float alpha = layer[i + 6];
                 if (pass == 0) {
@@ -211,22 +209,13 @@ public final class CableFlowRenderer implements BlockEntityRenderer<FederationCa
                 bundle.extent(Direction.Axis.Z) - 1);
     }
 
-    /** The visual-input seam shared by world cables and native renderer previews; no gameplay effects. */
+    /**
+     * The visual-input seam shared by world cables and native renderer previews; no gameplay effects. Each pass is
+     * complete before the next starts, so a shared buffer that a switch of RenderType finishes still gets both.
+     */
     public static void draw(PoseStack stack, MultiBufferSource buffers, int mask, int x, int y, int z,
             long tick, float partialTick, CableBeamStyle style, int detail) {
-        var pose = stack.last();
-        // In the world each pass has its own buffer (registerBuffers). Elsewhere, as in previews, switching RenderTypes
-        // can finish the prior shared buffer, so each pass is complete before the next starts.
-        // Glow first: the carrier then writes depth over it without fighting the coplanar shoulders.
-        for (int pass = 0; pass < 2; pass++) {
-            var out = buffers.getBuffer(pass == 0 ? GLOW : CORE);
-            CableBeamMesh.emitLayer(mask, x, y, z, tick, partialTick, style, detail, pass == 0,
-                (additive, px, py, pz, red, green, blue, alpha) -> {
-                    out.addVertex(pose, px, py, pz).setColor(red, green, blue, alpha)
-                            .setUv(.5f, .5f)
-                            .setLight(LightTexture.FULL_BRIGHT).setNormal(pose, 0, 1, 0);
-                });
-        }
+        emitCell(stack, buffers, mask, x, y, z, tick, partialTick, style, detail);
     }
 
     @Override
