@@ -14,6 +14,8 @@ public enum FederationDomainNodeKind {
     BEAM_FORMER,
     /** A block of an ME Federation Quantum Cube, which links its domain to the cube bound to it. */
     QUANTUM_CUBE,
+    /** An ME Federation Automation Interface, a place in the world where programs act; a device, as an Endpoint. */
+    AUTOMATION_INTERFACE,
     /** A node no structural rule treats specially, such as a test's synthetic node. */
     OTHER
 }

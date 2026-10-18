@@ -24,7 +24,7 @@ public final class OperatingPowerCosts {
             // AE2 cable is free, but here the beam is the energy's look; a bundle saves capacity, not energy.
             case CABLE -> 0.5;
             // AE2's default device and crafting-CPU block.
-            case ROUTER, SWITCH, ENDPOINT, PATTERN_PROVIDER -> 2.0;
+            case ROUTER, SWITCH, ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE -> 2.0;
             // AE2's Quantum Network Bridge: 22 AE/t per block, wherever the other end is.
             case QUANTUM_CUBE -> 44.0;
             // AE2 already charges the tunnel itself; a converter is the supply; a Beam Former's block is free and its
@@ -88,7 +88,7 @@ public final class OperatingPowerCosts {
                 case CABLE -> java.util.Optional.of(node.capacityFactor() == 1 ? CABLES : BUNDLES);
                 case ROUTER -> java.util.Optional.of(ROUTERS);
                 case SWITCH -> java.util.Optional.of(SWITCHES);
-                case ENDPOINT, PATTERN_PROVIDER -> java.util.Optional.of(DEVICES);
+                case ENDPOINT, PATTERN_PROVIDER, AUTOMATION_INTERFACE -> java.util.Optional.of(DEVICES);
                 case QUANTUM_CUBE -> java.util.Optional.of(QUANTUM_CUBES);
                 case P2P_TUNNEL, CONVERTER, BEAM_FORMER, OTHER -> java.util.Optional.empty();
             };

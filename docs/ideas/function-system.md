@@ -981,6 +981,20 @@ Recipe (user): shapeless, Nexus Core + ME Interface + Redstone (the Endpoint is 
 choices: its operating power follows the other devices (2 AE/t at multiplier 1); its ID is drawn by the server and
 kept in a server-wide index, and a copied interface (same ID at another position) draws a new one.
 
+### The interface as built (H1, 2026-10-18)
+
+- `automation/`: `ShortId` (the alphabet and the draw), `AutomationInterfaceBook` (ID to dimension, position and
+  alias; the claim, alias and resolve rules, unit-tested), `AutomationInterfaces` (the book as overworld `SavedData`;
+  the domain is read from the domain registry, not stored), the block, block entity and registration, and
+  `AutomationInterfaceScreens` (the screen's view and alias round trip; the loader registers the packets).
+- A lone interface is a one-node domain of its own in the registry, not "no domain": alias uniqueness and `resolve`
+  then see only itself.
+- Alias rules: trimmed, at most 32 code points, no control characters or `§` (the network-name rules), not shaped
+  like an ID, unique among the interfaces of its domain. Refused text turns red in the field; nothing else is shown.
+- The screen is a plain screen drawn with the Federation theme's AE2 sprites: title, the ID in a dark well with Copy,
+  the alias field. The alias is sent on Enter or when the screen closes.
+- Textures are temporary: the Processing Endpoint's, recoloured green by `tools/visual/build_converter_placeholder.py`.
+
 Assistant proposals, to discuss:
 
 - **Reach argument details.** Left out, it is the adjacent block (1); the checker allows that optional trailing

@@ -18,7 +18,7 @@ item_ids:
   <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
 </Row>
 
-[联邦域](../mechanics.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器和处理端点每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../network-capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
+[联邦域](../mechanics.md)靠FE运行。 它的交换机、路由器、线缆、样板供应器、处理端点和自动化接口每tick都消耗一点能量， 联邦域从它的光束转换器里取用。 转换器付不起时， 联邦域**停止**， 和超出[容量](../network-capacity.md)时一样： 各个网络照常独立工作， 但在重新获得FE之前， 不共享存储、合成、处理和能量。
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
@@ -40,7 +40,7 @@ item_ids:
 |---|---|
 | <ItemLink id="ae2federation:cable" /> | 0.5 |
 | <ItemLink id="ae2federation:switch" />、<ItemLink id="ae2federation:router" /> | 2 |
-| <ItemLink id="ae2federation:pattern_provider" />、<ItemLink id="ae2federation:processing_endpoint" /> | 2 |
+| <ItemLink id="ae2federation:pattern_provider" />、<ItemLink id="ae2federation:processing_endpoint" />、<ItemLink id="ae2federation:automation_interface" /> | 2 |
 | 已成形的<ItemLink id="ae2federation:quantum_cube" /> | 44 |
 | <ItemLink id="ae2federation:federation_p2p_tunnel" />、光束转换器、<ItemLink id="ae2federation:beam_former" /> | 0 |
 

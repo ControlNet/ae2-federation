@@ -47,7 +47,7 @@ their own, but share no storage, crafting, processing or power until the count f
 ## What counts
 
 * **Each ME network on a Switch counts 1.** A network that touches several Switch faces still counts once.
-* **Each Processing Endpoint and each Federation Pattern Provider counts 1.** A Provider counts as a device of its
+* **Each Processing Endpoint, Federation Pattern Provider and Automation Interface counts 1.** A Provider counts as a device of its
   own, even when its network is also on a Switch.
 
 Neither rules nor power play a part: a network counts as soon as it joins the domain.

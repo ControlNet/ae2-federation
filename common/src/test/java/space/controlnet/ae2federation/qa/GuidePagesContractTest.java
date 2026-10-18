@@ -34,7 +34,8 @@ final class GuidePagesContractTest {
     private static final Path GUIDE = RESOURCES.resolve("assets/ae2federation/ae2guide");
     private static final Set<String> BASE_NAMESPACES = Set.of("minecraft", "ae2", "ae2federation");
     private static final Set<String> FEDERATION_ITEMS = Set.of("nexus_processor_press", "printed_nexus_circuit", "nexus_processor", "nexus_core",
-            "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "federation_p2p_tunnel",
+            "bridge", "router", "switch", "cable", "pattern_provider", "processing_endpoint", "automation_interface",
+            "federation_p2p_tunnel",
             "beam_converter", "creative_beam_converter", "beam_former", "quantum_cube");
     /** Recipes a page shows by id with {@code <Recipe>} whose id is not an item's: the second recipe for an item. */
     private static final Set<String> FEDERATION_RECIPES = Set.of("nexus_processor_press_from_iron");

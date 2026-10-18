@@ -18,10 +18,10 @@ item_ids:
   <BlockImage id="ae2federation:creative_beam_converter" scale="6" />
 </Row>
 
-A [Federation domain](../mechanics.md) runs on FE. Its Switches, Routers, cables, Pattern Providers and Endpoints use a
-little every tick, and the domain draws it from its Beam Converters. A domain whose converters cannot pay **stops**,
-just as a domain over [capacity](../network-capacity.md) does: its networks keep working on their own, but share no
-storage, crafting, processing or power until it has FE again.
+A [Federation domain](../mechanics.md) runs on FE. Its Switches, Routers, cables, Pattern Providers, Endpoints and
+Automation Interfaces use a little every tick, and the domain draws it from its Beam Converters. A domain whose
+converters cannot pay **stops**, just as a domain over [capacity](../network-capacity.md) does: its networks keep
+working on their own, but share no storage, crafting, processing or power until it has FE again.
 
 <GameScene zoom="5" interactive={true} background="transparent">
   <ImportStructure src="../assets/beam_converter.snbt" />
@@ -43,7 +43,7 @@ storage, crafting, processing or power until it has FE again.
 |---|---|
 | <ItemLink id="ae2federation:cable" /> | 0.5 |
 | <ItemLink id="ae2federation:switch" />, <ItemLink id="ae2federation:router" /> | 2 |
-| <ItemLink id="ae2federation:pattern_provider" />, <ItemLink id="ae2federation:processing_endpoint" /> | 2 |
+| <ItemLink id="ae2federation:pattern_provider" />, <ItemLink id="ae2federation:processing_endpoint" />, <ItemLink id="ae2federation:automation_interface" /> | 2 |
 | <ItemLink id="ae2federation:quantum_cube" />, formed | 44 |
 | <ItemLink id="ae2federation:federation_p2p_tunnel" />, Beam Converter, <ItemLink id="ae2federation:beam_former" /> | 0 |
 

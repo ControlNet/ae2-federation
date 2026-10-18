@@ -1,7 +1,8 @@
 """Write the temporary textures of the ME Federation Beam Converter and Beam Former: the Federation Pattern Provider's,
 recoloured, until the artist draws them. Amber for the converter, the creative purple for the creative one, cyan for
 the former; greys stay as they are. The ME Federation Quantum Cube takes the Router's standalone texture and its
-connected-face tiles, recoloured violet.
+connected-face tiles, recoloured violet. The ME Federation Automation Interface takes the Processing Endpoint's,
+recoloured green.
 """
 from pathlib import Path
 import colorsys
@@ -39,4 +40,10 @@ folder.mkdir(exist_ok=True)
 for name in ['', '_base', '_corner', '_side_hor', '_side_ver']:
     image = Image.open(TEXTURES / 'router' / f'router{name}.png').convert('RGBA')
     recolour(image, QUANTUM_HUE).save(folder / f'quantum_cube{name}.png')
-print('Wrote temporary Beam Converter, Beam Former and Quantum Cube textures.')
+AUTOMATION_HUE = 130 / 360
+folder = TEXTURES / 'automation_interface'
+folder.mkdir(exist_ok=True)
+for name in ['', '_side', '_back']:
+    image = Image.open(TEXTURES / f'processing_endpoint{name}.png').convert('RGBA')
+    recolour(image, AUTOMATION_HUE).save(folder / f'automation_interface{name}.png')
+print('Wrote temporary Beam Converter, Beam Former, Quantum Cube and Automation Interface textures.')

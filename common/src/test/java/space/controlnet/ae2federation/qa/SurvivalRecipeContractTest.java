@@ -43,6 +43,7 @@ final class SurvivalRecipeContractTest {
                 "bridge", "ae2federation:bridge x1", "router", "ae2federation:router x1", "switch", "ae2federation:switch x1",
                 "cable", "ae2federation:cable x8", "pattern_provider", "ae2federation:pattern_provider x1"));
         expected.put("processing_endpoint", "ae2federation:processing_endpoint x1");
+        expected.put("automation_interface", "ae2federation:automation_interface x1");
         expected.put("beam_converter", "ae2federation:beam_converter x1");
         expected.put("beam_former", "ae2federation:beam_former x1");
         expected.put("quantum_cube", "ae2federation:quantum_cube x8");
@@ -115,6 +116,9 @@ final class SurvivalRecipeContractTest {
         // The block forms: AE2's ae2:interface and ae2:pattern_provider tags would also take the cable parts.
         assertShapeless(recipes.get("pattern_provider"), "{\"item\":\"ae2:pattern_provider\"}," + CORE);
         assertShapeless(recipes.get("processing_endpoint"), "{\"item\":\"ae2:interface\"}," + CORE);
+        // Redstone tells it apart from the Endpoint's recipe.
+        assertShapeless(recipes.get("automation_interface"),
+                "{\"item\":\"ae2:interface\"}," + CORE + ",{\"item\":\"minecraft:redstone\"}");
     }
 
     // What a Switch face exchanges, as on the Bridge: storage (Storage Bus), crafting and processing (ME Interface)

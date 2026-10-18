@@ -62,11 +62,13 @@ public final class NeoForgeEntrypoint {
         PowerRegistration.register(modBus);
         BeamRegistration.register(modBus);
         space.controlnet.ae2federation.quantum.QuantumRegistration.register(modBus);
+        space.controlnet.ae2federation.automation.AutomationRegistration.register(modBus);
         MaterialRegistration.register(modBus);
         FederationCreativeTab.register(modBus);
         ObservationPayloads.register(modBus);
         FederationDomainPolicyActionPayloads.register(modBus);
         space.controlnet.ae2federation.neoforge.network.BundleFormPayload.register(modBus);
+        space.controlnet.ae2federation.neoforge.network.AutomationInterfacePayloads.register(modBus);
         NeoForge.EVENT_BUS.addListener(space.controlnet.ae2federation.crafting.projection.ReturnRecoveryCommands::register);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onLevelUnload);
         NeoForge.EVENT_BUS.addListener(NeoForgeEntrypoint::onServerStopped);
