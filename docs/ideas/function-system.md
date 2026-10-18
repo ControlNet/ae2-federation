@@ -103,10 +103,29 @@ How it could work (assistant proposal):
 The system ships a set of ready functions players call directly: AE2 ones (stock, craftability, crafting status,
 storage, energy and the like) and Minecraft ones (reading and emitting redstone and the like). Lists are not fixed.
 
-Assistant proposal: group them by namespace, already available without imports, as `ae2.stock(...)`,
-`mc.redstone(...)`, `federation.online()`. Namespaces become the graph palette's categories, and addon mods can add
+Grouped by namespace, already available without imports, as `ae2.stock(...)`, `mc.redstone(...)`,
+`federation.online()` (user, 2026-10-18). Namespaces become the graph palette's categories, and addon mods can add
 their own (`mekanism....`) through the same descriptors, as the mod already handles addon resource types without
 AE2-only lists.
+
+## A smart script editor (user requirement 2026-10-18)
+
+The script editor must be genuinely smart, completion above all; without it players forget names and signatures.
+This repeats the [custom policies](custom-policies.md) requirement of comprehensive completion.
+
+What completion should cover (assistant proposal):
+
+- After `ae2.`, `mc.`, `federation.` (and addon namespaces): that namespace's functions, each with its signature,
+  a one-line description and its capabilities.
+- Inside a call: the current parameter's name and type highlighted, as IDE parameter hints.
+- Ranked by the expected type: where an `int` is expected, `int` locals, parameters and functions returning `int`
+  come first.
+- In a resource place: a search over the registry with icons, inserting the right ID form.
+- Names in scope (parameters, locals, the program's own functions), keywords, type names in hints.
+- Errors underlined while typing, and the inferred type and documentation on hover.
+
+This puts a demand on the bottom layer: completion runs on code that is half typed, so the parser must recover from
+errors and still tell the cursor's context and expected type.
 
 ## Open: actions as calls or as return values (raised by the user 2026-10-18)
 
@@ -167,8 +186,8 @@ The Phase 0 spike handles complete, valid programs only. Real editing passes thr
   to the graph until fixed, with the error's line shown.
 - **Graph edit operations.** Add a node, connect and disconnect, delete, change a value on a port: each a pure
   operation on the program representation, each with tests.
-- **Script editing support.** Error positions, completion data generated from the descriptors, and formatting (the
-  printer already formats).
+- **Script editing support.** An error-tolerant parser, a completion engine (cursor context, expected type, candidates
+  from descriptors, scope and the registry catalogue), error positions, and formatting (the printer already formats).
 - **Serialisation** with a format version.
 - **Descriptor table** for the built-ins, feeding the graph's node palette and script completion.
 
