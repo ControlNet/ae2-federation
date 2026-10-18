@@ -328,7 +328,9 @@ public final class Checker {
             case Expr.Index i -> {
                 var element = itemForWrite(i.target(), i.id());
                 expr(i.index(), Types.INT);
-                checkIndex(i.index());
+                if (element != null) {
+                    checkIndex(i.index());
+                }
                 var value = expr(s.value(), element);
                 if (element != null && !Types.assignable(element, value)) {
                     problem(s.id(), "items of " + types.get(i.target().id()) + " are " + element

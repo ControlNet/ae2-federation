@@ -109,6 +109,7 @@ final class CheckerTest {
                 Arguments.of("y = n[0]", 1, "'int' object is not subscriptable"),
                 Arguments.of("y = xs[\"a\"]", 1, "list indices must be integers or slices, not str"),
                 Arguments.of("s[0] = \"a\"", 1, "'str' object does not support item assignment"),
+                Arguments.of("s[\"a\"] = 1", 1, "'str' object does not support item assignment"),
                 Arguments.of("y = xs[\"a\":]", 1, "slice indices must be integers or None"),
                 // operators
                 Arguments.of("y = n + s", 1, "unsupported operand type(s) for +: 'int' and 'str'"),
@@ -269,7 +270,9 @@ final class CheckerTest {
                 Arguments.of("y += 1\n    y = 0", 1, unbound),
                 Arguments.of("z = y\n    y = 1", 1, unbound),
                 Arguments.of("if n > 0:\n        y = 1\n    elif n < 0:\n        y = 2\n    z = y", 5, unbound),
-                Arguments.of("for x in xs:\n        if x > 0:\n            continue\n        y = x\n    z = y + y", 5, unbound));
+                Arguments.of("for x in xs:\n        if x > 0:\n            continue\n        y = x\n    z = y + y", 5, unbound),
+                Arguments.of("while n > 0:\n        y = 1\n        break\n    z = y", 4, unbound),
+                Arguments.of("while True:\n        if n > 0:\n            break\n        y = 1\n    z = y", 5, unbound));
     }
 
     @ParameterizedTest
@@ -297,6 +300,11 @@ final class CheckerTest {
                     while True:
                         u = 1
                         break
+                    while True:
+                        stack = ae2.storage()[0]
+                        if stack.amount > 0:
+                            break
+                    t = stack.amount
                 """));
     }
 

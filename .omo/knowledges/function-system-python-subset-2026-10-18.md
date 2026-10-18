@@ -83,7 +83,8 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
   means "already reported": it fits everywhere, so one mistake gives one problem.
 - **Locals are Python's:** a name assigned anywhere in a function is local to all of it (`collectAssigned`). A read
   before its first assignment in source order gets no type in the type pass; `Flow` reports it with CPython's
-  UnboundLocalError text. Keep the two passes separate: types in source order, paths in `Flow`.
+  UnboundLocalError text. Keep the two passes separate: types in source order, paths in `Flow`. A `break` hands its
+  assigned set to its loop, so `while True: x = ...; if ...: break` then reading `x` is accepted.
 - **Other files' types are qualified** when a signature or field is read from them (`qualify`): `Order` in
   `iron_tools` becomes `iron_tools.Order` here, so it never clashes with a local `Order`.
 - **Constants** live in a map by node ID filled as `expr()` returns, so folding is linear and each zero division is

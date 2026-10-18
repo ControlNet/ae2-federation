@@ -14,6 +14,8 @@ final class Flow {
     private final Set<String> locals;
     private final BiConsumer<String, String> problem;
     private final Set<String> reported = new HashSet<>();
+    /** For each loop being walked, the locals assigned on each path that reaches one of its {@code break}s. */
+    private final java.util.Deque<List<Set<String>>> breaks = new java.util.ArrayDeque<>();
 
     private Flow(Set<String> locals, BiConsumer<String, String> problem) {
         this.locals = locals;
@@ -72,15 +74,13 @@ final class Flow {
             }
             case Stmt.While s -> {
                 reads(s.condition(), in);
-                block(s.body(), copy(in));
-                // `while True:` without a break never ends at its end; any other loop may run zero times.
-                boolean forever = s.condition() instanceof Expr.BoolLit b && b.value() && !breaks(s.body());
-                yield forever ? null : in;
+                // `while True:` is left only by a break; any other loop may also run zero times.
+                boolean forever = s.condition() instanceof Expr.BoolLit b && b.value();
+                yield loop(s.body(), copy(in), forever ? null : in);
             }
             case Stmt.For s -> {
                 reads(s.iterable(), in);
-                block(s.body(), with(in, s.variable()));
-                yield in;
+                yield loop(s.body(), with(in, s.variable()), in);
             }
             case Stmt.Return s -> {
                 if (s.value() != null) {
@@ -88,7 +88,10 @@ final class Flow {
                 }
                 yield null;
             }
-            case Stmt.Break s -> null;
+            case Stmt.Break s -> {
+                breaks.peek().add(in);
+                yield null;
+            }
             case Stmt.Continue s -> null;
             case Stmt.Pass s -> in;
         };
@@ -137,20 +140,18 @@ final class Flow {
         }
     }
 
-    /** Whether the loop body has a {@code break} of its own (not one of a nested loop). */
-    private static boolean breaks(List<Stmt> body) {
-        for (var statement : body) {
-            boolean found = switch (statement) {
-                case Stmt.Break s -> true;
-                case Stmt.If s -> breaks(s.body()) || s.elifs().stream().anyMatch(e -> breaks(e.body()))
-                        || s.orElse() != null && breaks(s.orElse().body());
-                default -> false;
-            };
-            if (found) {
-                return true;
-            }
+    /**
+     * A loop's outcome: what {@code exit} (the paths that leave by the condition, {@code null} if none) and every
+     * {@code break} have in common.
+     */
+    private Set<String> loop(List<Stmt> body, Set<String> entry, Set<String> exit) {
+        breaks.push(new java.util.ArrayList<>());
+        block(body, entry);
+        var out = exit;
+        for (var state : breaks.pop()) {
+            out = join(out, state);
         }
-        return false;
+        return out;
     }
 
     /** Locals assigned on both paths; a path that does not reach here counts as having assigned everything. */
