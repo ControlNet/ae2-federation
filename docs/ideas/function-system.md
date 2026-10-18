@@ -279,6 +279,24 @@ is emitted (the interface itself, facing the selected block, is the natural emit
 | `free_cpus() -> int` | no | crafting CPUs not busy |
 | `energy() -> float` | no | AE stored |
 
+Decided signatures (user, 2026-10-18), replacing the table above:
+
+```python
+ae2.get_amount(resource, network=None) -> int  # amount stored
+ae2.storage(network=None) -> list[Stack]  # everything stored
+ae2.craftable(resource, network=None) -> bool  # a pattern exists
+ae2.crafting(resource, network=None) -> bool  # a job is making it
+ae2.craft(resource, amount: int, network=None) -> bool  # start a job
+ae2.cancel(resource, network=None) -> bool  # cancel the jobs making it
+ae2.import_from(resource, amount: int, network=None) -> bool  # into the network
+ae2.export_to(resource, amount: int, network=None) -> bool  # out of the network
+ae2.free_cpus(network=None) -> int  # idle crafting CPUs
+ae2.energy(network=None) -> int  # AE stored, rounded down
+```
+
+Open: `import_from`/`export_to` as written take no block, so where the resource comes from or goes to is not
+named (asked the user).
+
 Open questions in this round:
 
 1. **Variants** (enchanted books, damaged tools, filled tanks): AE2 keys carry components. Proposal: a resource
