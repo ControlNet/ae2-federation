@@ -700,6 +700,29 @@ public final class Ops {
     // ---- built-in functions ----
 
     /** {@code name(args)} for Python's built-ins in the subset; arguments are positional. */
+    /**
+     * {@code name(args, keywords)}: keywords as CPython takes them ({@link Checker#BUILT_IN_KEYWORDS}, and
+     * {@code default} of {@code min}/{@code max}), already matched by the checker.
+     */
+    public static Object builtIn(String name, List<Object> args, Map<String, Object> keywords) {
+        if (keywords.isEmpty()) {
+            return builtIn(name, args);
+        }
+        if (keywords.containsKey("default")) {
+            // Only with one iterable; an empty one gives the default.
+            return length(args.get(0)) == 0 ? keywords.get("default") : builtIn(name, args);
+        }
+        var params = Checker.BUILT_IN_KEYWORDS.get(name);
+        var all = new ArrayList<>(args);
+        for (int i = args.size(); i < params.size(); i++) {
+            if (!keywords.containsKey(params.get(i))) {
+                break;
+            }
+            all.add(keywords.get(params.get(i)));
+        }
+        return builtIn(name, all);
+    }
+
     public static Object builtIn(String name, List<Object> args) {
         return switch (name) {
             case "int" -> args.isEmpty() ? 0L : toInt(args.get(0));
@@ -731,7 +754,24 @@ public final class Ops {
             }
             case "min", "max" -> args.size() == 1 && args.get(0) instanceof RangeValue r ? rangeExtreme(name, r)
                     : extreme(name, args);
-            case "sum" -> args.get(0) instanceof RangeValue r ? rangeSum(r) : sum(items(args.get(0)));
+            case "sum" -> {
+                var start = args.size() > 1 ? args.get(1) : 0L;
+                if (start instanceof String) {
+                    throw typeError("sum() can't sum strings [use ''.join(seq) instead]");
+                }
+                if (args.get(0) instanceof RangeValue r && isInt(start)) {
+                    var total = rangeSum(r);
+                    try {
+                        yield Math.addExact((Long) total, asLong(start));
+                    } catch (ArithmeticException e) {
+                        throw overflow();
+                    }
+                }
+                var values = new ArrayList<>();
+                values.add(start);
+                values.addAll(items(args.get(0)));
+                yield sum(values);
+            }
             case "round" -> round(args.get(0), args.size() > 1 ? args.get(1) : null);
             case "any" -> args.get(0) instanceof RangeValue r
                     ? r.length() > 1 || r.length() == 1 && r.start() != 0
@@ -849,7 +889,10 @@ public final class Ops {
         return total.longValue();
     }
 
-    /** Python 3.12's {@code sum}: exact for ints, compensated (Neumaier) once a float appears. */
+    /**
+     * Python 3.12's {@code sum} over its start then the items: exact for ints, compensated (Neumaier) once a float
+     * appears.
+     */
     private static Object sum(List<Object> values) {
         long total = 0;
         int i = 0;

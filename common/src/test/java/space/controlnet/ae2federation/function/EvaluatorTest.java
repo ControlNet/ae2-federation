@@ -469,6 +469,23 @@ final class EvaluatorTest {
                 // Python orders by code point; Java's UTF-16 order would put the emoji first.
                 Arguments.of("'\uD83D\uDE00' > '\uFFFD'", "True"),
                 Arguments.of("min(['\uD83D\uDE00', '\uFFFD'])", "'\uFFFD'"),
+                Arguments.of("round(number=2.5)", "2"),
+                Arguments.of("round(2.675, ndigits=2)", "2.67"),
+                Arguments.of("round(2.5, ndigits=None)", "2"),
+                Arguments.of("round(ndigits=1, number=2.25)", "2.2"),
+                Arguments.of("str(object=5)", "'5'"),
+                Arguments.of("sum([1, 2], 10)", "13"),
+                Arguments.of("sum([1, 2], start=10)", "13"),
+                Arguments.of("sum([0.5], start=1)", "1.5"),
+                Arguments.of("sum([1, 2], 0.5)", "3.5"),
+                Arguments.of("sum(range(5), 10)", "20"),
+                Arguments.of("sum(range(5), start=-10)", "0"),
+                Arguments.of("sum(['a'], '')", "TypeError: sum() can't sum strings [use ''.join(seq) instead]"),
+                Arguments.of("min([], default=0)", "0"),
+                Arguments.of("max([3, 1], default=0)", "3"),
+                Arguments.of("max([], default=None)", "None"),
+                Arguments.of("min(range(0), default=-1)", "-1"),
+                Arguments.of("min('', default='z')", "'z'"),
                 Arguments.of("1", "1"));
     }
 

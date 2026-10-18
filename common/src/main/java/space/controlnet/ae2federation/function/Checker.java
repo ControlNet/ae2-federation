@@ -809,16 +809,52 @@ public final class Checker {
 
     // ---- built-in functions ----
 
-    private TypeRef builtIn(Expr.Call c) {
-        var name = c.name();
-        if (!c.keywords().isEmpty()) {
-            arguments(c);
-            problem(c.id(), name + "() takes no keyword arguments");
+    /**
+     * The parameters of built-ins that take keyword arguments, as CPython names them; {@code ""} is positional only.
+     * {@code min}/{@code max} take {@code default} apart from these.
+     */
+    static final Map<String, List<String>> BUILT_IN_KEYWORDS = Map.of(
+            "round", List.of("number", "ndigits"), "str", List.of("object"), "sum", List.of("", "start"));
+
+    private TypeRef builtIn(Expr.Call original) {
+        var name = original.name();
+        Expr defaultValue = null;
+        var c = original;
+        if (name.equals("min") || name.equals("max")) {
+            var others = new ArrayList<Expr.Keyword>();
+            for (var keyword : original.keywords()) {
+                if (keyword.name().equals("default")) {
+                    defaultValue = keyword.value();
+                } else {
+                    others.add(keyword);
+                }
+            }
+            c = new Expr.Call(original.id(), null, name, original.args(), others);
+        }
+        c = positional(c);
+        if (c == null) {
+            arguments(original);
             return null;
         }
         var args = c.args().stream().map(a -> expr(a, null)).toList();
-        if (args.contains(null)) {
+        var defaultType = defaultValue == null ? null : expr(defaultValue, null);
+        if (args.contains(null) || defaultValue != null && defaultType == null) {
             return null;
+        }
+        if (defaultValue != null) {
+            if (args.size() != 1) {
+                problem(c.id(), "Cannot specify a default for " + name + "() with multiple positional arguments");
+                return null;
+            }
+            var result = extreme(c, args);
+            if (result == null) {
+                return null;
+            }
+            var common = Types.NONE.equals(defaultType) ? Types.optional(result) : Types.common(result, defaultType);
+            if (common == null) {
+                problem(defaultValue.id(), "default of " + name + "() must be " + result + ", not " + defaultType);
+            }
+            return common;
         }
         return switch (name) {
             case "int", "float" -> {
@@ -884,7 +920,17 @@ public final class Checker {
             }
             case "min", "max" -> extreme(c, args);
             case "sum" -> {
-                if (!count(c, 1, 1)) {
+                if (!count(c, 1, 2)) {
+                    yield null;
+                }
+                var start = args.size() == 2 ? Types.unwrap(args.get(1)) : Types.INT;
+                if (Types.isStr(start)) {
+                    problem(c.id(), "sum() can't sum strings [use ''.join(seq) instead]");
+                    yield null;
+                }
+                if (!Types.isNumber(start)) {
+                    // Stricter than Python, which also sums lists from a list start.
+                    problem(c.id(), "sum() start must be a number, not '" + Types.runtimeName(start) + "'");
                     yield null;
                 }
                 var t = Types.unwrap(args.get(0));
@@ -897,7 +943,7 @@ public final class Checker {
                     problem(c.id(), "unsupported operand type(s) for +: 'int' and '" + Types.runtimeName(element) + "'");
                     yield null;
                 }
-                yield Types.FLOAT.equals(element) ? Types.FLOAT : Types.INT;
+                yield Types.FLOAT.equals(element) || Types.FLOAT.equals(start) ? Types.FLOAT : Types.INT;
             }
             case "round" -> {
                 if (!count(c, 1, 2)) {
@@ -908,7 +954,12 @@ public final class Checker {
                     problem(c.id(), "type " + Types.runtimeName(t) + " doesn't define __round__ method");
                     yield null;
                 }
-                yield args.size() == 1 || !t.equals(Types.FLOAT) ? Types.INT : Types.FLOAT;
+                var digits = args.size() == 2 ? args.get(1) : Types.NONE;
+                if (!Types.NONE.equals(digits) && !Types.assignable(Types.INT, Types.unwrap(digits))) {
+                    problem(c.id(), "'" + Types.runtimeName(digits) + "' object cannot be interpreted as an integer");
+                    yield null;
+                }
+                yield Types.NONE.equals(digits) || !t.equals(Types.FLOAT) ? Types.INT : Types.FLOAT;
             }
             case "any", "all" -> {
                 if (!count(c, 1, 1)) {
@@ -922,6 +973,66 @@ public final class Checker {
             }
             default -> throw new IllegalStateException(name);
         };
+    }
+
+    /**
+     * The call with its keyword arguments moved to their positions, matched as CPython matches them; {@code null}
+     * after a problem.
+     */
+    private Expr.Call positional(Expr.Call c) {
+        if (c.keywords().isEmpty()) {
+            return c;
+        }
+        var name = c.name();
+        var params = BUILT_IN_KEYWORDS.get(name);
+        if (params == null) {
+            var key = c.keywords().stream().filter(k -> k.name().equals("key")).findFirst();
+            if ((name.equals("min") || name.equals("max")) && key.isPresent()) {
+                // Stricter than Python: key= takes a function, and functions are not values here.
+                problem(c.id(), name + "() key= is not supported; functions are not values");
+            } else if (name.equals("min") || name.equals("max")) {
+                problem(c.id(), "'" + c.keywords().get(0).name() + "' is an invalid keyword argument for " + name + "()");
+            } else {
+                problem(c.id(), name + "() takes no keyword arguments");
+            }
+            return null;
+        }
+        int given = c.args().size() + c.keywords().size();
+        if (given > params.size()) {
+            problem(c.id(), name + "() takes at most " + params.size() + " argument" + (params.size() == 1 ? "" : "s")
+                    + " (" + given + " given)");
+            return null;
+        }
+        var slots = new ArrayList<Expr>(c.args());
+        while (slots.size() < params.size()) {
+            slots.add(null);
+        }
+        for (var keyword : c.keywords()) {
+            int at = params.indexOf(keyword.name());
+            if (at < 0 || keyword.name().isEmpty()) {
+                problem(c.id(), "'" + keyword.name() + "' is an invalid keyword argument for " + name + "()");
+                return null;
+            }
+            if (at < c.args().size()) {
+                problem(c.id(), "argument for " + name + "() given by name ('" + keyword.name() + "') and position ("
+                        + (at + 1) + ")");
+                return null;
+            }
+            slots.set(at, keyword.value());
+        }
+        int last = slots.size();
+        while (last > 0 && slots.get(last - 1) == null) {
+            last--;
+        }
+        for (int i = 0; i < last; i++) {
+            if (slots.get(i) == null) {
+                problem(c.id(), params.get(i).isEmpty()
+                        ? name + "() takes at least " + (i + 1) + " positional argument (" + c.args().size() + " given)"
+                        : name + "() missing required argument '" + params.get(i) + "' (pos " + (i + 1) + ")");
+                return null;
+            }
+        }
+        return new Expr.Call(c.id(), null, name, slots.subList(0, last), List.of());
     }
 
     /** {@code min}/{@code max}: one list, or two or more numbers or strings. */

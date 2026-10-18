@@ -173,7 +173,10 @@ public final class Evaluator {
     private Object call(String file, Expr.Call c, Map<String, Object> locals) {
         if (c.receiver() == null) {
             if (Checker.BUILT_INS.contains(c.name())) {
-                return Ops.builtIn(c.name(), arguments(file, c, locals));
+                var keywords = new LinkedHashMap<String, Object>();
+                var args = arguments(file, c, locals);
+                c.keywords().forEach(k -> keywords.put(k.name(), eval(file, k.value(), locals)));
+                return Ops.builtIn(c.name(), args, keywords);
             }
             var record = findClass(file, c.name());
             if (record != null) {

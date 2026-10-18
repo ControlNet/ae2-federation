@@ -130,6 +130,21 @@ final class CheckerTest {
                 Arguments.of("y = len(n)", 1, "object of type 'int' has no len()"),
                 Arguments.of("y = len(xs, xs)", 1, "len() takes exactly one argument (2 given)"),
                 Arguments.of("y = len(obj=xs)", 1, "len() takes no keyword arguments"),
+                Arguments.of("y = round(1.5, nd=1)", 1, "'nd' is an invalid keyword argument for round()"),
+                Arguments.of("y = round(2.5, number=1)", 1,
+                        "argument for round() given by name ('number') and position (1)"),
+                Arguments.of("y = round(2.5, 1, ndigits=1)", 1, "round() takes at most 2 arguments (3 given)"),
+                Arguments.of("y = round(ndigits=1)", 1, "round() missing required argument 'number' (pos 1)"),
+                Arguments.of("y = round(1.5, 0.5)", 1, "'float' object cannot be interpreted as an integer"),
+                Arguments.of("y = sum(iterable=xs)", 1, "'iterable' is an invalid keyword argument for sum()"),
+                Arguments.of("y = sum(start=1)", 1, "sum() takes at least 1 positional argument (0 given)"),
+                Arguments.of("y = sum(xs, start=s)", 1, "sum() can't sum strings [use ''.join(seq) instead]"),
+                Arguments.of("y = sum(xs, xs)", 1, "sum() start must be a number, not 'list'"),
+                Arguments.of("y = min(xs, key=s)", 1, "min() key= is not supported; functions are not values"),
+                Arguments.of("y = max(xs, x=1)", 1, "'x' is an invalid keyword argument for max()"),
+                Arguments.of("y = min(1, 2, default=0)", 1,
+                        "Cannot specify a default for min() with multiple positional arguments"),
+                Arguments.of("y = max(xs, default=s)", 1, "default of max() must be int, not str"),
                 Arguments.of("y = range(s)", 1, "'str' object cannot be interpreted as an integer"),
                 Arguments.of("y = abs(s)", 1, "bad operand type for abs(): 'str'"),
                 Arguments.of("y = int(xs)", 1, "int() argument must be a string or a number, not 'list'"),
@@ -221,6 +236,11 @@ final class CheckerTest {
                         if stack.amount > 0 and stack.resource in [r]:
                             xs.append(stack.amount)
                     middle = xs[1:-1]
+                    r1: int = round(2.5, ndigits=None) + round(number=n)
+                    r2: float = round(1.25, ndigits=1) + sum(xs, start=0.5) + sum(xs, 2)
+                    top: Optional[int] = max(xs, default=None)
+                    low: int = min(xs, default=0)
+                    word = str(object=n)
                     rng = range(0, 10, 2)
                     y = rng[1] + rng.stop + len(rng) + rng.index(4) + sum(rng) + max(rng)
                     ys = list(rng) + xs[::-1] + list(range(3)[1:])
