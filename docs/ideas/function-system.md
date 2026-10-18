@@ -263,6 +263,34 @@ Assistant proposals on top:
 Open within the draft: `mc.move` for every resource type versus `move_item`/`move_fluid`; where a redstone signal
 is emitted (the interface itself, facing the selected block, is the natural emitter); messages to players.
 
+**Round 1: `ae2`** (assistant proposals, 2026-10-18, awaiting the user). Every function ends with
+`network: Network = None`. `Stack` is a built-in frozen record `Stack(resource: Resource, amount: int)`.
+
+| Function | Effect? | Notes |
+|---|---|---|
+| `stock(resource) -> int` | no | amount stored |
+| `stored() -> list[Stack]` | no | everything stored, largest first |
+| `craftable(resource) -> bool` | no | a pattern exists |
+| `crafting(resource) -> int` | no | amount on its way in running jobs; replaces the `Job` value |
+| `craft(resource, amount) -> bool` | yes | `True` once a job started; `False` if no pattern, no CPU or missing ingredients |
+| `cancel(resource) -> bool` | yes | cancels the jobs making it; jobs are named by resource since there is no `Job` value |
+| `import_from(block, resource, amount) -> bool` | yes | block to network, as an Import Bus (`import` alone is a keyword) |
+| `export_to(block, resource, amount) -> bool` | yes | network to block, as an Export Bus |
+| `free_cpus() -> int` | no | crafting CPUs not busy |
+| `energy() -> float` | no | AE stored |
+
+Open questions in this round:
+
+1. **Variants** (enchanted books, damaged tools, filled tanks): AE2 keys carry components. Proposal: a resource
+   string names the ID only; `stock` sums every variant; `export_to` and `import_from` take any variant, as AE2's fuzzy
+   mode does. Exact variants wait.
+2. **Tags**: `"#c:ingots/iron"` as a `Resource` meaning "any of the tag". Proposal: not in the first version.
+3. **Kind of resource** when the same ID is both an item and a fluid (rare; vanilla has none). Proposal: `Item` or
+   `Fluid` parameters are unambiguous; a `Resource` argument with an ambiguous ID is a compile error that suggests
+   annotating the variable as `Item` or `Fluid`.
+4. **`cancel` by resource** cancels every job of that resource, including jobs players started. Proposal: only
+   jobs started by programs.
+
 Status (user, 2026-10-18): the standard library's design, including which functions take an interface as their
 location, needs a further dedicated look; the bottom layer goes on meanwhile with a catalogue interface in place of
 the real list.
