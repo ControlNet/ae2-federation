@@ -136,6 +136,10 @@ B2 done 2026-10-18: `Completion` with `Catalog` (the game's registries and names
 too), the lexer resumes at the next line not indented further; valid Python is lexed exactly as Python does. `CompletionTest` (12) uses a test-only catalogue with made-up built-ins, since the standard
 library is still being designed.
 
+B1 follow-up (decided 2026-10-18, before B3): keyword arguments in every call; list and string methods with
+indexing, slices, `in`/`not in` and chained method calls; read-only fields on built-in values; constant default
+values in `def`s (proposal). Test against CPython as B1 does.
+
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last
