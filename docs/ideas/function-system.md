@@ -380,6 +380,39 @@ values, literals on ports, positions by node ID). What the new decisions add:
   parentheses. A function whose graph was not edited keeps its original text.
 - **Drafts.** A script with a syntax error does not switch (decided above); unconnected nodes stay as a graph draft.
 
+## Interaction blocks (user direction 2026-10-18)
+
+Programs need a way to act on the world: an interaction interface that moves items, sends and reads redstone, breaks
+and places blocks, and more (user, 2026-10-18). Designed after B2 and before B3, since the types and effects it adds
+feed the checker and the interpreter.
+
+Assistant proposals, to discuss:
+
+- **Where a program reaches the world.** A block placed in the world and joined to the Federation (as Endpoints
+  are) acts on the block it faces. Because the Federation spans networks and dimensions, one program on one
+  computing device can drive interfaces anywhere in the domain.
+- **One block or several.**
+  - Option 1: one interface block whose abilities come from cards in its upgrade slots (redstone, transfer, break,
+    place), as AE2 cards add abilities. One thing to name, place and address; the slots show what it can do.
+  - Option 2: one block per ability, after AE2's own parts (import/export buses for transfer, the Annihilation and
+    Formation Planes for breaking and placing, the Level Emitter and Toggle Bus for redstone). Familiar to AE2 players,
+    more blocks to make and draw.
+- **Addressing.** The player names an interface (in its GUI, as Endpoints are named); in a program it is a typed
+  string, `Port`, completed from the names in the domain, as `Item` strings are completed from the registry; or a
+  parameter filled in at installation from a picker. The name is a stable ID underneath, so renaming breaks nothing.
+- **First functions it would give** (names and namespaces open):
+  `mc.redstone(port, level)`, `mc.redstone_in(port) -> int`, `ae2.export(port, item, amount) -> int` and
+  `ae2.import_from(port, item, amount) -> int` (move between the network and the faced inventory; amounts moved come
+  back), `mc.break_block(port) -> bool` (drops go into the network), `mc.place_block(port, item) -> bool`,
+  `mc.block_at(port) -> Block`. Each effectful call is one tick, as decided.
+- **Generic resources.** Transfer works on any AE2 key type (items, fluids, addon types such as Mekanism chemicals),
+  not an item-only list; see generic addon support.
+- **Range and cost.** Each call costs compute on the device that runs it; whether distance or another dimension
+  costs more is open.
+
+Open: one block with cards or one block per ability; full block or cable part; the full first function list; reading
+inventories and block states beyond redstone; entity interactions (later).
+
 ## Layers (assistant proposal)
 
 | Layer | Contents | Game code |
