@@ -173,27 +173,29 @@ How it could work (assistant proposal):
 - **Payload size.** Serverbound custom payloads are size-limited; long files are sent in chunks or as diffs. The
   exact NeoForge limit needs checking before the protocol is designed.
 
-## Open: actions as calls or as return values (raised by the user 2026-10-18)
+## Effects: called in the body, one per tick (user decision 2026-10-18)
 
-Should a function perform actions by calling them in its body, or return the actions as its value and leave
-running them to the system?
+A function performs effects by calling them in its body, as ordinary calls; it does not return a list of actions.
+Every effectful call takes one game tick, so a run makes at most one effectful call per tick.
 
-| | Calls in the body | Actions as the return value |
-|---|---|---|
-| Purity | The function has effects | The function is pure; the system runs what it returns |
-| Reacting to a result (job refused, how much actually moved) | Directly, on the next line | Only in a later run, with state kept between runs |
-| Multi-step and waiting (`while stock < 64: wait()`) | An ordinary loop | A state machine over several runs |
-| Scheduling, batching, bandwidth limits | Harder: effects happen mid-run | Easy: the system sees all actions first |
-| Preview / dry run, testing | Needs stand-in results | Natural: show the returned list |
-| All-or-nothing over several actions | No | Possible |
+Earlier comparison, kept for the record: returning actions as values would make functions pure and easy to batch
+and preview, but reacting to an effect's result and multi-step work would need state machines across runs.
 
-A middle way (assistant proposal): players write calls, the system runs them as requests. Calling `craft(...)` does
-not touch the world from inside the interpreter; the run pauses, hands the request to its host, and resumes with
-the result when the host has carried it out (a coroutine, as Python generators work, but without `yield` in the
-script). The function itself stays free of side effects; the host decides when and whether each request runs, can
-throttle by bandwidth, and answer with simulated results for a preview. What it
-gives up against pure return values: the host cannot see all of a run's actions before the first runs, so
-all-or-nothing batches need a separate construct if wanted.
+Consequences (assistant notes and proposals):
+
+- **A run is a coroutine.** Each installation's run goes on through pure computation and reads until its next
+  effectful call, makes that call, and pauses until the next tick; the call's result (a job, how much moved) is there
+  when it resumes. The interpreter never touches the world itself: it hands the request to the host.
+- **Reads are not effects.** Any number of observations per tick; after an effect, reads made on the next tick see
+  its outcome.
+- **Pure computation per tick is bounded by the device's compute**; a run that has not reached its next effect when
+  the tick's budget is spent continues on the next tick. So `while True:` loops are fine: an effect inside one runs
+  at most once per tick, and a loop without effects cannot freeze the server.
+- **Waiting is an effect that takes several ticks**, such as `mc.wait(20)`.
+- **Throughput comes from amounts, not from call counts:** one `craft` or move call carries an amount, so one call
+  per tick is not one item per tick.
+- **Static analysis** can state the fewest ticks a path needs (its effectful calls), shown beside the function.
+- Each installation runs on its own; two installations on one device may each make one effect in the same tick.
 
 ## Program storage and installation (user decision 2026-10-18)
 
