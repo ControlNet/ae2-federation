@@ -688,7 +688,9 @@ statement-only rule for effects.
 - 2: simplified. The graph is always laid out automatically; no stored positions, no layout sidecar, no reconciler
   keeping node IDs across script edits.
 - 3: not simplified. Graph editing must cover everything the language has, because some players do not write code.
-- 4: explained again to the user (below); open.
+- 4: not simplified: values with fields are supported (user, 2026-10-18): built-in records such as a stack's
+  `stack.resource` and `stack.amount`, read-only, with "break apart" nodes in the graph. Players do not define their
+  own classes.
 - 5: simplified. Block names and capability warnings come from the dry run; nothing is synced ahead.
 - 6: live refresh kept: while editing, the dry run refreshes continuously; the cost is accepted for ease of use.
   Simulating effects (rather than assuming they succeed) stays as proposed.
@@ -700,6 +702,14 @@ statement-only rule for effects.
   are evaluated at check time (a constant reach of 5, a constant interface that does not exist), and definite
   assignment stays too (simple once programs compile to a control-flow graph); only the `unavailable` value is
   dropped.
+- User-defined classes, assessed at the user's request (not planned): a fields-only record
+  (`@dataclass class Order:` with typed fields, constructed as `Order(item, 64)`, fields read and written) costs
+  moderately on top of built-in records: new named types in the checker (also across files), objects shared by
+  reference as in Python, constructor and field nodes in the graph, and a way to define the type in the graph
+  editor (the largest part, since graph editing must cover everything). Methods add `self`, method calls on the
+  player's objects and their graph nodes: noticeably more. Inheritance and overriding would bring subtyping and
+  dynamic dispatch: the most costly and least needed. If records come later, built-in and player records should
+  share one mechanism (built-in ones described by descriptors, player ones by `class` definitions).
 - Item 4 in detail: a "record" would be a value with named parts, such as a stack from `mc.contents(chest)` with
   `stack.resource` and `stack.amount`. It needs record types in the checker, attribute reads, and "break apart"
   nodes in the graph. Without records, `mc.contents(chest)` returns the resources present (`list[Resource]`) and
