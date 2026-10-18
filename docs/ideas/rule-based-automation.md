@@ -3,6 +3,9 @@
 Discussion date: 2026-10-10.
 Status: preliminary user-proposed direction; the computing device's role was settled on 2026-10-17. Detailed
 behavior remains open.
+Phase 0 design spike (2026-10-18, branch `feature/function-system`, no game code): shared IR with graph and script
+views, query/action split, checks, evaluator and compute measure; see the
+[plan](../../.omo/plans/function-system.md). Open: first use, script language, first action.
 
 ## Intent
 

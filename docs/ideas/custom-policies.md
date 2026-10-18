@@ -1,6 +1,8 @@
 # Custom policies
 
 Status: future direction established; detailed behavior and scope under discussion.
+Phase 0 design spike of the shared function system (2026-10-18, branch `feature/function-system`, no game code):
+[plan](../../.omo/plans/function-system.md); a filter-returning query feeding `PolicyFilter` is the proposed first use.
 
 Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. Baseline updated: 2026-10-10. [Idea index](README.md).
 
