@@ -151,6 +151,13 @@ definitions; problems by node ID; a type per expression), `Flow` (unbound locals
 and typed-string validation, `Effects` (effect inference across files). Rules are listed in the idea page, "Checking
 rules as built". Next: B4, compile to the execution graph and run it with a frame stack.
 
+B4 done 2026-10-18: runtime values and `Ops` (CPython 3.12 semantics and messages; 64-bit ints; lists and strings
+capped at 100,000 items), `Evaluator` (expressions without suspension points; library reads through a `Host`),
+`Compiler` (one `Graph` of `Node`s per function; player calls and library actions lifted in Python's order),
+`Runner` (own frames, recursion limit 1000, one budget step per node, one action per tick, `mc.wait`, errors at the
+innermost expression, a trace by program node). Checker additions: `range` type, `list()`, `Iterable` parameters,
+list ordering, constant-only defaults. Decisions in the idea page, "Execution as built". Next: B5.
+
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last
