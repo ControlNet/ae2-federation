@@ -102,6 +102,14 @@ final class ScriptTest {
                 total = iron_tools.helper(1).total
             """;
 
+    /** Membership tests. */
+    static final String MEMBERSHIP = """
+            def has(xs: list[int], name: str) -> bool:
+                if 3 in xs and "a" not in name:
+                    return not 4 in xs
+                return False
+            """;
+
     @Test
     void theCanvasSampleRoundTrips() {
         assertRoundTrip(SAMPLE);
@@ -163,6 +171,17 @@ final class ScriptTest {
 
         var increment = assertInstanceOf(Stmt.AugAssign.class, body.get(12));
         assertEquals("amount", assertInstanceOf(Expr.Attribute.class, increment.target()).name());
+    }
+
+    @Test
+    void membershipRoundTripsAndParses() {
+        assertRoundTrip(MEMBERSHIP);
+        var branch = (Stmt.If) parseClean(MEMBERSHIP).functions().get(0).body().get(0);
+        var both = (Expr.Binary) branch.condition();
+        assertEquals(BinaryOp.IN, ((Expr.Binary) both.left()).op());
+        assertEquals(BinaryOp.NOT_IN, ((Expr.Binary) both.right()).op());
+        var negated = assertInstanceOf(Expr.Unary.class, ((Stmt.Return) branch.body().get(0)).value());
+        assertEquals(BinaryOp.IN, ((Expr.Binary) negated.operand()).op(), "not binds looser than in, as in Python");
     }
 
     @Test
@@ -316,8 +335,7 @@ final class ScriptTest {
                 // expressions
                 Arguments.of(body("y = x if x else 0"), 2, "conditional expressions"),
                 Arguments.of(body("y = 0 < x < 9"), 2, "chained comparisons"),
-                Arguments.of(body("y = x in [1]"), 2, "'in' is only supported in 'for'"),
-                Arguments.of(body("y = x not in [1]"), 2, "'not in' is not supported"),
+                Arguments.of(body("y = x in xs not in [xs]"), 2, "chained comparisons"),
                 Arguments.of(body("y = x is None"), 2, "'is' is not supported"),
                 Arguments.of(body("y = x ** 2"), 2, "'**' is not supported"),
                 Arguments.of(body("y = x & 1"), 2, "'&' is not supported"),
@@ -455,6 +473,7 @@ final class ScriptTest {
         assertPythonParses(CONTINUATION);
         assertPythonParses(DEFAULTS);
         assertPythonParses(POSTFIX);
+        assertPythonParses(MEMBERSHIP);
         assertPythonParses(print(SAMPLE));
         assertPythonParses(print(LOOPS));
         for (var arguments : unsupported().toList()) {

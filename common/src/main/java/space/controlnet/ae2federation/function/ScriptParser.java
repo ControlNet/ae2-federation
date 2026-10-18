@@ -473,6 +473,9 @@ public final class ScriptParser {
             return left;
         }
         advance();
+        if (op == BinaryOp.NOT_IN) {
+            advance();
+        }
         var result = new Expr.Binary(id(start), op, left, sum());
         if (comparisonOperator() != null) {
             throw fail(peek(), "chained comparisons (a < b < c) are not supported; join them with 'and'");
@@ -484,13 +487,13 @@ public final class ScriptParser {
     private BinaryOp comparisonOperator() {
         var token = peek();
         if (isKeyword(token, "in")) {
-            throw fail(token, "'in' is only supported in 'for' loops");
+            return BinaryOp.IN;
+        }
+        if (isKeyword(token, "not") && isKeyword(peekAt(1), "in")) {
+            return BinaryOp.NOT_IN;
         }
         if (isKeyword(token, "is")) {
             throw fail(token, "'is' is not supported; use == or !=");
-        }
-        if (isKeyword(token, "not") && isKeyword(peekAt(1), "in")) {
-            throw fail(token, "'not in' is not supported");
         }
         if (token.kind() != Kind.OP) {
             return null;
