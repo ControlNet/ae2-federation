@@ -475,8 +475,9 @@ The Phase 0 prototype handles complete, valid programs only. Real editing passes
   one source of truth, and unconnected graph nodes live in the graph document as a draft beside it.
 - **Graph edit operations.** Add a node, connect and disconnect, delete, change a value on a port: each a pure
   operation on the program representation, each with tests.
-- **Script editing support.** An error-tolerant parser, a completion engine (cursor context, expected type, candidates
-  from descriptors, scope and the registry catalogue), error positions, and formatting (the printer already formats).
+- **Script editing support.** Done in B1-B2 (2026-10-18): an error-tolerant parser with error positions, a
+  completion engine (cursor context, expected type, candidates from scope and a catalogue interface), and formatting
+  by the printer.
 - **Serialisation** with a format version.
 - **Descriptor table** for the built-ins, feeding the graph's node palette and script completion.
 
