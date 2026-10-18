@@ -101,8 +101,9 @@ How it could work (assistant proposal):
 The system ships a set of ready functions players call directly: AE2 ones (stock, craftability, crafting status,
 storage, energy and the like) and Minecraft ones (reading and emitting redstone and the like). Lists are not fixed.
 
-Grouped by namespace, already available without imports, as `ae2.stock(...)`, `mc.redstone(...)`,
-`federation.online()` (user, 2026-10-18). Namespaces become the graph palette's categories, and addon mods can add
+Grouped by namespace, already available without imports (user, 2026-10-18): `ae2` for AE2 (`ae2.stock(...)`),
+`ae2f` for AE2 Federation (`ae2f.online()`, `ae2f.set_policy(...)`) and `mc` for Minecraft (`mc.redstone(...)`).
+Namespaces become the graph palette's categories, and addon mods can add
 their own (`mekanism....`) through the same descriptors, as the mod already handles addon resource types without
 AE2-only lists.
 
@@ -113,7 +114,7 @@ This repeats the [custom policies](custom-policies.md) requirement of comprehens
 
 What completion should cover (assistant proposal):
 
-- After `ae2.`, `mc.`, `federation.` (and addon namespaces): that namespace's functions, each with its signature,
+- After `ae2.`, `ae2f.`, `mc.` (and addon namespaces): that namespace's functions, each with its signature,
   a one-line description and its capabilities.
 - Inside a call: the current parameter's name and type highlighted, as IDE parameter hints.
 - Ranked by the expected type: where an `int` is expected, `int` locals, parameters and functions returning `int`
@@ -222,7 +223,7 @@ Assistant proposal:
   server-wide library. The file name is a Python identifier and doubles as its namespace.
 - **Calls across files without imports**, as the standard library: `iron_tools.keep_iron(64)` calls `keep_iron` from
   the file `iron_tools`; inside the same file the bare name is enough. Completion lists files and their functions as
-  it lists `ae2.`. Names of the standard namespaces (`ae2`, `mc`, `federation`, addon ones) are reserved.
+  it lists `ae2.`. Names of the standard namespaces (`ae2`, `ae2f`, `mc`, addon ones) are reserved.
 - **Private helpers** follow Python's convention: a name starting with `_` cannot be called from other files.
 - **Checks span the library.** Types and capabilities are inferred across files. When a function's signature
   changes, the files calling it are re-checked and show the errors; whether running installations see the change
@@ -254,7 +255,7 @@ Assistant proposal:
 
 ## Policies changed by automation (user decision 2026-10-18)
 
-Instead of policies calling functions, an automation calls a built-in such as `federation.set_policy(...)` and so
+Instead of policies calling functions, an automation calls a built-in such as `ae2f.set_policy(...)` and so
 changes policies over time. Policies stay what they are today: plain settings, edited in the GUI or by a program.
 
 Assistant assessment: a large simplification, recommended.
@@ -321,7 +322,7 @@ values, literals on ports, positions by node ID). What the new decisions add:
 | 1. Language core | Types, the program representation, script syntax, graph model, conversion both ways, keeping node identity across edits, static checks, interpreter | None |
 | 2. Function descriptors | Each built-in function declared by name, parameters, types, capabilities, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
 | 3. Program storage | Serialising a program with its graph layout and comments, with a format version; the server-wide library; asynchronous client-server sync | Save format and packets |
-| 4. Host | The computing device runs installed functions on triggers, supplying effects and a budget. Policies are plain settings an automation may change through `federation.set_policy` | Yes |
+| 4. Host | The computing device runs installed functions on triggers, supplying effects and a budget. Policies are plain settings an automation may change through `ae2f.set_policy` | Yes |
 | 5. Editors | Script editor and graph editor screens, working only on layers 1 and 3 | Yes |
 
 The first batch covers layers 1 to 3.
@@ -363,7 +364,7 @@ The Phase 0 prototype handles complete, valid programs only. Real editing passes
 | 2 | ~~Draft policy~~ | Decided (user, 2026-10-18): a script with a syntax error cannot switch to the graph; its text is kept and the error shown until it parses. |
 | 3 | ~~Where programs are stored~~ | Decided (user, 2026-10-18): server-wide; see Program storage and installation. |
 
-Deferred with the world interactions: the first built-ins to implement (`federation.set_policy` for a storage filter
+Deferred with the world interactions: the first built-ins to implement (`ae2f.set_policy` for a storage filter
 list and redstone output proposed), trigger kinds, who may see and edit programs, and whether installations follow
 the latest version of a program.
 

@@ -123,5 +123,5 @@ The user decided on 2026-10-18 to build bottom-up, world interactions last; laye
    test first.
 2. Editor screens over that layer (script, then graph), GUI design canvases first.
 3. Host: the computing device with installations, triggers and the compute limit; built-ins such as redstone output
-   and `federation.set_policy` (policies are plain settings changed by automation, user 2026-10-18, so no policy-side
+   and `ae2f.set_policy` (policies are plain settings changed by automation, user 2026-10-18, so no policy-side
    evaluation or caching is needed; a changed setting advances `AuthorityEpoch` as a GUI edit does).

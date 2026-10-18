@@ -2,7 +2,7 @@
 
 Status: future direction established; detailed behavior and scope under discussion.
 Decision 2026-10-18 (user): policies stay plain settings; dynamic policies come from automation programs that change
-them through a built-in such as `federation.set_policy(...)`. No function runs inside policy checks. See the
+them through a built-in such as `ae2f.set_policy(...)`. No function runs inside policy checks. See the
 [function system architecture](function-system.md).
 
 Discussion date: 2026-10-02. Comparative research expanded: 2026-10-03. Baseline updated: 2026-10-10. [Idea index](README.md).
@@ -59,7 +59,7 @@ No language, runtime, full Python/Lua compatibility promise, editor component or
 ### Unified function authoring and Policy bindings
 
 Superseded 2026-10-18 (user): a Policy no longer binds or calls a function. An automation changes policy settings
-through `federation.set_policy(...)`; see [policies changed by automation](function-system.md). The text below is
+through `ae2f.set_policy(...)`; see [policies changed by automation](function-system.md). The text below is
 kept as the record of the earlier direction.
 
 The later 2026-10-10 proposal makes Policy customization a specialized use of the same general function

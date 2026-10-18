@@ -31,7 +31,7 @@ redstone output or introduce a new output block as an already selected requireme
 
 Layers, vocabulary and the bottom-up order are on the [function system architecture](function-system.md) page.
 Decision 2026-10-18 (user): policies are not bound to functions; an automation changes them through a built-in such
-as `federation.set_policy(...)`, so this automation system is the only place programs run. The paragraphs below
+as `ae2f.set_policy(...)`, so this automation system is the only place programs run. The paragraphs below
 about Policy bindings and read-only queries are kept as the record of the earlier direction.
 
 The user refined the direction: build a general, powerful, flexible base system for both automation and
