@@ -35,6 +35,13 @@ budget needs a defined answer (unavailable is the obvious candidate). For automa
 continue over several ticks, so "wait until stock reaches N" is an ordinary loop, is one option to discuss with the
 computing device's CU.
 
+## Static types everywhere (user decision 2026-10-18)
+
+Functions are statically typed: every parameter has a type hint and every function a return type hint (`-> None`
+when it returns nothing). A missing hint is an error, not an inferred `Any`, so the checker can make sure everything
+fits before a program runs. Locals take the type of the value assigned to them; an annotation such as `x: Item = ...`
+gives them another one (see below).
+
 ## Resources as typed strings (user direction 2026-10-18)
 
 No `item("...")` wrapper and no special symbol: a resource is written as a plain string, and the static type says
@@ -58,8 +65,9 @@ Details (assistant proposal):
   inserts the right form, so players rarely type a prefix.
 - **Literals only.** A computed `str` (joined at run time) is not turned into an item silently; an explicit
   conversion is needed, so every resource error shows up while editing.
-- **Locals.** `iron = "minecraft:iron_ingot"` alone is a `str`; `iron: Item = "minecraft:iron_ingot"` is an item. When
-  a `str` local is passed where an item is expected, the error offers adding the annotation.
+- **Locals** (user, 2026-10-18). `iron = "minecraft:iron_ingot"` alone is a `str`; `iron: Item =
+  "minecraft:iron_ingot"` is an item. When a `str` local is passed where an item is expected, the error offers adding
+  the annotation; no inference from later use.
 - **Lists.** The expected type flows into list elements: a `list[Item]` parameter takes
   `["minecraft:iron_ingot", "minecraft:gold_ingot"]`.
 - **Graph.** The port shows the resource's icon and opens a searchable picker instead of a text field.
