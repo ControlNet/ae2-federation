@@ -3,8 +3,15 @@ package space.controlnet.ae2federation.function;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** A callable function's signature: a built-in from the catalogue, or a player function. */
-public record Signature(String name, List<Arg> args, TypeRef result, String summary) {
+/**
+ * A callable function's signature: a built-in from the catalogue, or a player function. {@code effect} marks a
+ * library function that acts on the world and so takes a tick; a player function's is inferred by the checker.
+ */
+public record Signature(String name, List<Arg> args, TypeRef result, String summary, boolean effect) {
+    public Signature(String name, List<Arg> args, TypeRef result, String summary) {
+        this(name, args, result, summary, false);
+    }
+
     /**
      * {@code defaultValue} is the default as script text, {@code null} when the argument is required; {@code range}
      * bounds an {@code int} argument, checked when the value is a constant, {@code null} when it has none.

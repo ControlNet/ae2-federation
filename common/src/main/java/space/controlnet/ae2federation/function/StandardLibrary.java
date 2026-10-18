@@ -35,13 +35,13 @@ public final class StandardLibrary {
                             network()),
                     fn("crafting", "int", "How much of the resource running jobs are still making.",
                             arg("resource", "Resource"), network()),
-                    fn("craft", "bool", "Starts a crafting job; False if it could not start.",
+                    act("craft", "bool", "Starts a crafting job; False if it could not start.",
                             arg("resource", "Resource"), amount(), network()),
-                    fn("cancel", "bool", "Cancels the jobs this program started for the resource.",
+                    act("cancel", "bool", "Cancels the jobs this program started for the resource.",
                             arg("resource", "Resource"), network()),
-                    fn("import_from", "bool", "Moves the resource from the block into the network.",
+                    act("import_from", "bool", "Moves the resource from the block into the network.",
                             arg("block", "Block"), arg("resource", "Resource"), amount(), network()),
-                    fn("export_to", "bool", "Moves the resource from the network into the block.",
+                    act("export_to", "bool", "Moves the resource from the network into the block.",
                             arg("block", "Block"), arg("resource", "Resource"), amount(), network()),
                     fn("free_cpus", "int", "Crafting CPUs not busy.", network()),
                     fn("energy", "float", "AE stored.", network())),
@@ -54,32 +54,32 @@ public final class StandardLibrary {
                     fn("online", "bool", "Whether the network is usable now.", arg("network", "Network")),
                     fn("rule", "RuleMode", "Whether the provider shares the capability with the consumer.",
                             arg("provider", "Network"), arg("consumer", "Network"), arg("capability", "Capability")),
-                    fn("set_rule", "bool", "Sets whether the provider shares the capability with the consumer.",
+                    act("set_rule", "bool", "Sets whether the provider shares the capability with the consumer.",
                             arg("provider", "Network"), arg("consumer", "Network"), arg("capability", "Capability"),
                             arg("mode", "RuleMode")),
-                    fn("set_filter", "bool", "Sets which resources pass while the rule is on.",
+                    act("set_filter", "bool", "Sets which resources pass while the rule is on.",
                             arg("provider", "Network"), arg("consumer", "Network"), arg("capability", "Capability"),
                             arg("mode", "FilterMode"), arg("resources", "list[Resource]"))),
             "mc", List.of(
-                    fn("move", "bool", "Moves the resource from one block to another.", arg("source", "Block"),
+                    act("move", "bool", "Moves the resource from one block to another.", arg("source", "Block"),
                             arg("target", "Block"), arg("resource", "Resource"), amount()),
                     fn("amount", "int", "How much of the resource the block holds.", arg("block", "Block"),
                             arg("resource", "Resource")),
                     fn("storage", "list[Stack]", "What the block holds.", arg("block", "Block")),
                     fn("block", "str", "The block's ID.", arg("block", "Block")),
                     fn("redstone", "int", "The redstone signal the block receives, 0 to 15.", arg("block", "Block")),
-                    fn("set_redstone", "bool", "Emits redstone from the interface's front face.",
+                    act("set_redstone", "bool", "Emits redstone from the interface's front face.",
                             arg("interface", "Interface"),
                             new Signature.Arg("level", type("int"), null, new Signature.Range(0, 15))),
-                    fn("break_block", "bool", "Breaks the block; its drops go into the domain's storage.",
+                    act("break_block", "bool", "Breaks the block; its drops go into the domain's storage.",
                             arg("block", "Block")),
-                    fn("place_block", "bool", "Places the item, taken from the domain's storage, as a block.",
+                    act("place_block", "bool", "Places the item, taken from the domain's storage, as a block.",
                             arg("block", "Block"), arg("item", "Item")),
                     fn("time", "int", "Game time in ticks."),
-                    fn("wait", "None", "Pauses the run.",
+                    act("wait", "None", "Pauses the run.",
                             new Signature.Arg("ticks", type("int"), null, new Signature.Range(0, Long.MAX_VALUE))),
                     fn("fe", "int", "FE stored in the block.", arg("block", "Block")),
-                    fn("move_fe", "bool", "Moves FE from one block to another.", arg("source", "Block"),
+                    act("move_fe", "bool", "Moves FE from one block to another.", arg("source", "Block"),
                             arg("target", "Block"), amount())));
 
     private StandardLibrary() {
@@ -107,5 +107,10 @@ public final class StandardLibrary {
 
     private static Signature fn(String name, String result, String summary, Signature.Arg... args) {
         return new Signature(name, List.of(args), type(result), summary);
+    }
+
+    /** A function that acts on the world: it takes a tick. */
+    private static Signature act(String name, String result, String summary, Signature.Arg... args) {
+        return new Signature(name, List.of(args), type(result), summary, true);
     }
 }

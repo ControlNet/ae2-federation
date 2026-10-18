@@ -30,6 +30,16 @@ final class StandardLibraryTest {
     }
 
     @Test
+    void theActionsAreTheEffects() {
+        var actions = new HashSet<String>();
+        StandardLibrary.NAMESPACES.forEach((namespace, signatures) -> signatures.stream().filter(Signature::effect)
+                .forEach(s -> actions.add(namespace + "." + s.name())));
+        assertEquals(java.util.Set.of("ae2.craft", "ae2.cancel", "ae2.import_from", "ae2.export_to", "ae2f.set_rule",
+                "ae2f.set_filter", "mc.move", "mc.set_redstone", "mc.break_block", "mc.place_block", "mc.wait",
+                "mc.move_fe"), actions);
+    }
+
+    @Test
     void everyEnumerationIsATypedString() {
         assertTrue(StandardLibrary.TYPED_STRINGS.containsAll(StandardLibrary.ENUMERATIONS.keySet()));
     }

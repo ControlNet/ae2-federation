@@ -26,6 +26,12 @@ final class CheckerTest {
 
             def refill(name: Item, min: int) -> None:
                 pass
+
+            def pulse(gate: Interface) -> None:
+                _emit(gate)
+
+            def _emit(gate: Interface) -> None:
+                mc.set_redstone(gate, 15)
             """).program());
 
     static final Workspace WORKSPACE = new Workspace(FILES, CompletionTest.CATALOG);
@@ -321,6 +327,45 @@ final class CheckerTest {
                     if n > 0:
                         return
                 """));
+    }
+
+    @Test
+    void effectsAreInferredThroughCallsAndFiles() {
+        var parsed = ScriptParser.parse("""
+                def a() -> None:
+                    b()
+
+                def b() -> None:
+                    mc.wait(1)
+
+                def c() -> int:
+                    return ae2.amount("minecraft:iron_ingot") + len([1])
+
+                def d() -> None:
+                    iron_tools.pulse("north_gate")
+
+                def down(n: int) -> None:
+                    if n > 0:
+                        down(n - 1)
+
+                def ticking(n: int) -> None:
+                    if n > 0:
+                        ticking(n - 1)
+                    mc.wait(1)
+
+                def shadow(mc: list[int]) -> None:
+                    mc.append(1)
+                """);
+        var result = Checker.check(parsed.program(), WORKSPACE);
+        assertEquals(List.of(), result.problems());
+        assertEquals(java.util.Set.of("a", "b", "d", "ticking"), result.effectfulFunctions());
+        var functions = parsed.program().functions();
+        var callB = ((Stmt.CallStmt) functions.get(0).body().get(0)).call();
+        var amount = ((Expr.Binary) ((Stmt.Return) functions.get(2).body().get(0)).value()).left();
+        var append = ((Stmt.CallStmt) functions.get(6).body().get(0)).call();
+        assertTrue(result.effectfulCalls().contains(callB.id()));
+        assertFalse(result.effectfulCalls().contains(amount.id()));
+        assertFalse(result.effectfulCalls().contains(append.id()), "a list method, not the mc namespace");
     }
 
     @Test

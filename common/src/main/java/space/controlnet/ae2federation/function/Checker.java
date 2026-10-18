@@ -19,8 +19,12 @@ public final class Checker {
     public record Problem(String node, String message) {
     }
 
-    /** Every problem found, and the type of every expression that has one, by node ID. */
-    public record Result(List<Problem> problems, Map<String, TypeRef> types) {
+    /**
+     * Every problem found; the type of every expression that has one, by node ID; this file's functions that act on
+     * the world, directly or through what they call; and the call nodes that do.
+     */
+    public record Result(List<Problem> problems, Map<String, TypeRef> types, Set<String> effectfulFunctions,
+            Set<String> effectfulCalls) {
     }
 
     /** Longer constant texts are left to run time rather than built while checking. */
@@ -92,7 +96,9 @@ public final class Checker {
     public static Result check(Program program, Workspace workspace) {
         var checker = new Checker(program, workspace);
         checker.run();
-        return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types));
+        var effects = Effects.of(program, workspace);
+        return new Result(List.copyOf(checker.problems), Map.copyOf(checker.types), effects.functions(),
+                effects.calls());
     }
 
     // ---- definitions ----
