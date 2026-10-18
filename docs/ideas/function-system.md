@@ -285,7 +285,7 @@ Decided signatures (user, 2026-10-18), replacing the table above:
 ae2.get_amount(resource, network=None) -> int  # amount stored
 ae2.storage(network=None) -> list[Stack]  # everything stored
 ae2.craftable(resource, network=None) -> bool  # a pattern exists
-ae2.crafting(resource, network=None) -> bool  # a job is making it
+ae2.crafting(resource, network=None) -> int  # amount on its way in running jobs
 ae2.craft(resource, amount: int, network=None) -> bool  # start a job
 ae2.cancel(resource, network=None) -> bool  # cancel the jobs making it
 ae2.import_from(resource, amount: int, network=None) -> bool  # into the network
