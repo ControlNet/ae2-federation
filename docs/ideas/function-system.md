@@ -397,6 +397,8 @@ Decided (user, 2026-10-18):
   dimensions, so one program can act anywhere the domain reaches.
 - **Reach beyond the adjacent block**, straight ahead: blocks in between do not matter (it acts through them), and a
   longer reach costs nothing extra.
+- **Identity and alias.** Every interface gets an ID automatically, so a program can always name it. Right-clicking it
+  with a wrench turns it; any other right-click opens its GUI, where the player sets an alias.
 
 Assistant proposals, to discuss:
 
@@ -404,10 +406,15 @@ Assistant proposals, to discuss:
   the function (`mc.break_block(door, 2)` acts two blocks ahead), defaulting to the adjacent block when left out (the
   checker would allow an optional trailing argument for built-ins only). The alternative is a distance setting in the
   interface's GUI. A maximum (such as 8) keeps the target within loaded range of the interface; open.
-- **Addressing.** The player names an interface in its GUI, as Endpoints are named; in a program it is a typed
-  string, `Port` (name open), completed from the names in the domain, as `Item` strings are completed from the
-  registry. A stable ID underneath, so renaming breaks nothing. Alternatively an installation argument chosen from a
-  picker.
+- **Addressing** (proposal on top of the decision above). In a program an interface is a typed string (type name
+  open, `Port` for now) holding either its alias or its ID; completion lists both, with the alias first. The
+  automatic ID is short and readable (for example `port-12`, numbered per server) and never changes; an alias is
+  unique within its domain (a duplicate is refused in the GUI). The editor shows the other half beside the string,
+  as item icons sit beside item strings: the ID beside an alias, the alias beside an ID. The GUI shows the ID (copy
+  button) and the alias field, nothing else. Renaming an alias: programs that use the old alias report it at once
+  (the server re-checks files that refer to it), and the rename offers to update them, as renaming a file does.
+- **Wrench.** Any item in the common wrench tag works, as for AE2 blocks; following AE2, sneak + wrench picks the
+  interface up.
 - **Library functions that take a location** (names and namespaces open; part of the standard library design):
   `mc.redstone(port, level)`, `mc.redstone_in(port) -> int`, `ae2.export(port, item, amount) -> int` and
   `ae2.import_from(port, item, amount) -> int` (between the network and the inventory at the target; the amount
