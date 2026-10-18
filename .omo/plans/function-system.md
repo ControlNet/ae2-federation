@@ -102,26 +102,32 @@ defaults, UI hints, enum options) generated from `Library` and the player's func
 and script completion. Not applicable: Videnoa is pure data flow with no control flow, no script view and no
 query/action split; those parts are this design's own.
 
-## Open decisions (owner)
+## Decisions since Phase 0
 
-| # | Question | Proposal |
+The design moved on in discussion on 2026-10-18; the [idea page](../../docs/ideas/function-system.md) is the record.
+In short (user decisions): a Python subset (valid Python syntax, `int`/`float`, `for`/`while`), full type hints on
+every function, resources as typed strings, generic functions with capabilities inferred, effects called in the body
+with one effectful call per tick, standard namespaces `ae2`/`ae2f`/`mc` without imports, files of several functions
+calling each other by `file.function`, programs stored server-wide as plain-text `.ae2f` files in the world save,
+policies changed by automation through `ae2f.set_policy`, no entry decorators, a script with syntax errors does not
+switch to the graph, variables in the graph as chips on ports (option A), silent automatic saving from the client.
+The Phase 0 sections above describe the superseded prototype.
+
+## Bottom layer plan (next)
+
+Pure Java in `common/.../function/`, no game types (the boundary test stays), test first. The Phase 0 prototype code
+is replaced step by step; what it proved (round-trip, identity reconciliation, budgeted interpreter) is reused.
+
+| Step | Content | Tests prove |
 |---|---|---|
-| Q1 | First use: a storage policy's filter list? | Yes: a filter-returning query plugs into the existing `PolicyFilter` and shows the whole path (edit, check, cache, epoch) with the least new gameplay. |
-| Q2 | Script language | Decided (user, 2026-10-18): a Python subset with `int`/`float` and loops (`for x in xs`, `while`); see the [idea page](../../docs/ideas/function-system.md). The spike's Lua-like syntax and its static step bound are superseded. |
-| Q3 | First action: redstone output? | Yes: owner-confirmed as a direction, needs no item movement, easy to see in game. |
+| B1 | Python-subset lexer (indentation, comments), parser and printer to a new IR: `def` with typed parameters and result, docstrings, own-line comments, assignment with optional annotation, `if/elif/else`, `while`, `for x in xs`, `break`, `continue`, `return`, call statements; literals (`int`, `float`, `str`, `True`/`False`, `None`, lists), names, `ns.fn` and `file.fn` calls, unary `not`/`-`, `+ - * / // %`, comparisons, `and`/`or`; anything else is a clear "not supported" error | Script -> IR -> script is the identity; every unsupported construct names itself and its line |
+| B2 | Error-tolerant parsing and completion context: the cursor's scope, expected type and candidates | Half-typed lines still give the right candidates |
+| B3 | Types and checks: `int`/`float` widening, `str`, `bool`, `None`, `Item`/`Fluid`/`Resource` from string literals in typed places (registry catalogue as an interface), `list[T]`, definite assignment, calls across files; capability inference over the call graph | One test per rule, problems point at nodes |
+| B4 | Interpreter as a coroutine: pure steps until the next effectful call, hand it to the host, resume next tick; per-tick step budget | At most one effect per tick; budget carries over; `while True` cannot freeze |
+| B5 | Graph view on the new IR: exec chain, variable chips, `x = call()` merged nodes, reconciler and layout | IR -> graph -> IR identity; layout survives script edits |
+| B6 | Built-in descriptors (`ae2`, `ae2f`, `mc`; capabilities, docs, examples) and `.ae2f` storage with a layout sidecar | Files round-trip; outside edits keep layout through the reconciler |
 
-Also open: what a policy does with an unavailable answer; sampling period; trigger kinds; where functions are stored
-(per network, per device) and who may edit them; the measure-to-CU scale.
+Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
-## Next phases
-
-The user decided on 2026-10-18 to build bottom-up, world interactions last; layers and vocabulary are on the
-[function system architecture](../../docs/ideas/function-system.md) idea page.
-
-1. Bottom layer (next): drafts (unconnected graph nodes, scripts with syntax errors), graph edit operations, script
-   editing support (error positions, completion data), serialisation with a version, built-in descriptors. Pure Java,
-   test first.
-2. Editor screens over that layer (script, then graph), GUI design canvases first.
-3. Host: the computing device with installations, triggers and the compute limit; built-ins such as redstone output
-   and `ae2f.set_policy` (policies are plain settings changed by automation, user 2026-10-18, so no policy-side
-   evaluation or caching is needed; a changed setting advances `AuthorityEpoch` as a GUI edit does).
+Open (user): program visibility and editing rights; installations following the latest version or pinned; Edit and
+Install as two views of one tab or two tabs.
