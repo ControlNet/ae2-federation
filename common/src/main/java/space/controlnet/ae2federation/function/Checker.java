@@ -30,13 +30,13 @@ public final class Checker {
     /** Longer constant texts are left to run time rather than built while checking. */
     private static final int MAX_CONSTANT_TEXT = 10_000;
 
-    static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "range", "len", "abs", "min", "max",
-            "sum", "round", "any", "all");
+    static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "list", "range", "len", "abs", "min",
+            "max", "sum", "round", "any", "all");
 
     /** List methods over the element type {@code T}; parameter names are CPython's. */
     static final List<Signature> LIST_METHODS = List.of(
             method("append", "None", arg("object", "T")),
-            method("extend", "None", arg("iterable", "list[T]")),
+            method("extend", "None", arg("iterable", "Iterable[T]")),
             method("insert", "None", arg("index", "int"), arg("object", "T")),
             method("pop", "T", new Signature.Arg("index", Types.INT, "-1")),
             method("remove", "None", arg("value", "T")),
@@ -54,10 +54,17 @@ public final class Checker {
             method("upper", "str"),
             method("strip", "str"),
             method("split", "list[str]", new Signature.Arg("sep", Types.STR, "None")),
-            method("join", "str", arg("iterable", "list[str]")),
+            method("join", "str", arg("iterable", "Iterable[str]")),
             method("replace", "str", arg("old", "str"), arg("new", "str")),
             method("find", "int", arg("sub", "str")),
             method("count", "int", arg("sub", "str")));
+
+    static final List<Signature> RANGE_METHODS = List.of(
+            method("index", "int", arg("value", "int")),
+            method("count", "int", arg("value", "int")));
+
+    /** A range's read-only attributes. */
+    static final List<String> RANGE_FIELDS = List.of("start", "stop", "step");
 
     private final Program program;
     private final Workspace workspace;
@@ -139,6 +146,11 @@ public final class Checker {
             }
             var type = annotation(field.type(), field.id());
             if (field.defaultValue() != null) {
+                if (field.defaultValue() instanceof Expr.ListLit) {
+                    problem(field.defaultValue().id(), "mutable default <class 'list'> for field " + field.name()
+                            + " is not allowed: use default_factory");
+                    continue;
+                }
                 checkDefault(field.name(), type, field.defaultValue());
             }
         }
@@ -146,6 +158,13 @@ public final class Checker {
 
     private void checkDefault(String name, TypeRef type, Expr value) {
         var actual = expr(value, type);
+        boolean constant = value instanceof Expr.BoolLit || value instanceof Expr.NoneLit
+                || constants.containsKey(value.id());
+        if (!constant && actual != null) {
+            // Stricter than Python, which evaluates any expression once when the def runs.
+            problem(value.id(), "default of '" + name + "' must be a constant: a number, a string, True, False or None");
+            return;
+        }
         if (!Types.assignable(type, actual) && !Types.NONE.equals(actual)) {
             problem(value.id(), "default of '" + name + "' must be " + type + ", not " + actual);
         }
@@ -272,11 +291,8 @@ public final class Checker {
     /** What a {@code for} loop over a value of this type yields; {@code null} and a problem if it is not iterable. */
     private TypeRef elementOf(TypeRef iterable, String node) {
         var t = Types.unwrap(iterable);
-        if (Types.isList(t)) {
-            return Types.element(t);
-        }
-        if (Types.isStr(t)) {
-            return Types.STR;
+        if (Types.isIterable(t)) {
+            return Types.iterated(t);
         }
         problem(node, "'" + Types.runtimeName(t) + "' object is not iterable");
         return null;
@@ -485,48 +501,15 @@ public final class Checker {
         if (left instanceof String a && right instanceof String b) {
             return op == BinaryOp.ADD && a.length() + b.length() <= MAX_CONSTANT_TEXT ? a + b : null;
         }
-        if (left instanceof Long a && right instanceof Long b) {
+        if (left instanceof Number && right instanceof Number && op.augmentable()) {
             try {
-                return switch (op) {
-                    case ADD -> Math.addExact(a, b);
-                    case SUB -> Math.subtractExact(a, b);
-                    case MUL -> Math.multiplyExact(a, b);
-                    case DIV -> b == 0 ? zero(node, "division by zero") : (double) a / b;
-                    case FLOOR_DIV -> b == 0 ? zero(node, "integer division or modulo by zero")
-                            : a == Long.MIN_VALUE && b == -1 ? Math.negateExact(a) : Math.floorDiv(a, b);
-                    case MOD -> b == 0 ? zero(node, "integer modulo by zero") : Math.floorMod(a, b);
-                    default -> null;
-                };
-            } catch (ArithmeticException overflow) {
-                problem(node, "integers are 64-bit; this result is too large");
+                return Ops.binary(op, left, right);
+            } catch (RunError e) {
+                // Division by zero and 64-bit overflow: the program would stop here.
+                problem(node, e.getMessage());
                 return null;
             }
         }
-        if (left instanceof Number a && right instanceof Number b && !(left instanceof Long && right instanceof Long)) {
-            double x = a.doubleValue();
-            double y = b.doubleValue();
-            return switch (op) {
-                case ADD -> x + y;
-                case SUB -> x - y;
-                case MUL -> x * y;
-                case DIV -> y == 0 ? zero(node, "float division by zero") : x / y;
-                case FLOOR_DIV -> y == 0 ? zero(node, "float floor division by zero") : Math.floor(x / y);
-                case MOD -> {
-                    if (y == 0) {
-                        yield zero(node, "float modulo");
-                    }
-                    double r = x % y;
-                    // Python's remainder takes the divisor's sign.
-                    yield r != 0 && r < 0 != y < 0 ? r + y : r;
-                }
-                default -> null;
-            };
-        }
-        return null;
-    }
-
-    private Object zero(String node, String message) {
-        problem(node, message);
         return null;
     }
 
@@ -708,6 +691,9 @@ public final class Checker {
         } else if (Types.isStr(t)) {
             methods = STR_METHODS;
             owner = "str";
+        } else if (Types.isRange(t)) {
+            methods = RANGE_METHODS;
+            owner = "range";
         } else {
             methods = List.of();
             owner = Types.runtimeName(t);
@@ -856,6 +842,21 @@ public final class Checker {
                 yield name.equals("int") ? Types.INT : Types.FLOAT;
             }
             case "str" -> count(c, 0, 1) ? Types.STR : null;
+            case "list" -> {
+                if (!count(c, 0, 1)) {
+                    yield null;
+                }
+                if (args.isEmpty()) {
+                    yield Types.EMPTY_LIST;
+                }
+                var t = Types.unwrap(args.get(0));
+                if (!Types.isIterable(t)) {
+                    problem(c.id(), "'" + Types.runtimeName(t) + "' object is not iterable");
+                    yield null;
+                }
+                var item = Types.iterated(t);
+                yield item == null ? Types.EMPTY_LIST : Types.list(item);
+            }
             case "bool" -> count(c, 0, 1) ? Types.BOOL : null;
             case "range" -> {
                 if (!count(c, 1, 3)) {
@@ -868,14 +869,14 @@ public final class Checker {
                         yield null;
                     }
                 }
-                yield Types.list(Types.INT);
+                yield Types.RANGE;
             }
             case "len" -> {
                 if (!count(c, 1, 1)) {
                     yield null;
                 }
                 var t = Types.unwrap(args.get(0));
-                if (!Types.isList(t) && !Types.isStr(t)) {
+                if (!Types.isIterable(t)) {
                     problem(c.id(), "object of type '" + Types.runtimeName(t) + "' has no len()");
                 }
                 yield Types.INT;
@@ -897,11 +898,11 @@ public final class Checker {
                     yield null;
                 }
                 var t = Types.unwrap(args.get(0));
-                if (!Types.isList(t)) {
+                if (!Types.isIterable(t)) {
                     problem(c.id(), "'" + Types.runtimeName(t) + "' object is not iterable");
                     yield null;
                 }
-                var element = Types.element(t);
+                var element = Types.iterated(t);
                 if (element != null && !Types.isNumber(element)) {
                     problem(c.id(), "unsupported operand type(s) for +: 'int' and '" + Types.runtimeName(element) + "'");
                     yield null;
@@ -924,7 +925,7 @@ public final class Checker {
                     yield null;
                 }
                 var t = Types.unwrap(args.get(0));
-                if (!Types.isList(t) && !Types.isStr(t)) {
+                if (!Types.isIterable(t)) {
                     problem(c.id(), "'" + Types.runtimeName(t) + "' object is not iterable");
                 }
                 yield Types.BOOL;
@@ -942,17 +943,14 @@ public final class Checker {
         List<TypeRef> values;
         if (args.size() == 1) {
             var t = Types.unwrap(args.get(0));
-            if (!Types.isList(t) && !Types.isStr(t)) {
+            if (!Types.isIterable(t)) {
                 problem(c.id(), "'" + Types.runtimeName(t) + "' object is not iterable");
                 return null;
             }
-            if (Types.isStr(t)) {
-                return Types.STR;
-            }
-            if (Types.element(t) == null) {
+            if (Types.iterated(t) == null) {
                 return null;
             }
-            values = List.of(Types.element(t));
+            values = List.of(Types.iterated(t));
         } else {
             values = args.stream().map(Types::unwrap).toList();
         }
@@ -1002,6 +1000,9 @@ public final class Checker {
             return null;
         }
         var t = Types.unwrap(target);
+        if (Types.isRange(t) && RANGE_FIELDS.contains(a.name())) {
+            return Types.INT;
+        }
         var record = record(t);
         if (record.isPresent() && record.get().fields().containsKey(a.name())) {
             return record.get().fields().get(a.name());
@@ -1049,22 +1050,35 @@ public final class Checker {
             return null;
         }
         var t = Types.unwrap(target);
-        if (!Types.isList(t) && !Types.isStr(t)) {
+        if (!Types.isIterable(t)) {
             problem(i.id(), "'" + Types.runtimeName(t) + "' object is not subscriptable");
             return null;
         }
         var index = types.get(i.index().id());
         if (index != null && !Types.assignable(Types.INT, index)) {
-            problem(i.id(), (Types.isList(t) ? "list indices must be integers or slices, not "
-                    : "string indices must be integers, not ") + quotedForStrings(t, Types.runtimeName(index)));
+            problem(i.id(), (Types.isStr(t) ? "string indices must be integers, not "
+                    : Types.runtimeName(t) + " indices must be integers or slices, not ")
+                    + quotedForStrings(t, Types.runtimeName(index)));
             return null;
         }
-        return Types.isList(t) ? Types.element(t) : Types.STR;
+        return Types.iterated(t);
+    }
+
+    /** Numbers with numbers, strings with strings, and lists item by item, as Python orders them. */
+    private static boolean orderable(TypeRef left, TypeRef right) {
+        left = Types.unwrap(left);
+        right = Types.unwrap(right);
+        if (Types.isList(left) && Types.isList(right)) {
+            var a = Types.element(left);
+            var b = Types.element(right);
+            return a == null || b == null || orderable(a, b);
+        }
+        return Types.isNumber(left) && Types.isNumber(right) || Types.isStr(left) && Types.isStr(right);
     }
 
     /** CPython quotes the type in the string message only. */
     private static String quotedForStrings(TypeRef target, String name) {
-        return Types.isList(target) ? name : "'" + name + "'";
+        return Types.isStr(target) ? "'" + name + "'" : name;
     }
 
     private void checkIndex(Expr index) {
@@ -1081,7 +1095,7 @@ public final class Checker {
             return null;
         }
         var t = Types.unwrap(target);
-        if (!Types.isList(t) && !Types.isStr(t)) {
+        if (!Types.isIterable(t)) {
             problem(s.id(), "'" + Types.runtimeName(t) + "' object is not subscriptable");
             return null;
         }
@@ -1136,7 +1150,7 @@ public final class Checker {
                 return Types.BOOL;
             }
             case LT, LE, GT, GE -> {
-                if (Types.isNumber(left) && Types.isNumber(right) || Types.isStr(left) && Types.isStr(right)) {
+                if (orderable(left, right)) {
                     return Types.BOOL;
                 }
                 problem(node, "'" + op.symbol + "' not supported between instances of '" + Types.runtimeName(left)
@@ -1144,7 +1158,7 @@ public final class Checker {
                 return null;
             }
             case IN, NOT_IN -> {
-                if (Types.isList(right)) {
+                if (Types.isList(right) || Types.isRange(right)) {
                     return Types.BOOL;
                 }
                 if (Types.isStr(right)) {

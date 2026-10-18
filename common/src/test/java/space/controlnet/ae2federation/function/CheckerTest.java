@@ -133,7 +133,14 @@ final class CheckerTest {
                 Arguments.of("y = int(xs)", 1, "int() argument must be a string or a number, not 'list'"),
                 Arguments.of("y = max(n, s)", 1, "'>' not supported between instances of 'str' and 'int'"),
                 Arguments.of("y = s[s]", 1, "string indices must be integers, not 'str'"),
-                Arguments.of("y = round(s)", 1, "type str doesn't define __round__ method"));
+                Arguments.of("y = round(s)", 1, "type str doesn't define __round__ method"),
+                // a range is not a list
+                Arguments.of("r = range(3)\n    r.append(1)", 2, "'range' object has no attribute 'append'"),
+                Arguments.of("ys: list[int] = range(3)", 1, "ys is list[int]; it cannot hold range"),
+                Arguments.of("y = range(3)[s]", 1, "range indices must be integers or slices, not str"),
+                Arguments.of("range(3)[0] = 1", 1, "'range' object does not support item assignment"),
+                Arguments.of("y = list(n)", 1, "'int' object is not iterable"),
+                Arguments.of("y = [n] < [s]", 1, "'<' not supported between instances of 'list' and 'list'"));
     }
 
     @ParameterizedTest
@@ -152,7 +159,9 @@ final class CheckerTest {
                 "15: 'Item' is a built-in type",
                 "20: default of 'amount' must be int, not str",
                 "21: field 'item' is already defined",
-                "24: h3() must return int, not str"), problems("""
+                "24: h3() must return int, not str",
+                "26: default of 'x' must be a constant: a number, a string, True, False or None",
+                "30: mutable default <class 'list'> for field xs is not allowed: use default_factory"), problems("""
                 def h(x: Foo) -> None:
                     pass
 
@@ -177,6 +186,13 @@ final class CheckerTest {
 
                 def h3() -> int:
                     return "a"
+
+                def h4(x: list[int] = [], y: int = -2 * 3, z: str = "a" + "b", w: bool = True) -> None:
+                    pass
+
+                class Bag:
+                    xs: list[int] = []
+                    n: float = 1 / 4
                 """));
     }
 
@@ -203,6 +219,14 @@ final class CheckerTest {
                         if stack.amount > 0 and stack.resource in [r]:
                             xs.append(stack.amount)
                     middle = xs[1:-1]
+                    rng = range(0, 10, 2)
+                    y = rng[1] + rng.stop + len(rng) + rng.index(4) + sum(rng) + max(rng)
+                    ys = list(rng) + xs[::-1] + list(range(3)[1:])
+                    xs.extend(rng)
+                    joined = "-".join("abc") + "-".join(names)
+                    later = [1, 2] < [1, 3] and 2 in rng and [[1]] <= [[]]
+                    for i in rng[::-1]:
+                        xs.append(i)
                 """));
     }
 

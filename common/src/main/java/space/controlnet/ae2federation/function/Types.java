@@ -14,6 +14,8 @@ final class Types {
     static final TypeRef NONE = simple("None");
     /** The type of {@code []} with no element type known yet. */
     static final TypeRef EMPTY_LIST = simple("list");
+    /** What {@code range(...)} gives: iterable, indexable and sliceable, but not a list. */
+    static final TypeRef RANGE = simple("range");
 
     private Types() {
     }
@@ -47,6 +49,20 @@ final class Types {
     /** A list's element type; {@code null} for {@code []} whose element type is not known. */
     static TypeRef element(TypeRef list) {
         return list.args().isEmpty() ? null : list.args().get(0);
+    }
+
+    static boolean isRange(TypeRef t) {
+        return RANGE.equals(t);
+    }
+
+    /** A list, a string or a range: what {@code for} walks and {@code len} measures. */
+    static boolean isIterable(TypeRef t) {
+        return isList(t) || isStr(t) || isRange(t);
+    }
+
+    /** What iterating yields; {@code null} for {@code []} whose element type is not known. */
+    static TypeRef iterated(TypeRef iterable) {
+        return isList(iterable) ? element(iterable) : isRange(iterable) ? INT : STR;
     }
 
     static boolean isTypedString(TypeRef t) {
@@ -92,6 +108,11 @@ final class Types {
         }
         if (isList(target) && isList(value)) {
             return value.args().isEmpty() || assignable(element(target), element(value));
+        }
+        // A parameter taking any iterable, as list.extend and str.join do.
+        if (target.name().equals("Iterable") && target.args().size() == 1 && isIterable(value)) {
+            var item = iterated(value);
+            return item == null || assignable(target.args().get(0), item);
         }
         return false;
     }
