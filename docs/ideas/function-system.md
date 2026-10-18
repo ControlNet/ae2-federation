@@ -192,17 +192,22 @@ How it could work (assistant proposal):
 - **What the client needs from the server is cached.** Opening the tab sends the library index (files, function
   signatures, capabilities, versions) and the devices; the server pushes changes. Live values (stock in completion,
   device usage) arrive when they arrive and are left out until then; nothing waits for them.
+- **Local first, then the server** (user, 2026-10-18): every edit is written to a local copy on the client first,
+  then uploaded to the server automatically, but only for files open in the editor. Assistant proposal: the local
+  copy is a plain `.ae2f` file under the game directory, one folder per server and world; the upload happens after a
+  pause in typing, on switching file and on closing the screen, carrying the version the edit was based on; opening a
+  file whose local copy holds edits that never reached the server uploads them if the server's version is still the
+  one they were based on, otherwise opens the server's version and keeps the local edits beside it as a copy.
 - **Saving is automatic and silent** (user, 2026-10-18): no save button and no sync indicator ("saving…", "saved",
-  pending marks). After a pause in typing, on switching file and on closing the screen, the client sends the file
-  (text and graph layout) with the version it was based on. A file with errors is still saved as
-  a draft, so nothing is lost; only a file that checks clean becomes the version installations can use.
+  pending marks). A file with errors is still saved as a draft, so nothing is lost; devices only receive a version
+  through Push, and only a file that checks clean can be pushed (proposal).
 - **The server stays authoritative.** It parses and checks again and never trusts the client's result; the client's
   check is for instant feedback. Same code on both sides means they agree.
 - **Conflicts**, without any sync prompt: the last save wins, and an open editor without unsent changes simply
   updates when another player saves. Programs are global (user, 2026-10-18), so this applies to every player.
 - **Installing optimistically.** A drawn wire appears at once like any other; in the rare case the server refuses it
   (the device lacked compute, which the drag colours already showed) it is simply gone.
-- **Unsent edits survive a disconnect**, kept on the client until the next save succeeds.
+- **Unsent edits survive a disconnect or a crash**: they are in the local copy and upload when the file is next open.
 - **Payload size.** Serverbound custom payloads are size-limited; long files are sent in chunks or as diffs. The
   exact NeoForge limit needs checking before the protocol is designed.
 
