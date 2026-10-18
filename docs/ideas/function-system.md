@@ -359,7 +359,22 @@ NeoForge's energy capability. Assistant proposal: two functions over that capabi
 can, `True` if any moved); no FE from the network to a block in the first version (Providers already feed FE to
 Endpoint machines).
 
-Points for the user: one `move` for every resource type (addon types work without new functions) instead of
+Sides and other mods' blocks (asked by the user, 2026-10-18). Assistant proposals:
+
+- The face is chosen when selecting: `ae2f.select(interface, reach: int = 1, side: Side = None)`. `None` is the
+  face toward the interface; `Side` is a typed string with Minecraft's directions (`"up"`, `"down"`, `"north"`,
+  `"south"`, `"west"`, `"east"`), completed in the editor. The `Block` value carries the face, so every function
+  that takes a block uses it, with no `side` argument anywhere else.
+- Access goes only through a face, never by slot number. A face is how every logistics mod reaches a block
+  (hoppers, AE2 buses, pipes), and mods decide per face which slots it reaches: a furnace's top fills its input,
+  its sides the fuel, its bottom gives the output. Machines with configurable sides (Mekanism and others) are set
+  in their own GUI, as for pipes. Slot numbers are internal to each mod and unreadable, and writing into slots
+  past the face would bypass the mod's rules (wrong items, duplication). A block with no face capability cannot be
+  automated by any pipe either.
+- The dry run shows, for the selected face, what it reaches (items and slot count, tanks, FE), so the player sees
+  whether a face fits before running.
+
+ (addon types work without new functions) instead of
 `move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
 the first version; redstone is emitted by the interface itself, so `set_redstone` takes the interface; messages to
 players left out of the first version.
