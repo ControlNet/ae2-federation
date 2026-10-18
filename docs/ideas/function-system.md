@@ -373,6 +373,13 @@ Sides and other mods' blocks (asked by the user, 2026-10-18). Assistant proposal
   automated by any pipe either.
 - The dry run shows, for the selected face, what it reaches (items and slot count, tanks, FE), so the player sees
   whether a face fits before running.
+- Compared with AE2LT Packaged Pattern Provider (read from a public source mirror at 1.2.0-beta.1, 2026-10-18):
+  it supports only machines it has a hand-written adapter for (23 adapters), reaching their private inventories by
+  reflection and writing fixed slot numbers; its face-based AE2 path (`PatternProviderTarget`) exists but no
+  adapter uses it, and nothing else falls back to it. That buys altars, pedestals and multiblocks with no face
+  capability at the cost of per-mod upkeep. Our face route covers every mod's machine that pipes can reach and
+  none of those; we accept and document that. Worth reusing: simulate every insertion before doing any, and back
+  off retries per target.
 
  (addon types work without new functions) instead of
 `move_item`/`move_fluid`; the side used on a sided machine is the face toward the interface, no side argument in
