@@ -1,8 +1,8 @@
 # ME Federation Beam Former: implementation plan
 
 Date: 2026-10-17. Status: every decision answered by the owner (2026-10-17). Phase 1 in progress.
-Design source: [line-of-sight-beam-links.md](../../docs/ideas/line-of-sight-beam-links.md) (decisions of 2026-10-17)
-and the former row of the cost table in [federation-operating-power.md](../../docs/ideas/federation-operating-power.md).
+Design source: [line-of-sight-beam-links.md](../../docs/archive/ideas/line-of-sight-beam-links.md) (decisions of 2026-10-17)
+and the former row of the cost table in [federation-operating-power.md](../../docs/archive/ideas/federation-operating-power.md).
 
 Settled before this plan and not reopened here: a solid N x N x 1 body, 1x1, 2x2 or 3x3 only (owner, 2026-10-17:
 bundles are to keep square sections only later on); the back takes a bundle of the

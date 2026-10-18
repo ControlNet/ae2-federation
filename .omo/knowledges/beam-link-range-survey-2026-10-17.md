@@ -1,6 +1,6 @@
 # Straight-line link ranges in other mods (2026-10-17)
 
-Source survey for the [line-of-sight beam links](../../docs/ideas/line-of-sight-beam-links.md) idea. Every value comes
+Source survey for the [line-of-sight beam links](../../docs/archive/ideas/line-of-sight-beam-links.md) idea. Every value comes
 from source code at the commit listed; anything not found in code is marked unverified.
 
 ## ME Beam Former carries a real grid link

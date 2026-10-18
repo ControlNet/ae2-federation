@@ -54,8 +54,8 @@ Recipes and progression adjustments can be considered separately from runtime ru
 ## Related ideas
 
 - [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md)
-- [Optional operating power](federation-operating-power.md)
-- [Line-of-sight beam links](line-of-sight-beam-links.md)
+- [Optional operating power](../archive/ideas/federation-operating-power.md)
+- [Line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md)
 - [Remote connections](remote-federation-connections.md)
 
 This idea does not introduce configuration files, option IDs, runtime behavior, or implementation commitments.

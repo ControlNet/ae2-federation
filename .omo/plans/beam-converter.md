@@ -1,7 +1,7 @@
 # ME Federation Beam Converter: implementation plan
 
 Date: 2026-10-17. Status: draft for owner review; no code written yet.
-Design source: [federation-operating-power.md](../../docs/ideas/federation-operating-power.md) (decisions of 2026-10-17)
+Design source: [federation-operating-power.md](../../docs/archive/ideas/federation-operating-power.md) (decisions of 2026-10-17)
 and design canvas row "联邦供能". Beam Transceiver and wireless cube costs are out of scope: those blocks do not
 exist yet, and each adds its own cost row when it is built.
 

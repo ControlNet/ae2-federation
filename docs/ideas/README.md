@@ -11,8 +11,6 @@ what the feature should do; it does not mean implementation has started or a rel
 | [Configurable gameplay rules](configurable-gameplay-rules.md) | Enabled-by-default controls confirmed; schema and values open | Full intended gameplay by default; independent power/capacity opt-outs and dependent numerical settings |
 | [Custom policies](custom-policies.md) | Direction established; details under discussion | Storage resource filtering, conditions based on AE2 information, and interchangeable graph/script editors |
 | [Remote Federation connections](remote-federation-connections.md) | Multiple forms under exploration; wireless cube for bundles implemented on `dev` 2026-10-17 as the Quantum Cube ([feature](../features/quantum-cube.md)) | Quantum-bridge-style jumping is the first candidate; other connection models remain open |
-| [Optional Federation operating power](federation-operating-power.md) | Implemented on `dev` 2026-10-17 ([feature](../features/operating-power.md)); statistics metric open | Configurable power requirement, an energy-input device, and different costs for different Federation blocks, especially wireless links |
-| [Line-of-sight beam links](line-of-sight-beam-links.md) | Implemented on `dev` 2026-10-17 as the Beam Former ([feature](../features/beam-former.md)); back to back not built | Long-distance straight-line links without intervening cable, requiring an unobstructed path and increased operating energy |
 | [Multiblock routers, switches, and cable capacity](multiblock-routing-and-cable-capacity.md) | Counting, limits and bundled cables implemented on `dev`; power versus capacity, progression and balancing open | Solid-cuboid routers and switches, bundled cable multipliers, and attachment capacity independent of Policy; no router capacity limit for now |
 
 The remote connection page also carries the earlier "Federation quantum bridge" working-name discussion.
@@ -43,6 +41,12 @@ Its name, appearance and detailed behavior remain undecided.
 - [Statistics dashboard](../features/statistics-dashboard.md): implemented the domain screen's statistics page with
   24 h of saved history. The [original discussion](../archive/ideas/statistics-dashboard.md) is archived for
   historical context.
+- [Operating power](../features/operating-power.md): implemented the configurable requirement, the ME Federation Beam
+  Converter, per-block costs and the gauge, Jade and statistics displays. The
+  [original discussion](../archive/ideas/federation-operating-power.md) is archived for historical context.
+- [Beam Former](../features/beam-former.md): implemented line-of-sight links between square formers of 1x1, 2x2 and
+  3x3; back-to-back relays are not built. The [original discussion](../archive/ideas/line-of-sight-beam-links.md) is
+  archived for historical context.
 
 ## Comparative research
 

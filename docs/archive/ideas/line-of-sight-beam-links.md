@@ -1,8 +1,18 @@
-# Line-of-sight Federation beam links
+# Line-of-sight Federation beam links — archived discussion
+
+Archived: 2026-10-18, after the owner confirmed the idea was implemented.
+
+See [implemented Beam Former](../../features/beam-former.md) for current behavior. The discussion below is
+historical: its status line and the "Open design questions" reflect the stage before implementation. They were
+settled by the 2026-10-17 plan answers recorded below and in the feature page: axis-aligned square sections of 1x1,
+2x2 and 3x3 facing each other, each linking only to the nearest partner within `beam.maxRange` (default 256, up to
+1024); blocks with a collision shape obstruct, glass and water do not, with 20 ticks of debounce each way; only loaded
+chunks are read and an unloaded position keeps its last result (no chunk loading); a linked pair counts as cable in its
+region and pays its cost once. Not built for now: back-to-back formers as a relay, and non-square sections.
 
 Discussion date: 2026-10-09.
 Status: implemented on `dev` 2026-10-17 as the ME Federation Beam Former
-([feature](../features/beam-former.md)). Back-to-back formers and non-square sections are not built.
+([feature](../../features/beam-former.md)). Back-to-back formers and non-square sections are not built.
 
 ## Intent
 
@@ -38,7 +48,7 @@ The user settled the device's form and link semantics:
   32 blocks, auto-disconnect when blocked) is a useful functional reference. Its source confirms a real AE2 grid
   connection; the page's "client-only visuals" note refers to the beam's look.
 
-The [range survey](../../.omo/knowledges/beam-link-range-survey-2026-10-17.md) found that every AE2 straight-beam
+The [range survey](../../../.omo/knowledges/beam-link-range-survey-2026-10-17.md) found that every AE2 straight-beam
 mod uses 32 blocks and none scales range with beam width. Assistant options, none selected: a fixed 32 for every
 size; range growing with cross-section (for example 16·min(M, N)); or a configurable cap defaulting to 32. Most
 surveyed mods let glass pass. For unloaded chunks in the path, keeping the last result and checking again on load
@@ -77,7 +87,7 @@ nearest; there is no relay device, since two transceivers placed back to back al
 
 ## Relationship to other ideas
 
-This is a concrete new connection form within the broader [remote connection discussion](remote-federation-connections.md),
+This is a concrete new connection form within the broader [remote connection discussion](../../ideas/remote-federation-connections.md),
 recorded separately because it has its own placement rules and player interaction.
 It does not replace the earlier quantum-bridge-style jump candidate or finalize that candidate's name or appearance.
 
@@ -86,7 +96,7 @@ The beam-link idea and the power idea are separate features; the optional power 
 
 Unlike a connection that can jump across arbitrary intervening terrain, this proposal makes the physical path
 between endpoints relevant. It is not a player teleporter or a new resource-sharing policy.
-Federation P2P's existing behavior is documented [separately](../features/federation-p2p.md).
+Federation P2P's existing behavior is documented [separately](../../features/federation-p2p.md).
 
 ## Open design questions
 

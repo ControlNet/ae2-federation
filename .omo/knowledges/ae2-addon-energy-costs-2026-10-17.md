@@ -1,6 +1,6 @@
 # AE2 and addon energy costs (2026-10-17)
 
-Reference for the [operating-power idea](../../docs/ideas/federation-operating-power.md). Read from bytecode and config
+Reference for the [operating-power idea](../../docs/archive/ideas/federation-operating-power.md). Read from bytecode and config
 defaults of AE2 19.2.17 and the AE2 addons in `tests/compat/mods.json`; no jar code was executed. Values are AE/t
 unless marked per op. Unconfirmed values are marked unverified.
 

@@ -38,10 +38,10 @@ The user shaped the quantum-bridge-style candidate into a multiblock and set its
 
 The user proposed two additional ideas, maintained on separate pages:
 
-- [Optional Federation operating power](federation-operating-power.md): an input device tentatively called
+- [Optional Federation operating power](../archive/ideas/federation-operating-power.md): an input device tentatively called
   光束充能器 sustains Federation operation, with different block costs and especially high wireless costs.
   The requirement can be disabled in configuration; its default and numerical costs remain open.
-- [Line-of-sight beam links](line-of-sight-beam-links.md): devices described as 光束收发器 connect distant points
+- [Line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md): devices described as 光束收发器 connect distant points
   along an unobstructed straight line without cable along the span, at increased operating energy cost.
 
 The latter is now a user-proposed connection form, beyond the earlier survey's generic directional-link suggestion.

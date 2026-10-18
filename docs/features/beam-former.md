@@ -1,7 +1,7 @@
 # ME Federation Beam Former
 
 Status: implemented on `dev` (2026-10-17). Design discussion:
-[line-of-sight beam links](../ideas/line-of-sight-beam-links.md); plan and decisions D1-D12:
+[line-of-sight beam links](../archive/ideas/line-of-sight-beam-links.md); plan and decisions D1-D12:
 `.omo/plans/beam-former.md`. The textures are temporary (the converter's placeholder, recoloured cyan) until the
 artist delivers.
 

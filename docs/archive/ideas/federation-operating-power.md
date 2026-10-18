@@ -1,4 +1,15 @@
-# Optional Federation operating power
+# Optional Federation operating power — archived discussion
+
+Archived: 2026-10-18, after the owner confirmed the idea was implemented.
+
+See [implemented operating power](../../features/operating-power.md) for current behavior. The discussion below is
+historical: its status line and the "Open design questions" reflect the stage before implementation. They were
+settled as follows: the ME Federation Beam Converter takes FE through every face but its front; a domain pools the
+buffers of the converters that match its largest cable section and pays every block's cost per tick
+(`power.requireOperatingPower`, on by default, and `power.operatingCostMultiplier`); a domain that cannot pay stops
+as one over capacity does, its cables turn red, and it restarts on its 32nd paid tick; the topology gauge, Jade and
+the statistics page's Federation power card show supply and use. Still deferred: drawing AE from an ME network, and
+moving power between domains through one.
 
 Discussion date: 2026-10-09.
 Status: user-proposed feature direction; the Beam Converter's name, shape, scope, input and outage behavior were settled on
@@ -66,7 +77,7 @@ The user settled its shape and role:
 Every one of several converters must match the size (user, 2026-10-17).
 
 **Costs (user confirmed 2026-10-17).** Calibrated on the
-[AE2 and addon energy survey](../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md) (1 AE = 2 FE; AE2's default
+[AE2 and addon energy survey](../../../.omo/knowledges/ae2-addon-energy-costs-2026-10-17.md) (1 AE = 2 FE; AE2's default
 device 1 AE/t; cables 0; Quantum Network Bridge 22 AE/t per block). In FE/t, all scaled by one configuration multiplier
 (default 1):
 
@@ -103,7 +114,7 @@ ticks in a row with power. Larger storage stays with other mods' batteries in fr
 
 ## Relationship to existing features
 
-The later [configurable gameplay rules](configurable-gameplay-rules.md) discussion confirms independent
+The later [configurable gameplay rules](../../ideas/configurable-gameplay-rules.md) discussion confirms independent
 power and capacity switches, both enabled by default. Energy cost settings apply only while operating power
 is required. Pack authors can deliberately opt out; no expert-mode preset is required.
 
@@ -111,11 +122,11 @@ This proposal concerns energy consumed to operate Federation infrastructure. The
 ME power between member networks is a related but different player function. How operating energy interacts
 with that shared pool remains to be designed; this idea does not automatically replace or redefine power sharing.
 
-The [remote connection idea](remote-federation-connections.md) supplies potential high-cost devices.
+The [remote connection idea](../../ideas/remote-federation-connections.md) supplies potential high-cost devices.
 The [line-of-sight beam link](line-of-sight-beam-links.md) supplies an additional connection form.
 Both should account for the optional power setting when their operating requirements are specified.
 
-The later [multiblock and capacity brainstorm](multiblock-routing-and-cable-capacity.md) initially considered
+The later [multiblock and capacity brainstorm](../../ideas/multiblock-routing-and-cable-capacity.md) initially considered
 charger-originated allocations. The user then set that role aside: do not currently design the charger as
 an allocation or pathfinding origin. Capacity counts connected ME networks and endpoints independently of Policy.
 

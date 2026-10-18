@@ -2,7 +2,7 @@
 
 Status: the rule, the ME Federation Beam Converter, the power service, the red beam, the topology gauge, Jade, the
 guide page and the statistics metric are implemented on `dev` (2026-10-17). Design
-decisions: [operating power idea](../ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
+decisions: [operating power idea](../archive/ideas/federation-operating-power.md); plan: `.omo/plans/beam-converter.md`.
 The converter's textures are temporary (the Pattern Provider's, recoloured) until the artist delivers.
 
 ## Behavior
