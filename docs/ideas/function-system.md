@@ -228,6 +228,24 @@ How it could work (assistant proposal):
 - **Both views show it.** The graph can badge nodes and functions with their capabilities; the script editor can show
   them beside each `def`.
 
+Descriptors (assistant proposal 2026-10-18, waiting for the standard library rounds; nothing built beyond today's
+`effect` flag and one-line summary):
+
+- **One capability per library function**, from a short list: reads storage, reads the world, emits redstone,
+  starts crafting, moves resources, changes the world (break, place), changes policies, waits. A player function's
+  capabilities are the union over what it can reach, each with the call that brings it ("starts crafting, line 7,
+  through `refill`"). The existing `effect` flag becomes "has any capability other than reading".
+- **An example per function** in its descriptor, a few lines of script shown in the library panel, for example for
+  `ae2.craft`:
+
+  ```python
+  if ae2.amount("minecraft:iron_ingot") < 64:
+      ae2.craft("minecraft:iron_ingot", 64)
+  ```
+
+- **Rule:** a test parses and checks every example against the real standard library, so documentation cannot drift
+  from the functions it describes.
+
 ## Standard library (user direction 2026-10-18)
 
 The system ships a set of ready functions players call directly: AE2 ones (stock, craftability, crafting status,
@@ -628,9 +646,8 @@ Follow-ups (assistant proposal, open):
 - **Plain-text files in the world save** (user, 2026-10-18): every program is saved as a readable code file with the
   extension `.ae2f`, for example `<world>/ae2federation/programs/iron_tools.ae2f` (the folder is an assistant
   proposal). Proposals that follow from it:
-  - The text is the source of truth. The graph's layout lives beside it (a sidecar keyed by node ID, or the world's
-    `SavedData`); IDs are recovered by parsing, and if the text was changed outside the game, the Reconciler maps the
-    old IDs onto the new parse, so positions survive outside edits too.
+  - The text is the source of truth. (Superseded: a layout sidecar and a Reconciler were proposed here; the user
+    then chose no stored positions, and B5's `Layout` computes positions from the program on every change.)
   - References between files are by name in the text. Renaming in the editor rewrites the callers' text, as an IDE
     rename does; renaming a file by hand outside the game makes its callers report errors.
   - A file with errors is simply saved as text; installations keep using the last version that checked clean.
@@ -639,6 +656,22 @@ Follow-ups (assistant proposal, open):
     the identifier rule, so no path can leave the folder.
   - Files edited outside the game (another editor, git) are picked up by a reload command (user agreed, 2026-10-18),
     not by watching the folder.
+
+  As built (B6, `Library`, 2026-10-18):
+  - Loading only reads; a file is written when it is saved, so a file nobody edited keeps every byte, including
+    CRLF line ends from outside editors (the lexer reads CRLF, LF and CR).
+  - Saving an edited definition prints only that definition, with the comments above it, in place; the other
+    definitions, blank lines and the file's closing comments keep their text. The idea "a function whose graph was
+    not edited keeps its original text" therefore holds per definition.
+  - A file is checked against every other file, but not itself: `iron_tools.low()` inside `iron_tools` is
+    "name 'iron_tools' is not defined", as a Python module cannot name itself without an import.
+  - A program name must be a Python name, not a namespace of the catalog (`ae2`, `ae2f`, `mc`, an addon's) and,
+    as an assistant proposal, not a built-in (`max.low()` would read as a call on the built-in). Files in the folder
+    with other names are listed as skipped, with the reason.
+  - Renaming a function or a file rewrites only the name tokens of its calls in the callers' text (found through
+    the program, so a variable or a string with the same name is left alone). It is refused when the new name is
+    taken, when a caller has a variable of that name (the call would change meaning), and when a function called
+    from other files would become private (`_name`). Deleting a file other files call is refused, naming them.
 
 ## Files, multiple functions and calls between them (user ideas 2026-10-18)
 
@@ -668,9 +701,9 @@ Assistant proposal:
     file named `_common` is callable only from files in its own folder (Python's own convention for internal
     modules). Folders are not needed for the first batch.
 - **Across files in detail** (asked by the user 2026-10-18):
-  - References are stored by ID. The library keeps programs in the program representation, where a call to another
-    file's function holds that file's and function's IDs; the script shows their current names. Renaming a file or
-    a function therefore updates every caller, as an IDE rename does, with nothing to fix by hand.
+  - (Superseded by the plain-text files decision: references are by name in the text, and the editor's rename
+    rewrites the callers, as built in B6.) References are stored by ID. The library keeps programs in the program
+    representation, where a call to another file's function holds that file's and function's IDs.
   - File names are unique on the server (programs are global).
   - A dependency graph between files: saving a file re-checks the files that call it, and their errors appear at
     once. Files may call each other in both directions.

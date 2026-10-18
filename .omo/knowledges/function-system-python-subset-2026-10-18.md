@@ -161,3 +161,14 @@ rejected constructs are in `docs/ideas/function-system.md`, "The subset as built
 - `Layout` (Java) follows the board generator's layout A step for step; tests use a stand-in `Metrics`
   (`LayoutTest.METRICS`) with sizes varying by rows and kind. Nothing is placed left of or above the entry card, so
   no normalisation is needed (a mutation run showed it was dead code).
+
+## B6: program files
+
+- `Library` keeps texts, never Programs: every parse is from the stored text, so IDs match a fresh parse of it.
+  `splice` relies on that (an edited definition is found by its ID in a parse of the current text).
+- Calls are located for rewriting by AST + lexer tokens: a qualified call's position is its receiver's token (the
+  parser records `file.fn(` at `file`), so the function name is two tokens later; a bare call's position is its
+  name; `def name` is one token after `def`. Replacements are applied last first, by offset.
+- Line starts for offsets must break lines as the lexer does (CRLF as one break, lone CR as a break).
+- A bug the mutation tests found: comparing a `FunctionDef` from one parse with one from another parse with `==`
+  is always false; compare names (or the records with `equals`).

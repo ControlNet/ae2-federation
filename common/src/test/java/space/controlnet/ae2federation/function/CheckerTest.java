@@ -92,6 +92,7 @@ final class CheckerTest {
                         + " a str becomes a Resource through an annotation, as in x: Resource = ..."),
                 Arguments.of("y = ae2.missing()", 1, "ae2 has no function 'missing'"),
                 Arguments.of("y = iron_tools.missing()", 1, "iron_tools has no function 'missing'"),
+                Arguments.of("y = no_file.low()", 1, "name 'no_file' is not defined"),
                 Arguments.of("y = iron_tools._low(\"minecraft:iron_ingot\", 1)", 1, "'_low' is private to iron_tools"),
                 // assignments
                 Arguments.of("y = 1\n    y = \"a\"", 2, "y is int; it cannot hold str"),

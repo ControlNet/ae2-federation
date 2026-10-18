@@ -164,6 +164,12 @@ definition changes), `Layout` (layout A picked by the user on the design board "
 values below-left, bodies below-right; sizes from the GUI's `Metrics`). Renaming a function's callers waits for B6
 storage. Next: B6.
 
+B6 storage done 2026-10-18: `Library` (`.ae2f` files read and written as text; atomic writes; byte-for-byte round
+trip; edited definitions spliced in place; checks against the other files; text-preserving renames of functions and
+files; delete refused while called). A broken cross-file name was already a check error (B3), now tested for a
+missing file too. Descriptors (capability list, examples, an example-checking test) are a proposal in the idea page,
+waiting for the standard library rounds.
+
 Later phases: editor screens (design canvas row "自动化页签" first), client-server sync, the computing-device host.
 
 Decided (user, 2026-10-18): programs are global with no permissions for now; installations run the version last

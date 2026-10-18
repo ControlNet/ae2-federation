@@ -132,7 +132,7 @@ record Effects(Set<String> functions, Set<String> calls) {
     }
 
     /** Every call in the body, in Python's evaluation order. */
-    private static void calls(List<Stmt> body, java.util.function.Consumer<Expr.Call> out) {
+    static void calls(List<Stmt> body, java.util.function.Consumer<Expr.Call> out) {
         for (var statement : body) {
             switch (statement) {
                 case Stmt.Assign s -> {
