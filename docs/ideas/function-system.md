@@ -140,6 +140,32 @@ them on a computing device. Boards on the GUI design canvas, row "自动化页�
 - **Item icons wherever an item is named** (user, 2026-10-18): before a resource string in the script, in the
   resource-string completion, on resource ports in the graph and in installation arguments.
 
+## Editing on the client, saving asynchronously (user requirement 2026-10-18)
+
+Writing code needs flow: the player edits on the client and changes reach the server asynchronously. Network delay
+must never slow typing, completion, checking or graph editing.
+
+How it could work (assistant proposal):
+
+- **Everything interactive runs on the client.** The language core (parser, checker, completion, graph conversion,
+  layout) is plain Java in `common`, so the client runs the same code as the server. Item completion uses the client's
+  own registries.
+- **What the client needs from the server is cached.** Opening the tab sends the library index (files, function
+  signatures, capabilities, versions) and the devices; the server pushes changes. Live values (stock in completion,
+  device usage) arrive when they arrive and are left out until then; nothing waits for them.
+- **Saving is asynchronous and debounced:** after a pause in typing, on switching file and on closing the screen, the
+  client sends the file (text and graph layout) with the version it was based on. A file with errors is still saved as
+  a draft, so nothing is lost; only a file that checks clean becomes the version installations can use.
+- **The server stays authoritative.** It parses and checks again and never trusts the client's result; the client's
+  check is for instant feedback. Same code on both sides means they agree.
+- **Conflicts.** If the server's version moved on (another player saved), the save is refused and the client keeps
+  the local text and shows both; or a file is edited by one player at a time. Depends on the visibility question.
+- **Installing optimistically.** A drawn wire appears at once as pending and is confirmed or taken back by the server
+  (for example when the device lacks compute).
+- **Unsent edits survive a disconnect**, kept on the client until the next save succeeds.
+- **Payload size.** Serverbound custom payloads are size-limited; long files are sent in chunks or as diffs. The
+  exact NeoForge limit needs checking before the protocol is designed.
+
 ## Open: actions as calls or as return values (raised by the user 2026-10-18)
 
 Should a function perform actions by calling them in its body, or return the actions as its value and leave
@@ -285,7 +311,7 @@ values, literals on ports, positions by node ID). What the new decisions add:
 |---|---|---|
 | 1. Language core | Types, the program representation, script syntax, graph model, conversion both ways, keeping node identity across edits, static checks, interpreter | None |
 | 2. Function descriptors | Each built-in function declared by name, parameters, types, capabilities, category and icon. The core knows only descriptors; hosts register implementations, and addon mods can add functions of their own | None (definitions only) |
-| 3. Program storage | Serialising a program with its graph layout and comments, with a format version; the server-wide library | Only the save format |
+| 3. Program storage | Serialising a program with its graph layout and comments, with a format version; the server-wide library; asynchronous client-server sync | Save format and packets |
 | 4. Host | The computing device runs installed functions on triggers, supplying effects and a budget. Policies are plain settings an automation may change through `federation.set_policy` | Yes |
 | 5. Editors | Script editor and graph editor screens, working only on layers 1 and 3 | Yes |
 
