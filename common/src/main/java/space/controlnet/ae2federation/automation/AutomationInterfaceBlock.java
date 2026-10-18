@@ -4,10 +4,12 @@ import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
 import appeng.block.AEBaseEntityBlock;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -43,6 +45,19 @@ public final class AutomationInterfaceBlock extends AEBaseEntityBlock<Automation
                 && level.getBlockEntity(position) instanceof AutomationInterfaceBlockEntity automationInterface
                 && AutomationInterfaceScreens.open(serverPlayer, automationInterface)
                 ? InteractionResult.CONSUME : InteractionResult.PASS;
+    }
+
+    /** A program's {@code mc.set_redstone}: a weak signal out of the front face only. */
+    @Override
+    protected boolean isSignalSource(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getSignal(BlockState state, BlockGetter level, BlockPos position, Direction direction) {
+        // direction points from the block receiving the signal back to this one.
+        return level.getBlockEntity(position) instanceof AutomationInterfaceBlockEntity automationInterface
+                && direction == automationInterface.front().getOpposite() ? automationInterface.redstone() : 0;
     }
 
     @SuppressWarnings("deprecation")

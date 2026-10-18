@@ -94,7 +94,7 @@ public final class HeldReturnTransfer {
      * The executing network's own inventories using native AE2 insertion and extraction order: what its providers
      * mounted, without Federation's own mounts (other networks' storage, the return router) and AE2's crafting storage.
      */
-    static MEStorage ownStorage(IGrid grid) {
+    public static MEStorage ownStorage(IGrid grid) {
         var service = grid.getStorageService();
         long generation = NativeMountLedger.generation(service);
         long epoch = IdentityEpoch.current();

@@ -34,6 +34,8 @@ public final class AutomationInterfaceBlockEntity extends AEBaseBlockEntity {
     private @Nullable String id;
     private @Nullable FederationDomainNodeId nodeId;
     private boolean dirty = true;
+    /** The signal a program set, sent out of the front face; kept across restarts. */
+    private int redstone;
     /** Set when the chunk unloads, so the removal that follows is not taken for a broken block. */
     private boolean unloading;
 
@@ -44,6 +46,24 @@ public final class AutomationInterfaceBlockEntity extends AEBaseBlockEntity {
     /** The interface's ID once the server has claimed it, such as {@code interface-k7m2qx}. */
     public @Nullable String id() {
         return id;
+    }
+
+    public int redstone() {
+        return redstone;
+    }
+
+    /** Sets the signal out of the front face; returns whether it changed. */
+    public boolean setRedstone(int level) {
+        var clamped = Math.max(0, Math.min(15, level));
+        if (clamped == redstone) {
+            return false;
+        }
+        redstone = clamped;
+        setChanged();
+        if (this.level != null) {
+            this.level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        }
+        return true;
     }
 
     public Direction front() {
@@ -119,6 +139,10 @@ public final class AutomationInterfaceBlockEntity extends AEBaseBlockEntity {
         }
         if (level != null) {
             level.invalidateCapabilities(worldPosition);
+            if (redstone > 0) {
+                // The signal leaves through the new front.
+                level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+            }
         }
     }
 
@@ -176,6 +200,7 @@ public final class AutomationInterfaceBlockEntity extends AEBaseBlockEntity {
     public void loadTag(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadTag(tag, registries);
         id = tag.contains("automationId") ? tag.getString("automationId") : null;
+        redstone = tag.getInt("redstone");
     }
 
     @Override
@@ -183,6 +208,9 @@ public final class AutomationInterfaceBlockEntity extends AEBaseBlockEntity {
         super.saveAdditional(tag, registries);
         if (id != null) {
             tag.putString("automationId", id);
+        }
+        if (redstone > 0) {
+            tag.putInt("redstone", redstone);
         }
     }
 }

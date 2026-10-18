@@ -1037,6 +1037,40 @@ Assistant proposals, to discuss:
   `mc.block_at(port) -> str`. Each effectful call is one tick, as decided. Transfer works on any AE2 key type (items,
   fluids, addon types such as Mekanism chemicals), not an item-only list.
 
+### The host as built (H3, 2026-10-18)
+
+- `automation/ProgramHost` performs the library calls for a run in one domain; `DomainCalls` holds the ME, policy
+  and block calls; `ProgramCrafting` keeps the jobs programs start; `ProgramRun` checks a file against the others and
+  the domain's catalog, compiles it and ticks its `Runner`. The interface now gives redstone out of its front face.
+- GameTests (`ProgramHostGameTests`) run real `.ae2f` files on a Switch with two networks: items between a chest and
+  the domain, a lamp lit by the interface, a block broken into the domain and placed back, a storage rule set and
+  read, crafting status, and a real crafting job on AE2's own scene (pattern provider and assembler).
+- AE2 looks up patterns through the plan requester's grid node; a requester without one gets every plan back as
+  missing. Programs plan with the grid's pivot node. AE2 plans from its storage cache, which sees an insert a tick
+  later.
+
+Assistant choices, to review:
+
+- **A selected block follows its interface.** `ae2f.select` keeps the interface and the reach, not a position, so
+  turning the interface turns the block, and the block is found again at every use.
+- **The world's answers are results, not errors.** A block in an unloaded area, or behind an interface that left the
+  domain or was broken, reads as empty (0, an empty list, `None`, `""`) and an action on it gives False. A name that
+  matches no interface, a network name two networks share ("name it by its ID") and a rule that cannot exist (a
+  re-export of power, a filter on a non-storage rule) stop the run.
+- **`network=None` is every network of the domain**, in the order of their IDs: reads add up, inserts and extracts go
+  network by network until done. Amounts come from each network's own storage, so a mounted copy is never counted
+  twice.
+- **Moves give back what does not fit.** A move is simulated first, then done; what the target refuses after all goes
+  back where it came from.
+- **`ae2.craft` is True once the plan is asked for**, with a pattern and a free CPU; the job starts on a free CPU
+  when AE2 has planned it, and a plan with missing items is dropped. `ae2.cancel` cancels only the jobs that run
+  started. The output goes into storage, as a terminal's request does.
+- **Breaking and placing.** A block breaks only if all its drops fit into the domain; the interface never breaks or
+  replaces itself. Placing takes one item from the domain and needs a replaceable target where the block survives;
+  it places the block's default state.
+- **Resources are named by ID only**, so moving an item with components (a named or enchanted item) moves whichever
+  stack of that ID comes first.
+
 ### Example: from one chest to another (asked by the user 2026-10-18)
 
 Two chests, each faced by an automation interface (`chest_a`, `chest_b`). Assistant proposals, not decided:

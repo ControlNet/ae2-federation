@@ -50,6 +50,29 @@ public final class RegistryResources implements GameCatalog.Resources {
         return kinds;
     }
 
+    /**
+     * The AE2 key a resource string names. A string that is several kinds at once (checked programs annotate those)
+     * is taken as an item, then a fluid, then the first addon type.
+     */
+    public java.util.Optional<appeng.api.stacks.AEKey> key(String id) {
+        var location = ResourceLocation.tryParse(id);
+        if (location == null) {
+            return java.util.Optional.empty();
+        }
+        var tag = new CompoundTag();
+        tag.putString("id", id);
+        var types = new ArrayList<AEKeyType>(List.of(AEKeyType.items(), AEKeyType.fluids()));
+        AEKeyTypes.getAll().stream().filter(type -> !types.contains(type))
+                .sorted(Comparator.comparing(type -> type.getId().toString())).forEach(types::add);
+        for (var type : types) {
+            var key = type.loadKeyFromTag(registries, tag);
+            if (key != null && location.equals(key.getId())) {
+                return java.util.Optional.of(key);
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
     static String kind(AEKeyType type) {
         if (type == AEKeyType.items()) {
             return "Item";

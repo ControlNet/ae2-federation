@@ -1825,11 +1825,7 @@ public final class FederationDomainPolicySession {
     }
 
     private static PolicyRule defaults(PolicyCapability capability) {
-        return switch (capability) {
-            case STORAGE -> PolicyRule.storageDefaults();
-            case CRAFTING -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.REQUEST));
-            case ME_POWER -> PolicyRule.enabled(java.util.Set.of(space.controlnet.ae2federation.policy.PolicyOperation.SUPPLY));
-        };
+        return space.controlnet.ae2federation.policy.PolicyChanges.defaults(capability);
     }
 
 }

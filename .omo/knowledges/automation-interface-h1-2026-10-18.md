@@ -43,3 +43,14 @@ Stop only your own processes: by PID file, never `pkill -f "tail -f cmd"` (other
   every failure: use the former for "is this ID a resource" checks, and compare `key.getId()` with the input.
 - In-game check `build/programs-check/compare.png`: the H1 jar has no `programs` command, the H2 jar lists a program
   with its one problem. Swap the jar in both `server/mods` and `client/mods`, then restart both.
+
+## H3: the host
+
+- AE2 crafting plans: `ICraftingSimulationRequester.getGridNode()` must return a node on the grid (the pivot works);
+  with null, `CraftingTreeNode.buildChildPatterns` skips patterns and the plan only reports the target as missing.
+- AE2 plans from `getCachedInventory()`, updated a tick after an insert: a test that inserts and plans in one tick
+  sees the materials missing.
+- Two networks on one Switch: their energy cells (or any AE2 parts) must not touch, or they merge into one grid.
+- The checker wants one item type per list literal: build a test result with `" ".join([str(...), ...])`.
+- H3 has no player-reachable surface (programs run only from GameTests until H4's installations), so its in-game
+  check comes with H4.
