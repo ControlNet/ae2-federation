@@ -282,7 +282,7 @@ is emitted (the interface itself, facing the selected block, is the natural emit
 Decided signatures (user, 2026-10-18), replacing the table above:
 
 ```python
-ae2.get_amount(resource, network=None) -> int  # amount stored
+ae2.amount(resource, network=None) -> int  # amount stored (renamed from get_amount by the user)
 ae2.storage(network=None) -> list[Stack]  # everything stored
 ae2.craftable(resource, network=None) -> bool  # a pattern exists
 ae2.crafting(resource, network=None) -> int  # amount on its way in running jobs
