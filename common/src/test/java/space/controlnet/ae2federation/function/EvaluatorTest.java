@@ -100,6 +100,11 @@ final class EvaluatorTest {
         assertThrows(Evaluator.BudgetExceeded.class, () -> Evaluator.action(IRON, "signal_low_iron", List.of(),
                 world(new Value.Num(10), new Value.Bool(true)), effects, 28));
         assertEquals(List.of("redstone 15"), effects.calls, "effects made before the budget ran out stay made");
+        var whole = new RecordedEffects();
+        Evaluator.action(IRON, "signal_low_iron", List.of(), world(new Value.Num(10), new Value.Bool(true)), whole, 30);
+        assertEquals(2, whole.calls.size());
+        assertThrows(Evaluator.BudgetExceeded.class, () -> Evaluator.action(IRON, "signal_low_iron", List.of(),
+                world(new Value.Num(10), new Value.Bool(true)), new RecordedEffects(), 29));
     }
 
     @Test

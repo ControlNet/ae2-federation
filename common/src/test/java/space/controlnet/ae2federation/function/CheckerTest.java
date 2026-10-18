@@ -25,7 +25,7 @@ final class CheckerTest {
         rejects("query f(): bool\n  return redstone(1)\nend\n", "a query cannot call the action redstone");
         rejects("action a()\n  redstone(1)\nend\n\nquery f(): bool\n  a()\n  return true\nend\n",
                 "a query cannot call the action a");
-        rejects("query f(): bool\n  online()\n  return true\nend\n", "a query has no effects");
+        rejects("query f(): bool\n  online()\n  return true\nend\n", "the value of online is unused");
     }
 
     @Test

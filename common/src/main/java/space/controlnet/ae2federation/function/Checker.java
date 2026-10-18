@@ -101,8 +101,7 @@ public final class Checker {
                 case Stmt.Do call -> {
                     var result = call(call.call(), scope);
                     if (result != null && result != ValueType.NOTHING) {
-                        problem(call.call().id(), current.kind() == FunctionDef.Kind.QUERY ? "a query has no effects"
-                                : "the value of " + call.call().function() + " is unused");
+                        problem(call.call().id(), "the value of " + call.call().function() + " is unused");
                     }
                 }
                 case Stmt.If branch -> {
