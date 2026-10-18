@@ -36,18 +36,19 @@ public final class StandardLibrary {
                     fn("crafting", "int", "How much of the resource running jobs are still making.",
                             arg("resource", "Resource"), network()),
                     fn("craft", "bool", "Starts a crafting job; False if it could not start.",
-                            arg("resource", "Resource"), arg("amount", "int"), network()),
+                            arg("resource", "Resource"), amount(), network()),
                     fn("cancel", "bool", "Cancels the jobs this program started for the resource.",
                             arg("resource", "Resource"), network()),
                     fn("import_from", "bool", "Moves the resource from the block into the network.",
-                            arg("block", "Block"), arg("resource", "Resource"), arg("amount", "int"), network()),
+                            arg("block", "Block"), arg("resource", "Resource"), amount(), network()),
                     fn("export_to", "bool", "Moves the resource from the network into the block.",
-                            arg("block", "Block"), arg("resource", "Resource"), arg("amount", "int"), network()),
+                            arg("block", "Block"), arg("resource", "Resource"), amount(), network()),
                     fn("free_cpus", "int", "Crafting CPUs not busy.", network()),
                     fn("energy", "float", "AE stored.", network())),
             "ae2f", List.of(
                     fn("select", "Block", "The block in front of the interface, reach blocks away, seen from a side.",
-                            arg("interface", "Interface"), new Signature.Arg("reach", type("int"), "1"),
+                            arg("interface", "Interface"),
+                            new Signature.Arg("reach", type("int"), "1", new Signature.Range(1, 4)),
                             new Signature.Arg("side", type("Side"), "None")),
                     fn("networks", "list[Network]", "The networks of the domain."),
                     fn("online", "bool", "Whether the network is usable now.", arg("network", "Network")),
@@ -61,23 +62,25 @@ public final class StandardLibrary {
                             arg("mode", "FilterMode"), arg("resources", "list[Resource]"))),
             "mc", List.of(
                     fn("move", "bool", "Moves the resource from one block to another.", arg("source", "Block"),
-                            arg("target", "Block"), arg("resource", "Resource"), arg("amount", "int")),
+                            arg("target", "Block"), arg("resource", "Resource"), amount()),
                     fn("amount", "int", "How much of the resource the block holds.", arg("block", "Block"),
                             arg("resource", "Resource")),
                     fn("storage", "list[Stack]", "What the block holds.", arg("block", "Block")),
                     fn("block", "str", "The block's ID.", arg("block", "Block")),
                     fn("redstone", "int", "The redstone signal the block receives, 0 to 15.", arg("block", "Block")),
                     fn("set_redstone", "bool", "Emits redstone from the interface's front face.",
-                            arg("interface", "Interface"), arg("level", "int")),
+                            arg("interface", "Interface"),
+                            new Signature.Arg("level", type("int"), null, new Signature.Range(0, 15))),
                     fn("break_block", "bool", "Breaks the block; its drops go into the domain's storage.",
                             arg("block", "Block")),
                     fn("place_block", "bool", "Places the item, taken from the domain's storage, as a block.",
                             arg("block", "Block"), arg("item", "Item")),
                     fn("time", "int", "Game time in ticks."),
-                    fn("wait", "None", "Pauses the run.", arg("ticks", "int")),
+                    fn("wait", "None", "Pauses the run.",
+                            new Signature.Arg("ticks", type("int"), null, new Signature.Range(0, Long.MAX_VALUE))),
                     fn("fe", "int", "FE stored in the block.", arg("block", "Block")),
                     fn("move_fe", "bool", "Moves FE from one block to another.", arg("source", "Block"),
-                            arg("target", "Block"), arg("amount", "int"))));
+                            arg("target", "Block"), amount())));
 
     private StandardLibrary() {
     }
@@ -91,6 +94,11 @@ public final class StandardLibrary {
 
     private static Signature.Arg arg(String name, String type) {
         return new Signature.Arg(name, type(type));
+    }
+
+    /** An amount to move or craft: never negative. */
+    private static Signature.Arg amount() {
+        return new Signature.Arg("amount", type("int"), null, new Signature.Range(0, Long.MAX_VALUE));
     }
 
     private static Signature.Arg network() {

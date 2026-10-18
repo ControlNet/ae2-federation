@@ -23,6 +23,9 @@ public final class Checker {
     public record Result(List<Problem> problems, Map<String, TypeRef> types) {
     }
 
+    /** Longer constant texts are left to run time rather than built while checking. */
+    private static final int MAX_CONSTANT_TEXT = 10_000;
+
     static final List<String> BUILT_INS = List.of("int", "float", "str", "bool", "range", "len", "abs", "min", "max",
             "sum", "round", "any", "all");
 
@@ -56,6 +59,8 @@ public final class Checker {
     private final Workspace workspace;
     private final List<Problem> problems = new ArrayList<>();
     private final Map<String, TypeRef> types = new HashMap<>();
+    /** Values known before the program runs, by node ID: Long, Double or String. */
+    private final Map<String, Object> constants = new HashMap<>();
     private final Map<String, FunctionDef> functions = new LinkedHashMap<>();
     private final Map<String, ClassDef> classes = new LinkedHashMap<>();
 
@@ -424,8 +429,149 @@ public final class Checker {
         };
         if (type != null) {
             types.put(e.id(), type);
+            fold(e);
+            var target = Types.unwrap(expected);
+            if (Types.isTypedString(target) && constants.get(e.id()) instanceof String value) {
+                validate(e.id(), target, value);
+            }
         }
         return type;
+    }
+
+    // ---- constants ----
+
+    /** Records the value of a literal, or of an operator over constants, computed as Python computes it. */
+    private void fold(Expr e) {
+        switch (e) {
+            case Expr.IntLit l -> constants.put(e.id(), l.value());
+            case Expr.FloatLit l -> constants.put(e.id(), l.value());
+            case Expr.StrLit l -> constants.put(e.id(), l.value());
+            case Expr.Unary u when u.op() == UnaryOp.NEG -> {
+                var operand = constants.get(u.operand().id());
+                if (operand instanceof Long v) {
+                    if (v == Long.MIN_VALUE) {
+                        problem(e.id(), "integers are 64-bit; this result is too large");
+                    } else {
+                        constants.put(e.id(), -v);
+                    }
+                } else if (operand instanceof Double v) {
+                    constants.put(e.id(), -v);
+                }
+            }
+            case Expr.Binary b -> {
+                var left = constants.get(b.left().id());
+                var right = constants.get(b.right().id());
+                if (left != null && right != null) {
+                    var value = arithmetic(b.op(), left, right, b.id());
+                    if (value != null) {
+                        constants.put(e.id(), value);
+                    }
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    private Object arithmetic(BinaryOp op, Object left, Object right, String node) {
+        if (left instanceof String a && right instanceof String b) {
+            return op == BinaryOp.ADD && a.length() + b.length() <= MAX_CONSTANT_TEXT ? a + b : null;
+        }
+        if (left instanceof Long a && right instanceof Long b) {
+            try {
+                return switch (op) {
+                    case ADD -> Math.addExact(a, b);
+                    case SUB -> Math.subtractExact(a, b);
+                    case MUL -> Math.multiplyExact(a, b);
+                    case DIV -> b == 0 ? zero(node, "division by zero") : (double) a / b;
+                    case FLOOR_DIV -> b == 0 ? zero(node, "integer division or modulo by zero")
+                            : a == Long.MIN_VALUE && b == -1 ? Math.negateExact(a) : Math.floorDiv(a, b);
+                    case MOD -> b == 0 ? zero(node, "integer modulo by zero") : Math.floorMod(a, b);
+                    default -> null;
+                };
+            } catch (ArithmeticException overflow) {
+                problem(node, "integers are 64-bit; this result is too large");
+                return null;
+            }
+        }
+        if (left instanceof Number a && right instanceof Number b && !(left instanceof Long && right instanceof Long)) {
+            double x = a.doubleValue();
+            double y = b.doubleValue();
+            return switch (op) {
+                case ADD -> x + y;
+                case SUB -> x - y;
+                case MUL -> x * y;
+                case DIV -> y == 0 ? zero(node, "float division by zero") : x / y;
+                case FLOOR_DIV -> y == 0 ? zero(node, "float floor division by zero") : Math.floor(x / y);
+                case MOD -> {
+                    if (y == 0) {
+                        yield zero(node, "float modulo");
+                    }
+                    double r = x % y;
+                    // Python's remainder takes the divisor's sign.
+                    yield r != 0 && r < 0 != y < 0 ? r + y : r;
+                }
+                default -> null;
+            };
+        }
+        return null;
+    }
+
+    private Object zero(String node, String message) {
+        problem(node, message);
+        return null;
+    }
+
+    /** Checks a constant typed string against the closed sets and the catalogue. */
+    private void validate(String node, TypeRef type, String value) {
+        var name = type.name();
+        var fixed = StandardLibrary.ENUMERATIONS.get(name);
+        if (fixed != null) {
+            if (!fixed.contains(value)) {
+                problem(node, "'" + value + "' is not a " + name + "; expected one of " + String.join(", ", fixed));
+            }
+            return;
+        }
+        switch (name) {
+            case "Item", "Fluid", "Resource" -> {
+                var kinds = workspace.catalog().kinds(value);
+                if (kinds.isEmpty()) {
+                    problem(node, "unknown " + kind(name) + " '" + value + "'");
+                } else if (name.equals("Resource") && kinds.size() > 1) {
+                    var sorted = kinds.stream().sorted(java.util.Comparator.comparingInt(Checker::kindOrder)
+                            .thenComparing(k -> k)).map(k -> withArticle(kind(k))).toList();
+                    problem(node, "'" + value + "' is " + (sorted.size() == 2 ? "both " + sorted.get(0) + " and "
+                            + sorted.get(1) : "several kinds of resource (" + String.join(", ", sorted) + ")")
+                            + "; annotate it as Item or Fluid");
+                } else if (!name.equals("Resource") && !kinds.contains(name)) {
+                    problem(node, "'" + value + "' is " + withArticle(kind(kinds.iterator().next())) + ", not "
+                            + withArticle(kind(name)));
+                }
+            }
+            case "Interface", "Network" -> {
+                if (!workspace.catalog().exists(type, value)) {
+                    problem(node, "no " + name.toLowerCase(java.util.Locale.ROOT) + " '" + value + "' in this domain");
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    private static int kindOrder(String kind) {
+        return kind.equals("Item") ? 0 : kind.equals("Fluid") ? 1 : 2;
+    }
+
+    /** {@code item}, {@code fluid}, {@code resource}, or an addon's key type as it is named. */
+    private static String kind(String name) {
+        return switch (name) {
+            case "Item", "Fluid", "Resource" -> name.toLowerCase(java.util.Locale.ROOT);
+            default -> name;
+        };
+    }
+
+    private static String withArticle(String word) {
+        return ("aeiou".indexOf(word.charAt(0)) >= 0 ? "an " : "a ") + word;
     }
 
     private TypeRef listLiteral(Expr.ListLit l, TypeRef expected) {
@@ -638,6 +784,13 @@ public final class Checker {
             }
             var expected = "None".equals(param.defaultValue()) ? Types.optional(param.type()) : param.type();
             var actual = expr(arg, expected);
+            if (param.range() != null && constants.get(arg.id()) instanceof Long value
+                    && (value < param.range().min() || value > param.range().max())) {
+                var range = param.range();
+                problem(arg.id(), param.name() + " of " + display + " must be "
+                        + (range.max() == Long.MAX_VALUE ? "at least " + range.min()
+                                : "from " + range.min() + " to " + range.max()) + ", not " + value);
+            }
             if (!Types.assignable(expected, actual)) {
                 var message = "argument '" + param.name() + "' of " + display + " must be " + param.type()
                         + ", not " + actual;
@@ -1091,8 +1244,7 @@ public final class Checker {
 
     private static Signature qualify(Signature signature, String fileName, Program file) {
         return new Signature(signature.name(),
-                signature.args().stream().map(a -> new Signature.Arg(a.name(), qualify(a.type(), fileName, file),
-                        a.defaultValue())).toList(),
+                signature.args().stream().map(a -> a.withType(qualify(a.type(), fileName, file))).toList(),
                 qualify(signature.result(), fileName, file), signature.summary());
     }
 
@@ -1109,8 +1261,7 @@ public final class Checker {
     /** A list method with the element type in place of {@code T}. */
     private static Signature substitute(Signature method, TypeRef element) {
         return new Signature(method.name(),
-                method.args().stream().map(a -> new Signature.Arg(a.name(), substitute(a.type(), element),
-                        a.defaultValue())).toList(),
+                method.args().stream().map(a -> a.withType(substitute(a.type(), element))).toList(),
                 substitute(method.result(), element), method.summary());
     }
 

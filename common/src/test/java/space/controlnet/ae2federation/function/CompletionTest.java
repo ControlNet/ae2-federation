@@ -14,9 +14,30 @@ final class CompletionTest {
 
     /**
      * Test-only stand-in for the game's catalogue: the real standard library, with fixed values for typed strings in
-     * place of the item registry and the domain's interfaces.
+     * place of the item registry and the domain's interfaces and networks. {@code testmod:goo} is a made-up ID that is
+     * both an item and a fluid.
      */
     static final Catalog CATALOG = new Catalog() {
+        @Override
+        public java.util.Set<String> kinds(String id) {
+            return switch (id) {
+                case "minecraft:iron_ingot", "minecraft:iron_block", "minecraft:gold_ingot" -> java.util.Set.of("Item");
+                case "minecraft:water" -> java.util.Set.of("Fluid");
+                case "testmod:goo" -> java.util.Set.of("Item", "Fluid");
+                default -> java.util.Set.of();
+            };
+        }
+
+        @Override
+        public boolean exists(TypeRef type, String value) {
+            return switch (type.name()) {
+                case "Interface" -> List.of("north_gate", "mine_entry", "interface-k7m2qx", "interface-r4tw9e")
+                        .contains(value);
+                case "Network" -> List.of("main_base", "network-p3x9ka").contains(value);
+                default -> false;
+            };
+        }
+
         @Override
         public List<Candidate> values(TypeRef type, String prefix) {
             List<Candidate> all = switch (type.name()) {

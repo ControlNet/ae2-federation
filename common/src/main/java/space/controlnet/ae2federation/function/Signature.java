@@ -5,11 +5,26 @@ import java.util.stream.Collectors;
 
 /** A callable function's signature: a built-in from the catalogue, or a player function. */
 public record Signature(String name, List<Arg> args, TypeRef result, String summary) {
-    /** {@code defaultValue} is the default as script text, {@code null} when the argument is required. */
-    public record Arg(String name, TypeRef type, String defaultValue) {
+    /**
+     * {@code defaultValue} is the default as script text, {@code null} when the argument is required; {@code range}
+     * bounds an {@code int} argument, checked when the value is a constant, {@code null} when it has none.
+     */
+    public record Arg(String name, TypeRef type, String defaultValue, Range range) {
         public Arg(String name, TypeRef type) {
-            this(name, type, null);
+            this(name, type, null, null);
         }
+
+        public Arg(String name, TypeRef type, String defaultValue) {
+            this(name, type, defaultValue, null);
+        }
+
+        Arg withType(TypeRef newType) {
+            return new Arg(name, newType, defaultValue, range);
+        }
+    }
+
+    /** Inclusive bounds of an {@code int} argument; {@code max} is {@link Long#MAX_VALUE} when there is no upper one. */
+    public record Range(long min, long max) {
     }
 
     public Signature {

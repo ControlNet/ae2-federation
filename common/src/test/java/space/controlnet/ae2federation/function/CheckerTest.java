@@ -210,6 +210,49 @@ final class CheckerTest {
         assertEquals(List.of(), result.problems());
     }
 
+    static Stream<Arguments> constants() {
+        return Stream.of(
+                Arguments.of("y = ae2f.select(\"north_gate\", 5)", "reach of ae2f.select() must be from 1 to 4, not 5"),
+                Arguments.of("y = ae2f.select(\"north_gate\", 2 + 3)", "reach of ae2f.select() must be from 1 to 4, not 5"),
+                Arguments.of("mc.set_redstone(\"north_gate\", 16)", "level of mc.set_redstone() must be from 0 to 15, not 16"),
+                Arguments.of("ae2.craft(\"minecraft:iron_ingot\", -1)", "amount of ae2.craft() must be at least 0, not -1"),
+                Arguments.of("y = 1 / 0", "division by zero"),
+                Arguments.of("y = 1 // (2 - 2)", "integer division or modulo by zero"),
+                Arguments.of("y = 1 % 0", "integer modulo by zero"),
+                Arguments.of("y = 1.5 / 0", "float division by zero"),
+                Arguments.of("y = 9223372036854775807 + 1", "integers are 64-bit; this result is too large"),
+                Arguments.of("y = ae2f.select(\"north_gate\", side=\"upp\")",
+                        "'upp' is not a Side; expected one of up, down, north, south, west, east"),
+                Arguments.of("y = ae2.amount(\"minecraft:iron_ingt\")", "unknown resource 'minecraft:iron_ingt'"),
+                Arguments.of("y: Item = \"minecraft:\" + \"iron_ingt\"", "unknown item 'minecraft:iron_ingt'"),
+                Arguments.of("y: Item = \"minecraft:water\"", "'minecraft:water' is a fluid, not an item"),
+                Arguments.of("y = ae2.amount(\"testmod:goo\")",
+                        "'testmod:goo' is both an item and a fluid; annotate it as Item or Fluid"),
+                Arguments.of("mc.set_redstone(\"south_gate\", 1)", "no interface 'south_gate' in this domain"),
+                Arguments.of("y = ae2.amount(\"minecraft:iron_ingot\", \"nowhere\")", "no network 'nowhere' in this domain"),
+                Arguments.of("ae2f.set_filter(\"main_base\", \"main_base\", \"storage\", \"allow\", [\"minecraft:iron\"])",
+                        "unknown resource 'minecraft:iron'"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("constants")
+    void constantsAreCheckedBeforeTheProgramRuns(String body, String message) {
+        assertEquals(List.of(BODY_LINE + ": " + message), problems(PRELUDE + "    " + body + "\n"));
+    }
+
+    @Test
+    void knownConstantsAndRuntimeValuesPass() {
+        assertEquals(List.of(), problems(PRELUDE + """
+                    y = ae2f.select("interface-k7m2qx", 4, side="down")
+                    mc.set_redstone("mine_entry", 15 - n)
+                    goo: Item = "testmod:goo"
+                    z: Resource = "minecraft:" + s
+                    w = ae2.amount("minecraft:water", network="network-p3x9ka")
+                    big = 9223372036854775807 - 1 + n * 2
+                    q = 7 // -2 + 7 % -2 + 7.5 // 2.0
+                """));
+    }
+
     static Stream<Arguments> flow() {
         var unbound = "cannot access local variable 'y' where it is not associated with a value";
         return Stream.of(

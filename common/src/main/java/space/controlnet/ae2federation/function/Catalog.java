@@ -2,6 +2,7 @@ package space.controlnet.ae2federation.function;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What the game knows and the language core does not: the values a typed string can hold (item IDs for {@code Item},
@@ -16,4 +17,13 @@ public interface Catalog {
 
     /** Values of a typed string matching what is typed so far, best first; empty for types without values. */
     List<Candidate> values(TypeRef type, String prefix);
+
+    /**
+     * The kinds of resource an ID names: {@code Item}, {@code Fluid}, or an addon's key type. Empty when nothing has
+     * that ID; more than one when it is, say, both an item and a fluid.
+     */
+    Set<String> kinds(String id);
+
+    /** Whether an {@code Interface} or {@code Network} with this ID or alias is in the domain. */
+    boolean exists(TypeRef type, String value);
 }
