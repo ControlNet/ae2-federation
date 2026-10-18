@@ -198,6 +198,16 @@ Assistant proposal:
     different files that share helpers either use a public helper file, or, if wanted later, folders as packages: a
     file named `_common` is callable only from files in its own folder (Python's own convention for internal
     modules). Folders are not needed for the first batch.
+- **Across files in detail** (asked by the user 2026-10-18):
+  - References are stored by ID. The library keeps programs in the program representation, where a call to another
+    file's function holds that file's and function's IDs; the script shows their current names. Renaming a file or
+    a function therefore updates every caller, as an IDE rename does, with nothing to fix by hand.
+  - File names are unique within what one player can see (see the visibility question).
+  - A dependency graph between files: saving a file re-checks the files that call it, and their errors appear at
+    once. Files may call each other in both directions.
+  - Deleting a file or a public function that others call is refused, listing the callers.
+  - Exporting a file as text also exports the files it calls (or names them, to re-link by name on import).
+  - The editor offers "go to definition" and "find callers" across files, in both views.
 - **Several at once.** The editor opens several files in tabs, possibly side by side. In the graph view each function
   is its own canvas, listed beside it; a call node can be opened to jump to the called function's canvas, in either
   view.
